@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ===================================================
    GROUTIX — Design System (light & clean)
    =================================================== */
@@ -42,6 +44,7 @@
 
   --color-background: #ffffff;
   --color-surface: #f6f8fb;
+  --color-card: #ffffff;
   --color-foreground: #0f172a;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -56,10 +59,38 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
+:root { color-scheme: light; }
+
 body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+}
+
+/* ===== Dark theme (class-based) ===== */
+.dark {
+  color-scheme: dark;
+  --color-background: #0b1220;
+  --color-surface: #101a2c;
+  --color-card: #15203a;
+  --color-foreground: #e9eef6;
+
+  --color-ink-50:  #141d31;
+  --color-ink-100: #1c2740;
+  --color-ink-200: #29364f;
+  --color-ink-300: #3e4b63;
+  --color-ink-400: #7d8aa0;
+  --color-ink-500: #97a3b6;
+  --color-ink-600: #b6c0d0;
+  --color-ink-700: #d0d8e4;
+  --color-ink-800: #e6ebf2;
+  --color-ink-900: #f4f7fb;
+}
+
+.dark .grid-pattern {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
 }
 
 ::selection {

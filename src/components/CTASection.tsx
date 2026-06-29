@@ -14,7 +14,7 @@ export function CTASection({
   blurb?: string;
 }) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-ink-900">
+    <section className="relative overflow-hidden bg-gradient-to-br from-[#1846b4] via-[#193e92] to-[#0b1320]">
       <div className="dot-pattern pointer-events-none absolute inset-0 opacity-40" />
       <div className="anim-blob pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-teal-500/30 blur-3xl" />
       <div className="anim-blob-slow pointer-events-none absolute -bottom-28 left-10 h-80 w-80 rounded-full bg-brand-400/30 blur-3xl" />

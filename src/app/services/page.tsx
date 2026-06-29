@@ -22,6 +22,8 @@ export default function ServicesPage() {
         eyebrow="Our Services"
         title="Specialist waterproofing & shower repairs"
         subtitle="We fix the cause of the problem — not just the symptoms — so your repair lasts. Explore what we do below."
+        image="/images/shower-clean.jpeg"
+        imageAlt="Clean, watertight shower"
         crumb={[
           { label: "Home", href: "/" },
           { label: "Services", href: "/services" },
@@ -37,7 +39,7 @@ export default function ServicesPage() {
                 <Reveal key={s.slug} delay={(i % 3) * 110}>
                   <Link
                     href={`/services/${s.slug}`}
-                    className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift"
+                    className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-card shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift"
                   >
                     <span className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-brand-500 to-teal-500 transition-transform duration-300 group-hover:scale-x-100" />
                     <div className="relative overflow-hidden">

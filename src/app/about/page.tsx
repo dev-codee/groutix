@@ -129,7 +129,7 @@ export default function AboutPage() {
               const VIcon = v.icon;
               return (
                 <Reveal key={v.title} delay={i * 100}>
-                  <div className="group h-full rounded-2xl border border-ink-100 bg-white p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
+                  <div className="group h-full rounded-2xl border border-ink-100 bg-card p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-teal-600 text-white shadow-soft transition-transform duration-300 group-hover:scale-110">
                       <VIcon className="h-7 w-7" />
                     </div>

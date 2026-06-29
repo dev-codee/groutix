@@ -36,11 +36,11 @@ function GlobeIcon() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-ink-200 bg-ink-900 text-ink-300">
+    <footer className="border-t border-slate-800 bg-[#0b1320] text-slate-300">
       <div className="mx-auto grid max-w-[1680px] gap-10 px-6 py-16 sm:px-10 lg:grid-cols-[1.6fr_1fr_1fr_1.3fr] lg:px-16">
         <div>
           <Logo tone="light" />
-          <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink-400">
+          <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-400">
             {site.description}
           </p>
         </div>
@@ -50,7 +50,7 @@ export function Footer() {
           <ul className="mt-4 space-y-2.5 text-sm">
             {mainNav.map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="text-ink-400 transition-colors hover:text-white">
+                <Link href={item.href} className="text-slate-400 transition-colors hover:text-white">
                   {item.label}
                 </Link>
               </li>
@@ -65,7 +65,7 @@ export function Footer() {
               <li key={s.slug}>
                 <Link
                   href={`/services/${s.slug}`}
-                  className="text-ink-400 transition-colors hover:text-white"
+                  className="text-slate-400 transition-colors hover:text-white"
                 >
                   {s.title}
                 </Link>
@@ -78,21 +78,21 @@ export function Footer() {
           <h3 className="text-xs font-bold uppercase tracking-wider text-white">Contact</h3>
           <ul className="mt-4 space-y-3 text-sm">
             <li>
-              <a href={site.phoneHref} className="flex items-center gap-2.5 text-ink-400 transition-colors hover:text-white">
+              <a href={site.phoneHref} className="flex items-center gap-2.5 text-slate-400 transition-colors hover:text-white">
                 <PhoneIcon /> {site.phone}
               </a>
             </li>
             <li>
-              <a href={`mailto:${site.email}`} className="flex items-center gap-2.5 text-ink-400 transition-colors hover:text-white">
+              <a href={`mailto:${site.email}`} className="flex items-center gap-2.5 text-slate-400 transition-colors hover:text-white">
                 <MailIcon /> {site.email}
               </a>
             </li>
             <li>
-              <a href={`https://${site.website}`} className="flex items-center gap-2.5 text-ink-400 transition-colors hover:text-white">
+              <a href={`https://${site.website}`} className="flex items-center gap-2.5 text-slate-400 transition-colors hover:text-white">
                 <GlobeIcon /> {site.website}
               </a>
             </li>
-            <li className="flex items-start gap-2.5 text-ink-400">
+            <li className="flex items-start gap-2.5 text-slate-400">
               <span className="mt-0.5"><PinIcon /></span>
               <span>{site.address}</span>
             </li>
@@ -101,7 +101,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto max-w-[1680px] px-6 py-5 text-center text-sm font-semibold text-ink-400 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-[1680px] px-6 py-5 text-center text-sm font-semibold text-slate-400 sm:px-10 lg:px-16">
           © {new Date().getFullYear()} {site.name}. All Rights Reserved.
         </div>
       </div>

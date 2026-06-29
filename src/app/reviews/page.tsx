@@ -38,7 +38,7 @@ export default function ReviewsPage() {
       <Section>
         <Container>
           <Reveal>
-            <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-2xl border border-ink-100 bg-white p-8 text-center shadow-soft sm:flex-row sm:justify-center sm:gap-8 sm:text-left">
+            <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-2xl border border-ink-100 bg-card p-8 text-center shadow-soft sm:flex-row sm:justify-center sm:gap-8 sm:text-left">
               <div>
                 <div className="font-display text-5xl font-extrabold text-ink-900">5.0</div>
                 <Stars rating={5} />
@@ -54,7 +54,7 @@ export default function ReviewsPage() {
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {testimonials.map((t, i) => (
               <Reveal key={t.name} delay={(i % 3) * 110}>
-                <figure className="flex h-full flex-col rounded-2xl border border-ink-100 bg-white p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
+                <figure className="flex h-full flex-col rounded-2xl border border-ink-100 bg-card p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
                   <Icon.Quote className="h-9 w-9 text-brand-100" />
                   <blockquote className="mt-2 flex-1 text-ink-700">{t.quote}</blockquote>
                   <Stars rating={t.rating} />

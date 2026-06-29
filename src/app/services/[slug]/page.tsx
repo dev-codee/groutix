@@ -57,6 +57,8 @@ export default async function ServiceDetailPage({
         eyebrow="Service"
         title={service.title}
         subtitle={detail?.intro}
+        image={serviceImage[service.slug]}
+        imageAlt={service.title}
         crumb={[
           { label: "Home", href: "/" },
           { label: "Services", href: "/services" },
@@ -120,7 +122,7 @@ export default async function ServiceDetailPage({
             <div id="quote">
               <LeadForm />
             </div>
-            <div className="mt-6 rounded-2xl border border-ink-100 bg-white p-6 shadow-soft">
+            <div className="mt-6 rounded-2xl border border-ink-100 bg-card p-6 shadow-soft">
               <h3 className="font-display text-base font-bold text-ink-900">Other services</h3>
               <ul className="mt-3 divide-y divide-ink-100">
                 {related.map((r) => {
@@ -161,7 +163,7 @@ export default async function ServiceDetailPage({
             <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-2">
               {detail.signs.map((sign, i) => (
                 <Reveal key={sign} delay={(i % 2) * 100}>
-                  <div className="flex items-center gap-4 rounded-2xl border border-ink-100 bg-white p-5 shadow-soft transition-transform duration-300 hover:-translate-y-1">
+                  <div className="flex items-center gap-4 rounded-2xl border border-ink-100 bg-card p-5 shadow-soft transition-transform duration-300 hover:-translate-y-1">
                     <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-amber-50 text-amber-500">
                       <Icon.Alert className="h-5 w-5" />
                     </span>
@@ -189,7 +191,7 @@ export default async function ServiceDetailPage({
             <div className="mt-14 grid gap-6 md:grid-cols-3">
               {detail.steps.map((step, i) => (
                 <Reveal key={step.title} delay={i * 120}>
-                  <div className="relative h-full rounded-2xl border border-ink-100 bg-white p-7 shadow-soft">
+                  <div className="relative h-full rounded-2xl border border-ink-100 bg-card p-7 shadow-soft">
                     <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 font-display text-base font-extrabold text-white shadow-soft">
                       {String(i + 1).padStart(2, "0")}
                     </span>
@@ -218,7 +220,7 @@ export default async function ServiceDetailPage({
               const BIcon = benefitIcon[b.icon];
               return (
                 <Reveal key={b.title} delay={i * 100}>
-                  <div className="group h-full rounded-2xl border border-ink-100 bg-white p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
+                  <div className="group h-full rounded-2xl border border-ink-100 bg-card p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-teal-600 text-white shadow-soft transition-transform duration-300 group-hover:scale-110">
                       <BIcon className="h-7 w-7" />
                     </div>

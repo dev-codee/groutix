@@ -80,7 +80,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   primary:
     "bg-brand-600 text-white shadow-soft hover:bg-brand-700 hover:-translate-y-0.5",
   secondary:
-    "bg-white text-ink-800 ring-1 ring-ink-200 hover:ring-brand-300 hover:text-brand-700",
+    "bg-card text-ink-800 ring-1 ring-ink-200 hover:ring-brand-300 hover:text-brand-700",
   ghost: "text-brand-700 hover:bg-brand-50",
 };
 

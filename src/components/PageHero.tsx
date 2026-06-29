@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Container, Eyebrow } from "@/components/ui";
 import type { ReactNode } from "react";
 
@@ -7,17 +8,38 @@ export function PageHero({
   title,
   subtitle,
   crumb,
+  image,
+  imageAlt = "",
 }: {
   eyebrow?: string;
   title: ReactNode;
   subtitle?: ReactNode;
   crumb?: { label: string; href: string }[];
+  image?: string;
+  imageAlt?: string;
 }) {
   return (
     <section className="relative overflow-hidden border-b border-ink-100 bg-surface">
-      <div className="grid-pattern pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
-      <div className="anim-blob pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-brand-200/40 blur-3xl" />
-      <div className="anim-blob-slow pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-teal-200/40 blur-3xl" />
+      {image ? (
+        <>
+          <Image
+            src={image}
+            alt={imageAlt}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/80 via-background/72 to-background" />
+          <div className="grid-pattern pointer-events-none absolute inset-0 opacity-30 [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
+        </>
+      ) : (
+        <>
+          <div className="grid-pattern pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
+          <div className="anim-blob pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-brand-200/40 blur-3xl" />
+          <div className="anim-blob-slow pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-teal-200/40 blur-3xl" />
+        </>
+      )}
       <Container className="relative py-14 text-center sm:py-20">
         {crumb ? (
           <nav className="anim-fade-up mb-5 flex items-center justify-center gap-1.5 text-sm text-ink-400">

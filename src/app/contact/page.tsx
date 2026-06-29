@@ -78,7 +78,7 @@ export default function ContactPage() {
             <div className="mt-8 space-y-4">
               {contactCards.map((c) => {
                 const Inner = (
-                  <div className="flex items-center gap-4 rounded-2xl border border-ink-100 bg-white p-5 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lift">
+                  <div className="flex items-center gap-4 rounded-2xl border border-ink-100 bg-card p-5 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lift">
                     <span className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-teal-600 text-white">
                       <c.Icon />
                     </span>

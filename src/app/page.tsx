@@ -59,8 +59,8 @@ export default function HomePage() {
           sizes="100vw"
           className="object-cover object-right"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/95 via-white/70 to-white/20" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-background/20" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
         <div className="anim-blob pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-brand-200/40 blur-3xl" />
 
         <Container className="relative grid items-center gap-10 pb-10 pt-4 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:pb-12 lg:pt-6">
@@ -98,13 +98,13 @@ export default function HomePage() {
 
           <div id="quote" className="anim-fade-in relative" style={{ animationDelay: "300ms" }}>
             <div className="anim-float-slow absolute -inset-3 -z-10 rounded-[2rem] bg-gradient-to-br from-brand-300/40 to-teal-300/40 blur-2xl" />
-            <div className="anim-float absolute -right-5 top-12 z-10 hidden items-center gap-2.5 rounded-2xl bg-white p-3 pr-4 shadow-lift ring-1 ring-ink-100 lg:flex">
+            <div className="anim-float absolute -right-5 top-12 z-10 hidden items-center gap-2.5 rounded-2xl bg-card p-3 pr-4 shadow-lift ring-1 ring-ink-100 lg:flex">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-teal-600 text-white">
                 <Icon.Shield className="h-4 w-4" />
               </span>
               <span className="text-xs font-bold leading-tight text-ink-800">10-Year<br />Warranty</span>
             </div>
-            <div className="anim-float-slow absolute -bottom-5 -right-3 z-10 hidden items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-lift ring-1 ring-ink-100 lg:flex">
+            <div className="anim-float-slow absolute -bottom-5 -right-3 z-10 hidden items-center gap-2 rounded-2xl bg-card px-4 py-3 shadow-lift ring-1 ring-ink-100 lg:flex">
               <span className="text-amber-500">★</span>
               <span className="text-xs font-bold text-ink-800">5.0 · 300+ reviews</span>
             </div>
@@ -114,7 +114,7 @@ export default function HomePage() {
       </section>
 
       {/* STATS */}
-      <div className="relative border-y border-ink-100 bg-white">
+      <div className="relative border-y border-ink-100 bg-card">
         <div className="shimmer-line absolute inset-x-0 top-0 h-1" />
         <Container className="grid grid-cols-2 gap-y-8 py-10 sm:py-12 lg:grid-cols-4">
           {stats.map((s, i) => {
@@ -142,7 +142,7 @@ export default function HomePage() {
               <div className="overflow-hidden rounded-3xl ring-1 ring-ink-100 shadow-soft">
                 <ImagePlaceholder src="/images/bathroom-finished.jpeg" alt="A clean, finished Melbourne bathroom" className="aspect-[4/3]" priority />
               </div>
-              <div className="anim-float absolute -bottom-6 -right-4 hidden rounded-2xl bg-white p-5 shadow-lift ring-1 ring-ink-100 sm:block">
+              <div className="anim-float absolute -bottom-6 -right-4 hidden rounded-2xl bg-card p-5 shadow-lift ring-1 ring-ink-100 sm:block">
                 <div className="font-display text-3xl font-extrabold text-brand-600">10yr</div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-ink-500">Waterproof warranty</div>
               </div>
@@ -179,7 +179,7 @@ export default function HomePage() {
               const SvcIcon = serviceIcons[s.slug] ?? Icon.Droplet;
               return (
                 <Reveal key={s.slug} delay={(i % 3) * 110}>
-                  <Link href={`/services/${s.slug}`} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
+                  <Link href={`/services/${s.slug}`} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-card shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
                     <span className="absolute inset-x-0 top-0 z-10 h-1 origin-left scale-x-0 bg-gradient-to-r from-brand-500 to-teal-500 transition-transform duration-300 group-hover:scale-x-100" />
                     <div className="relative overflow-hidden">
                       <ImagePlaceholder src={serviceImage[s.slug]} alt={s.title} sizes="(max-width:768px) 100vw, 33vw" className="aspect-[16/10] transition-transform duration-500 group-hover:scale-105" />
@@ -214,7 +214,7 @@ export default function HomePage() {
             <SectionHeading eyebrow="Warning Signs" title="Don't ignore the early symptoms" subtitle="What looks like a small cosmetic problem today can turn into serious water damage tomorrow. Watch for these signs." />
             <ul className="mt-7 grid gap-3 sm:grid-cols-2">
               {warningSigns.map((sign) => (
-                <li key={sign} className="flex items-center gap-3 rounded-xl border border-ink-100 bg-white p-3.5 shadow-soft">
+                <li key={sign} className="flex items-center gap-3 rounded-xl border border-ink-100 bg-card p-3.5 shadow-soft">
                   <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-amber-50 text-amber-500">
                     <Icon.Alert className="h-5 w-5" />
                   </span>
@@ -240,7 +240,7 @@ export default function HomePage() {
               const WIcon = w.icon;
               return (
                 <Reveal key={w.title} delay={i * 100}>
-                  <div className="group h-full rounded-2xl border border-ink-100 bg-white p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
+                  <div className="group h-full rounded-2xl border border-ink-100 bg-card p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
                     <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${w.tint} text-white shadow-soft transition-transform duration-300 group-hover:scale-110`}>
                       <WIcon className="h-7 w-7" />
                     </div>
@@ -312,7 +312,7 @@ export default function HomePage() {
           <div className="mt-14 grid gap-6 lg:grid-cols-3">
             {testimonials.slice(0, 3).map((r, i) => (
               <Reveal key={r.name} delay={i * 120}>
-                <figure className="relative h-full rounded-2xl border border-ink-100 bg-white p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
+                <figure className="relative h-full rounded-2xl border border-ink-100 bg-card p-7 shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift">
                   <Icon.Quote className="h-9 w-9 text-brand-100" />
                   <blockquote className="mt-2 text-ink-700">{r.quote}</blockquote>
                   <div className="mt-3 text-amber-500">★★★★★</div>
@@ -342,7 +342,7 @@ export default function HomePage() {
           <div className="mx-auto mt-12 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {serviceAreas.map((area, i) => (
               <Reveal key={area} delay={(i % 4) * 80}>
-                <div className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-white px-4 py-3 shadow-soft transition-colors hover:border-brand-200">
+                <div className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-card px-4 py-3 shadow-soft transition-colors hover:border-brand-200">
                   <Icon.Droplet className="h-4 w-4 flex-none text-brand-500" />
                   <span className="text-sm font-medium text-ink-800">{area}</span>
                 </div>
@@ -353,7 +353,7 @@ export default function HomePage() {
       </Section>
 
       {/* FINAL CTA */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-ink-900">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#1846b4] via-[#193e92] to-[#0b1320]">
         <div className="dot-pattern pointer-events-none absolute inset-0 opacity-40" />
         <div className="anim-blob pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-teal-500/30 blur-3xl" />
         <div className="anim-blob-slow pointer-events-none absolute -bottom-28 left-10 h-80 w-80 rounded-full bg-brand-400/30 blur-3xl" />

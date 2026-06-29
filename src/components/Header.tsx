@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { mainNav, services, site } from "@/lib/site";
 
 export function Header() {
@@ -26,8 +27,8 @@ export function Header() {
     <header
       className={`sticky top-0 z-50 border-b transition-colors ${
         scrolled
-          ? "border-ink-200 bg-white/90 backdrop-blur"
-          : "border-transparent bg-white"
+          ? "border-ink-200 bg-card/90 backdrop-blur"
+          : "border-transparent bg-card"
       }`}
     >
       <div className="mx-auto flex h-20 max-w-[1680px] items-center gap-4 px-6 py-3 sm:px-10 lg:px-16">
@@ -56,7 +57,7 @@ export function Header() {
                   </svg>
                 </Link>
                 <div className="invisible absolute left-0 top-full w-64 translate-y-2 pt-2 opacity-0 transition-all group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-                  <div className="rounded-2xl border border-ink-100 bg-white p-2 shadow-lift">
+                  <div className="rounded-2xl border border-ink-100 bg-card p-2 shadow-lift">
                     {services.map((s) => (
                       <Link
                         key={s.slug}
@@ -85,10 +86,12 @@ export function Header() {
           )}
         </nav>
 
+        <ThemeToggle className="ml-auto lg:ml-2" />
+
         {/* Phone CTA */}
         <a
           href={site.phoneHref}
-          className="ml-auto hidden items-center gap-2.5 lg:ml-2 lg:flex"
+          className="hidden items-center gap-2.5 lg:ml-1 lg:flex"
         >
           <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-50 text-brand-600 ring-1 ring-brand-100">
             <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor">
@@ -105,7 +108,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="ml-auto grid h-10 w-10 place-items-center rounded-lg text-ink-800 ring-1 ring-ink-200 lg:hidden"
+          className="ml-1 grid h-10 w-10 place-items-center rounded-lg text-ink-800 ring-1 ring-ink-200 lg:hidden"
           aria-label="Toggle menu"
           aria-expanded={open}
         >
@@ -121,7 +124,7 @@ export function Header() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="border-t border-ink-100 bg-white lg:hidden">
+        <div className="border-t border-ink-100 bg-card lg:hidden">
           <nav className="mx-auto flex max-w-[1680px] flex-col px-6 py-3 sm:px-10 lg:px-16">
             {mainNav.map((item) => (
               <div key={item.href}>

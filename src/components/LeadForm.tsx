@@ -5,7 +5,7 @@ import { Button } from "@/components/ui";
 import { issueOptions, site } from "@/lib/site";
 
 const fieldClass =
-  "w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100";
+  "w-full rounded-xl border border-ink-200 bg-card px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100";
 
 export function LeadForm({ compact = false }: { compact?: boolean }) {
   const [sent, setSent] = useState(false);
@@ -19,7 +19,7 @@ export function LeadForm({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-lift sm:p-7">
+    <div className="rounded-2xl border border-ink-100 bg-card p-6 shadow-lift sm:p-7">
       <h3 className="font-display text-xl font-extrabold text-ink-900">
         Get Your Free Leak Assessment
       </h3>
