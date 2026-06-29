@@ -22,7 +22,7 @@ export function CTABanner({
             <p className="mt-2 max-w-xl text-brand-100">{blurb}</p>
           </div>
           <div className="flex flex-none flex-wrap justify-center gap-3">
-            <Button href={href} size="lg" className="bg-white text-brand-700 hover:bg-brand-50">
+            <Button href={href} size="lg" variant="ghost" className="bg-white text-brand-700 shadow-soft hover:bg-brand-50">
               Get a Free Assessment <ArrowIcon />
             </Button>
             <Button
