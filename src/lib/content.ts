@@ -41,6 +41,37 @@ export const serviceDetails: Record<string, ServiceDetail> = {
       { q: "What if the leak returns?", a: "Our waterproofing repairs are covered by a 10-year written warranty, so you're protected." },
     ],
   },
+  "shower-base-repairs": {
+    intro: "Fix a cracked or leaking shower base and get water draining where it should.",
+    overview: [
+      "The shower base takes the most water and movement in your bathroom, so it's often where leaks begin. Hairline cracks, a failed seal around the waste or a base that no longer falls towards the drain all let water escape.",
+      "We repair and reseal the base, restore the correct fall to the drain and waterproof the whole area — stopping leaks at the lowest and most vulnerable point of your shower.",
+    ],
+    includes: [
+      "Inspection of the base, drain and fall",
+      "Crack and joint repair",
+      "Re-sealing around the waste and drain",
+      "Waterproofing of the base area",
+      "Backed by our 10-year waterproof warranty",
+    ],
+    idealFor: "Showers with a cracked base, pooling water or leaks around the drain.",
+    signs: [
+      "Water pooling instead of draining away",
+      "Cracks in the base or around the waste",
+      "Movement or a spongy feel underfoot",
+      "Damp or leaks appearing below the shower",
+    ],
+    steps: [
+      { title: "Inspect", body: "We check the base, drain and fall to find exactly where water is escaping." },
+      { title: "Repair & seal", body: "We repair cracks, reseal the waste and restore the correct fall to the drain." },
+      { title: "Waterproof", body: "We waterproof the base so it drains properly and stays watertight for the long term." },
+    ],
+    faqs: [
+      { q: "Can a shower base be repaired without replacing it?", a: "In most cases, yes. We repair and reseal the existing base rather than tear it out, which saves you time and money." },
+      { q: "Why does water pool in my shower?", a: "Usually the base has lost its fall towards the drain, or the waste seal has failed. We restore proper drainage as part of the repair." },
+      { q: "Is the repair guaranteed?", a: "Yes — like all our waterproofing work, shower base repairs are backed by our 10-year written warranty." },
+    ],
+  },
   regrouting: {
     intro: "Worn, cracked grout replaced with a durable, watertight finish.",
     overview: [
@@ -200,6 +231,7 @@ export const serviceDetails: Record<string, ServiceDetail> = {
 
 export const serviceImage: Record<string, string> = {
   "leaking-showers": "/images/shower-clean.jpeg",
+  "shower-base-repairs": "/images/ba-floor-green.jpeg",
   regrouting: "/images/regrouting-1.jpeg",
   retiling: "/images/tiling-1.png",
   "bathroom-renovations": "/images/bathroom-finished.jpeg",

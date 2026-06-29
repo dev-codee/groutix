@@ -76,6 +76,13 @@ export const Icon = {
       <path d="M12 10v4M12 17.5v.5" />
     </svg>
   ),
+  Base: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base(p)}>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M12 8.2v1.4M12 14.4v1.4M8.2 12h1.4M14.4 12h1.4" />
+    </svg>
+  ),
   Quote: (p: SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="currentColor" {...p}>
       <path d="M7 7H4v6h4v-2H6.5C6 11 6 9 8 9V7zm9 0h-3v6h4v-2h-1.5c-.5 0-.5-2 1.5-2V7z" />
@@ -85,6 +92,7 @@ export const Icon = {
 
 export const serviceIcons: Record<string, (p: SVGProps<SVGSVGElement>) => React.ReactElement> = {
   "leaking-showers": Icon.Droplet,
+  "shower-base-repairs": Icon.Base,
   regrouting: Icon.Grid,
   retiling: Icon.Layers,
   "bathroom-renovations": Icon.Tools,

@@ -24,6 +24,13 @@ export const services = [
       "We trace the true source of the leak and seal it for good — usually without lifting a single tile.",
   },
   {
+    slug: "shower-base-repairs",
+    title: "Shower Base Repairs",
+    short: "Shower Bases",
+    blurb:
+      "Cracked or leaking shower bases repaired and resealed so water drains away properly — not into your floor.",
+  },
+  {
     slug: "regrouting",
     title: "Regrouting",
     short: "Regrouting",
@@ -76,6 +83,7 @@ export const issueOptions = [
   "Cracked or missing grout",
   "Mould or black silicone",
   "Loose or hollow tiles",
+  "Cracked or leaking shower base",
   "Waterproofing",
   "Balcony leak",
   "Bathroom renovation",
