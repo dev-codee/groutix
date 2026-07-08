@@ -164,19 +164,32 @@ export default function ContactClient() {
               ))}
             </ul>
 
-            {/* Map placeholder */}
+            {/* Google Maps location */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
-              className="bg-neutral-200 border border-neutral-300 rounded-xl h-56 flex items-center justify-center relative overflow-hidden"
+              className="space-y-3"
             >
-              <div className="text-center">
-                <p className="font-bold text-neutral-500 uppercase tracking-widest text-sm">Map / Location Image</p>
-                <p className="text-[12px] text-neutral-400 mt-1">Add Google Maps embed or image manually</p>
+              <div className="rounded-xl overflow-hidden border border-neutral-300 shadow-sm">
+                <iframe
+                  title="GROUTIX location on Google Maps"
+                  src="https://www.google.com/maps?q=Groutix%2C%2082A%20Marigold%20Cres%2C%20Gowanbrae%20VIC%203043&z=14&output=embed"
+                  className="block w-full h-56"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
               </div>
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px]" />
+              <a
+                href="https://maps.google.com/?cid=11736395911597271820"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:text-secondary transition-colors"
+              >
+                <MapPin className="h-4 w-4" /> Get directions
+              </a>
             </motion.div>
           </motion.div>
 
