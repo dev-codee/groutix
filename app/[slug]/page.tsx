@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
 import { getReviews } from "@/lib/reviews";
+import { faqJsonLd } from "@/lib/seo";
 
 const services: Record<string, {
   title: string;
@@ -276,7 +277,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const s = services[slug];
   if (!s) return {};
-  return { title: s.metaTitle, description: s.metaDesc };
+  const canonical = `/${slug}`;
+  return {
+    title: s.metaTitle,
+    description: s.metaDesc,
+    alternates: { canonical },
+    openGraph: {
+      title: s.metaTitle,
+      description: s.metaDesc,
+      url: canonical,
+      type: "website",
+    },
+  };
 }
 
 export default async function ServicePage({ params }: Props) {
@@ -287,7 +299,12 @@ export default async function ServicePage({ params }: Props) {
   const reviews = await getReviews();
 
   return (
-    <ServicePageTemplate
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(s.faqs)) }}
+      />
+      <ServicePageTemplate
       reviews={reviews}
       title={s.title}
       slug={slug}
@@ -305,6 +322,7 @@ export default async function ServicePage({ params }: Props) {
       workWithUsBullets={s.workWithUsBullets}
       guaranteeText={s.guaranteeText}
       faqs={s.faqs}
-    />
+      />
+    </>
   );
 }

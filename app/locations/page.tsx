@@ -5,8 +5,15 @@ import LocationsClient from "./LocationsClient";
 import { getReviews } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Locations — GROUTIX",
+  title: "Locations",
   description: "Find your local GROUTIX specialist in Melbourne and across Australia.",
+  alternates: { canonical: "/locations" },
+  openGraph: {
+    title: "Locations — GROUTIX",
+    description: "Find your local GROUTIX specialist in Melbourne and across Australia.",
+    url: "/locations",
+    type: "website",
+  },
 };
 
 export default async function LocationsPage() {

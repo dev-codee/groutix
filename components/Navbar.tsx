@@ -42,6 +42,28 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Lock background scroll while the mobile menu is open.
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  // Close the mobile menu when resizing up to desktop.
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 768) setIsOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const closeMenu = () => {
+    setIsOpen(false);
+    setActiveSubmenu(null);
+  };
+
   const toggleSubmenu = (menu: string) => {
     setActiveSubmenu(activeSubmenu === menu ? null : menu);
   };
@@ -62,13 +84,11 @@ export default function Navbar() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-white/95 backdrop-blur-md shadow-md py-3"
-          : "bg-white py-4"
+        scrolled ? "bg-white/95 backdrop-blur-md shadow-md" : "bg-white"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-[72px]">
           {/* Logo */}
           <Link href="/" className="flex items-center group">
             <Logo />
@@ -174,28 +194,57 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile Menu: backdrop + slide-in sidebar */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="md:hidden fixed inset-0 top-[73px] z-40 bg-white border-t border-neutral-100"
-          >
-            <div className="px-4 pt-6 pb-8 space-y-6 bg-white h-full flex flex-col justify-between overflow-y-auto">
-              <div className="space-y-4">
+          <>
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={closeMenu}
+              className="md:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+              aria-hidden="true"
+            />
+            <motion.aside
+              key="panel"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="md:hidden fixed top-0 right-0 z-[70] flex h-[100dvh] w-[85%] max-w-sm flex-col bg-white shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+            >
+              {/* Panel header */}
+              <div className="flex h-[72px] flex-shrink-0 items-center justify-between border-b border-neutral-100 px-4">
+                <Link href="/" onClick={closeMenu} className="flex items-center">
+                  <Logo />
+                </Link>
+                <button
+                  onClick={closeMenu}
+                  aria-label="Close menu"
+                  className="rounded-md p-2 text-neutral-500 hover:bg-accent/10 hover:text-accent"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Scrollable links */}
+              <div className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
                 {/* Mobile Services */}
                 <div>
                   <button
                     onClick={() => toggleSubmenu("services")}
-                    className="w-full flex items-center justify-between px-3 py-3 rounded-md text-base font-semibold text-neutral-700 hover:bg-accent/10"
+                    className="flex w-full items-center justify-between rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10"
+                    aria-expanded={activeSubmenu === "services"}
                   >
                     <span>Services</span>
                     <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${activeSubmenu === "services" ? "rotate-180" : ""}`} />
                   </button>
-                  <AnimatePresence>
+                  <AnimatePresence initial={false}>
                     {activeSubmenu === "services" && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
@@ -203,13 +252,13 @@ export default function Navbar() {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="pl-6 space-y-2 mt-2 pb-2">
+                        <div className="space-y-1 pl-6 pt-1 pb-1">
                           {services.map((item) => (
                             <Link
                               key={item.href}
                               href={item.href}
-                              onClick={() => setIsOpen(false)}
-                              className="block py-2 text-base text-neutral-600 hover:text-accent font-medium"
+                              onClick={closeMenu}
+                              className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
                             >
                               {item.name}
                             </Link>
@@ -224,12 +273,13 @@ export default function Navbar() {
                 <div>
                   <button
                     onClick={() => toggleSubmenu("locations")}
-                    className="w-full flex items-center justify-between px-3 py-3 rounded-md text-base font-semibold text-neutral-700 hover:bg-accent/10"
+                    className="flex w-full items-center justify-between rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10"
+                    aria-expanded={activeSubmenu === "locations"}
                   >
                     <span>Locations</span>
                     <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${activeSubmenu === "locations" ? "rotate-180" : ""}`} />
                   </button>
-                  <AnimatePresence>
+                  <AnimatePresence initial={false}>
                     {activeSubmenu === "locations" && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
@@ -237,13 +287,13 @@ export default function Navbar() {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="pl-6 space-y-2 mt-2 pb-2">
+                        <div className="space-y-1 pl-6 pt-1 pb-1">
                           {locations.map((item) => (
                             <Link
                               key={item.href}
                               href={item.href}
-                              onClick={() => setIsOpen(false)}
-                              className="block py-2 text-base text-neutral-600 hover:text-accent font-medium"
+                              onClick={closeMenu}
+                              className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
                             >
                               {item.name}
                             </Link>
@@ -256,38 +306,39 @@ export default function Navbar() {
 
                 <Link
                   href="/about"
-                  onClick={() => setIsOpen(false)}
-                  className="block px-3 py-3 rounded-md text-base font-semibold text-neutral-700 hover:text-accent hover:bg-accent/10"
+                  onClick={closeMenu}
+                  className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
                   About Us
                 </Link>
                 <Link
                   href="/contact"
-                  onClick={() => setIsOpen(false)}
-                  className="block px-3 py-3 rounded-md text-base font-semibold text-neutral-700 hover:text-accent hover:bg-accent/10"
+                  onClick={closeMenu}
+                  className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
                   Get a Quote
                 </Link>
               </div>
 
-              <div className="space-y-4 pt-6 border-t border-neutral-100">
+              {/* Footer CTAs */}
+              <div className="flex-shrink-0 space-y-3 border-t border-neutral-100 px-4 py-4">
                 <a
                   href="tel:70238094"
-                  className="flex items-center justify-center space-x-3 w-full bg-secondary hover:bg-secondary-hover text-white font-bold py-3.5 rounded transition-all duration-200"
+                  className="flex w-full items-center justify-center space-x-3 rounded bg-secondary py-3.5 font-bold text-white transition-all duration-200 hover:bg-secondary-hover"
                 >
                   <Phone className="h-5 w-5" />
                   <span>7023 8094</span>
                 </a>
                 <Link
                   href="/contact"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center justify-center w-full bg-primary hover:bg-primary-hover text-white font-bold py-3.5 rounded shadow transition-all duration-200 active:scale-95"
+                  onClick={closeMenu}
+                  className="flex w-full items-center justify-center rounded bg-primary py-3.5 font-bold text-white shadow transition-all duration-200 hover:bg-primary-hover active:scale-95"
                 >
                   Get a Free Quote
                 </Link>
               </div>
-            </div>
-          </motion.div>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
     </header>
