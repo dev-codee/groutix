@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
+import type { Review } from "@/lib/reviews";
 
 /* ─── Droplet bullet icon (matches real site) ─── */
 const DropletIcon = () => (
@@ -355,6 +356,7 @@ export default function ServicePageTemplate({
   workWithUsBullets,
   guaranteeText,
   faqs,
+  reviews,
 }: {
   title: string;
   slug?: string;
@@ -372,6 +374,7 @@ export default function ServicePageTemplate({
   workWithUsBullets: string[];
   guaranteeText: string;
   faqs: { q: string; a: string }[];
+  reviews: Review[];
 }) {
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
@@ -698,11 +701,7 @@ export default function ServicePageTemplate({
               Client Reviews <span className="text-accent">& Testimonials</span>
             </motion.h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { name: "Sarah M.", suburb: "Melbourne, VIC", stars: 5, review: "Absolutely thrilled with the result. The technician was professional, on time, and the shower looks brand new. Highly recommend!" },
-                { name: "David K.", suburb: "Perth, WA", stars: 5, review: "Tried other companies before but these guys are specialists. Fixed our leaking shower within a few hours. 10-year warranty gives us confidence." },
-                { name: "Lisa T.", suburb: "Sydney, NSW", stars: 5, review: "Excellent service from start to finish. Called Monday, done by Wednesday. The grout colour matched perfectly. Very happy customers!" },
-              ].map((r, i) => (
+              {reviews.map((r, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 30 }}

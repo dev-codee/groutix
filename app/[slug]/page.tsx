@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
+import { getReviews } from "@/lib/reviews";
 
 const services: Record<string, {
   title: string;
@@ -283,8 +284,11 @@ export default async function ServicePage({ params }: Props) {
   const s = services[slug];
   if (!s) notFound();
 
+  const reviews = await getReviews();
+
   return (
     <ServicePageTemplate
+      reviews={reviews}
       title={s.title}
       slug={slug}
       h1Desc={s.h1Desc}

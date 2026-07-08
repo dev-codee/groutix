@@ -6,6 +6,7 @@ import HeroQuoteForm from "@/components/HeroQuoteForm";
 import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
+import type { Review } from "@/lib/reviews";
 
 /* ─── Image placeholder ─── */
 function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src }: { label: string; aspect?: string; className?: string; src?: string }) {
@@ -63,14 +64,7 @@ const SERVICES = [
   },
 ];
 
-const TESTIMONIALS = [
-  { name: "Kevin Hyde", review: "Great service, prompt, quick turn around quality job 👍", suburb: "4 days ago" },
-  { name: "D&R V", review: "We are incredibly happy with their grouting job. The grouting guy team has given us a fantastic customer service. And we..", suburb: "1 week ago" },
-  { name: "Katia Vardakis", review: "I recently engaged The Grout Guy to carry out grout and silicone repairs to my bathroom, and I was very pleased with the quality of their work..", suburb: "1 week ago" },
-  { name: "June Stuart", review: "Our shower was leaking, we got a quote on Friday and the job was booked in for the following Tuesday at 7am. Demitrio arrived on time he did a great job, he..", suburb: "1 week ago" },
-];
-
-export default function LocationsClient() {
+export default function LocationsClient({ reviews }: { reviews: Review[] }) {
   return (
     <main>
       {/* Hero Section */}
@@ -309,7 +303,7 @@ Every quote is free, every job is properly warranted, and our team works around 
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {TESTIMONIALS.map((r, i) => (
+            {reviews.map((r, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 30 }}

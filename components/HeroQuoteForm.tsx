@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { CheckCircle2, ChevronDown, ShieldCheck, Paperclip, Info, X } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { CheckCircle2, ChevronDown, Paperclip, Info, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 const AREA_OPTIONS = [
   "Main Bathroom",
@@ -82,7 +85,10 @@ export default function HeroQuoteForm() {
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const validateField = (name: string, value: string) => {
     let error = "";
@@ -140,8 +146,9 @@ export default function HeroQuoteForm() {
   };
   const removePhoto = (i: number) => setPhotos((prev) => prev.filter((_, idx) => idx !== i));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
     // Validate all fields
     const newErrors: Record<string, string> = {};
     Object.keys(data).forEach((key) => {
@@ -150,17 +157,46 @@ export default function HeroQuoteForm() {
     });
     setErrors(newErrors);
     setTouched(Object.keys(data).reduce((acc, key) => ({ ...acc, [key]: true }), {}));
-    
+
     if (areas.length === 0) {
       setAreaError(true);
     }
 
-    if (Object.keys(newErrors).length === 0 && areas.length > 0) {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        setSubmitted(true);
-      }, 1100);
+    if (Object.keys(newErrors).length !== 0 || areas.length === 0) return;
+
+    // Require the CAPTCHA when it's enabled.
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setSubmitError("Please complete the verification below.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = new FormData();
+      Object.entries(data).forEach(([key, value]) => payload.append(key, value));
+      payload.append("areas", areas.join(", "));
+      payload.append(
+        "sourcePage",
+        typeof window !== "undefined" ? window.location.pathname : ""
+      );
+      if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
+      photos.forEach((file) => payload.append("photos", file));
+
+      const res = await fetch("/api/quote", { method: "POST", body: payload });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Something went wrong. Please try again.");
+      }
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
+      // A token is single-use — reset so the visitor can retry.
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -483,22 +519,24 @@ export default function HeroQuoteForm() {
                 </div>
               </div>
 
-              {/* Captcha placeholder */}
-              <div className="flex w-full max-w-[320px] items-center justify-between rounded-sm bg-neutral-900 px-4 py-2">
-                <span className="flex items-center gap-2 text-base font-semibold text-white">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
-                    <ShieldCheck className="h-3.5 w-3.5 text-white" />
-                  </span>
-                  Success!
-                </span>
-                <span className="text-right text-[11px] leading-tight text-neutral-400">
-                  Captcha
-                  <br />
-                  placeholder
-                </span>
-              </div>
+              {/* Cloudflare Turnstile (bot verification) */}
+              {TURNSTILE_SITE_KEY && (
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={setCaptchaToken}
+                  onExpire={() => setCaptchaToken("")}
+                  onError={() => setCaptchaToken("")}
+                  options={{ theme: "light", size: "flexible" }}
+                />
+              )}
 
               {/* Submit */}
+              {submitError && (
+                <p className="rounded-sm bg-red-50 px-3 py-2 text-[13px] font-semibold text-red-600">
+                  {submitError}
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={loading}

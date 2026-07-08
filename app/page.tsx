@@ -1,5 +1,7 @@
 import HomePage from "@/components/HomePage";
+import { getReviews } from "@/lib/reviews";
 
-export default function Home() {
-  return <HomePage />;
+export default async function Home() {
+  const reviews = await getReviews(5);
+  return <HomePage reviews={reviews} />;
 }

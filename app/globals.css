@@ -62,6 +62,24 @@ body {
   background: var(--neutral-500);
 }
 
+/* Auto-scrolling reviews marquee */
+@keyframes review-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Move by exactly one copy of the list (the row holds two copies). */
+    transform: translateX(-50%);
+  }
+}
+.review-marquee {
+  animation: review-marquee var(--marquee-duration, 40s) linear infinite;
+}
+/* Pause when the visitor hovers so they can read a review. */
+.review-marquee-wrap:hover .review-marquee {
+  animation-play-state: paused;
+}
+
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   * {
