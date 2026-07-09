@@ -17,7 +17,7 @@ export const BUSINESS = {
   description:
     "Australia's shower regrouting and leak repair specialists. Fix leaking showers without removing tiles, backed by a 10-year waterproof warranty.",
   phone: "7023 8094",
-  email: "info@groutix.com.au",
+  email: "info@groutix.com",
   address: {
     street: "82A Marigold Cres",
     locality: "Gowanbrae",

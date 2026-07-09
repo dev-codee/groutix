@@ -162,7 +162,7 @@ export default function Footer() {
               >
                 <Mail className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="block font-bold">info@groutix.com.au</span>
+                  <span className="block font-bold">info@groutix.com</span>
                   <span className="text-sm text-neutral-500 font-medium">Fast online responses</span>
                 </div>
               </motion.li>
