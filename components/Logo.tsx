@@ -8,8 +8,8 @@ export default function Logo({ light = false }: { light?: boolean }) {
     <div className="flex items-center gap-2.5 select-none">
       {/* Stylized Emblem G */}
       <svg
-        width="38"
-        height="38"
+        width="48"
+        height="48"
         viewBox="0 0 100 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -60,11 +60,11 @@ export default function Logo({ light = false }: { light?: boolean }) {
 
       {/* Brand Name & Tagline */}
       <div className="flex flex-col justify-center leading-none">
-        <div className={`flex items-baseline font-black tracking-wider text-xl ${textColor}`}>
-          <span>GROUTI</span>
-          <span className="text-[#2F63CC] font-black">X</span>
+        <div className={`flex items-baseline font-black tracking-wider text-2xl ${textColor}`}>
+          <span>GROUT</span>
+          <span className="text-accent font-black">IX</span>
         </div>
-        <span className={`text-[10px] font-bold tracking-widest uppercase mt-0.5 whitespace-nowrap ${subColor}`}>
+        <span className={`text-[11px] font-bold tracking-widest uppercase mt-1 whitespace-nowrap ${subColor}`}>
           Stay Sealed, Stay Smiling.
         </span>
       </div>
