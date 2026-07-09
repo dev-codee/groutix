@@ -326,7 +326,7 @@ export default function HomePage({
                   },
                   {
                     Icon: ThumbsUp,
-                    value: "98%",
+                    value: "100%",
                     label: "Customer Satisfaction",
                     color: "text-secondary",
                     fill: false,
@@ -602,9 +602,8 @@ export default function HomePage({
                 GROUTIX <span className="text-accent">Guarantee</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Every shower regrouting job completed by GROUTIX is backed by our industry-leading 10-year
-                waterproof warranty. We stand behind our work because our systems are designed to last — and
-                because we believe you deserve a solution that holds up over time.
+                All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.
+                We use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term
               </p>
               <div className="flex gap-3">
                 <Link
