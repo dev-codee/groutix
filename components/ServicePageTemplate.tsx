@@ -907,7 +907,6 @@ export default function ServicePageTemplate({
         <section id="quote-form" className="relative overflow-hidden bg-[#001F97]">
           <div className="absolute inset-0">
             <Image src="/img28.jpeg" alt="Request Quote Background" fill className="object-cover" />
-            <div className="absolute inset-0 bg-[#001F97]/60" />
           </div>
           <div className="relative z-10 max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2">
             <motion.div
