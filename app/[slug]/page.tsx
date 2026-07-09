@@ -24,6 +24,7 @@ const services: Record<string, {
   faqs: { q: string; a: string }[];
   fixBlueBoxText?: string;
   workWithUsBlueBoxText?: string;
+  processBlueText?: string;
 }> = {
 
   "shower-regrouting": {
@@ -237,22 +238,25 @@ const services: Record<string, {
     h1Desc: "A single cracked tile or a patch of missing grout might seem minor, but left unrepaired it can let water under the tile and compromise the waterproofing of the entire surface. GROUTIX provides expert minor tile repair and grout patching services — replacing individual tiles, re-securing loose tiles and patching grout to a professional finish.",
     failHeading: "Damaged Tiles Left Unrepaired",
     failHeadingBlue: "Lead to Bigger Problems",
-    failText: "A cracked tile creates a direct pathway for water to reach the tile adhesive and waterproof membrane beneath. Once water gets in, the adhesive dissolves, causing surrounding tiles to become loose and hollow-sounding — what tilers call 'drummy' tiles. Over time, multiple tiles lift and the repair cost grows.\n\nSimilarly, missing or cracked grout patches in shower floors and wet areas allow water ingress that leads to subfloor damage, mould and structural rot.",
+    failText: "A cracked or loose tile may look like a minor defect, but leaving it unrepaired can allow moisture to enter the tile system and contribute to further deterioration. Over time, weakened grout joints, damaged adhesive and movement beneath the surface can cause surrounding tiles to loosen, sound hollow or become unstable — turning a small repair into a much larger and more expensive problem.\n\nMissing or cracked grout can also leave wet areas vulnerable to ongoing moisture penetration. In showers, bathrooms and other tiled wet areas, early repairs can help prevent the damage from spreading and reduce the risk of loose tiles, mould growth and costly remedial work.",
     fixHeading: "Minor Tile Repairs Completed to a",
     fixHeadingBlue: "Professional Standard",
-    fixText: "We replace cracked or damaged tiles using your existing spare tiles, re-glue loose tiles that have lifted off the wall or floor, and patch missing or deteriorated grout sections to blend seamlessly with the surrounding area.\n\nAll minor tile work is completed with the same waterproof grout and silicone sealants we use in our full shower regrouting service — ensuring a watertight result, not just a cosmetic patch.",
+    fixText: "From a single cracked tile to a small area of loose or damaged tiles, GROUTIX provides professional tile repairs without the cost and disruption of retiling the entire area. We carefully remove and replace damaged tiles, re-secure loose tiles where suitable, and repair missing or deteriorated grout for a clean, durable finish.\n\nWhether the issue is in a bathroom, kitchen, laundry, hallway or other tiled area, our team focuses on repairing the affected section properly and blending the finished work with the surrounding surface wherever possible.",
+    fixBlueBoxText: "Small tile problems don't always require a full retile. We target the damaged area, replace or re-secure affected tiles and restore the surrounding grout for a clean, professional finish.",
     pillars: [
       { title: "Individual Tile Replacement", desc: "We replace broken or cracked tiles using your spare tiles for a seamless, colour-matched repair." },
       { title: "Loose Tile Re-Securing", desc: "We lift, clean and re-lay hollow or loose tiles with fresh adhesive and regrout the joints." },
       { title: "Grout Patching", desc: "We patch damaged, missing or crumbling grout sections and match the colour to the surrounding grout." },
     ],
     processIntro: "Our tile repair process is careful and precise, ensuring repairs blend naturally with the surrounding tiled surface.",
+    processBlueText: "Each project is approached methodically, ensuring the underlying cause of tile damage is addressed properly rather than simply covered up.",
     steps: [
       { title: "Assess the Damage", desc: "We inspect the damaged tile and surrounding area to check for water ingress and substrate damage." },
       { title: "Remove & Prepare", desc: "We carefully remove the broken tile or lift the loose tile and prepare the substrate for rebonding." },
       { title: "Re-Lay & Regrout", desc: "We set the tile with fresh adhesive, regrout the joints and seal corners where required." },
     ],
-    workWithUsText: "We handle small and minor tile repairs across Australia with the same care and quality as our full regrouting services. Every repair is finished to a professional standard with waterproof materials — not cosmetic patching.",
+    workWithUsText: "We handle small and minor tile repairs across Melbourne and regional Victoria with the same care and attention as our larger regrouting projects. Every repair is completed to a professional standard using durable materials and proven repair methods — not cosmetic patching.",
+    workWithUsBlueBoxText: "With experienced technicians, specialist materials and a careful repair process, you can trust that your damaged tiles and grout are repaired properly.",
     workWithUsBullets: [
       "Replacement of individual cracked or broken tiles",
       "Re-securing of loose, hollow or drummy tiles",
@@ -329,6 +333,7 @@ export default async function ServicePage({ params }: Props) {
       faqs={s.faqs}
       fixBlueBoxText={s.fixBlueBoxText}
       workWithUsBlueBoxText={s.workWithUsBlueBoxText}
+      processBlueText={s.processBlueText}
       />
     </>
   );

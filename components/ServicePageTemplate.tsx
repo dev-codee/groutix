@@ -380,6 +380,7 @@ export default function ServicePageTemplate({
   reviews,
   fixBlueBoxText,
   workWithUsBlueBoxText,
+  processBlueText,
 }: {
   title: string;
   slug?: string;
@@ -400,6 +401,7 @@ export default function ServicePageTemplate({
   reviews: Review[];
   fixBlueBoxText?: string;
   workWithUsBlueBoxText?: string;
+  processBlueText?: string;
 }) {
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
@@ -685,7 +687,7 @@ export default function ServicePageTemplate({
                 className="lg:text-left"
               >
                 <p className="text-[#2F63CC] text-lg font-bold leading-relaxed max-w-md">
-                  Each project is approached methodically, ensuring grout failure is addressed properly rather than covered up.
+                  {processBlueText ?? "Each project is approached methodically, ensuring grout failure is addressed properly rather than covered up."}
                 </p>
               </motion.div>
             </div>
