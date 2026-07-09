@@ -15,6 +15,7 @@ export type Review = {
   suburb: string;
   stars: number;
   review: string;
+  photoUri?: string;
 };
 
 // Aggregate rating for the business (average stars + total number of reviews).
@@ -54,7 +55,7 @@ type PlacesReview = {
   rating?: number;
   text?: { text?: string };
   originalText?: { text?: string };
-  authorAttribution?: { displayName?: string };
+  authorAttribution?: { displayName?: string; photoUri?: string };
   relativePublishTimeDescription?: string;
 };
 type PlacesResponse = {
@@ -110,10 +111,11 @@ export async function getReviews(limit = 3): Promise<Review[]> {
         return {
           name,
           suburb: r.relativePublishTimeDescription
-            ? `Posted on Google · ${r.relativePublishTimeDescription}`
-            : "Posted on Google",
+            ? r.relativePublishTimeDescription
+            : "Recently",
           stars,
           review: text,
+          photoUri: r.authorAttribution?.photoUri,
         };
       })
       .filter((r): r is Review => r !== null)
