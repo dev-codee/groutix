@@ -395,7 +395,7 @@ export default function HeroQuoteForm() {
                       type="button"
                       onClick={() => setShowInfo((s) => !s)}
                       aria-label="How to take photos"
-                      className="flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 transition-all duration-200 hover:border-secondary hover:text-secondary"
+                      className="flex h-5 w-5 items-center justify-center rounded-full border border-accent text-accent transition-all duration-200 hover:bg-accent hover:text-white"
                     >
                       <Info className="h-3.5 w-3.5" />
                     </button>

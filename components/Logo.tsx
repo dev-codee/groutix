@@ -64,7 +64,7 @@ export default function Logo({ light = false }: { light?: boolean }) {
           <span>GROUT</span>
           <span className="text-accent font-black">IX</span>
         </div>
-        <span className={`text-[11px] font-bold tracking-widest uppercase mt-1 whitespace-nowrap ${subColor}`}>
+        <span className={`text-[11px] font-black tracking-widest uppercase mt-1 whitespace-nowrap text-accent`}>
           Stay Sealed, Stay Smiling.
         </span>
       </div>
