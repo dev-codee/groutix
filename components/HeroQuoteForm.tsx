@@ -30,7 +30,6 @@ const HEARD_OPTIONS = [
   "Other",
 ];
 
-const STATE_OPTIONS = ["Select State", "NSW", "VIC", "QLD", "SA", "WA", "TAS", "ACT", "NT"];
 
 const ENQUIRY_OPTIONS = [
   "Shower cubicle only",
@@ -57,8 +56,8 @@ function Chip({
       type="button"
       onClick={onClick}
       className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${active
-          ? "border-primary bg-primary text-white"
-          : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+        ? "border-primary bg-primary text-white"
+        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
     >
       {label}
@@ -73,8 +72,6 @@ export default function HeroQuoteForm() {
     email: "",
     phone: "",
     address: "",
-    city: "",
-    state: "",
     enquiry: "Shower cubicle only",
     message: "",
     heard: "",
@@ -333,41 +330,6 @@ export default function HeroQuoteForm() {
                 )}
               </div>
 
-              {/* City / State */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <input
-                    name="city"
-                    value={data.city}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="City"
-                    className={`${field} ${touched.city && errors.city ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                  />
-                  {touched.city && errors.city && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.city}</p>
-                  )}
-                </div>
-                <div className="space-y-1 relative">
-                  <select
-                    name="state"
-                    value={data.state}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className={`${field} appearance-none pr-9 ${data.state ? "" : "text-neutral-400"} ${touched.state && errors.state ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                  >
-                    {STATE_OPTIONS.map((s) => (
-                      <option key={s} value={s === "Select State" ? "" : s} disabled={s === "Select State"}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                  {touched.state && errors.state && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.state}</p>
-                  )}
-                </div>
-              </div>
 
               {/* Areas */}
               <div className="space-y-2">
