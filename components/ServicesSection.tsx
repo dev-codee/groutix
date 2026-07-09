@@ -12,7 +12,7 @@ function ImgBox({ label, src }: { label: string; src?: string }) {
       {/* Decorative corner elements */}
       <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-      
+
       {src ? (
         <Image src={src} alt={label} fill className="object-cover transition-transform duration-500 hover:scale-105" />
       ) : (
@@ -83,7 +83,7 @@ export default function ServicesSection() {
             Our <span className="text-accent">Services</span>
           </h2>
           <p className="text-neutral-500 text-base sm:text-[18px]">
-            GROUTIX provides specialist tile and grout services for residential and commercial properties across Australia.
+            GROUTIX specialises in shower and balcony repairs, regrouting, tile repairs and leak rectification for residential and commercial properties. Our focused repair-first approach helps resolve failed grout, deteriorated sealants and water ingress without unnecessary full renovations.
           </p>
         </div>
 

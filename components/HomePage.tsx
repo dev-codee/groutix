@@ -531,7 +531,7 @@ export default function HomePage({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
             <h2 className="text-2xl lg:text-3xl font-black text-white leading-tight max-w-2xl">
-              Gain peace of mind and confidence that your shower has been repaired properly the first time.
+              Fix the problem properly the first time — and enjoy long-term peace of mind.
             </h2>
             <div className="flex gap-3 flex-shrink-0">
               <Link

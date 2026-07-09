@@ -76,10 +76,10 @@ export default function HowItWorksSection() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
               <p>
-                At GROUTIX, we don&apos;t apply surface sealants or cosmetic fixes that fail months later. Our technicians remove failed grout, repair affected areas and regrout the shower using high performance cement-based systems designed specifically for wet areas.
+                At GROUTIX, we don&apos;t cover up failing grout with surface sealers or quick cosmetic fixes. We remove the failed material, properly prepare the affected areas and rebuild the shower&apos;s protective grout and sealant system using professional-grade materials designed for wet environments.
               </p>
               <p>
-                Each job we undertake follows a proven, repeatable process refined over decades and is backed by our industry-leading 10-year waterproof warranty.
+                Our goal is simple: stop the problem at its source, deliver a long-lasting repair and help you avoid repeated call-outs and costly damage. That&apos;s why completed leaking shower repairs are backed by our 10-year waterproof warranty.
               </p>
             </div>
           </div>
