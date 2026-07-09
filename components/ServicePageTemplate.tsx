@@ -339,6 +339,27 @@ function DetailedQuoteForm() {
   );
 }
 
+const formatText = (text: string) => {
+  const parts = text.split(/(\[y\].*?\[\/y\]|\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('[y]') && part.endsWith('[/y]')) {
+      return (
+        <span key={index} className="text-accent font-semibold">
+          {part.slice(3, -4)}
+        </span>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={index} className="font-bold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
+};
+
 export default function ServicePageTemplate({
   title,
   slug = "shower-regrouting",
@@ -357,6 +378,8 @@ export default function ServicePageTemplate({
   guaranteeText,
   faqs,
   reviews,
+  fixBlueBoxText,
+  workWithUsBlueBoxText,
 }: {
   title: string;
   slug?: string;
@@ -375,6 +398,8 @@ export default function ServicePageTemplate({
   guaranteeText: string;
   faqs: { q: string; a: string }[];
   reviews: Review[];
+  fixBlueBoxText?: string;
+  workWithUsBlueBoxText?: string;
 }) {
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
@@ -527,7 +552,7 @@ export default function ServicePageTemplate({
                 transition={{ delay: 0.1 }}
                 className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[16px]"
               >
-                {failText.split("\n\n").map((para, i) => <p key={i}>{para}</p>)}
+                {failText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -562,7 +587,7 @@ export default function ServicePageTemplate({
                   {fixHeading} <span className="text-accent">{fixHeadingBlue}</span>
                 </h2>
                 <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[16px]">
-                  {fixText.split("\n\n").map((para, i) => <p key={i}>{para}</p>)}
+                  {fixText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
                 </div>
               </motion.div>
               <AnimatedImage className="relative w-full">
@@ -575,7 +600,7 @@ export default function ServicePageTemplate({
                   className="absolute bottom-[-20px] right-4 left-4 lg:left-auto lg:right-[-20px] lg:w-[350px] bg-[#001F97] text-white p-6 shadow-xl z-10 rounded-sm"
                 >
                   <p className="text-base font-bold leading-relaxed">
-                    By removing failing grout and replacing it with durable materials designed for wet environments, we stop water penetration and restore the shower without removing tiles or undertaking a full bathroom renovation.
+                    {fixBlueBoxText ?? "By removing failing grout and replacing it with durable materials designed for wet environments, we stop water penetration and restore the shower without removing tiles or undertaking a full bathroom renovation."}
                   </p>
                 </motion.div>
               </AnimatedImage>
@@ -741,7 +766,7 @@ export default function ServicePageTemplate({
                 className="absolute bottom-[-20px] right-4 left-4 lg:left-auto lg:right-[-20px] lg:w-[350px] bg-[#001F97] text-white p-6 shadow-xl z-10 rounded-sm"
               >
                 <p className="text-base font-bold leading-relaxed">
-                  With experienced technicians, specialist materials and a structured repair process, you can trust that your leaking shower is fixed properly.
+                  {workWithUsBlueBoxText ?? "With experienced technicians, specialist materials and a structured repair process, you can trust that your leaking shower is fixed properly."}
                 </p>
               </motion.div>
             </AnimatedImage>
@@ -779,7 +804,7 @@ export default function ServicePageTemplate({
                 GROUTIX <span className="text-accent">Guarantee</span>
               </h2>
               <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
-                {guaranteeText.split("\n\n").map((para, i) => <p key={i}>{para}</p>)}
+                {guaranteeText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
               </div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

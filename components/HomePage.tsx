@@ -44,7 +44,7 @@ function ImgBox({
       {/* Decorative corner elements */}
       <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-      
+
       {src ? (
         <Image src={src} alt={label} fill className="object-cover transition-transform duration-500 hover:scale-105" />
       ) : (
@@ -373,9 +373,7 @@ export default function HomePage({
               </h2>
               <span className="mx-auto block h-1.5 w-20 rounded-full bg-accent" />
               <p className="text-neutral-600 text-lg leading-relaxed">
-                GROUTIX provides specialist tile and grout services for residential and commercial properties
-                across Australia. Our team is solely focused on tile and grout — not general tiling or
-                renovations.
+                GROUTIX specialises in shower and balcony repairs, regrouting, tile repairs and leak rectification for residential and commercial properties. Our focused repair-first approach helps resolve failed grout, deteriorated sealants and water ingress without unnecessary full renovations.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -461,22 +459,22 @@ export default function HomePage({
               </p>
               <div className="space-y-4">
                 {[
-                {
-                  title: "STRUCTURAL DAMAGE",
-                  desc: "Water behind tiles weakens structural elements over time, leading to expensive repairs.",
-                  img: "/img23.jpeg",
-                },
-                {
-                  title: "MOULD GROWTH",
-                  desc: "Trapped moisture creates the perfect conditions for mould growth, affecting indoor air quality.",
-                  img: "/img16.jpeg",
-                },
-                {
-                  title: "TIMBER ROT",
-                  desc: "Water seeping into floors and walls causes timber framing and flooring to rot.",
-                  img: "/img9.jpeg",
-                },
-              ].map((b, i) => (
+                  {
+                    title: "STRUCTURAL DAMAGE",
+                    desc: "Water behind tiles weakens structural elements over time, leading to expensive repairs.",
+                    img: "/img23.jpeg",
+                  },
+                  {
+                    title: "MOULD GROWTH",
+                    desc: "Trapped moisture creates the perfect conditions for mould growth, affecting indoor air quality.",
+                    img: "/img16.jpeg",
+                  },
+                  {
+                    title: "TIMBER ROT",
+                    desc: "Water seeping into floors and walls causes timber framing and flooring to rot.",
+                    img: "/img9.jpeg",
+                  },
+                ].map((b, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: 20 }}

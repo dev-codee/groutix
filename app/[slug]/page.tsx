@@ -22,6 +22,8 @@ const services: Record<string, {
   workWithUsBullets: string[];
   guaranteeText: string;
   faqs: { q: string; a: string }[];
+  fixBlueBoxText?: string;
+  workWithUsBlueBoxText?: string;
 }> = {
 
   "shower-regrouting": {
@@ -53,7 +55,7 @@ const services: Record<string, {
       "Experienced technicians specialising in shower regrouting",
       "Clear advice and upfront recommendations",
       "10-year waterproof warranty on every full regrout",
-      "Available in all major Australian capital cities",
+      "Servicing Melbourne and regional Victoria",
     ],
     guaranteeText: "Every shower regrouting job completed by GROUTIX is backed by our industry-leading 10-year waterproof warranty. If water penetrates through our workmanship, we fix it with no questions asked. This guarantee reflects the confidence we have in our technicians, systems and materials.\n\nCombined with our specialised approach to shower repairs, it gives you peace of mind knowing your regrouting has been done properly and is built to last over time.",
     faqs: [
@@ -143,6 +145,7 @@ const services: Record<string, {
       { q: "How long until the shower can be used again?", a: "We typically recommend waiting 24–48 hours after repairs to allow waterproof compounds and grout to cure fully." },
       { q: "What if the drain is leaking?", a: "We inspect the drain connection as part of the repair. If the leak is at the drain or junction, we repair the base and re-seal the connection to stop water escaping." },
     ],
+    fixBlueBoxText: "By targeting damaged areas, repairing the shower base and restoring protection where it has failed, we deliver a durable solution without the cost and disruption of a full bathroom renovation.",
   },
 
   "tile-regrouting": {
@@ -152,7 +155,7 @@ const services: Record<string, {
     h1Desc: "Grout lines on floors and walls in high-use areas absorb years of grime, grease and cleaning chemicals, becoming permanently stained and difficult to clean. Our tile regrouting service removes the discoloured grout and replaces it with fresh, durable grout — transforming the appearance of your tiled surfaces without retiling.",
     failHeading: "Stained & Cracked Grout",
     failHeadingBlue: "Ruins the Look of Your Tiles",
-    failText: "Floor and wall grout is porous. In kitchens, it absorbs cooking grease and food residues. In bathrooms, it absorbs soap scum, mould and cleaning chemicals. Over time, the grout becomes permanently discoloured — no amount of scrubbing will restore it to its original colour.\n\nCracked grout on outdoor balconies and wet areas also allows water to penetrate beneath tiles, dissolving the adhesive and eventually causing tiles to become loose, drum-like and unsafe.",
+    failText: "Traditional cement-based grout is porous. In kitchens, it can absorb cooking grease, food residues and everyday spills. In bathrooms, it can absorb moisture, soap scum and staining over time. Eventually, grout can become heavily discoloured and increasingly difficult to restore through normal cleaning alone.\n\nCracked or deteriorated grout on balconies, wet areas and other tiled surfaces can also allow water to penetrate beneath the tiles, contributing to ongoing moisture issues, loose or drummy tiles and further deterioration if left untreated.\n\n[y]For customers seeking a higher-performance solution, GROUTIX also offers a commercial-grade epoxy grout upgrade — a non-porous, highly water-resistant and stain-resistant option designed for demanding wet areas and long-term performance[/y]",
     fixHeading: "Tile Regrouting That",
     fixHeadingBlue: "Transforms Your Tiled Surfaces",
     fixText: "We remove the stained or damaged grout layer using specialist raking equipment and replace it with fresh, commercial-grade grout in your choice of colour. The result is a completely transformed surface that looks newly tiled — without the cost or disruption of full retiling.\n\nWe service kitchens, bathrooms, laundries, hallways, balconies and outdoor entertaining areas.",
@@ -183,6 +186,8 @@ const services: Record<string, {
       { q: "Can you regrout balcony and outdoor tiles?", a: "Yes. We service outdoor balconies, alfresco areas and pool surrounds with weatherproof grout formulas." },
       { q: "How long does floor regrouting take?", a: "This depends on the area size. A standard kitchen floor typically takes half a day. We'll provide a time estimate with your quote." },
     ],
+    fixBlueBoxText: "By removing stained or failing grout and replacing it with durable, high-quality materials, we restore the appearance of your tiled surfaces and deliver a cleaner, longer-lasting finish without the cost or disruption of full retiling.",
+    workWithUsBlueBoxText: "With experienced technicians, specialist equipment and durable grout systems, you can trust that your tiled surfaces are restored properly and built to last.",
   },
 
   "real-estate-property-services": {
@@ -254,7 +259,7 @@ const services: Record<string, {
       "Grout patching to match surrounding colour",
       "Waterproof grout and silicone used on all repairs",
       "Clean, careful work — no unnecessary tile removal",
-      "Available in all major Australian cities",
+      "Servicing Melbourne and regional Victoria",
     ],
     guaranteeText: "Minor tile repairs are completed to professional standards using the same waterproof materials we use in our full shower regrouting service. We ensure every repaired tile is level, securely bonded and properly sealed against future water ingress.",
     faqs: [
@@ -322,6 +327,8 @@ export default async function ServicePage({ params }: Props) {
       workWithUsBullets={s.workWithUsBullets}
       guaranteeText={s.guaranteeText}
       faqs={s.faqs}
+      fixBlueBoxText={s.fixBlueBoxText}
+      workWithUsBlueBoxText={s.workWithUsBlueBoxText}
       />
     </>
   );
