@@ -1,22 +1,22 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { Phone, Mail, MapPin } from "lucide-react";
+import { Phone, Mail, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import Logo from "@/components/Logo";
 
 const SocialIcons = {
   Facebook: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
   ),
   Instagram: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current strokeWidth-2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current strokeWidth-2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" /></svg>
   ),
   Twitter: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></svg>
   ),
   Linkedin: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg>
   ),
 };
 
@@ -112,18 +112,32 @@ export default function Footer() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6">Location</h3>
+            <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6">Service Areas</h3>
             <ul className="space-y-3.5 text-base">
-              <motion.li
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-              >
-                <Link href="/locations" className="hover:text-accent transition-colors duration-200">
-                  Melbourne
-                </Link>
-              </motion.li>
+              {[
+                "Melbourne",
+                "Geelong",
+                "Ballarat",
+                "Bendigo",
+                "Shepparton",
+                "Wangaratta",
+                "Traralgon",
+                "Sale",
+                "Bairnsdale",
+                "Warrnambool",
+                "Horsham",
+                "Regional Victoria",
+              ].map((area, i) => (
+                <motion.li
+                  key={area}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 + i * 0.03 }}
+                >
+                  {area}
+                </motion.li>
+              ))}
             </ul>
           </motion.div>
 
@@ -149,7 +163,7 @@ export default function Footer() {
                   <Phone className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="block font-bold">7023 8094</span>
-                    <span className="text-sm text-neutral-500">Call Today (7023 8094)</span>
+                    <span className="text-sm text-neutral-500">Speak with our team</span>
                   </div>
                 </a>
               </motion.li>
@@ -163,7 +177,7 @@ export default function Footer() {
                 <Mail className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="block font-bold">info@groutix.com</span>
-                  <span className="text-sm text-neutral-500 font-medium">Fast online responses</span>
+                  <span className="text-sm text-neutral-500 font-medium">Request a quote or send photos</span>
                 </div>
               </motion.li>
               <motion.li
@@ -173,10 +187,11 @@ export default function Footer() {
                 transition={{ delay: 0.5 }}
                 className="flex items-start space-x-3"
               >
-                <MapPin className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                <Clock className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="block font-bold">Office Hours</span>
-                  <span className="text-sm text-neutral-500">Mon - Fri: 8:00am - 5:00pm</span>
+                  <span className="block text-sm text-neutral-500">Mon – Fri: 9:00am – 5:00pm</span>
+                  <span className="block text-sm text-neutral-500">Sat – Sun: 10:00am – 3:00pm</span>
                 </div>
               </motion.li>
             </ul>
@@ -195,6 +210,16 @@ export default function Footer() {
             &copy; {currentYear} GROUTIX. All rights reserved. Built with Next.js &amp; Tailwind CSS.
           </div>
           <div className="flex space-x-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.55 }}
+            >
+              <Link href="/faq" className="hover:text-accent transition-colors">
+                FAQs
+              </Link>
+            </motion.div>
             {["Privacy Policy", "Terms & Conditions", "Sitemap"].map((item, i) => (
               <motion.div
                 key={item}

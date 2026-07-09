@@ -1,12 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   Phone,
   Check,
-  ChevronDown,
-  ChevronUp,
   Droplets,
   ShieldCheck,
   MapPin,
@@ -18,7 +16,7 @@ import {
   Hammer,
   Building2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -70,61 +68,6 @@ const DropletIcon = () => (
     <path d="M14 10C14 13.866 10.866 17 7 17V3C10.866 3 14 6.134 14 10Z" fill="#97B1E5" />
   </svg>
 );
-
-/* ─── FAQ item ─── */
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-neutral-200 last:border-b-0">
-      <button
-        className="flex w-full items-center justify-between gap-4 py-5 text-left"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className="font-semibold text-neutral-900 text-lg leading-snug">{q}</span>
-        {open ? (
-          <ChevronUp className="h-5 w-5 text-secondary flex-shrink-0" />
-        ) : (
-          <ChevronDown className="h-5 w-5 text-neutral-400 flex-shrink-0" />
-        )}
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.p
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden pb-5 text-lg text-neutral-600 leading-relaxed"
-          >
-            {a}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-const FAQS = [
-  {
-    q: "How Long Does Shower Regrouting Take?",
-    a: "Most shower regrouting jobs are completed within a single day, depending on the condition of the grout and any required repair work. Your technician will give you a more precise timeframe during the quote.",
-  },
-  {
-    q: "Do I Need To Remove My Tiles?",
-    a: "In most cases, no. Our services are designed to fix grout and sealing issues without removing tiles. We remove the failed grout and apply new, high performance grout specifically designed for wet areas.",
-  },
-  {
-    q: "Will The New Grout Match My Existing Tiles?",
-    a: "We carry a wide range of grout colours to match or complement your existing tiles. Our technician will help you select the best colour during the quote.",
-  },
-  {
-    q: "How Long Before I Can Use My Shower?",
-    a: "We recommend waiting 24–48 hours before using your shower after regrouting to allow the grout and sealant to fully cure.",
-  },
-  {
-    q: "Do You Offer A Warranty?",
-    a: "Yes. Every full shower regrouting completed by GROUTIX is backed by our 10-year waterproof warranty, giving you peace of mind that the job is done properly.",
-  },
-];
 
 const SERVICES = [
   {
@@ -677,24 +620,6 @@ export default function HomePage({
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
               />
-            </div>
-          </div>
-        </AnimatedSection>
-
-        {/* ══════════════════════════════════════
-            SECTION 11 — FREQUENTLY ASKED QUESTIONS
-        ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="mx-auto max-w-3xl px-6 lg:px-10">
-            <div className="space-y-8">
-              <h2 className="text-center text-3xl lg:text-[44px] font-bold text-neutral-900">
-                Frequently Asked <span className="text-accent">Questions</span>
-              </h2>
-              <div className="divide-y divide-neutral-200 border-t border-neutral-200">
-                {FAQS.map((faq, i) => (
-                  <FaqItem key={i} q={faq.q} a={faq.a} />
-                ))}
-              </div>
             </div>
           </div>
         </AnimatedSection>

@@ -149,6 +149,7 @@ export default function Navbar() {
             </div>
 
             <NavLink href="/about">About Us</NavLink>
+            <NavLink href="/faq">FAQs</NavLink>
             <NavLink href="/contact">Get a Quote</NavLink>
           </nav>
 
@@ -310,6 +311,13 @@ export default function Navbar() {
                   className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
                   About Us
+                </Link>
+                <Link
+                  href="/faq"
+                  onClick={closeMenu}
+                  className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
+                >
+                  FAQs
                 </Link>
                 <Link
                   href="/contact"
