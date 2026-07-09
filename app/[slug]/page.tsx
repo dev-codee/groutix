@@ -61,7 +61,7 @@ const services: Record<string, {
       "10-year waterproof warranty on every full regrout",
       "Servicing Melbourne and regional Victoria",
     ],
-    guaranteeText: "Every shower regrouting job completed by GROUTIX is backed by our industry-leading 10-year waterproof warranty. If water penetrates through our workmanship, we fix it with no questions asked. This guarantee reflects the confidence we have in our technicians, systems and materials.\n\nCombined with our specialised approach to shower repairs, it gives you peace of mind knowing your regrouting has been done properly and is built to last over time.",
+    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.\n\nWe use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term",
     faqs: [
       { q: "How long does shower regrouting take?", a: "Most standard shower regrouting jobs are completed within 3 to 4 hours. Larger or more complex showers may take a full day." },
       { q: "How long before I can use the shower?", a: "We recommend waiting 24 hours after completion to allow the grout and silicone sealants to cure fully." },
@@ -102,7 +102,7 @@ const services: Record<string, {
       "10-year waterproof warranty on completed repairs",
       "Fast turnaround — most jobs completed in one visit",
     ],
-    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we'll return and fix it at no charge.\n\nWe use flexible polyurethane sealants and epoxy-modified waterproof grouts that accommodate building movement, preventing future seal failure and keeping your shower watertight long-term.",
+    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.\n\nWe use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term",
     faqs: [
       { q: "Can you fix the leak without removing tiles?", a: "Yes. In the vast majority of cases, shower leaks are caused by failed grout or silicone — both of which we repair without removing any tiles." },
       { q: "What if it's a plumbing leak behind the wall?", a: "If the leak is from internal pipes, you'll need a licensed plumber. We specialise in fixing leaks caused by grout and sealant failure at the tile surface." },
@@ -121,7 +121,7 @@ const services: Record<string, {
     failText: "When the shower base is cracked, chipped or poorly formed, water can escape beneath tiles and into the wall cavity, floor structure and the apartment below. Hidden failures often begin in the tile bed, drain area or base substrate — and by the time surface tiles look damp or discoloured, the base may already be compromised.\n\nSuperficial sealers and patch repairs usually fail because they don't fix the underlying base. A shower base repair must restore the substrate and waterproof barrier so the shower can perform reliably again.",
     fixHeading: "Shower Base Repairs That",
     fixHeadingBlue: "Restore The Floor",
-    fixText: "Our shower base repair service fixes the substrate beneath the tiles, repairs cracks and tray edges, and reinstates a continuous waterproof barrier. We inspect the base, remove damaged areas where needed, repair the surface with engineered materials and then regrout or reseal the shower floor for long-term protection.\n\nThis service is ideal when the shower floor is still structurally sound overall but the base has failed in one or more spots. We avoid full demolition by targeting the defective areas and restoring the base from the inside out.",
+    fixText: "By targeting damaged areas, repairing the shower base and restoring protection where it has failed, we deliver a durable solution without the cost and disruption of a full bathroom renovation.",
     pillars: [
       { title: "Substrate Repair", desc: "We repair the shower base itself — not just the grout or tiles — so leaks don't return." },
       { title: "Waterproof Reinstatement", desc: "Our base repairs restore the waterproof layer and support the tile bed for durable performance." },
@@ -142,7 +142,7 @@ const services: Record<string, {
       "Fast, local service with minimal disruption",
       "10-year waterproof warranty on completed base repairs",
     ],
-    guaranteeText: "Shower base repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If any base failure causes leakage through our workmanship, we return and fix it at no extra charge.\n\nOur approach repairs the substrate and restores the shower floor's waterproof barrier, so your shower works as it should for years to come.",
+    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.\n\nWe use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term",
     faqs: [
       { q: "Can you repair a cracked shower base without replacing tiles?", a: "Yes. Many shower base failures can be repaired from the existing tile surface by accessing the base, repairing cracks or voids, and reinstating the waterproof layer." },
       { q: "Will I need to leave the house during the repair?", a: "Most shower base repairs are completed in one visit, and you can stay in your home while we work. We keep the work area clean and separate from living spaces." },
@@ -183,7 +183,7 @@ const services: Record<string, {
       "Kitchen, laundry, balcony and bathroom tiles all covered",
       "Professional sponge clean of all tiles after grouting",
     ],
-    guaranteeText: "Our tile regrouting uses high-strength, commercial-grade grout that provides excellent durability and colour consistency for years. We guarantee the quality of our workmanship and ensure every joint is correctly packed and finished before leaving your home.",
+    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.\n\nWe use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term",
     faqs: [
       { q: "Can you change the colour of my grout?", a: "Yes. We can apply a completely different grout colour when regrouting, giving your tiled surfaces a fresh, updated look." },
       { q: "Is the process dusty?", a: "We use dust-minimising equipment and vacuum all debris as we work to keep your home clean." },
@@ -233,7 +233,7 @@ const services: Record<string, {
       "Experience working with major property management groups",
       "Invoice directly to agency trust accounts on request",
     ],
-    guaranteeText: "All shower regrouting and leak repair work completed for rental properties is backed by our 10-year waterproof warranty — giving landlords long-term protection and reducing the likelihood of repeat maintenance call-outs for the same issue.",
+    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.\n\nWe use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term",
     faqs: [
       { q: "Can you invoice the agency trust account?", a: "Yes. We can arrange invoicing through your agency's preferred billing process upon job completion." },
       { q: "Do you provide condition reports or job photos?", a: "Yes. We can provide before-and-after photos and written job summaries for your property records." },
@@ -278,7 +278,7 @@ const services: Record<string, {
       "Clean, careful work — no unnecessary tile removal",
       "Servicing Melbourne and regional Victoria",
     ],
-    guaranteeText: "Minor tile repairs are completed to professional standards using the same waterproof materials we use in our full shower regrouting service. We ensure every repaired tile is level, securely bonded and properly sealed against future water ingress.",
+    guaranteeText: "All leaking shower repairs completed by GROUTIX are backed by our 10-year waterproof warranty. If the leak returns through our workmanship, we’ll return and fix it at no charge.\n\nWe use specialist waterproof grouts and flexible sealants designed for wet areas, helping accommodate movement, reduce future seal failure and keep your shower watertight long-term",
     faqs: [
       { q: "Do you supply the replacement tiles?", a: "We ask that you supply spare matching tiles as dye lots and production runs vary. We supply all adhesive, grout and silicone." },
       { q: "Can you secure a loose tile without replacing it?", a: "Often, yes. If the tile is undamaged, we can lift it, clean the back, apply fresh adhesive and re-lay it securely." },
@@ -327,26 +327,26 @@ export default async function ServicePage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(s.faqs)) }}
       />
       <ServicePageTemplate
-      reviews={reviews}
-      title={s.title}
-      slug={slug}
-      h1Desc={s.h1Desc}
-      failHeading={s.failHeading}
-      failHeadingBlue={s.failHeadingBlue}
-      failText={s.failText}
-      fixHeading={s.fixHeading}
-      fixHeadingBlue={s.fixHeadingBlue}
-      fixText={s.fixText}
-      pillars={s.pillars}
-      processIntro={s.processIntro}
-      steps={s.steps}
-      workWithUsText={s.workWithUsText}
-      workWithUsBullets={s.workWithUsBullets}
-      guaranteeText={s.guaranteeText}
-      faqs={s.faqs}
-      fixBlueBoxText={s.fixBlueBoxText}
-      workWithUsBlueBoxText={s.workWithUsBlueBoxText}
-      processBlueText={s.processBlueText}
+        reviews={reviews}
+        title={s.title}
+        slug={slug}
+        h1Desc={s.h1Desc}
+        failHeading={s.failHeading}
+        failHeadingBlue={s.failHeadingBlue}
+        failText={s.failText}
+        fixHeading={s.fixHeading}
+        fixHeadingBlue={s.fixHeadingBlue}
+        fixText={s.fixText}
+        pillars={s.pillars}
+        processIntro={s.processIntro}
+        steps={s.steps}
+        workWithUsText={s.workWithUsText}
+        workWithUsBullets={s.workWithUsBullets}
+        guaranteeText={s.guaranteeText}
+        faqs={s.faqs}
+        fixBlueBoxText={s.fixBlueBoxText}
+        workWithUsBlueBoxText={s.workWithUsBlueBoxText}
+        processBlueText={s.processBlueText}
       />
     </>
   );
