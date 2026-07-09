@@ -17,6 +17,13 @@ export type Review = {
   review: string;
 };
 
+// Aggregate rating for the business (average stars + total number of reviews).
+export type BusinessRating = { value: number; count: number };
+
+// Shown when Google data isn't configured yet or the API call fails. Keep these
+// in sync with the live Google Business Profile figures.
+export const FALLBACK_RATING: BusinessRating = { value: 5, count: 236 };
+
 // Shown when Google reviews aren't configured yet or the API call fails.
 export const FALLBACK_REVIEWS: Review[] = [
   {
@@ -50,7 +57,11 @@ type PlacesReview = {
   authorAttribution?: { displayName?: string };
   relativePublishTimeDescription?: string;
 };
-type PlacesResponse = { reviews?: PlacesReview[] };
+type PlacesResponse = {
+  reviews?: PlacesReview[];
+  rating?: number;
+  userRatingCount?: number;
+};
 
 // Only show reviews at or above this rating on the marketing site.
 const MIN_RATING = 4;
@@ -114,5 +125,50 @@ export async function getReviews(limit = 3): Promise<Review[]> {
   } catch (err) {
     console.error("Failed to fetch Google reviews:", err);
     return FALLBACK_REVIEWS.slice(0, limit);
+  }
+}
+
+/**
+ * Fetch the aggregate rating (average stars + total review count) from the
+ * configured Google Business Profile.
+ *
+ * @returns The live rating/count, or FALLBACK_RATING if the API is unavailable.
+ */
+export async function getBusinessRating(): Promise<BusinessRating> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const placeId = process.env.GOOGLE_PLACE_ID;
+
+  if (!apiKey || !placeId) return FALLBACK_RATING;
+
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=en`,
+      {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "rating,userRatingCount",
+        },
+        // Cache the result and refresh once a day to stay well within quota.
+        next: { revalidate: 86400 },
+      }
+    );
+
+    if (!res.ok) {
+      console.error(`Google Places API error: ${res.status} ${await res.text()}`);
+      return FALLBACK_RATING;
+    }
+
+    const data = (await res.json()) as PlacesResponse;
+
+    return {
+      value: typeof data.rating === "number" ? data.rating : FALLBACK_RATING.value,
+      count:
+        typeof data.userRatingCount === "number"
+          ? data.userRatingCount
+          : FALLBACK_RATING.count,
+    };
+  } catch (err) {
+    console.error("Failed to fetch Google rating:", err);
+    return FALLBACK_RATING;
   }
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow } from "next/font/google";
 import "./globals.css";
 import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
+import { getBusinessRating } from "@/lib/reviews";
 
 const barlow = Barlow({
   subsets: ["latin"],
@@ -65,18 +66,19 @@ export const metadata: Metadata = {
   category: "Home Services",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const rating = await getBusinessRating();
   return (
     <html lang="en-AU" className={`${barlow.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {/* Site-wide LocalBusiness structured data */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd()) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd(rating)) }}
         />
         {children}
       </body>

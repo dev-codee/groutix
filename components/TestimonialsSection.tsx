@@ -48,7 +48,7 @@ export default function TestimonialsSection() {
               ))}
             </div>
             <span className="text-base font-bold text-neutral-800">
-              4.9/5 Average Rating (5,000+ Reviews)
+              5.0/5 Average Rating (236+ Reviews)
             </span>
           </div>
         </div>

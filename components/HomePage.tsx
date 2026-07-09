@@ -25,7 +25,7 @@ import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Review } from "@/lib/reviews";
+import type { Review, BusinessRating } from "@/lib/reviews";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -168,7 +168,13 @@ const SERVICE_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   "real-estate-property-services": Building2,
 };
 
-export default function HomePage({ reviews }: { reviews: Review[] }) {
+export default function HomePage({
+  reviews,
+  rating,
+}: {
+  reviews: Review[];
+  rating: BusinessRating;
+}) {
   return (
     <>
       <Navbar />
@@ -313,7 +319,7 @@ export default function HomePage({ reviews }: { reviews: Review[] }) {
                   },
                   {
                     Icon: Star,
-                    value: "600+",
+                    value: `${rating.count}+`,
                     label: "5 Star Reviews",
                     color: "text-accent",
                     fill: true,

@@ -24,7 +24,7 @@ function ImgBox({
       {/* Decorative corner elements */}
       <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-      
+
       {src ? (
         <Image src={src} alt={label} fill className="object-cover transition-transform duration-500 hover:scale-105" />
       ) : (
@@ -46,7 +46,7 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const total = 4;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
-  
+
   const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
 
   return (
@@ -90,7 +90,7 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 export default function ContactClient() {
   const contactInfo = [
     { icon: <Phone className="h-5 w-5 text-secondary" />, label: "Call Today", value: "7023 8094", href: "tel:70238094" },
-    { icon: <Mail className="h-5 w-5 text-secondary" />, label: "Email", value: "info@groutix.com.au", href: "mailto:info@groutix.com.au" },
+    { icon: <Mail className="h-5 w-5 text-secondary" />, label: "Email", value: "info@groutix.com", href: "mailto:info@groutix.com" },
     { icon: <Clock className="h-5 w-5 text-secondary" />, label: "Office Hours", value: "Mon – Fri: 8:00am – 5:00pm", href: null },
     { icon: <MapPin className="h-5 w-5 text-secondary" />, label: "Locations", value: "Perth, Melbourne, Sydney, Brisbane, Adelaide, Geelong", href: "/locations" },
   ];

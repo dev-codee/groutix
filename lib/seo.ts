@@ -27,8 +27,9 @@ export const BUSINESS = {
   },
   geo: { lat: -37.6988292, lng: 144.9004402 },
   areasServed: ["Perth", "Melbourne", "Sydney", "Brisbane", "Adelaide", "Geelong"],
-  // Keep in sync with the rating shown on the site (or wire to live Google data later).
-  rating: { value: 4.8, count: 364 },
+  // Fallback rating used when live Google data is unavailable. Keep in sync with
+  // the Google Business Profile (see getBusinessRating in lib/reviews.ts).
+  rating: { value: 5, count: 236 },
   // Google Business Profile listing.
   sameAs: ["https://maps.google.com/?cid=11736395911597271820"],
 } as const;
@@ -51,7 +52,9 @@ export function abs(path: string): string {
 }
 
 /** LocalBusiness structured data for the whole site. */
-export function localBusinessJsonLd() {
+export function localBusinessJsonLd(
+  rating: { value: number; count: number } = BUSINESS.rating
+) {
   return {
     "@context": "https://schema.org",
     "@type": "HomeAndConstructionBusiness",
@@ -88,8 +91,8 @@ export function localBusinessJsonLd() {
     ],
     aggregateRating: {
       "@type": "AggregateRating",
-      ratingValue: BUSINESS.rating.value,
-      reviewCount: BUSINESS.rating.count,
+      ratingValue: rating.value,
+      reviewCount: rating.count,
     },
     sameAs: BUSINESS.sameAs,
   };

@@ -6,7 +6,7 @@ import HeroQuoteForm from "@/components/HeroQuoteForm";
 import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
-import type { Review } from "@/lib/reviews";
+import type { Review, BusinessRating } from "@/lib/reviews";
 
 /* ─── Image placeholder ─── */
 function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src }: { label: string; aspect?: string; className?: string; src?: string }) {
@@ -64,7 +64,13 @@ const SERVICES = [
   },
 ];
 
-export default function LocationsClient({ reviews }: { reviews: Review[] }) {
+export default function LocationsClient({
+  reviews,
+  rating,
+}: {
+  reviews: Review[];
+  rating: BusinessRating;
+}) {
   return (
     <main>
       {/* Hero Section */}
@@ -292,7 +298,9 @@ Every quote is free, every job is properly warranted, and our team works around 
                   </svg>
                 ))}
               </div>
-              <span className="text-sm text-neutral-400 font-bold">4.8 | 364 reviews</span>
+              <span className="text-sm text-neutral-400 font-bold">
+                {rating.value} | {rating.count} reviews
+              </span>
             </div>
             <Link
               href="#quote-form"

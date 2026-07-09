@@ -1,7 +1,7 @@
 import HomePage from "@/components/HomePage";
-import { getReviews } from "@/lib/reviews";
+import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export default async function Home() {
-  const reviews = await getReviews(5);
-  return <HomePage reviews={reviews} />;
+  const [reviews, rating] = await Promise.all([getReviews(5), getBusinessRating()]);
+  return <HomePage reviews={reviews} rating={rating} />;
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LocationsClient from "./LocationsClient";
-import { getReviews } from "@/lib/reviews";
+import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
   title: "Locations",
@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 };
 
 export default async function LocationsPage() {
-  const reviews = await getReviews(4);
+  const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   return (
     <>
       <Navbar />
-      <LocationsClient reviews={reviews} />
+      <LocationsClient reviews={reviews} rating={rating} />
       <Footer />
     </>
   );
