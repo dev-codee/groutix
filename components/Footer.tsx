@@ -229,7 +229,7 @@ export default function Footer() {
                 transition={{ delay: 0.6 + i * 0.05 }}
               >
                 <Link
-                  href={`/${item.toLowerCase().replace(/ /g, "-").replace("&", "")}`}
+                  href={`/${item.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-")}`}
                   className="hover:text-accent transition-colors"
                 >
                   {item}
