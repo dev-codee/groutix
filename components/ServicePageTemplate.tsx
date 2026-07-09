@@ -170,7 +170,7 @@ const failSectionBadges: Record<string, string[]> = {
   "shower-regrouting": ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"],
   "leaking-shower-repair": ["WATER DAMAGES WALLS", "STRUCTURAL ROT", "MOULD & HYGIENE ISSUES"],
   "tile-regrouting": ["STAINED GROUT LINES", "WATER SEEPAGE", "LOOSE TILES"],
-  "real-estate-property-services": ["TENANT COMPLAINTS", "PROPERTY VALUE DROP", "EXPENSIVE ROT"],
+  "real-estate-property-services": ["SHOWER & WET-AREA INSPECTIONS", "EARLY LEAK DETECTION", "REDUCED REPAIR COSTS"],
   "small-tiling-jobs": ["CRACKED MEMBRANES", "DRUMMY TILES", "MOISTURE INTRUSION"],
 };
 
@@ -381,6 +381,9 @@ export default function ServicePageTemplate({
   fixBlueBoxText,
   workWithUsBlueBoxText,
   processBlueText,
+  heroCards,
+  trustedText,
+  heroTitle,
 }: {
   title: string;
   slug?: string;
@@ -402,6 +405,9 @@ export default function ServicePageTemplate({
   fixBlueBoxText?: string;
   workWithUsBlueBoxText?: string;
   processBlueText?: string;
+  heroCards?: { title: string; desc: string }[];
+  trustedText?: string;
+  heroTitle?: string;
 }) {
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
@@ -427,7 +433,7 @@ export default function ServicePageTemplate({
                 {icons[0]}
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-black leading-tight tracking-tight capitalize">
-                {title} Services
+                {heroTitle ?? `${title} Services`}
               </h1>
               <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-xl">
                 {h1Desc}
@@ -455,11 +461,11 @@ export default function ServicePageTemplate({
 
           <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10">
             <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, icon: icons[0] },
-                { title: "Long-lasting solutions for worn or damaged areas", icon: icons[1] },
-                { title: "Backed by a 10 year waterproof warranty", icon: icons[2] },
-              ].map((badge, i) => (
+              {(heroCards ? heroCards.map((c, i) => ({ title: c.title, desc: c.desc, icon: icons[i] ?? icons[0] })) : [
+                { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, desc: "", icon: icons[0] },
+                { title: "Long-lasting solutions for worn or damaged areas", desc: "", icon: icons[1] },
+                { title: "Backed by a 10 year waterproof warranty", desc: "", icon: icons[2] },
+              ]).map((badge, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
@@ -472,7 +478,10 @@ export default function ServicePageTemplate({
                   <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-accent/10 rounded-sm">
                     {badge.icon}
                   </div>
-                  <p className="text-sm sm:text-base font-bold leading-snug">{badge.title}</p>
+                  <div>
+                    <p className="text-sm sm:text-base font-bold leading-snug">{badge.title}</p>
+                    {badge.desc && <p className="text-xs sm:text-sm text-neutral-500 leading-snug mt-1">{badge.desc}</p>}
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -487,7 +496,7 @@ export default function ServicePageTemplate({
               viewport={{ once: true }}
               className="text-sm font-black text-neutral-400 uppercase tracking-widest"
             >
-              TRUSTED ACROSS AUSTRALIA
+              {trustedText ?? "TRUSTED ACROSS AUSTRALIA"}
             </motion.p>
             <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-16 opacity-50 grayscale">
               {["Nelson Alexander", "Ardex", "Barry Plant", "Harcourts", "LJ Hooker", "Ray White"].map((l, i) => (

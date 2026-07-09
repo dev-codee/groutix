@@ -196,12 +196,13 @@ const services: Record<string, {
     metaTitle: "Grout & Shower Repairs for Property Managers | GROUTIX",
     metaDesc: "Fast shower regrouting, leak repair and silicone resealing for real estate agents, landlords and body corporates. Fixed-price quotes. 10-year warranty.",
     h1Desc: "Shower leaks in rental properties are one of the most common — and most damaging — maintenance issues landlords face. GROUTIX provides fast, professional shower repair services that protect your investment, satisfy tenants and meet property management timelines, backed by a 10-year waterproof warranty.",
-    failHeading: "Unreported Shower Leaks",
-    failHeadingBlue: "Damage Rental Investments",
-    failText: "Tenants often don't report slow shower leaks until water damage becomes visible on adjacent walls, ceilings below or floor surfaces. By that point, structural rot, mould remediation and potential repainting can turn a simple $500 grout repair into a $5,000+ job.\n\nRegular bathroom maintenance — particularly regrouting and silicone resealing — is the most cost-effective way to protect rental property from water damage claims.",
+    failHeading: "Unreported Shower Leaks Can Cost",
+    failHeadingBlue: "Landlords Thousands",
+    failText: "A small shower issue can quickly become a major property expense when early warning signs go unnoticed or unreported. By the time mould, damaged walls, stained ceilings or flooring problems appear, the repair bill may already be significantly higher.\n\nGROUTIX helps landlords and property managers act early with professional shower and wet-area inspections, identifying visible signs of failed grout, deteriorated silicone, moisture concerns and potential leak points before they turn into urgent maintenance issues.\n\nWhether it’s a tenant-reported problem, a routine property inspection follow-up or a suspected shower leak, our team can assess the issue and recommend the right repair solution — helping protect the property, reduce unexpected costs and avoid unnecessary disruption.",
     fixHeading: "Property Maintenance Solutions That",
     fixHeadingBlue: "Protect Your Investment",
-    fixText: "We provide fast-response shower regrouting, leaking shower repair and silicone resealing for rental properties across Australia. We coordinate directly with tenants to arrange access, provide written fixed-price quotes for landlord approval and issue 10-year waterproof warranties on all completed work.\n\nOur service is designed to work within standard property management workflows, making the process as seamless as possible for both agents and landlords.",
+    fixText: "From a small grout issue to a suspected shower leak, early action can prevent costly damage and unnecessary disruption. GROUTIX provides professional shower and wet-area inspections, regrouting, leak repairs, silicone resealing and minor tile repairs for rental and managed properties.\n\nWe make maintenance easier for property managers and landlords by coordinating directly with tenants, assessing the issue, providing clear written quotes for approval and completing approved repairs with minimal disruption.\n\nWhether it’s a tenant complaint, visible mould, cracked grout, failed silicone or a suspected hidden leak, our team helps identify the problem early and recommend the right repair before it becomes a larger expense.",
+    fixBlueBoxText: "One call takes care of the process. From inspection and tenant access to clear quoting and professional repairs, GROUTIX helps property managers resolve wet-area maintenance quickly and protect the property from further damage.",
     pillars: [
       { title: "Fast Turnaround", desc: "We prioritise rental property requests to inspect and repair shower leaks before they escalate into major damage." },
       { title: "Tenant Coordination", desc: "We contact tenants directly to arrange access, saving property managers time and simplifying the process." },
@@ -229,6 +230,8 @@ const services: Record<string, {
       { q: "What if the tenant is uncooperative with access?", a: "We'll work with you to arrange access in line with the tenant's rights. We're experienced in coordinating around tenancy requirements." },
       { q: "Do you work with strata and body corporates?", a: "Yes. We regularly work in multi-residential apartment buildings and common-area wet areas for strata bodies." },
     ],
+    workWithUsBlueBoxText: "With direct tenant coordination, clear fixed-price quotes and a streamlined repair process, we make property maintenance easier for agents, landlords and strata managers.",
+    processBlueText: "From tenant coordination to inspection, quoting and repairs, we handle the process from start to finish \u2014 saving property managers time and keeping maintenance moving.",
   },
 
   "small-tiling-jobs": {
