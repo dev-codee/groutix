@@ -448,7 +448,7 @@ export default function ServicePageTemplate({
                 </a>
                 <a
                   href="#quote-form"
-                  className="inline-flex items-center justify-center bg-white text-[#001F97] hover:bg-accent hover:text-[#001F97] font-black px-6 py-3.5 rounded-sm text-base transition-all active:scale-95 border-2 border-accent"
+                  className="inline-flex items-center justify-center bg-accent text-[#001F97] hover:bg-white hover:text-[#001F97] font-black px-6 py-3.5 rounded-sm text-base transition-all active:scale-95 border-2 border-accent"
                 >
                   Request A Quote
                 </a>

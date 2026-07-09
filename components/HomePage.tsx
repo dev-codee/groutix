@@ -393,28 +393,26 @@ export default function HomePage({
             {/* Right */}
             <div className="space-y-8">
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                Leaking Showers Start <span className="text-accent">With Grout Problems</span>
+                Small Grout Problems Can Lead to <span className="text-accent">  Serious Water Damage</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Cracked, porous or deteriorated grout allows water to penetrate behind shower tiles. Once
-                moisture gets behind the tiles it can travel unseen, causing damage that goes far beyond the
-                bathroom.
+                Cracked, missing or deteriorated grout can allow moisture to penetrate into vulnerable areas around your shower. What starts as a small visible defect can develop into hidden water damage, mould and costly repairs if left untreated.
               </p>
               <div className="space-y-4">
                 {[
                   {
-                    title: "STRUCTURAL DAMAGE",
-                    desc: "Water behind tiles weakens structural elements over time, leading to expensive repairs.",
+                    title: "COSTLY WATER DAMAGE",
+                    desc: "A small unresolved leak can spread beyond the shower, damaging surrounding walls, floors and adjoining rooms",
                     img: "/img23.jpeg",
                   },
                   {
-                    title: "MOULD GROWTH",
-                    desc: "Trapped moisture creates the perfect conditions for mould growth, affecting indoor air quality.",
+                    title: "MOULD & MOISTURE",
+                    desc: "Persistent moisture can create ideal conditions for mould growth and ongoing bathroom deterioration.",
                     img: "/img16.jpeg",
                   },
                   {
-                    title: "TIMBER ROT",
-                    desc: "Water seeping into floors and walls causes timber framing and flooring to rot.",
+                    title: "EXPENSIVE REPAIRS",
+                    desc: "The longer water ingress continues, the greater the risk of damaged materials and a much larger repair bill.",
                     img: "/img9.jpeg",
                   },
                 ].map((b, i) => (
@@ -455,13 +453,11 @@ export default function HomePage({
                 A Permanent Solution, <span className="text-accent">Not a Temporary Patch</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                At GROUTIX, we don&apos;t apply surface sealants or cosmetic fixes that fail months later. Our
-                technicians remove failed grout, repair affected areas and regrout the shower using high
-                performance cement-based systems designed specifically for wet areas.
+                At GROUTIX, we don’t cover up failing grout with surface sealers or quick cosmetic fixes. We remove the failed material, properly prepare the affected areas and rebuild the shower’s protective grout and sealant system using professional-grade materials designed for wet environments.
+                Our goal is simple: stop the problem at its source, deliver a long-lasting repair and help you avoid repeated call-outs and costly damage.
               </p>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Each job we undertake follows a proven, repeatable process refined over decades and is backed
-                by our industry-leading 10-year waterproof warranty.
+                That’s why completed leaking shower repairs are backed by our 10-year waterproof warranty.
               </p>
             </div>
           </div>

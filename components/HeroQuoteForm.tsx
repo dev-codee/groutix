@@ -19,6 +19,8 @@ const AREA_OPTIONS = [
 ];
 
 const HEARD_OPTIONS = [
+  "Google",
+  "Product Reviews",
   "TV",
   "Radio",
   "Vehicle",
@@ -54,11 +56,10 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${
-        active
+      className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${active
           ? "border-primary bg-primary text-white"
           : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-      }`}
+        }`}
     >
       {label}
     </button>
