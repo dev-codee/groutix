@@ -25,6 +25,9 @@ const services: Record<string, {
   fixBlueBoxText?: string;
   workWithUsBlueBoxText?: string;
   processBlueText?: string;
+  heroTitle?: string;
+  heroCards?: { title: string; desc: string }[];
+  trustedText?: string;
 }> = {
 
   "shower-regrouting": {
@@ -195,7 +198,14 @@ const services: Record<string, {
     title: "Real Estate & Property Services",
     metaTitle: "Grout & Shower Repairs for Property Managers | GROUTIX",
     metaDesc: "Fast shower regrouting, leak repair and silicone resealing for real estate agents, landlords and body corporates. Fixed-price quotes. 10-year warranty.",
-    h1Desc: "Shower leaks in rental properties are one of the most common — and most damaging — maintenance issues landlords face. GROUTIX provides fast, professional shower repair services that protect your investment, satisfy tenants and meet property management timelines, backed by a 10-year waterproof warranty.",
+    h1Desc: "Property maintenance issues need fast, reliable action — especially when tenants, landlords and property managers are involved. GROUTIX provides professional tile, grout and leaking shower repair services with clear communication, efficient scheduling and practical repair solutions designed to protect the property and minimise disruption.",
+    heroTitle: "Real Estate & Property Services",
+    heroCards: [
+      { title: "Property Maintenance Specialists", desc: "Experienced in tile, grout and wet-area repairs for rental and managed properties." },
+      { title: "Fast, Practical Repair Solutions", desc: "Targeted repairs designed to resolve maintenance issues without unnecessary demolition or disruption." },
+      { title: "Reliable Service & Clear Communication", desc: "Professional coordination, clear scopes of work and dependable service for property managers, landlords and owners." },
+    ],
+    trustedText: "TRUSTED BY PROPERTY OWNERS & MANAGERS",
     failHeading: "Unreported Shower Leaks Can Cost",
     failHeadingBlue: "Landlords Thousands",
     failText: "A small shower issue can quickly become a major property expense when early warning signs go unnoticed or unreported. By the time mould, damaged walls, stained ceilings or flooring problems appear, the repair bill may already be significantly higher.\n\nGROUTIX helps landlords and property managers act early with professional shower and wet-area inspections, identifying visible signs of failed grout, deteriorated silicone, moisture concerns and potential leak points before they turn into urgent maintenance issues.\n\nWhether it’s a tenant-reported problem, a routine property inspection follow-up or a suspected shower leak, our team can assess the issue and recommend the right repair solution — helping protect the property, reduce unexpected costs and avoid unnecessary disruption.",
@@ -231,7 +241,7 @@ const services: Record<string, {
       { q: "Do you work with strata and body corporates?", a: "Yes. We regularly work in multi-residential apartment buildings and common-area wet areas for strata bodies." },
     ],
     workWithUsBlueBoxText: "With direct tenant coordination, clear fixed-price quotes and a streamlined repair process, we make property maintenance easier for agents, landlords and strata managers.",
-    processBlueText: "From tenant coordination to inspection, quoting and repairs, we handle the process from start to finish \u2014 saving property managers time and keeping maintenance moving.",
+    processBlueText: "From tenant coordination to inspection, quoting and repairs, we handle the process from start to finish — saving property managers time and keeping maintenance moving.",
   },
 
   "small-tiling-jobs": {
