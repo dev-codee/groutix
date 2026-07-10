@@ -49,7 +49,7 @@ export default function ServicesSection() {
       title: "Tile Regrouting",
       description: "Our tile regrouting service refreshes tired or stained grout lines throughout bathrooms, laundries, kitchens, balconies and other tiled areas.",
       imageLabel: "Tile Regrouting Service Image",
-      imageSrc: "/img5.avif"
+      imageSrc: "/img40.jpeg"
     },
     {
       id: "leaking-shower-repair",

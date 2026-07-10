@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Phone, Check, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
@@ -27,6 +28,54 @@ function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src }: { label
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ─── Image slider component (Image 2 style) ─── */
+function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
+  const [idx, setIdx] = useState(0);
+  const total = 4;
+  const prev = () => setIdx((i) => (i - 1 + total) % total);
+  const next = () => setIdx((i) => (i + 1) % total);
+  
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        {visibleImages.map((img, i) => (
+          <AnimatedImage key={i} delay={i * 0.1}>
+            <ImgBox
+              src={img}
+              label={`${serviceTitle} Photo ${idx + i + 1}`}
+              aspect="aspect-[4/3]"
+              className="rounded-sm"
+            />
+          </AnimatedImage>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={prev}
+          className="h-9 w-9 rounded-sm bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          onClick={next}
+          className="h-9 w-9 rounded-sm bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-300"
+            style={{ width: `${((idx + 1) / total) * 100}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -160,7 +209,7 @@ export default function LocationsClient({
         <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <AnimatedImage className="relative">
               <ImgBox src="/img21.jpeg" label="Melbourne Service Area Map" aspect="aspect-[4/3]" className="rounded-sm" />
-            <div className="absolute bottom-4 left-4 right-4 bg-accent text-primary-dark p-6 rounded-sm shadow-xl z-10">
+            <div className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-4 lg:left-4 lg:right-4 bg-accent text-primary-dark p-6 rounded-sm shadow-xl z-10">
               <p className="text-base sm:text-lg font-bold leading-relaxed">
                 With clear communication and proven repair systems, we ensure every project is completed to the highest professional standard.
               </p>
@@ -386,29 +435,7 @@ Every quote is free, every job is properly warranted, and our team works around 
               </a>
             </motion.div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"].map((img, i) => (
-              <AnimatedImage key={i} delay={i * 0.1}>
-                <ImgBox
-                  src={img}
-                  label={`Shower Regrouting Photo ${i + 1}`}
-                  aspect="aspect-[3/4]"
-                  className="rounded-sm"
-                />
-              </AnimatedImage>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 pt-2">
-            <button className="h-9 w-9 rounded-sm bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button className="h-9 w-9 rounded-sm bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-            <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: "25%" }} />
-            </div>
-          </div>
+          <PhotoSlider serviceTitle="Melbourne" />
         </div>
       </AnimatedSection>
 

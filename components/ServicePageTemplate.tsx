@@ -140,7 +140,7 @@ const pillarIcons: Record<string, React.ReactNode[]> = {
 
 const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: string }> = {
   "shower-regrouting": {
-    hero: "/img3.jpeg",
+    hero: "/img39.jpeg",
     fail: "/img27.jpeg",
     fix: "/img12.jpeg",
   },
@@ -609,7 +609,7 @@ export default function ServicePageTemplate({
                   whileInView={{ opacity: 1, y: 0, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 }}
-                  className="absolute bottom-[-20px] right-4 left-4 lg:left-auto lg:right-[-20px] lg:w-[350px] bg-[#001F97] text-white p-6 shadow-xl z-10 rounded-sm"
+                  className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm"
                 >
                   <p className="text-base font-bold leading-relaxed">
                     {fixBlueBoxText ?? "By removing failing grout and replacing it with durable materials designed for wet environments, we stop water penetration and restore the shower without removing tiles or undertaking a full bathroom renovation."}
@@ -762,7 +762,7 @@ export default function ServicePageTemplate({
                 whileInView={{ opacity: 1, y: 0, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.3 }}
-                className="absolute bottom-[-20px] right-4 left-4 lg:left-auto lg:right-[-20px] lg:w-[350px] bg-[#001F97] text-white p-6 shadow-xl z-10 rounded-sm"
+                className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm"
               >
                 <p className="text-base font-bold leading-relaxed">
                   {workWithUsBlueBoxText ?? "With experienced technicians, specialist materials and a structured repair process, you can trust that your leaking shower is fixed properly."}
@@ -821,7 +821,7 @@ export default function ServicePageTemplate({
               </motion.div>
             </motion.div>
             <AnimatedImage className="relative">
-              <ImgBox src="/img11.jpeg" label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-sm" />
+              <ImgBox src="/img43.jpeg" label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-sm" />
               <motion.div
                 initial={{ opacity: 0, y: 10, x: -10 }}
                 whileInView={{ opacity: 1, y: 0, x: 0 }}

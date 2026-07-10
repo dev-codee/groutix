@@ -47,16 +47,17 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const next = () => setIdx((i) => (i + 1) % total);
   
   const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {sliderImages.map((img, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        {visibleImages.map((img, i) => (
           <AnimatedImage key={i} delay={i * 0.1}>
             <ImgBox
               src={img}
-              label={`${serviceTitle} Photo ${i + 1}`}
-              aspect="aspect-[3/4]"
+              label={`${serviceTitle} Photo ${idx + i + 1}`}
+              aspect="aspect-[4/3]"
               className="rounded-sm"
             />
           </AnimatedImage>

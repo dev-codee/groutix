@@ -385,7 +385,7 @@ export default function HomePage({
               transition={{ duration: 0.5, ease: "easeOut" }}
             >
               <ImgBox
-                src="/img4.avif"
+                src="/img42.jpeg"
                 label="Leaking Shower Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
@@ -404,7 +404,7 @@ export default function HomePage({
                   {
                     title: "COSTLY WATER DAMAGE",
                     desc: "A small unresolved leak can spread beyond the shower, damaging surrounding walls, floors and adjoining rooms",
-                    img: "/img23.jpeg",
+                    img: "/img37.jpeg",
                   },
                   {
                     title: "MOULD & MOISTURE",
@@ -414,7 +414,7 @@ export default function HomePage({
                   {
                     title: "EXPENSIVE REPAIRS",
                     desc: "The longer water ingress continues, the greater the risk of damaged materials and a much larger repair bill.",
-                    img: "/img9.jpeg",
+                    img: "/img41.jpeg",
                   },
                 ].map((b, i) => (
                   <motion.div
@@ -537,14 +537,31 @@ export default function HomePage({
                 </a>
               </div>
             </div>
-            <div>
+            <AnimatedImage className="relative">
               <ImgBox
-                src="/img11.jpeg"
+                src="/img43.jpeg"
                 label="Guarantee Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
               />
-            </div>
+              <motion.div
+                initial={{ opacity: 0, y: 10, x: -10 }}
+                whileInView={{ opacity: 1, y: 0, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+                className="absolute bottom-[-20px] left-4 bg-[#001F97] text-white p-6 shadow-xl z-10 w-[190px] text-center border-t-4 border-[#2F63CC]"
+              >
+                <div className="flex items-start justify-center gap-2">
+                  <p className="text-[4rem] font-black leading-none">10</p>
+                  <p className="text-[13px] font-black uppercase tracking-[0.6em] mt-2" style={{ writingMode: "vertical-rl" }}>
+                    YEAR
+                  </p>
+                </div>
+                <p className="text-[13px] font-black uppercase tracking-widest mt-2">DOUBT</p>
+                <p className="text-[13px] font-black uppercase tracking-widest">FREE</p>
+                <p className="text-[13px] font-black uppercase tracking-widest mt-2">GUARANTEE</p>
+              </motion.div>
+            </AnimatedImage>
           </div>
         </AnimatedSection>
 
@@ -589,7 +606,7 @@ export default function HomePage({
             </div>
             <div>
               <ImgBox
-                src="/img5.avif"
+                src="/img40.jpeg"
                 label="Why Choose Us Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
