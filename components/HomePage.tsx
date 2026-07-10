@@ -25,6 +25,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review, BusinessRating } from "@/lib/reviews";
+import TrustedMarquee from "@/components/TrustedMarquee";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -226,31 +227,13 @@ export default function HomePage({
         </section>
 
         {/* ══════════════════════════════════════
-            SECTION 2 — TRUSTED ACROSS AUSTRALIA
+            SECTION 2 — TRUSTED ACROSS AUSTRALIA (Marquee)
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-10 border-b border-neutral-100">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 flex flex-col items-center gap-6">
-            <p className="text-sm font-black text-neutral-400 uppercase tracking-widest">
-              TRUSTED ACROSS AUSTRALIA
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-14 opacity-50 grayscale">
-              {[
-                "Nelson Alexander",
-                "Ardex",
-                "Barry Plant",
-                "Biggin & Scott",
-                "Harcourts",
-                "LJ Hooker",
-                "Ray White",
-                "McGrath",
-              ].map((l) => (
-                <span key={l} className="text-base font-black tracking-wider text-neutral-600 uppercase">
-                  {l}
-                </span>
-              ))}
-            </div>
+        <TrustedMarquee />
 
-            {/* Stats strip */}
+        {/* Stats strip */}
+        <AnimatedSection className="bg-white py-6 border-b border-neutral-100">
+          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
             <div className="w-full rounded-xl border border-neutral-200 bg-white shadow-sm">
               <div className="grid grid-cols-2 divide-x divide-y divide-neutral-100 lg:grid-cols-4 lg:divide-y-0">
                 {[

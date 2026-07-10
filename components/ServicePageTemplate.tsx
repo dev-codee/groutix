@@ -11,6 +11,7 @@ import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import type { Review } from "@/lib/reviews";
+import TrustedMarquee from "@/components/TrustedMarquee";
 
 /* ─── Droplet bullet icon (matches real site) ─── */
 const DropletIcon = () => (
@@ -460,8 +461,8 @@ export default function ServicePageTemplate({
             </AnimatedImage>
           </div>
 
-          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10">
-            <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10 pointer-events-none">
+            <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
               {(heroCards ? heroCards.map((c, i) => ({ title: c.title, desc: c.desc, icon: icons[i] ?? icons[0] })) : [
                 { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, desc: "", icon: icons[0] },
                 { title: "Long-lasting solutions for worn or damaged areas", desc: "", icon: icons[1] },
@@ -473,7 +474,7 @@ export default function ServicePageTemplate({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.4 + i * 0.1 }}
-                  className="bg-white border border-neutral-200 rounded-sm p-5 shadow-lg flex items-center gap-4 text-neutral-900 hover:border-accent transition-colors relative overflow-hidden"
+                  className="bg-white border border-neutral-200 rounded-sm p-5 shadow-lg flex items-center gap-4 text-neutral-900 hover:border-accent transition-colors relative overflow-hidden pointer-events-auto"
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
                   <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-accent/10 rounded-sm">
@@ -489,32 +490,7 @@ export default function ServicePageTemplate({
           </div>
         </motion.section>
 
-        <AnimatedSection className="bg-white pt-24 pb-12 border-b border-neutral-100">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-6 text-center">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-sm font-black text-neutral-400 uppercase tracking-widest"
-            >
-              {trustedText ?? "TRUSTED ACROSS AUSTRALIA"}
-            </motion.p>
-            <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-16 opacity-50 grayscale">
-              {["Nelson Alexander", "Ardex", "Barry Plant", "Harcourts", "LJ Hooker", "Ray White"].map((l, i) => (
-                <motion.span
-                  key={l}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="text-base font-black tracking-wider text-neutral-500 uppercase"
-                >
-                  {l}
-                </motion.span>
-              ))}
-            </div>
-          </div>
-        </AnimatedSection>
+        <TrustedMarquee />
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">

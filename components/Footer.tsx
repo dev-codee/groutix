@@ -114,30 +114,16 @@ export default function Footer() {
           >
             <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6">Service Areas</h3>
             <ul className="space-y-3.5 text-base">
-              {[
-                "Melbourne",
-                "Geelong",
-                "Ballarat",
-                "Bendigo",
-                "Shepparton",
-                "Wangaratta",
-                "Traralgon",
-                "Sale",
-                "Bairnsdale",
-                "Warrnambool",
-                "Horsham",
-                "Regional Victoria",
-              ].map((area, i) => (
-                <motion.li
-                  key={area}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 + i * 0.03 }}
-                >
-                  {area}
-                </motion.li>
-              ))}
+              <motion.li
+                initial={{ opacity: 0, x: -10 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+              >
+                <Link href="/locations" className="hover:text-accent transition-colors duration-200">
+                  Victoria
+                </Link>
+              </motion.li>
             </ul>
           </motion.div>
 

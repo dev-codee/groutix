@@ -78,7 +78,7 @@ export default function Navbar() {
   ];
 
   const locations = [
-    { name: "Melbourne", href: "/locations" },
+    { name: "Victoria", href: "/locations" },
   ];
 
   return (
