@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
@@ -23,6 +23,7 @@ import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
+import FaqSection from "@/components/FaqSection";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
@@ -59,6 +60,53 @@ function ImgBox({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ─── Photo slider (matches service page slider) ─── */
+function HomePhotoSlider() {
+  const [idx, setIdx] = useState(0);
+  const total = 4;
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
+  const prev = () => setIdx((i) => (i - 1 + total) % total);
+  const next = () => setIdx((i) => (i + 1) % total);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+        {visibleImages.map((img, i) => (
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
+            <ImgBox
+              src={img}
+              label={`Before & After Photo ${idx + i + 1}`}
+              aspect="aspect-[4/3]"
+              className="rounded-sm"
+            />
+          </AnimatedImage>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={prev}
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          onClick={next}
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#001F97] rounded-full transition-all duration-300"
+            style={{ width: `${((idx + 1) / total) * 100}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -431,19 +479,20 @@ export default function HomePage({
             SECTION 6 — A PERMANENT SOLUTION
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 max-w-4xl">
+          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
             <div className="max-w-4xl space-y-6">
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
                 A Permanent Solution, <span className="text-accent">Not a Temporary Patch</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                At GROUTIX, we don’t cover up failing grout with surface sealers or quick cosmetic fixes. We remove the failed material, properly prepare the affected areas and rebuild the shower’s protective grout and sealant system using professional-grade materials designed for wet environments.
+                At GROUTIX, we don&apos;t cover up failing grout with surface sealers or quick cosmetic fixes. We remove the failed material, properly prepare the affected areas and rebuild the shower&apos;s protective grout and sealant system using professional-grade materials designed for wet environments.
                 Our goal is simple: stop the problem at its source, deliver a long-lasting repair and help you avoid repeated call-outs and costly damage.
               </p>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                That’s why completed leaking shower repairs are backed by our 10-year waterproof warranty.
+                That&apos;s why completed leaking shower repairs are backed by our 10-year waterproof warranty.
               </p>
             </div>
+            <HomePhotoSlider />
           </div>
         </AnimatedSection>
 
@@ -598,6 +647,7 @@ export default function HomePage({
           </div>
         </AnimatedSection>
 
+        <FaqSection />
       </main>
       <Footer />
     </>

@@ -1,103 +1,90 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import AnimatedSection from "@/components/AnimatedSection";
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="border border-neutral-200 bg-white cursor-pointer list-none"
+      onClick={() => setOpen((o) => !o)}
+    >
+      <div className="flex items-center justify-between gap-4 px-5 py-4">
+        <span className="font-semibold text-neutral-900 text-base leading-snug">{q}</span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-[#2F63CC] flex-shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-neutral-400 flex-shrink-0" />
+        )}
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="px-5 pb-4 text-base text-neutral-600 leading-relaxed border-t border-neutral-100 pt-3">
+              {a}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.li>
+  );
+}
 
 export default function FaqSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
   const faqs = [
     {
+      question: "How Do I Know If My Shower Needs Regrouting or Recaulking?",
+      answer: "If you notice cracked, missing or discoloured shower grout, peeling or mouldy silicone, water leaking outside the shower, damp walls, or a musty smell, it may be time for shower regrouting or recaulking. Addressing these issues early can help prevent water damage and costly repairs.",
+    },
+    {
+      question: "Can a Leaking Shower Be Repaired Without Removing the Tiles?",
+      answer: "Yes, in many cases. If your leaking shower is caused by failed grout or silicone, we can often repair it without removing the tiles, saving you the cost and disruption of a bathroom renovation. An inspection will determine the exact cause of the leak.",
+    },
+    {
       question: "How Long Does Shower Regrouting Take?",
-      answer: "Most shower regrouting jobs can be completed within one day, depending on the size of the shower, the condition of the existing grout and sealants, and whether any additional repairs are required. At GROUTIX, we don't simply apply new grout over failing areas. We remove deteriorated grout and sealants, properly prepare the joints, and install a suitable grout system designed for wet areas. This helps deliver a cleaner, longer-lasting result rather than a temporary cosmetic patch.",
+      answer: "Most shower regrouting jobs are completed within one day. Before work begins, your technician will inspect the shower, explain the repair process and expected timeframe, then complete the repairs to restore a watertight, long-lasting finish.",
     },
     {
-      question: "Do Tiles Need to Be Removed for Shower Regrouting?",
-      answer: "In most cases, no tile removal is required. Our shower regrouting process is designed to remove failed or deteriorated grout and sealants while keeping the existing tiles in place. This means many leaking or deteriorated showers can be restored without the cost, mess and disruption of a full bathroom renovation. If we identify loose, damaged or drummy tiles that require separate attention, we'll explain the available repair options before proceeding.",
+      question: "How Much Does Shower Regrouting Cost?",
+      answer: "The cost of shower regrouting depends on the size of your shower, its condition, and the repairs required. We provide a detailed quote after inspecting your shower, so you know exactly what's included before any work begins.",
     },
     {
-      question: "Will the New Grout Match My Existing Tiles?",
-      answer: "Yes. GROUTIX offers a wide range of grout colours to match or complement your existing tiles and bathroom finishes. Where only part of an area is being repaired, we aim to achieve the closest practical match with the surrounding grout. Your technician can help select the most suitable colour based on the existing tiled area and the type of grout system being installed.",
-    },
-    {
-      question: "How Long Before I Can Use My Shower After Regrouting?",
-      answer: "The curing time depends on the grout system used. Polymer grout generally requires 24–48 hours before the shower can be used, while epoxy grout requires approximately 72 hours to fully cure. Your GROUTIX technician will provide clear aftercare instructions based on the specific grout system installed. Following the recommended curing time is important to help protect the new grout and achieve the best long-term result.",
-    },
-    {
-      question: "Do You Offer a Warranty on Shower Regrouting?",
-      answer: "Yes. Eligible full shower regrouting and leaking shower repair services completed by GROUTIX are backed by our 10-year waterproof warranty, subject to the approved scope of work and warranty terms. We stand behind our work because our focus is on addressing failed grout and sealants properly, not covering over the problem with a temporary surface fix. Our goal is to give you confidence that your shower repair has been completed for long-term protection.",
+      question: "How Long Before I Can Use My Shower Again?",
+      answer: "Most showers are ready to use 24 hours after regrouting and recaulking. If epoxy grout is installed, we recommend allowing 72 hours for full curing before using the shower. Your technician will confirm the required curing time based on the materials used.",
     },
   ];
 
-  const toggleFaq = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
-
   return (
-    <section className="py-20 bg-neutral-50 border-b border-neutral-200" id="faq">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight">
-            Frequently Asked <span className="text-secondary">Questions</span>
-          </h2>
-          <p className="text-neutral-600 text-lg">
-            Have questions about regrouting, leak detection, or our warranties? Find quick answers below.
-          </p>
-        </div>
-
-        {/* FAQ Accordion List */}
-        <div className="space-y-4">
-          {faqs.map((faq, i) => {
-            const isOpen = openIndex === i;
-            return (
-              <div
-                key={i}
-                className="bg-white rounded-lg border border-neutral-200 overflow-hidden shadow-sm hover:shadow transition-shadow"
-              >
-                <button
-                  onClick={() => toggleFaq(i)}
-                  className="w-full flex items-center justify-between p-5 text-left font-bold text-neutral-900 hover:text-primary transition-colors cursor-pointer"
-                  aria-expanded={isOpen}
-                >
-                  <div className="flex items-center space-x-3 pr-4">
-                    <HelpCircle className="h-5 w-5 text-secondary flex-shrink-0" />
-                    <span className="text-base sm:text-base">{faq.question}</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-5 w-5 text-neutral-400 transition-transform duration-300 ${
-                      isOpen ? "transform rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isOpen ? "max-h-[500px] border-t border-neutral-100" : "max-h-0"
-                  }`}
-                >
-                  <p className="p-5 text-base text-neutral-600 leading-relaxed bg-neutral-50/50">
-                    {faq.answer}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bottom Contact Help Link */}
-        <div className="text-center mt-12 text-base text-neutral-500">
-          Still have questions?{" "}
-          <a
-            href="/contact"
-            className="text-secondary hover:text-secondary-hover font-bold underline transition-colors"
+    <AnimatedSection className="bg-white py-16 lg:py-24" id="faq">
+      <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+        <div className="space-y-6 max-w-3xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight text-center"
           >
-            Contact our customer care team
-          </a>
+            Frequently Asked <span className="text-accent">Questions</span>
+          </motion.h2>
+          <ul className="divide-y divide-neutral-200 border border-neutral-200 p-0">
+            {faqs.map((faq, i) => (
+              <FaqItem key={i} q={faq.question} a={faq.answer} />
+            ))}
+          </ul>
         </div>
-
       </div>
-    </section>
+    </AnimatedSection>
   );
 }
+

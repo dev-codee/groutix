@@ -2,13 +2,14 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, Check, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Phone, Check, MapPin, ChevronLeft, ChevronRight, Droplets, Grid2x2, Wrench, ShowerHead, Hammer, Building2 } from "lucide-react";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
+import FaqSection from "@/components/FaqSection";
 
 /* ─── Hero badge icons (match service page style) ─── */
 const LocationIcon = () => (
@@ -77,7 +78,7 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
               src={img}
               label={`${serviceTitle} Photo ${idx + i + 1}`}
               aspect="aspect-[4/3]"
-              className="rounded-sm"
+              className="rounded-xl"
             />
           </AnimatedImage>
         ))}
@@ -85,13 +86,13 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={prev}
-          className="h-9 w-9 rounded-sm bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-xl bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={next}
-          className="h-9 w-9 rounded-sm bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-xl bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -139,6 +140,15 @@ const SERVICES = [
   },
 ];
 
+const SERVICE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  "shower-regrouting": Droplets,
+  "tile-regrouting": Grid2x2,
+  "shower-base-repair": Wrench,
+  "leaking-shower-repair": ShowerHead,
+  "small-tiling-jobs": Hammer,
+  "real-estate-property-services": Building2,
+};
+
 export default function LocationsClient({
   reviews,
   rating,
@@ -173,13 +183,13 @@ export default function LocationsClient({
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <a
                   href="tel:70238094"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-primary font-black px-7 py-3.5 rounded-sm text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
                 >
                   <Phone className="h-4 w-4 text-primary" /> 7023 8094
                 </a>
                 <Link
                   href="#quote-form"
-                  className="inline-flex items-center justify-center bg-white text-primary font-black px-7 py-3.5 rounded-sm text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
+                  className="inline-flex items-center justify-center bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
                 >
                   Request A Quote
                 </Link>
@@ -190,7 +200,7 @@ export default function LocationsClient({
                 src="/img44.jpg"
                 label="Melbourne Location Bridge Image"
                 aspect="aspect-[4/3]"
-                className="rounded-sm shadow-lg bg-white/5 border-white/10"
+                className="rounded-xl shadow-lg bg-white/5 border-white/10"
                 objectClass="object-cover object-top"
               />
             </AnimatedImage>
@@ -209,10 +219,10 @@ export default function LocationsClient({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.4 + i * 0.1 }}
-                  className="bg-white border border-neutral-200 rounded-sm p-5 shadow-lg flex items-center gap-4 text-neutral-900 hover:border-accent transition-colors relative overflow-hidden pointer-events-auto"
+                  className="bg-white border border-neutral-200 rounded-xl p-5 shadow-lg flex items-center gap-4 text-neutral-900 hover:border-accent transition-colors relative overflow-hidden pointer-events-auto"
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                  <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-accent/10 rounded-sm">
+                  <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-accent/10 rounded-xl">
                     <Icon />
                   </div>
                   <p className="text-sm sm:text-base font-bold leading-snug">{label}</p>
@@ -231,8 +241,8 @@ export default function LocationsClient({
       <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
         <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <AnimatedImage className="relative">
-              <ImgBox src="/img45.webp" label="Victoria Service Area Map" aspect="aspect-[4/3]" className="rounded-sm" />
-            <div className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-4 lg:left-4 lg:right-4 bg-accent text-primary-dark p-6 rounded-sm shadow-xl z-10">
+              <ImgBox src="/img45.webp" label="Victoria Service Area Map" aspect="aspect-[4/3]" className="rounded-xl" />
+            <div className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-4 lg:left-4 lg:right-4 bg-accent text-primary-dark p-6 rounded-xl shadow-xl z-10">
               <p className="text-base sm:text-lg font-bold leading-relaxed">
                 With clear communication and proven repair systems, we ensure every project is completed to the highest professional standard.
               </p>
@@ -300,13 +310,13 @@ Every quote is free, every job is properly warranted, and our team works around 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
             <Link
               href="/locations/geelong"
-              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-base border-2 border-transparent hover:border-[#001F97]"
+              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base border-2 border-transparent hover:border-[#001F97]"
             >
               Geelong Area
             </Link>
             <Link
               href="/locations/melbourne"
-              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-sm shadow-md hover:shadow-lg transition-all active:scale-95 text-base border-2 border-transparent hover:border-[#001F97]"
+              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base border-2 border-transparent hover:border-[#001F97]"
             >
               Melbourne Area
             </Link>
@@ -315,14 +325,14 @@ Every quote is free, every job is properly warranted, and our team works around 
       </AnimatedSection>
 
       {/* Services Section */}
-      <AnimatedSection className="bg-[#2F63CC] py-16 lg:py-24 text-white">
+      <AnimatedSection className="bg-neutral-50 py-16 lg:py-24 border-b border-neutral-100">
         <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
           <div className="space-y-3 text-center max-w-xl mx-auto">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-3xl lg:text-[42px] font-bold"
+              className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight"
             >
               Our Services
             </motion.h2>
@@ -331,38 +341,44 @@ Every quote is free, every job is properly warranted, and our team works around 
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-white/80 text-base sm:text-lg leading-relaxed"
+              className="text-neutral-500 text-base sm:text-lg leading-relaxed"
             >
               GROUTIX provides specialist tile and grout services for residential and commercial properties across Victoria. Our team is solely focused on precision, durability and long term performance, delivering results that general trades cannot match.
             </motion.p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-neutral-800">
-            {SERVICES.map((s, i) => (
-              <motion.div
-                key={s.slug}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                className="bg-white rounded-sm p-6 hover:shadow-xl transition-all flex flex-col justify-between gap-6 relative overflow-hidden"
-              >
-                {/* Decorative accent element */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                
-                <div className="space-y-4">
-                  <span className="text-2xl">
-                    {i === 0 ? "🚿" : i === 1 ? "🧱" : i === 2 ? "💧" : i === 3 ? "🔨" : "🏢"}
-                  </span>
-                  <h3 className="font-bold text-neutral-900 text-lg">{s.title}</h3>
-                  <p className="text-base text-neutral-600 leading-relaxed">{s.desc}</p>
-                </div>
-                <Link href={`/${s.slug}`} className="text-base font-bold text-accent hover:underline transition-colors">
-                  Learn more →
-                </Link>
-              </motion.div>
-            ))}
-            <AnimatedImage className="relative rounded-sm overflow-hidden min-h-[250px] lg:min-h-full" delay={0.6}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SERVICES.map((s, i) => {
+              const Icon = SERVICE_ICONS[s.slug] ?? Droplets;
+              return (
+                <motion.div
+                  key={s.slug}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                >
+                  <Link
+                    href={`/${s.slug}`}
+                    className="group border border-neutral-200 rounded-xl p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden h-full"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="space-y-4">
+                      <span className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-primary">
+                        <Icon className="h-7 w-7" />
+                      </span>
+                      <h3 className="font-bold text-neutral-900 text-xl group-hover:text-primary transition-colors">
+                        {s.title}
+                      </h3>
+                      <p className="text-base text-neutral-600 leading-relaxed">{s.desc}</p>
+                    </div>
+                    <span className="text-base font-bold text-accent group-hover:underline">
+                      Learn more →
+                    </span>
+                  </Link>
+                </motion.div>
+              );
+            })}
+            <AnimatedImage className="relative rounded-xl overflow-hidden min-h-[250px] lg:min-h-full" delay={0.6}>
               <ImgBox src="/img20.jpeg" label="Shower Renovation Service Image" aspect="h-full w-full absolute inset-0" className="border-0" />
             </AnimatedImage>
           </div>
@@ -396,7 +412,7 @@ Every quote is free, every job is properly warranted, and our team works around 
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="bg-white border border-neutral-200 rounded-sm p-6 flex flex-col sm:flex-row items-center justify-between gap-6"
+            className="bg-white border border-neutral-200 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6"
           >
             <div className="flex items-center gap-4">
               <span className="text-accent font-black text-xl tracking-tight">Google</span>
@@ -412,12 +428,14 @@ Every quote is free, every job is properly warranted, and our team works around 
                 {rating.value} | {rating.count} reviews
               </span>
             </div>
-            <Link
-              href="#quote-form"
-              className="bg-primary hover:bg-[#2F63CC] text-white font-bold px-6 py-2.5 rounded-sm text-sm transition-all active:scale-95"
+            <a
+              href="https://www.google.com/search?kgmid=%2Fg%2F11xdl581v3&hl=en-PK&q=Groutix%20-%20Epoxy%20Regrouting%2C%20Shower%20%26%20Balcony%20Leak%20Repairs%20Melbourne&shem=epsd1%2Cltae%2Crimspwouoe&shndl=30&source=sh%2Fx%2Floc%2Fosrp%2Fm1%2F2&kgs=215b884d877423b0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-primary hover:bg-[#2F63CC] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all active:scale-95"
             >
               Write a review
-            </Link>
+            </a>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -428,7 +446,7 @@ Every quote is free, every job is properly warranted, and our team works around 
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4 flex flex-col justify-between hover:border-accent hover:shadow-md transition-all relative overflow-hidden"
+                className="bg-white border border-neutral-200 rounded-xl p-6 space-y-4 flex flex-col justify-between hover:border-accent hover:shadow-md transition-all relative overflow-hidden"
               >
                 {/* Decorative accent element */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
@@ -484,13 +502,13 @@ Every quote is free, every job is properly warranted, and our team works around 
             >
               <a
                 href="#quote-form"
-                className="bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-5 py-2.5 rounded-sm text-base transition-all active:scale-95"
+                className="bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-5 py-2.5 rounded-xl text-base transition-all active:scale-95"
               >
                 Request A Quote
               </a>
               <a
                 href="tel:1300844897"
-                className="flex items-center gap-2 bg-primary hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-sm text-base transition-all active:scale-95"
+                className="flex items-center gap-2 bg-primary hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-xl text-base transition-all active:scale-95"
               >
                 <Phone className="h-4 w-4" /> 1300 844 897
               </a>
@@ -501,42 +519,7 @@ Every quote is free, every job is properly warranted, and our team works around 
       </AnimatedSection>
 
       {/* FAQ Section */}
-      <AnimatedSection className="bg-white py-16 lg:py-24">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-          <div className="space-y-6">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight"
-            >
-              Frequently Asked<br />
-              <span className="text-accent">Questions</span>
-            </motion.h2>
-          </div>
-          <div className="space-y-4">
-            {[
-              { q: "How Long Does Shower Regrouting Take?", a: "Most shower regrouting jobs are completed within a single day, depending on the condition of the grout and any required repair work." },
-              { q: "Do I Need To Remove My Shower Tiles?", a: "In most cases, no. Our services are designed to fix grout and sealing issues without removing tiles." },
-              { q: "Can You Regrout Shower Floors As Well As Walls?", a: "Yes, we handle both floor and wall tile regrouting in shower cubicles and all wet areas." },
-            ].map((faq, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="border border-neutral-100 bg-[#F8FAFC] rounded-sm p-5 flex items-center justify-between gap-4 cursor-pointer hover:border-neutral-200 transition-colors"
-              >
-                <span className="font-bold text-neutral-800 text-base leading-snug">{faq.q}</span>
-                <div className="w-8 h-8 rounded-sm bg-primary text-white flex items-center justify-center flex-shrink-0 text-lg font-bold">
-                  +
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </AnimatedSection>
+      <FaqSection />
 
       {/* CTA Banner */}
       <AnimatedSection className="bg-[#3D68D8] py-14 px-6 lg:px-10">
@@ -558,13 +541,13 @@ Every quote is free, every job is properly warranted, and our team works around 
           >
             <Link
               href="#quote-form"
-              className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-sm text-base transition-all active:scale-95 border-2 border-accent"
+              className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-xl text-base transition-all active:scale-95 border-2 border-accent"
             >
               Request A Quote
             </Link>
             <a
               href="tel:70238094"
-              className="flex items-center gap-2 bg-primary hover:bg-[#001579] text-white font-bold px-6 py-3 rounded-sm text-base transition-all border border-white/20 active:scale-95"
+              className="flex items-center gap-2 bg-primary hover:bg-[#001579] text-white font-bold px-6 py-3 rounded-xl text-base transition-all border border-white/20 active:scale-95"
             >
               <Phone className="h-4 w-4" /> 7023 8094
             </a>
@@ -607,3 +590,4 @@ Every quote is free, every job is properly warranted, and our team works around 
     </main>
   );
 }
+

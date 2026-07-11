@@ -165,6 +165,26 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
     fail: "/img9.jpeg",
     fix: "/img36.jpeg",
   },
+  "balcony-leak-repairs": {
+    hero: "/img51.jpeg",
+    fail: "/img48.jpeg",
+    fix: "/img49.jpeg",
+  },
+  "silicone-recaulking": {
+    hero: "/img50.jpeg",
+    fail: "/img55.jpeg",
+    fix: "/img52.jpeg",
+  },
+  "epoxy-grout": {
+    hero: "/img53.jpeg",
+    fail: "/img56.jpeg",
+    fix: "/img54.jpeg",
+  },
+  "real-estate-property-services": {
+    hero: "/img28.jpeg",
+    fail: "/img23.jpeg",
+    fix: "/img2.jpeg",
+  },
 };
 
 /* ─── Fail section badges by service ─── */
@@ -190,7 +210,7 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
         {visibleImages.map((img, i) => (
-          <AnimatedImage key={i} delay={i * 0.1}>
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
               src={img}
               label={`${serviceTitle} Photo ${idx + i + 1}`}
@@ -700,6 +720,60 @@ export default function ServicePageTemplate({
                 </motion.div>
               ))}
             </div>
+
+            {/* Process Q&A */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15 }}
+              className="bg-[#F8FAFC] border border-neutral-100 rounded-sm shadow-sm overflow-hidden"
+            >
+              <div className="px-6 py-5 border-b border-neutral-100 bg-white flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center bg-[#001F97] text-white text-sm font-black rounded-sm">?</span>
+                <h3 className="text-lg font-bold text-neutral-900">Common Questions About Our Process</h3>
+              </div>
+              {[
+                {
+                  q: "What Happens After I Contact Groutix?",
+                  a: "Once you contact us, we'll discuss your requirements and determine the best way to assess your project. Depending on the job, we may provide a quote from photos or arrange an on-site inspection.",
+                },
+                {
+                  q: "Do You Need To Inspect My Shower Before Providing A Quote?",
+                  a: "Not always. Some jobs can be quoted from clear photos, while others may require an on-site inspection to accurately assess the condition and recommend the most suitable repair.",
+                },
+                {
+                  q: "What Happens During The Inspection?",
+                  a: "Your technician will inspect the tiled area, identify any visible issues, explain the cause of the problem, and recommend the most appropriate repair solution. You'll also have the opportunity to ask any questions before proceeding.",
+                },
+                {
+                  q: "What Happens Once I Accept The Quote?",
+                  a: "After your quote is accepted, we'll schedule a suitable date for the work. Your technician will complete the agreed repairs using professional materials and explain any aftercare or curing requirements before leaving.",
+                },
+                {
+                  q: "Will I Receive A Quote Before Any Work Begins?",
+                  a: "Yes. We provide a clear, detailed quote before any work starts, so you know exactly what repairs are recommended and what's included.",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.05 * i }}
+                  className={`flex gap-5 px-6 py-5 items-start${i < 4 ? " border-b border-neutral-100" : ""} group hover:bg-white transition-colors duration-200`}
+                >
+                  <span className="flex-shrink-0 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent font-black text-sm group-hover:bg-[#001F97] group-hover:text-white transition-colors duration-200">
+                    {i + 1}
+                  </span>
+                  <div className="space-y-1.5">
+                    <p className="font-bold text-neutral-900 leading-snug">{item.q}</p>
+                    <p className="text-neutral-500 text-sm leading-relaxed">{item.a}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
           </div>
         </AnimatedSection>
 
@@ -862,7 +936,30 @@ export default function ServicePageTemplate({
                 Frequently Asked <span className="text-accent">Questions</span>
               </motion.h2>
               <ul className="divide-y divide-neutral-200 border border-neutral-200 p-0">
-                {faqs.map((faq, i) => <FaqItem key={i} q={faq.q} a={faq.a} />)}
+                {[
+                  {
+                    q: "How Do I Know If My Shower Needs Regrouting or Recaulking?",
+                    a: "If you notice cracked, missing or discoloured shower grout, peeling or mouldy silicone, water leaking outside the shower, damp walls, or a musty smell, it may be time for shower regrouting or recaulking. Addressing these issues early can help prevent water damage and costly repairs.",
+                  },
+                  {
+                    q: "Can a Leaking Shower Be Repaired Without Removing the Tiles?",
+                    a: "Yes, in many cases. If your leaking shower is caused by failed grout or silicone, we can often repair it without removing the tiles, saving you the cost and disruption of a bathroom renovation. An inspection will determine the exact cause of the leak.",
+                  },
+                  {
+                    q: "How Long Does Shower Regrouting Take?",
+                    a: "Most shower regrouting jobs are completed within one day. Before work begins, your technician will inspect the shower, explain the repair process and expected timeframe, then complete the repairs to restore a watertight, long-lasting finish.",
+                  },
+                  {
+                    q: "How Much Does Shower Regrouting Cost?",
+                    a: "The cost of shower regrouting depends on the size of your shower, its condition, and the repairs required. We provide a detailed quote after inspecting your shower, so you know exactly what's included before any work begins.",
+                  },
+                  {
+                    q: "How Long Before I Can Use My Shower Again?",
+                    a: "Most showers are ready to use 24 hours after regrouting and recaulking. If epoxy grout is installed, we recommend allowing 72 hours for full curing before using the shower. Your technician will confirm the required curing time based on the materials used.",
+                  },
+                ].map((faq, i) => (
+                  <FaqItem key={i} q={faq.q} a={faq.a} />
+                ))}
               </ul>
             </div>
           </div>

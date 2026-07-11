@@ -58,7 +58,7 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
               src={img}
               label={`${serviceTitle} Photo ${idx + i + 1}`}
               aspect="aspect-[4/3]"
-              className="rounded-sm"
+              className="rounded-xl"
             />
           </AnimatedImage>
         ))}
@@ -66,13 +66,13 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={prev}
-          className="h-9 w-9 rounded-sm bg-primary hover:bg-secondary text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-xl bg-primary hover:bg-secondary text-white flex items-center justify-center transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={next}
-          className="h-9 w-9 rounded-sm bg-primary hover:bg-secondary text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-xl bg-primary hover:bg-secondary text-white flex items-center justify-center transition-colors"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -384,3 +384,4 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
     </main>
   );
 }
+

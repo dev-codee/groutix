@@ -160,7 +160,7 @@ export default function PrivacyPolicyPage() {
                     AI-generated information may be reviewed, corrected or supplemented by the GROUTIX team before being relied upon for customer service or business purposes.
                   </p>
                 </div>
-                <div className="space-y-4 bg-neutral-50 p-6 rounded-sm border border-neutral-100">
+                <div className="space-y-4 bg-neutral-50 p-6 rounded-xl border border-neutral-100">
                   <h3 className="text-lg font-bold text-[#001F97] uppercase tracking-wide">Our Commitment</h3>
                   <p className="leading-relaxed text-neutral-700">
                     At GROUTIX, people and quality workmanship come first. AI is simply a tool that may help make our service faster, clearer and more efficient. Every physical repair is completed by our team or engaged service professionals, with workmanship and repair decisions based on the actual scope of work and site conditions.
@@ -175,7 +175,7 @@ export default function PrivacyPolicyPage() {
             </div>
 
             {/* Contact Section */}
-            <div className="bg-[#001F97]/5 p-8 rounded-sm border border-[#001F97]/10 mt-12 text-center">
+            <div className="bg-[#001F97]/5 p-8 rounded-xl border border-[#001F97]/10 mt-12 text-center">
               <h3 className="text-xl font-bold text-neutral-900 mb-2">Contact Us</h3>
               <p className="text-neutral-700 mb-4">
                 If you have any questions or concerns about this Privacy Policy or our use of AI, please contact us at:
@@ -192,3 +192,4 @@ export default function PrivacyPolicyPage() {
     </>
   );
 }
+
