@@ -42,18 +42,18 @@ function ImgBox({
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const total = 4;
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
   
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
-  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
-          <AnimatedImage key={i} delay={i * 0.1}>
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
               src={img}
               label={`${serviceTitle} Photo ${idx + i + 1}`}
@@ -89,17 +89,17 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 
 export default function AboutClient() {
   const values = [
-    { icon: <ShieldCheck className="h-7 w-7 text-primary" />, title: "Honest advice", desc: "We only recommend what your bathroom actually needs — no upselling, no scare tactics." },
-    { icon: <Award className="h-7 w-7 text-primary" />, title: "Done properly", desc: "We fix the root cause with quality materials so the problem stays fixed for the long run." },
-    { icon: <Users className="h-7 w-7 text-primary" />, title: "Clean & respectful", desc: "We treat your home with care and leave every job site tidy when we're finished." },
-    { icon: <Clock className="h-7 w-7 text-primary" />, title: "Local & reliable", desc: "A Melbourne-based team that turns up on time and does what we say we'll do." },
+    { icon: <ShieldCheck className="h-7 w-7 text-primary" />, title: "Honest advice", desc: "We suggest the repair your wet area actually needs, with clear guidance and no overblown plans." },
+    { icon: <Award className="h-7 w-7 text-primary" />, title: "Expert work", desc: "Our team focuses on grout fixes, shower regrouting, and wet-area sealing done to a high standard." },
+    { icon: <Users className="h-7 w-7 text-primary" />, title: "Care for your space", desc: "We work neatly, protect nearby areas, and leave the place tidy when we're done." },
+    { icon: <Clock className="h-7 w-7 text-primary" />, title: "Dependable service", desc: "We show up ready, communicate clearly, and keep your repair on track without unnecessary waits." },
   ];
 
   const stats = [
-    { value: "10-Year", label: "Waterproof Warranty" },
+    { value: "10-Year", label: "Waterproof Guarantee" },
     { value: "Licensed", label: "& Fully Insured" },
-    { value: "500+", label: "Showers Repaired" },
-    { value: "100%", label: "Leak-Free Guarantee" },
+    { value: "500+", label: "Showers Fixed" },
+    { value: "100%", label: "No-Leak Promise" },
   ];
 
   return (
@@ -113,29 +113,29 @@ export default function AboutClient() {
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-10 text-center">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] uppercase tracking-[0.35em] text-white/90"
-          >
-            About GROUTIX
-          </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-8 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
-          >
-            Melbourne's leaking shower specialists
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mx-auto mt-6 max-w-xl text-base sm:text-lg text-white/80 leading-relaxed"
-          >
-            Melbourne's trusted leaking shower specialists. Permanent repairs backed by a 10-year waterproof warranty.
-          </motion.p>
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] uppercase tracking-[0.35em] text-white/90"
+              >
+                Who We Are
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="mt-8 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
+              >
+                Melbourne's shower regrouting experts
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="mx-auto mt-6 max-w-xl text-base sm:text-lg text-white/80 leading-relaxed"
+              >
+                We help homeowners fix leaky showers, broken grout, and worn wet areas with expert repairs backed by a 10-year waterproof guarantee.
+              </motion.p>
         </div>
       </motion.section>
 
@@ -144,64 +144,64 @@ export default function AboutClient() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10 grid gap-16 lg:grid-cols-2 items-center">
           <div className="space-y-8 text-white">
             <motion.p
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="text-base uppercase tracking-[0.35em] text-[#97B1E5]"
-            >
-              Who we are
-            </motion.p>
-            <motion.h2
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-4xl font-black leading-tight"
-            >
-              A team that takes leaks seriously
-            </motion.h2>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="space-y-4"
-            >
-              {`We built GROUTIX around a simple idea: most leaking showers can be fixed properly without tearing the whole bathroom apart. Too many homeowners are told they need a full renovation when a targeted, expert repair would do the job for a fraction of the cost.
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="text-base uppercase tracking-[0.35em] text-[#97B1E5]"
+              >
+                Our Story
+              </motion.p>
+              <motion.h2
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="text-4xl font-black leading-tight"
+              >
+                A team focused on grout and shower fixes
+              </motion.h2>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="space-y-4"
+              >
+                {`Groutix started with a simple idea: many leaky showers and failing tiled wet areas can be fixed properly without tearing out the whole bathroom. When grout lines, corners, and seals wear out, an expert repair is often a better choice than a full renovation.
 
-Today we help households right across Melbourne stop leaks, beat mould and protect their homes — with workmanship we're proud to stand behind for a decade.`.split("\n\n").map((para, i) => (
-                <p key={i} className="text-white/80 leading-relaxed text-base sm:text-lg">
-                  {para}
-                </p>
-              ))}
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="grid gap-4 sm:grid-cols-2"
-            >
-              {[
-                "Specialists in tile and bathroom waterproofing",
-                "Repairs that usually keep your tiles in place",
-                "Backed by a written 10-year warranty",
-                "Fully licensed and insured",
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-                  whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.2 } }}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-5 text-base text-white/80 cursor-default"
-                >
-                  {item}
-                </motion.div>
-              ))}
-            </motion.div>
+Today we help homeowners across Melbourne restore grout lines, stop moisture from getting in, and protect tiled surfaces with a fix-first approach made for long-lasting results.`.split("\n\n").map((para, i) => (
+                  <p key={i} className="text-white/80 leading-relaxed text-base sm:text-lg">
+                    {para}
+                  </p>
+                ))}
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="grid gap-4 sm:grid-cols-2"
+              >
+                {[
+                  "Experts in shower regrouting and grout fixes",
+                  "Wet-area repairs that usually keep tiles in place",
+                  "Written 10-year waterproof guarantee on full shower regrouting",
+                  "Professional work with clear communication",
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
+                    whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.2 } }}
+                    className="rounded-3xl border border-white/10 bg-white/5 p-5 text-base text-white/80 cursor-default"
+                  >
+                    {item}
+                  </motion.div>
+                ))}
+              </motion.div>
           </div>
           <AnimatedImage className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 h-[500px] flex items-center justify-center shadow-md hover:shadow-xl transition-shadow">
               {/* Decorative corner elements */}
@@ -244,22 +244,22 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
       <AnimatedSection className="bg-[#0A1F5D] py-24 text-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-10 text-center mb-14">
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-base uppercase tracking-[0.35em] text-[#97B1E5]"
-          >
-            What we stand for
-          </motion.p>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="mt-4 text-5xl font-black leading-tight"
-          >
-            The values behind every job
-          </motion.h2>
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-base uppercase tracking-[0.35em] text-[#97B1E5]"
+              >
+                Our Values
+              </motion.p>
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="mt-4 text-5xl font-black leading-tight"
+              >
+                What drives every job we do
+              </motion.h2>
         </div>
         <div className="max-w-7xl mx-auto px-6 lg:px-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {values.map((item, i) => (
@@ -293,7 +293,7 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
               viewport={{ once: true }}
               className="text-base uppercase tracking-[0.35em] text-primary"
             >
-              Request A Quote
+              Get A Quote
             </motion.p>
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -302,7 +302,7 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
               transition={{ delay: 0.1 }}
               className="text-4xl font-black text-neutral-900"
             >
-              Ready to fix your shower for good?
+              Ready to fix your grout and shower the right way?
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -311,7 +311,7 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
               transition={{ delay: 0.2 }}
               className="max-w-xl text-neutral-600 leading-relaxed text-lg"
             >
-              Tell us about your bathroom issue and we'll provide a same-day quote with clear pricing, realistic timing and a waterproof guarantee that stands behind the work.
+              Tell us what's going on in your bathroom and we'll give you a clear quote, practical repair advice, and a work-backed solution for the issue.
             </motion.p>
             <div className="grid gap-4 sm:grid-cols-2">
               <motion.div
@@ -322,8 +322,8 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
                 whileHover={{ y: -4, scale: 1.03, transition: { duration: 0.2 } }}
                 className="rounded-3xl border border-neutral-200 bg-[#F8FAFF] p-6"
               >
-                <p className="text-sm uppercase tracking-[0.35em] text-[#5C8AFE]">Fast response</p>
-                <p className="mt-3 text-base text-neutral-600 leading-relaxed">Our team reaches out quickly so your repair is booked fast.</p>
+                <p className="text-sm uppercase tracking-[0.35em] text-[#5C8AFE]">Quick reply</p>
+                <p className="mt-3 text-base text-neutral-600 leading-relaxed">Our team gets back to you fast so grout and leak issues can be checked out right away.</p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -333,8 +333,8 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
                 whileHover={{ y: -4, scale: 1.03, transition: { duration: 0.2 } }}
                 className="rounded-3xl border border-neutral-200 bg-[#F8FAFF] p-6"
               >
-                <p className="text-sm uppercase tracking-[0.35em] text-[#5C8AFE]">Fixed pricing</p>
-                <p className="mt-3 text-base text-neutral-600 leading-relaxed">No hidden charges — just transparent service from start to finish.</p>
+                <p className="text-sm uppercase tracking-[0.35em] text-[#5C8AFE]">Clear pricing</p>
+                <p className="mt-3 text-base text-neutral-600 leading-relaxed">No unclear allowances or surprise extra costs, just simple pricing and plans.</p>
               </motion.div>
             </div>
           </div>
@@ -345,7 +345,7 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
             
             <div className="mb-6">
               <p className="text-base uppercase tracking-[0.35em] text-primary">Get a free quote</p>
-              <h3 className="mt-3 text-3xl font-black text-neutral-900">Start your repair today</h3>
+              <h3 className="mt-3 text-3xl font-black text-neutral-900">Book your grout fix quote</h3>
             </div>
             <form className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -377,7 +377,7 @@ Today we help households right across Melbourne stop leaks, beat mould and prote
             </form>
           </AnimatedImage>
           <div className="xl:col-span-2">
-            <PhotoSlider serviceTitle="GROUTIX" />
+            <PhotoSlider serviceTitle="Groutix" />
           </div>
         </div>
       </AnimatedSection>

@@ -18,18 +18,18 @@ export default function HowItWorksSection() {
   const steps = [
     {
       number: "01",
-      title: "Request a Free Quote",
-      description: "Fill out our quick online quote request form or call us on 7023 8094. We will discuss your issue and schedule a visit.",
+      title: "Ask for a Free Quote",
+      description: "Fill out our quick online quote form or call us on 7023 8094. We'll talk about your issue and schedule a visit.",
     },
     {
       number: "02",
-      title: "On-Site Visit & Work",
-      description: "Our local trained technician inspects the shower, confirms the quote, and completes the regrouting and resealing on the spot.",
+      title: "On-Site Check & Repairs",
+      description: "Our local trained tech looks at the shower, confirms the quote, and does the regrouting and resealing right then.",
     },
     {
       number: "03",
-      title: "Guaranteed Waterproof Seal",
-      description: "Your shower is sealed with our commercial-grade grout and silicone, backed by our leading 10-year waterproofing warranty.",
+      title: "Warranty-Backed Waterproof Seal",
+      description: "Your shower is sealed with our commercial-grade grout and silicone, backed by our top 10-year waterproof guarantee.",
     },
   ];
 
@@ -44,17 +44,17 @@ export default function HowItWorksSection() {
           {/* Left: Text */}
           <div className="space-y-6 order-2 lg:order-1">
             <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-              Fix Your Shower<br />
-              <span className="text-[#001F97]">Without a Full Renovation</span>
-            </h2>
-            <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
-              <p>
-                If your shower is leaking through the grout, looks permanently dirty or smells damp no matter how much you clean it, you&apos;re not alone. These issues are generally caused by failed grout or deteriorated seals and not necessarily the tiles themselves.
-              </p>
-              <p className="font-semibold text-neutral-800">
-                GROUTIX specialises in restoring showers across Australia with specialist regrouting, resealing and repairing the root cause of the problem.
-              </p>
-            </div>
+                Fix Your Shower<br />
+                <span className="text-[#001F97]">Without a Complete Renovation</span>
+              </h2>
+              <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
+                <p>
+                  If your shower is leaking through the grout, always looks dirty, or smells damp no matter how much you clean it, you're not the only one. These problems are usually caused by worn grout or broken seals, not necessarily the tiles themselves.
+                </p>
+                <p className="font-semibold text-neutral-800">
+                  Groutix focuses on restoring showers all over Australia with expert regrouting, resealing, and fixing the real cause of the issue.
+                </p>
+              </div>
           </div>
           {/* Right: Image */}
           <div className="order-1 lg:order-2">
@@ -71,17 +71,17 @@ export default function HowItWorksSection() {
         <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
           <div className="max-w-3xl space-y-5">
             <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-              A Permanent Solution,<br />
-              <span className="text-[#001F97]">Not a Temporary Patch</span>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
-              <p>
-                At GROUTIX, we don&apos;t cover up failing grout with surface sealers or quick cosmetic fixes. We remove the failed material, properly prepare the affected areas and rebuild the shower&apos;s protective grout and sealant system using professional-grade materials designed for wet environments.
-              </p>
-              <p>
-                Our goal is simple: stop the problem at its source, deliver a long-lasting repair and help you avoid repeated call-outs and costly damage. That&apos;s why completed leaking shower repairs are backed by our 10-year waterproof warranty.
-              </p>
-            </div>
+                A Lasting Solution,<br />
+                <span className="text-[#001F97]">Not a Quick Fix</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
+                <p>
+                  At Groutix, we don't just hide worn grout with surface sealers or fast cosmetic fixes. We take out the broken material, properly prep the affected areas, and rebuild the shower's protective grout and sealant system with professional-grade materials made for wet spaces.
+                </p>
+                <p>
+                  Our goal is simple: stop the problem at the source, give you a long-lasting repair, and help you avoid repeat visits and costly damage. That's why finished leaky shower repairs are backed by our 10-year waterproof guarantee.
+                </p>
+              </div>
           </div>
 
           {/* Before & After — panoramic wide image */}
@@ -97,13 +97,13 @@ export default function HowItWorksSection() {
         <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-12">
           {/* Header */}
           <div className="space-y-3 max-w-3xl">
-            <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-              How Our <span className="text-[#001F97]">Process Works</span>
-            </h2>
-            <p className="text-neutral-500 text-base sm:text-[18px]">
-              We make it simple to repair and seal your leaking shower. Here is what to expect when you choose GROUTIX.
-            </p>
-          </div>
+              <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
+                How Our <span className="text-[#001F97]">Process Goes</span>
+              </h2>
+              <p className="text-neutral-500 text-base sm:text-[18px]">
+                We make it easy to fix and seal your leaky shower. Here's what to expect when you go with Groutix.
+              </p>
+            </div>
 
           {/* Steps Grid — each step has its own image */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">

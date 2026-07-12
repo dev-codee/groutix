@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions",
-  description: "Terms and conditions for GROUTIX services and website usage.",
+  description: "Terms and conditions for Groutix services and website usage.",
   alternates: { canonical: "/terms-conditions" },
 };
 
@@ -48,8 +48,8 @@ export default function TermsConditionsPage() {
               <p className="text-neutral-700 mb-4">
                 If you have any questions about our terms and conditions, please contact us at:
               </p>
-              <a href="mailto:info@groutix.com" className="inline-flex font-bold text-[#001F97] hover:text-accent transition-colors underline">
-                info@groutix.com
+              <a href="mailto:info@Groutix.com" className="inline-flex font-bold text-[#001F97] hover:text-accent transition-colors underline">
+                info@Groutix.com
               </a>
             </div>
 

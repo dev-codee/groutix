@@ -6,14 +6,14 @@ import type { SuburbGroup } from "@/app/locations/CityPageClient";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Shower Regrouting Melbourne | GROUTIX",
+  title: "Shower Regrouting Melbourne | Groutix",
   description:
-    "Expert shower regrouting and leaking shower repair across Melbourne. GROUTIX covers all Melbourne suburbs with professional grout services and a 10-year waterproof warranty.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Melbourne. Groutix services homes and apartments throughout Melbourne with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/melbourne" },
   openGraph: {
-    title: "Shower Regrouting Melbourne — GROUTIX",
+    title: "Shower Regrouting Melbourne — Groutix",
     description:
-      "Expert shower regrouting and leaking shower repair across Melbourne. 10-year warranty. Free quotes.",
+      "Melbourne shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/melbourne",
     type: "website",
   },
@@ -123,13 +123,13 @@ const melbourneSuburbs: SuburbGroup[] = [
   },
 ];
 
-const serviceAreaText = `Melbourne is home to Australia's biggest housing stock and some of its toughest bathroom challenges. From Federation cottages in Fitzroy and Carlton to art deco apartments in St Kilda, brick homes across the Eastern suburbs and modern family estates spreading through outer Melbourne, every era brings its own grout and silicone problems.
+const serviceAreaText = `Melbourne properties place heavy demands on grout joints, silicone seals and shower waterproofing. From older inner-city homes to new apartment developments, worn grout and leaking shower bases are common issues that can quickly lead to hidden moisture damage.
 
-GROUTIX covers the full Melbourne metropolitan area — from the CBD to the outer suburbs. We handle tile regrouting and leaking shower repairs without ripping out tiles or sending you into a renovation. The tiles stay where they are. Only the failed grout and silicone get replaced — most jobs finished in a single day.
+Groutix services the full Melbourne metro region with specialist shower regrouting, leaking shower repair, silicone replacement and tile restoration. In most cases, we repair the failed grout and sealing system without removing the existing tiles, helping you avoid the cost of a full bathroom renovation.
 
-Melbourne homes have a real bathroom challenge. The state's climate drives mould straight into grout lines, and silicone seals crack along every shower edge after just a few wet seasons. In high-rise apartments, even a small failure in the silicone can let water track down through the slab to the unit below.
+Cold winters, condensation, daily use and natural movement all contribute to grout cracking and seal breakdown across Melbourne bathrooms. Our team focuses on resolving the source of the problem so your shower is restored properly, not just cosmetically improved.
 
-Every quote is free, every job is properly warranted, and our team works around your schedule. If your grout is grey, your shower is leaking, or your bathroom is past its best, book your local GROUTIX specialist in Melbourne today.`;
+Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof warranty. Book Groutix for specialist grout and shower repairs across Melbourne.`;
 
 export default async function MelbournePage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
@@ -139,8 +139,8 @@ export default async function MelbournePage() {
       <Navbar />
       <CityPageClient
         cityName="Melbourne"
-        heroHeading="Shower Regrouting & Leaking Shower Repair Experts Melbourne"
-        heroSubtitle="Leaking showers and deteriorating grout are common problems in Melbourne homes and apartments. GROUTIX provides specialist shower repair and professional regrouting services across Melbourne, designed to stop leaks and prevent further water damage without the need for full bathroom renovations."
+        heroHeading="Shower Regrouting & Grout Repair Specialists Melbourne"
+        heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Melbourne. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
         serviceAreaText={serviceAreaText}
         serviceAreaMapImage="/img21.jpeg"
         heroImage="/img20.jpeg"

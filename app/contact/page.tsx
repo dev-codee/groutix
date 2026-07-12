@@ -5,11 +5,11 @@ import ContactClient from "./ContactClient";
 
 export const metadata: Metadata = {
   title: "Contact & Free Quote",
-  description: "Get a free, obligation-free shower regrouting quote from GROUTIX. Call 7023 8094 or fill out our online form.",
+  description: "Request a free quote for shower regrouting, grout repair, leaking shower repair or tile sealing. Call Groutix or send your details online.",
   alternates: { canonical: "/contact" },
   openGraph: {
-    title: "Contact & Free Quote — GROUTIX",
-    description: "Get a free, obligation-free shower regrouting quote. Call 7023 8094 or use our online form.",
+    title: "Contact & Free Quote — Groutix",
+    description: "Talk to Groutix about shower regrouting, leaking shower repairs and grout restoration. Fast quotes and clear advice.",
     url: "/contact",
     type: "website",
   },

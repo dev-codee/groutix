@@ -5,19 +5,19 @@
 // and structured data — derives from it.
 
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com.au"
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.Groutix.com.au"
 ).replace(/\/$/, "");
 
 // Default social-share image (swap for a branded 1200×630 image when you have one).
 export const OG_IMAGE = "/img11.jpeg";
 
 export const BUSINESS = {
-  name: "GROUTIX",
+  name: "Groutix",
   legalName: "Groutix — Epoxy Regrouting, Shower & Balcony Leak Repairs",
   description:
-    "Australia's shower regrouting and leak repair specialists. Fix leaking showers without removing tiles, backed by a 10-year waterproof warranty.",
+    "Groutix provides specialist shower regrouting, grout repair, leaking shower repair and tile sealing services, helping restore tiled wet areas without full demolition.",
   phone: "7023 8094",
-  email: "info@groutix.com",
+  email: "info@Groutix.com",
   address: {
     street: "82A Marigold Cres",
     locality: "Gowanbrae",

@@ -7,10 +7,10 @@ import { faqJsonLd } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description:
-    "Answers to common questions about GROUTIX shower regrouting, leaking shower repairs, tile regrouting, pricing and our 10-year waterproof warranty.",
+    "Answers to common questions about Groutix shower regrouting, leaking shower repairs, tile regrouting, pricing and our 10-year waterproof warranty.",
   alternates: { canonical: "/faq" },
   openGraph: {
-    title: "Frequently Asked Questions | GROUTIX",
+    title: "Frequently Asked Questions | Groutix",
     description:
       "Answers to common questions about shower regrouting, leaking shower repairs, tile regrouting, pricing and our 10-year waterproof warranty.",
     url: "/faq",

@@ -46,7 +46,7 @@ export default function Footer() {
               <Logo light={true} />
             </Link>
             <p className="text-base text-neutral-400 leading-relaxed">
-              Australia's trusted shower regrouting and tile repair specialist. Over 20 years of experience resolving leaking showers and damaged tiles with quality workmanship and a leading <span className="text-accent font-bold">10-year warranty</span>.
+              Expert shower regrouting, grout fixes, and leaky shower restoration for homes and managed properties. Groutix helps restore tiled wet areas with quality work and a top <span className="text-accent font-bold">10-year guarantee</span>.
             </p>
             <div className="flex space-x-4">
               {["Facebook", "Instagram", "Twitter", "Linkedin"].map((social, i) => (
@@ -152,7 +152,7 @@ export default function Footer() {
                   <Phone className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="block font-bold">7023 8094</span>
-                    <span className="text-sm text-neutral-500">Speak with our team</span>
+                    <span className="text-sm text-neutral-500">Talk through your repair</span>
                   </div>
                 </a>
               </motion.li>
@@ -165,8 +165,8 @@ export default function Footer() {
               >
                 <Mail className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="block font-bold">info@groutix.com</span>
-                  <span className="text-sm text-neutral-500 font-medium">Request a quote or send photos</span>
+                  <span className="block font-bold">info@Groutix.com</span>
+                  <span className="text-sm text-neutral-500 font-medium">Request a quote or send shower photos</span>
                 </div>
               </motion.li>
               <motion.li
@@ -179,8 +179,8 @@ export default function Footer() {
                 <Clock className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="block font-bold">Office Hours</span>
-                  <span className="block text-sm text-neutral-500">Mon – Fri: 9:00am – 5:00pm</span>
-                  <span className="block text-sm text-neutral-500">Sat – Sun: 10:00am – 3:00pm</span>
+                  <span className="block text-sm text-neutral-500">Mon – Fri: 9am – 5pm</span>
+                  <span className="block text-sm text-neutral-500">Sat – Sun: 10am – 3pm</span>
                 </div>
               </motion.li>
             </ul>
@@ -196,7 +196,7 @@ export default function Footer() {
           className="pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500 space-y-4 md:space-y-0"
         >
           <div>
-            &copy; {currentYear} GROUTIX. All rights reserved. Built with Next.js &amp; Tailwind CSS.
+            &copy; {currentYear} Groutix. All rights reserved. Built with Next.js &amp; Tailwind CSS.
           </div>
           <div className="flex space-x-6">
             <motion.div

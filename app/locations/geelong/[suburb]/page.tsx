@@ -22,11 +22,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = formatSuburbName(suburb);
   return {
     title: `Shower Regrouting ${name} | Geelong | GROUTIX`,
-    description: `Expert shower regrouting, leaking shower repair and tile sealing services in ${name}, Geelong. Standard 10-year waterproof warranty. Get a free quote today!`,
+    description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Geelong. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/geelong/${suburb}` },
     openGraph: {
       title: `Shower Regrouting ${name} | Geelong — GROUTIX`,
-      description: `Expert shower regrouting, leaking shower repair and tile sealing services in ${name}, Geelong. 10-year warranty. Free quotes.`,
+      description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Geelong. Free quotes and specialist workmanship.`,
       url: `/locations/geelong/${suburb}`,
       type: "website",
     },
@@ -86,11 +86,11 @@ const geelongSuburbs: SuburbGroup[] = [
 ];
 
 function getSuburbExplanation(suburb: string): string {
-  return `${suburb} is a key residential and community hub within the greater Geelong region, known for its unique coastal influence, local parks, and active community life. Over the years, the area has grown to accommodate both established families and holidaymakers, blending seaside charm with modern residential developments.
+  return `${suburb} combines coastal or regional living with a wide mix of established homes, renovated bathrooms and newer developments. Over time, those wet areas can suffer from cracked grout, tired silicone and moisture-related wear that affects both appearance and waterproof performance.
 
-For properties in ${suburb}, bathroom dampness, leaking showers, and grout deterioration are common challenges. Daily use and natural building movement cause traditional grout to crack, leading to hidden moisture build-up behind tiles. The temperature fluctuations and coastal salt air across the seasons in Victoria accelerate this wear, making regular inspection of seals and joints essential to protect home structures.
+In ${suburb}, daily use, seasonal changes and coastal conditions can speed up grout deterioration and shower seal failure. When moisture gets behind tiled surfaces, small grout issues can quickly turn into bigger repair work if they are ignored.
 
-GROUTIX provides specialized grout repair, tile regrouting, silicone sealing, and leaking shower repair across all streets and residential estates in ${suburb}. Our local specialists restore your tiled areas to pristine condition, stopping leaks without the need to remove tiles, backed by our fully certified 10-Year Waterproof Warranty.`;
+GROUTIX provides specialist grout repair, shower regrouting, leaking shower repair and silicone replacement across ${suburb}. We restore tiled wet areas without unnecessary demolition, with full shower regrouting work backed by a 10-year waterproof warranty.`;
 }
 
 export default async function GeelongSuburbPage({ params }: Props) {
@@ -100,19 +100,19 @@ export default async function GeelongSuburbPage({ params }: Props) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
   const explanation = getSuburbExplanation(suburbName);
 
-  const serviceAreaText = `GROUTIX provides professional shower regrouting and leaking shower repair services across ${suburbName} and the greater Geelong area. We handle tile regrouting, silicone seal replacements, and leaking shower fixes without the cost or hassle of full bathroom demolition.
+  const serviceAreaText = `GROUTIX provides shower regrouting, grout repair, silicone replacement and leaking shower repairs across ${suburbName} and the greater Geelong region. We repair failed wet-area surfaces without pushing you toward full bathroom demolition.
 
-Many homes in ${suburbName} experience common bathroom grout deterioration and silicone cracking over time. Whether it's an older classic residence or a modern Surf Coast property development, temperature fluctuations and daily usage inevitably cause grout to leak and seals to fail.
+Homes in ${suburbName} often deal with cracked grout, worn silicone and hidden shower moisture issues caused by age, daily use and coastal exposure. Fixing these defects early helps protect the tiled surface and the substrate underneath.
 
-Our local GROUTIX specialist team is equipped to inspect, restore, and seal your bathroom tiles and grout to perfection, protecting your property value with our industry-leading 10-year waterproof guarantee. Most jobs are completed in just one day.`;
+Our specialist team delivers practical repairs using quality materials and a process designed for long-term performance. Full shower regrouting work is backed by a 10-year waterproof warranty.`;
 
   return (
     <>
       <Navbar />
       <CityPageClient
         cityName={suburbName}
-        heroHeading={`Shower Regrouting & Leaking Shower Repair in ${suburbName}`}
-        heroSubtitle={`Professional grout and shower sealing services in ${suburbName}, Geelong. GROUTIX resolves leaking showers, cracked tiles, and mouldy grout lines with zero tiling demolition and a 10-year waterproof warranty.`}
+        heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
+        heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Geelong. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
         serviceAreaMapImage="/img21.jpeg"
         heroImage="/img20.jpeg"

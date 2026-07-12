@@ -300,7 +300,7 @@ export default function FaqPageClient() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] uppercase tracking-[0.35em] text-white/90"
           >
-            GROUTIX FAQs
+            Groutix FAQs
           </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, ChevronLeft, ChevronRight, ChevronDown, Droplets, Grid2x2, Wrench, ShowerHead, Hammer, Building2 } from "lucide-react";
+import { Phone, ChevronLeft, ChevronRight, ChevronDown, Droplets, Grid2x2, Wrench, ShowerHead, Hammer, Building2, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
@@ -95,21 +95,21 @@ function ImgBox({
 /* ─── PhotoSlider ─── */
 function PhotoSlider({ cityName }: { cityName: string }) {
   const [idx, setIdx] = useState(0);
-  const total = 4;
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
-  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {visibleImages.map((img, i) => (
-          <AnimatedImage key={i} delay={i * 0.1}>
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
               src={img}
               label={`${cityName} Photo ${idx + i + 1}`}
               aspect="aspect-[4/3]"
-              className="rounded-xl"
+              className="rounded-sm"
             />
           </AnimatedImage>
         ))}
@@ -117,19 +117,19 @@ function PhotoSlider({ cityName }: { cityName: string }) {
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={prev}
-          className="h-9 w-9 rounded-xl bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={next}
-          className="h-9 w-9 rounded-xl bg-primary hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
         <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
           <div
-            className="h-full bg-primary rounded-full transition-all duration-300"
+            className="h-full bg-[#001F97] rounded-full transition-all duration-300"
             style={{ width: `${((idx + 1) / total) * 100}%` }}
           />
         </div>
@@ -215,32 +215,47 @@ const SERVICES = [
   {
     slug: "shower-regrouting",
     title: "Shower Regrouting",
-    desc: "Shower regrouting is our core specialty. We remove failing grout and regrout the shower using durable, moisture-resistant grout designed specifically for wet areas.",
-  },
-  {
-    slug: "shower-base-repair",
-    title: "Shower Base Repair",
-    desc: "We repair cracked and leaking shower bases to restore the waterproof floor without full demolition.",
+    desc: "We remove old, worn shower grout and install new, durable grout formulated specifically for moisture-prone environments, breathing new life into both your shower’s appearance and its waterproofing capabilities.",
   },
   {
     slug: "tile-regrouting",
     title: "Tile Regrouting",
-    desc: "Our tile regrouting service refreshes tired or stained grout lines throughout bathrooms, laundries, kitchens, balconies and other tiled areas.",
+    desc: "Refresh discolored, cracked, or worn-out grout lines across bathrooms, laundries, kitchens, balconies, and other tiled surfaces with a crisp, long-lasting result.",
+  },
+  {
+    slug: "shower-base-repair",
+    title: "Shower Base Repair",
+    desc: "Repair cracked or leaking shower floors with targeted base restoration that rebuilds waterproofing integrity—no full tear-out required.",
   },
   {
     slug: "leaking-shower-repair",
     title: "Leaking Shower Repair",
-    desc: "Leaking showers require more than sealant. We identify where water is escaping, repair compromised grout and seals and fully regrout the shower to restore complete waterproof integrity.",
+    desc: "We trace shower leak causes to damaged grout lines, corner joints, and seals, then permanently repair the wet area instead of simply masking the issue.",
+  },
+  {
+    slug: "balcony-leak-repairs",
+    title: "Balcony Leak Repairs",
+    desc: "Diagnose and repair balcony leaks by removing failed grout and deteriorated sealants, then restoring the area with weatherproof materials to protect your property from water damage.",
+  },
+  {
+    slug: "silicone-recaulking",
+    title: "Silicone & Recaulking",
+    desc: "Remove old, mouldy silicone and apply fresh, mould-resistant sealant to wet area joints, delivering a clean, professional finish that protects against water ingress.",
+  },
+  {
+    slug: "epoxy-grout",
+    title: "Epoxy Grout",
+    desc: "Upgrade to durable, non-porous epoxy grout that resists stains, mould, and water penetration, ideal for showers, balconies, and high-traffic tiled areas.",
   },
   {
     slug: "small-tiling-jobs",
     title: "Small Tiling Jobs",
-    desc: "For loose, cracked or damaged tiles, we provide small tiling repairs that integrate seamlessly with existing finishes.",
+    desc: "Swap out broken tiles, resecure loose tiles, and repair damaged grout to resolve isolated tile issues neatly and professionally.",
   },
   {
     slug: "real-estate-property-services",
     title: "Real Estate & Property Services",
-    desc: "We partner with property managers, strata companies and commercial owners to provide fast, reliable maintenance solutions.",
+    desc: "Assist landlords, property managers, and strata groups with efficient grout, shower, and wet-area repairs that reduce disruption and protect your investment.",
   },
 ];
 
@@ -249,6 +264,9 @@ const SERVICE_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   "tile-regrouting": Grid2x2,
   "shower-base-repair": Wrench,
   "leaking-shower-repair": ShowerHead,
+  "balcony-leak-repairs": ShieldCheck,
+  "silicone-recaulking": Wrench,
+  "epoxy-grout": Grid2x2,
   "small-tiling-jobs": Hammer,
   "real-estate-property-services": Building2,
 };
@@ -324,8 +342,8 @@ export default function CityPageClient({
           <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
             {[
               { label: `${cityName}-based shower regrouting specialists`, Icon: LocationIcon },
-              { label: "Proven solutions for leaking showers and grout failure", Icon: ShowerBadgeIcon },
-              { label: "Backed by a 10-year waterproof warranty", Icon: WarrantyBadgeIcon },
+              { label: "Repair systems built for grout failure and leaking showers", Icon: ShowerBadgeIcon },
+              { label: "10-year waterproof warranty on full shower regrouting", Icon: WarrantyBadgeIcon },
             ].map(({ label, Icon }, i) => (
               <motion.div
                 key={i}
@@ -352,26 +370,16 @@ export default function CityPageClient({
 
       {/* ── Section 2: Services (for Suburb) or Service Area (for City) ── */}
       {locationExplanation ? (
-        <AnimatedSection className="bg-neutral-50 py-16 lg:py-24 border-b border-neutral-100">
+        <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
-            <div className="space-y-3 text-center max-w-xl mx-auto">
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight"
-              >
-                Our Services
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="text-neutral-500 text-base sm:text-lg leading-relaxed"
-              >
-                GROUTIX provides specialist tile and grout services for residential and commercial properties across {cityName}. Our team is solely focused on precision, durability and long-term performance.
-              </motion.p>
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
+                What <span className="text-accent">We Do</span>
+              </h2>
+              <span className="mx-auto block h-1.5 w-20 rounded-full bg-accent" />
+              <p className="text-neutral-600 text-lg leading-relaxed">
+                Groutix delivers shower regrouting, grout repair, leaky shower fixes, and tile renewal services for both residential and commercial spaces in {cityName}. Our priority-first approach addresses deteriorating grout joints, aging sealants, and water infiltration concerns before they evolve into costly, extensive bathroom problems.
+              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {SERVICES.map((s, i) => {
@@ -386,7 +394,7 @@ export default function CityPageClient({
                   >
                     <Link
                       href={`/${s.slug}`}
-                      className="group border border-neutral-200 rounded-xl p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden h-full"
+                      className="group border border-neutral-200 rounded-sm p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden"
                     >
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="space-y-4">
@@ -405,14 +413,20 @@ export default function CityPageClient({
                   </motion.div>
                 );
               })}
-              <AnimatedImage className="relative rounded-xl overflow-hidden min-h-[250px] lg:min-h-full" delay={0.6}>
-                <ImgBox
-                  src="/img20.jpeg"
-                  label="Shower Renovation Service Image"
-                  aspect="h-full w-full absolute inset-0"
-                  className="border-0"
-                />
-              </AnimatedImage>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
+              <Link
+                href="/contact"
+                className="bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
+              >
+                Request A Quote
+              </Link>
+              <a
+                href="tel:70238094"
+                className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold px-6 py-3 rounded-sm text-base transition-colors flex items-center gap-2 active:scale-95"
+              >
+                <Phone className="h-4 w-4" /> Get In Touch
+              </a>
             </div>
           </div>
         </AnimatedSection>
@@ -428,7 +442,7 @@ export default function CityPageClient({
               />
               <div className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-4 lg:left-4 lg:right-4 bg-accent text-primary-dark p-6 rounded-xl shadow-xl z-10">
                 <p className="text-base sm:text-lg font-bold leading-relaxed">
-                  With clear communication and proven repair systems, we ensure every project is completed to the highest professional standard.
+                  Clear advice, specialist workmanship and proven repair systems on every wet-area project.
                 </p>
               </div>
             </AnimatedImage>
@@ -541,7 +555,7 @@ export default function CityPageClient({
                   transition={{ delay: 0.1 }}
                   className="text-neutral-600 text-base leading-relaxed max-w-2xl"
                 >
-                  GROUTIX services the full {cityName} region. Click on a suburb area below to see the locations we cover.
+                  Groutix services the full {cityName} region. Select a suburb area below to view the locations we cover.
                 </motion.p>
               </div>
 
@@ -593,26 +607,16 @@ export default function CityPageClient({
 
       {/* ── Our Services (only for City pages, hidden on Suburb pages) ── */}
       {!locationExplanation && (
-        <AnimatedSection className="bg-neutral-50 py-16 lg:py-24 border-b border-neutral-100">
+        <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
-            <div className="space-y-3 text-center max-w-xl mx-auto">
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight"
-              >
-                Our Services
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="text-neutral-500 text-base sm:text-lg leading-relaxed"
-              >
-                GROUTIX provides specialist tile and grout services for residential and commercial properties across {cityName}. Our team is solely focused on precision, durability and long-term performance.
-              </motion.p>
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
+                What <span className="text-accent">We Do</span>
+              </h2>
+              <span className="mx-auto block h-1.5 w-20 rounded-full bg-accent" />
+              <p className="text-neutral-600 text-lg leading-relaxed">
+                Groutix delivers shower regrouting, grout repair, leaky shower fixes, and tile renewal services for both residential and commercial spaces in {cityName}. Our priority-first approach addresses deteriorating grout joints, aging sealants, and water infiltration concerns before they evolve into costly, extensive bathroom problems.
+              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {SERVICES.map((s, i) => {
@@ -627,7 +631,7 @@ export default function CityPageClient({
                   >
                     <Link
                       href={`/${s.slug}`}
-                      className="group border border-neutral-200 rounded-xl p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden h-full"
+                      className="group border border-neutral-200 rounded-sm p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden"
                     >
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="space-y-4">
@@ -646,14 +650,20 @@ export default function CityPageClient({
                   </motion.div>
                 );
               })}
-              <AnimatedImage className="relative rounded-xl overflow-hidden min-h-[250px] lg:min-h-full" delay={0.6}>
-                <ImgBox
-                  src="/img20.jpeg"
-                  label="Shower Renovation Service Image"
-                  aspect="h-full w-full absolute inset-0"
-                  className="border-0"
-                />
-              </AnimatedImage>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
+              <Link
+                href="/contact"
+                className="bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
+              >
+                Request A Quote
+              </Link>
+              <a
+                href="tel:70238094"
+                className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold px-6 py-3 rounded-sm text-base transition-colors flex items-center gap-2 active:scale-95"
+              >
+                <Phone className="h-4 w-4" /> Get In Touch
+              </a>
             </div>
           </div>
         </AnimatedSection>
@@ -680,7 +690,7 @@ export default function CityPageClient({
               transition={{ delay: 0.1 }}
               className="text-neutral-600 font-bold text-base sm:text-lg"
             >
-              Here&apos;s Why {cityName} Customers Choose GROUTIX.
+              Why {cityName} clients choose Groutix for grout and shower repairs.
             </motion.p>
           </div>
 
@@ -765,8 +775,7 @@ export default function CityPageClient({
               viewport={{ once: true }}
               className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight"
             >
-              Request An<br />
-              <span className="text-accent">Obligation Free Quote</span>
+              Get Your <span className="text-accent">Free Quote Today</span>
             </motion.h2>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -805,7 +814,7 @@ export default function CityPageClient({
             viewport={{ once: true }}
             className="text-2xl lg:text-3xl font-black text-white leading-tight"
           >
-            Request An <span className="text-white/80">Obligation Free Quote</span>
+            Get Your <span className="text-white/80">Free Quote Today</span>
           </motion.h2>
           <motion.div
             initial={{ opacity: 0, x: 20 }}

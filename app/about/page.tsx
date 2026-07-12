@@ -5,11 +5,11 @@ import AboutClient from "./AboutClient";
 
 export const metadata: Metadata = {
   title: "About Us",
-  description: "Learn about GROUTIX — Australia's trusted shower regrouting and tile sealing specialist since 2006.",
+  description: "Learn how Groutix helps homeowners solve grout failure, leaking showers and worn wet areas with specialist regrouting and sealing services.",
   alternates: { canonical: "/about" },
   openGraph: {
-    title: "About GROUTIX",
-    description: "Australia's trusted shower regrouting and tile sealing specialist since 2006.",
+    title: "About Groutix",
+    description: "Meet the team behind Groutix and our specialist approach to shower regrouting, grout repair and wet-area restoration.",
     url: "/about",
     type: "website",
   },

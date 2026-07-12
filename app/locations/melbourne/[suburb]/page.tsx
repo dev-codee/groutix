@@ -22,11 +22,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = formatSuburbName(suburb);
   return {
     title: `Shower Regrouting ${name} | Melbourne | GROUTIX`,
-    description: `Expert shower regrouting, leaking shower repair and tile sealing services in ${name}, Melbourne. Standard 10-year waterproof warranty. Get a free quote today!`,
+    description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Melbourne. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/melbourne/${suburb}` },
     openGraph: {
       title: `Shower Regrouting ${name} | Melbourne — GROUTIX`,
-      description: `Expert shower regrouting, leaking shower repair and tile sealing services in ${name}, Melbourne. 10-year warranty. Free quotes.`,
+      description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Melbourne. Free quotes and specialist workmanship.`,
       url: `/locations/melbourne/${suburb}`,
       type: "website",
     },
@@ -139,18 +139,18 @@ const melbourneSuburbs: SuburbGroup[] = [
 
 function getSuburbExplanation(suburb: string): string {
   if (suburb === "Docklands") {
-    return `Docklands is Melbourne's most dramatic urban renewal precinct, located immediately west of the CBD along the Yarra River and Victoria Harbour. The suburb's transformation from a disused industrial port into a vibrant residential, commercial, and entertainment destination is one of Australia's most ambitious urban regeneration projects. Iconic landmarks including Etihad Stadium (Marvel Stadium), the Bolte Bridge, and the NewQuay waterfront precinct define the area, which now houses tens of thousands of residents in high-rise apartments alongside major corporate headquarters and dining destinations.
+    return `Docklands is a high-density waterfront suburb where apartment living, regular bathroom use and limited ventilation can accelerate grout wear and shower sealing failures. In buildings with smaller-format tiles and more grout joints, deterioration often becomes visible sooner and can allow moisture to travel into surrounding wall and floor areas.
 
-High-density apartment living in Docklands comes with specific bathroom maintenance considerations. In apartments, shower recesses are used intensively and often have smaller tile formats with more grout line area per square metre, meaning grout deterioration is both more common and more visible than in a standard suburban bathroom. Melbourne's cold winters drive condensation in high-rise apartments where ventilation can be limited, and the proximity to Victoria Harbour means ambient humidity levels are elevated by the water.
+Cooler weather, condensation and waterfront humidity make failed grout, mould growth and worn silicone common maintenance issues in Docklands bathrooms. These conditions can affect both owner-occupied apartments and investment properties, especially where showers are used heavily and maintenance has been delayed.
 
-The suburb's apartment-dominated residential fabric means grout and silicone maintenance is a regular requirement for both owner-occupiers and investors managing rental properties. GROUTIX services Docklands with professional tile regrouting, leaking shower repair, silicone replacement, and tile and grout sealing. A complete regrout is backed by a 10-Year Waterproof Warranty. Contact GROUTIX for a free quote in Docklands.`;
+GROUTIX provides Docklands with specialist shower regrouting, grout repair, leaking shower rectification and silicone replacement. We focus on restoring the waterproof integrity of tiled wet areas without unnecessary tile removal, backed by a 10-year waterproof warranty on full shower regrouting work.`;
   }
   
-  return `${suburb} is a key residential and community hub within the greater Melbourne region, known for its diverse housing types, local parks, and active community life. Over the years, the area has grown to accommodate both established families and young professionals, blending historical charm with modern residential developments.
+  return `${suburb} includes a mix of established homes, renovated bathrooms and newer residential developments, all of which can develop grout wear and wet-area sealing issues over time. As bathrooms age, cracked grout joints and tired silicone often become the first signs that moisture is getting where it should not.
 
-For properties in ${suburb}, bathroom dampness, leaking showers, and grout deterioration are common challenges. Daily use and natural building movement cause traditional grout to crack, leading to hidden moisture build-up behind tiles. The temperature fluctuations across the seasons in Victoria accelerate this wear, making regular inspection of seals and joints essential to protect home structures.
+In ${suburb}, everyday use, seasonal movement and ongoing exposure to steam and water can lead to leaking showers, stained grout lines and hidden dampness behind tiled surfaces. Early repair work is the best way to avoid more extensive water damage and keep the bathroom functioning properly.
 
-GROUTIX provides specialized grout repair, tile regrouting, silicone sealing, and leaking shower repair across all streets and residential estates in ${suburb}. Our local specialists restore your tiled areas to pristine condition, stopping leaks without the need to remove tiles, backed by our fully certified 10-Year Waterproof Warranty.`;
+GROUTIX provides specialist grout repair, shower regrouting, leaking shower repair and silicone replacement across ${suburb}. Our team restores tiled wet areas without unnecessary demolition, with full shower regrouting work backed by a 10-year waterproof warranty.`;
 }
 
 export default async function SuburbPage({ params }: Props) {
@@ -160,19 +160,19 @@ export default async function SuburbPage({ params }: Props) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
   const explanation = getSuburbExplanation(suburbName);
 
-  const serviceAreaText = `GROUTIX provides professional shower regrouting and leaking shower repair services across ${suburbName} and the greater Melbourne area. We handle tile regrouting, silicone seal replacements, and leaking shower fixes without the cost or hassle of full bathroom demolition.
+  const serviceAreaText = `GROUTIX provides shower regrouting, grout repair, silicone replacement and leaking shower repairs across ${suburbName} and the greater Melbourne region. We target failed grout joints and worn seals without turning a repair into a full renovation.
 
-Many homes in ${suburbName} experience common bathroom grout deterioration and silicone cracking over time. Whether it's an older classic residence or a modern townhouse development, temperature fluctuations and daily usage inevitably cause grout to leak and seals to fail.
+Bathrooms in ${suburbName} commonly develop cracked grout, mouldy joints and failed silicone as surfaces age and building movement takes its toll. Addressing these issues early helps protect the substrate behind the tiles and keeps shower areas watertight.
 
-Our local GROUTIX specialist team is equipped to inspect, restore, and seal your bathroom tiles and grout to perfection, protecting your property value with our industry-leading 10-year waterproof guarantee. Most jobs are completed in just one day.`;
+Our specialist team delivers practical wet-area repairs with quality materials, clear advice and workmanship focused on long-term performance. Full shower regrouting work is backed by a 10-year waterproof warranty.`;
 
   return (
     <>
       <Navbar />
       <CityPageClient
         cityName={suburbName}
-        heroHeading={`Shower Regrouting & Leaking Shower Repair in ${suburbName}`}
-        heroSubtitle={`Professional grout and shower sealing services in ${suburbName}, Melbourne. GROUTIX resolves leaking showers, cracked tiles, and mouldy grout lines with zero tiling demolition and a 10-year waterproof warranty.`}
+        heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
+        heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Melbourne. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
         serviceAreaMapImage="/img21.jpeg"
         heroImage="/img20.jpeg"

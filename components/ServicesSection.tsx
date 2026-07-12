@@ -33,42 +33,42 @@ export default function ServicesSection() {
     {
       id: "shower-regrouting",
       title: "Shower Regrouting",
-      description: "Shower regrouting is our core specialty. We remove failing grout and regrout the shower using durable, moisture-resistant grout designed for high-use wet areas.",
+      description: "Take out worn-out shower grout and swap it with fresh, damp-area grout made to boost both looks and waterproofing.",
       imageLabel: "Shower Regrouting Service Image",
       imageSrc: "/img8.jpeg"
     },
     {
       id: "shower-base-repair",
       title: "Shower Base Repair",
-      description: "We repair cracked, leaking and damaged shower bases to restore the waterproof floor without full demolition.",
+      description: "Fix cracked or leaking shower floors with precise base restoration that brings back waterproof integrity without complete demolition.",
       imageLabel: "Shower Base Repair Service Image",
       imageSrc: "/img4.avif"
     },
     {
       id: "tile-regrouting",
       title: "Tile Regrouting",
-      description: "Our tile regrouting service refreshes tired or stained grout lines throughout bathrooms, laundries, kitchens, balconies and other tiled areas.",
+      description: "Give stained, broken, or outdated grout lines a refresh in bathrooms, laundries, kitchens, balconies, and other tiled areas.",
       imageLabel: "Tile Regrouting Service Image",
       imageSrc: "/img40.jpeg"
     },
     {
       id: "leaking-shower-repair",
       title: "Leaking Shower Repair",
-      description: "Leaking showers require more than sealant. We identify where water is escaping, repair compromised grout and seals and fully regrout the shower to restore complete waterproof integrity.",
+      description: "Track leaky shower issues to faulty grout lines and seals, then properly restore the wet area instead of just hiding the problem.",
       imageLabel: "Leaking Shower Repair Image",
       imageSrc: "/img23.jpeg"
     },
     {
       id: "small-tiling-jobs",
       title: "Small Tiling Jobs",
-      description: "For loose, cracked or damaged tiles, we provide small tiling repairs that integrate seamlessly with existing finishes, ideal when isolated tiles need replacement.",
+      description: "Replace broken tiles, reattach loose tiles, and patch up damaged grout so isolated tile issues are fixed cleanly and expertly.",
       imageLabel: "Small Tiling Jobs Image",
       imageSrc: "/img16.jpeg"
     },
     {
       id: "real-estate-property-services",
       title: "Real Estate & Property Services",
-      description: "We partner with residential property managers, investors, strata companies and commercial owners to protect the most used wet areas of their properties.",
+      description: "Help landlords, property managers, and strata teams with effective grout, shower, and wet-area repairs that protect the property.",
       imageLabel: "Real Estate & Property Image",
       imageSrc: "/img9.jpeg"
     },
@@ -80,10 +80,10 @@ export default function ServicesSection() {
         {/* Header */}
         <div className="space-y-3 mb-12">
           <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-            Our <span className="text-accent">Services</span>
+            What <span className="text-accent">We Offer</span>
           </h2>
           <p className="text-neutral-500 text-base sm:text-[18px]">
-            GROUTIX specialises in shower and balcony repairs, regrouting, tile repairs and leak rectification for residential and commercial properties. Our focused repair-first approach helps resolve failed grout, deteriorated sealants and water ingress without unnecessary full renovations.
+            Groutix focuses on shower regrouting, grout fixes, leaky shower repairs, and tile restoration for homes and businesses. Our fix-first method is made to solve broken grout and sealing problems without unnecessary demolition.
           </p>
         </div>
 
@@ -138,12 +138,12 @@ export default function ServicesSection() {
               <span className="text-white/10 font-bold text-sm uppercase tracking-widest">Bathroom Photo Place</span>
             </div>
             <div className="relative z-10 space-y-4">
-              <h3 className="text-3xl font-black tracking-tight text-white">Request A Quote</h3>
+              <h3 className="text-3xl font-black tracking-tight text-white">Get a Quote</h3>
               <Link
                 href="/contact"
                 className="inline-block bg-white hover:bg-neutral-100 text-primary font-bold px-6 py-3 rounded-sm text-base tracking-wide transition-colors shadow active:scale-95"
               >
-                Get In Touch
+                Contact Us
               </Link>
             </div>
           </motion.div>

@@ -199,16 +199,16 @@ const failSectionBadges: Record<string, string[]> = {
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const total = 4;
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
   
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
-  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
@@ -826,7 +826,7 @@ export default function ServicePageTemplate({
               className="space-y-6"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold leading-tight">
-                What You Get When You <span className="text-accent">Work With Us</span>
+                Why Homeowners Choose <span className="text-accent">Groutix</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">{workWithUsText}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -850,7 +850,7 @@ export default function ServicePageTemplate({
               className="space-y-5"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-                GROUTIX <span className="text-accent">Guarantee</span>
+                Our <span className="text-accent">Promise</span>
               </h2>
               <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
                 {guaranteeText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
@@ -902,8 +902,8 @@ export default function ServicePageTemplate({
                 viewport={{ once: true }}
                 className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight"
               >
-                Request An<br />
-                <span className="text-accent">Obligation Free Quote</span>
+                Get Your<br />
+                <span className="text-accent">Free Quote Today</span>
               </motion.h2>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -926,38 +926,17 @@ export default function ServicePageTemplate({
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
-            <div className="space-y-6 max-w-3xl">
+            <div className="space-y-6 max-w-3xl mx-auto">
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight"
+                className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight text-center"
               >
                 Frequently Asked <span className="text-accent">Questions</span>
               </motion.h2>
               <ul className="divide-y divide-neutral-200 border border-neutral-200 p-0">
-                {[
-                  {
-                    q: "How Do I Know If My Shower Needs Regrouting or Recaulking?",
-                    a: "If you notice cracked, missing or discoloured shower grout, peeling or mouldy silicone, water leaking outside the shower, damp walls, or a musty smell, it may be time for shower regrouting or recaulking. Addressing these issues early can help prevent water damage and costly repairs.",
-                  },
-                  {
-                    q: "Can a Leaking Shower Be Repaired Without Removing the Tiles?",
-                    a: "Yes, in many cases. If your leaking shower is caused by failed grout or silicone, we can often repair it without removing the tiles, saving you the cost and disruption of a bathroom renovation. An inspection will determine the exact cause of the leak.",
-                  },
-                  {
-                    q: "How Long Does Shower Regrouting Take?",
-                    a: "Most shower regrouting jobs are completed within one day. Before work begins, your technician will inspect the shower, explain the repair process and expected timeframe, then complete the repairs to restore a watertight, long-lasting finish.",
-                  },
-                  {
-                    q: "How Much Does Shower Regrouting Cost?",
-                    a: "The cost of shower regrouting depends on the size of your shower, its condition, and the repairs required. We provide a detailed quote after inspecting your shower, so you know exactly what's included before any work begins.",
-                  },
-                  {
-                    q: "How Long Before I Can Use My Shower Again?",
-                    a: "Most showers are ready to use 24 hours after regrouting and recaulking. If epoxy grout is installed, we recommend allowing 72 hours for full curing before using the shower. Your technician will confirm the required curing time based on the materials used.",
-                  },
-                ].map((faq, i) => (
+                {faqs.map((faq, i) => (
                   <FaqItem key={i} q={faq.q} a={faq.a} />
                 ))}
               </ul>

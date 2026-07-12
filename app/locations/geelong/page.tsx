@@ -6,14 +6,14 @@ import type { SuburbGroup } from "@/app/locations/CityPageClient";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Shower Regrouting Geelong | GROUTIX",
+  title: "Shower Regrouting Geelong | Groutix",
   description:
-    "Expert shower regrouting and leaking shower repair across Geelong. GROUTIX covers all Geelong suburbs including Bellarine, Surf Coast and the greater region with a 10-year waterproof warranty.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Geelong, the Bellarine and Surf Coast, backed by a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/geelong" },
   openGraph: {
-    title: "Shower Regrouting Geelong — GROUTIX",
+    title: "Shower Regrouting Geelong — Groutix",
     description:
-      "Expert shower regrouting and leaking shower repair across Geelong and surrounds. 10-year warranty. Free quotes.",
+      "Geelong shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/geelong",
     type: "website",
   },
@@ -71,13 +71,13 @@ const geelongSuburbs: SuburbGroup[] = [
   },
 ];
 
-const serviceAreaText = `Geelong's diverse housing — from heritage cottages in Newtown and Drumcondra to coastal homes along the Bellarine Peninsula and Surf Coast — brings a wide range of grout and shower challenges. Salt air, coastal humidity and heavily tiled wet areas in older homes make Geelong one of Victoria's most demanding environments for showers and bathrooms.
+const serviceAreaText = `Geelong homes, coastal properties and newer estates all face different grout and shower sealing issues. Salt air, damp conditions and everyday bathroom use can quickly wear down grout joints, silicone edges and shower waterproofing systems.
 
-GROUTIX covers the full Greater Geelong area, from the CBD to the Surf Coast and Bellarine Peninsula. Our team handles tile regrouting and leaking shower repairs without demolition — the tiles stay in place, only the failed grout and silicone are replaced. Most jobs are completed within a single day, with the shower ready to use within 24–48 hours.
+Groutix services Greater Geelong, the Bellarine Peninsula and the Surf Coast with specialist shower regrouting, grout repair, leaking shower rectification and silicone replacement. We focus on repairing failed wet-area surfaces without pushing clients into unnecessary demolition.
 
-Coastal properties face accelerated grout breakdown driven by salt and moisture. Inner suburbs like Newtown and Geelong West have older tile work that requires precise matching. New estates in Highton and Waurn Ponds see rapid silicone failure where builder-grade products were used. Whatever the cause, GROUTIX provides a lasting solution.
+Older homes around Newtown and Geelong West often need careful grout matching, while coastal and newer properties commonly suffer from early seal failure and moisture-related grout breakdown. Our repair process is built to deliver a durable result in these demanding environments.
 
-Every quote is obligation free, all work is backed by a 10-year waterproof warranty, and our team works around your schedule — contact GROUTIX today for Geelong's specialist shower and grout repair service.`;
+We provide clear quotes, practical advice and professional workmanship backed by a 10-year waterproof warranty on full shower regrouting work. Contact Groutix for Geelong shower and grout repairs that are built to last.`;
 
 export default async function GeelongPage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
@@ -87,8 +87,8 @@ export default async function GeelongPage() {
       <Navbar />
       <CityPageClient
         cityName="Geelong"
-        heroHeading="Shower Regrouting & Leaking Shower Repair Experts Geelong"
-        heroSubtitle="Leaking showers and deteriorating grout are common in Geelong's coastal homes and older properties. GROUTIX provides specialist shower repair and professional regrouting services across Geelong and the Surf Coast, designed to stop leaks and prevent water damage without full bathroom renovations."
+        heroHeading="Shower Regrouting & Grout Repair Specialists Geelong"
+        heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Geelong and the Surf Coast, helping restore failed wet areas without full bathroom demolition."
         serviceAreaText={serviceAreaText}
         serviceAreaMapImage="/img46.webp"
         heroImage="/img47.jpg"
