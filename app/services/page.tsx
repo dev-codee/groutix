@@ -5,11 +5,11 @@ import ServicesClient from "./ServicesClient";
 
 export const metadata: Metadata = {
   title: "Our Services",
-  description: "Explore our full range of shower regrouting, silicone resealing, tile repair, and grout colour change services across Australia.",
+  description: "Explore Groutix services including shower regrouting, grout repair, leaking shower repair, silicone resealing and minor tile restoration.",
   alternates: { canonical: "/services" },
   openGraph: {
-    title: "Our Services — GROUTIX",
-    description: "Shower regrouting, silicone resealing, tile repair, and grout colour change services across Australia.",
+    title: "Our Services — Groutix",
+    description: "Browse specialist grout and shower repair services from Groutix, including regrouting, resealing and tile restoration.",
     url: "/services",
     type: "website",
   },

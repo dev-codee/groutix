@@ -21,7 +21,7 @@ export default function ServicesClient() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-4xl sm:text-5xl font-black tracking-tight"
           >
-            Our Services
+            What We Do
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -29,7 +29,7 @@ export default function ServicesClient() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="text-white/80 text-lg max-w-2xl mx-auto"
           >
-            Professional shower regrouting, tile sealing, and waterproofing solutions for homes and businesses across Australia.
+            Expert shower regrouting, grout fixes, leaky shower restoration, and tile repair services for homes and managed properties.
           </motion.p>
         </div>
       </motion.section>

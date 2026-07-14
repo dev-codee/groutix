@@ -4,14 +4,14 @@ import { rateLimit } from "@/lib/rateLimit";
 export const runtime = "nodejs";
 
 // Where new quote requests are delivered internally.
-const TO_EMAIL = "info@groutix.com";
+const TO_EMAIL = "info@Groutix.com";
 // The "from" address must be a sender you've verified in Brevo. Set it via
 // BREVO_FROM in .env.local.
-const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
+const FROM_EMAIL = process.env.BREVO_FROM || "info@Groutix.com";
 // Shown in the inbox for the internal notification (customer confirmation
-// uses a plain "GROUTIX" name below).
-const INTERNAL_FROM_NAME = "GROUTIX Website Enquiry";
-const CUSTOMER_FROM_NAME = "GROUTIX";
+// uses a plain "Groutix" name below).
+const INTERNAL_FROM_NAME = "Groutix Website Enquiry";
+const CUSTOMER_FROM_NAME = "Groutix";
 // Public phone shown to customers for urgent enquiries.
 const CONTACT_PHONE = "7023 8094";
 
@@ -180,11 +180,11 @@ export async function POST(req: NextRequest) {
 
   const fullName = `${firstName} ${lastName}`.trim();
 
-  // 1) Internal notification to the GROUTIX inbox with all the details.
+  // 1) Internal notification to the Groutix inbox with all the details.
   const internalHtml = `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
     <h2 style="margin:0 0 4px;">New Quote Request</h2>
-    <p style="margin:0 0 16px;color:#64748b;">Submitted via the GROUTIX website${
+    <p style="margin:0 0 16px;color:#64748b;">Submitted via the Groutix website${
       sourcePage ? ` (${esc(sourcePage)})` : ""
     }</p>
     <table style="border-collapse:collapse;width:100%;font-size:14px;">
@@ -220,12 +220,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) Confirmation to the customer. If this fails we still succeed overall —
-  //    the lead has already reached the GROUTIX inbox, so we don't lose it.
+  //    the lead has already reached the Groutix inbox, so we don't lose it.
   const customerHtml = `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">
     <h2 style="margin:0 0 8px;color:#001f97;">Thanks, ${esc(firstName)}!</h2>
     <p style="margin:0 0 12px;color:#334155;line-height:1.6;">
-      We've received your quote request and a GROUTIX specialist will be in touch
+      We've received your quote request and a Groutix specialist will be in touch
       shortly to arrange the next steps.
     </p>
     <p style="margin:0 0 16px;color:#334155;line-height:1.6;">
@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
         : ""
     }
     <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">
-      — The GROUTIX Team
+      — The Groutix Team
     </p>
   </div>`;
 
@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
       toEmail: email,
       fromName: CUSTOMER_FROM_NAME,
       replyTo: TO_EMAIL,
-      subject: "We've received your request — GROUTIX",
+      subject: "We've received your request — Groutix",
       html: customerHtml,
     });
   } catch (err) {

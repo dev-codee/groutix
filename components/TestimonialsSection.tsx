@@ -7,24 +7,24 @@ export default function TestimonialsSection() {
       name: "Sarah Jenkins",
       location: "Perth, WA",
       rating: 5,
-      title: "Extremely professional &amp; fast!",
-      content: "GROUTIX technician arrived exactly on time. Our ensuite shower was leaking into the hallway wall. He replaced the old grout in under 3 hours, and the shower looks like new. Highly recommend!",
+      title: "Super professional & quick!",
+      content: "Groutix tech showed up right on time. Our ensuite shower was leaking into the hallway wall. He replaced the old grout in less than 3 hours, and the shower looks brand new. Highly recommend!",
       date: "2 weeks ago",
     },
     {
       name: "David Chen",
       location: "Melbourne, VIC",
       rating: 5,
-      title: "Saved us thousands in tiling costs",
-      content: "We were told we needed to completely retile our bathroom because of a slow leak. GROUTIX inspected it and said a simple regrout and silicone reseal would fix it. It did, and saved us over $4,000!",
+      title: "Saved us thousands on tiling",
+      content: "We were told we had to completely retile our bathroom because of a slow leak. Groutix checked it out and said a simple regrout and silicone reseal would fix it. It did, and saved us over $4,000!",
       date: "1 month ago",
     },
     {
       name: "Rebecca Taylor",
       location: "Sydney, NSW",
       rating: 5,
-      title: "Mold is completely gone",
-      content: "Our shower base grout was black with mold that wouldn't wash away. The technician stripped it all and put down fresh white grout. It looks completely pristine. Very neat, clean worker.",
+      title: "Mould is totally gone",
+      content: "Our shower base grout was black with mould that wouldn't come off. The tech stripped it all and laid fresh white grout. It looks completely spotless. Very neat, clean worker.",
       date: "3 weeks ago",
     },
   ];
@@ -36,10 +36,10 @@ export default function TestimonialsSection() {
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight">
-            Client Reviews &amp; Testimonials
+            What Our Customers Say
           </h2>
           <p className="text-neutral-600 text-lg">
-            We are dedicated to providing excellent service. Read honest reviews from homeowners who trust us with their showers.
+            We're focused on delivering great service. Read real reviews from homeowners who trust us with their showers.
           </p>
           <div className="flex items-center justify-center space-x-2 pt-2">
             <div className="flex text-amber-400">

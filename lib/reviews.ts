@@ -5,7 +5,7 @@
 //
 // Required env vars (set in .env.local — see .env.example):
 //   GOOGLE_PLACES_API_KEY  — a Google Cloud API key with "Places API (New)" enabled
-//   GOOGLE_PLACE_ID        — the Place ID of the GROUTIX business profile
+//   GOOGLE_PLACE_ID        — the Place ID of the Groutix business profile
 //
 // This module must only be imported from server components / route handlers so
 // the API key is never shipped to the browser.

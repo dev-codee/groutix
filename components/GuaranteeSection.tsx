@@ -41,16 +41,16 @@ export default function GuaranteeSection() {
           className="space-y-5"
         >
           <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-            GROUTIX <span className="text-accent">Guarantee</span>
-          </h2>
-          <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
-            <p>
-              Every job completed by GROUTIX is backed by our industry-leading 10-year waterproof warranty. If water penetrates through our workmanship, we fix it with no questions asked.
-            </p>
-            <p className="font-semibold text-neutral-800">
-              Combined with our proven processes, specialist materials and experienced grout specialists, our guarantee gives you complete confidence that your shower repair is built to last, not just look good on day one.
-            </p>
-          </div>
+                The Groutix <span className="text-accent">Promise</span>
+              </h2>
+              <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
+                <p>
+                  Every job done by Groutix is backed by our industry-leading 10-year waterproof guarantee. If water gets through our work, we fix it with no questions asked.
+                </p>
+                <p className="font-semibold text-neutral-800">
+                  Along with our trusted methods, expert materials, and experienced grout techs, our promise gives you total confidence that your shower repair is made to last, not just look good on day one.
+                </p>
+              </div>
           <div className="flex gap-3 pt-2">
             <a
               href="tel:70238094"

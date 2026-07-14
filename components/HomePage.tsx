@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
@@ -23,8 +23,10 @@ import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
+import FaqSection from "@/components/FaqSection";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review, BusinessRating } from "@/lib/reviews";
+import TrustedMarquee from "@/components/TrustedMarquee";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -39,10 +41,15 @@ function ImgBox({
   src?: string;
 }) {
   return (
-    <div className={`relative ${aspect} w-full overflow-hidden ${className} rounded-xl border-2 border-transparent hover:border-accent transition-all duration-300 shadow-md hover:shadow-xl`}>
+    <div
+      className={`relative ${aspect} w-full overflow-hidden ${className} rounded-xl border-2 border-transparent hover:border-[#F5A623] transition-all duration-300`}
+      style={{
+        boxShadow: "inset 0 2px 8px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.08)"
+      }}
+    >
       {/* Decorative corner elements */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
+      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#F5A623] z-10 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#F5A623] z-10 pointer-events-none" />
 
       {src ? (
         <Image src={src} alt={label} fill className="object-cover transition-transform duration-500 hover:scale-105" />
@@ -62,6 +69,53 @@ function ImgBox({
   );
 }
 
+/* ─── Photo slider (matches service page slider) ─── */
+function HomePhotoSlider() {
+  const [idx, setIdx] = useState(0);
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const total = sliderImages.length;
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
+  const prev = () => setIdx((i) => (i - 1 + total) % total);
+  const next = () => setIdx((i) => (i + 1) % total);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {visibleImages.map((img, i) => (
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
+            <ImgBox
+              src={img}
+              label={`Before & After Photo ${idx + i + 1}`}
+              aspect="aspect-[4/3]"
+              className="rounded-sm"
+            />
+          </AnimatedImage>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={prev}
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          onClick={next}
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#001F97] rounded-full transition-all duration-300"
+            style={{ width: `${((idx + 1) / total) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Droplet icon for bullets ─── */
 const DropletIcon = () => (
   <svg width="14" height="20" viewBox="0 0 14 20" fill="none" className="flex-shrink-0 mt-0.5">
@@ -74,32 +128,47 @@ const SERVICES = [
   {
     slug: "shower-regrouting",
     title: "Shower Regrouting",
-    desc: "Shower regrouting is our core specialty. We remove failing grout and regrout the shower using durable, moisture-resistant grout designed specifically for wet areas.",
+    desc: "We remove old, worn shower grout and install new, durable grout formulated specifically for moisture-prone environments, breathing new life into both your shower’s appearance and its waterproofing capabilities.",
   },
   {
     slug: "tile-regrouting",
     title: "Tile Regrouting",
-    desc: "Our tile regrouting service refreshes tired or stained grout lines throughout bathrooms, laundries, kitchens, balconies and other tiled surfaces.",
+    desc: "Refresh discolored, cracked, or worn-out grout lines across bathrooms, laundries, kitchens, balconies, and other tiled surfaces with a crisp, long-lasting result.",
   },
   {
     slug: "shower-base-repair",
     title: "Shower Base Repair",
-    desc: "We repair cracked and leaking shower bases to restore the waterproof floor without full demolition.",
+    desc: "Repair cracked or leaking shower floors with targeted base restoration that rebuilds waterproofing integrity—no full tear-out required.",
   },
   {
     slug: "leaking-shower-repair",
     title: "Leaking Shower Repair",
-    desc: "Leaking showers require more than sealant. We identify where water is escaping, repair compromised grout and seals and fully regrout to stop the leak at the source.",
+    desc: "We trace shower leak causes to damaged grout lines, corner joints, and seals, then permanently repair the wet area instead of simply masking the issue.",
+  },
+  {
+    slug: "balcony-leak-repairs",
+    title: "Balcony Leak Repairs",
+    desc: "Diagnose and repair balcony leaks by removing failed grout and deteriorated sealants, then restoring the area with weatherproof materials to protect your property from water damage.",
+  },
+  {
+    slug: "silicone-recaulking",
+    title: "Silicone & Recaulking",
+    desc: "Remove old, mouldy silicone and apply fresh, mould-resistant sealant to wet area joints, delivering a clean, professional finish that protects against water ingress.",
+  },
+  {
+    slug: "epoxy-grout",
+    title: "Epoxy Grout",
+    desc: "Upgrade to durable, non-porous epoxy grout that resists stains, mould, and water penetration, ideal for showers, balconies, and high-traffic tiled areas.",
   },
   {
     slug: "small-tiling-jobs",
     title: "Small Tiling Jobs",
-    desc: "For loose, cracked or damaged tiles, we provide small tiling repairs that integrate seamlessly with existing finishes.",
+    desc: "Swap out broken tiles, resecure loose tiles, and repair damaged grout to resolve isolated tile issues neatly and professionally.",
   },
   {
     slug: "real-estate-property-services",
     title: "Real Estate & Property Services",
-    desc: "We partner with residential property managers, mum-and-dad investors, strata companies and commercial owners to provide fast, reliable maintenance solutions.",
+    desc: "Assist landlords, property managers, and strata groups with efficient grout, shower, and wet-area repairs that reduce disruption and protect your investment.",
   },
 ];
 
@@ -108,6 +177,9 @@ const SERVICE_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   "tile-regrouting": Grid2x2,
   "shower-base-repair": Wrench,
   "leaking-shower-repair": ShowerHead,
+  "balcony-leak-repairs": ShieldCheck,
+  "silicone-recaulking": Wrench,
+  "epoxy-grout": Grid2x2,
   "small-tiling-jobs": Hammer,
   "real-estate-property-services": Building2,
 };
@@ -154,7 +226,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className="max-w-3xl text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-[72px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
                   >
-                    Stop Your Leaking Shower &amp; Balcony Without Removing Tiles
+                    Shower Regrouting &amp; Grout Repair Specialists | Groutix
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -162,8 +234,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
                   >
-                    Restore your shower &amp; balcony in as little as one day with Melbourne&apos;s highest-rated
-                    regrouting and waterproofing specialists.
+                    Groutix repairs broken grout, failed seals and leaking wet areas using specialist regrouting techniques — restoring showers and balconies without a full retile or renovation.
                   </motion.p>
                 </div>
 
@@ -186,7 +257,7 @@ export default function HomePage({
                   icon: Droplets,
                   text: (
                     <>
-                      Specialists in shower regrouting and<br className="hidden md:block" /> leaking shower repair
+                      Expert shower regrouting and<br className="hidden md:block" /> grout repair services
                     </>
                   ),
                 },
@@ -194,7 +265,7 @@ export default function HomePage({
                   icon: ShieldCheck,
                   text: (
                     <>
-                      10-year waterproof warranty for total<br className="hidden md:block" /> peace of mind
+                      10-year waterproof guarantee on complete<br className="hidden md:block" /> shower regrouting jobs
                     </>
                   ),
                 },
@@ -202,8 +273,8 @@ export default function HomePage({
                   icon: MapPin,
                   text: (
                     <>
-                      Proven systems and expert technicians<br className="hidden md:block" /> across Melbourne &amp;
-                      surrounds
+                      Trusted repair methods and professional service<br className="hidden md:block" /> throughout Melbourne &amp;
+                      nearby areas
                     </>
                   ),
                 },
@@ -226,59 +297,41 @@ export default function HomePage({
         </section>
 
         {/* ══════════════════════════════════════
-            SECTION 2 — TRUSTED ACROSS AUSTRALIA
+            SECTION 2 — TRUSTED ACROSS AUSTRALIA (Marquee)
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-10 border-b border-neutral-100">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 flex flex-col items-center gap-6">
-            <p className="text-sm font-black text-neutral-400 uppercase tracking-widest">
-              TRUSTED ACROSS AUSTRALIA
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-14 opacity-50 grayscale">
-              {[
-                "Nelson Alexander",
-                "Ardex",
-                "Barry Plant",
-                "Biggin & Scott",
-                "Harcourts",
-                "LJ Hooker",
-                "Ray White",
-                "McGrath",
-              ].map((l) => (
-                <span key={l} className="text-base font-black tracking-wider text-neutral-600 uppercase">
-                  {l}
-                </span>
-              ))}
-            </div>
+        <TrustedMarquee />
 
-            {/* Stats strip */}
+        {/* Stats strip */}
+        <AnimatedSection className="bg-white py-6 border-b border-neutral-100">
+          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
             <div className="w-full rounded-xl border border-neutral-200 bg-white shadow-sm">
               <div className="grid grid-cols-2 divide-x divide-y divide-neutral-100 lg:grid-cols-4 lg:divide-y-0">
                 {[
                   {
                     Icon: Droplets,
                     value: "8,000+",
-                    label: "Bathrooms Restored",
+                    label: "Bathrooms Fixed Up",
                     color: "text-secondary",
                     fill: false,
                   },
                   {
                     Icon: Star,
                     value: `${rating.count}+`,
-                    label: "5 Star Reviews",
+                    label: "5-Star Testimonials",
                     color: "text-accent",
                     fill: true,
                   },
                   {
                     Icon: ThumbsUp,
                     value: "100%",
-                    label: "Customer Satisfaction",
+                    label: "Happy Customers",
                     color: "text-secondary",
                     fill: false,
                   },
                   {
                     Icon: ShieldCheck,
                     value: "10 Year",
-                    label: "Waterproof Warranty",
+                    label: "Waterproof Guarantee",
                     color: "text-secondary",
                     fill: false,
                   },
@@ -313,11 +366,11 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
-                Our <span className="text-accent">Services</span>
+                What <span className="text-accent">We Do</span>
               </h2>
               <span className="mx-auto block h-1.5 w-20 rounded-full bg-accent" />
               <p className="text-neutral-600 text-lg leading-relaxed">
-                GROUTIX specialises in shower and balcony repairs, regrouting, tile repairs and leak rectification for residential and commercial properties. Our focused repair-first approach helps resolve failed grout, deteriorated sealants and water ingress without unnecessary full renovations.
+                Groutix delivers shower regrouting, grout repair, leaky shower fixes, and tile renewal services for both residential and commercial spaces. Our priority-first approach addresses deteriorating grout joints, aging sealants, and water infiltration concerns before they evolve into costly, extensive bathroom problems.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -385,7 +438,7 @@ export default function HomePage({
               transition={{ duration: 0.5, ease: "easeOut" }}
             >
               <ImgBox
-                src="/img4.avif"
+                src="/img42.jpeg"
                 label="Leaking Shower Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
@@ -394,27 +447,27 @@ export default function HomePage({
             {/* Right */}
             <div className="space-y-8">
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                Small Grout Problems Can Lead to <span className="text-accent">  Serious Water Damage</span>
+                Broken Grout Can Cause <span className="text-accent">Major Water Issues</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Cracked, missing or deteriorated grout can allow moisture to penetrate into vulnerable areas around your shower. What starts as a small visible defect can develop into hidden water damage, mould and costly repairs if left untreated.
+                Cracked, loose, or missing grout can let moisture seep behind tiles, around corners, and into nearby building materials. A tiny grout problem can quickly turn into mold, warping, discoloration, and costly fixes if ignored.
               </p>
               <div className="space-y-4">
                 {[
                   {
-                    title: "COSTLY WATER DAMAGE",
-                    desc: "A small unresolved leak can spread beyond the shower, damaging surrounding walls, floors and adjoining rooms",
-                    img: "/img23.jpeg",
+                    title: "EXPENSIVE WATER HARM",
+                    desc: "Even a small shower leak can get into nearby walls, floors, and woodwork if broken grout isn't fixed.",
+                    img: "/img37.jpeg",
                   },
                   {
-                    title: "MOULD & MOISTURE",
-                    desc: "Persistent moisture can create ideal conditions for mould growth and ongoing bathroom deterioration.",
+                    title: "MOLD & DAMP",
+                    desc: "Constant moisture around faulty grout lines creates perfect conditions for mold, smells, and surface damage.",
                     img: "/img16.jpeg",
                   },
                   {
-                    title: "EXPENSIVE REPAIRS",
-                    desc: "The longer water ingress continues, the greater the risk of damaged materials and a much larger repair bill.",
-                    img: "/img9.jpeg",
+                    title: "PRICEY FIXES LATER",
+                    desc: "Water damage usually costs more to repair the longer it's left to spread under the tiled surface.",
+                    img: "/img41.jpeg",
                   },
                 ].map((b, i) => (
                   <motion.div
@@ -447,19 +500,33 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 6 — A PERMANENT SOLUTION
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 max-w-4xl">
-            <div className="max-w-4xl space-y-6">
-              <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                A Permanent Solution, <span className="text-accent">Not a Temporary Patch</span>
-              </h2>
-              <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                At GROUTIX, we don’t cover up failing grout with surface sealers or quick cosmetic fixes. We remove the failed material, properly prepare the affected areas and rebuild the shower’s protective grout and sealant system using professional-grade materials designed for wet environments.
-                Our goal is simple: stop the problem at its source, deliver a long-lasting repair and help you avoid repeated call-outs and costly damage.
-              </p>
-              <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                That’s why completed leaking shower repairs are backed by our 10-year waterproof warranty.
-              </p>
+        <AnimatedSection
+          className="py-16 lg:py-24 relative overflow-hidden"
+          style={{
+            backgroundColor: "#EDEBE6",
+            backgroundImage: `
+              linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: "40px 40px"
+          }}
+        >
+          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+              <div className="space-y-6">
+                <h2 className="text-3xl lg:text-[48px] font-black leading-tight">
+                  <span className="text-[#1B2A5E]">Precise Grout Fixes,</span>{" "}
+                  <span className="text-[#F5A623]">Not Quick Fixes</span>
+                </h2>
+                <p className="text-[#4A4A4A] text-base sm:text-lg leading-relaxed">
+                  At Groutix, we don't just cover up failing grout with surface sealers. We take out damaged grout and sealants, prep the wet area correctly, and rebuild the protective grout layer using materials made for bathrooms and other damp spaces.
+                  Our aim is to fix the root of the issue, provide a long-lasting result, and help you skip repeated leaks or constant patch-ups.
+                </p>
+                <p className="text-[#4A4A4A] text-base sm:text-lg leading-relaxed">
+                  That's why complete shower regrouting jobs come with our 10-year waterproof guarantee.
+                </p>
+              </div>
+              <HomePhotoSlider />
             </div>
           </div>
         </AnimatedSection>
@@ -471,14 +538,14 @@ export default function HomePage({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
             <h2 className="text-2xl lg:text-3xl font-black text-white leading-tight max-w-2xl">
-              Fix the problem properly the first time — and enjoy long-term peace of mind.
+              Fix broken grout right the first time and enjoy lasting peace of mind.
             </h2>
             <div className="flex gap-3 flex-shrink-0">
               <Link
                 href="/contact"
                 className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-sm text-base transition-colors active:scale-95 border-2 border-accent"
               >
-                Request A Quote
+                Get A Quote
               </Link>
               <a
                 href="tel:70238094"
@@ -496,7 +563,7 @@ export default function HomePage({
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
             <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900">
-              Client Reviews <span className="text-accent">&amp; Testimonials</span>
+              What Our Customers <span className="text-accent">Say</span>
             </h2>
             <div className="review-marquee-wrap overflow-hidden -mx-6 lg:-mx-10">
               <div className="review-marquee flex w-max px-6 lg:px-10">
@@ -509,7 +576,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 9 — GROUTIX GUARANTEE
+            SECTION 9 — Groutix GUARANTEE
             Left: Text + 2 images
             Right: Big image
         ══════════════════════════════════════ */}
@@ -517,17 +584,17 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <div className="space-y-6">
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                GROUTIX <span className="text-accent">Guarantee</span>
+                Our <span className="text-accent">Guarantee</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Full shower regrouting repairs completed by GROUTIX are backed by our 10-year waterproof warranty. We stand behind our workmanship because our repair systems are designed for long-term performance — giving you confidence that the problem has been repaired properly, not simply covered up.
+                Complete shower regrouting work done by Groutix comes with our 10-year waterproof guarantee. We stand by our work because our grout repair systems are made for long-lasting wet-area performance, not just quick visual fixes.
               </p>
               <div className="flex gap-3">
                 <Link
                   href="/contact"
                   className="bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
                 >
-                  Request A Quote
+                  Get A Quote
                 </Link>
                 <a
                   href="tel:70238094"
@@ -537,14 +604,31 @@ export default function HomePage({
                 </a>
               </div>
             </div>
-            <div>
+            <AnimatedImage className="relative">
               <ImgBox
-                src="/img11.jpeg"
+                src="/img43.jpeg"
                 label="Guarantee Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
               />
-            </div>
+              <motion.div
+                initial={{ opacity: 0, y: 10, x: -10 }}
+                whileInView={{ opacity: 1, y: 0, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+                className="absolute bottom-[-20px] left-4 bg-[#001F97] text-white p-6 shadow-xl z-10 w-[190px] text-center border-t-4 border-[#2F63CC]"
+              >
+                <div className="flex items-start justify-center gap-2">
+                  <p className="text-[4rem] font-black leading-none">10</p>
+                  <p className="text-[13px] font-black uppercase tracking-[0.6em] mt-2" style={{ writingMode: "vertical-rl" }}>
+                    YEAR
+                  </p>
+                </div>
+                <p className="text-[13px] font-black uppercase tracking-widest mt-2">DOUBT</p>
+                <p className="text-[13px] font-black uppercase tracking-widest">FREE</p>
+                <p className="text-[13px] font-black uppercase tracking-widest mt-2">GUARANTEE</p>
+              </motion.div>
+            </AnimatedImage>
           </div>
         </AnimatedSection>
 
@@ -557,21 +641,21 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <div className="space-y-6">
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                Why <span className="text-accent">Choose Us?</span>
+                Why Pick <span className="text-accent">Groutix?</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Here&apos;s why homeowners and property managers across Australia trust GROUTIX.
+                Homeowners, landlords, and property managers go with Groutix when they need expert grout and shower repairs done right.
               </p>
               <ul className="space-y-3">
                 {[
-                  "Australia's largest dedicated shower regrouting specialist",
-                  "Proven systems refined over decades",
-                  "High performance grout options available",
-                  "10-year waterproof warranty for peace of mind",
-                  "Specialist technicians – not general tilers or handymen",
-                  "Obligation-free quotes with no hidden fees",
-                  "Professional, ethical and friendly service",
-                  "Trusted by homeowners, strata managers & commercial clients nationwide",
+                  "Expert team focused on shower regrouting and grout fixes",
+                  "Repair methods made for long-lasting wet-area use",
+                  "High-quality grout and sealing choices for tough spaces",
+                  "10-year waterproof guarantee on complete shower regrouting work",
+                  "Techs with experience in grout issues and leaky showers",
+                  "Transparent quotes and practical advice",
+                  "Professional service with neat, respectful work",
+                  "Trusted by homeowners, strata managers, and property pros",
                 ].map((item, i) => (
                   <motion.li
                     key={i}
@@ -589,7 +673,7 @@ export default function HomePage({
             </div>
             <div>
               <ImgBox
-                src="/img5.avif"
+                src="/img40.jpeg"
                 label="Why Choose Us Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
@@ -598,6 +682,7 @@ export default function HomePage({
           </div>
         </AnimatedSection>
 
+        <FaqSection />
       </main>
       <Footer />
     </>

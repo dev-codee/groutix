@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
-import { Barlow } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
 
-const barlow = Barlow({
+const roboto = Roboto({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "700", "900"],
   display: "swap",
 });
 
-const TITLE_DEFAULT = "GROUTIX — Shower Regrouting Specialists Australia";
+const TITLE_DEFAULT = "Groutix | Shower Regrouting & Leak Repair Specialists";
 const DESCRIPTION =
-  "Australia's #1 shower regrouting and tile sealing specialists. Fix leaking showers without removing tiles. 10-year warranty. Free quotes across Perth, Melbourne, Sydney, Brisbane & more.";
+  "Specialist shower regrouting, grout repair, leaking shower repair and tile sealing services across Australia. Restore wet areas without full tile removal, backed by a 10-year waterproof warranty.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: TITLE_DEFAULT,
-    template: "%s | GROUTIX",
+    template: "%s | Groutix",
   },
   description: DESCRIPTION,
   keywords: [
@@ -30,19 +30,19 @@ export const metadata: Metadata = {
     "regrout shower",
     "balcony leak repair",
   ],
-  applicationName: "GROUTIX",
-  authors: [{ name: "GROUTIX" }],
-  creator: "GROUTIX",
-  publisher: "GROUTIX",
+  applicationName: "Groutix",
+  authors: [{ name: "Groutix" }],
+  creator: "Groutix",
+  publisher: "Groutix",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: "GROUTIX",
+    siteName: "Groutix",
     title: TITLE_DEFAULT,
     description: DESCRIPTION,
     url: SITE_URL,
     locale: "en_AU",
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "GROUTIX shower regrouting" }],
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Groutix shower regrouting and grout repair services" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -73,7 +73,7 @@ export default async function RootLayout({
 }>) {
   const rating = await getBusinessRating();
   return (
-    <html lang="en-AU" className={`${barlow.className} h-full antialiased`}>
+    <html lang="en-AU" className={`${roboto.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {/* Site-wide LocalBusiness structured data */}
         <script

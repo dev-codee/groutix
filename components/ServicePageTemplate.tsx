@@ -11,6 +11,7 @@ import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import type { Review } from "@/lib/reviews";
+import TrustedMarquee from "@/components/TrustedMarquee";
 
 /* ─── Droplet bullet icon (matches real site) ─── */
 const DropletIcon = () => (
@@ -140,7 +141,7 @@ const pillarIcons: Record<string, React.ReactNode[]> = {
 
 const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: string }> = {
   "shower-regrouting": {
-    hero: "/img3.jpeg",
+    hero: "/img39.jpeg",
     fail: "/img27.jpeg",
     fix: "/img12.jpeg",
   },
@@ -164,6 +165,26 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
     fail: "/img9.jpeg",
     fix: "/img36.jpeg",
   },
+  "balcony-leak-repairs": {
+    hero: "/img51.jpeg",
+    fail: "/img48.jpeg",
+    fix: "/img49.jpeg",
+  },
+  "silicone-recaulking": {
+    hero: "/img50.jpeg",
+    fail: "/img55.jpeg",
+    fix: "/img52.jpeg",
+  },
+  "epoxy-grout": {
+    hero: "/img53.jpeg",
+    fail: "/img56.jpeg",
+    fix: "/img54.jpeg",
+  },
+  "real-estate-property-services": {
+    hero: "/img28.jpeg",
+    fail: "/img23.jpeg",
+    fix: "/img2.jpeg",
+  },
 };
 
 /* ─── Fail section badges by service ─── */
@@ -178,18 +199,18 @@ const failSectionBadges: Record<string, string[]> = {
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const total = 4;
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
   
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg"];
-  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total]];
+  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
-          <AnimatedImage key={i} delay={i * 0.1}>
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
               src={img}
               label={`${serviceTitle} Photo ${idx + i + 1}`}
@@ -460,8 +481,8 @@ export default function ServicePageTemplate({
             </AnimatedImage>
           </div>
 
-          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10">
-            <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10 pointer-events-none">
+            <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
               {(heroCards ? heroCards.map((c, i) => ({ title: c.title, desc: c.desc, icon: icons[i] ?? icons[0] })) : [
                 { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, desc: "", icon: icons[0] },
                 { title: "Long-lasting solutions for worn or damaged areas", desc: "", icon: icons[1] },
@@ -473,7 +494,7 @@ export default function ServicePageTemplate({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.4 + i * 0.1 }}
-                  className="bg-white border border-neutral-200 rounded-sm p-5 shadow-lg flex items-center gap-4 text-neutral-900 hover:border-accent transition-colors relative overflow-hidden"
+                  className="bg-white border border-neutral-200 rounded-sm p-5 shadow-lg flex items-center gap-4 text-neutral-900 hover:border-accent transition-colors relative overflow-hidden pointer-events-auto"
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
                   <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-accent/10 rounded-sm">
@@ -489,32 +510,7 @@ export default function ServicePageTemplate({
           </div>
         </motion.section>
 
-        <AnimatedSection className="bg-white pt-24 pb-12 border-b border-neutral-100">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-6 text-center">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-sm font-black text-neutral-400 uppercase tracking-widest"
-            >
-              {trustedText ?? "TRUSTED ACROSS AUSTRALIA"}
-            </motion.p>
-            <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-16 opacity-50 grayscale">
-              {["Nelson Alexander", "Ardex", "Barry Plant", "Harcourts", "LJ Hooker", "Ray White"].map((l, i) => (
-                <motion.span
-                  key={l}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="text-base font-black tracking-wider text-neutral-500 uppercase"
-                >
-                  {l}
-                </motion.span>
-              ))}
-            </div>
-          </div>
-        </AnimatedSection>
+        <TrustedMarquee />
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
@@ -609,7 +605,7 @@ export default function ServicePageTemplate({
                   whileInView={{ opacity: 1, y: 0, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 }}
-                  className="absolute bottom-[-20px] right-4 left-4 lg:left-auto lg:right-[-20px] lg:w-[350px] bg-[#001F97] text-white p-6 shadow-xl z-10 rounded-sm"
+                  className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm"
                 >
                   <p className="text-base font-bold leading-relaxed">
                     {fixBlueBoxText ?? "By removing failing grout and replacing it with durable materials designed for wet environments, we stop water penetration and restore the shower without removing tiles or undertaking a full bathroom renovation."}
@@ -724,6 +720,60 @@ export default function ServicePageTemplate({
                 </motion.div>
               ))}
             </div>
+
+            {/* Process Q&A */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15 }}
+              className="bg-[#F8FAFC] border border-neutral-100 rounded-sm shadow-sm overflow-hidden"
+            >
+              <div className="px-6 py-5 border-b border-neutral-100 bg-white flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center bg-[#001F97] text-white text-sm font-black rounded-sm">?</span>
+                <h3 className="text-lg font-bold text-neutral-900">Common Questions About Our Process</h3>
+              </div>
+              {[
+                {
+                  q: "What Happens After I Contact Groutix?",
+                  a: "Once you contact us, we'll discuss your requirements and determine the best way to assess your project. Depending on the job, we may provide a quote from photos or arrange an on-site inspection.",
+                },
+                {
+                  q: "Do You Need To Inspect My Shower Before Providing A Quote?",
+                  a: "Not always. Some jobs can be quoted from clear photos, while others may require an on-site inspection to accurately assess the condition and recommend the most suitable repair.",
+                },
+                {
+                  q: "What Happens During The Inspection?",
+                  a: "Your technician will inspect the tiled area, identify any visible issues, explain the cause of the problem, and recommend the most appropriate repair solution. You'll also have the opportunity to ask any questions before proceeding.",
+                },
+                {
+                  q: "What Happens Once I Accept The Quote?",
+                  a: "After your quote is accepted, we'll schedule a suitable date for the work. Your technician will complete the agreed repairs using professional materials and explain any aftercare or curing requirements before leaving.",
+                },
+                {
+                  q: "Will I Receive A Quote Before Any Work Begins?",
+                  a: "Yes. We provide a clear, detailed quote before any work starts, so you know exactly what repairs are recommended and what's included.",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.05 * i }}
+                  className={`flex gap-5 px-6 py-5 items-start${i < 4 ? " border-b border-neutral-100" : ""} group hover:bg-white transition-colors duration-200`}
+                >
+                  <span className="flex-shrink-0 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent font-black text-sm group-hover:bg-[#001F97] group-hover:text-white transition-colors duration-200">
+                    {i + 1}
+                  </span>
+                  <div className="space-y-1.5">
+                    <p className="font-bold text-neutral-900 leading-snug">{item.q}</p>
+                    <p className="text-neutral-500 text-sm leading-relaxed">{item.a}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
           </div>
         </AnimatedSection>
 
@@ -762,7 +812,7 @@ export default function ServicePageTemplate({
                 whileInView={{ opacity: 1, y: 0, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.3 }}
-                className="absolute bottom-[-20px] right-4 left-4 lg:left-auto lg:right-[-20px] lg:w-[350px] bg-[#001F97] text-white p-6 shadow-xl z-10 rounded-sm"
+                className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm"
               >
                 <p className="text-base font-bold leading-relaxed">
                   {workWithUsBlueBoxText ?? "With experienced technicians, specialist materials and a structured repair process, you can trust that your leaking shower is fixed properly."}
@@ -776,7 +826,7 @@ export default function ServicePageTemplate({
               className="space-y-6"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold leading-tight">
-                What You Get When You <span className="text-accent">Work With Us</span>
+                Why Homeowners Choose <span className="text-accent">Groutix</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">{workWithUsText}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -800,7 +850,7 @@ export default function ServicePageTemplate({
               className="space-y-5"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-                GROUTIX <span className="text-accent">Guarantee</span>
+                Our <span className="text-accent">Promise</span>
               </h2>
               <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
                 {guaranteeText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
@@ -821,7 +871,7 @@ export default function ServicePageTemplate({
               </motion.div>
             </motion.div>
             <AnimatedImage className="relative">
-              <ImgBox src="/img11.jpeg" label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-sm" />
+              <ImgBox src="/img43.jpeg" label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-sm" />
               <motion.div
                 initial={{ opacity: 0, y: 10, x: -10 }}
                 whileInView={{ opacity: 1, y: 0, x: 0 }}
@@ -852,8 +902,8 @@ export default function ServicePageTemplate({
                 viewport={{ once: true }}
                 className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight"
               >
-                Request An<br />
-                <span className="text-accent">Obligation Free Quote</span>
+                Get Your<br />
+                <span className="text-accent">Free Quote Today</span>
               </motion.h2>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -876,17 +926,19 @@ export default function ServicePageTemplate({
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
-            <div className="space-y-6 max-w-3xl">
+            <div className="space-y-6 max-w-3xl mx-auto">
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight"
+                className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight text-center"
               >
                 Frequently Asked <span className="text-accent">Questions</span>
               </motion.h2>
               <ul className="divide-y divide-neutral-200 border border-neutral-200 p-0">
-                {faqs.map((faq, i) => <FaqItem key={i} q={faq.q} a={faq.a} />)}
+                {faqs.map((faq, i) => (
+                  <FaqItem key={i} q={faq.q} a={faq.a} />
+                ))}
               </ul>
             </div>
           </div>

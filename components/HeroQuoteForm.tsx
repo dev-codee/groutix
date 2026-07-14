@@ -226,7 +226,7 @@ export default function HeroQuoteForm() {
                 Request Received!
               </h3>
               <p className="max-w-sm text-base leading-relaxed text-neutral-600">
-                Thanks{data.firstName ? `, ${data.firstName}` : ""}. One of our local GROUTIX
+                Thanks{data.firstName ? `, ${data.firstName}` : ""}. One of our local Groutix
                 specialists will call you back shortly.
               </p>
               <button

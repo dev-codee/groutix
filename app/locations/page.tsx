@@ -6,11 +6,11 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
   title: "Locations",
-  description: "Find your local GROUTIX specialist in Melbourne and across Australia.",
+  description: "Find local Groutix service areas for shower regrouting, grout repair and leaking shower solutions across Victoria.",
   alternates: { canonical: "/locations" },
   openGraph: {
-    title: "Locations — GROUTIX",
-    description: "Find your local GROUTIX specialist in Melbourne and across Australia.",
+    title: "Locations — Groutix",
+    description: "See where Groutix provides specialist shower regrouting and grout repair services across Victoria.",
     url: "/locations",
     type: "website",
   },

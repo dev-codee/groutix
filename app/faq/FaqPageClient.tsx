@@ -14,24 +14,29 @@ const categories: FaqCategory[] = [
     title: "Shower Regrouting",
     faqs: [
       {
+        question: "How Do I Know If My Shower Needs Regrouting or Recaulking?",
+        answer:
+          "Cracked, missing or discoloured grout, peeling silicone, water escaping the shower, damp walls or persistent mould are all signs your shower may need attention. Repairing these issues early can help prevent further water damage and more expensive repairs.",
+      },
+      {
         question: "What Is Shower Regrouting?",
         answer:
-          "Shower regrouting is the process of removing deteriorated grout from between your tiles and replacing it with a new grout system designed for wet areas. This restores the appearance of your shower, improves hygiene and helps prevent water from penetrating behind the tiles.",
+          "Shower regrouting involves removing deteriorated grout and replacing it with a new, durable grout system suitable for wet areas. This improves the appearance of your shower, strengthens the tile joints and helps reduce water penetration.",
       },
       {
         question: "How Long Does Shower Regrouting Take?",
         answer:
-          "Most shower regrouting jobs are completed within a single day. The exact timeframe depends on the condition of the existing grout, the size of the shower, the tile size and whether any additional repairs are required. Your GROUTIX technician will confirm the expected timeframe before work begins.",
+          "Most shower regrouting projects are completed within one day. After inspecting your shower, your technician will explain the repair process, expected timeframe and any additional work that may be required before getting started.",
       },
       {
-        question: "Can You Just Do The Walls Or Floors?",
+        question: "Can You Regrout Just The Shower Walls or Floor?",
         answer:
-          "In most cases, yes. After assessing your shower we'll recommend only the work that is genuinely needed — whether that's the walls, the floor or both. If we identify other issues outside our scope, we'll refer you to the appropriate trade.",
+          "Yes. Every shower is different, so we tailor the repairs to its condition. Whether only the walls, the floor or the entire shower requires regrouting, we'll recommend the most appropriate solution.",
       },
       {
         question: "Do Tiles Need To Be Removed To Regrout A Shower?",
         answer:
-          "In most cases, no. Our regrouting process keeps your existing tiles in place while we remove and replace the failing grout. This restores the shower without the cost, mess and disruption of a full bathroom renovation.",
+          "No, in most cases. Our regrouting process is designed to restore the grout joints while keeping your existing tiles in place, avoiding the time, cost and disruption of replacing the entire shower.",
       },
     ],
   },
@@ -41,17 +46,27 @@ const categories: FaqCategory[] = [
       {
         question: "How Do I Know If My Shower Is Leaking?",
         answer:
-          "Common signs include a musty smell, mould growth, water stains on walls or ceilings outside the bathroom, loose or drummy tiles, and bubbling or peeling paint. Some leaks stay hidden behind tiles, so a professional inspection is the best way to confirm the source.",
+          "A leaking shower isn't always obvious. Common signs include water stains, peeling paint, mould growth, damp walls, musty odours, or water appearing outside the shower after use. If left untreated, even a small leak can lead to costly structural damage.",
       },
       {
-        question: "Can A Leaking Shower Be Fixed Without Renovating?",
+        question: "Can A Leaking Shower Be Repaired Without Removing The Tiles?",
         answer:
-          "Yes. Many leaking showers can be repaired through regrouting and resealing without removing tiles or renovating the bathroom. Addressing the problem early helps prevent hidden moisture damage and more costly repairs down the track.",
+          "Yes, in many cases. If the leak is caused by failed grout, silicone or movement joints, we can often repair your leaking shower without removing the tiles or renovating the bathroom. An inspection will determine the most suitable solution.",
       },
       {
-        question: "Is Resealing Enough To Fix A Leaking Shower?",
+        question: "What Causes A Shower To Leak?",
         answer:
-          "Resealing can help in some cases, but many leaks are caused by failing grout or weakened junctions rather than the silicone alone. Applying new silicone on its own is often only a temporary fix. A thorough assessment lets us address the real cause for a lasting result.",
+          "Leaking showers are commonly caused by cracked grout, deteriorated silicone, movement in tile joints, damaged waterproofing or plumbing defects. Identifying the exact cause is the first step towards a long-lasting repair.",
+      },
+      {
+        question: "How Do You Find The Source Of A Shower Leak?",
+        answer:
+          "Our technicians carry out a thorough inspection of the shower and surrounding areas to identify where the water is escaping. Once the cause has been confirmed, we'll explain the issue and recommend the most appropriate repair solution.",
+      },
+      {
+        question: "Can A Leaking Shower Get Worse If Left Unrepaired?",
+        answer:
+          "Yes. Water can continue spreading behind tiles, damaging walls, floors and surrounding structures. Repairing a leaking shower early can help prevent more extensive damage and significantly reduce future repair costs.",
       },
     ],
   },
@@ -59,24 +74,89 @@ const categories: FaqCategory[] = [
     title: "Tile Regrouting",
     faqs: [
       {
-        question: "When Should Grout Be Replaced?",
+        question: "When Should Tile Grout Be Replaced?",
         answer:
-          "Grout should be replaced when it becomes cracked, missing, permanently stained or starts allowing moisture to pass through. Replacing failing grout early helps maintain the integrity of the tiled area and reduces the risk of leaks.",
+          "Grout should be replaced when it becomes cracked, missing, discoloured or begins allowing moisture to penetrate. Replacing deteriorated grout early helps protect your tiled surfaces and extends their lifespan.",
       },
       {
-        question: "Can You Regrout Bathroom Tiles Without Removing Them?",
+        question: "Can You Regrout Tiles Without Removing Them?",
         answer:
-          "Yes. We remove the old grout while your existing tiles stay in place, restoring the joints and improving the overall appearance without demolition.",
+          "Yes. We remove the old grout while keeping your existing tiles in place, restoring the grout joints without the cost, mess or disruption of replacing the tiles.",
       },
       {
-        question: "Is Tile Regrouting Suitable For Floors As Well As Walls?",
+        question: "What Areas Can Be Regrouted?",
         answer:
-          "Yes. Regrouting can be carried out on both floor and wall tiles in bathrooms, laundries and other wet areas, improving hygiene and helping to protect against water damage.",
+          "We can regrout most tiled areas, including bathrooms, showers, laundries, kitchens, balconies, floors and walls. During your inspection, we'll confirm whether your tiled area is suitable for regrouting.",
       },
       {
-        question: "What Areas Can You Regrout?",
+        question: "Can You Match My Existing Grout Colour?",
         answer:
-          "We can regrout most tiled areas, both indoors and outdoors, including bathrooms, laundries, kitchens, balconies and full homes. Mosaic tiles are generally not suitable for regrouting.",
+          "Yes. We stock a wide range of grout colours and will recommend the closest match to your existing grout wherever possible. If you're updating the look of your tiles, we can also help you choose a new grout colour.",
+      },
+      {
+        question: "Is Tile Regrouting Better Than Retiling?",
+        answer:
+          "If your tiles are still in good condition, regrouting is often a faster and more cost-effective alternative to replacing them. It refreshes the appearance of your tiled area while restoring the grout joints without the need for demolition.",
+      },
+    ],
+  },
+  {
+    title: "Epoxy Grout",
+    faqs: [
+      {
+        question: "What Is Epoxy Grout?",
+        answer:
+          "Epoxy grout is a premium grout specifically designed for wet areas and demanding environments. It offers superior stain resistance, water resistance and durability, making it an excellent long-term solution for tiled surfaces.",
+      },
+      {
+        question: "Is Epoxy Grout Better Than Cement Grout?",
+        answer:
+          "Both have their advantages, but epoxy grout offers greater durability, superior stain resistance and enhanced water resistance. It's a popular upgrade for customers looking for a longer-lasting, lower-maintenance finish.",
+      },
+      {
+        question: "Can My Existing Shower Or Tiled Area Be Upgraded To Epoxy Grout?",
+        answer:
+          "In many cases, yes. Existing grout can often be removed and replaced with epoxy grout, provided the tiles and surrounding area are suitable. We'll assess your tiled area and recommend the most appropriate solution.",
+      },
+      {
+        question: "How Long Does Epoxy Grout Take To Cure?",
+        answer:
+          "Epoxy grout requires approximately 72 hours to fully cure before the area can be used. Your technician will confirm the recommended curing time after the installation is complete.",
+      },
+      {
+        question: "Where Do You Recommend Epoxy Grout?",
+        answer:
+          "We recommend epoxy grout for showers, bathrooms, balconies, laundries, kitchens, and other high-moisture or high-traffic tiled areas. Its superior durability, stain resistance and water resistance make it an excellent long-term solution for both residential and commercial properties.",
+      },
+    ],
+  },
+  {
+    title: "Silicone & Recaulking",
+    faqs: [
+      {
+        question: "When Should Shower Silicone Be Replaced?",
+        answer:
+          "Shower silicone should be replaced if it is cracked, peeling, mouldy, separating from the tiles, or no longer forming a watertight seal. Replacing failed silicone helps prevent water leaks and keeps your shower protected.",
+      },
+      {
+        question: "Why Does Shower Silicone Turn Black?",
+        answer:
+          "Black stains are usually caused by mould growing on or beneath deteriorated silicone in damp environments. Once silicone has deteriorated, cleaning alone may not restore it, and replacement is often the best long-term solution.",
+      },
+      {
+        question: "Can You Match My Existing Silicone Colour?",
+        answer:
+          "Yes. We stock a wide range of silicone colours and will recommend the closest match to your existing grout, tiles or fixtures wherever possible.",
+      },
+      {
+        question: "How Long Before New Silicone Cures?",
+        answer:
+          "New silicone typically requires 24 hours to fully cure before the shower can be used. Your technician will confirm the recommended curing time after the installation is complete.",
+      },
+      {
+        question: "Why Is Silicone Important In A Shower?",
+        answer:
+          "Silicone creates a flexible, waterproof seal around movement joints, corners and fixtures where grout should not be used. It helps prevent water penetration while allowing for normal movement between surfaces.",
       },
     ],
   },
@@ -84,14 +164,24 @@ const categories: FaqCategory[] = [
     title: "Small Tiling Jobs",
     faqs: [
       {
-        question: "What Types Of Small Tiling Jobs Do You Do?",
+        question: "Can You Match My Existing Tiles?",
         answer:
-          "We carry out small repairs such as replacing loose, cracked or damaged tiles — often alongside regrouting — to restore the appearance and stability of your tiled areas.",
+          "We'll do our best to match your existing tiles where possible. If you have spare tiles or can provide the tile brand, model or supplier, it can help us source a closer match. If an exact match isn't available, we'll discuss the most suitable replacement options with you before proceeding.",
+      },
+      {
+        question: "Do You Replace Just A Few Tiles?",
+        answer:
+          "Yes. Whether it's one damaged tile or several, we can replace individual tiles without requiring a complete renovation, provided the surrounding tiles are suitable for repair.",
+      },
+      {
+        question: "Do You Supply Tiles?",
+        answer:
+          "We can install customer-supplied tiles or discuss suitable replacement options if matching tiles are available. Your technician will explain the best approach during the assessment.",
       },
       {
         question: "Do You Do Full Bathroom Retiling?",
         answer:
-          "We specialise in small repairs associated with grout and shower issues rather than full bathroom retiling. For a complete bathroom renovation, a general contractor is usually the better fit.",
+          "No. We specialise in small tiling repairs, tile replacements and regrouting rather than complete bathroom renovations. This allows us to focus on fast, high-quality repairs without the cost and disruption of a full bathroom remodel.",
       },
     ],
   },
@@ -101,17 +191,27 @@ const categories: FaqCategory[] = [
       {
         question: "Do You Work With Property Managers & Real Estate Agencies?",
         answer:
-          "Yes. We regularly carry out repairs and maintenance for rental properties, helping protect bathrooms and reduce ongoing maintenance issues for property managers and agencies.",
+          "Yes. We work with property managers, real estate agencies, landlords and body corporates, providing professional shower repairs, regrouting and small tiling repairs across Melbourne.",
       },
       {
         question: "Can You Complete Repairs Between Tenancies?",
         answer:
-          "Yes. We can complete work between tenancies to ensure the bathroom is properly maintained before new occupants move in, improving presentation and reducing future issues.",
+          "Yes. Completing repairs between tenancies helps prepare the property for new occupants while reducing the risk of future maintenance issues. We always aim to minimise downtime and complete the work efficiently.",
       },
       {
-        question: "Do You Provide Ongoing Maintenance For Managed Properties?",
+        question: "Do You Provide Quotes For Rental Property Repairs?",
         answer:
-          "Yes. We support single properties and managed portfolios with grout and shower repairs, helping prevent water damage and extend the lifespan of bathrooms.",
+          "Yes. We can provide detailed quotes for rental properties, helping property managers and owners make informed maintenance decisions before work begins.",
+      },
+      {
+        question: "Can You Work Directly With Tenants?",
+        answer:
+          "Yes. With the owner's or property manager's approval, we can arrange access directly with tenants to help simplify the repair process and reduce administration.",
+      },
+      {
+        question: "Can You Handle Multiple Properties?",
+        answer:
+          "Yes. Whether you manage a single investment property or a large portfolio, we can assist with ongoing shower repairs, regrouting and small tiling works across multiple locations.",
       },
     ],
   },
@@ -121,22 +221,27 @@ const categories: FaqCategory[] = [
       {
         question: "How Much Does Shower Regrouting Or Repair Cost?",
         answer:
-          "Costs vary depending on the condition of the shower, its size and the repairs required. We provide clear, obligation-free quotes after assessing the area so you know exactly what to expect.",
+          "The cost depends on the condition of your shower, its size and the repairs required. We provide a detailed quote after assessing your shower, so you know exactly what's included before any work begins.",
       },
       {
         question: "Do You Offer A Warranty?",
         answer:
-          "Yes. All full shower regrouts completed by GROUTIX are backed by our industry-leading 10-year waterproof warranty, subject to the approved scope of work and warranty terms.",
+          "Yes. Eligible works completed by Groutix are backed by our workmanship warranty, with warranty periods varying depending on the type of repair and materials used. Your technician will explain the applicable warranty before work begins.",
       },
       {
         question: "What Areas Do You Service?",
         answer:
-          "We service major metro and regional areas across Australia, including Victoria, New South Wales, Queensland, Western Australia and South Australia.",
+          "We service Melbourne and surrounding suburbs across Victoria. If you're unsure whether we cover your area, simply contact our team and we'll be happy to assist.",
       },
       {
-        question: "Do You Work On Commercial Properties As Well?",
+        question: "Do You Work On Commercial Properties?",
         answer:
-          "Yes. As well as residential work, we handle commercial environments such as gyms, schools and other high-use facilities with durable, long-lasting solutions.",
+          "Yes. We carry out shower repairs, regrouting and small tiling works for commercial properties, including offices, gyms, schools, aged care facilities, apartment buildings, hotels, and other commercial premises.",
+      },
+      {
+        question: "How Can I Request A Quote?",
+        answer:
+          "Simply contact our team by phone, email or through our online enquiry form. We'll discuss your requirements and arrange an inspection or provide a quote based on the information available.",
       },
     ],
   },
@@ -195,7 +300,7 @@ export default function FaqPageClient() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] uppercase tracking-[0.35em] text-white/90"
           >
-            GROUTIX FAQs
+            Groutix FAQs
           </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -275,13 +380,13 @@ export default function FaqPageClient() {
           <div className="flex gap-3 flex-shrink-0">
             <Link
               href="/contact"
-              className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-sm text-base transition-colors active:scale-95 border-2 border-accent"
+              className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-xl text-base transition-colors active:scale-95 border-2 border-accent"
             >
               Request A Quote
             </Link>
             <a
               href="tel:70238094"
-              className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary-hover text-white font-black px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
+              className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary-hover text-white font-black px-6 py-3 rounded-xl text-base transition-colors active:scale-95"
             >
               <Phone className="h-4 w-4" /> 7023 8094
             </a>
@@ -291,3 +396,4 @@ export default function FaqPageClient() {
     </main>
   );
 }
+

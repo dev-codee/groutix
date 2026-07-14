@@ -25,13 +25,13 @@ function ImgBox({ label }: { label: string }) {
 
 export default function WhyUsSection() {
   const points = [
-    "Australia's largest dedicated shower regrouting specialist",
-    "Proven systems refined over decades",
-    "High performance grout options available",
-    "10-year waterproof warranty for peace of mind",
-    "Specialist technicians – not general tilers or handymen",
-    "Obligation-free quotes with no hidden fees",
-    "Professional, ethical and friendly service",
+    "Australia's biggest dedicated shower regrouting expert",
+    "Trusted methods improved over many years",
+    "High-quality grout choices available",
+    "10-year waterproof guarantee for complete confidence",
+    "Expert technicians – not general tilers or handymen",
+    "No-obligation quotes with no surprise costs",
+    "Professional, honest, and friendly service",
   ];
 
   return (
@@ -47,17 +47,17 @@ export default function WhyUsSection() {
           {/* Right: Text */}
           <div className="space-y-5">
             <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-              Leaking Showers <span className="text-[#001F97]">Start</span><br />
-              With <span className="text-[#001F97]">Grout</span> Problems
-            </h2>
-            <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
-              <p>
-                Leaking showers are rarely caused by cracked tiles. In most cases, water escapes through failed grout, broken seals or gaps around junctions and penetrations. Once moisture gets behind the tiles, it can travel unseen, leading to mould growth, timber rot and structural damage over time.
-              </p>
-              <p className="font-semibold text-neutral-800">
-                Ignoring these early warning signs often results in more expensive repairs down the line. That&apos;s why identifying and fixing grout-related issues early is the most effective way to protect your bathroom, your home and your investment.
-              </p>
-            </div>
+                Leaky Showers <span className="text-[#001F97]">Begin</span><br />
+                With <span className="text-[#001F97]">Grout</span> Issues
+              </h2>
+              <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
+                <p>
+                  Leaky showers are hardly ever caused by cracked tiles. Most of the time, water gets out through worn grout, broken seals, or gaps around corners and pipes. Once moisture gets behind the tiles, it can spread without being seen, causing mould, timber rot, and structural damage over time.
+                </p>
+                <p className="font-semibold text-neutral-800">
+                  Ignoring these early warning signs usually leads to more costly repairs later on. That's why spotting and fixing grout-related problems early is the best way to protect your bathroom, your home, and your investment.
+                </p>
+              </div>
           </div>
         </div>
       </section>
@@ -71,11 +71,11 @@ export default function WhyUsSection() {
           {/* Left: Text */}
           <div className="space-y-6">
             <h2 className="text-3xl lg:text-[40px] font-bold text-white leading-tight">
-              Why <span className="text-[#97B1E5]">Choose GROUTIX?</span>
-            </h2>
-            <p className="text-white/75 text-base sm:text-[18px] leading-relaxed">
-              Here&apos;s why homeowners and property managers across Australia trust GROUTIX for their shower regrouting and repair needs.
-            </p>
+                Why <span className="text-[#97B1E5]">Pick Groutix?</span>
+              </h2>
+              <p className="text-white/75 text-base sm:text-[18px] leading-relaxed">
+                Here's why homeowners and property managers all over Australia trust Groutix for their shower regrouting and repair needs.
+              </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               {points.map((point, i) => (
                 <div key={i} className="flex gap-3 items-start">
