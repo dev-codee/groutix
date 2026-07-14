@@ -166,7 +166,7 @@ export default function Footer() {
               >
                 <Mail className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="block font-bold">info@Groutix.com</span>
+                  <span className="block font-bold">info@groutix.com</span>
                   <span className="text-sm text-neutral-500 font-medium">Request a quote or send shower photos</span>
                 </div>
               </motion.li>
