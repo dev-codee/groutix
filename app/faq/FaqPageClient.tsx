@@ -90,7 +90,7 @@ export default function FaqPageClient() {
               What Is Your Question About?
             </h2>
             <nav className="flex flex-col">
-              {categories.map((category, i) => {
+              {faqCategories.map((category, i) => {
                 const isActive = i === activeIndex;
                 return (
                   <button
@@ -156,4 +156,3 @@ export default function FaqPageClient() {
     </main>
   );
 }
-
