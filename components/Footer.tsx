@@ -197,7 +197,7 @@ export default function Footer() {
           className="pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500 space-y-4 md:space-y-0"
         >
           <div>
-            &copy; {currentYear} Groutix. All rights reserved. Built with Next.js &amp; Tailwind CSS.
+            &copy; {currentYear} Groutix. All rights reserved. Made by developer <a href="http://faizan-portfolio-tawny.vercel.app/"> Faizan Ahmad</a>
           </div>
           <div className="flex space-x-6">
             <motion.div
