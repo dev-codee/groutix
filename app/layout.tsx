@@ -3,6 +3,7 @@ import { Roboto } from "next/font/google";
 import "./globals.css";
 import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
+import SupportChatWidget from "@/components/SupportChatWidget";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -81,6 +82,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd(rating)) }}
         />
         {children}
+        <SupportChatWidget />
       </body>
     </html>
   );
