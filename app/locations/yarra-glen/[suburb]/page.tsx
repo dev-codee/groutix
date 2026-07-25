@@ -75,9 +75,10 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
         heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Yarra Glen. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img72.jpg"
+        heroImage="/img71.jpg"
         suburbGroups={yarraglenSuburbs}
+        parentSlug="yarra-glen"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

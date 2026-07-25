@@ -177,6 +177,7 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         serviceAreaMapImage="/img21.jpeg"
         heroImage="/img20.jpeg"
         suburbGroups={melbourneSuburbs}
+        parentSlug="melbourne"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

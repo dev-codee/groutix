@@ -142,7 +142,7 @@ const pillarIcons: Record<string, React.ReactNode[]> = {
 const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: string }> = {
   "shower-regrouting": {
     hero: "/img39.jpeg",
-    fail: "/img27.jpeg",
+    fail: "/img73.jpeg",
     fix: "/img12.jpeg",
   },
   "shower-base-repair": {
@@ -515,34 +515,44 @@ export default function ServicePageTemplate({
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <AnimatedImage className="relative w-full">
-              <ImgBox src={serviceImageMap[slug]?.fail} label="WHEN GROUT FAILS IMAGE" aspect="aspect-[4/3]" className="rounded-sm" />
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: 10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="absolute top-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
-              >
-                <span>🧱</span> WALL DAMAGE
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: -10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="absolute bottom-[20%] left-[-20px] bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm shadow-md"
-              >
-                <span>🦠</span> MOULD GROWTH
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: 10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.4 }}
-                className="absolute bottom-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
-              >
-                <span>🏠</span> HIDDEN LEAKS
-              </motion.div>
+              <ImgBox
+                src={serviceImageMap[slug]?.fail}
+                label="WHEN GROUT FAILS IMAGE"
+                aspect={serviceImageMap[slug]?.fail === "/img73.jpeg" ? "aspect-[3/2]" : "aspect-[4/3]"}
+                className="rounded-sm"
+                objectFit={serviceImageMap[slug]?.fail === "/img73.jpeg" ? "object-contain bg-neutral-900" : "object-cover"}
+              />
+              {slug !== "shower-regrouting" && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, x: 10 }}
+                    whileInView={{ opacity: 1, y: 0, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                    className="absolute top-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
+                  >
+                    <span>🧱</span> WALL DAMAGE
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, x: -10 }}
+                    whileInView={{ opacity: 1, y: 0, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 }}
+                    className="absolute bottom-[20%] left-[-20px] bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm shadow-md"
+                  >
+                    <span>🦠</span> MOULD GROWTH
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, x: 10 }}
+                    whileInView={{ opacity: 1, y: 0, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.4 }}
+                    className="absolute bottom-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
+                  >
+                    <span>🏠</span> HIDDEN LEAKS
+                  </motion.div>
+                </>
+              )}
             </AnimatedImage>
             <div className="space-y-6">
               <motion.h2
@@ -715,7 +725,7 @@ export default function ServicePageTemplate({
                     <p className="text-base text-neutral-500 leading-relaxed">{step.desc}</p>
                   </div>
                   <div className="pt-2">
-                    <ImgBox label={`Step ${i + 1} Image`} aspect="aspect-[16/10]" className="rounded-sm" src={i === 0 ? "/img24.jpeg" : i === 1 ? "/img25.jpeg" : "/img26.jpeg"} />
+                    <ImgBox label={`Step ${i + 1} Image`} aspect="aspect-[16/10]" className="rounded-sm" src={i === 0 ? "/img74.jpeg" : i === 1 ? "/img25.jpeg" : "/img26.jpeg"} />
                   </div>
                 </motion.div>
               ))}

@@ -74,9 +74,10 @@ export default async function BallaratPage() {
         heroHeading="Shower Regrouting & Grout Repair Specialists Ballarat"
         heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Ballarat. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img70.jpg"
+        heroImage="/img69.jpg"
         suburbGroups={ballaratSuburbs}
+        parentSlug="ballarat"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

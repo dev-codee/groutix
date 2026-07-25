@@ -5,6 +5,8 @@ const regions = [
   {
     slug: 'frankston',
     name: 'Frankston',
+    heroImage: '/img63.jpg',
+    serviceAreaMapImage: '/img64.jpg',
     suburbs: [
       {
         title: "Local Frankston Suburbs",
@@ -19,6 +21,8 @@ const regions = [
   {
     slug: 'lilydale',
     name: 'Lilydale',
+    heroImage: '/img65.jpg',
+    serviceAreaMapImage: '/img66.jpg',
     suburbs: [
       {
         title: "Local Lilydale Suburbs",
@@ -37,6 +41,8 @@ const regions = [
   {
     slug: 'kilmore',
     name: 'Kilmore',
+    heroImage: '/img67.jpg',
+    serviceAreaMapImage: '/img68.jpg',
     suburbs: [
       {
         title: "Local Kilmore Suburbs",
@@ -55,6 +61,8 @@ const regions = [
   {
     slug: 'ballarat',
     name: 'Ballarat',
+    heroImage: '/img69.jpg',
+    serviceAreaMapImage: '/img70.jpg',
     suburbs: [
       {
         title: "Local Ballarat Suburbs",
@@ -73,6 +81,8 @@ const regions = [
   {
     slug: 'yarra-glen',
     name: 'Yarra Glen',
+    heroImage: '/img71.jpg',
+    serviceAreaMapImage: '/img72.jpg',
     suburbs: [
       {
         title: "Local Yarra Glen Suburbs",
@@ -135,9 +145,10 @@ export default async function ${region.slug.replace(/-/g, '').replace(/^[a-z]/, 
         heroHeading="Shower Regrouting & Grout Repair Specialists ${region.name}"
         heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across ${region.name}. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="${region.serviceAreaMapImage}"
+        heroImage="${region.heroImage}"
         suburbGroups={${region.slug.replace(/-/g, '')}Suburbs}
+        parentSlug="${region.slug}"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}
@@ -214,9 +225,10 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         heroHeading={\`Shower Regrouting & Grout Repair in \${suburbName}\`}
         heroSubtitle={\`Professional shower regrouting, grout repair and leaking shower services in \${suburbName}, ${region.name}. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.\`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="${region.serviceAreaMapImage}"
+        heroImage="${region.heroImage}"
         suburbGroups={${region.slug.replace(/-/g, '')}Suburbs}
+        parentSlug="${region.slug}"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

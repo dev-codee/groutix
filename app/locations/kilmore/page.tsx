@@ -71,9 +71,10 @@ export default async function KilmorePage() {
         heroHeading="Shower Regrouting & Grout Repair Specialists Kilmore"
         heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Kilmore. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img68.jpg"
+        heroImage="/img67.jpg"
         suburbGroups={kilmoreSuburbs}
+        parentSlug="kilmore"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

@@ -63,9 +63,10 @@ export default async function FrankstonPage() {
         heroHeading="Shower Regrouting & Grout Repair Specialists Frankston"
         heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Frankston. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img64.jpg"
+        heroImage="/img63.jpg"
         suburbGroups={frankstonSuburbs}
+        parentSlug="frankston"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

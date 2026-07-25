@@ -87,9 +87,10 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
         heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Frankston. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img64.jpg"
+        heroImage="/img63.jpg"
         suburbGroups={frankstonSuburbs}
+        parentSlug="frankston"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

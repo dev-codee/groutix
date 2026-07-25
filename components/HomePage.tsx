@@ -226,7 +226,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className="max-w-3xl text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-[72px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
                   >
-                    Shower Regrouting &amp; Grout Repair Specialists | Groutix
+                    Victoria&apos;s Highest Rated &amp; Most Trusted Shower Regrouting &amp; Leak Repair Specialists
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -234,7 +234,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
                   >
-                    Groutix repairs broken grout, failed seals and leaking wet areas using specialist regrouting techniques — restoring showers and balconies without a full retile or renovation.
+                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions—without the need for a full renovation.
                   </motion.p>
                 </div>
 

@@ -145,6 +145,7 @@ export default async function MelbournePage() {
         serviceAreaMapImage="/img21.jpeg"
         heroImage="/img20.jpeg"
         suburbGroups={melbourneSuburbs}
+        parentSlug="melbourne"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}
