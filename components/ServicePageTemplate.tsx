@@ -147,7 +147,7 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
   },
   "shower-base-repair": {
     hero: "/img29.jpg",
-    fail: "/img30.jpg",
+    fail: "/img79.jpeg",
     fix: "/img31.jpg",
   },
   "tile-regrouting": {
@@ -157,32 +157,32 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
   },
   "leaking-shower-repair": {
     hero: "/img32.jpg",
-    fail: "/img33.jpg",
+    fail: "/img81.jpeg",
     fix: "/img34.jpg",
   },
   "small-tiling-jobs": {
     hero: "/img19.avif",
-    fail: "/img9.jpeg",
+    fail: "/img83.jpeg",
     fix: "/img36.jpeg",
   },
   "balcony-leak-repairs": {
-    hero: "/img51.jpeg",
-    fail: "/img48.jpeg",
-    fix: "/img49.jpeg",
+    hero: "/img77.jpeg",
+    fail: "/img78.jpeg",
+    fix: "/img76.jpeg",
   },
   "silicone-recaulking": {
     hero: "/img50.jpeg",
-    fail: "/img55.jpeg",
+    fail: "/img80.jpeg",
     fix: "/img52.jpeg",
   },
   "epoxy-grout": {
     hero: "/img53.jpeg",
-    fail: "/img56.jpeg",
+    fail: "/img84.jpeg",
     fix: "/img54.jpeg",
   },
   "real-estate-property-services": {
-    hero: "/img28.jpeg",
-    fail: "/img23.jpeg",
+    hero: "/img75.jpeg",
+    fail: "/img82.jpeg",
     fix: "/img2.jpeg",
   },
 };
@@ -515,43 +515,27 @@ export default function ServicePageTemplate({
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <AnimatedImage className="relative w-full">
-              <ImgBox
-                src={serviceImageMap[slug]?.fail}
-                label="WHEN GROUT FAILS IMAGE"
-                aspect={serviceImageMap[slug]?.fail === "/img73.jpeg" ? "aspect-[3/2]" : "aspect-[4/3]"}
-                className="rounded-sm"
-                objectFit={serviceImageMap[slug]?.fail === "/img73.jpeg" ? "object-contain bg-neutral-900" : "object-cover"}
-              />
-              {slug !== "shower-regrouting" && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, x: 10 }}
-                    whileInView={{ opacity: 1, y: 0, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2 }}
-                    className="absolute top-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
-                  >
-                    <span>🧱</span> WALL DAMAGE
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, x: -10 }}
-                    whileInView={{ opacity: 1, y: 0, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.3 }}
-                    className="absolute bottom-[20%] left-[-20px] bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm shadow-md"
-                  >
-                    <span>🦠</span> MOULD GROWTH
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, x: 10 }}
-                    whileInView={{ opacity: 1, y: 0, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.4 }}
-                    className="absolute bottom-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
-                  >
-                    <span>🏠</span> HIDDEN LEAKS
-                  </motion.div>
-                </>
+              {serviceImageMap[slug]?.fail ? (
+                <div className="relative w-full rounded-xl overflow-hidden shadow-md border-2 border-transparent hover:border-accent transition-all duration-300 hover:shadow-xl">
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
+                  <Image
+                    src={serviceImageMap[slug]!.fail!}
+                    alt="WHEN GROUT FAILS IMAGE"
+                    width={0}
+                    height={0}
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                    className="rounded-xl"
+                  />
+                </div>
+              ) : (
+                <ImgBox
+                  src={undefined}
+                  label="WHEN GROUT FAILS IMAGE"
+                  aspect="aspect-[4/3]"
+                  className="rounded-sm"
+                />
               )}
             </AnimatedImage>
             <div className="space-y-6">
@@ -956,7 +940,7 @@ export default function ServicePageTemplate({
 
         <section id="quote-form" className="relative overflow-hidden bg-[#001F97]">
           <div className="absolute inset-0">
-            <Image src="/img28.jpeg" alt="Request Quote Background" fill className="object-cover" />
+            <Image src="/img75.jpeg" alt="Request Quote Background" fill className="object-cover" />
           </div>
           <div className="relative z-10 max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2">
             <motion.div

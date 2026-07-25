@@ -467,7 +467,7 @@ export default function HomePage({
                   {
                     title: "PRICEY FIXES LATER",
                     desc: "Water damage usually costs more to repair the longer it's left to spread under the tiled surface.",
-                    img: "/img41.jpeg",
+                    img: "/img83.jpeg",
                   },
                 ].map((b, i) => (
                   <motion.div

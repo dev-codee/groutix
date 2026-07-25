@@ -606,7 +606,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
       {/* Final Quote Form */}
       <section id="quote-form" className="relative overflow-hidden bg-[#001F97]">
         <div className="absolute inset-0">
-          <Image src="/img28.jpeg" alt="Request Quote Background" fill className="object-cover" />
+          <Image src="/img75.jpeg" alt="Request Quote Background" fill className="object-cover" />
         </div>
 
         {/* Foreground content */}
