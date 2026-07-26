@@ -46,7 +46,7 @@ const kilmoreSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Lilydale)",
+    "title": "Nearby Service Areas (Towards Lilydale)",
     "suburbs": [
       "Eden Park",
       "Wallan",
@@ -55,7 +55,7 @@ const kilmoreSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Ballarat)",
+    "title": "Nearby Service Areas (Towards Ballarat)",
     "suburbs": [
       "Hesket",
       "Lancefield",

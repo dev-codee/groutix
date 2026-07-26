@@ -45,7 +45,7 @@ const lilydaleSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (From Frankston Route)",
+    "title": "Hills & Yarra Valley Suburbs",
     "suburbs": [
       "Emerald",
       "Macclesfield",
@@ -54,7 +54,7 @@ const lilydaleSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (From Kilmore Route)",
+    "title": "Northern Yarra Ranges Suburbs",
     "suburbs": [
       "Doreen",
       "Hurstbridge",
@@ -95,7 +95,7 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Lilydale. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
         serviceAreaMapImage="/img66.jpg"
-        heroImage="/img65.jpg"
+        heroImage="/img100.jpg"
         suburbGroups={lilydaleSuburbs}
         parentSlug="lilydale"
         reviews={reviews}

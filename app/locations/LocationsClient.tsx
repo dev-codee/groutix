@@ -62,7 +62,7 @@ function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src, objectCla
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -271,7 +271,7 @@ export default function LocationsClient({
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-3xl lg:text-4xl font-bold text-neutral-900 leading-tight"
+              className="text-3xl lg:text-[42px] font-black text-[#001F97] leading-tight tracking-tight"
             >
               Our Service Area
             </motion.h2>
@@ -327,16 +327,16 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
           </p>
           <div className="flex flex-row flex-wrap justify-center items-center gap-4">
             <Link
-              href="/locations/geelong"
-              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
-            >
-              Geelong Area
-            </Link>
-            <Link
               href="/locations/melbourne"
               className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
             >
               Melbourne Area
+            </Link>
+            <Link
+              href="/locations/geelong"
+              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
+            >
+              Geelong Area
             </Link>
             <Link
               href="/locations/frankston"

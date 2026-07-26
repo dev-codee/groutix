@@ -95,7 +95,7 @@ function ImgBox({
 /* ─── PhotoSlider ─── */
 function PhotoSlider({ cityName }: { cityName: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -461,7 +461,7 @@ export default function CityPageClient({
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="text-3xl lg:text-4xl font-bold text-neutral-900 leading-tight"
+                className="text-3xl lg:text-[42px] font-black text-[#001F97] leading-tight tracking-tight"
               >
                 Our Service Area
               </motion.h2>
@@ -473,7 +473,7 @@ export default function CityPageClient({
                 className="space-y-4"
               >
                 {serviceAreaText.split("\n\n").map((para, i) => (
-                  <p key={i} className="text-base sm:text-lg text-neutral-600 leading-relaxed">
+                  <p key={i} className="text-base sm:text-lg text-neutral-600 leading-relaxed font-normal">
                     {para}
                   </p>
                 ))}
@@ -530,7 +530,7 @@ export default function CityPageClient({
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  className="text-4xl lg:text-[48px] font-black text-neutral-900 leading-tight"
+                  className="text-4xl lg:text-[42px] font-black text-[#001F97] leading-tight tracking-tight"
                 >
                   {cityName}
                 </motion.h2>
@@ -539,7 +539,7 @@ export default function CityPageClient({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="space-y-4 text-base sm:text-lg text-neutral-600 leading-relaxed font-medium"
+                  className="space-y-4 text-base sm:text-lg text-neutral-600 leading-relaxed font-normal"
                 >
                   {locationExplanation.split("\n\n").map((para, i) => (
                     <p key={i}>{para}</p>

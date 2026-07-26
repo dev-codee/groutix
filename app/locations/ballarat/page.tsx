@@ -39,7 +39,7 @@ const ballaratSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Kilmore)",
+    "title": "Nearby Service Areas (Towards Kilmore)",
     "suburbs": [
       "Creswick",
       "Daylesford",
@@ -47,7 +47,7 @@ const ballaratSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Geelong)",
+    "title": "Nearby Service Areas (Towards Geelong)",
     "suburbs": [
       "Clarendon",
       "Elaine"

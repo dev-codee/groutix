@@ -46,7 +46,7 @@ const frankstonSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Lilydale)",
+    "title": "Nearby Service Areas (Towards Lilydale)",
     "suburbs": [
       "Beaconsfield",
       "Berwick",

@@ -47,7 +47,7 @@ const melbourneSuburbs: SuburbGroup[] = [
     suburbs: [
       "Abbotsford", "Camberwell", "Canterbury", "Cremorne", "Glen Iris",
       "Hawthorn", "Hawthorn East", "Kew", "Kew East", "Malvern",
-      "Malvern East", "Prahran", "Toorak", "Windsor",
+      "Malvern East", "Toorak", "Windsor",
     ],
   },
   {
@@ -61,7 +61,7 @@ const melbourneSuburbs: SuburbGroup[] = [
     title: "Inner Southern Suburbs",
     suburbs: [
       "Albert Park", "Balaclava", "Elwood", "Middle Park", "Port Melbourne",
-      "St Kilda", "St Kilda East", "St Kilda West",
+      "Prahran", "St Kilda", "St Kilda East", "St Kilda West",
     ],
   },
   {
