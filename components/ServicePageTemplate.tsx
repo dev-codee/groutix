@@ -525,7 +525,7 @@ export default function ServicePageTemplate({
               </div>
             </motion.div>
             <AnimatedImage className="w-full" delay={0.3}>
-              <ImgBox src={serviceImageMap[slug]?.hero} label={`${title} Hero Image`} aspect="aspect-[4/3]" className={`rounded-sm shadow-lg bg-white/5 border-white/10${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
+              <ImgBox src={serviceImageMap[slug]?.hero} label={`${title} Hero Image`} aspect="aspect-[4/3]" className={`img-glow rounded-sm shadow-lg bg-white/5 border-white/10${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
             </AnimatedImage>
           </div>
 
@@ -564,7 +564,7 @@ export default function ServicePageTemplate({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <AnimatedImage className="relative w-full">
               {serviceImageMap[slug]?.fail ? (
-                <div className={`relative w-full overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent rounded-sm" : " rounded-xl border-2 border-transparent hover:border-accent"}` }>
+                <div className={`img-glow relative w-full overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent rounded-sm" : " rounded-xl border-2 border-transparent hover:border-accent"}` }>
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
                   <ImgBox
@@ -641,7 +641,7 @@ export default function ServicePageTemplate({
                 {slug === "shower-base-repair" ? (
                   <MiniFixCarousel images={["/img89.jpeg", "/img90.jpeg", "/img92.jpeg"]} />
                 ) : (
-                  <ImgBox src={serviceImageMap[slug]?.fix} label="SPECIALIST FIX IMAGE" aspect="aspect-[4/3]" className={`rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
+                  <ImgBox src={serviceImageMap[slug]?.fix} label="SPECIALIST FIX IMAGE" aspect="aspect-[4/3]" className={`img-glow rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
                 )}
                 {slug !== "shower-base-repair" && (
                   <motion.div
@@ -760,7 +760,7 @@ export default function ServicePageTemplate({
                     </p>
                   </div>
                   <div className="pt-2">
-                    <ImgBox label={`Step ${i + 1} Image`} aspect="aspect-[16/10]" className="rounded-sm" src={i === 0 ? "/img87.jpeg" : i === 1 ? "/img85.jpeg" : "/img86.jpeg"} />
+                    <ImgBox label={`Step ${i + 1} Image`} aspect="aspect-[16/10]" className="img-glow rounded-sm" src={i === 0 ? "/img87.jpeg" : i === 1 ? "/img85.jpeg" : "/img86.jpeg"} />
                   </div>
                 </motion.div>
               ))}
@@ -851,7 +851,7 @@ export default function ServicePageTemplate({
         <AnimatedSection className="bg-white text-neutral-800 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <AnimatedImage className="relative group">
-              <ImgBox src={slug === "leaking-shower-repair" ? "/img99.jpeg" : "/img6.avif"} label="What You Get Image" aspect="aspect-[4/3]" className={`rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
+              <ImgBox src={slug === "leaking-shower-repair" ? "/img99.jpeg" : "/img6.avif"} label="What You Get Image" aspect="aspect-[4/3]" className={`img-glow rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
               <motion.div
                 initial={{ opacity: 0, y: 10, x: -10 }}
                 whileInView={{ opacity: 1, y: 0, x: 0 }}
@@ -928,7 +928,7 @@ export default function ServicePageTemplate({
               </motion.div>
             </motion.div>
             <AnimatedImage className="relative w-full">
-              <div className="relative w-full rounded-xl overflow-hidden shadow-md border-2 border-transparent hover:border-accent transition-all duration-300 hover:shadow-xl">
+              <div className="img-glow relative w-full rounded-xl overflow-hidden shadow-md border-2 border-transparent hover:border-accent transition-all duration-300 hover:shadow-xl">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
                 <ImgBox src={guaranteeImage ?? (slug === "shower-base-repair" ? "/img91.jpeg" : "/img43.jpeg")} label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-xl" />
