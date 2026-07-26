@@ -179,7 +179,7 @@ export default function TrustedMarquee() {
     <section className="bg-white py-8 border-b border-neutral-100 overflow-hidden">
       {/* Label */}
       <p className="text-center text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-6">
-        TRUSTED ACROSS AUSTRALIA
+        TRUSTED ACROSS VICTORIA
       </p>
 
       {/* Marquee track — two identical sets for seamless loop */}

@@ -72,7 +72,7 @@ function ImgBox({
 /* ─── Photo slider (matches service page slider) ─── */
 function HomePhotoSlider() {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
   const total = sliderImages.length;
   const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
   const prev = () => setIdx((i) => (i - 1 + total) % total);
@@ -648,14 +648,12 @@ export default function HomePage({
               </p>
               <ul className="space-y-3">
                 {[
-                  "Expert team focused on shower regrouting and grout fixes",
-                  "Repair methods made for long-lasting wet-area use",
-                  "High-quality grout and sealing choices for tough spaces",
-                  "10-year waterproof guarantee on complete shower regrouting work",
-                  "Techs with experience in grout issues and leaky showers",
-                  "Transparent quotes and practical advice",
-                  "Professional service with neat, respectful work",
-                  "Trusted by homeowners, strata managers, and property pros",
+                  "Specialist materials selected for long-term durability",
+                  "Experienced shower regrouting technicians",
+                  "10-year waterproof warranty on eligible full shower regrouting",
+                  "Fast turnaround with minimal disruption",
+                  "Honest recommendations based on your shower's condition",
+                  "Clear, upfront pricing with no hidden surprises",
                 ].map((item, i) => (
                   <motion.li
                     key={i}

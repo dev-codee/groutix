@@ -25,13 +25,12 @@ function ImgBox({ label }: { label: string }) {
 
 export default function WhyUsSection() {
   const points = [
-    "Australia's biggest dedicated shower regrouting expert",
-    "Trusted methods improved over many years",
-    "High-quality grout choices available",
-    "10-year waterproof guarantee for complete confidence",
-    "Expert technicians – not general tilers or handymen",
-    "No-obligation quotes with no surprise costs",
-    "Professional, honest, and friendly service",
+    "Specialist materials selected for long-term durability",
+    "Experienced shower regrouting technicians",
+    "10-year waterproof warranty on eligible full shower regrouting",
+    "Fast turnaround with minimal disruption",
+    "Honest recommendations based on your shower's condition",
+    "Clear, upfront pricing with no hidden surprises",
   ];
 
   return (

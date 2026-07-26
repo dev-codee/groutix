@@ -28,6 +28,9 @@ const services: Record<string, {
   heroTitle?: string;
   heroCards?: { title: string; desc: string }[];
   trustedText?: string;
+  guaranteeHeading?: string;
+  guaranteeHeadingBlue?: string;
+  guaranteeImage?: string;
 }> = {
 
   "shower-regrouting": {
@@ -54,17 +57,17 @@ const services: Record<string, {
     ],
     workWithUsText: "Choosing Groutix means working with a team focused on shower regrouting and wet-area repairs every day. We provide practical advice, clear repair scope and workmanship designed to improve both appearance and long-term performance.",
     workWithUsBullets: [
-      "Wet-area grout systems selected for long-term durability",
-      "Efficient repair turnaround with minimal disruption",
-      "Technicians experienced in shower regrouting and grout failure",
-      "Clear recommendations based on the condition of the shower",
-      "10-year waterproof warranty on full shower regrouting",
-      "Servicing Victoria",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
+      "Fast turnaround with minimal disruption",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
     guaranteeText: "Full shower regrouting work completed by Groutix is backed by our 10-year waterproof warranty. If water returns due to our workmanship, we will come back and rectify it.\n\nWe use specialist grout and sealing materials designed for wet areas to help manage movement, reduce future joint failure and keep the shower performing properly long term.",
     faqs: [
       { q: "How long does shower regrouting take?", a: "Most standard shower regrouting jobs are completed within 3 to 4 hours. Larger or more complex showers may take a full day." },
-      { q: "How long before I can use the shower?", a: "We recommend waiting 24 hours after completion to allow the grout and silicone sealants to cure fully." },
+      { q: "How long before I can use the shower?", a: "The required curing time depends on the repair materials used. Polymer grout typically requires 24 hours before the shower can be used. Epoxy regrouting typically requires approximately 4 days, as the epoxy must cure before the final silicone is applied. Unless advised otherwise by your technician, please allow the recommended curing time before using the shower." },
       { q: "Do you match the existing grout colour?", a: "Yes. We carry a wide range of grout shades — white, off-white, light grey, dark grey and charcoal — to match your existing tiles as closely as possible." },
       { q: "Will you need to remove my tiles?", a: "No. Shower regrouting is a non-invasive process. We remove only the grout between tiles, not the tiles themselves." },
       { q: "What areas do you service?", a: "We service Victoria." },
@@ -95,14 +98,17 @@ const services: Record<string, {
     ],
     workWithUsText: "Our team specialises in shower repairs and wet-area resealing, so we can assess leaking showers with a clear understanding of how grout and seal failure develops. We explain the issue plainly and recommend a repair scope that matches the problem.",
     workWithUsBullets: [
-      "Accurate diagnosis before repair work begins",
-      "No tile removal required in the vast majority of cases",
-      "Waterproof grout and sealants designed for wet areas",
-      "Clear quotes with straightforward pricing",
-      "10-year waterproof warranty on completed repairs",
-      "Fast turnaround for common leaking shower issues",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
+      "Fast turnaround with minimal disruption",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
-    guaranteeText: "Leaking shower repairs completed by Groutix are backed by our 10-year waterproof warranty. If the leak returns due to our workmanship, we will return and rectify it.\n\nWe use specialist waterproof grout and flexible sealants designed for wet areas to help maintain a durable, watertight shower system.",
+    guaranteeText: "Eligible leaking shower repairs completed by Groutix are backed by our 10-year waterproof workmanship warranty. Warranty eligibility depends on the condition of the shower and the approved repair scope.",
+    fixBlueBoxText: "By removing failed grout and deteriorated silicone, then installing premium waterproof materials, we eliminate common leak pathways and restore the shower without removing tiles or undertaking a full bathroom renovation.",
+    workWithUsBlueBoxText: "Every repair begins with identifying the cause of the leak. We remove failed grout and deteriorated silicone, prepare the surfaces correctly and restore the shower using premium waterproof materials.",
+    processBlueText: "We don't seal over the problem. We remove failed grout and deteriorated silicone, prepare the surfaces correctly, and install premium waterproof materials designed for wet areas.",
     faqs: [
       { q: "Can you fix the leak without removing tiles?", a: "Yes. In the vast majority of cases, shower leaks are caused by failed grout or silicone — both of which we repair without removing any tiles." },
       { q: "What if it's a plumbing leak behind the wall?", a: "If the leak is from internal pipes, you'll need a licensed plumber. We specialise in fixing leaks caused by grout and sealant failure at the tile surface." },
@@ -116,11 +122,16 @@ const services: Record<string, {
     metaTitle: "Shower Base Repair Victoria | Leak-Proof Solutions | Groutix",
     metaDesc: "Fix a leaking or cracked shower base fast. Groutix offers reliable shower base repairs across Victoria — no full reno required.",
     h1Desc: "A cracked or leaking shower base is more than a cosmetic issue — left unattended, it can lead to serious water damage below the floor. Groutix provides expert shower base repairs, identifying the source of the leak and resealing or restoring the base to a fully watertight standard. We work with tiled bases, acrylic bases and shower trays, offering a cost-effective alternative to ripping out and replacing your entire shower.",
+    heroCards: [
+      { title: "Specialists in Shower Base Repairs", desc: "" },
+      { title: "Leak Source Identification & Repair", desc: "" },
+      { title: "Repairs Tailored to Your Shower Base", desc: "" },
+    ],
     failHeading: "A Failing Shower Base",
     failHeadingBlue: "Can Leak Everywhere",
-    failText: "When the shower base is cracked, uneven or deteriorated, water can move beneath the tiles and into adjoining building materials. Problems often begin around the drain, tile bed or substrate, and visible dampness usually appears only after the base has already started failing.\n\nSurface patching rarely lasts because it does not rebuild the underlying structure that supports the wet area. A proper shower base repair needs to restore both the damaged area and the waterproof barrier.",
-    fixHeading: "Shower Base Repairs That",
-    fixHeadingBlue: "Restore The Floor",
+    failText: "When a shower base is cracked, leaking or deteriorated, water can escape into surrounding building materials, causing damage beyond the shower.",
+    fixHeading: "Tiled Shower Base Repairs That",
+    fixHeadingBlue: "Fix the Cause",
     fixText: "By targeting the damaged section of the floor, repairing the shower base and restoring waterproof protection where it has failed, we deliver a durable repair without the cost and disruption of a full bathroom rebuild.",
     pillars: [
       { title: "Substrate Repair", desc: "We focus on the damaged shower floor itself, not just the visible grout or tile surface." },
@@ -133,23 +144,26 @@ const services: Record<string, {
       { title: "Repair Base & Membrane", desc: "Damaged areas are rebuilt with waterproof repair compounds and flexible membrane systems where required." },
       { title: "Regrout & Seal", desc: "Once the base is restored, we regrout the floor, reseal key joints and complete the final waterproof finish." },
     ],
-    workWithUsText: "Groutix specialises in shower repairs that address the floor from the base up. We provide clear repair scope, waterproof materials and workmanship designed to restore the function of the shower rather than just hide the symptoms.",
+    workWithUsText: "Groutix specialises in shower base repairs for both tiled shower bases and acrylic shower pans. We provide honest repair assessments, professional repair methods and quality materials designed to restore your shower without unnecessary demolition or full replacement.",
     workWithUsBullets: [
-      "Specialist base repair for shower floors and tiled wet areas",
-      "Crack and tray-edge repairs without full shower demolition",
-      "Waterproof materials designed to bond to existing bases",
-      "Professional drain reinstatement and tile bed support",
-      "Fast, local service with minimal disruption",
-      "10-year waterproof warranty on completed base repairs",
+      "Repairs for Tiled Bases & Shower Pans",
+      "Suitable Repairs Without Full Replacement",
+      "Professional Crack, Base & Tray Repairs",
+      "Quality Repair Materials",
+      "Honest Repair Assessments",
+      "Fast, Local Service Across Victoria",
     ],
-    guaranteeText: "Completed shower base repairs from Groutix are backed by our 10-year waterproof warranty. If water returns due to our workmanship, we will return and rectify it.\n\nWe use specialist waterproof materials designed for demanding wet-area conditions to help keep the restored shower base performing properly.",
+    guaranteeHeading: "Stained & Cracked Grout",
+    guaranteeHeadingBlue: "Can Damage More Than Your Tiles",
+    guaranteeText: "Over time, cement-based grout absorbs moisture, grease and everyday dirt, leaving grout lines permanently stained and difficult to clean. As grout begins to crack or wear away, water can penetrate beneath the tiles, increasing the risk of loose tiles, moisture damage and costly repairs.\n\nWhether it's your bathroom, shower, laundry, kitchen or outdoor tiled areas, replacing deteriorated grout restores the appearance of your tiles while helping protect the surface from further damage.\n\nFor clients wanting maximum stain resistance and durability, we also offer premium epoxy grout for wet areas and high-traffic environments.",
+    guaranteeImage: "/img91.jpeg",
     faqs: [
       { q: "Can you repair a cracked shower base without replacing tiles?", a: "Yes. Many shower base failures can be repaired from the existing tile surface by accessing the base, repairing cracks or voids, and reinstating the waterproof layer." },
       { q: "Will I need to leave the house during the repair?", a: "Most shower base repairs are completed in one visit, and you can stay in your home while we work. We keep the work area clean and separate from living spaces." },
       { q: "How long until the shower can be used again?", a: "We typically recommend waiting 24–48 hours after repairs to allow waterproof compounds and grout to cure fully." },
       { q: "What if the drain is leaking?", a: "We inspect the drain connection as part of the repair. If the leak is at the drain or junction, we repair the base and re-seal the connection to stop water escaping." },
     ],
-    fixBlueBoxText: "By targeting damaged areas, repairing the shower base and restoring protection where it has failed, we deliver a durable solution without the cost and disruption of a full bathroom renovation.",
+    workWithUsBlueBoxText: "Our experienced technicians assess every shower base individually and recommend repairs only where they are a suitable long-term solution. Whether your shower has a cracked acrylic pan or a damaged tiled base, we focus on quality workmanship and practical, cost-effective repairs.",
   },
 
   "tile-regrouting": {
@@ -176,12 +190,12 @@ const services: Record<string, {
     ],
     workWithUsText: "We restore tiled floors and walls in kitchens, bathrooms, laundries and outdoor areas with a process designed to improve both appearance and durability, without the cost of a full retile.",
     workWithUsBullets: [
-      "Specialist dust-minimising joint raking equipment",
-      "High-strength polymer-modified grout formulations",
-      "Wide range of grout colours available",
-      "Indoor and outdoor areas serviced",
-      "Kitchen, laundry, balcony and bathroom tiles all covered",
-      "Professional sponge clean of all tiles after grouting",
+      "Dust-minimising grout removal",
+      "Premium polymer & epoxy grout",
+      "Wide range of grout colours",
+      "Bathrooms, kitchens & balconies",
+      "Indoor & outdoor tiled areas",
+      "Tiles cleaned after regrouting",
     ],
     guaranteeText: "Tile regrouting work completed by Groutix is carried out with specialist materials selected for the application area. Where wet-area waterproof work forms part of the repair, eligible workmanship is backed by our warranty coverage.\n\nWe use durable grout systems designed to improve joint strength, appearance and long-term performance in tiled environments.",
     faqs: [
@@ -190,7 +204,7 @@ const services: Record<string, {
       { q: "Can you regrout balcony and outdoor tiles?", a: "Yes. We service outdoor balconies, alfresco areas and pool surrounds with weatherproof grout formulas." },
       { q: "How long does floor regrouting take?", a: "This depends on the area size. A standard kitchen floor typically takes half a day. We'll provide a time estimate with your quote." },
     ],
-    fixBlueBoxText: "By removing stained or failing grout and replacing it with durable, high-quality materials, we restore the appearance of your tiled surfaces and deliver a cleaner, longer-lasting finish without the cost or disruption of full retiling.",
+    fixBlueBoxText: "We remove stained and deteriorated grout, replacing it with durable, high-quality grout for a cleaner, longer-lasting finish—without the cost of full retiling.",
     workWithUsBlueBoxText: "With experienced technicians, specialist equipment and durable grout systems, you can trust that your tiled surfaces are restored properly and built to last.",
   },
 
@@ -219,12 +233,12 @@ const services: Record<string, {
     ],
     workWithUsText: "Groutix provides professional balcony leak repairs across Victoria. We understand the specific demands of outdoor tiled surfaces and use materials designed to perform in exposed conditions — giving you a properly repaired balcony backed by our workmanship warranty.",
     workWithUsBullets: [
-      "Specialist weatherproof grout and sealant systems",
-      "Movement joint repair and replacement",
-      "Non-invasive repairs — no unnecessary tile removal",
-      "Outdoor and exposed area expertise",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
       "Fast turnaround with minimal disruption",
-      "Workmanship warranty on completed repairs",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
     guaranteeText: "All balcony leak repairs completed by Groutix are backed by our workmanship warranty. We use flexible, weatherproof grouts and sealants designed to accommodate thermal movement and outdoor conditions — helping keep your balcony watertight long-term.",
     faqs: [
@@ -241,6 +255,11 @@ const services: Record<string, {
     metaTitle: "Silicone & Recaulking Services Victoria | Groutix",
     metaDesc: "Remove mouldy, cracked silicone and reseal your bathroom or kitchen with a durable, mould-resistant finish. Servicing Victoria.",
     h1Desc: "Perished, mouldy or peeling silicone around showers, baths, sinks and benchtops isn't just unsightly — it's a common entry point for water damage. Our silicone and recaulking service removes old, failing silicone and applies a fresh, mould-resistant seal to all wet area joints. It's one of the simplest ways to instantly refresh a bathroom or kitchen and protect against leaks, and it pairs perfectly with our regrouting services for a complete wet area refresh.",
+    heroCards: [
+      { title: "Specialists in tile and bathroom silicone & recaulking", desc: "" },
+      { title: "Long-lasting solutions for worn or damaged areas", desc: "" },
+      { title: "Help Prevent Water Ingress", desc: "" },
+    ],
     failHeading: "Deteriorated Silicone Allows",
     failHeadingBlue: "Water Behind Your Tiles",
     failText: "Silicone sealant is the flexible barrier that seals movement joints in showers, baths, kitchens and other wet areas. Unlike grout, silicone is designed to flex with the natural movement of building materials — but over time, it degrades, cracks, peels and becomes a breeding ground for mould.\n\nOnce silicone fails, water can penetrate behind the tiles and into the wall or floor structure beneath. This can lead to hidden moisture build-up, mould growth, damage to wall linings and increasingly costly repairs.\n\nMany homeowners try cleaning black mould off deteriorated silicone, but once the sealant has broken down, surface cleaning only provides temporary relief. The only lasting fix is complete removal and replacement.",
@@ -261,14 +280,14 @@ const services: Record<string, {
     ],
     workWithUsText: "Groutix provides professional silicone replacement and recaulking for showers, baths, kitchens and wet areas across Victoria. We use premium mould-resistant products and take care to complete every job to a neat, professional standard.",
     workWithUsBullets: [
-      "Complete removal of old and deteriorated silicone",
-      "Premium-grade mould-resistant sanitary sealants",
-      "Colour matching to existing grout and fixtures",
-      "Showers, baths, kitchens and laundries serviced",
-      "Clean, neat application and professional finish",
-      "Servicing Victoria",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
+      "Fast turnaround with minimal disruption",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
-    guaranteeText: "All silicone replacement work completed by Groutix is backed by our workmanship warranty. We use premium mould-resistant sanitary silicone designed for high-moisture environments to help ensure long-lasting performance.",
+    guaranteeText: "Every silicone replacement completed by Groutix is carried out using premium mould-resistant sanitary silicone and a proven preparation process. By removing deteriorated sealant completely before applying new silicone, we deliver a clean, professional finish designed to perform in wet areas.",
     faqs: [
       { q: "How long does new silicone take to cure?", a: "New silicone typically requires 24 hours to fully cure before the shower or wet area can be used." },
       { q: "Can you apply new silicone over the existing silicone?", a: "No. Applying new silicone over old deteriorated sealant will not bond correctly and will fail prematurely. We always remove the old silicone completely before applying new product." },
@@ -276,6 +295,7 @@ const services: Record<string, {
       { q: "Do you reseal the entire shower or just specific joints?", a: "We can reseal the entire shower or target specific joints depending on the condition of the silicone. We'll assess and recommend the appropriate scope before starting work." },
       { q: "Why does shower silicone turn black?", a: "Black staining is caused by mould growing on or beneath deteriorated silicone in damp environments. Replacement with mould-resistant sealant is the most effective long-term solution." },
     ],
+    workWithUsBlueBoxText: "Every silicone replacement begins with complete removal of the failed sealant before premium sanitary silicone is applied for a clean, long-lasting waterproof finish.",
   },
 
   "epoxy-grout": {
@@ -303,14 +323,15 @@ const services: Record<string, {
     ],
     workWithUsText: "Groutix installs commercial-grade epoxy grout across Victoria for residential and commercial clients. Whether you're upgrading an existing shower, bathroom or balcony, or specifying epoxy grout for a new installation, our experienced team delivers a precise, durable and visually excellent result.",
     workWithUsBullets: [
-      "Commercial-grade epoxy grout systems",
-      "Full removal of existing cement grout before installation",
-      "Wide range of colours available",
-      "Showers, bathrooms, balconies and kitchens serviced",
-      "Residential and commercial applications",
-      "Servicing Victoria",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
+      "Fast turnaround with minimal disruption",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
     guaranteeText: "All epoxy grout installations completed by Groutix are backed by our workmanship warranty. Epoxy grout's inherent durability and non-porous nature makes it one of the most long-lasting grout solutions available for tiled wet areas and high-traffic environments.",
+    workWithUsBlueBoxText: "Using commercial-grade epoxy grout, precise installation techniques and premium materials, we deliver a durable, stain-resistant finish built to last.",
     faqs: [
       { q: "Is epoxy grout worth the upgrade?", a: "For showers, balconies, kitchens and other demanding wet areas, epoxy grout is an excellent long-term investment. Its non-porous, stain-resistant finish outperforms standard cement grout significantly." },
       { q: "How long does epoxy grout take to cure?", a: "Epoxy grout requires approximately 72 hours to fully cure before the tiled area can be used. Your technician will confirm the recommended curing time on completion." },
@@ -352,12 +373,12 @@ const services: Record<string, {
     ],
     workWithUsText: "We work with real estate agencies, strata managers and private landlords who need wet-area repairs handled efficiently. Our process is designed to keep quoting, access and repair scheduling straightforward.",
     workWithUsBullets: [
-      "Fast-response attendance for urgent leak situations",
-      "Direct tenant communication to arrange access",
-      "Written fixed-price quotes emailed within 24 hours",
-      "10-year waterproof warranty issued on completion",
-      "Experience working with major property management groups",
-      "Invoice directly to agency trust accounts on request",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
+      "Fast turnaround with minimal disruption",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
     guaranteeText: "Eligible wet-area repair work completed by Groutix is backed by our warranty coverage, including a 10-year waterproof warranty on full shower regrouting. If an issue returns due to our workmanship, we will return and rectify it.\n\nWe use specialist grout and sealing materials designed for wet areas, helping property owners protect bathrooms, ensuites and tiled shower spaces for the long term.",
     faqs: [
@@ -397,12 +418,12 @@ const services: Record<string, {
     workWithUsText: "We handle small tile repairs across Victoria with the same care we bring to larger regrouting projects. Every repair is completed using durable materials and practical methods rather than cosmetic patching alone.",
     workWithUsBlueBoxText: "With experienced technicians, specialist materials and a careful repair process, you can trust that your damaged tiles and grout are repaired properly.",
     workWithUsBullets: [
-      "Replacement of individual cracked or broken tiles",
-      "Re-securing of loose, hollow or drummy tiles",
-      "Grout patching to match surrounding colour",
-      "Waterproof grout and silicone used on all repairs",
-      "Clean, careful work — no unnecessary tile removal",
-      "Servicing Victoria",
+      "Specialist materials selected for long-term durability",
+      "Experienced shower regrouting technicians",
+      "10-year waterproof warranty on eligible full shower regrouting",
+      "Fast turnaround with minimal disruption",
+      "Honest recommendations based on your shower's condition",
+      "Clear, upfront pricing with no hidden surprises",
     ],
     guaranteeText: "Minor tile repairs completed by Groutix are carried out with quality adhesives, grout and wet-area sealing materials suited to the job. Where waterproof repair work forms part of the scope, eligible workmanship is covered by our applicable warranty terms.\n\nOur aim is to leave the repaired section stable, tidy and properly integrated with the surrounding tiled surface.",
     faqs: [
@@ -469,10 +490,16 @@ export default async function ServicePage({ params }: Props) {
         workWithUsText={s.workWithUsText}
         workWithUsBullets={s.workWithUsBullets}
         guaranteeText={s.guaranteeText}
+        guaranteeHeading={s.guaranteeHeading}
+        guaranteeHeadingBlue={s.guaranteeHeadingBlue}
+        guaranteeImage={s.guaranteeImage}
         faqs={s.faqs}
         fixBlueBoxText={s.fixBlueBoxText}
         workWithUsBlueBoxText={s.workWithUsBlueBoxText}
         processBlueText={s.processBlueText}
+        heroCards={s.heroCards}
+        heroTitle={s.heroTitle}
+        trustedText={s.trustedText}
       />
     </>
   );

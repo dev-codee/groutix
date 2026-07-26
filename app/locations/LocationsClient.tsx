@@ -62,7 +62,7 @@ function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src, objectCla
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -282,7 +282,7 @@ export default function LocationsClient({
               transition={{ delay: 0.1 }}
               className="space-y-4"
             >
-              {`Victoria properties deal with a wide range of bathroom and wet-area issues, from ageing grout in older homes to leaking shower joints in modern apartments. Across the state, everyday water exposure, building movement and poor ventilation all contribute to cracked grout, failed silicone and hidden moisture problems.
+              {`Melbourne & Victoria properties deal with a wide range of bathroom and wet-area issues, from ageing grout in older homes to leaking shower joints in modern apartments. Across the state, everyday water exposure, building movement and poor ventilation all contribute to cracked grout, failed silicone and hidden moisture problems.
 
 Groutix services Melbourne and the wider Victorian region with specialist shower regrouting, grout repair, leaking shower rectification and silicone replacement. In most cases, we restore the failed grout and sealing system without removing the existing tiles or pushing clients into unnecessary renovation work.
 
@@ -318,7 +318,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
         <div className="relative z-10 max-w-2xl mx-auto px-6 py-8 bg-[#F9FBFC] border border-neutral-200/80 rounded-xl shadow-xl space-y-8">
           <div className="space-y-3">
             <h2 className="text-3xl sm:text-4xl font-black text-[#001F97] tracking-tight">
-              View Our Victoria Service Areas
+              View Our Melbourne & Victoria Service Areas
             </h2>
             <div className="w-24 h-1 bg-accent mx-auto rounded-full" />
           </div>

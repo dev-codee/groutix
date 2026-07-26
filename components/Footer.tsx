@@ -46,7 +46,7 @@ export default function Footer() {
               <Logo light={true} />
             </Link>
             <p className="text-base text-neutral-400 leading-relaxed">
-              Expert shower regrouting, grout fixes, and leaky shower restoration for homes and managed properties. Groutix helps restore tiled wet areas with quality work and a top <span className="text-accent font-bold">10-year guarantee</span>.
+              Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.
             </p>
             <div className="flex space-x-4">
               {["Facebook", "Instagram", "Twitter", "Linkedin"].map((social, i) => (
@@ -92,7 +92,7 @@ export default function Footer() {
                 { href: "/epoxy-grout", label: "Epoxy Grout" },
                 { href: "/leaking-shower-repair", label: "Leaking Shower Repair" },
                 { href: "/small-tiling-jobs", label: "Small Tiling Jobs" },
-                { href: "/real-estate-property-services", label: "Real Estate & Property" },
+                { href: "/real-estate-property-services", label: "Real Estate & Property Services" },
               ].map((item, i) => (
                 <motion.li
                   key={item.href}
@@ -125,7 +125,7 @@ export default function Footer() {
                 transition={{ delay: 0.3 }}
               >
                 <Link href="/locations" className="hover:text-accent transition-colors duration-200">
-                  Victoria
+                  Melbourne & Victoria
                 </Link>
               </motion.li>
             </ul>
