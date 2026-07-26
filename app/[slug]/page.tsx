@@ -49,6 +49,7 @@ const services: Record<string, {
       { title: "Purpose-Built Repair Systems", desc: "Our regrouting method is designed for durability in bathrooms and other high-moisture areas." },
       { title: "Warranty Backing", desc: "Full shower regrouting work is supported by our 10-year waterproof warranty." },
     ],
+    processBlueText: "Every shower regrouting job follows a proven process to ensure the old, cracked grout is completely removed, the joints are properly prepared, and new grout is applied for a long-lasting, waterproof finish.",
     processIntro: "Our shower regrouting process is designed to make grout restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the shower properly.",
     steps: [
       { title: "Inspect & Assess", desc: "We inspect the grout lines, tile joints, corners and floor areas to understand the condition of the shower." },
@@ -90,7 +91,7 @@ const services: Record<string, {
       { title: "Targeted Repair", desc: "We remove failed grout and seals so the shower can be restored without unnecessary tile demolition." },
       { title: "10-Year Warranty", desc: "Completed leaking shower repairs are backed by our waterproof workmanship warranty." },
     ],
-    processIntro: "Our leaking shower repair process is methodical and focused on the actual moisture entry points rather than surface-level fixes.",
+    processIntro: "Our leaking shower repair process is designed to make leak restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the shower properly.",
     steps: [
       { title: "Diagnose & Locate", desc: "We inspect grout lines, corners, the shower floor and other likely entry points for moisture." },
       { title: "Strip & Prepare", desc: "Failed grout and sealants are removed and the wet area is cleaned and prepared for restoration." },
@@ -138,7 +139,8 @@ const services: Record<string, {
       { title: "Waterproof Reinstatement", desc: "Our repairs are designed to restore support and waterproof performance where the base has failed." },
       { title: "No Full Demolition", desc: "We aim to repair the base without unnecessary strip-out, saving time and disruption." },
     ],
-    processIntro: "Our shower base repair process is designed to identify the source of floor failure and restore the shower with lasting waterproof protection.",
+    processBlueText: "Every shower base repair follows a proven process to ensure the damaged or leaking area is fully identified, the surface is properly prepared, and the repair bonds for a long-lasting, waterproof result.",
+    processIntro: "Our shower base repair process is designed to make leak and damage restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the base properly.",
     steps: [
       { title: "Diagnose & Inspect", desc: "We inspect the shower floor, drain area, tile bed and substrate to locate cracks and weak sections." },
       { title: "Repair Base & Membrane", desc: "Damaged areas are rebuilt with waterproof repair compounds and flexible membrane systems where required." },
@@ -182,7 +184,8 @@ const services: Record<string, {
       { title: "Durable Results", desc: "We use grout systems chosen for high-traffic and wet-area conditions." },
       { title: "Colour Options", desc: "Choose a grout colour that refreshes the tiled surface or changes its look entirely." },
     ],
-    processIntro: "Our tile regrouting process is methodical and tidy, helping minimise disruption while restoring the tiled surface properly.",
+    processBlueText: "Every tile regrouting job follows a proven process to ensure the old, deteriorated grout is completely removed, the tile joints are properly prepared, and new grout is applied for a long-lasting, waterproof seal.",
+    processIntro: "Our tile regrouting process is designed to make grout restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the tiled surface properly.",
     steps: [
       { title: "Joint Raking", desc: "We remove the old grout layer using professional dust-minimising raking equipment." },
       { title: "Vacuum & Clean", desc: "All dust and debris is thoroughly vacuumed from the joint channels before new grout is applied." },
@@ -225,7 +228,8 @@ const services: Record<string, {
       { title: "Movement Joint Repair", desc: "We address perimeter and intermediate movement joints — the most common failure points on balconies." },
       { title: "No Unnecessary Tile Removal", desc: "We repair failed grout and sealants from the surface wherever possible, avoiding costly demolition." },
     ],
-    processIntro: "Our balcony leak repair process is systematic and designed to identify and fix every failure point — not just the most visible ones.",
+    processBlueText: "Every balcony leak repair follows a proven process to ensure the source of the leak is fully identified, the surface is properly prepared, and the new waterproofing bonds for a long-lasting, leak-free seal.",
+    processIntro: "Our balcony leak repair process is designed to make waterproofing restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the balcony properly.",
     steps: [
       { title: "Inspect & Assess", desc: "We inspect the balcony grout, movement joints, perimeter sealants and surface to identify all leak entry points." },
       { title: "Remove & Prepare", desc: "Failed grout and deteriorated sealants are removed and surfaces are prepared for new weatherproof materials." },
@@ -272,7 +276,8 @@ const services: Record<string, {
       { title: "Mould-Resistant Sealants", desc: "We use premium-grade sanitary silicone designed specifically for wet areas and high-humidity environments." },
       { title: "Colour Matching", desc: "We stock a wide range of silicone colours to match your existing grout, tiles or fixtures." },
     ],
-    processIntro: "Our recaulking process ensures the new silicone bonds correctly and delivers a lasting, professional result every time.",
+    processBlueText: "Every silicone replacement follows a proven process to ensure the old sealant is completely removed, the surface is properly prepared, and the new silicone bonds for a long-lasting, waterproof seal.",
+    processIntro: "Our silicone and recaulking process is designed to make sealant restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the seal properly.",
     steps: [
       { title: "Remove Old Silicone", desc: "We carefully remove all traces of deteriorated silicone from the joints using specialist removal tools." },
       { title: "Clean & Prepare", desc: "Surfaces are cleaned and prepared to ensure the new silicone bonds securely and uniformly." },
@@ -315,7 +320,8 @@ const services: Record<string, {
       { title: "Superior Durability", desc: "Commercial-grade epoxy grout is significantly harder and more resilient than standard cement grout." },
       { title: "Ideal for Demanding Areas", desc: "Recommended for showers, balconies, kitchens and commercial environments where performance matters most." },
     ],
-    processIntro: "Our epoxy grout installation process is thorough and precise, ensuring the finished result is correctly installed, durable and visually excellent.",
+    processBlueText: "Every epoxy grout job follows a proven process to ensure the old grout is completely removed, the joints are properly prepared, and the new epoxy grout bonds for a long-lasting, waterproof and stain-resistant finish.",
+    processIntro: "Our epoxy grout process is designed to make grout restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the surface properly.",
     steps: [
       { title: "Remove Existing Grout", desc: "We rake out and remove the existing cement grout using specialist dust-minimising equipment." },
       { title: "Prepare & Clean Joints", desc: "All joint channels are vacuumed clean to ensure the epoxy grout bonds correctly to the tile edges." },
@@ -365,7 +371,7 @@ const services: Record<string, {
       { title: "Tenant Coordination", desc: "We contact tenants directly to arrange access, saving property managers time and simplifying the process." },
       { title: "Written Fixed Quotes", desc: "Clear, itemised fixed-price quotes emailed directly for landlord approval — no hidden charges." },
     ],
-    processIntro: "Our property services process is designed to fit seamlessly within standard property management workflows.",
+    processIntro: "Our real estate and property services process is designed to make maintenance and restoration clear, efficient and reliable. Each step focuses on addressing issues promptly and restoring the property properly.",
     steps: [
       { title: "Work Order Received", desc: "Submit a work order with tenant contact details. We handle the rest." },
       { title: "Inspect & Quote", desc: "We attend the property, assess the shower and provide a written fixed-price quote within 24 hours." },
@@ -388,7 +394,7 @@ const services: Record<string, {
       { q: "Do you work with strata and body corporates?", a: "Yes. We regularly work in multi-residential apartment buildings and common-area wet areas for strata bodies." },
     ],
     workWithUsBlueBoxText: "With direct tenant coordination, clear fixed-price quotes and a streamlined repair process, we make property maintenance easier for agents, landlords and strata managers.",
-    processBlueText: "From tenant coordination to inspection, quoting and repairs, we handle the process from start to finish — saving property managers time and keeping maintenance moving.",
+    processBlueText: "Every real estate and property service job follows a proven process to ensure the property is thoroughly assessed, the necessary repairs are properly prepared, and the finished work meets a long-lasting, high-quality standard.",
   },
 
   "small-tiling-jobs": {
@@ -408,8 +414,8 @@ const services: Record<string, {
       { title: "Loose Tile Re-Securing", desc: "We lift, clean and re-lay hollow or loose tiles with fresh adhesive and regrout the joints." },
       { title: "Grout Patching", desc: "We patch damaged, missing or crumbling grout sections and match the colour to the surrounding grout." },
     ],
-    processIntro: "Our tile repair process is careful and precise, ensuring repairs blend naturally with the surrounding tiled surface.",
-    processBlueText: "Each project is approached methodically, ensuring the underlying cause of tile damage is addressed properly rather than simply covered up.",
+    processBlueText: "Every small tiling job follows a proven process to ensure the old or damaged tiles are completely removed, the surface is properly prepared, and the new tiles are installed for a long-lasting, professional finish.",
+    processIntro: "Our small tiling process is designed to make tile restoration clear, efficient and durable. Each step focuses on removing failed material and restoring the surface properly.",
     steps: [
       { title: "Assess the Damage", desc: "We inspect the damaged tile and surrounding area to check for water ingress and substrate damage." },
       { title: "Remove & Prepare", desc: "We carefully remove the broken tile or lift the loose tile and prepare the substrate for rebonding." },
