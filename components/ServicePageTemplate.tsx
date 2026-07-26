@@ -49,7 +49,7 @@ function MiniFixCarousel({ images }: { images: string[] }) {
   const prev = () => setCurr((prev) => (prev - 1 + images.length) % images.length);
 
   return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-sm group bg-neutral-100 border border-neutral-200">
+    <div className="img-glow relative aspect-[1.25/1] w-full overflow-hidden rounded-sm group bg-white border border-neutral-200">
       <Image
         src={images[curr]}
         alt={`Shower base repair carousel photo ${curr + 1}`}
@@ -249,7 +249,12 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="text-center space-y-2 mb-6">
+        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
+          Our <span className="text-accent">Work</span>
+        </h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>

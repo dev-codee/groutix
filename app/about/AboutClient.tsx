@@ -1,10 +1,11 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
-import { ShieldCheck, Award, Users, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShieldCheck, Award, Users, Clock, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
+import TrustedMarquee from "@/components/TrustedMarquee";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -19,7 +20,7 @@ function ImgBox({
   src?: string;
 }) {
   return (
-    <div className={`relative ${aspect} w-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center ${className} rounded-xl border-2 border-transparent hover:border-accent transition-all duration-300 shadow-md hover:shadow-xl`}>
+    <div className={`img-glow relative ${aspect} w-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center ${className} rounded-sm shadow-md transition-all duration-300`}>
       {/* Decorative corner elements */}
       <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
@@ -39,7 +40,7 @@ function ImgBox({
   );
 }
 
-/* ─── Image slider component (Image 2 style) ─── */
+/* ─── Image slider component ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
   const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
@@ -50,7 +51,12 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="text-center space-y-2 mb-6">
+        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
+          Our <span className="text-accent">Work</span>
+        </h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
@@ -58,27 +64,27 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
               src={img}
               label={`${serviceTitle} Photo ${idx + i + 1}`}
               aspect="aspect-[4/3]"
-              className="rounded-xl"
+              className="rounded-sm"
             />
           </AnimatedImage>
         ))}
       </div>
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex items-center gap-3 pt-2 justify-center">
         <button
           onClick={prev}
-          className="h-9 w-9 rounded-xl bg-primary hover:bg-secondary text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={next}
-          className="h-9 w-9 rounded-xl bg-primary hover:bg-secondary text-white flex items-center justify-center transition-colors"
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
         <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
           <div
-            className="h-full bg-primary rounded-full transition-all duration-300"
+            className="h-full bg-[#001F97] rounded-full transition-all duration-300"
             style={{ width: `${((idx + 1) / total) * 100}%` }}
           />
         </div>
@@ -89,16 +95,16 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 
 export default function AboutClient() {
   const values = [
-    { icon: <ShieldCheck className="h-7 w-7 text-primary" />, title: "Honest advice", desc: "We suggest the repair your wet area actually needs, with clear guidance and no overblown plans." },
-    { icon: <Award className="h-7 w-7 text-primary" />, title: "Expert work", desc: "Our team focuses on grout fixes, shower regrouting, and wet-area sealing done to a high standard." },
-    { icon: <Users className="h-7 w-7 text-primary" />, title: "Care for your space", desc: "We work neatly, protect nearby areas, and leave the place tidy when we're done." },
-    { icon: <Clock className="h-7 w-7 text-primary" />, title: "Dependable service", desc: "We show up ready, communicate clearly, and keep your repair on track without unnecessary waits." },
+    { icon: <ShieldCheck className="h-7 w-7 text-[#001F97]" />, title: "Honest Advice", desc: "We suggest the repair your wet area actually needs, with clear guidance and no overblown plans." },
+    { icon: <Award className="h-7 w-7 text-[#001F97]" />, title: "Expert Work", desc: "Our team focuses on grout fixes, shower regrouting, and wet-area sealing done to a high standard." },
+    { icon: <Users className="h-7 w-7 text-[#001F97]" />, title: "Care For Your Space", desc: "We work neatly, protect nearby areas, and leave the place tidy when we're done." },
+    { icon: <Clock className="h-7 w-7 text-[#001F97]" />, title: "Dependable Service", desc: "We show up ready, communicate clearly, and keep your repair on track without unnecessary waits." },
   ];
 
   const stats = [
     { value: "10-Year", label: "Waterproof Guarantee" },
     { value: "Licensed", label: "& Fully Insured" },
-    { value: "500+", label: "Showers Fixed" },
+    { value: "8000+", label: "Showers Fixed" },
     { value: "100%", label: "No-Leak Promise" },
   ];
 
@@ -109,119 +115,117 @@ export default function AboutClient() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="bg-primary bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_35%)] text-white py-24"
+        className="bg-[#001F97] text-white relative py-20 lg:py-28 overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 text-center">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_6px,transparent_6px),linear-gradient(90deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_6px,transparent_6px)] bg-[size:150px_150px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.10),transparent_45%)] pointer-events-none" />
+
+        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 text-center relative z-10">
           <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] uppercase tracking-[0.35em] text-white/90"
-              >
-                Who We Are
-              </motion.p>
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="mt-8 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
-              >
-                Melbourne's shower regrouting experts
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="mx-auto mt-6 max-w-xl text-base sm:text-lg text-white/80 leading-relaxed"
-              >
-                We help homeowners fix leaky showers, broken grout, and worn wet areas with expert repairs backed by a 10-year waterproof guarantee.
-              </motion.p>
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="inline-flex rounded-sm border border-white/20 bg-white/10 px-4 py-2 text-[13px] uppercase tracking-[0.35em] text-white/90 font-bold"
+          >
+            Who We Are
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
+          >
+            Victoria&apos;s shower regrouting experts
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-white/80 leading-relaxed"
+          >
+            We help homeowners fix leaky showers, broken grout, and worn wet areas with expert repairs backed by a 10-year waterproof guarantee.
+          </motion.p>
         </div>
       </motion.section>
 
-      {/* Who We Are Section */}
-      <AnimatedSection className="bg-[#071E5D] py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 grid gap-16 lg:grid-cols-2 items-center">
-          <div className="space-y-8 text-white">
-            <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-                className="text-base uppercase tracking-[0.35em] text-[#97B1E5]"
-              >
-                Our Story
-              </motion.p>
-              <motion.h2
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-4xl font-black leading-tight"
-              >
-                A team focused on grout and shower fixes
-              </motion.h2>
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="space-y-4"
-              >
-                {`Groutix started with a simple idea: many leaky showers and failing tiled wet areas can be fixed properly without tearing out the whole bathroom. When grout lines, corners, and seals wear out, an expert repair is often a better choice than a full renovation.
+      <TrustedMarquee />
 
-Today we help homeowners across Melbourne restore grout lines, stop moisture from getting in, and protect tiled surfaces with a fix-first approach made for long-lasting results.`.split("\n\n").map((para, i) => (
-                  <p key={i} className="text-white/80 leading-relaxed text-base sm:text-lg">
-                    {para}
-                  </p>
-                ))}
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="grid gap-4 sm:grid-cols-2"
-              >
-                {[
-                  "Experts in shower regrouting and grout fixes",
-                  "Wet-area repairs that usually keep tiles in place",
-                  "Written 10-year waterproof guarantee on full shower regrouting",
-                  "Professional work with clear communication",
-                ].map((item, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-                    whileHover={{ scale: 1.05, y: -4, transition: { duration: 0.2 } }}
-                    className="rounded-3xl border border-white/10 bg-white/5 p-5 text-base text-white/80 cursor-default"
-                  >
-                    {item}
-                  </motion.div>
-                ))}
-              </motion.div>
+      {/* Our Story Section */}
+      <AnimatedSection className="bg-white py-16 lg:py-24">
+        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid gap-12 lg:grid-cols-2 items-center">
+          <div className="space-y-6 text-neutral-800">
+            <motion.p
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="text-sm font-bold uppercase tracking-[0.35em] text-[#001F97]"
+            >
+              Our Story
+            </motion.p>
+            <motion.h2
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight"
+            >
+              A Team Focused on <span className="text-accent">Grout &amp; Shower Fixes</span>
+            </motion.h2>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[16px]"
+            >
+              <p>
+                Groutix started with a simple idea: many leaky showers and failing tiled wet areas can be fixed properly without tearing out the whole bathroom. When grout lines, corners, and seals wear out, an expert repair is often a better choice than a full renovation.
+              </p>
+              <p>
+                Today we help homeowners across Victoria restore grout lines, stop moisture from getting in, and protect tiled surfaces with a fix-first approach made for long-lasting results.
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="grid gap-3 sm:grid-cols-2 pt-2"
+            >
+              {[
+                "Experts in shower regrouting and grout fixes",
+                "Wet-area repairs that keep tiles in place",
+                "Written 10-year waterproof guarantee",
+                "Professional work with clear communication",
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 bg-[#F3F4F6] px-4 py-2.5 rounded-sm">
+                  <div className="w-5 h-5 flex items-center justify-center bg-[#001F97] text-white rounded-full flex-shrink-0">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <span className="text-[13px] font-bold text-neutral-800 tracking-wider">{item}</span>
+                </div>
+              ))}
+            </motion.div>
           </div>
-          <AnimatedImage className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 h-[500px] flex items-center justify-center shadow-md hover:shadow-xl transition-shadow">
-              {/* Decorative corner elements */}
+          <AnimatedImage className="relative w-full">
+            <div className="img-glow relative w-full rounded-sm overflow-hidden shadow-md border-2 border-transparent hover:border-accent transition-all duration-300">
               <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
               <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-              
-              <Image
+              <ImgBox
                 src="/img21.jpeg"
-                alt="Team / workshop"
-                fill
-                className="object-cover transition-transform duration-500 hover:scale-105"
+                label="Groutix Team"
+                aspect="aspect-[4/3]"
+                className="rounded-sm"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:24px_24px] opacity-30" />
+            </div>
           </AnimatedImage>
         </div>
       </AnimatedSection>
 
       {/* Stats Section */}
-      <AnimatedSection className="bg-[#071E5D] py-20">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+      <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-20">
+        <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, i) => (
               <motion.div
@@ -230,10 +234,10 @@ Today we help homeowners across Melbourne restore grout lines, stop moisture fro
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-center shadow-lg hover:shadow-xl transition-shadow"
+                className="bg-white border border-neutral-200 rounded-sm p-8 text-center shadow-sm hover:shadow-md transition-all"
               >
-                <p className="text-4xl font-black text-accent">{stat.value}</p>
-                <p className="mt-3 text-base uppercase tracking-[0.25em] text-white/70">{stat.label}</p>
+                <p className="text-4xl lg:text-5xl font-black text-[#001F97]">{stat.value}</p>
+                <p className="mt-3 text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-neutral-600">{stat.label}</p>
               </motion.div>
             ))}
           </div>
@@ -241,27 +245,27 @@ Today we help homeowners across Melbourne restore grout lines, stop moisture fro
       </AnimatedSection>
 
       {/* Values Section */}
-      <AnimatedSection className="bg-[#0A1F5D] py-24 text-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 text-center mb-14">
+      <AnimatedSection className="bg-white py-16 lg:py-24 text-neutral-900">
+        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 text-center mb-14 space-y-4">
           <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-base uppercase tracking-[0.35em] text-[#97B1E5]"
-              >
-                Our Values
-              </motion.p>
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="mt-4 text-5xl font-black leading-tight"
-              >
-                What drives every job we do
-              </motion.h2>
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-sm font-bold uppercase tracking-[0.35em] text-[#001F97]"
+          >
+            Our Values
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-3xl lg:text-[40px] font-bold leading-tight"
+          >
+            What Drives <span className="text-accent">Every Job We Do</span>
+          </motion.h2>
         </div>
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {values.map((item, i) => (
             <motion.div
               key={item.title}
@@ -269,116 +273,54 @@ Today we help homeowners across Melbourne restore grout lines, stop moisture fro
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              whileHover={{ y: -8, transition: { duration: 0.3 } }}
-              className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-2xl hover:bg-[#0F2C6E] transition-colors relative overflow-hidden"
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              className="bg-[#F8FAFC] border border-neutral-200 p-6 rounded-sm flex flex-col gap-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group hover:border-accent"
             >
-              {/* Decorative accent element */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
-              
-              <div className="mb-6 h-14 w-14 rounded-3xl bg-accent/20 flex items-center justify-center text-xl font-black text-accent">✓</div>
-              <h3 className="text-xl font-black text-white">{item.title}</h3>
-              <p className="mt-3 text-base text-white/70 leading-relaxed">{item.desc}</p>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="w-10 h-10 flex items-center justify-center bg-[#EEF2FF] rounded-sm flex-shrink-0">
+                {item.icon}
+              </div>
+              <div>
+                <h3 className="font-bold text-neutral-900 text-lg mb-2">{item.title}</h3>
+                <p className="text-base text-neutral-600 leading-relaxed">{item.desc}</p>
+              </div>
             </motion.div>
           ))}
         </div>
       </AnimatedSection>
 
       {/* CTA Section */}
-      <AnimatedSection className="bg-white py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 grid gap-12 xl:grid-cols-[1.03fr_0.97fr] items-start">
-          <div className="space-y-6">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-base uppercase tracking-[0.35em] text-primary"
-            >
-              Get A Quote
-            </motion.p>
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-4xl font-black text-neutral-900"
-            >
-              Ready to fix your grout and shower the right way?
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="max-w-xl text-neutral-600 leading-relaxed text-lg"
-            >
-              Tell us what's going on in your bathroom and we'll give you a clear quote, practical repair advice, and a work-backed solution for the issue.
-            </motion.p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                whileHover={{ y: -4, scale: 1.03, transition: { duration: 0.2 } }}
-                className="rounded-3xl border border-neutral-200 bg-[#F8FAFF] p-6"
-              >
-                <p className="text-sm uppercase tracking-[0.35em] text-[#5C8AFE]">Quick reply</p>
-                <p className="mt-3 text-base text-neutral-600 leading-relaxed">Our team gets back to you fast so grout and leak issues can be checked out right away.</p>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                whileHover={{ y: -4, scale: 1.03, transition: { duration: 0.2 } }}
-                className="rounded-3xl border border-neutral-200 bg-[#F8FAFF] p-6"
-              >
-                <p className="text-sm uppercase tracking-[0.35em] text-[#5C8AFE]">Clear pricing</p>
-                <p className="mt-3 text-base text-neutral-600 leading-relaxed">No unclear allowances or surprise extra costs, just simple pricing and plans.</p>
-              </motion.div>
-            </div>
-          </div>
-          <AnimatedImage className="rounded-[32px] border border-neutral-200 bg-[#F8FAFF] p-8 shadow-xl relative overflow-hidden">
-            {/* Decorative corner elements */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-            
-            <div className="mb-6">
-              <p className="text-base uppercase tracking-[0.35em] text-primary">Get a free quote</p>
-              <h3 className="mt-3 text-3xl font-black text-neutral-900">Book your grout fix quote</h3>
-            </div>
-            <form className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <input type="text" placeholder="First Name" className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-                <input type="text" placeholder="Last Name" className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <input type="email" placeholder="Email" className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-                <input type="tel" placeholder="Phone" className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <input type="text" placeholder="Suburb / Postcode" className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-                <select className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
-                  <option>Select State</option>
-                  <option>VIC</option>
-                  <option>NSW</option>
-                  <option>QLD</option>
-                  <option>WA</option>
-                  <option>SA</option>
-                </select>
-              </div>
-              <textarea rows={4} placeholder="Tell us how we can help" className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-primary px-6 py-3 text-base font-black uppercase tracking-[0.15em] text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 active:scale-95"
-              >
-                Submit Request
-              </button>
-            </form>
-          </AnimatedImage>
-          <div className="xl:col-span-2">
-            <PhotoSlider serviceTitle="Groutix" />
-          </div>
+      <AnimatedSection className="bg-[#3D68D8] py-8 px-6 lg:px-10">
+        <div className="max-w-[1460px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <motion.h2
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="text-2xl font-black text-white"
+          >
+            Ready To Fix Your Shower Or Grout?
+          </motion.h2>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="flex gap-3"
+          >
+            <a href="/contact" className="bg-white text-[#001F97] font-bold px-5 py-2.5 rounded-sm text-base hover:bg-accent hover:text-[#001F97] transition-colors active:scale-95 border-2 border-accent">
+              Request A Quote
+            </a>
+            <a href="tel:70238094" className="flex items-center gap-2 bg-[#001F97] text-white font-bold px-5 py-2.5 rounded-sm text-base hover:bg-[#2F63CC] transition-colors border border-white/20 active:scale-95">
+              7023 8094
+            </a>
+          </motion.div>
+        </div>
+      </AnimatedSection>
+
+      {/* Photo Showcase */}
+      <AnimatedSection className="bg-white py-16 lg:py-24">
+        <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <PhotoSlider serviceTitle="Groutix" />
         </div>
       </AnimatedSection>
     </main>

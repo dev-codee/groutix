@@ -80,6 +80,11 @@ function HomePhotoSlider() {
 
   return (
     <div className="space-y-6">
+      <div className="text-center space-y-2 mb-6">
+        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
+          Our <span className="text-accent">Work</span>
+        </h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>

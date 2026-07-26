@@ -130,7 +130,7 @@ const services: Record<string, {
     ],
     failHeading: "A Failing Shower Base",
     failHeadingBlue: "Can Leak Everywhere",
-    failText: "When a shower base is cracked, leaking or deteriorated, water can escape into surrounding building materials, causing damage beyond the shower.",
+    failText: "When a shower base is cracked, leaking or deteriorated, water can escape into surrounding building materials, causing damage beyond the shower.\n\nSurface patching rarely lasts because it does not rebuild the underlying structure that supports the wet area. A proper shower base repair needs to restore both the damaged area and the waterproof barrier.",
     fixHeading: "Tiled Shower Base Repairs That",
     fixHeadingBlue: "Fix the Cause",
     fixText: "By targeting the damaged section of the floor, repairing the shower base and restoring waterproof protection where it has failed, we deliver a durable repair without the cost and disruption of a full bathroom rebuild.",
