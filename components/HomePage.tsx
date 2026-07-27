@@ -216,7 +216,7 @@ export default function HomePage({
 
           {/* Right-side photo panel */}
           <div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block">
-            <Image src="/img19.avif" alt="Restored bathroom" fill className="object-cover" priority />
+            <Image src="/img19.avif" alt="Restored bathroom" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" priority />
             <div className="absolute inset-0 bg-white/15" />
           </div>
 

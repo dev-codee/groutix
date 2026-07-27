@@ -76,7 +76,6 @@ async function askClaude(messages: SupportMessage[]): Promise<string> {
     body: JSON.stringify({
       model: model,
       max_tokens: 350,
-      temperature: 0.2,
       system: `${buildSupportSystemPrompt()}\n\nGroutix knowledge base:\n${knowledge}`,
       messages: messages.map((message) => ({
         role: message.role,
