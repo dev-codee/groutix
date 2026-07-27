@@ -14,24 +14,12 @@ const RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 1200;
 const MAX_TOTAL_CHARS = 6000;
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-
 type ChatBody = {
   messages?: SupportMessage[];
 };
 
-type GeminiPart = {
-  text?: string;
-};
-
-type GeminiCandidate = {
-  content?: {
-    parts?: GeminiPart[];
-  };
-};
-
-type GeminiResponse = {
-  candidates?: GeminiCandidate[];
+type ClaudeResponse = {
+  content?: Array<{ text?: string }>;
 };
 
 function clientIp(req: NextRequest): string {
@@ -71,48 +59,38 @@ function normalizeMessages(value: unknown): SupportMessage[] | null {
   return normalized;
 }
 
-function toGeminiRole(role: SupportMessage["role"]): "user" | "model" {
-  return role === "assistant" ? "model" : "user";
-}
-
-async function askGemini(messages: SupportMessage[]): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
+async function askClaude(messages: SupportMessage[]): Promise<string> {
+  const apiKey = process.env.CLAUDE_API_KEY;
   if (!apiKey) return buildFallbackReply(messages);
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.CLAUDE_MODEL || "claude-sonnet-5";
   const knowledge = getSupportKnowledgeText();
 
-  const response = await fetch(`${GEMINI_API_BASE}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      systemInstruction: {
-        parts: [
-          {
-            text: `${buildSupportSystemPrompt()}\n\nGroutix knowledge base:\n${knowledge}`,
-          },
-        ],
-      },
-      contents: messages.map((message) => ({
-        role: toGeminiRole(message.role),
-        parts: [{ text: message.content }],
+      model: model,
+      max_tokens: 350,
+      system: `${buildSupportSystemPrompt()}\n\nGroutix knowledge base:\n${knowledge}`,
+      messages: messages.map((message) => ({
+        role: message.role,
+        content: message.content,
       })),
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 350,
-      },
     }),
   });
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(`Gemini API ${response.status}: ${detail}`);
+    throw new Error(`Claude API ${response.status}: ${detail}`);
   }
 
-  const data = (await response.json()) as GeminiResponse;
-  const content = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
+  const data = (await response.json()) as ClaudeResponse;
+  const content = data.content?.[0]?.text?.trim();
   if (!content) return buildFallbackReply(messages);
   return content;
 }
@@ -139,7 +117,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const reply = await askGemini(messages);
+    const reply = await askClaude(messages);
     return NextResponse.json({
       reply,
       canEscalate: true,
