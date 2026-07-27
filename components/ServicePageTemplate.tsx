@@ -44,44 +44,45 @@ function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src, objectFit
 }
 
 function MiniFixCarousel({ images }: { images: string[] }) {
-  const [curr, setCurr] = useState(0);
-  const next = () => setCurr((prev) => (prev + 1) % images.length);
-  const prev = () => setCurr((prev) => (prev - 1 + images.length) % images.length);
+  const [idx, setIdx] = useState(0);
+  const total = images.length;
+  const prev = () => setIdx((i) => (i - 1 + total) % total);
+  const next = () => setIdx((i) => (i + 1) % total);
+  const visibleImages = [images[idx], images[(idx + 1) % total], images[(idx + 2) % total]];
 
   return (
-    <div className="img-glow relative aspect-[1.25/1] w-full overflow-hidden rounded-sm group bg-white border border-neutral-200">
-      <Image
-        src={images[curr]}
-        alt={`Shower base repair carousel photo ${curr + 1}`}
-        fill
-        className="object-cover transition-all duration-300"
-      />
-      <button
-        type="button"
-        onClick={prev}
-        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full opacity-80 group-hover:opacity-100 transition-opacity z-10"
-        aria-label="Previous image"
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        onClick={next}
-        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full opacity-80 group-hover:opacity-100 transition-opacity z-10"
-        aria-label="Next image"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-        {images.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setCurr(i)}
-            className={`h-2 rounded-full transition-all ${i === curr ? "w-5 bg-accent" : "w-2 bg-white/70"}`}
-            aria-label={`Go to slide ${i + 1}`}
-          />
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+        {visibleImages.map((img, i) => (
+          <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
+            <ImgBox
+              src={img}
+              label={`Shower base repair photo ${idx + i + 1}`}
+              aspect="aspect-[4/3]"
+              className="rounded-sm"
+            />
+          </AnimatedImage>
         ))}
+      </div>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={prev}
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          onClick={next}
+          className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <div className="flex-1 max-w-[120px] h-1 bg-neutral-300 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#001F97] rounded-full transition-all duration-300"
+            style={{ width: `${((idx + 1) / total) * 100}%` }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -209,7 +210,7 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
   },
   "balcony-leak-repairs": {
     hero: "/img77.jpeg",
-    fail: "/img93.jpeg",
+    fail: "/img102.jpeg",
     fix: "/img76.jpeg",
   },
   "silicone-recaulking": {
@@ -250,11 +251,6 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2 mb-6">
-        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-          Our <span className="text-accent">Work</span>
-        </h2>
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
@@ -572,12 +568,15 @@ export default function ServicePageTemplate({
                 <div className={`img-glow relative w-full overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent rounded-sm" : " rounded-xl border-2 border-transparent hover:border-accent"}` }>
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-                  <ImgBox
-                    src={serviceImageMap[slug]!.fail!}
-                    label="WHEN GROUT FAILS IMAGE"
-                    aspect="aspect-[4/3]"
-                    className=""
-                  />
+                  <div className="relative w-full">
+                    <Image
+                      src={serviceImageMap[slug]!.fail!}
+                      alt="WHEN GROUT FAILS IMAGE"
+                      width={800}
+                      height={600}
+                      className="w-full h-auto"
+                    />
+                  </div>
                 </div>
               ) : (
                 <ImgBox

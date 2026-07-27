@@ -80,11 +80,6 @@ function HomePhotoSlider() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2 mb-6">
-        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-          Our <span className="text-accent">Work</span>
-        </h2>
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
@@ -208,16 +203,10 @@ export default function HomePage({
             Bottom: full-bleed 3-badge strip
         ══════════════════════════════════════ */}
         <section className="relative overflow-hidden pt-[73px]">
-          {/* Blue tiled background */}
-          <div className="absolute inset-0 bg-primary" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_6px,transparent_6px),linear-gradient(90deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_6px,transparent_6px)] bg-[size:150px_150px]" />
-          <div className="absolute inset-0 bg-[linear-gradient(150deg,rgba(255,255,255,0.08),rgba(0,0,0,0.16)_70%)] bg-[size:150px_150px]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.10),transparent_45%)] pointer-events-none" />
-
-          {/* Right-side photo panel */}
-          <div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block">
-            <Image src="/img19.avif" alt="Restored bathroom" fill className="object-cover" priority />
-            <div className="absolute inset-0 bg-white/15" />
+          {/* Background image */}
+          <div className="absolute inset-0">
+            <Image src="/img101.jpeg" alt="Hero background" fill className="object-cover" priority />
+            <div className="absolute inset-0 bg-black/40" />
           </div>
 
           <div className="relative z-10 flex min-h-[calc(100vh-73px)] flex-col">
@@ -256,7 +245,7 @@ export default function HomePage({
             </div>
 
             {/* Bottom badge strip — full bleed */}
-            <div className="grid grid-cols-1 divide-y divide-white/20 bg-secondary md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="grid grid-cols-1 divide-y divide-white/20 bg-[#001F97] md:grid-cols-3 md:divide-x md:divide-y-0">
               {[
                 {
                   icon: Droplets,
@@ -289,7 +278,7 @@ export default function HomePage({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: "easeOut", delay: 0.4 + i * 0.1 }}
-                  className="flex items-center gap-4 px-8 py-6 lg:px-12 bg-gradient-to-r from-secondary via-secondary to-secondary/90"
+                  className="flex items-center gap-4 px-8 py-6 lg:px-12 bg-gradient-to-r from-[#001F97] via-[#001F97] to-[#001F97]/90"
                 >
                   <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sm bg-accent text-primary">
                     <b.icon className="h-5 w-5" />
@@ -467,12 +456,12 @@ export default function HomePage({
                   {
                     title: "MOLD & DAMP",
                     desc: "Constant moisture around faulty grout lines creates perfect conditions for mold, smells, and surface damage.",
-                    img: "/img16.jpeg",
+                    img: "/img42.jpeg",
                   },
                   {
                     title: "PRICEY FIXES LATER",
                     desc: "Water damage usually costs more to repair the longer it's left to spread under the tiled surface.",
-                    img: "/img83.jpeg",
+                    img: "/img41.jpeg",
                   },
                 ].map((b, i) => (
                   <motion.div

@@ -376,7 +376,7 @@ const services: Record<string, {
     steps: [
       { title: "Work Order Received", desc: "Submit a work order with tenant contact details. We handle the rest." },
       { title: "Inspect & Quote", desc: "We attend the property, assess the shower and provide a written fixed-price quote within 24 hours." },
-      { title: "Repair & Warrant", desc: "Upon approval, we complete the work and issue a 10-year waterproof warranty for your records." },
+      { title: "Repair & Warranty", desc: "Upon approval, we complete the work and issue a 10-year waterproof warranty for your records." },
     ],
     workWithUsText: "We work with real estate agencies, strata managers and private landlords who need wet-area repairs handled efficiently. Our process is designed to keep quoting, access and repair scheduling straightforward.",
     workWithUsBullets: [
