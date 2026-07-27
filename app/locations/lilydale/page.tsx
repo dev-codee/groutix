@@ -31,7 +31,7 @@ const lilydaleSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (From Frankston Route)",
+    "title": "Hills & Yarra Valley Suburbs",
     "suburbs": [
       "Emerald",
       "Macclesfield",
@@ -40,7 +40,7 @@ const lilydaleSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (From Kilmore Route)",
+    "title": "Northern Yarra Ranges Suburbs",
     "suburbs": [
       "Doreen",
       "Hurstbridge",
@@ -70,9 +70,10 @@ export default async function LilydalePage() {
         heroHeading="Shower Regrouting & Grout Repair Specialists Lilydale"
         heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Lilydale. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img66.jpg"
+        heroImage="/img100.jpg"
         suburbGroups={lilydaleSuburbs}
+        parentSlug="lilydale"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

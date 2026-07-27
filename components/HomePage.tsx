@@ -72,7 +72,7 @@ function ImgBox({
 /* ─── Photo slider (matches service page slider) ─── */
 function HomePhotoSlider() {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
   const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
   const prev = () => setIdx((i) => (i - 1 + total) % total);
@@ -80,6 +80,11 @@ function HomePhotoSlider() {
 
   return (
     <div className="space-y-6">
+      <div className="text-center space-y-2 mb-6">
+        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
+          Our <span className="text-accent">Work</span>
+        </h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
@@ -226,7 +231,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className="max-w-3xl text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-[72px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
                   >
-                    Shower Regrouting &amp; Grout Repair Specialists | Groutix
+                    Victoria&apos;s Highest Rated &amp; Most Trusted Shower Regrouting &amp; Leak Repair Specialists
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -234,7 +239,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
                   >
-                    Groutix repairs broken grout, failed seals and leaking wet areas using specialist regrouting techniques — restoring showers and balconies without a full retile or renovation.
+                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions—without the need for a full renovation.
                   </motion.p>
                 </div>
 
@@ -467,7 +472,7 @@ export default function HomePage({
                   {
                     title: "PRICEY FIXES LATER",
                     desc: "Water damage usually costs more to repair the longer it's left to spread under the tiled surface.",
-                    img: "/img41.jpeg",
+                    img: "/img83.jpeg",
                   },
                 ].map((b, i) => (
                   <motion.div
@@ -648,14 +653,12 @@ export default function HomePage({
               </p>
               <ul className="space-y-3">
                 {[
-                  "Expert team focused on shower regrouting and grout fixes",
-                  "Repair methods made for long-lasting wet-area use",
-                  "High-quality grout and sealing choices for tough spaces",
-                  "10-year waterproof guarantee on complete shower regrouting work",
-                  "Techs with experience in grout issues and leaky showers",
-                  "Transparent quotes and practical advice",
-                  "Professional service with neat, respectful work",
-                  "Trusted by homeowners, strata managers, and property pros",
+                  "Specialist materials selected for long-term durability",
+                  "Experienced shower regrouting technicians",
+                  "10-year waterproof warranty on eligible full shower regrouting",
+                  "Fast turnaround with minimal disruption",
+                  "Honest recommendations based on your shower's condition",
+                  "Clear, upfront pricing with no hidden surprises",
                 ].map((item, i) => (
                   <motion.li
                     key={i}

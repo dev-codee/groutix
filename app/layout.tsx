@@ -13,7 +13,7 @@ const roboto = Roboto({
 
 const TITLE_DEFAULT = "Groutix | Shower Regrouting & Leak Repair Specialists";
 const DESCRIPTION =
-  "Specialist shower regrouting, grout repair, leaking shower repair and tile sealing services across Australia. Restore wet areas without full tile removal, backed by a 10-year waterproof warranty.";
+  "Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

@@ -46,7 +46,7 @@ const kilmoreSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Lilydale)",
+    "title": "Nearby Service Areas (Towards Lilydale)",
     "suburbs": [
       "Eden Park",
       "Wallan",
@@ -55,7 +55,7 @@ const kilmoreSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Ballarat)",
+    "title": "Nearby Service Areas (Towards Ballarat)",
     "suburbs": [
       "Hesket",
       "Lancefield",
@@ -95,9 +95,10 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
         heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Kilmore. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img68.jpg"
+        heroImage="/img67.jpg"
         suburbGroups={kilmoreSuburbs}
+        parentSlug="kilmore"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

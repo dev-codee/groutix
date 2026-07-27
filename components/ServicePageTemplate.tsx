@@ -24,23 +24,65 @@ const DropletIcon = () => (
 /* ─── Shared image placeholder ─── */
 function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src, objectFit = "object-cover", }: { label: string; aspect?: string; className?: string; src?: string; objectFit?: string }) {
   return (
-    <div className={`relative ${aspect} w-full overflow-hidden ${className} rounded-xl border-2 border-transparent hover:border-accent transition-all duration-300 shadow-md hover:shadow-xl`}>
-      {/* Decorative corner elements */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-      
+    <div className={`relative ${aspect} w-full overflow-hidden ${className}`}>
       {src ? (
-        <Image src={src} alt={label} fill className={`${objectFit} transition-transform duration-500 hover:scale-105`} />
+        <Image src={src} alt={label} fill className={objectFit} />
       ) : (
         <>
           <div className="absolute inset-0 bg-neutral-100 border border-neutral-200" />
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:20px_20px]" />
-          <div className="relative text-center px-4 space-y-1 z-10">
-            <p className="text-[12px] font-bold text-neutral-400 uppercase tracking-widest">{label}</p>
-            <p className="text-[12px] text-neutral-300">Add photo manually</p>
+          <div className="relative z-10 flex h-full items-center justify-center text-center px-4">
+            <div className="space-y-1">
+              <p className="text-[12px] font-bold text-neutral-400 uppercase tracking-widest">{label}</p>
+              <p className="text-[12px] text-neutral-300">Add photo manually</p>
+            </div>
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function MiniFixCarousel({ images }: { images: string[] }) {
+  const [curr, setCurr] = useState(0);
+  const next = () => setCurr((prev) => (prev + 1) % images.length);
+  const prev = () => setCurr((prev) => (prev - 1 + images.length) % images.length);
+
+  return (
+    <div className="img-glow relative aspect-[1.25/1] w-full overflow-hidden rounded-sm group bg-white border border-neutral-200">
+      <Image
+        src={images[curr]}
+        alt={`Shower base repair carousel photo ${curr + 1}`}
+        fill
+        className="object-cover transition-all duration-300"
+      />
+      <button
+        type="button"
+        onClick={prev}
+        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full opacity-80 group-hover:opacity-100 transition-opacity z-10"
+        aria-label="Previous image"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={next}
+        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full opacity-80 group-hover:opacity-100 transition-opacity z-10"
+        aria-label="Next image"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {images.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setCurr(i)}
+            className={`h-2 rounded-full transition-all ${i === curr ? "w-5 bg-accent" : "w-2 bg-white/70"}`}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -142,12 +184,12 @@ const pillarIcons: Record<string, React.ReactNode[]> = {
 const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: string }> = {
   "shower-regrouting": {
     hero: "/img39.jpeg",
-    fail: "/img27.jpeg",
+    fail: "/img73.jpeg",
     fix: "/img12.jpeg",
   },
   "shower-base-repair": {
     hero: "/img29.jpg",
-    fail: "/img30.jpg",
+    fail: "/img88.jpeg",
     fix: "/img31.jpg",
   },
   "tile-regrouting": {
@@ -156,24 +198,24 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
     fix: "/img19.avif",
   },
   "leaking-shower-repair": {
-    hero: "/img32.jpg",
-    fail: "/img33.jpg",
-    fix: "/img34.jpg",
+    hero: "/img98.jpeg",
+    fail: "/img97.jpeg",
+    fix: "/img96.jpeg",
   },
   "small-tiling-jobs": {
     hero: "/img19.avif",
-    fail: "/img9.jpeg",
+    fail: "/img83.jpeg",
     fix: "/img36.jpeg",
   },
   "balcony-leak-repairs": {
-    hero: "/img51.jpeg",
-    fail: "/img48.jpeg",
-    fix: "/img49.jpeg",
+    hero: "/img77.jpeg",
+    fail: "/img93.jpeg",
+    fix: "/img76.jpeg",
   },
   "silicone-recaulking": {
     hero: "/img50.jpeg",
-    fail: "/img55.jpeg",
-    fix: "/img52.jpeg",
+    fail: "/img94.jpeg",
+    fix: "/img95.jpeg",
   },
   "epoxy-grout": {
     hero: "/img53.jpeg",
@@ -181,8 +223,8 @@ const serviceImageMap: Record<string, { hero?: string; fail?: string; fix?: stri
     fix: "/img54.jpeg",
   },
   "real-estate-property-services": {
-    hero: "/img28.jpeg",
-    fail: "/img23.jpeg",
+    hero: "/img75.jpeg",
+    fail: "/img82.jpeg",
     fix: "/img2.jpeg",
   },
 };
@@ -199,7 +241,7 @@ const failSectionBadges: Record<string, string[]> = {
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -207,7 +249,12 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="text-center space-y-2 mb-6">
+        <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
+          Our <span className="text-accent">Work</span>
+        </h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
@@ -406,6 +453,9 @@ export default function ServicePageTemplate({
   heroCards,
   trustedText,
   heroTitle,
+  guaranteeHeading,
+  guaranteeHeadingBlue,
+  guaranteeImage,
 }: {
   title: string;
   slug?: string;
@@ -430,6 +480,9 @@ export default function ServicePageTemplate({
   heroCards?: { title: string; desc: string }[];
   trustedText?: string;
   heroTitle?: string;
+  guaranteeHeading?: string;
+  guaranteeHeadingBlue?: string;
+  guaranteeImage?: string;
 }) {
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
@@ -477,7 +530,7 @@ export default function ServicePageTemplate({
               </div>
             </motion.div>
             <AnimatedImage className="w-full" delay={0.3}>
-              <ImgBox src={serviceImageMap[slug]?.hero} label={`${title} Hero Image`} aspect={slug === "leaking-shower-repair" ? "aspect-square" : "aspect-[4/3]"} className="rounded-sm shadow-lg bg-white/5 border-white/10" />
+              <ImgBox src={serviceImageMap[slug]?.hero} label={`${title} Hero Image`} aspect="aspect-[4/3]" className={`img-glow rounded-sm shadow-lg bg-white/5 border-white/10${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
             </AnimatedImage>
           </div>
 
@@ -515,34 +568,25 @@ export default function ServicePageTemplate({
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <AnimatedImage className="relative w-full">
-              <ImgBox src={serviceImageMap[slug]?.fail} label="WHEN GROUT FAILS IMAGE" aspect="aspect-[4/3]" className="rounded-sm" />
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: 10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="absolute top-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
-              >
-                <span>🧱</span> WALL DAMAGE
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: -10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="absolute bottom-[20%] left-[-20px] bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm shadow-md"
-              >
-                <span>🦠</span> MOULD GROWTH
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: 10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.4 }}
-                className="absolute bottom-4 right-4 bg-[#001F97] text-white px-3 py-1.5 text-sm font-black uppercase tracking-wider flex items-center gap-1.5 rounded-sm"
-              >
-                <span>🏠</span> HIDDEN LEAKS
-              </motion.div>
+              {serviceImageMap[slug]?.fail ? (
+                <div className={`img-glow relative w-full overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent rounded-sm" : " rounded-xl border-2 border-transparent hover:border-accent"}` }>
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
+                  <ImgBox
+                    src={serviceImageMap[slug]!.fail!}
+                    label="WHEN GROUT FAILS IMAGE"
+                    aspect="aspect-[4/3]"
+                    className=""
+                  />
+                </div>
+              ) : (
+                <ImgBox
+                  src={undefined}
+                  label="WHEN GROUT FAILS IMAGE"
+                  aspect="aspect-[4/3]"
+                  className="rounded-sm"
+                />
+              )}
             </AnimatedImage>
             <div className="space-y-6">
               <motion.h2
@@ -598,19 +642,25 @@ export default function ServicePageTemplate({
                   {fixText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
                 </div>
               </motion.div>
-              <AnimatedImage className="relative w-full">
-                <ImgBox src={serviceImageMap[slug]?.fix} label="SPECIALIST FIX IMAGE" aspect={slug === "leaking-shower-repair" ? "aspect-square" : "aspect-[4/3]"} className="rounded-sm" />
-                <motion.div
-                  initial={{ opacity: 0, y: 10, x: 10 }}
-                  whileInView={{ opacity: 1, y: 0, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
-                  className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm"
-                >
-                  <p className="text-base font-bold leading-relaxed">
-                    {fixBlueBoxText ?? "By removing failing grout and replacing it with durable materials designed for wet environments, we stop water penetration and restore the shower without removing tiles or undertaking a full bathroom renovation."}
-                  </p>
-                </motion.div>
+              <AnimatedImage className="relative w-full group">
+                {slug === "shower-base-repair" ? (
+                  <MiniFixCarousel images={["/img89.jpeg", "/img90.jpeg", "/img92.jpeg"]} />
+                ) : (
+                  <ImgBox src={serviceImageMap[slug]?.fix} label="SPECIALIST FIX IMAGE" aspect="aspect-[4/3]" className={`img-glow rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
+                )}
+                {slug !== "shower-base-repair" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, x: 10 }}
+                    whileInView={{ opacity: 1, y: 0, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 }}
+                    className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm opacity-100 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none"
+                  >
+                    <p className="text-base font-bold leading-relaxed">
+                      {fixBlueBoxText ?? "By removing failing grout and replacing it with durable materials designed for wet environments, we stop water penetration and restore the shower without removing tiles or undertaking a full bathroom renovation."}
+                    </p>
+                  </motion.div>
+                )}
               </AnimatedImage>
             </div>
           </div>
@@ -671,7 +721,7 @@ export default function ServicePageTemplate({
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-14">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start justify-between">
+            <div className="flex flex-col gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -681,19 +731,11 @@ export default function ServicePageTemplate({
                 <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
                   Our <span className="text-accent">Process</span>
                 </h2>
+                <p className="text-[#2F63CC] text-lg font-bold leading-relaxed max-w-2xl">
+                  {processBlueText ?? "Every silicone replacement follows a proven process to ensure the old sealant is completely removed, the surface is properly prepared, and the new silicone bonds for a long-lasting waterproof seal."}
+                </p>
                 <p className="text-neutral-600 text-base sm:text-base leading-relaxed max-w-xl">
                   {processIntro}
-                </p>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="lg:text-left"
-              >
-                <p className="text-[#2F63CC] text-lg font-bold leading-relaxed max-w-md">
-                  {processBlueText ?? "Each project is approached methodically, ensuring grout failure is addressed properly rather than covered up."}
                 </p>
               </motion.div>
             </div>
@@ -712,10 +754,18 @@ export default function ServicePageTemplate({
                       {i + 1}
                     </div>
                     <h3 className="font-bold text-neutral-900 text-lg leading-snug">{step.title}</h3>
-                    <p className="text-base text-neutral-500 leading-relaxed">{step.desc}</p>
+                    <p className="text-base text-neutral-500 leading-relaxed">
+                      {i === 2
+                        ? step.desc.split(/(10-year waterproof warranty)/i).map((part, j) =>
+                            /(10-year waterproof warranty)/i.test(part)
+                              ? <mark key={j} style={{ background: "#ff8c00", color: "#fff", borderRadius: "2px", padding: "0 3px", fontWeight: 700 }}>{part}</mark>
+                              : part
+                          )
+                        : step.desc}
+                    </p>
                   </div>
                   <div className="pt-2">
-                    <ImgBox label={`Step ${i + 1} Image`} aspect="aspect-[16/10]" className="rounded-sm" src={i === 0 ? "/img24.jpeg" : i === 1 ? "/img25.jpeg" : "/img26.jpeg"} />
+                    <ImgBox label={`Step ${i + 1} Image`} aspect="aspect-[16/10]" className="img-glow rounded-sm" src={i === 0 ? "/img87.jpeg" : i === 1 ? "/img85.jpeg" : "/img86.jpeg"} />
                   </div>
                 </motion.div>
               ))}
@@ -805,14 +855,14 @@ export default function ServicePageTemplate({
 
         <AnimatedSection className="bg-white text-neutral-800 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <AnimatedImage className="relative">
-              <ImgBox src="/img6.avif" label="What You Get Image" aspect="aspect-[4/3]" className="rounded-sm" />
+            <AnimatedImage className="relative group">
+              <ImgBox src={slug === "leaking-shower-repair" ? "/img99.jpeg" : "/img6.avif"} label="What You Get Image" aspect="aspect-[4/3]" className={`img-glow rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
               <motion.div
                 initial={{ opacity: 0, y: 10, x: -10 }}
                 whileInView={{ opacity: 1, y: 0, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.3 }}
-                className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm"
+                className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-[-20px] lg:right-[-20px] lg:left-auto lg:w-[350px] bg-[#001F97] text-white p-5 lg:p-6 shadow-xl z-10 rounded-sm opacity-100 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none"
               >
                 <p className="text-base font-bold leading-relaxed">
                   {workWithUsBlueBoxText ?? "With experienced technicians, specialist materials and a structured repair process, you can trust that your leaking shower is fixed properly."}
@@ -826,7 +876,11 @@ export default function ServicePageTemplate({
               className="space-y-6"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold leading-tight">
-                Why Homeowners Choose <span className="text-accent">Groutix</span>
+                {slug === "real-estate-property-services" ? (
+                  <>Why Property Managers Choose <span className="text-accent">Groutix</span></>
+                ) : (
+                  <>Why Homeowners Choose <span className="text-accent">Groutix</span></>
+                )}
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">{workWithUsText}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -850,7 +904,15 @@ export default function ServicePageTemplate({
               className="space-y-5"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-                Our <span className="text-accent">Promise</span>
+                {guaranteeHeading ? (
+                  <>
+                    {guaranteeHeading} <span className="text-accent">{guaranteeHeadingBlue}</span>
+                  </>
+                ) : (
+                  <>
+                    Our <span className="text-accent">Promise</span>
+                  </>
+                )}
               </h2>
               <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
                 {guaranteeText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
@@ -870,25 +932,43 @@ export default function ServicePageTemplate({
                 </a>
               </motion.div>
             </motion.div>
-            <AnimatedImage className="relative">
-              <ImgBox src="/img43.jpeg" label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-sm" />
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: -10 }}
-                whileInView={{ opacity: 1, y: 0, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="absolute bottom-[-20px] left-4 bg-[#001F97] text-white p-6 shadow-xl z-10 w-[190px] text-center border-t-4 border-[#2F63CC]"
-              >
-                <div className="flex items-start justify-center gap-2">
-                  <p className="text-[4rem] font-black leading-none">10</p>
-                  <p className="text-[13px] font-black uppercase tracking-[0.6em] mt-2" style={{ writingMode: "vertical-rl" }}>
-                    YEAR
+            <AnimatedImage className="relative w-full">
+              <div className="img-glow relative w-full rounded-xl overflow-hidden shadow-md border-2 border-transparent hover:border-accent transition-all duration-300 hover:shadow-xl">
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
+                <ImgBox src={guaranteeImage ?? (slug === "shower-base-repair" ? "/img91.jpeg" : "/img43.jpeg")} label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-xl" />
+              </div>
+              {slug === "silicone-recaulking" ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, x: -10 }}
+                  whileInView={{ opacity: 1, y: 0, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
+                  className="absolute bottom-[-20px] left-4 bg-[#001F97] text-white px-5 py-4 shadow-xl z-10 text-center border-t-4 border-accent rounded-sm flex items-center justify-center gap-2 max-w-[220px]"
+                >
+                  <p className="text-sm font-black uppercase tracking-wider leading-snug">
+                    Premium Sanitary Silicone
                   </p>
-                </div>
-                <p className="text-[13px] font-black uppercase tracking-widest mt-2">DOUBT</p>
-                <p className="text-[13px] font-black uppercase tracking-widest">FREE</p>
-                <p className="text-[13px] font-black uppercase tracking-widest mt-2">GUARANTEE</p>
-              </motion.div>
+                </motion.div>
+              ) : slug !== "shower-base-repair" && !guaranteeImage ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, x: -10 }}
+                  whileInView={{ opacity: 1, y: 0, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
+                  className="absolute bottom-[-20px] left-4 bg-[#001F97] text-white p-6 shadow-xl z-10 w-[190px] text-center border-t-4 border-[#2F63CC]"
+                >
+                  <div className="flex items-start justify-center gap-2">
+                    <p className="text-[4rem] font-black leading-none">10</p>
+                    <p className="text-[13px] font-black uppercase tracking-[0.6em] mt-2" style={{ writingMode: "vertical-rl" }}>
+                      YEAR
+                    </p>
+                  </div>
+                  <p className="text-[13px] font-black uppercase tracking-widest mt-2">DOUBT</p>
+                  <p className="text-[13px] font-black uppercase tracking-widest">FREE</p>
+                  <p className="text-[13px] font-black uppercase tracking-widest mt-2">GUARANTEE</p>
+                </motion.div>
+              ) : null}
             </AnimatedImage>
           </div>
         </AnimatedSection>
@@ -946,7 +1026,7 @@ export default function ServicePageTemplate({
 
         <section id="quote-form" className="relative overflow-hidden bg-[#001F97]">
           <div className="absolute inset-0">
-            <Image src="/img28.jpeg" alt="Request Quote Background" fill className="object-cover" />
+            <Image src="/img75.jpeg" alt="Request Quote Background" fill className="object-cover" />
           </div>
           <div className="relative z-10 max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2">
             <motion.div

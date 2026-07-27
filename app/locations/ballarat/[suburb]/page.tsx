@@ -53,7 +53,7 @@ const ballaratSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Kilmore)",
+    "title": "Nearby Service Areas (Towards Kilmore)",
     "suburbs": [
       "Creswick",
       "Daylesford",
@@ -61,7 +61,7 @@ const ballaratSuburbs: SuburbGroup[] = [
     ]
   },
   {
-    "title": "Connecting Suburbs (Towards Geelong)",
+    "title": "Nearby Service Areas (Towards Geelong)",
     "suburbs": [
       "Clarendon",
       "Elaine"
@@ -98,9 +98,10 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
         heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Ballarat. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img70.jpg"
+        heroImage="/img69.jpg"
         suburbGroups={ballaratSuburbs}
+        parentSlug="ballarat"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

@@ -62,7 +62,7 @@ function ImgBox({ label, aspect = "aspect-[4/3]", className = "", src, objectCla
 /* ─── Image slider component (Image 2 style) ─── */
 function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -271,7 +271,7 @@ export default function LocationsClient({
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-3xl lg:text-4xl font-bold text-neutral-900 leading-tight"
+              className="text-3xl lg:text-[42px] font-black text-[#001F97] leading-tight tracking-tight"
             >
               Our Service Area
             </motion.h2>
@@ -282,7 +282,7 @@ export default function LocationsClient({
               transition={{ delay: 0.1 }}
               className="space-y-4"
             >
-              {`Victoria properties deal with a wide range of bathroom and wet-area issues, from ageing grout in older homes to leaking shower joints in modern apartments. Across the state, everyday water exposure, building movement and poor ventilation all contribute to cracked grout, failed silicone and hidden moisture problems.
+              {`Melbourne & Victoria properties deal with a wide range of bathroom and wet-area issues, from ageing grout in older homes to leaking shower joints in modern apartments. Across the state, everyday water exposure, building movement and poor ventilation all contribute to cracked grout, failed silicone and hidden moisture problems.
 
 Groutix services Melbourne and the wider Victorian region with specialist shower regrouting, grout repair, leaking shower rectification and silicone replacement. In most cases, we restore the failed grout and sealing system without removing the existing tiles or pushing clients into unnecessary renovation work.
 
@@ -318,7 +318,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
         <div className="relative z-10 max-w-2xl mx-auto px-6 py-8 bg-[#F9FBFC] border border-neutral-200/80 rounded-xl shadow-xl space-y-8">
           <div className="space-y-3">
             <h2 className="text-3xl sm:text-4xl font-black text-[#001F97] tracking-tight">
-              View Our Victoria Service Areas
+              View Our Melbourne & Victoria Service Areas
             </h2>
             <div className="w-24 h-1 bg-accent mx-auto rounded-full" />
           </div>
@@ -327,16 +327,16 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
           </p>
           <div className="flex flex-row flex-wrap justify-center items-center gap-4">
             <Link
-              href="/locations/geelong"
-              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
-            >
-              Geelong Area
-            </Link>
-            <Link
               href="/locations/melbourne"
               className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
             >
               Melbourne Area
+            </Link>
+            <Link
+              href="/locations/geelong"
+              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
+            >
+              Geelong Area
             </Link>
             <Link
               href="/locations/frankston"
@@ -606,7 +606,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
       {/* Final Quote Form */}
       <section id="quote-form" className="relative overflow-hidden bg-[#001F97]">
         <div className="absolute inset-0">
-          <Image src="/img28.jpeg" alt="Request Quote Background" fill className="object-cover" />
+          <Image src="/img75.jpeg" alt="Request Quote Background" fill className="object-cover" />
         </div>
 
         {/* Foreground content */}

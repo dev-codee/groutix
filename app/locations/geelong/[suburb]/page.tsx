@@ -114,9 +114,10 @@ Our specialist team delivers practical repairs using quality materials and a pro
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
         heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Geelong. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/img46.webp"
+        heroImage="/img47.jpg"
         suburbGroups={geelongSuburbs}
+        parentSlug="geelong"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}

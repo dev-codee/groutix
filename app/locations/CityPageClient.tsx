@@ -53,7 +53,7 @@ export type CityPageProps = {
   reviews: Review[];
   rating: BusinessRating;
   googleMapsApiKey?: string;
-  parentSlug?: "melbourne" | "geelong";
+  parentSlug?: string;
   locationExplanation?: string;
 };
 
@@ -95,7 +95,7 @@ function ImgBox({
 /* ─── PhotoSlider ─── */
 function PhotoSlider({ cityName }: { cityName: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img57.jpeg", "/img58.jpeg", "/img59.jpeg", "/img60.jpeg", "/img61.jpeg", "/img62.jpeg"];
+  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -147,7 +147,7 @@ function SuburbAccordion({
 }: {
   groups: SuburbGroup[];
   cityName: string;
-  parentSlug: "melbourne" | "geelong";
+  parentSlug: string;
   onSelectQuery: (query: string) => void;
 }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
@@ -271,6 +271,17 @@ const SERVICE_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   "real-estate-property-services": Building2,
 };
 
+function getRegionSlug(cityName: string, heroSubtitle: string, suburbGroups: SuburbGroup[]): string {
+  const text = `${cityName} ${heroSubtitle} ${suburbGroups.map((g) => g.title).join(" ")}`.toLowerCase();
+  if (text.includes("frankston")) return "frankston";
+  if (text.includes("lilydale")) return "lilydale";
+  if (text.includes("kilmore")) return "kilmore";
+  if (text.includes("ballarat")) return "ballarat";
+  if (text.includes("yarra glen") || text.includes("yarra-glen") || text.includes("yarraglen")) return "yarra-glen";
+  if (text.includes("geelong")) return "geelong";
+  return "melbourne";
+}
+
 /* ─── Main Component ─── */
 export default function CityPageClient({
   cityName,
@@ -287,8 +298,7 @@ export default function CityPageClient({
   locationExplanation,
 }: CityPageProps) {
   const [mapQuery, setMapQuery] = useState(`${cityName}, VIC, Australia`);
-  const isGeelong = cityName.toLowerCase().includes("geelong") || heroSubtitle.toLowerCase().includes("geelong") || (suburbGroups.length > 0 && (suburbGroups[0].title.toLowerCase().includes("geelong") || suburbGroups[0].title.toLowerCase().includes("peninsula") || suburbGroups[0].title.toLowerCase().includes("surf")));
-  const parent = parentSlug || (isGeelong ? "geelong" : "melbourne");
+  const parent = parentSlug || getRegionSlug(cityName, heroSubtitle, suburbGroups);
   return (
     <main className="min-h-screen">
       {/* ── Hero ── */}
@@ -296,7 +306,7 @@ export default function CityPageClient({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="relative bg-primary"
+        className="relative bg-primary pt-[73px]"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,214,79,0.25),transparent_55%)]" />
         <div className="max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2 pb-28">
@@ -451,7 +461,7 @@ export default function CityPageClient({
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="text-3xl lg:text-4xl font-bold text-neutral-900 leading-tight"
+                className="text-3xl lg:text-[42px] font-black text-[#001F97] leading-tight tracking-tight"
               >
                 Our Service Area
               </motion.h2>
@@ -463,7 +473,7 @@ export default function CityPageClient({
                 className="space-y-4"
               >
                 {serviceAreaText.split("\n\n").map((para, i) => (
-                  <p key={i} className="text-base sm:text-lg text-neutral-600 leading-relaxed">
+                  <p key={i} className="text-base sm:text-lg text-neutral-600 leading-relaxed font-normal">
                     {para}
                   </p>
                 ))}
@@ -520,7 +530,7 @@ export default function CityPageClient({
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  className="text-4xl lg:text-[48px] font-black text-neutral-900 leading-tight"
+                  className="text-4xl lg:text-[42px] font-black text-[#001F97] leading-tight tracking-tight"
                 >
                   {cityName}
                 </motion.h2>
@@ -529,7 +539,7 @@ export default function CityPageClient({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="space-y-4 text-base sm:text-lg text-neutral-600 leading-relaxed font-medium"
+                  className="space-y-4 text-base sm:text-lg text-neutral-600 leading-relaxed font-normal"
                 >
                   {locationExplanation.split("\n\n").map((para, i) => (
                     <p key={i}>{para}</p>
@@ -842,7 +852,7 @@ export default function CityPageClient({
       {/* ── Final Quote Form ── */}
       <section id="quote-form" className="relative overflow-hidden bg-[#001F97]">
         <div className="absolute inset-0">
-          <Image src="/img28.jpeg" alt="Request Quote Background" fill className="object-cover" />
+          <Image src="/img75.jpeg" alt="Request Quote Background" fill className="object-cover" />
         </div>
         <div className="relative z-10 max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2">
           <motion.div

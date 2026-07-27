@@ -93,6 +93,7 @@ export default async function GeelongPage() {
         serviceAreaMapImage="/img46.webp"
         heroImage="/img47.jpg"
         suburbGroups={geelongSuburbs}
+        parentSlug="geelong"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}
