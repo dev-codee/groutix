@@ -228,7 +228,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
                   >
-                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions—without the need for a full renovation.
+                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year guarantee-backed solutions—without the need for a full renovation.
                   </motion.p>
                 </div>
 
@@ -644,7 +644,7 @@ export default function HomePage({
                 {[
                   "Specialist materials selected for long-term durability",
                   "Experienced shower regrouting technicians",
-                  "10-year waterproof warranty on eligible full shower regrouting",
+                  "10-year waterproof guarantee on eligible full shower regrouting",
                   "Fast turnaround with minimal disruption",
                   "Honest recommendations based on your shower's condition",
                   "Clear, upfront pricing with no hidden surprises",

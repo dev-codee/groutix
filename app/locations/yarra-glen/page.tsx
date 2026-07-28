@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Yarra Glen | Groutix",
   description:
-    "Professional shower regrouting, grout repair and leaking shower solutions across Yarra Glen. Groutix services homes and apartments throughout Yarra Glen with a 10-year waterproof warranty.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Yarra Glen. Groutix services homes and apartments throughout Yarra Glen with a 10-year waterproof guarantee.",
   alternates: { canonical: "/locations/yarra-glen" },
   openGraph: {
     title: "Shower Regrouting Yarra Glen — Groutix",
@@ -38,7 +38,7 @@ Groutix services the full Yarra Glen region with specialist shower regrouting, l
 
 Cold winters, condensation, daily use and natural movement all contribute to grout cracking and seal breakdown across Yarra Glen bathrooms. Our team focuses on resolving the source of the problem so your shower is restored properly, not just cosmetically improved.
 
-Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof warranty. Book Groutix for specialist grout and shower repairs across Yarra Glen.`;
+Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof guarantee. Book Groutix for specialist grout and shower repairs across Yarra Glen.`;
 
 export default async function YarraglenPage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);

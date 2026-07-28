@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = formatSuburbName(suburb);
   return {
     title: `Shower Regrouting ${name} | Melbourne | GROUTIX`,
-    description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Melbourne. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
+    description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Melbourne. Professional wet-area repairs backed by a 10-year waterproof guarantee.`,
     alternates: { canonical: `/locations/melbourne/${suburb}` },
     openGraph: {
       title: `Shower Regrouting ${name} | Melbourne — GROUTIX`,
@@ -143,14 +143,14 @@ function getSuburbExplanation(suburb: string): string {
 
 Cooler weather, condensation and waterfront humidity make failed grout, mould growth and worn silicone common maintenance issues in Docklands bathrooms. These conditions can affect both owner-occupied apartments and investment properties, especially where showers are used heavily and maintenance has been delayed.
 
-GROUTIX provides Docklands with specialist shower regrouting, grout repair, leaking shower rectification and silicone replacement. We focus on restoring the waterproof integrity of tiled wet areas without unnecessary tile removal, backed by a 10-year waterproof warranty on full shower regrouting work.`;
+GROUTIX provides Docklands with specialist shower regrouting, grout repair, leaking shower rectification and silicone replacement. We focus on restoring the waterproof integrity of tiled wet areas without unnecessary tile removal, backed by a 10-year waterproof guarantee on full shower regrouting work.`;
   }
   
   return `${suburb} includes a mix of established homes, renovated bathrooms and newer residential developments, all of which can develop grout wear and wet-area sealing issues over time. As bathrooms age, cracked grout joints and tired silicone often become the first signs that moisture is getting where it should not.
 
 In ${suburb}, everyday use, seasonal movement and ongoing exposure to steam and water can lead to leaking showers, stained grout lines and hidden dampness behind tiled surfaces. Early repair work is the best way to avoid more extensive water damage and keep the bathroom functioning properly.
 
-GROUTIX provides specialist grout repair, shower regrouting, leaking shower repair and silicone replacement across ${suburb}. Our team restores tiled wet areas without unnecessary demolition, with full shower regrouting work backed by a 10-year waterproof warranty.`;
+GROUTIX provides specialist grout repair, shower regrouting, leaking shower repair and silicone replacement across ${suburb}. Our team restores tiled wet areas without unnecessary demolition, with full shower regrouting work backed by a 10-year waterproof guarantee.`;
 }
 
 export default async function SuburbPage({ params }: Props) {
@@ -164,7 +164,7 @@ export default async function SuburbPage({ params }: Props) {
 
 Bathrooms in ${suburbName} commonly develop cracked grout, mouldy joints and failed silicone as surfaces age and building movement takes its toll. Addressing these issues early helps protect the substrate behind the tiles and keeps shower areas watertight.
 
-Our specialist team delivers practical wet-area repairs with quality materials, clear advice and workmanship focused on long-term performance. Full shower regrouting work is backed by a 10-year waterproof warranty.`;
+Our specialist team delivers practical wet-area repairs with quality materials, clear advice and workmanship focused on long-term performance. Full shower regrouting work is backed by a 10-year waterproof guarantee.`;
 
   return (
     <>
@@ -172,7 +172,7 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
       <CityPageClient
         cityName={suburbName}
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
-        heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Melbourne. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
+        heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Melbourne. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof guarantee.`}
         serviceAreaText={serviceAreaText}
         serviceAreaMapImage="/img21.jpeg"
         heroImage="/img20.jpeg"

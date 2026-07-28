@@ -535,7 +535,7 @@ export default function ServicePageTemplate({
               {(heroCards ? heroCards.map((c, i) => ({ title: c.title, desc: c.desc, icon: icons[i] ?? icons[0] })) : [
                 { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, desc: "", icon: icons[0] },
                 { title: "Long-lasting solutions for worn or damaged areas", desc: "", icon: icons[1] },
-                { title: "Backed by a 10 year waterproof warranty", desc: "", icon: icons[2] },
+                { title: "Backed by a 10 year waterproof guarantee", desc: "", icon: icons[2] },
               ]).map((badge, i) => (
                 <motion.div
                   key={i}

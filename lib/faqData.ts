@@ -208,7 +208,7 @@ export const faqCategories: FaqCategory[] = [
     ],
   },
   {
-    title: "Pricing, Warranty & General Questions",
+    title: "Pricing, Guarantee & General Questions",
     faqs: [
       {
         question: "How Much Does Shower Regrouting Or Repair Cost?",
@@ -216,9 +216,9 @@ export const faqCategories: FaqCategory[] = [
           "The cost depends on the condition of your shower, its size and the repairs required. We provide a detailed quote after assessing your shower, so you know exactly what's included before any work begins.",
       },
       {
-        question: "Do You Offer A Warranty?",
+        question: "Do You Offer A Guarantee?",
         answer:
-          "Yes. Eligible works completed by Groutix are backed by our workmanship warranty, with warranty periods varying depending on the type of repair and materials used. Your technician will explain the applicable warranty before work begins.",
+          "Yes. Eligible works completed by Groutix are backed by our workmanship guarantee, with guarantee periods varying depending on the type of repair and materials used. Your technician will explain the applicable guarantee before work begins.",
       },
       {
         question: "What Areas Do You Service?",

@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Geelong | Groutix",
   description:
-    "Professional shower regrouting, grout repair and leaking shower solutions across Geelong, the Bellarine and Surf Coast, backed by a 10-year waterproof warranty.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Geelong, the Bellarine and Surf Coast, backed by a 10-year waterproof guarantee.",
   alternates: { canonical: "/locations/geelong" },
   openGraph: {
     title: "Shower Regrouting Geelong — Groutix",
@@ -77,7 +77,7 @@ Groutix services Greater Geelong, the Bellarine Peninsula and the Surf Coast wit
 
 Older homes around Newtown and Geelong West often need careful grout matching, while coastal and newer properties commonly suffer from early seal failure and moisture-related grout breakdown. Our repair process is built to deliver a durable result in these demanding environments.
 
-We provide clear quotes, practical advice and professional workmanship backed by a 10-year waterproof warranty on full shower regrouting work. Contact Groutix for Geelong shower and grout repairs that are built to last.`;
+We provide clear quotes, practical advice and professional workmanship backed by a 10-year waterproof guarantee on full shower regrouting work. Contact Groutix for Geelong shower and grout repairs that are built to last.`;
 
 export default async function GeelongPage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);

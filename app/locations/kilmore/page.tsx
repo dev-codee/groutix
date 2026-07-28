@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Kilmore | Groutix",
   description:
-    "Professional shower regrouting, grout repair and leaking shower solutions across Kilmore. Groutix services homes and apartments throughout Kilmore with a 10-year waterproof warranty.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Kilmore. Groutix services homes and apartments throughout Kilmore with a 10-year waterproof guarantee.",
   alternates: { canonical: "/locations/kilmore" },
   openGraph: {
     title: "Shower Regrouting Kilmore — Groutix",
@@ -58,7 +58,7 @@ Groutix services the full Kilmore region with specialist shower regrouting, leak
 
 Cold winters, condensation, daily use and natural movement all contribute to grout cracking and seal breakdown across Kilmore bathrooms. Our team focuses on resolving the source of the problem so your shower is restored properly, not just cosmetically improved.
 
-Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof warranty. Book Groutix for specialist grout and shower repairs across Kilmore.`;
+Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof guarantee. Book Groutix for specialist grout and shower repairs across Kilmore.`;
 
 export default async function KilmorePage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
