@@ -429,7 +429,7 @@ export default function HeroQuoteForm() {
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-neutral-300 bg-white/60 px-4 py-3 text-[15px] font-medium text-neutral-600 transition-all duration-200 hover:border-secondary hover:text-secondary">
                   <Paperclip className="h-4 w-4" />
                   <span>Click to upload photos (optional)</span>
-                  <input type="file" accept="image/*" multiple onChange={handlePhotos} className="hidden" />
+                  <input type="file" multiple onChange={handlePhotos} className="hidden" />
                 </label>
 
                 <AnimatePresence>
