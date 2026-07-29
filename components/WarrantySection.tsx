@@ -28,7 +28,7 @@ function ImgBox({ label, src }: { label: string; src?: string }) {
   );
 }
 
-export default function GuaranteeSection() {
+export default function WarrantySection() {
   return (
     <AnimatedSection className="bg-white py-16 lg:py-24">
       <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -45,7 +45,7 @@ export default function GuaranteeSection() {
               </h2>
               <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
                 <p>
-                  Every job done by Groutix is backed by our industry-leading 10-year waterproof guarantee. If water gets through our work, we fix it with no questions asked.
+                  Every job done by Groutix is backed by our industry-leading 10-year waterproof warranty. If water gets through our work, we fix it with no questions asked.
                 </p>
                 <p className="font-semibold text-neutral-800">
                   Along with our trusted methods, expert materials, and experienced grout techs, our promise gives you total confidence that your shower repair is made to last, not just look good on day one.
@@ -73,7 +73,7 @@ export default function GuaranteeSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
-          <ImgBox label="Guarantee Section Image" src="/home-page-2.jpeg" />
+          <ImgBox label="Warranty Section Image" src="/home-page-2.jpeg" />
         </motion.div>
       </div>
     </AnimatedSection>

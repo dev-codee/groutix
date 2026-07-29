@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Ballarat | Groutix",
   description:
-    "Professional shower regrouting, grout repair and leaking shower solutions across Ballarat. Groutix services homes and apartments throughout Ballarat with a 10-year waterproof guarantee.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Ballarat. Groutix services homes and apartments throughout Ballarat with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/ballarat" },
   openGraph: {
     title: "Shower Regrouting Ballarat — Groutix",
@@ -61,7 +61,7 @@ Groutix services the full Ballarat region with specialist shower regrouting, lea
 
 Cold winters, condensation, daily use and natural movement all contribute to grout cracking and seal breakdown across Ballarat bathrooms. Our team focuses on resolving the source of the problem so your shower is restored properly, not just cosmetically improved.
 
-Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof guarantee. Book Groutix for specialist grout and shower repairs across Ballarat.`;
+Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof warranty. Book Groutix for specialist grout and shower repairs across Ballarat.`;
 
 export default async function BallaratPage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);

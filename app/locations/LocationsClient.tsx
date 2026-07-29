@@ -230,7 +230,7 @@ export default function LocationsClient({
               {[
                 { label: "Victoria-based shower regrouting specialists", Icon: LocationIcon },
                 { label: "Repair systems built for grout failure and leaking showers", Icon: ShowerBadgeIcon },
-                { label: "10-year waterproof guarantee on full shower regrouting", Icon: WarrantyBadgeIcon },
+                { label: "10-year waterproof warranty on full shower regrouting", Icon: WarrantyBadgeIcon },
               ].map(({ label, Icon }, i) => (
                 <motion.div
                   key={i}

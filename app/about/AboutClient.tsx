@@ -102,7 +102,7 @@ export default function AboutClient() {
   ];
 
   const stats = [
-    { value: "10-Year", label: "Waterproof Guarantee" },
+    { value: "10-Year", label: "Waterproof Warranty" },
     { value: "Licensed", label: "& Fully Insured" },
     { value: "8000+", label: "Showers Fixed" },
     { value: "100%", label: "No-Leak Promise" },
@@ -143,7 +143,7 @@ export default function AboutClient() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-white/80 leading-relaxed"
           >
-            We help homeowners fix leaky showers, broken grout, and worn wet areas with expert repairs backed by a 10-year waterproof guarantee.
+            We help homeowners fix leaky showers, broken grout, and worn wet areas with expert repairs backed by a 10-year waterproof warranty.
           </motion.p>
         </div>
       </motion.section>
@@ -196,7 +196,7 @@ export default function AboutClient() {
               {[
                 "Experts in shower regrouting and grout fixes",
                 "Wet-area repairs that keep tiles in place",
-                "Written 10-year waterproof guarantee",
+                "Written 10-year waterproof warranty",
                 "Professional work with clear communication",
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 bg-[#F3F4F6] px-4 py-2.5 rounded-sm">

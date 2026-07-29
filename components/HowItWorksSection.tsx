@@ -29,7 +29,7 @@ export default function HowItWorksSection() {
     {
       number: "03",
       title: "Warranty-Backed Waterproof Seal",
-      description: "Your shower is sealed with our commercial-grade grout and silicone, backed by our top 10-year waterproof guarantee.",
+      description: "Your shower is sealed with our commercial-grade grout and silicone, backed by our top 10-year waterproof warranty.",
     },
   ];
 
@@ -79,7 +79,7 @@ export default function HowItWorksSection() {
                   At Groutix, we don't just hide worn grout with surface sealers or fast cosmetic fixes. We take out the broken material, properly prep the affected areas, and rebuild the shower's protective grout and sealant system with professional-grade materials made for wet spaces.
                 </p>
                 <p>
-                  Our goal is simple: stop the problem at the source, give you a long-lasting repair, and help you avoid repeat visits and costly damage. That's why finished leaky shower repairs are backed by our 10-year waterproof guarantee.
+                  Our goal is simple: stop the problem at the source, give you a long-lasting repair, and help you avoid repeat visits and costly damage. That's why finished leaky shower repairs are backed by our 10-year waterproof warranty.
                 </p>
               </div>
           </div>

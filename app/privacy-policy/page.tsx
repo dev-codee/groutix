@@ -154,7 +154,7 @@ export default function PrivacyPolicyPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-bold text-[#001F97] uppercase tracking-wide">What AI is NOT Used For</h3>
                   <p className="leading-relaxed text-neutral-700">
-                    AI is not used as a substitute for physical inspection where an on-site assessment is required. AI does not perform repair work, replace trade judgment or independently guarantee the cause of a leak, waterproofing failure, grout issue, tile defect or other property problem.
+                    AI is not used as a substitute for physical inspection where an on-site assessment is required. AI does not perform repair work, replace trade judgment or independently warranty the cause of a leak, waterproofing failure, grout issue, tile defect or other property problem.
                   </p>
                   <p className="leading-relaxed text-neutral-700">
                     AI-generated information may be reviewed, corrected or supplemented by the Groutix team before being relied upon for customer service or business purposes.

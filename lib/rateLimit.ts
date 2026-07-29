@@ -4,7 +4,7 @@
 //
 // Caveat: state lives in the server process's memory. On serverless hosts
 // (e.g. Vercel) each instance has its own map, so this is a "best effort"
-// throttle rather than a hard global guarantee. Combined with Turnstile it's
+// throttle rather than a hard global warranty. Combined with Turnstile it's
 // plenty for a marketing site. For a strict global limit, back it with Redis
 // (e.g. Upstash) later.
 

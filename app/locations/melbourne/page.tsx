@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Melbourne | Groutix",
   description:
-    "Professional shower regrouting, grout repair and leaking shower solutions across Melbourne. Groutix services homes and apartments throughout Melbourne with a 10-year waterproof guarantee.",
+    "Professional shower regrouting, grout repair and leaking shower solutions across Melbourne. Groutix services homes and apartments throughout Melbourne with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/melbourne" },
   openGraph: {
     title: "Shower Regrouting Melbourne — Groutix",
@@ -129,7 +129,7 @@ Groutix services the full Melbourne metro region with specialist shower regrouti
 
 Cold winters, condensation, daily use and natural movement all contribute to grout cracking and seal breakdown across Melbourne bathrooms. Our team focuses on resolving the source of the problem so your shower is restored properly, not just cosmetically improved.
 
-Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof guarantee. Book Groutix for specialist grout and shower repairs across Melbourne.`;
+Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof warranty. Book Groutix for specialist grout and shower repairs across Melbourne.`;
 
 export default async function MelbournePage() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);

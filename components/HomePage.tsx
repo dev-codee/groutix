@@ -228,7 +228,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
                   >
-                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year guarantee-backed solutions—without the need for a full renovation.
+                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions—without the need for a full renovation.
                   </motion.p>
                 </div>
 
@@ -259,7 +259,7 @@ export default function HomePage({
                   icon: ShieldCheck,
                   text: (
                     <>
-                      10-year waterproof guarantee on complete<br className="hidden md:block" /> shower regrouting jobs
+                      10-year waterproof warranty on complete<br className="hidden md:block" /> shower regrouting jobs
                     </>
                   ),
                 },
@@ -325,7 +325,7 @@ export default function HomePage({
                   {
                     Icon: ShieldCheck,
                     value: "10 Year",
-                    label: "Waterproof Guarantee",
+                    label: "Waterproof Warranty",
                     color: "text-secondary",
                     fill: false,
                   },
@@ -517,7 +517,7 @@ export default function HomePage({
                   Our aim is to fix the root of the issue, provide a long-lasting result, and help you skip repeated leaks or constant patch-ups.
                 </p>
                 <p className="text-[#4A4A4A] text-base sm:text-lg leading-relaxed">
-                  That's why complete shower regrouting jobs come with our 10-year waterproof guarantee.
+                  That's why complete shower regrouting jobs come with our 10-year waterproof warranty.
                 </p>
               </div>
               <HomePhotoSlider />
@@ -570,7 +570,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 9 — Groutix GUARANTEE
+            SECTION 9 — Groutix WARRANTY
             Left: Text + 2 images
             Right: Big image
         ══════════════════════════════════════ */}
@@ -578,10 +578,10 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <div className="space-y-6">
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                Our <span className="text-accent">Guarantee</span>
+                Our <span className="text-accent">Warranty</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">
-                Complete shower regrouting work done by Groutix comes with our 10-year waterproof guarantee. We stand by our work because our grout repair systems are made for long-lasting wet-area performance, not just quick visual fixes.
+                Complete shower regrouting work done by Groutix comes with our 10-year waterproof warranty. We stand by our work because our grout repair systems are made for long-lasting wet-area performance, not just quick visual fixes.
               </p>
               <div className="flex gap-3">
                 <Link
@@ -601,7 +601,7 @@ export default function HomePage({
             <AnimatedImage className="relative">
               <ImgBox
                 src="/img43.jpeg"
-                label="Guarantee Image"
+                label="Warranty Image"
                 aspect="aspect-[4/3]"
                 className="rounded-sm"
               />
@@ -620,7 +620,7 @@ export default function HomePage({
                 </div>
                 <p className="text-[13px] font-black uppercase tracking-widest mt-2">DOUBT</p>
                 <p className="text-[13px] font-black uppercase tracking-widest">FREE</p>
-                <p className="text-[13px] font-black uppercase tracking-widest mt-2">GUARANTEE</p>
+                <p className="text-[13px] font-black uppercase tracking-widest mt-2">WARRANTY</p>
               </motion.div>
             </AnimatedImage>
           </div>
@@ -644,7 +644,7 @@ export default function HomePage({
                 {[
                   "Specialist materials selected for long-term durability",
                   "Experienced shower regrouting technicians",
-                  "10-year waterproof guarantee on eligible full shower regrouting",
+                  "10-year waterproof warranty on eligible full shower regrouting",
                   "Fast turnaround with minimal disruption",
                   "Honest recommendations based on your shower's condition",
                   "Clear, upfront pricing with no hidden surprises",

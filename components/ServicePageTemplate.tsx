@@ -440,7 +440,7 @@ export default function ServicePageTemplate({
   steps,
   workWithUsText,
   workWithUsBullets,
-  guaranteeText,
+  warrantyText,
   faqs,
   reviews,
   fixBlueBoxText,
@@ -449,9 +449,9 @@ export default function ServicePageTemplate({
   heroCards,
   trustedText,
   heroTitle,
-  guaranteeHeading,
-  guaranteeHeadingBlue,
-  guaranteeImage,
+  warrantyHeading,
+  warrantyHeadingBlue,
+  warrantyImage,
 }: {
   title: string;
   slug?: string;
@@ -467,7 +467,7 @@ export default function ServicePageTemplate({
   steps: { title: string; desc: string }[];
   workWithUsText: string;
   workWithUsBullets: string[];
-  guaranteeText: string;
+  warrantyText: string;
   faqs: { q: string; a: string }[];
   reviews: Review[];
   fixBlueBoxText?: string;
@@ -476,9 +476,9 @@ export default function ServicePageTemplate({
   heroCards?: { title: string; desc: string }[];
   trustedText?: string;
   heroTitle?: string;
-  guaranteeHeading?: string;
-  guaranteeHeadingBlue?: string;
-  guaranteeImage?: string;
+  warrantyHeading?: string;
+  warrantyHeadingBlue?: string;
+  warrantyImage?: string;
 }) {
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
@@ -535,7 +535,7 @@ export default function ServicePageTemplate({
               {(heroCards ? heroCards.map((c, i) => ({ title: c.title, desc: c.desc, icon: icons[i] ?? icons[0] })) : [
                 { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, desc: "", icon: icons[0] },
                 { title: "Long-lasting solutions for worn or damaged areas", desc: "", icon: icons[1] },
-                { title: "Backed by a 10 year waterproof guarantee", desc: "", icon: icons[2] },
+                { title: "Backed by a 10 year waterproof warranty", desc: "", icon: icons[2] },
               ]).map((badge, i) => (
                 <motion.div
                   key={i}
@@ -903,9 +903,9 @@ export default function ServicePageTemplate({
               className="space-y-5"
             >
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight">
-                {guaranteeHeading ? (
+                {warrantyHeading ? (
                   <>
-                    {guaranteeHeading} <span className="text-accent">{guaranteeHeadingBlue}</span>
+                    {warrantyHeading} <span className="text-accent">{warrantyHeadingBlue}</span>
                   </>
                 ) : (
                   <>
@@ -914,7 +914,7 @@ export default function ServicePageTemplate({
                 )}
               </h2>
               <div className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[18px]">
-                {guaranteeText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
+                {warrantyText.split("\n\n").map((para, i) => <p key={i}>{formatText(para)}</p>)}
               </div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -935,7 +935,7 @@ export default function ServicePageTemplate({
               <div className="img-glow relative w-full rounded-xl overflow-hidden shadow-md border-2 border-transparent hover:border-accent transition-all duration-300 hover:shadow-xl">
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-                <ImgBox src={guaranteeImage ?? (slug === "shower-base-repair" ? "/img91.jpeg" : "/img43.jpeg")} label="Guarantee Image" aspect="aspect-[4/3]" className="rounded-xl" />
+                <ImgBox src={warrantyImage ?? (slug === "shower-base-repair" ? "/img91.jpeg" : "/img43.jpeg")} label="Warranty Image" aspect="aspect-[4/3]" className="rounded-xl" />
               </div>
               {slug === "silicone-recaulking" ? (
                 <motion.div
@@ -949,7 +949,7 @@ export default function ServicePageTemplate({
                     Premium Sanitary Silicone
                   </p>
                 </motion.div>
-              ) : slug !== "shower-base-repair" && !guaranteeImage ? (
+              ) : slug !== "shower-base-repair" && !warrantyImage ? (
                 <motion.div
                   initial={{ opacity: 0, y: 10, x: -10 }}
                   whileInView={{ opacity: 1, y: 0, x: 0 }}
@@ -965,7 +965,7 @@ export default function ServicePageTemplate({
                   </div>
                   <p className="text-[13px] font-black uppercase tracking-widest mt-2">DOUBT</p>
                   <p className="text-[13px] font-black uppercase tracking-widest">FREE</p>
-                  <p className="text-[13px] font-black uppercase tracking-widest mt-2">GUARANTEE</p>
+                  <p className="text-[13px] font-black uppercase tracking-widest mt-2">WARRANTY</p>
                 </motion.div>
               ) : null}
             </AnimatedImage>
