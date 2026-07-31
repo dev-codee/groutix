@@ -23,6 +23,17 @@ export const metadata: Metadata = {
   },
   description: DESCRIPTION,
   keywords: [
+    // Top queries
+    "shower regrouting near me",
+    "grout repairs near me",
+    "grout repair melbourne",
+    "regrouting shower",
+    "shower repairs melbourne",
+    "bathroom grout repair",
+    "shower regrouting melbourne",
+    "groutix reviews",
+    "balcony regrouting melbourne",
+    // Original keywords
     "shower regrouting",
     "leaking shower repair",
     "tile resealing",
