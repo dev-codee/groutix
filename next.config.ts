@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         destination: '/shower-regrouting',
         permanent: true,
       },
+      {
+        source: '/regrouting',
+        destination: '/tile-regrouting',
+        permanent: true,
+      },
+      {
+        source: '/author/:slug*',
+        destination: '/about',
+        permanent: true,
+      },
     ]
   },
 };

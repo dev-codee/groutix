@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
@@ -85,6 +86,21 @@ export default async function RootLayout({
   const rating = await getBusinessRating();
   return (
     <html lang="en-AU" className={`${roboto.className} h-full antialiased`}>
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-GT047SQJNS"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-GT047SQJNS');
+          `}
+        </Script>
+      </head>
       <body className="min-h-full flex flex-col">
         {/* Site-wide LocalBusiness structured data */}
         <script
