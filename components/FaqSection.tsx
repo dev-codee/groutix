@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
+import { faqJsonLd } from "@/lib/seo";
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -67,6 +68,14 @@ export default function FaqSection() {
 
   return (
     <AnimatedSection className="bg-white py-16 lg:py-24" id="faq">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            faqJsonLd(faqs.map((f) => ({ q: f.question, a: f.answer })))
+          ),
+        }}
+      />
       <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
         <div className="space-y-6 max-w-3xl mx-auto">
           <motion.h2
