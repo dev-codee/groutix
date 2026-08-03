@@ -81,7 +81,13 @@ export default function Navbar() {
   ];
 
   const locations = [
-    { name: "Victoria", href: "/locations" },
+    { name: "Melbourne", href: "/locations/melbourne" },
+    { name: "Geelong", href: "/locations/geelong" },
+    { name: "Ballarat", href: "/locations/ballarat" },
+    { name: "Frankston", href: "/locations/frankston" },
+    { name: "Lilydale", href: "/locations/lilydale" },
+    { name: "Yarra Glen", href: "/locations/yarra-glen" },
+    { name: "Kilmore", href: "/locations/kilmore" },
   ];
 
   return (
@@ -125,11 +131,11 @@ export default function Navbar() {
               </motion.div>
             </div>
 
-            {/* Locations Dropdown */}
+            {/* Area of Service Dropdown */}
             <div className="relative group/menu">
               <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
                 <span className="relative">
-                  Locations
+                  Area of Service
                   <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-accent transition-all duration-200 ease-in-out group-hover/menu:w-full"></span>
                 </span>
                 <ChevronDown className="h-4 w-4 text-neutral-400 group-hover/menu:text-accent transition-colors" />
@@ -280,7 +286,7 @@ export default function Navbar() {
                     className="flex w-full items-center justify-between rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10"
                     aria-expanded={activeSubmenu === "locations"}
                   >
-                    <span>Locations</span>
+                  <span>Area of Service</span>
                     <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${activeSubmenu === "locations" ? "rotate-180" : ""}`} />
                   </button>
                   <AnimatePresence initial={false}>
