@@ -11,12 +11,13 @@ export default function Logo({
   return (
     <div className={`flex items-center select-none ${className}`}>
       <Image
-        src="/logo.jpeg"
+        src="/logo.jpeg?v=3"
         alt="Groutix Logo"
-        width={240}
+        width={260}
         height={80}
         priority
-        className="h-14 sm:h-16 md:h-18 w-auto object-contain transition-opacity duration-200 hover:opacity-95 rounded-md"
+        unoptimized
+        className="h-12 sm:h-14 md:h-16 max-h-[64px] w-auto object-contain transition-opacity duration-200 hover:opacity-95 rounded-md"
       />
     </div>
   );

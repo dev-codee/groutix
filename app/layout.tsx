@@ -49,9 +49,9 @@ export const metadata: Metadata = {
   publisher: "Groutix",
   alternates: { canonical: "/" },
   icons: {
-    icon: "/icon.jpeg",
-    shortcut: "/icon.jpeg",
-    apple: "/icon.jpeg",
+    icon: "/icon.jpeg?v=3",
+    shortcut: "/icon.jpeg?v=3",
+    apple: "/icon.jpeg?v=3",
   },
   openGraph: {
     type: "website",
