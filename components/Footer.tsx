@@ -31,7 +31,7 @@ export default function Footer() {
       transition={{ duration: 0.8 }}
       className="bg-[#001F97] text-white pt-16 pb-8 border-t border-[#001579] relative overflow-hidden"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(255,214,79,0.18),_transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(47,99,204,0.18),_transparent_55%)]" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-12 border-b border-neutral-800">
           {/* Company Column */}
@@ -49,25 +49,30 @@ export default function Footer() {
               Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.
             </p>
             <div className="flex space-x-4">
-              {["Facebook", "Instagram", "Twitter", "Linkedin"].map((social, i) => (
+              {[
+                { name: "Facebook", href: "https://web.facebook.com/profile.php?id=61582570358855" },
+                { name: "Instagram", href: "https://www.instagram.com/groutix.au/" },
+                { name: "Twitter", href: "https://twitter.com" },
+                { name: "Linkedin", href: "https://linkedin.com" },
+              ].map((social, i) => (
                 <motion.a
-                  key={social}
+                  key={social.name}
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.2 + i * 0.05 }}
-                  href={`https://${social.toLowerCase()}.com`}
+                  href={social.href}
                   target="_blank"
                   rel="noreferrer"
                   className="p-2 bg-neutral-800 hover:bg-accent hover:text-primary rounded-full transition-all duration-200"
-                  aria-label={social}
+                  aria-label={social.name}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {social === "Facebook" && <SocialIcons.Facebook />}
-                  {social === "Instagram" && <SocialIcons.Instagram />}
-                  {social === "Twitter" && <SocialIcons.Twitter />}
-                  {social === "Linkedin" && <SocialIcons.Linkedin />}
+                  {social.name === "Facebook" && <SocialIcons.Facebook />}
+                  {social.name === "Instagram" && <SocialIcons.Instagram />}
+                  {social.name === "Twitter" && <SocialIcons.Twitter />}
+                  {social.name === "Linkedin" && <SocialIcons.Linkedin />}
                 </motion.a>
               ))}
             </div>
@@ -118,16 +123,27 @@ export default function Footer() {
           >
             <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6">Service Areas</h3>
             <ul className="space-y-3.5 text-base">
-              <motion.li
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-              >
-                <Link href="/locations" className="hover:text-accent transition-colors duration-200">
-                  Melbourne & Victoria
-                </Link>
-              </motion.li>
+              {[
+                { name: "Melbourne", href: "/locations/melbourne" },
+                { name: "Geelong", href: "/locations/geelong" },
+                { name: "Ballarat", href: "/locations/ballarat" },
+                { name: "Frankston", href: "/locations/frankston" },
+                { name: "Lilydale", href: "/locations/lilydale" },
+                { name: "Yarra Glen", href: "/locations/yarra-glen" },
+                { name: "Kilmore", href: "/locations/kilmore" },
+              ].map((item, i) => (
+                <motion.li
+                  key={item.href}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 + i * 0.05 }}
+                >
+                  <Link href={item.href} className="hover:text-accent transition-colors duration-200">
+                    {item.name}
+                  </Link>
+                </motion.li>
+              ))}
             </ul>
           </motion.div>
 

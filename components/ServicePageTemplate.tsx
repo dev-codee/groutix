@@ -757,7 +757,7 @@ export default function ServicePageTemplate({
                       {i === 2
                         ? step.desc.split(/(10-year waterproof warranty)/i).map((part, j) =>
                             /(10-year waterproof warranty)/i.test(part)
-                              ? <mark key={j} style={{ background: "#ff8c00", color: "#fff", borderRadius: "2px", padding: "0 3px", fontWeight: 700 }}>{part}</mark>
+                              ? <mark key={j} style={{ background: "#2F63CC", color: "#fff", borderRadius: "2px", padding: "0 3px", fontWeight: 700 }}>{part}</mark>
                               : part
                           )
                         : step.desc}
