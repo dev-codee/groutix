@@ -12,7 +12,7 @@ const roboto = Roboto({
   display: "swap",
 });
 
-const TITLE_DEFAULT = "Groutix | Shower Regrouting & Leak Repair Specialists";
+const TITLE_DEFAULT = "GROUTIX | VICTORIA’S HIGHEST RATED GROUT SPECIALISTS";
 const DESCRIPTION =
   "Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.";
 
