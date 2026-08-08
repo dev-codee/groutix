@@ -50,7 +50,7 @@ export default function Footer() {
             </p>
             <div className="flex space-x-4">
               {[
-                { name: "Facebook", href: "https://web.facebook.com/profile.php?id=61582570358855" },
+                { name: "Facebook", href: "https://www.facebook.com/profile.php?id=61582570358855" },
                 { name: "Instagram", href: "https://www.instagram.com/groutix.au/" },
                 { name: "Twitter", href: "https://twitter.com" },
                 { name: "Linkedin", href: "https://linkedin.com" },

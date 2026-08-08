@@ -11,7 +11,7 @@ export default function Logo({
   return (
     <div className={`flex items-center select-none ${className}`}>
       <Image
-        src="/logo.jpeg?v=3"
+        src="/logo.png?v=1"
         alt="Groutix Logo"
         width={260}
         height={80}

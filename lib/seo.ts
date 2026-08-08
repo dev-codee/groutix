@@ -30,8 +30,12 @@ export const BUSINESS = {
   // Fallback rating used when live Google data is unavailable. Keep in sync with
   // the Google Business Profile (see getBusinessRating in lib/reviews.ts).
   rating: { value: 5, count: 236 },
-  // Google Business Profile listing.
-  sameAs: ["https://maps.google.com/?cid=11736395911597271820"],
+  // Google Business Profile listing & official social profiles.
+  sameAs: [
+    "https://maps.google.com/?cid=11736395911597271820",
+    "https://www.facebook.com/profile.php?id=61582570358855",
+    "https://www.instagram.com/groutix.au/",
+  ],
 } as const;
 
 // Service detail routes handled by app/[slug]/page.tsx.
