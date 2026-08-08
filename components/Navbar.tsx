@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Phone, Menu, X, ChevronDown } from "lucide-react";
+import { Phone, Menu, X, ChevronDown, ChevronRight, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 
@@ -29,6 +29,8 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+  const [hoveredLocation, setHoveredLocation] = useState<string>("melbourne");
+  const [mobileLocationSubmenu, setMobileLocationSubmenu] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,35 +61,121 @@ export default function Navbar() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const closeMenu = () => {
-    setIsOpen(false);
-    setActiveSubmenu(null);
-  };
-
   const toggleSubmenu = (menu: string) => {
     setActiveSubmenu(activeSubmenu === menu ? null : menu);
   };
 
+  const closeMenu = () => {
+    setIsOpen(false);
+    setActiveSubmenu(null);
+    setMobileLocationSubmenu(null);
+  };
+
   const services = [
     { name: "Shower Regrouting", href: "/shower-regrouting" },
+    { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
     { name: "Shower Base Repair", href: "/shower-base-repair" },
     { name: "Tile Regrouting", href: "/tile-regrouting" },
     { name: "Balcony Leak Repairs", href: "/balcony-leak-repairs" },
     { name: "Silicone & Recaulking", href: "/silicone-recaulking" },
     { name: "Epoxy Grout", href: "/epoxy-grout" },
-    { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
     { name: "Small Tiling Jobs", href: "/small-tiling-jobs" },
     { name: "Real Estate & Property Services", href: "/real-estate-property-services" },
   ];
 
-  const locations = [
-    { name: "Melbourne", href: "/locations/melbourne" },
-    { name: "Geelong", href: "/locations/geelong" },
-    { name: "Ballarat", href: "/locations/ballarat" },
-    { name: "Frankston", href: "/locations/frankston" },
-    { name: "Lilydale", href: "/locations/lilydale" },
-    { name: "Yarra Glen", href: "/locations/yarra-glen" },
-    { name: "Kilmore", href: "/locations/kilmore" },
+  const locationMenu = [
+    {
+      name: "Melbourne",
+      slug: "melbourne",
+      href: "/locations/melbourne",
+      suburbs: [
+        { name: "Carlton", slug: "carlton" },
+        { name: "Fitzroy", slug: "fitzroy" },
+        { name: "Richmond", slug: "richmond" },
+        { name: "South Yarra", slug: "south-yarra" },
+        { name: "Brunswick", slug: "brunswick" },
+        { name: "St Kilda", slug: "st-kilda" },
+        { name: "Hawthorn", slug: "hawthorn" },
+        { name: "Essendon", slug: "essendon" },
+        { name: "Box Hill", slug: "box-hill" },
+        { name: "Brighton", slug: "brighton" },
+      ],
+    },
+    {
+      name: "Geelong",
+      slug: "geelong",
+      href: "/locations/geelong",
+      suburbs: [
+        { name: "Geelong", slug: "geelong" },
+        { name: "Belmont", slug: "belmont" },
+        { name: "Grovedale", slug: "grovedale" },
+        { name: "Highton", slug: "highton" },
+        { name: "Newtown", slug: "newtown" },
+        { name: "Lara", slug: "lara" },
+        { name: "Corio", slug: "corio" },
+      ],
+    },
+    {
+      name: "Ballarat",
+      slug: "ballarat",
+      href: "/locations/ballarat",
+      suburbs: [
+        { name: "Alfredton", slug: "alfredton" },
+        { name: "Ballarat Central", slug: "ballarat-central" },
+        { name: "Delacombe", slug: "delacombe" },
+        { name: "Sebastopol", slug: "sebastopol" },
+        { name: "Wendouree", slug: "wendouree" },
+        { name: "Buninyong", slug: "buninyong" },
+      ],
+    },
+    {
+      name: "Frankston",
+      slug: "frankston",
+      href: "/locations/frankston",
+      suburbs: [
+        { name: "Frankston Central", slug: "frankston-central" },
+        { name: "Frankston South", slug: "frankston-south" },
+        { name: "Langwarrin", slug: "langwarrin" },
+        { name: "Seaford", slug: "seaford" },
+        { name: "Karingal", slug: "karingal" },
+        { name: "Berwick", slug: "berwick" },
+      ],
+    },
+    {
+      name: "Lilydale",
+      slug: "lilydale",
+      href: "/locations/lilydale",
+      suburbs: [
+        { name: "Chirnside Park", slug: "chirnside-park" },
+        { name: "Coldstream", slug: "coldstream" },
+        { name: "Lilydale Central", slug: "lilydale-central" },
+        { name: "Mooroolbark", slug: "mooroolbark" },
+        { name: "Mount Evelyn", slug: "mount-evelyn" },
+      ],
+    },
+    {
+      name: "Yarra Glen",
+      slug: "yarra-glen",
+      href: "/locations/yarra-glen",
+      suburbs: [
+        { name: "Yarra Glen Central", slug: "yarra-glen-central" },
+        { name: "Christmas Hills", slug: "christmas-hills" },
+        { name: "Dixons Creek", slug: "dixons-creek" },
+        { name: "Steels Creek", slug: "steels-creek" },
+      ],
+    },
+    {
+      name: "Kilmore",
+      slug: "kilmore",
+      href: "/locations/kilmore",
+      suburbs: [
+        { name: "Kilmore Central", slug: "kilmore-central" },
+        { name: "Hidden Valley", slug: "hidden-valley" },
+        { name: "Wandong", slug: "wandong" },
+        { name: "Wallan", slug: "wallan" },
+        { name: "Whittlesea", slug: "whittlesea" },
+      ],
+    },
   ];
 
   return (
@@ -117,7 +205,7 @@ export default function Navbar() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 mt-0 w-64 bg-white border border-neutral-100 rounded-md shadow-xl py-2 hidden group-hover/menu:block"
+                className="absolute left-0 mt-0 w-64 bg-white border border-neutral-100 rounded-md shadow-xl py-2 hidden group-hover/menu:block z-50"
               >
                 {services.map((item) => (
                   <Link
@@ -131,7 +219,7 @@ export default function Navbar() {
               </motion.div>
             </div>
 
-            {/* Area of Service Dropdown */}
+            {/* Area of Service Mega-Menu Dropdown */}
             <div className="relative group/menu">
               <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
                 <span className="relative">
@@ -143,17 +231,70 @@ export default function Navbar() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 mt-0 w-56 bg-white border border-neutral-100 rounded-md shadow-xl py-2 hidden group-hover/menu:block"
+                className="absolute left-0 mt-0 w-[500px] bg-white border border-neutral-100 rounded-xl shadow-2xl p-4 hidden group-hover/menu:block z-50"
               >
-                {locations.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="block px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent transition-colors"
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                <div className="grid grid-cols-5 gap-4">
+                  {/* Left Column: Main Regions */}
+                  <div className="col-span-2 space-y-1 border-r border-neutral-100 pr-2">
+                    <p className="px-2 py-1 text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
+                      Regions
+                    </p>
+                    {locationMenu.map((loc) => {
+                      const isActive = hoveredLocation === loc.slug;
+                      return (
+                        <div
+                          key={loc.slug}
+                          onMouseEnter={() => setHoveredLocation(loc.slug)}
+                          className={`flex items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
+                            isActive
+                              ? "bg-primary text-white"
+                              : "text-neutral-700 hover:bg-neutral-100 hover:text-primary"
+                          }`}
+                        >
+                          <Link href={loc.href} className="flex-1">
+                            {loc.name}
+                          </Link>
+                          <ChevronRight className={`h-3.5 w-3.5 ${isActive ? "text-white" : "text-neutral-400"}`} />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right Column: Suburbs List */}
+                  <div className="col-span-3 pl-1">
+                    {(() => {
+                      const currentLoc = locationMenu.find((l) => l.slug === hoveredLocation) || locationMenu[0];
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+                            <span className="text-xs font-bold tracking-wide text-primary uppercase flex items-center gap-1">
+                              <MapPin className="h-3.5 w-3.5 text-accent" />
+                              {currentLoc.name} Suburbs
+                            </span>
+                            <Link
+                              href={currentLoc.href}
+                              className="text-[11px] font-bold text-accent hover:underline"
+                            >
+                              All {currentLoc.name} →
+                            </Link>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-1 max-h-[220px] overflow-y-auto pr-1">
+                            {currentLoc.suburbs.map((sub) => (
+                              <Link
+                                key={sub.slug}
+                                href={`/locations/${currentLoc.slug}/${sub.slug}`}
+                                className="block px-2 py-1.5 text-xs font-medium text-neutral-600 hover:bg-accent/10 hover:text-accent rounded transition-colors"
+                              >
+                                {sub.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
               </motion.div>
             </div>
 
@@ -279,14 +420,14 @@ export default function Navbar() {
                   </AnimatePresence>
                 </div>
 
-                {/* Mobile Locations */}
+                {/* Mobile Area of Service & Suburbs */}
                 <div>
                   <button
                     onClick={() => toggleSubmenu("locations")}
                     className="flex w-full items-center justify-between rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10"
                     aria-expanded={activeSubmenu === "locations"}
                   >
-                  <span>Area of Service</span>
+                    <span>Area of Service</span>
                     <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${activeSubmenu === "locations" ? "rotate-180" : ""}`} />
                   </button>
                   <AnimatePresence initial={false}>
@@ -297,16 +438,40 @@ export default function Navbar() {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="space-y-1 pl-6 pt-1 pb-1">
-                          {locations.map((item) => (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              onClick={closeMenu}
-                              className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
-                            >
-                              {item.name}
-                            </Link>
+                        <div className="space-y-2 pl-4 pt-1 pb-1">
+                          {locationMenu.map((loc) => (
+                            <div key={loc.slug} className="border-l-2 border-neutral-200 pl-3">
+                              <div className="flex items-center justify-between py-1">
+                                <Link
+                                  href={loc.href}
+                                  onClick={closeMenu}
+                                  className="text-base font-bold text-primary hover:text-accent"
+                                >
+                                  {loc.name}
+                                </Link>
+                                <button
+                                  onClick={() => setMobileLocationSubmenu(mobileLocationSubmenu === loc.slug ? null : loc.slug)}
+                                  className="p-1 text-neutral-400 hover:text-primary"
+                                >
+                                  <ChevronDown className={`h-4 w-4 transform transition-transform ${mobileLocationSubmenu === loc.slug ? "rotate-180" : ""}`} />
+                                </button>
+                              </div>
+
+                              {mobileLocationSubmenu === loc.slug && (
+                                <div className="pl-2 pt-1 pb-2 space-y-1">
+                                  {loc.suburbs.map((sub) => (
+                                    <Link
+                                      key={sub.slug}
+                                      href={`/locations/${loc.slug}/${sub.slug}`}
+                                      onClick={closeMenu}
+                                      className="block py-1 text-sm font-medium text-neutral-500 hover:text-accent"
+                                    >
+                                      {sub.name}
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </motion.div>
@@ -361,4 +526,3 @@ export default function Navbar() {
     </header>
   );
 }
-
