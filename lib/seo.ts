@@ -40,6 +40,9 @@ export const SERVICE_SLUGS = [
   "leaking-shower-repair",
   "shower-base-repair",
   "tile-regrouting",
+  "balcony-leak-repairs",
+  "silicone-recaulking",
+  "epoxy-grout",
   "real-estate-property-services",
   "small-tiling-jobs",
 ] as const;
