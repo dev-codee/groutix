@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { Phone, Mail, Clock } from "lucide-react";
 import { motion } from "framer-motion";
-import Logo from "@/components/Logo";
+import Image from "next/image";
 
 const SocialIcons = {
   Facebook: () => (
@@ -33,7 +33,7 @@ export default function Footer() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(47,99,204,0.18),_transparent_55%)]" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-12 border-b border-neutral-800">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-12 border-b border-white/20">
           {/* Company Column */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -43,12 +43,21 @@ export default function Footer() {
             className="space-y-6"
           >
             <Link href="/" className="flex items-center group">
-              <Logo light={true} />
+              <Image
+                src="/footer.jpeg?v=1"
+                alt="Groutix Logo"
+                width={260}
+                height={80}
+                priority
+                unoptimized
+                className="h-12 sm:h-14 md:h-16 w-auto object-contain transition-opacity duration-200 hover:opacity-95 rounded-md"
+              />
             </Link>
-            <p className="text-base text-neutral-400 leading-relaxed">
+            <p className="text-base text-white/90 leading-relaxed font-normal">
               Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.
             </p>
-            <div className="flex space-x-4">
+
+            <div className="flex space-x-4 pt-1">
               {[
                 { name: "Facebook", href: "https://www.facebook.com/profile.php?id=61582570358855" },
                 { name: "Instagram", href: "https://www.instagram.com/groutix.au/" },
@@ -64,7 +73,7 @@ export default function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2 bg-neutral-800 hover:bg-accent hover:text-primary rounded-full transition-all duration-200"
+                  className="p-2.5 bg-white/15 hover:bg-white text-white hover:text-[#001F97] rounded-full transition-all duration-200"
                   aria-label={social.name}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
@@ -86,8 +95,8 @@ export default function Footer() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="lg:col-span-2"
           >
-            <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6 text-center">Services</h3>
-            <ul className="grid grid-cols-2 gap-y-3.5 gap-x-1 text-base text-center">
+            <h3 className="text-white font-bold text-base tracking-wider uppercase mb-6 text-center">Services</h3>
+            <ul className="grid grid-cols-2 gap-y-3.5 gap-x-2 text-base text-white/90">
               {[
                 { href: "/shower-regrouting", label: "Shower Regrouting" },
                 { href: "/shower-base-repair", label: "Shower Base Repair" },
@@ -106,7 +115,7 @@ export default function Footer() {
                   viewport={{ once: true }}
                   transition={{ delay: 0.2 + i * 0.05 }}
                 >
-                  <Link href={item.href} className="hover:text-accent transition-colors duration-200 whitespace-nowrap">
+                  <Link href={item.href} className="text-white hover:text-white/80 font-medium transition-colors duration-200 whitespace-nowrap">
                     {item.label}
                   </Link>
                 </motion.li>
@@ -121,8 +130,8 @@ export default function Footer() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6">Service Areas</h3>
-            <ul className="space-y-3.5 text-base">
+            <h3 className="text-white font-bold text-base tracking-wider uppercase mb-6">Service Areas</h3>
+            <ul className="space-y-3.5 text-base text-white/90">
               {[
                 { name: "Melbourne", href: "/locations/melbourne" },
                 { name: "Geelong", href: "/locations/geelong" },
@@ -139,7 +148,7 @@ export default function Footer() {
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 + i * 0.05 }}
                 >
-                  <Link href={item.href} className="hover:text-accent transition-colors duration-200">
+                  <Link href={item.href} className="text-white hover:text-white/80 font-medium transition-colors duration-200">
                     {item.name}
                   </Link>
                 </motion.li>
@@ -154,7 +163,7 @@ export default function Footer() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <h3 className="text-accent font-bold text-base tracking-wide uppercase mb-6">Contact Us</h3>
+            <h3 className="text-white font-bold text-base tracking-wider uppercase mb-6">Contact Us</h3>
             <ul className="space-y-4 text-base">
               <motion.li
                 initial={{ opacity: 0, x: 10 }}
@@ -164,12 +173,12 @@ export default function Footer() {
               >
                 <a
                   href="tel:70238094"
-                  className="flex items-start space-x-3 hover:text-accent transition-colors duration-200"
+                  className="flex items-start space-x-3 text-white hover:text-white/80 transition-colors duration-200"
                 >
-                  <Phone className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                  <Phone className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="block font-bold">7023 8094</span>
-                    <span className="text-sm text-neutral-500">Talk through your repair</span>
+                    <span className="block font-bold text-white text-base">7023 8094</span>
+                    <span className="text-sm text-white/80">Talk through your repair</span>
                   </div>
                 </a>
               </motion.li>
@@ -180,10 +189,10 @@ export default function Footer() {
                 transition={{ delay: 0.45 }}
                 className="flex items-start space-x-3"
               >
-                <Mail className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                <Mail className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="block font-bold">info@groutix.com</span>
-                  <span className="text-sm text-neutral-500 font-medium">Request a quote or send shower photos</span>
+                  <span className="block font-bold text-white text-base">info@groutix.com</span>
+                  <span className="text-sm text-white/80 font-normal">Request a quote or send shower photos</span>
                 </div>
               </motion.li>
               <motion.li
@@ -193,11 +202,11 @@ export default function Footer() {
                 transition={{ delay: 0.5 }}
                 className="flex items-start space-x-3"
               >
-                <Clock className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+                <Clock className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="block font-bold">Office Hours</span>
-                  <span className="block text-sm text-neutral-500">Mon – Fri: 9am – 5pm</span>
-                  <span className="block text-sm text-neutral-500">Sat – Sun: 10am – 3pm</span>
+                  <span className="block font-bold text-white text-base">Office Hours</span>
+                  <span className="block text-sm text-white/80">Mon – Fri: 9am – 5pm</span>
+                  <span className="block text-sm text-white/80">Sat – Sun: 10am – 3pm</span>
                 </div>
               </motion.li>
             </ul>
@@ -210,10 +219,10 @@ export default function Footer() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.5 }}
-          className="pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500 space-y-4 md:space-y-0"
+          className="pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-white/80 space-y-4 md:space-y-0"
         >
-          <div>
-            &copy; {currentYear} Groutix. All rights reserved. Made by developer <a href="http://faizan-portfolio-tawny.vercel.app/"> Faizan Ahmad</a>
+          <div className="text-white/90 font-medium">
+            &copy; {currentYear} Groutix. All rights reserved. Made by developer <a href="http://faizan-portfolio-tawny.vercel.app/" className="underline hover:text-white text-white">Faizan Ahmad</a>
           </div>
           <div className="flex space-x-6">
             <motion.div
@@ -222,7 +231,7 @@ export default function Footer() {
               viewport={{ once: true }}
               transition={{ delay: 0.55 }}
             >
-              <Link href="/faq" className="hover:text-accent transition-colors">
+              <Link href="/faq" className="text-white hover:text-white/80 font-medium transition-colors">
                 FAQs
               </Link>
             </motion.div>
@@ -236,7 +245,7 @@ export default function Footer() {
               >
                 <Link
                   href={`/${item.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-")}`}
-                  className="hover:text-accent transition-colors"
+                  className="text-white hover:text-white/80 font-medium transition-colors"
                 >
                   {item}
                 </Link>

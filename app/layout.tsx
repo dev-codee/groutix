@@ -105,6 +105,17 @@ export default async function RootLayout({
             gtag('config', 'G-GT047SQJNS');
           `}
         </Script>
+        <Script id="product-review-settings" strategy="beforeInteractive">
+          {`
+            window.__productReviewSettings = {
+              brandId: '426b71b0-46c5-5604-b737-26602f0dbf10'
+            };
+          `}
+        </Script>
+        <Script
+          src="https://cdn.productreview.com.au/assets/widgets/loader.js"
+          strategy="afterInteractive"
+        />
       </head>
       <body className="min-h-full flex flex-col">
         {/* Site-wide LocalBusiness structured data */}

@@ -1,5 +1,6 @@
 import React from "react";
 import { Star, ShieldCheck } from "lucide-react";
+import ProductReviewWidget from "@/components/ProductReviewWidget";
 
 export default function TestimonialsSection() {
   const reviews = [
@@ -41,15 +42,20 @@ export default function TestimonialsSection() {
           <p className="text-neutral-600 text-lg">
             We're focused on delivering great service. Read real reviews from homeowners who trust us with their showers.
           </p>
-          <div className="flex items-center justify-center space-x-2 pt-2">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-current" />
-              ))}
+          <div className="flex flex-col items-center justify-center space-y-3 pt-2">
+            <div className="flex items-center space-x-2">
+              <div className="flex text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-5 w-5 fill-current" />
+                ))}
+              </div>
+              <span className="text-base font-bold text-neutral-800">
+                5.0/5 Average Rating (236+ Reviews)
+              </span>
             </div>
-            <span className="text-base font-bold text-neutral-800">
-              5.0/5 Average Rating (236+ Reviews)
-            </span>
+            
+            {/* ProductReview.com.au Rich Rating Badge Widget */}
+            <ProductReviewWidget className="pt-2" />
           </div>
         </div>
 
