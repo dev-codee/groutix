@@ -221,8 +221,8 @@ export default function Footer() {
           transition={{ delay: 0.5 }}
           className="pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-white/80 space-y-4 md:space-y-0"
         >
-          <div className="text-white/90 font-medium">
-            &copy; {currentYear} Groutix. All rights reserved. Made by developer <a href="http://faizan-portfolio-tawny.vercel.app/" className="underline hover:text-white text-white">Faizan Ahmad</a>
+          <div className="text-white/50 font-normal">
+            &copy; {currentYear} Groutix. All rights reserved. Made by developer <a href="http://faizan-portfolio-tawny.vercel.app/" className="underline hover:text-white text-white/50 transition-colors">Faizan Ahmad</a>
           </div>
           <div className="flex space-x-6">
             <motion.div
