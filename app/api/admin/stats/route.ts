@@ -14,8 +14,11 @@ export async function GET(req: NextRequest) {
   try {
     const stats = await getDashboardStats(days);
     return NextResponse.json({ stats, days });
-  } catch (err) {
+  } catch (err: any) {
     console.error("admin/stats failed:", err);
-    return NextResponse.json({ error: "Could not load analytics." }, { status: 500 });
+    return NextResponse.json(
+      { error: `Could not load analytics: ${err?.message || "Unknown error"}` },
+      { status: 500 }
+    );
   }
 }

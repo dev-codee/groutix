@@ -22,8 +22,11 @@ export async function GET(req: NextRequest) {
       page: params.page,
       pageSize: params.pageSize,
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("admin/submissions failed:", err);
-    return NextResponse.json({ error: "Could not load submissions." }, { status: 500 });
+    return NextResponse.json(
+      { error: `Could not load submissions: ${err?.message || "Unknown error"}` },
+      { status: 500 }
+    );
   }
 }
