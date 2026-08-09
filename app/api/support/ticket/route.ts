@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
+import { recordSubmission } from "@/lib/submissions";
 import type { SupportMessage } from "@/lib/supportKnowledge";
 
 export const runtime = "nodejs";
@@ -189,6 +190,19 @@ export async function POST(req: NextRequest) {
       { status: 502 }
     );
   }
+
+  // Persist the ticket (with transcript) for the admin panel. Best-effort.
+  await recordSubmission({
+    type: "support_ticket",
+    name,
+    email,
+    phone,
+    issue,
+    transcript,
+    ip,
+    userAgent: req.headers.get("user-agent") || undefined,
+    emailDelivered: true,
+  });
 
   const customerHtml = `
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
+import { recordSubmission } from "@/lib/submissions";
 
 export const runtime = "nodejs";
 
@@ -218,6 +219,27 @@ export async function POST(req: NextRequest) {
       { status: 502 }
     );
   }
+
+  // Persist the lead for the admin panel. Best-effort: recordSubmission never
+  // throws, so a database issue can't affect the customer confirmation below.
+  await recordSubmission({
+    type: "quote",
+    name: fullName,
+    email,
+    phone,
+    address,
+    city,
+    state,
+    enquiry,
+    message,
+    areas,
+    heard,
+    sourcePage,
+    photosCount: attachments.length,
+    ip,
+    userAgent: req.headers.get("user-agent") || undefined,
+    emailDelivered: true,
+  });
 
   // 2) Confirmation to the customer. If this fails we still succeed overall —
   //    the lead has already reached the Groutix inbox, so we don't lose it.
