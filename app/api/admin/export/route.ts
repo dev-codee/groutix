@@ -23,12 +23,18 @@ const CSV_FIELDS: (keyof SubmissionJSON)[] = [
   "issue",
   "sourcePage",
   "photosCount",
+  "photos",
   "ip",
   "emailDelivered",
 ];
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) {
+    // If photos array, list filenames or counts
+    const names = value.map((p: any) => p?.name || "photo").filter(Boolean);
+    return csvCell(names.length ? `${names.length} file(s): ${names.join(", ")}` : "");
+  }
   const str = typeof value === "string" ? value : String(value);
   // Quote if the value contains a delimiter, quote, or newline.
   if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
@@ -39,7 +45,7 @@ function toCsv(rows: SubmissionJSON[]): string {
   const header = CSV_FIELDS.join(",");
   const lines = rows.map((row) => CSV_FIELDS.map((f) => csvCell(row[f])).join(","));
   // Prepend a BOM so Excel opens UTF-8 correctly.
-  return "﻿" + [header, ...lines].join("\r\n");
+  return "\uFEFF" + [header, ...lines].join("\r\n");
 }
 
 export async function GET(req: NextRequest) {
@@ -47,27 +53,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
   }
   const sp = req.nextUrl.searchParams;
-  const format = sp.get("format") === "json" ? "json" : "csv";
   const params = parseListParams(sp);
 
   let rows: SubmissionJSON[];
   try {
     rows = await exportSubmissions(params);
-  } catch (err) {
+  } catch (err: any) {
     console.error("admin/export failed:", err);
-    return NextResponse.json({ error: "Export failed." }, { status: 500 });
+    return NextResponse.json(
+      { error: `Export failed: ${err?.message || "Unknown error"}` },
+      { status: 500 }
+    );
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
-  if (format === "json") {
-    return new NextResponse(JSON.stringify(rows, null, 2), {
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": `attachment; filename="groutix-submissions-${stamp}.json"`,
-      },
-    });
-  }
-
   return new NextResponse(toCsv(rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Download, X, Trash2, RefreshCcw } from "lucide-react";
+import { Search, Download, X, Trash2, RefreshCcw, Eye, Image as ImageIcon } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 type Submission = {
@@ -23,6 +23,7 @@ type Submission = {
   issue?: string;
   transcript?: { role: "user" | "assistant"; content: string }[];
   photosCount?: number;
+  photos?: { name: string; contentType?: string; dataUrl: string }[];
   ip?: string;
   userAgent?: string;
   emailDelivered?: boolean;
@@ -141,9 +142,8 @@ export default function SubmissionsPage() {
     if (item.status === "new") setItemStatus(item.id, "read");
   }
 
-  const exportHref = (format: "csv" | "json") => {
+  const exportHref = () => {
     const p = new URLSearchParams(query);
-    p.set("format", format);
     return `/api/admin/export?${p.toString()}`;
   };
 
@@ -157,16 +157,10 @@ export default function SubmissionsPage() {
         </h1>
         <div className="flex items-center gap-2">
           <a
-            href={exportHref("csv")}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+            href={exportHref()}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
           >
-            <Download className="h-3.5 w-3.5" /> CSV
-          </a>
-          <a
-            href={exportHref("json")}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            <Download className="h-3.5 w-3.5" /> JSON
+            <Download className="h-3.5 w-3.5" /> Export CSV
           </a>
         </div>
       </div>
@@ -342,6 +336,8 @@ function DetailDrawer({
   onStatus: (s: Submission["status"]) => void;
   onDelete: () => void;
 }) {
+  const [previewPhoto, setPreviewPhoto] = useState<{ name: string; dataUrl: string } | null>(null);
+
   const fields: [string, string | undefined][] = [
     ["Email", item.email],
     ["Phone", item.phone],
@@ -399,6 +395,65 @@ function DetailDrawer({
                 </div>
               ))}
           </dl>
+
+          {item.photos && item.photos.length > 0 ? (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-medium text-slate-500">
+                  Uploaded Photos ({item.photos.length})
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {item.photos.map((photo, i) => (
+                  <div
+                    key={i}
+                    className="group relative flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                  >
+                    <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.dataUrl}
+                        alt={photo.name || `Photo ${i + 1}`}
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-900/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPhoto(photo)}
+                          className="rounded-full bg-white p-2 text-slate-700 shadow hover:bg-slate-100"
+                          title="View Fullsize"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <a
+                          href={photo.dataUrl}
+                          download={photo.name || `photo-${i + 1}.jpg`}
+                          className="rounded-full bg-white p-2 text-slate-700 shadow hover:bg-slate-100"
+                          title="Download Image"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-1.5 text-xs text-slate-500">
+                      <span className="truncate max-w-[100px]">{photo.name || `Photo ${i + 1}`}</span>
+                      <a
+                        href={photo.dataUrl}
+                        download={photo.name || `photo-${i + 1}.jpg`}
+                        className="text-[#001f97] hover:underline font-medium"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : item.photosCount && item.photosCount > 0 ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+              <span className="font-semibold text-slate-800">{item.photosCount} photo(s)</span> attached in internal notification email.
+            </div>
+          ) : null}
 
           {item.message ? (
             <div>
@@ -466,6 +521,40 @@ function DetailDrawer({
           </button>
         </div>
       </div>
+
+      {previewPhoto ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <span className="font-semibold text-slate-800 text-sm truncate">{previewPhoto.name}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewPhoto.dataUrl}
+                  download={previewPhoto.name || "photo.jpg"}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhoto(null)}
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-2 bg-slate-900 flex justify-center items-center max-h-[80vh]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhoto.dataUrl}
+                alt={previewPhoto.name}
+                className="max-h-[75vh] w-auto max-w-full object-contain rounded"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

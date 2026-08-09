@@ -33,6 +33,7 @@ export interface SubmissionDoc {
   issue?: string;
   transcript?: TranscriptMessage[];
   photosCount?: number;
+  photos?: { name: string; contentType?: string; dataUrl: string }[];
   // Request metadata.
   ip?: string;
   userAgent?: string;

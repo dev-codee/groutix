@@ -239,6 +239,15 @@ export async function POST(req: NextRequest) {
     heard,
     sourcePage,
     photosCount: attachments.length,
+    photos: attachments.map((att) => {
+      const ext = (att.name.split(".").pop() || "").toLowerCase();
+      const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      return {
+        name: att.name,
+        contentType: mime,
+        dataUrl: `data:${mime};base64,${att.content}`,
+      };
+    }),
     ip,
     userAgent: req.headers.get("user-agent") || undefined,
     emailDelivered: true,
