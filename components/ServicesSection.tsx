@@ -45,6 +45,12 @@ export default function ServicesSection() {
       imageSrc: "/img4.avif"
     },
     {
+      id: "shower-screens",
+      title: "Shower Screens & Enclosures",
+      description: "Bespoke frameless pivot, frameless sliding, semi-frameless series, and wardrobe systems custom-measured and fitted for your bathroom.",
+      imageLabel: "Shower Screens Service Image",
+    },
+    {
       id: "tile-regrouting",
       title: "Tile Regrouting",
       description: "Give stained, broken, or outdated grout lines a refresh in bathrooms, laundries, kitchens, balconies, and other tiled areas.",

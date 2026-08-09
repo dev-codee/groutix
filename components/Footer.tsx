@@ -102,6 +102,7 @@ export default function Footer() {
               {[
                 { href: "/shower-regrouting", label: "Shower Regrouting" },
                 { href: "/shower-base-repair", label: "Shower Base Repair" },
+                { href: "/shower-screens", label: "Shower Screens" },
                 { href: "/tile-regrouting", label: "Tile Regrouting" },
                 { href: "/balcony-leak-repairs", label: "Balcony Leak Repairs" },
                 { href: "/silicone-recaulking", label: "Silicone & Recaulking" },

@@ -49,6 +49,7 @@ export const SERVICE_SLUGS = [
   "epoxy-grout",
   "real-estate-property-services",
   "small-tiling-jobs",
+  "shower-screens",
 ] as const;
 
 export const STATIC_ROUTES = ["/", "/about", "/services", "/locations", "/faq", "/contact"] as const;

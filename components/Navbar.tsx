@@ -77,6 +77,7 @@ export default function Navbar() {
     { name: "Shower Regrouting", href: "/shower-regrouting" },
     { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
     { name: "Shower Base Repair", href: "/shower-base-repair" },
+    { name: "Shower Screens", href: "/shower-screens" },
     { name: "Tile Regrouting", href: "/tile-regrouting" },
     { name: "Balcony Leak Repairs", href: "/balcony-leak-repairs" },
     { name: "Silicone & Recaulking", href: "/silicone-recaulking" },
