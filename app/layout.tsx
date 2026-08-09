@@ -4,6 +4,8 @@ import Script from "next/script";
 import "./globals.css";
 import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
+import { getSiteContent } from "@/lib/siteContentServer";
+import { SiteContentProvider } from "@/components/SiteContentProvider";
 import SupportChatWidget from "@/components/SupportChatWidget";
 
 const roboto = Roboto({
@@ -88,7 +90,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const rating = await getBusinessRating();
+  const [rating, content] = await Promise.all([getBusinessRating(), getSiteContent()]);
   return (
     <html lang="en-AU" className={`${roboto.className} h-full antialiased`}>
       <head>
@@ -121,10 +123,14 @@ export default async function RootLayout({
         {/* Site-wide LocalBusiness structured data */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd(rating)) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessJsonLd(rating, content.business)),
+          }}
         />
-        {children}
-        <SupportChatWidget />
+        <SiteContentProvider content={content}>
+          {children}
+          <SupportChatWidget />
+        </SiteContentProvider>
       </body>
     </html>
   );

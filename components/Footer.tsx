@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { Phone, Mail, Clock } from "lucide-react";
+import { useContact } from "@/components/SiteContentProvider";
 import { motion } from "framer-motion";
 import Image from "next/image";
 
@@ -22,6 +23,7 @@ const SocialIcons = {
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { phone, tel, email, mailto } = useContact();
 
   return (
     <motion.footer
@@ -172,12 +174,12 @@ export default function Footer() {
                 transition={{ delay: 0.4 }}
               >
                 <a
-                  href="tel:70238094"
+                  href={tel}
                   className="flex items-start space-x-3 text-white hover:text-white/80 transition-colors duration-200"
                 >
                   <Phone className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="block font-bold text-white text-base">7023 8094</span>
+                    <span className="block font-bold text-white text-base">{phone}</span>
                     <span className="text-sm text-white/80">Talk through your repair</span>
                   </div>
                 </a>
@@ -191,7 +193,7 @@ export default function Footer() {
               >
                 <Mail className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="block font-bold text-white text-base">info@groutix.com</span>
+                  <a href={mailto} className="block font-bold text-white text-base hover:text-white/80 transition-colors">{email}</a>
                   <span className="text-sm text-white/80 font-normal">Request a quote or send shower photos</span>
                 </div>
               </motion.li>

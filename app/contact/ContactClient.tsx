@@ -6,6 +6,7 @@ import { Phone, Mail, MapPin, Clock, ChevronLeft, ChevronRight } from "lucide-re
 import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
+import { useContact } from "@/components/SiteContentProvider";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -89,9 +90,10 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 }
 
 export default function ContactClient() {
+  const { phone, tel, email, mailto } = useContact();
   const contactInfo = [
-    { icon: <Phone className="h-5 w-5 text-secondary" />, label: "Call Us", value: "7023 8094", href: "tel:70238094" },
-    { icon: <Mail className="h-5 w-5 text-secondary" />, label: "Email Us", value: "info@Groutix.com", href: "mailto:info@Groutix.com" },
+    { icon: <Phone className="h-5 w-5 text-secondary" />, label: "Call Us", value: phone, href: tel },
+    { icon: <Mail className="h-5 w-5 text-secondary" />, label: "Email Us", value: email, href: mailto },
     { icon: <Clock className="h-5 w-5 text-secondary" />, label: "Our Hours", value: "Mon – Fri: 8:00am – 5:00pm", href: null },
     { icon: <MapPin className="h-5 w-5 text-secondary" />, label: "Areas We Serve", value: "Perth, Melbourne, Sydney, Brisbane, Adelaide, Geelong", href: "/locations" },
   ];

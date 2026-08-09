@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
+import { getSiteContent } from "@/lib/siteContentServer";
 
 export const runtime = "nodejs";
 
@@ -13,8 +14,10 @@ const FROM_EMAIL = process.env.BREVO_FROM || "info@Groutix.com";
 // uses a plain "Groutix" name below).
 const INTERNAL_FROM_NAME = "Groutix Website Enquiry";
 const CUSTOMER_FROM_NAME = "Groutix";
-// Public phone shown to customers for urgent enquiries.
-const CONTACT_PHONE = "7023 8094";
+// Public phone shown to customers for urgent enquiries. Defaults to the
+// business number; the current value is loaded per-request in the handler so
+// admin edits to the contact number flow through to confirmation emails.
+const DEFAULT_CONTACT_PHONE = "7023 8094";
 
 // Anti-spam limits.
 const RATE_LIMIT = 5; // submissions...
@@ -240,6 +243,9 @@ export async function POST(req: NextRequest) {
     userAgent: req.headers.get("user-agent") || undefined,
     emailDelivered: true,
   });
+
+  const CONTACT_PHONE =
+    (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
   // 2) Confirmation to the customer. If this fails we still succeed overall —
   //    the lead has already reached the Groutix inbox, so we don't lose it.

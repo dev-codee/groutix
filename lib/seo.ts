@@ -58,10 +58,27 @@ export function abs(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-/** LocalBusiness structured data for the whole site. */
+/**
+ * LocalBusiness structured data for the whole site. Pass `business` to reflect
+ * admin-edited contact info; falls back to the defaults in BUSINESS.
+ */
 export function localBusinessJsonLd(
-  rating: { value: number; count: number } = BUSINESS.rating
+  rating: { value: number; count: number } = BUSINESS.rating,
+  business?: {
+    phone?: string;
+    email?: string;
+    address?: { street: string; locality: string; region: string; postalCode: string };
+    areasServed?: string[];
+    social?: { facebook?: string; instagram?: string; google?: string };
+  }
 ) {
+  const address = business?.address ?? BUSINESS.address;
+  const areasServed = business?.areasServed ?? BUSINESS.areasServed;
+  const sameAs = business?.social
+    ? [business.social.google, business.social.facebook, business.social.instagram].filter(
+        (v): v is string => Boolean(v)
+      )
+    : BUSINESS.sameAs;
   return {
     "@context": "https://schema.org",
     "@type": "HomeAndConstructionBusiness",
@@ -71,15 +88,15 @@ export function localBusinessJsonLd(
     description: BUSINESS.description,
     url: SITE_URL,
     image: abs(OG_IMAGE),
-    telephone: BUSINESS.phone,
-    email: BUSINESS.email,
+    telephone: business?.phone ?? BUSINESS.phone,
+    email: business?.email ?? BUSINESS.email,
     priceRange: "$$",
     address: {
       "@type": "PostalAddress",
-      streetAddress: BUSINESS.address.street,
-      addressLocality: BUSINESS.address.locality,
-      addressRegion: BUSINESS.address.region,
-      postalCode: BUSINESS.address.postalCode,
+      streetAddress: address.street,
+      addressLocality: address.locality,
+      addressRegion: address.region,
+      postalCode: address.postalCode,
       addressCountry: BUSINESS.address.country,
     },
     geo: {
@@ -87,7 +104,7 @@ export function localBusinessJsonLd(
       latitude: BUSINESS.geo.lat,
       longitude: BUSINESS.geo.lng,
     },
-    areaServed: BUSINESS.areasServed.map((name) => ({ "@type": "City", name })),
+    areaServed: areasServed.map((name) => ({ "@type": "City", name })),
     openingHoursSpecification: [
       {
         "@type": "OpeningHoursSpecification",
@@ -101,7 +118,7 @@ export function localBusinessJsonLd(
       ratingValue: rating.value,
       reviewCount: rating.count,
     },
-    sameAs: BUSINESS.sameAs,
+    sameAs,
   };
 }
 

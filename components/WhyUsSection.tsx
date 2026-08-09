@@ -1,6 +1,8 @@
+"use client";
 import React from "react";
 import Link from "next/link";
 import { Phone } from "lucide-react";
+import { useContact } from "@/components/SiteContentProvider";
 
 /* ─── Droplet bullet icon ─── */
 const DropletIcon = () => (
@@ -24,6 +26,7 @@ function ImgBox({ label }: { label: string }) {
 }
 
 export default function WhyUsSection() {
+  const { phone, tel } = useContact();
   const points = [
     "Specialist materials selected for long-term durability",
     "Experienced shower regrouting technicians",
@@ -84,8 +87,8 @@ export default function WhyUsSection() {
               ))}
             </div>
             <div className="flex gap-3 pt-2">
-              <a href="tel:70238094" className="inline-flex items-center gap-2 bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-6 py-3 rounded-sm text-base transition-colors">
-                <Phone className="h-4 w-4" /> 7023 8094
+              <a href={tel} className="inline-flex items-center gap-2 bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-6 py-3 rounded-sm text-base transition-colors">
+                <Phone className="h-4 w-4" /> {phone}
               </a>
               <Link href="/contact" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold px-6 py-3 rounded-sm text-base transition-colors">
                 Request A Quote

@@ -12,6 +12,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import type { Review } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
+import { useContact } from "@/components/SiteContentProvider";
 
 /* ─── Droplet bullet icon (matches real site) ─── */
 const DropletIcon = () => (
@@ -480,6 +481,7 @@ export default function ServicePageTemplate({
   warrantyHeadingBlue?: string;
   warrantyImage?: string;
 }) {
+  const { phone, tel } = useContact();
   const icons = pillarIcons[slug] ?? [<SystemIcon key={0} />, <SystemIcon key={1} />, <WarrantyIcon key={2} />];
   const failBadges = failSectionBadges[slug] ?? ["UNPLEASANT ODOURS", "MOULD GROWTH", "DAMAGE BEYOND BATHROOM"];
 
@@ -511,11 +513,11 @@ export default function ServicePageTemplate({
               </p>
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <a
-                  href="tel:70238094"
+                  href={tel}
                   className="inline-flex items-center justify-center gap-2 bg-white text-[#001F97] hover:bg-accent hover:text-[#001F97] font-black px-6 py-3.5 rounded-sm text-base transition-all active:scale-95 border-2 border-accent"
                 >
                   <Phone className="h-4 w-4" />
-                  7023 8094
+                  {phone}
                 </a>
                 <a
                   href="#quote-form"
@@ -685,8 +687,8 @@ export default function ServicePageTemplate({
               <a href="#quote-form" className="bg-white text-[#001F97] font-bold px-5 py-2.5 rounded-sm text-base hover:bg-accent hover:text-[#001F97] transition-colors active:scale-95 border-2 border-accent">
                 Request A Quote
               </a>
-              <a href="tel:70238094" className="flex items-center gap-2 bg-[#001F97] text-white font-bold px-5 py-2.5 rounded-sm text-base hover:bg-[#2F63CC] transition-colors border border-white/20 active:scale-95">
-                <Phone className="h-4 w-4" /> 7023 8094
+              <a href={tel} className="flex items-center gap-2 bg-[#001F97] text-white font-bold px-5 py-2.5 rounded-sm text-base hover:bg-[#2F63CC] transition-colors border border-white/20 active:scale-95">
+                <Phone className="h-4 w-4" /> {phone}
               </a>
             </motion.div>
           </div>
@@ -923,8 +925,8 @@ export default function ServicePageTemplate({
                 transition={{ delay: 0.1 }}
                 className="flex gap-3 pt-2"
               >
-                <a href="tel:70238094" className="inline-flex items-center gap-2 bg-[#001F97] hover:bg-[#001579] text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95">
-                  <Phone className="h-4 w-4" /> 7023 8094
+                <a href={tel} className="inline-flex items-center gap-2 bg-[#001F97] hover:bg-[#001579] text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95">
+                  <Phone className="h-4 w-4" /> {phone}
                 </a>
                 <a href="#quote-form" className="inline-flex items-center gap-2 bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95">
                   Request A Quote
@@ -994,8 +996,8 @@ export default function ServicePageTemplate({
                 <a href="#quote-form" className="bg-[#2F63CC] hover:bg-[#264FA3] text-white font-bold px-5 py-2.5 rounded-sm text-base transition-colors active:scale-95">
                   Request A Quote
                 </a>
-                <a href="tel:70238094" className="flex items-center gap-2 bg-[#001F97] hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-sm text-base transition-colors active:scale-95">
-                  <Phone className="h-4 w-4" /> 7023 8094
+                <a href={tel} className="flex items-center gap-2 bg-[#001F97] hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-sm text-base transition-colors active:scale-95">
+                  <Phone className="h-4 w-4" /> {phone}
                 </a>
               </motion.div>
             </div>

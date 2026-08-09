@@ -1,5 +1,7 @@
+"use client";
 import React from "react";
 import Link from "next/link";
+import { useContact } from "@/components/SiteContentProvider";
 
 /* ─── Shared image placeholder ─── */
 function ImgBox({ label, aspect = "aspect-[4/3]" }: { label: string; aspect?: string }) {
@@ -15,11 +17,12 @@ function ImgBox({ label, aspect = "aspect-[4/3]" }: { label: string; aspect?: st
 }
 
 export default function HowItWorksSection() {
+  const { phone } = useContact();
   const steps = [
     {
       number: "01",
       title: "Ask for a Free Quote",
-      description: "Fill out our quick online quote form or call us on 7023 8094. We'll talk about your issue and schedule a visit.",
+      description: `Fill out our quick online quote form or call us on ${phone}. We'll talk about your issue and schedule a visit.`,
     },
     {
       number: "02",

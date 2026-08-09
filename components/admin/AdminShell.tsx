@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Inbox, LogOut } from "lucide-react";
+import { LayoutDashboard, Inbox, FileText, LogOut } from "lucide-react";
 import { useAdminBasePath } from "@/components/admin/AdminProvider";
 
 // Shared chrome (top nav + logout) for authenticated admin pages. The login
@@ -17,6 +17,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: basePath, label: "Dashboard", icon: LayoutDashboard },
     { href: `${basePath}/submissions`, label: "Submissions", icon: Inbox },
+    { href: `${basePath}/content`, label: "Content", icon: FileText },
   ];
 
   async function logout() {

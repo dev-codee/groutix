@@ -14,9 +14,8 @@ import {
   X,
 } from "lucide-react";
 import type { SupportMessage } from "@/lib/supportKnowledge";
+import { useContact } from "@/components/SiteContentProvider";
 
-const PHONE_NUMBER = "7023 8094";
-const EMAIL_ADDRESS = "info@groutix.com";
 const QUICK_PROMPTS = [
   "My shower is leaking. Can this be fixed without removing tiles?",
   "How long does shower regrouting take?",
@@ -56,6 +55,7 @@ function Bubble({ message }: { message: SupportMessage }) {
 
 export default function SupportChatWidget() {
   const pathname = usePathname();
+  const { phone, tel, email } = useContact();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<SupportMessage[]>([WELCOME_MESSAGE]);
   const [draft, setDraft] = useState("");
@@ -117,8 +117,7 @@ export default function SupportChatWidget() {
         ...current,
         {
           role: "assistant",
-          content:
-            "I couldn't complete that reply just now. You can try again, call 7023 8094, or send a support request and the team will follow up by email.",
+          content: `I couldn't complete that reply just now. You can try again, call ${phone}, or send a support request and the team will follow up by email.`,
         },
       ]);
     } finally {
@@ -301,11 +300,11 @@ export default function SupportChatWidget() {
                     Request human help
                   </button>
                   <a
-                    href={`tel:${PHONE_NUMBER.replace(/\s/g, "")}`}
+                    href={tel}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-primary hover:text-primary"
                   >
                     <Phone className="h-4 w-4" />
-                    Call {PHONE_NUMBER}
+                    Call {phone}
                   </a>
                 </div>
               )}
@@ -319,7 +318,7 @@ export default function SupportChatWidget() {
 
             <div className="shrink-0 border-t border-neutral-200 bg-white p-4">
               <div className="mb-2 text-xs text-neutral-500">
-                Need photos or a longer description? Email {EMAIL_ADDRESS}.
+                Need photos or a longer description? Email {email}.
               </div>
               <div className="flex items-end gap-2">
                 <textarea

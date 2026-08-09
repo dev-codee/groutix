@@ -10,6 +10,7 @@ import HeroQuoteForm from "@/components/HeroQuoteForm";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
 import FaqSection from "@/components/FaqSection";
+import { useContact } from "@/components/SiteContentProvider";
 
 /* ─── Hero badge icons (match service page style) ─── */
 const LocationIcon = () => (
@@ -297,6 +298,7 @@ export default function CityPageClient({
   parentSlug,
   locationExplanation,
 }: CityPageProps) {
+  const { phone, tel } = useContact();
   const [mapQuery, setMapQuery] = useState(`${cityName}, VIC, Australia`);
   const parent = parentSlug || getRegionSlug(cityName, heroSubtitle, suburbGroups);
   return (
@@ -324,10 +326,10 @@ export default function CityPageClient({
             </p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <a
-                href="tel:70238094"
+                href={tel}
                 className="inline-flex items-center justify-center gap-2 bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
               >
-                <Phone className="h-4 w-4 text-primary" /> 7023 8094
+                <Phone className="h-4 w-4 text-primary" /> {phone}
               </a>
               <Link
                 href="#quote-form"
@@ -432,7 +434,7 @@ export default function CityPageClient({
                 Request A Quote
               </Link>
               <a
-                href="tel:70238094"
+                href={tel}
                 className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold px-6 py-3 rounded-sm text-base transition-colors flex items-center gap-2 active:scale-95"
               >
                 <Phone className="h-4 w-4" /> Get In Touch
@@ -669,7 +671,7 @@ export default function CityPageClient({
                 Request A Quote
               </Link>
               <a
-                href="tel:70238094"
+                href={tel}
                 className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold px-6 py-3 rounded-sm text-base transition-colors flex items-center gap-2 active:scale-95"
               >
                 <Phone className="h-4 w-4" /> Get In Touch
@@ -801,10 +803,10 @@ export default function CityPageClient({
                 Request A Quote
               </a>
               <a
-                href="tel:70238094"
+                href={tel}
                 className="flex items-center gap-2 bg-primary hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-xl text-base transition-all active:scale-95"
               >
-                <Phone className="h-4 w-4" /> 7023 8094
+                <Phone className="h-4 w-4" /> {phone}
               </a>
             </motion.div>
           </div>
@@ -840,10 +842,10 @@ export default function CityPageClient({
               Request A Quote
             </Link>
             <a
-              href="tel:70238094"
+              href={tel}
               className="flex items-center gap-2 bg-primary hover:bg-[#001579] text-white font-bold px-6 py-3 rounded-xl text-base transition-all border border-white/20 active:scale-95"
             >
-              <Phone className="h-4 w-4" /> 7023 8094
+              <Phone className="h-4 w-4" /> {phone}
             </a>
           </motion.div>
         </div>

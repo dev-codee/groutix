@@ -3,6 +3,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Phone } from "lucide-react";
+import { useContact } from "@/components/SiteContentProvider";
 import { motion } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
 
@@ -29,6 +30,7 @@ function ImgBox({ label, src }: { label: string; src?: string }) {
 }
 
 export default function WarrantySection() {
+  const { phone, tel } = useContact();
   return (
     <AnimatedSection className="bg-white py-16 lg:py-24">
       <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -53,10 +55,10 @@ export default function WarrantySection() {
               </div>
           <div className="flex gap-3 pt-2">
             <a
-              href="tel:70238094"
+              href={tel}
               className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
             >
-              <Phone className="h-4 w-4" /> 7023 8094
+              <Phone className="h-4 w-4" /> {phone}
             </a>
             <Link
               href="/contact"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
+import { getSiteContent } from "@/lib/siteContentServer";
 import type { SupportMessage } from "@/lib/supportKnowledge";
 
 export const runtime = "nodejs";
@@ -11,7 +12,7 @@ const MAX_FIELD_LENGTH = 1000;
 const MAX_TRANSCRIPT_MESSAGES = 20;
 const TO_EMAIL = process.env.SUPPORT_TO_EMAIL || "info@groutix.com";
 const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
-const CONTACT_PHONE = "7023 8094";
+const DEFAULT_CONTACT_PHONE = "7023 8094";
 
 type TicketBody = {
   name?: string;
@@ -203,6 +204,9 @@ export async function POST(req: NextRequest) {
     userAgent: req.headers.get("user-agent") || undefined,
     emailDelivered: true,
   });
+
+  const CONTACT_PHONE =
+    (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
   const customerHtml = `
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">

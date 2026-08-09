@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Plus, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
-import { faqCategories, type Faq } from "@/lib/faqData";
+import { type Faq } from "@/lib/faqData";
+import { useSiteContent, useContact } from "@/components/SiteContentProvider";
 
 function FaqItem({ faq }: { faq: Faq }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,6 +42,8 @@ function FaqItem({ faq }: { faq: Faq }) {
 }
 
 export default function FaqPageClient() {
+  const { faqCategories } = useSiteContent();
+  const { phone, tel } = useContact();
   const [activeIndex, setActiveIndex] = useState(0);
   const activeCategory = faqCategories[activeIndex];
 
@@ -145,10 +148,10 @@ export default function FaqPageClient() {
               Request A Quote
             </Link>
             <a
-              href="tel:70238094"
+              href={tel}
               className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary-hover text-white font-black px-6 py-3 rounded-xl text-base transition-colors active:scale-95"
             >
-              <Phone className="h-4 w-4" /> 7023 8094
+              <Phone className="h-4 w-4" /> {phone}
             </a>
           </div>
         </div>

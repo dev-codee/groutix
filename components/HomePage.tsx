@@ -27,6 +27,7 @@ import FaqSection from "@/components/FaqSection";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
+import { useSiteContent, useContact } from "@/components/SiteContentProvider";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -191,6 +192,8 @@ export default function HomePage({
   reviews: Review[];
   rating: BusinessRating;
 }) {
+  const { hero } = useSiteContent();
+  const { phone, tel } = useContact();
   return (
     <>
       <Navbar />
@@ -220,7 +223,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className="max-w-3xl text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-[72px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
                   >
-                    Victoria&apos;s Highest Rated &amp; Most Trusted Shower Regrouting &amp; Leak Repair Specialists
+                    {hero.headline}
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -228,7 +231,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
                   >
-                    Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions—without the need for a full renovation.
+                    {hero.subheadline}
                   </motion.p>
                 </div>
 
@@ -408,7 +411,7 @@ export default function HomePage({
                 Request A Quote
               </Link>
               <a
-                href="tel:70238094"
+                href={tel}
                 className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-bold px-6 py-3 rounded-sm text-base transition-colors flex items-center gap-2 active:scale-95"
               >
                 <Phone className="h-4 w-4" /> Get In Touch
@@ -542,10 +545,10 @@ export default function HomePage({
                 Get A Quote
               </Link>
               <a
-                href="tel:70238094"
+                href={tel}
                 className="flex items-center gap-2 bg-secondary hover:bg-secondary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
               >
-                <Phone className="h-4 w-4" /> 7023 8094
+                <Phone className="h-4 w-4" /> {phone}
               </a>
             </div>
           </div>
@@ -591,10 +594,10 @@ export default function HomePage({
                   Get A Quote
                 </Link>
                 <a
-                  href="tel:70238094"
+                  href={tel}
                   className="flex items-center gap-2 border border-neutral-300 hover:border-primary text-neutral-900 font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
                 >
-                  <Phone className="h-4 w-4" /> 7023 8094
+                  <Phone className="h-4 w-4" /> {phone}
                 </a>
               </div>
             </div>

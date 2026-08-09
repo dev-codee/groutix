@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Phone, Menu, X, ChevronDown, ChevronRight, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
+import { useContact } from "@/components/SiteContentProvider";
 
 // Nav link component with underline animation
 const NavLink = ({
@@ -31,6 +32,7 @@ export default function Navbar() {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [hoveredLocation, setHoveredLocation] = useState<string>("melbourne");
   const [mobileLocationSubmenu, setMobileLocationSubmenu] = useState<string | null>(null);
+  const { phone, tel } = useContact();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -306,7 +308,7 @@ export default function Navbar() {
           {/* CTAs */}
           <div className="hidden md:flex items-center space-x-6">
             <a
-              href="tel:70238094"
+              href={tel}
               className="flex items-center space-x-2 text-primary font-bold hover:text-accent transition-colors duration-200"
             >
               <div className="p-2 bg-accent/15 rounded-full">
@@ -314,7 +316,7 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col">
                 <span className="text-[12px] text-neutral-500 font-semibold leading-none">Call Today</span>
-                <span className="text-base">7023 8094</span>
+                <span className="text-base">{phone}</span>
               </div>
             </a>
             <Link
@@ -328,7 +330,7 @@ export default function Navbar() {
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-4">
             <a
-              href="tel:70238094"
+              href={tel}
               className="p-2 text-primary hover:text-accent transition-colors"
               aria-label="Call Us"
             >
@@ -505,11 +507,11 @@ export default function Navbar() {
               {/* Footer CTAs */}
               <div className="flex-shrink-0 space-y-3 border-t border-neutral-100 px-4 py-4">
                 <a
-                  href="tel:70238094"
+                  href={tel}
                   className="flex w-full items-center justify-center space-x-3 rounded bg-secondary py-3.5 font-bold text-white transition-all duration-200 hover:bg-secondary-hover"
                 >
                   <Phone className="h-5 w-5" />
-                  <span>7023 8094</span>
+                  <span>{phone}</span>
                 </a>
                 <Link
                   href="/contact"
