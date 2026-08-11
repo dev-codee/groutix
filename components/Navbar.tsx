@@ -86,98 +86,109 @@ export default function Navbar() {
     { name: "Real Estate & Property Services", href: "/real-estate-property-services" },
   ];
 
+  const toSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
   const locationMenu = [
     {
       name: "Melbourne",
       slug: "melbourne",
       href: "/locations/melbourne",
       suburbs: [
-        { name: "Carlton", slug: "carlton" },
-        { name: "Fitzroy", slug: "fitzroy" },
-        { name: "Richmond", slug: "richmond" },
-        { name: "South Yarra", slug: "south-yarra" },
-        { name: "Brunswick", slug: "brunswick" },
-        { name: "St Kilda", slug: "st-kilda" },
-        { name: "Hawthorn", slug: "hawthorn" },
-        { name: "Essendon", slug: "essendon" },
-        { name: "Box Hill", slug: "box-hill" },
-        { name: "Brighton", slug: "brighton" },
-      ],
+        "Abbotsford", "Airport West", "Albert Park", "Altona", "Altona Meadows", "Altona North",
+        "Ascot Vale", "Avondale Heights", "Balaclava", "Balwyn", "Balwyn North", "Bayswater",
+        "Bentleigh", "Bentleigh East", "Berwick", "Boronia", "Box Hill", "Box Hill North",
+        "Brighton", "Brighton East", "Broadmeadows", "Brooklyn", "Brunswick", "Brunswick East",
+        "Brunswick West", "Bulleen", "Bundoora", "Camberwell", "Campbellfield", "Canterbury",
+        "Carlton", "Carlton North", "Caroline Springs", "Carrum Downs", "Chelsea", "Cheltenham",
+        "Clayton", "Clifton Hill", "Coburg", "Coburg North", "Collingwood", "Coolaroo",
+        "Craigieburn", "Cranbourne", "Cremorne", "Croydon", "Croydon Hills", "Croydon North",
+        "Croydon South", "Dallas", "Dandenong", "Deer Park", "Derrimut", "Docklands",
+        "Doncaster", "Doncaster East", "Donvale", "East Melbourne", "Eltham", "Eltham North",
+        "Elwood", "Epping", "Essendon", "Essendon North", "Essendon West", "Fawkner",
+        "Ferntree Gully", "Fitzroy", "Fitzroy North", "Flemington", "Forest Hill", "Frankston",
+        "Gladstone Park", "Glen Iris", "Glen Waverley", "Glenroy", "Greensborough", "Greenvale",
+        "Hallam", "Hampton", "Hampton Park", "Hawthorn", "Hawthorn East", "Heidelberg",
+        "Highett", "Hoppers Crossing", "Keilor", "Keilor Downs", "Keilor East", "Kew",
+        "Kew East", "Keysborough", "Kilsyth", "Knox", "Lalor", "Laverton",
+        "Lilydale", "Lower Plenty", "Macleod", "Malvern", "Malvern East", "Maribyrnong",
+        "McKinnon", "Meadow Heights", "Melbourne CBD", "Melton", "Melton South", "Mentone",
+        "Middle Park", "Mill Park", "Montmorency", "Moonee Ponds", "Moorabbin", "Mooroolbark",
+        "Mount Evelyn", "Mount Waverley", "Mulgrave", "Narre Warren", "Niddrie", "Noble Park",
+        "North Melbourne", "Northcote", "Nunawading", "Oak Park", "Oakleigh", "Ormond",
+        "Pakenham", "Parkville", "Patterson Lakes", "Plumpton", "Point Cook", "Port Melbourne",
+        "Prahran", "Princes Hill", "Research", "Reservoir", "Richmond", "Ringwood",
+        "Ringwood East", "Ringwood North", "Rosanna", "Sandringham", "Seaford", "South Melbourne",
+        "South Morang", "South Yarra", "Southbank", "Springvale", "St Kilda", "St Kilda East",
+        "St Kilda West", "Strathmore", "Sunbury", "Sydenham", "Tarneit", "Templestowe",
+        "Templestowe Lower", "Thomastown", "Thornbury", "Toorak", "Truganina", "Tullamarine",
+        "Vermont", "Vermont South", "Wantirna", "Wantirna South", "Warrandyte", "Werribee",
+        "West Melbourne", "Wheelers Hill", "Williams Landing", "Williamstown", "Williamstown North",
+        "Windsor", "Wollert", "Wyndham Vale"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
     {
       name: "Geelong",
       slug: "geelong",
       href: "/locations/geelong",
       suburbs: [
-        { name: "Geelong", slug: "geelong" },
-        { name: "Belmont", slug: "belmont" },
-        { name: "Grovedale", slug: "grovedale" },
-        { name: "Highton", slug: "highton" },
-        { name: "Newtown", slug: "newtown" },
-        { name: "Lara", slug: "lara" },
-        { name: "Corio", slug: "corio" },
-      ],
+        "Aireys Inlet", "Anakie", "Anglesea", "Barwon Heads", "Bell Park", "Bell Post Hill",
+        "Belmont", "Breakwater", "Clifton Springs", "Corio", "Drumcondra", "Drysdale",
+        "East Geelong", "Fairhaven", "Fyansford", "Geelong", "Geelong West", "Grovedale",
+        "Hamlyn Heights", "Herne Hill", "Highton", "Indented Head", "Jan Juc", "Lara",
+        "Leopold", "Little River", "Lorne", "Lovely Banks", "Manifold Heights", "Marshall",
+        "Newcomb", "Newtown", "Norlane", "North Geelong", "North Shore", "Ocean Grove",
+        "Point Lonsdale", "Portarlington", "Queenscliff", "South Geelong", "St Albans Park",
+        "St Leonards", "Thomson", "Torquay", "Wallington", "Wandana Heights", "Waurn Ponds",
+        "Whittington"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
     {
       name: "Ballarat",
       slug: "ballarat",
       href: "/locations/ballarat",
       suburbs: [
-        { name: "Alfredton", slug: "alfredton" },
-        { name: "Ballarat Central", slug: "ballarat-central" },
-        { name: "Delacombe", slug: "delacombe" },
-        { name: "Sebastopol", slug: "sebastopol" },
-        { name: "Wendouree", slug: "wendouree" },
-        { name: "Buninyong", slug: "buninyong" },
-      ],
+        "Alfredton", "Ballarat Central", "Ballarat East", "Ballarat North", "Black Hill",
+        "Buninyong", "Clarendon", "Creswick", "Daylesford", "Delacombe", "Elaine",
+        "Eureka", "Mount Clear", "Mount Helen", "Newlyn", "Redan", "Sebastopol", "Wendouree"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
     {
       name: "Frankston",
       slug: "frankston",
       href: "/locations/frankston",
       suburbs: [
-        { name: "Frankston Central", slug: "frankston-central" },
-        { name: "Frankston South", slug: "frankston-south" },
-        { name: "Langwarrin", slug: "langwarrin" },
-        { name: "Seaford", slug: "seaford" },
-        { name: "Karingal", slug: "karingal" },
-        { name: "Berwick", slug: "berwick" },
-      ],
+        "Beaconsfield", "Berwick", "Clyde", "Cranbourne", "Frankston Central",
+        "Frankston North", "Frankston South", "Harkaway", "Karingal", "Langwarrin",
+        "Officer", "Seaford"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
     {
       name: "Lilydale",
       slug: "lilydale",
       href: "/locations/lilydale",
       suburbs: [
-        { name: "Chirnside Park", slug: "chirnside-park" },
-        { name: "Coldstream", slug: "coldstream" },
-        { name: "Lilydale Central", slug: "lilydale-central" },
-        { name: "Mooroolbark", slug: "mooroolbark" },
-        { name: "Mount Evelyn", slug: "mount-evelyn" },
-      ],
+        "Chirnside Park", "Coldstream", "Doreen", "Emerald", "Hurstbridge",
+        "Kangaroo Ground", "Lilydale Central", "Macclesfield", "Monbulk", "Mooroolbark",
+        "Mount Evelyn", "Nutfield", "Silvan", "Watsons Creek"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
     {
       name: "Yarra Glen",
       slug: "yarra-glen",
       href: "/locations/yarra-glen",
       suburbs: [
-        { name: "Yarra Glen Central", slug: "yarra-glen-central" },
-        { name: "Christmas Hills", slug: "christmas-hills" },
-        { name: "Dixons Creek", slug: "dixons-creek" },
-        { name: "Steels Creek", slug: "steels-creek" },
-      ],
+        "Christmas Hills", "Dixons Creek", "Steels Creek", "Tarrawarra", "Yarra Glen Central"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
     {
       name: "Kilmore",
       slug: "kilmore",
       href: "/locations/kilmore",
       suburbs: [
-        { name: "Kilmore Central", slug: "kilmore-central" },
-        { name: "Hidden Valley", slug: "hidden-valley" },
-        { name: "Wandong", slug: "wandong" },
-        { name: "Wallan", slug: "wallan" },
-        { name: "Whittlesea", slug: "whittlesea" },
-      ],
+        "Bylands", "Eden Park", "Hesket", "Hidden Valley", "Kilmore Central",
+        "Kilmore East", "Lancefield", "Romsey", "Tylden", "Wallan", "Wandong",
+        "Whittlesea", "Willowmavin", "Woodend", "Yan Yean"
+      ].map(name => ({ name, slug: toSlug(name) })),
     },
   ];
 
@@ -198,45 +209,39 @@ export default function Navbar() {
             {/* Services Dropdown */}
             <div className="relative group/menu">
               <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
-                <span className="relative">
-                  Services
-                  <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-accent transition-all duration-200 ease-in-out group-hover/menu:w-full"></span>
-                </span>
-                <ChevronDown className="h-4 w-4 text-neutral-400 group-hover/menu:text-accent transition-colors" />
+                <span>Services</span>
+                <ChevronDown className="h-4 w-4 transform transition-transform duration-200 group-hover/menu:rotate-180" />
               </button>
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 mt-0 w-64 bg-white border border-neutral-100 rounded-md shadow-xl py-2 hidden group-hover/menu:block z-50"
+
+              <div
+                className="absolute top-full left-0 w-64 pt-2 opacity-0 translate-y-2 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:translate-y-0 group-hover/menu:pointer-events-auto transition-all duration-200 ease-out z-50"
               >
-                {services.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="block px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent transition-colors"
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-              </motion.div>
+                <div className="bg-white rounded-xl shadow-xl border border-neutral-100 p-2 space-y-1">
+                  {services.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Area of Service Mega-Menu Dropdown */}
+            {/* Locations Dropdown */}
             <div className="relative group/menu">
               <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
-                <span className="relative">
-                  Area of Service
-                  <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-accent transition-all duration-200 ease-in-out group-hover/menu:w-full"></span>
-                </span>
-                <ChevronDown className="h-4 w-4 text-neutral-400 group-hover/menu:text-accent transition-colors" />
+                <span>Area of Service</span>
+                <ChevronDown className="h-4 w-4 transform transition-transform duration-200 group-hover/menu:rotate-180" />
               </button>
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 mt-0 w-[500px] bg-white border border-neutral-100 rounded-xl shadow-2xl p-4 hidden group-hover/menu:block z-50"
+
+              <div
+                className="absolute top-full left-0 w-[540px] pt-2 opacity-0 translate-y-2 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:translate-y-0 group-hover/menu:pointer-events-auto transition-all duration-200 ease-out z-50"
               >
-                <div className="grid grid-cols-5 gap-4">
-                  {/* Left Column: Main Regions */}
+                <div className="bg-white rounded-xl shadow-xl border border-neutral-100 p-4 grid grid-cols-5 gap-4">
+                  {/* Left Column: Regions */}
                   <div className="col-span-2 space-y-1 border-r border-neutral-100 pr-2">
                     <p className="px-2 py-1 text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
                       Regions
@@ -270,7 +275,7 @@ export default function Navbar() {
                           <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
                             <span className="text-xs font-bold tracking-wide text-primary uppercase flex items-center gap-1">
                               <MapPin className="h-3.5 w-3.5 text-accent" />
-                              {currentLoc.name} Suburbs
+                              {currentLoc.name} Suburbs ({currentLoc.suburbs.length})
                             </span>
                             <Link
                               href={currentLoc.href}
@@ -280,7 +285,7 @@ export default function Navbar() {
                             </Link>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-1 max-h-[220px] overflow-y-auto pr-1">
+                          <div className="grid grid-cols-2 gap-1 max-h-[300px] overflow-y-auto pr-1">
                             {currentLoc.suburbs.map((sub) => (
                               <Link
                                 key={sub.slug}
@@ -296,7 +301,7 @@ export default function Navbar() {
                     })()}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </div>
 
             <NavLink href="/about">About Us</NavLink>
@@ -459,7 +464,7 @@ export default function Navbar() {
                               </div>
 
                               {mobileLocationSubmenu === loc.slug && (
-                                <div className="pl-2 pt-1 pb-2 space-y-1">
+                                <div className="pl-2 pt-1 pb-2 space-y-1 max-h-[250px] overflow-y-auto">
                                   {loc.suburbs.map((sub) => (
                                     <Link
                                       key={sub.slug}
