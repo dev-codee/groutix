@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import TrustedMarquee from "@/components/TrustedMarquee";
-import { useContact } from "@/components/SiteContentProvider";
+import { useContact, useSiteContent } from "@/components/SiteContentProvider";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -96,19 +96,23 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 
 export default function AboutClient() {
   const { phone, tel } = useContact();
-  const values = [
-    { icon: <ShieldCheck className="h-7 w-7 text-[#001F97]" />, title: "Honest Advice", desc: "We suggest the repair your wet area actually needs, with clear guidance and no overblown plans." },
-    { icon: <Award className="h-7 w-7 text-[#001F97]" />, title: "Expert Work", desc: "Our team focuses on grout fixes, shower regrouting, and wet-area sealing done to a high standard." },
-    { icon: <Users className="h-7 w-7 text-[#001F97]" />, title: "Care For Your Space", desc: "We work neatly, protect nearby areas, and leave the place tidy when we're done." },
-    { icon: <Clock className="h-7 w-7 text-[#001F97]" />, title: "Dependable Service", desc: "We show up ready, communicate clearly, and keep your repair on track without unnecessary waits." },
-  ];
+  const siteContent = useSiteContent();
+  const aboutData = siteContent.about;
 
-  const stats = [
-    { value: "10-Year", label: "Waterproof Warranty" },
-    { value: "Licensed", label: "& Fully Insured" },
-    { value: "8000+", label: "Showers Fixed" },
-    { value: "100%", label: "No-Leak Promise" },
-  ];
+  const valueIcons: Record<string, React.ReactNode> = {
+    "Honest Advice": <ShieldCheck className="h-7 w-7 text-[#001F97]" />,
+    "Expert Work": <Award className="h-7 w-7 text-[#001F97]" />,
+    "Care For Your Space": <Users className="h-7 w-7 text-[#001F97]" />,
+    "Dependable Service": <Clock className="h-7 w-7 text-[#001F97]" />,
+  };
+
+  const values = aboutData.values.map((v) => ({
+    icon: valueIcons[v.title] ?? <ShieldCheck className="h-7 w-7 text-[#001F97]" />,
+    title: v.title,
+    desc: v.desc,
+  }));
+
+  const stats = aboutData.stats;
 
   return (
     <main className="pt-[73px]">
@@ -137,7 +141,7 @@ export default function AboutClient() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
           >
-            Victoria&apos;s shower regrouting experts
+            {aboutData.headline}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -145,7 +149,7 @@ export default function AboutClient() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-white/80 leading-relaxed"
           >
-            We help homeowners fix leaky showers, broken grout, and worn wet areas with expert repairs backed by a 10-year waterproof warranty.
+            {aboutData.subheadline}
           </motion.p>
         </div>
       </motion.section>
@@ -172,7 +176,7 @@ export default function AboutClient() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight"
             >
-              A Team Focused on <span className="text-accent">Grout &amp; Shower Fixes</span>
+              {aboutData.storyTitle}
             </motion.h2>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -181,12 +185,9 @@ export default function AboutClient() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="space-y-4 text-neutral-600 leading-relaxed text-base sm:text-[16px]"
             >
-              <p>
-                Groutix started with a simple idea: many leaky showers and failing tiled wet areas can be fixed properly without tearing out the whole bathroom. When grout lines, corners, and seals wear out, an expert repair is often a better choice than a full renovation.
-              </p>
-              <p>
-                Today we help homeowners across Victoria restore grout lines, stop moisture from getting in, and protect tiled surfaces with a fix-first approach made for long-lasting results.
-              </p>
+              {aboutData.storyParagraphs.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
             </motion.div>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -195,12 +196,7 @@ export default function AboutClient() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="grid gap-3 sm:grid-cols-2 pt-2"
             >
-              {[
-                "Experts in shower regrouting and grout fixes",
-                "Wet-area repairs that keep tiles in place",
-                "Written 10-year waterproof warranty",
-                "Professional work with clear communication",
-              ].map((item, i) => (
+              {aboutData.features.map((item, i) => (
                 <div key={i} className="flex items-center gap-2 bg-[#F3F4F6] px-4 py-2.5 rounded-sm">
                   <div className="w-5 h-5 flex items-center justify-center bg-[#001F97] text-white rounded-full flex-shrink-0">
                     <Check className="w-3 h-3" />

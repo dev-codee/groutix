@@ -2,7 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { Phone } from "lucide-react";
-import { useContact } from "@/components/SiteContentProvider";
+import { useContact, useSiteContent } from "@/components/SiteContentProvider";
 
 /* ─── Droplet bullet icon ─── */
 const DropletIcon = () => (
@@ -27,14 +27,9 @@ function ImgBox({ label }: { label: string }) {
 
 export default function WhyUsSection() {
   const { phone, tel } = useContact();
-  const points = [
-    "Specialist materials selected for long-term durability",
-    "Experienced shower regrouting technicians",
-    "10-year waterproof warranty on eligible full shower regrouting",
-    "Fast turnaround with minimal disruption",
-    "Honest recommendations based on your shower's condition",
-    "Clear, upfront pricing with no hidden surprises",
-  ];
+  const content = useSiteContent();
+  const whyUs = content.whyUs;
+  const points = whyUs.points;
 
   return (
     <div className="bg-white">
@@ -73,11 +68,11 @@ export default function WhyUsSection() {
           {/* Left: Text */}
           <div className="space-y-6">
             <h2 className="text-3xl lg:text-[40px] font-bold text-white leading-tight">
-                Why <span className="text-[#97B1E5]">Pick Groutix?</span>
-              </h2>
-              <p className="text-white/75 text-base sm:text-[18px] leading-relaxed">
-                Here's why homeowners and property managers all over Australia trust Groutix for their shower regrouting and repair needs.
-              </p>
+              {whyUs.headline}
+            </h2>
+            <p className="text-white/75 text-base sm:text-[18px] leading-relaxed">
+              {whyUs.subheadline}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               {points.map((point, i) => (
                 <div key={i} className="flex gap-3 items-start">

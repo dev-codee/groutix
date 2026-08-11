@@ -77,7 +77,7 @@ export default function Navbar() {
     { name: "Shower Regrouting", href: "/shower-regrouting" },
     { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
     { name: "Shower Base Repair", href: "/shower-base-repair" },
-    { name: "Shower Screens", href: "/shower-screens" },
+    // { name: "Shower Screens", href: "/shower-screens" },
     { name: "Tile Regrouting", href: "/tile-regrouting" },
     { name: "Balcony Leak Repairs", href: "/balcony-leak-repairs" },
     { name: "Silicone & Recaulking", href: "/silicone-recaulking" },
@@ -183,9 +183,8 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/95 backdrop-blur-md shadow-md" : "bg-white"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/95 backdrop-blur-md shadow-md" : "bg-white"
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between min-h-[76px] py-1.5">
@@ -248,11 +247,10 @@ export default function Navbar() {
                         <div
                           key={loc.slug}
                           onMouseEnter={() => setHoveredLocation(loc.slug)}
-                          className={`flex items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
-                            isActive
-                              ? "bg-primary text-white"
-                              : "text-neutral-700 hover:bg-neutral-100 hover:text-primary"
-                          }`}
+                          className={`flex items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${isActive
+                            ? "bg-primary text-white"
+                            : "text-neutral-700 hover:bg-neutral-100 hover:text-primary"
+                            }`}
                         >
                           <Link href={loc.href} className="flex-1">
                             {loc.name}

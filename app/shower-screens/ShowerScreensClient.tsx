@@ -17,7 +17,7 @@ import {
 import { SHOWER_SCREEN_MODELS, type ShowerScreenModel } from "@/lib/showerScreensData";
 import CtaBanner from "@/components/CtaBanner";
 import AnimatedSection from "@/components/AnimatedSection";
-import { useContact } from "@/components/SiteContentProvider";
+import { useContact, useSiteContent } from "@/components/SiteContentProvider";
 
 /* ────── Image Placeholder Component ────── */
 function ImgBox({ label, aspect = "aspect-[4/3]" }: { label: string; aspect?: string }) {
@@ -64,6 +64,9 @@ const FAQS = [
 
 export default function ShowerScreensClient() {
   const { phone, tel } = useContact();
+  const siteContent = useSiteContent();
+  const models = siteContent.showerScreens && siteContent.showerScreens.length > 0 ? siteContent.showerScreens : SHOWER_SCREEN_MODELS;
+
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("All");
 
@@ -71,8 +74,8 @@ export default function ShowerScreensClient() {
 
   const filteredModels =
     filterCategory === "All"
-      ? SHOWER_SCREEN_MODELS
-      : SHOWER_SCREEN_MODELS.filter((m) => m.category === filterCategory);
+      ? models
+      : models.filter((m) => m.category === filterCategory);
 
   return (
     <main className="pt-[73px] bg-neutral-50 text-neutral-900 min-h-screen">

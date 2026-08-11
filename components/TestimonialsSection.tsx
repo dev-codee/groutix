@@ -1,34 +1,14 @@
+"use client";
+
 import React from "react";
 import { Star, ShieldCheck } from "lucide-react";
 import ProductReviewWidget from "@/components/ProductReviewWidget";
+import { useSiteContent } from "@/components/SiteContentProvider";
 
 export default function TestimonialsSection() {
-  const reviews = [
-    {
-      name: "Sarah Jenkins",
-      location: "Perth, WA",
-      rating: 5,
-      title: "Super professional & quick!",
-      content: "Groutix tech showed up right on time. Our ensuite shower was leaking into the hallway wall. He replaced the old grout in less than 3 hours, and the shower looks brand new. Highly recommend!",
-      date: "2 weeks ago",
-    },
-    {
-      name: "David Chen",
-      location: "Melbourne, VIC",
-      rating: 5,
-      title: "Saved us thousands on tiling",
-      content: "We were told we had to completely retile our bathroom because of a slow leak. Groutix checked it out and said a simple regrout and silicone reseal would fix it. It did, and saved us over $4,000!",
-      date: "1 month ago",
-    },
-    {
-      name: "Rebecca Taylor",
-      location: "Sydney, NSW",
-      rating: 5,
-      title: "Mould is totally gone",
-      content: "Our shower base grout was black with mould that wouldn't come off. The tech stripped it all and laid fresh white grout. It looks completely spotless. Very neat, clean worker.",
-      date: "3 weeks ago",
-    },
-  ];
+  const content = useSiteContent();
+  const reviews = content.testimonials;
+  const rating = content.business.rating;
 
   return (
     <section className="py-20 bg-white">
@@ -50,7 +30,7 @@ export default function TestimonialsSection() {
                 ))}
               </div>
               <span className="text-base font-bold text-neutral-800">
-                5.0/5 Average Rating (236+ Reviews)
+                {rating.value.toFixed(1)}/5 Average Rating ({rating.count}+ Reviews)
               </span>
             </div>
             
