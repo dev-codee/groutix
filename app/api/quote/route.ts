@@ -84,7 +84,14 @@ async function sendBrevoEmail(apiKey: string, args: SendArgs) {
       subject: args.subject,
       htmlContent: args.html,
       attachment: args.attachments?.length
-        ? args.attachments.map((a) => ({ name: a.name, content: a.content }))
+        ? args.attachments.map((a) => {
+            let safeName = a.name;
+            const ext = (safeName.split(".").pop() || "").toLowerCase();
+            if (["webp", "heic", "heif", "svg"].includes(ext)) {
+               safeName = safeName.substring(0, safeName.lastIndexOf(".")) + ".jpg";
+            }
+            return { name: safeName, content: a.content };
+          })
         : undefined,
     }),
   });
