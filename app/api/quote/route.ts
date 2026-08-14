@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
-import { recordSubmission } from "@/lib/submissions";
+import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 
 export const runtime = "nodejs";
@@ -216,26 +216,8 @@ export async function POST(req: NextRequest) {
     </table>
   </div>`;
 
-  try {
-    await sendBrevoEmail(apiKey, {
-      toEmail: TO_EMAIL,
-      fromName: INTERNAL_FROM_NAME,
-      replyTo: email || undefined,
-      subject: `New Quote Request — ${fullName || "Website"}`,
-      html: internalHtml,
-      attachments: attachments.length ? attachments : undefined,
-    });
-  } catch (err) {
-    logSendError("internal notification", err);
-    return NextResponse.json(
-      { error: "We couldn't send your request. Please try again or call us." },
-      { status: 502 }
-    );
-  }
-
-  // Persist the lead for the admin panel. Best-effort: recordSubmission never
-  // throws, so a database issue can't affect the customer confirmation below.
-  await recordSubmission({
+  // 1) Save to DB immediately so we never lose a lead.
+  const submissionId = await recordSubmission({
     type: "quote",
     name: fullName,
     email,
@@ -269,15 +251,34 @@ export async function POST(req: NextRequest) {
     }),
     ip,
     userAgent: req.headers.get("user-agent") || undefined,
-    emailDelivered: true,
+    emailDelivered: false,
   });
 
-  const CONTACT_PHONE =
-    (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
+  // 2) Asynchronously process emails and update status
+  const processEmails = async () => {
+    let internalSent = false;
+    try {
+      await sendBrevoEmail(apiKey, {
+        toEmail: TO_EMAIL,
+        fromName: INTERNAL_FROM_NAME,
+        replyTo: email || undefined,
+        subject: `New Quote Request — ${fullName || "Website"}`,
+        html: internalHtml,
+        attachments: attachments.length ? attachments : undefined,
+      });
+      internalSent = true;
+    } catch (err) {
+      logSendError("internal notification", err);
+    }
 
-  // 2) Confirmation to the customer. If this fails we still succeed overall —
-  //    the lead has already reached the Groutix inbox, so we don't lose it.
-  const customerHtml = `
+    if (internalSent && submissionId) {
+      await updateEmailDelivered(submissionId, true);
+    }
+
+    const CONTACT_PHONE =
+      (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
+
+    const customerHtml = `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">
     <h2 style="margin:0 0 8px;color:#001f97;">Thanks, ${esc(firstName)}!</h2>
     <p style="margin:0 0 12px;color:#334155;line-height:1.6;">
@@ -305,19 +306,23 @@ export async function POST(req: NextRequest) {
     </p>
   </div>`;
 
-  try {
-    await sendBrevoEmail(apiKey, {
-      toEmail: email,
-      fromName: CUSTOMER_FROM_NAME,
-      replyTo: TO_EMAIL,
-      subject: "We've received your request — Groutix",
-      html: customerHtml,
-    });
-  } catch (err) {
-    logSendError("customer confirmation", err);
-    // Intentionally not failing the request.
-  }
+    try {
+      await sendBrevoEmail(apiKey, {
+        toEmail: email,
+        fromName: CUSTOMER_FROM_NAME,
+        replyTo: TO_EMAIL,
+        subject: "We've received your request — Groutix",
+        html: customerHtml,
+      });
+    } catch (err) {
+      logSendError("customer confirmation", err);
+    }
+  };
 
+  // Fire and forget
+  processEmails();
+
+  // 3) Return immediate success to the client
   return NextResponse.json({ ok: true });
 }
 

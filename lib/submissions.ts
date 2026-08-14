@@ -214,6 +214,16 @@ export async function deleteSubmission(id: string): Promise<boolean> {
   return res.deletedCount > 0;
 }
 
+export async function updateEmailDelivered(
+  id: string,
+  emailDelivered: boolean
+): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const col = await collection();
+  const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: { emailDelivered } });
+  return res.matchedCount > 0;
+}
+
 // ── Analytics ──────────────────────────────────────────────────────────────
 
 export interface DashboardStats {
