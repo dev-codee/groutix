@@ -83,7 +83,9 @@ async function sendBrevoEmail(apiKey: string, args: SendArgs) {
       replyTo: args.replyTo ? { email: args.replyTo } : undefined,
       subject: args.subject,
       htmlContent: args.html,
-      attachment: args.attachments?.length ? args.attachments : undefined,
+      attachment: args.attachments?.length
+        ? args.attachments.map((a) => ({ name: a.name, content: a.content }))
+        : undefined,
     }),
   });
   if (!res.ok) {
