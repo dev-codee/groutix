@@ -56,7 +56,7 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
 // transactional API; stay under it.
 const MAX_ATTACHMENT_BYTES = 9 * 1024 * 1024;
 
-type EmailAttachment = { name: string; content: string };
+type EmailAttachment = { name: string; content: string; contentType?: string };
 type SendArgs = {
   toEmail: string;
   fromName: string;
@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
     attachments.push({
       name: file.name || "photo",
       content: buffer.toString("base64"),
+      contentType: file.type || undefined,
     });
   }
 
@@ -241,7 +242,16 @@ export async function POST(req: NextRequest) {
     photosCount: attachments.length,
     photos: attachments.map((att) => {
       const ext = (att.name.split(".").pop() || "").toLowerCase();
-      const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      let mime = att.contentType;
+      if (!mime) {
+        if (ext === "pdf") mime = "application/pdf";
+        else if (ext === "doc") mime = "application/msword";
+        else if (ext === "docx") mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        else if (ext === "png") mime = "image/png";
+        else if (ext === "webp") mime = "image/webp";
+        else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
+        else mime = "application/octet-stream";
+      }
       return {
         name: att.name,
         contentType: mime,
