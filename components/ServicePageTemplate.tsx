@@ -293,9 +293,10 @@ function DetailedQuoteForm() {
   const [sent, setSent] = useState(false);
   const [areas, setAreas] = useState<string[]>([]);
   const [heard, setHeard] = useState<string[]>([]);
+  const [enquiries, setEnquiries] = useState<string[]>([]);
   const [form, setForm] = useState({
     firstName: "", lastName: "", email: "", phone: "",
-    address: "", city: "", state: "", enquiry: "", message: "",
+    address: "", city: "", state: "", message: "",
   });
 
   const toggleArr = (arr: string[], val: string, setter: (a: string[]) => void) =>
@@ -366,17 +367,15 @@ function DetailedQuoteForm() {
       </div>
       <div>
         <p className="text-sm font-bold text-neutral-800 mb-2">Is your enquiry about:</p>
-        <div className="relative">
-          <select name="enquiry" value={form.enquiry} onChange={handle} className={`${inputCls} appearance-none pr-8`}>
-            <option value="">Shower cubicle only</option>
-            <option>Full bathroom regrouting</option>
-            <option>Leaking shower repair</option>
-            <option>Tile regrouting</option>
-            <option>Small tiling job</option>
-            <option>Property maintenance</option>
-            <option>Other</option>
-          </select>
-          <ChevronDown className="absolute right-2 top-3 h-4 w-4 text-neutral-400 pointer-events-none" />
+        <div className="flex flex-wrap gap-2">
+          {[
+            "Shower cubicle only",
+            "Entire shower regrout",
+            "Shower base repair",
+            "Waterproofing / leaking shower",
+            "Tile repair / grout refresh",
+            "Other",
+          ].map((e) => chipBtn(e, enquiries, setEnquiries))}
         </div>
       </div>
       <textarea

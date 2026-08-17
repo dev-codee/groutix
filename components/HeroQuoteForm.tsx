@@ -72,13 +72,14 @@ export default function HeroQuoteForm() {
     email: "",
     phone: "",
     address: "",
-    enquiry: "Shower cubicle only",
     message: "",
     heard: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [areas, setAreas] = useState<string[]>([]);
   const [areaError, setAreaError] = useState(false);
+  const [enquiries, setEnquiries] = useState<string[]>([]);
+  const [enquiryError, setEnquiryError] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -139,6 +140,14 @@ export default function HeroQuoteForm() {
     });
   };
 
+  const toggleEnquiry = (v: string) => {
+    setEnquiries((list) => {
+      const newList = list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
+      if (enquiryError && newList.length > 0) setEnquiryError(false);
+      return newList;
+    });
+  };
+
   const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setPhotos((prev) => [...prev, ...Array.from(e.target.files!)]);
   };
@@ -159,8 +168,11 @@ export default function HeroQuoteForm() {
     if (areas.length === 0) {
       setAreaError(true);
     }
+    if (enquiries.length === 0) {
+      setEnquiryError(true);
+    }
 
-    if (Object.keys(newErrors).length !== 0 || areas.length === 0) return;
+    if (Object.keys(newErrors).length !== 0 || areas.length === 0 || enquiries.length === 0) return;
 
     // Require the CAPTCHA when it's enabled.
     if (TURNSTILE_SITE_KEY && !captchaToken) {
@@ -173,6 +185,7 @@ export default function HeroQuoteForm() {
       const payload = new FormData();
       Object.entries(data).forEach(([key, value]) => payload.append(key, value));
       payload.append("areas", areas.join(", "));
+      payload.append("enquiry", enquiries.join(", "));
       payload.append(
         "sourcePage",
         typeof window !== "undefined" ? window.location.pathname : ""
@@ -356,18 +369,32 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* Enquiry */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <p className="flex-none text-[15px] font-bold text-neutral-900">
-                  Is your enquiry about:
+              <div className="space-y-2">
+                <p className="text-[15px] font-bold text-neutral-900">
+                  Is your enquiry about: *
                 </p>
-                <div className="relative flex-1">
-                  <select name="enquiry" value={data.enquiry} onChange={handleChange} required className={`${field} appearance-none pr-9`}>
-                    {ENQUIRY_OPTIONS.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                <div className="flex flex-wrap gap-2">
+                  {ENQUIRY_OPTIONS.map((o) => (
+                    <Chip
+                      key={o}
+                      label={o}
+                      active={enquiries.includes(o)}
+                      onClick={() => toggleEnquiry(o)}
+                    />
+                  ))}
                 </div>
+                <AnimatePresence>
+                  {enquiryError && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="text-[13px] font-semibold text-red-600 overflow-hidden"
+                    >
+                      Please select at least one option.
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Message */}
