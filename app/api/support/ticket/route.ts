@@ -3,8 +3,11 @@ import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import type { SupportMessage } from "@/lib/supportKnowledge";
+import { sendBrevoEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
+// Room for the send retry sequence before the platform tears the instance down.
+export const maxDuration = 60;
 
 const RATE_LIMIT = 4;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -20,14 +23,6 @@ type TicketBody = {
   phone?: string;
   issue?: string;
   transcript?: SupportMessage[];
-};
-
-type SendArgs = {
-  toEmail: string;
-  fromName: string;
-  replyTo?: string;
-  subject: string;
-  html: string;
 };
 
 function clientIp(req: NextRequest): string {
@@ -65,29 +60,6 @@ function normalizeTranscript(value: unknown): SupportMessage[] {
       if ((role !== "user" && role !== "assistant") || !content) return [];
       return [{ role, content }];
     });
-}
-
-async function sendBrevoEmail(apiKey: string, args: SendArgs) {
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": apiKey,
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({
-      sender: { name: args.fromName, email: FROM_EMAIL },
-      to: [{ email: args.toEmail }],
-      replyTo: args.replyTo ? { email: args.replyTo } : undefined,
-      subject: args.subject,
-      htmlContent: args.html,
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`Brevo API ${response.status}: ${detail}`);
-  }
 }
 
 function row(label: string, value: string) {
@@ -180,6 +152,7 @@ export async function POST(req: NextRequest) {
     await sendBrevoEmail(apiKey, {
       toEmail: TO_EMAIL,
       fromName: "Groutix Support Chat",
+      fromEmail: FROM_EMAIL,
       replyTo: email,
       subject: `New Support Request — ${name}`,
       html: internalHtml,
@@ -229,6 +202,7 @@ export async function POST(req: NextRequest) {
     await sendBrevoEmail(apiKey, {
       toEmail: email,
       fromName: "Groutix",
+      fromEmail: FROM_EMAIL,
       replyTo: TO_EMAIL,
       subject: "We've received your support request - Groutix",
       html: customerHtml,

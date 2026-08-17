@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
+import { sendBrevoEmail, type EmailAttachment } from "@/lib/email";
 
 export const runtime = "nodejs";
+// Give the retry sequence room to finish before the platform kills the
+// instance (Vercel Pro honours this; Hobby is capped lower).
+export const maxDuration = 60;
 
 // Where new quote requests are delivered internally.
 const TO_EMAIL = "info@Groutix.com";
@@ -55,51 +59,6 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
 // Max total attachment size. Brevo caps the whole message near 10MB for the
 // transactional API; stay under it.
 const MAX_ATTACHMENT_BYTES = 9 * 1024 * 1024;
-
-type EmailAttachment = { name: string; content: string; contentType?: string };
-type SendArgs = {
-  toEmail: string;
-  fromName: string;
-  replyTo?: string;
-  subject: string;
-  html: string;
-  attachments?: EmailAttachment[];
-};
-
-// Send one email through Brevo's transactional HTTP API. Uses the API key,
-// which (unlike SMTP) is not restricted by authorized IPs — so it works from
-// a dynamic local IP and from serverless hosts. Throws on a non-2xx response.
-async function sendBrevoEmail(apiKey: string, args: SendArgs) {
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": apiKey,
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({
-      sender: { name: args.fromName, email: FROM_EMAIL },
-      to: [{ email: args.toEmail }],
-      replyTo: args.replyTo ? { email: args.replyTo } : undefined,
-      subject: args.subject,
-      htmlContent: args.html,
-      attachment: args.attachments?.length
-        ? args.attachments.map((a) => {
-            let safeName = a.name;
-            const ext = (safeName.split(".").pop() || "").toLowerCase();
-            if (["webp", "heic", "heif", "svg"].includes(ext)) {
-               safeName = safeName.substring(0, safeName.lastIndexOf(".")) + ".jpg";
-            }
-            return { name: safeName, content: a.content };
-          })
-        : undefined,
-    }),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Brevo API ${res.status}: ${detail}`);
-  }
-}
 
 function esc(value: string) {
   return value
@@ -261,6 +220,7 @@ export async function POST(req: NextRequest) {
       await sendBrevoEmail(apiKey, {
         toEmail: TO_EMAIL,
         fromName: INTERNAL_FROM_NAME,
+        fromEmail: FROM_EMAIL,
         replyTo: email || undefined,
         subject: `New Quote Request — ${fullName || "Website"}`,
         html: internalHtml,
@@ -310,6 +270,7 @@ export async function POST(req: NextRequest) {
       await sendBrevoEmail(apiKey, {
         toEmail: email,
         fromName: CUSTOMER_FROM_NAME,
+        fromEmail: FROM_EMAIL,
         replyTo: TO_EMAIL,
         subject: "We've received your request — Groutix",
         html: customerHtml,
