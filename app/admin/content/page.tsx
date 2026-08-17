@@ -145,11 +145,10 @@ export default function ContentPage() {
           <button
             key={t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-colors ${
-              activeTab === t.key
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-colors ${activeTab === t.key
                 ? "bg-[#001f97] text-white"
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-            }`}
+              }`}
           >
             {t.icon}
             {t.label}
@@ -336,12 +335,12 @@ export default function ContentPage() {
                         setContent((c) =>
                           c
                             ? {
-                                ...c,
-                                whyUs: {
-                                  ...c.whyUs,
-                                  headline: e.target.value,
-                                },
-                              }
+                              ...c,
+                              whyUs: {
+                                ...c.whyUs,
+                                headline: e.target.value,
+                              },
+                            }
                             : c
                         )
                       }
@@ -355,12 +354,12 @@ export default function ContentPage() {
                         setContent((c) =>
                           c
                             ? {
-                                ...c,
-                                whyUs: {
-                                  ...c.whyUs,
-                                  subheadline: e.target.value,
-                                },
-                              }
+                              ...c,
+                              whyUs: {
+                                ...c.whyUs,
+                                subheadline: e.target.value,
+                              },
+                            }
                             : c
                         )
                       }
@@ -888,11 +887,10 @@ function ShowerScreensEditor({
               <button
                 key={s.id}
                 onClick={() => setSelectedId(s.id)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  active?.id === s.id
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${active?.id === s.id
                     ? "bg-[#001f97] text-white font-semibold"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 {s.name || s.id}
               </button>

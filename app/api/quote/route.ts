@@ -319,10 +319,13 @@ export async function POST(req: NextRequest) {
     }
   };
 
-  // Fire and forget
-  processEmails();
+  // Await the email work before responding. On serverless hosts the instance
+  // is frozen/torn down the moment we return, which would abandon any pending
+  // (un-awaited) email send — that's exactly why quotes were recording but the
+  // notification email never arrived and emailDelivered stayed false.
+  await processEmails();
 
-  // 3) Return immediate success to the client
+  // 3) Return success to the client
   return NextResponse.json({ ok: true });
 }
 

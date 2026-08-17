@@ -243,11 +243,10 @@ export default function SubmissionsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        item.type === "quote"
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${item.type === "quote"
                           ? "bg-[#001f97]/10 text-[#001f97]"
                           : "bg-sky-100 text-sky-700"
-                      }`}
+                        }`}
                     >
                       {item.type === "quote" ? "Quote" : "Support"}
                     </span>
@@ -480,11 +479,10 @@ function DetailDrawer({
                 {item.transcript.map((m, i) => (
                   <div
                     key={i}
-                    className={`rounded-lg p-3 text-sm ${
-                      m.role === "user"
+                    className={`rounded-lg p-3 text-sm ${m.role === "user"
                         ? "bg-[#001f97]/5 text-slate-800"
                         : "bg-slate-100 text-slate-600"
-                    }`}
+                      }`}
                   >
                     <div className="mb-0.5 text-xs font-semibold capitalize text-slate-400">
                       {m.role}
@@ -503,11 +501,10 @@ function DetailDrawer({
               <button
                 key={s}
                 onClick={() => onStatus(s)}
-                className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                  item.status === s
+                className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${item.status === s
                     ? "bg-[#001f97] text-white"
                     : "border border-slate-300 text-slate-600 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 {s}
               </button>
