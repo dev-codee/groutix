@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { CheckCircle2, ChevronDown, Paperclip, Info, X } from "lucide-react";
+import { CheckCircle2, Paperclip, Info, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
@@ -18,28 +18,27 @@ const AREA_OPTIONS = [
   "Other",
 ];
 
-const HEARD_OPTIONS = [
-  "Google",
-  "Product Reviews",
-  "TV",
-  "Radio",
-  "Vehicle",
-  "Flyer",
-  "Friend or Family",
-  "Real Estate Agent",
+const SERVICE_OPTIONS = [
+  "Shower Cubicle Regrouting",
+  "Leaking Shower Repair",
+  "Shower Base Repair",
+  "Silicone Replacement",
+  "Balcony Regrouting",
+  "Balcony Leak Repair",
   "Other",
 ];
 
-
-const ENQUIRY_OPTIONS = [
-  "Shower cubicle only",
-  "Entire shower regrout",
-  "Shower base repair",
-  "Waterproofing / leaking shower",
-  "Tile repair / grout refresh",
+const DAMAGED_TILE_OPTIONS = [
+  "No",
+  "Cracked tiles",
+  "Loose / drummy tiles",
+  "Lifting tiles",
+  "Not sure",
 ];
 
-const field =
+const LEAKING_OPTIONS = ["Yes", "No", "Not sure"];
+
+const fieldStyle =
   "w-full rounded-sm border border-neutral-200 bg-white px-3 py-2 text-[15px] text-neutral-900 placeholder:text-neutral-400 transition-all duration-200 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20";
 
 function Chip({
@@ -55,10 +54,11 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${active
-        ? "border-primary bg-primary text-white"
-        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-        }`}
+      className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${
+        active
+          ? "border-primary bg-primary text-white shadow-sm"
+          : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300"
+      }`}
     >
       {label}
     </button>
@@ -73,37 +73,45 @@ export default function HeroQuoteForm() {
     phone: "",
     address: "",
     message: "",
-    heard: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const [areas, setAreas] = useState<string[]>([]);
   const [areaError, setAreaError] = useState(false);
-  const [enquiries, setEnquiries] = useState<string[]>([]);
-  const [enquiryError, setEnquiryError] = useState(false);
+
+  const [services, setServices] = useState<string[]>([]);
+  const [serviceError, setServiceError] = useState(false);
+
+  const [damagedTiles, setDamagedTiles] = useState<string[]>([]);
+  const [damagedTileError, setDamagedTileError] = useState(false);
+
+  const [leaking, setLeaking] = useState<string>("");
+  const [leakingError, setLeakingError] = useState(false);
+
   const [photos, setPhotos] = useState<File[]>([]);
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
 
   const validateField = (name: string, value: string) => {
     let error = "";
-    if (!value) {
+    if (!value.trim()) {
       error = "This field is required";
     } else {
       switch (name) {
         case "email":
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(value)) {
+          if (!emailRegex.test(value.trim())) {
             error = "Please enter a valid email address";
           }
           break;
         case "phone":
           const phoneRegex = /^[0-9+\-\s()]{8,}$/;
-          if (!phoneRegex.test(value)) {
+          if (!phoneRegex.test(value.trim())) {
             error = "Please enter a valid phone number";
           }
           break;
@@ -115,7 +123,7 @@ export default function HeroQuoteForm() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setData((p) => ({ ...p, [name]: value }));
@@ -125,7 +133,7 @@ export default function HeroQuoteForm() {
   };
 
   const handleBlur = (
-    e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -134,47 +142,90 @@ export default function HeroQuoteForm() {
 
   const toggleArea = (v: string) => {
     setAreas((list) => {
-      const newList = list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
+      const newList = list.includes(v)
+        ? list.filter((x) => x !== v)
+        : [...list, v];
       if (areaError && newList.length > 0) setAreaError(false);
       return newList;
     });
   };
 
-  const toggleEnquiry = (v: string) => {
-    setEnquiries((list) => {
-      const newList = list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-      if (enquiryError && newList.length > 0) setEnquiryError(false);
+  const toggleService = (v: string) => {
+    setServices((list) => {
+      const newList = list.includes(v)
+        ? list.filter((x) => x !== v)
+        : [...list, v];
+      if (serviceError && newList.length > 0) setServiceError(false);
       return newList;
     });
   };
 
-  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setPhotos((prev) => [...prev, ...Array.from(e.target.files!)]);
+  const toggleDamagedTile = (v: string) => {
+    setDamagedTiles((list) => {
+      let newList: string[];
+      if (v === "No" || v === "Not sure") {
+        newList = list.includes(v) ? [] : [v];
+      } else {
+        const filtered = list.filter((x) => x !== "No" && x !== "Not sure");
+        newList = filtered.includes(v)
+          ? filtered.filter((x) => x !== v)
+          : [...filtered, v];
+      }
+      if (damagedTileError && newList.length > 0) setDamagedTileError(false);
+      return newList;
+    });
   };
-  const removePhoto = (i: number) => setPhotos((prev) => prev.filter((_, idx) => idx !== i));
+
+  const selectLeaking = (v: string) => {
+    setLeaking((prev) => {
+      const next = prev === v ? "" : v;
+      if (leakingError && next) setLeakingError(false);
+      return next;
+    });
+  };
+
+  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files)
+      setPhotos((prev) => [...prev, ...Array.from(e.target.files!)]);
+  };
+  const removePhoto = (i: number) =>
+    setPhotos((prev) => prev.filter((_, idx) => idx !== i));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
-    // Validate all fields
+
     const newErrors: Record<string, string> = {};
-    Object.keys(data).forEach((key) => {
+    const requiredKeys = ["firstName", "lastName", "email", "phone", "address"];
+    requiredKeys.forEach((key) => {
       const error = validateField(key, data[key as keyof typeof data]);
       if (error) newErrors[key] = error;
     });
     setErrors(newErrors);
-    setTouched(Object.keys(data).reduce((acc, key) => ({ ...acc, [key]: true }), {}));
+    setTouched(
+      requiredKeys.reduce((acc, key) => ({ ...acc, [key]: true }), {})
+    );
 
-    if (areas.length === 0) {
-      setAreaError(true);
+    const hasAreaError = areas.length === 0;
+    const hasServiceError = services.length === 0;
+    const hasDamagedTileError = damagedTiles.length === 0;
+    const hasLeakingError = !leaking;
+
+    setAreaError(hasAreaError);
+    setServiceError(hasServiceError);
+    setDamagedTileError(hasDamagedTileError);
+    setLeakingError(hasLeakingError);
+
+    if (
+      Object.keys(newErrors).length !== 0 ||
+      hasAreaError ||
+      hasServiceError ||
+      hasDamagedTileError ||
+      hasLeakingError
+    ) {
+      return;
     }
-    if (enquiries.length === 0) {
-      setEnquiryError(true);
-    }
 
-    if (Object.keys(newErrors).length !== 0 || areas.length === 0 || enquiries.length === 0) return;
-
-    // Require the CAPTCHA when it's enabled.
     if (TURNSTILE_SITE_KEY && !captchaToken) {
       setSubmitError("Please complete the verification below.");
       return;
@@ -185,7 +236,10 @@ export default function HeroQuoteForm() {
       const payload = new FormData();
       Object.entries(data).forEach(([key, value]) => payload.append(key, value));
       payload.append("areas", areas.join(", "));
-      payload.append("enquiry", enquiries.join(", "));
+      payload.append("service", services.join(", "));
+      payload.append("enquiry", services.join(", "));
+      payload.append("damagedTiles", damagedTiles.join(", "));
+      payload.append("leaking", leaking);
       payload.append(
         "sourcePage",
         typeof window !== "undefined" ? window.location.pathname : ""
@@ -203,7 +257,6 @@ export default function HeroQuoteForm() {
       setSubmitError(
         err instanceof Error ? err.message : "Something went wrong. Please try again."
       );
-      // A token is single-use — reset so the visitor can retry.
       turnstileRef.current?.reset();
       setCaptchaToken("");
     } finally {
@@ -243,9 +296,22 @@ export default function HeroQuoteForm() {
                 specialists will call you back shortly.
               </p>
               <button
+                type="button"
                 onClick={() => {
                   setSubmitted(false);
                   setPhotos([]);
+                  setAreas([]);
+                  setServices([]);
+                  setDamagedTiles([]);
+                  setLeaking("");
+                  setData({
+                    firstName: "",
+                    lastName: "",
+                    email: "",
+                    phone: "",
+                    address: "",
+                    message: "",
+                  });
                 }}
                 className="mt-3 rounded-sm bg-primary hover:bg-primary-hover px-6 py-2.5 text-[16px] font-bold text-white transition-all duration-200 active:scale-95"
               >
@@ -260,98 +326,135 @@ export default function HeroQuoteForm() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
               onSubmit={handleSubmit}
-              className="space-y-2.5 px-5 py-5 sm:px-6"
+              className="space-y-4 px-5 py-5 sm:px-6"
             >
               <h3 className="text-center text-xl font-black tracking-tight text-neutral-900">
                 Request A Quote
               </h3>
 
-              {/* Name */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <input
-                    name="firstName"
-                    value={data.firstName}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="First Name"
-                    className={`${field} ${touched.firstName && errors.firstName ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                  />
-                  {touched.firstName && errors.firstName && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.firstName}</p>
-                  )}
+              {/* 1. Customer Details */}
+              <div className="space-y-2.5">
+                <p className="text-[15px] font-bold text-neutral-900">
+                  1. Customer Details
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <input
+                      name="firstName"
+                      value={data.firstName}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="First Name *"
+                      className={`${fieldStyle} ${
+                        touched.firstName && errors.firstName
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : ""
+                      }`}
+                    />
+                    {touched.firstName && errors.firstName && (
+                      <p className="text-[13px] font-semibold text-red-600">
+                        {errors.firstName}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <input
+                      name="lastName"
+                      value={data.lastName}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="Last Name *"
+                      className={`${fieldStyle} ${
+                        touched.lastName && errors.lastName
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : ""
+                      }`}
+                    />
+                    {touched.lastName && errors.lastName && (
+                      <p className="text-[13px] font-semibold text-red-600">
+                        {errors.lastName}
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <input
+                      type="email"
+                      name="email"
+                      value={data.email}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="Email *"
+                      className={`${fieldStyle} ${
+                        touched.email && errors.email
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : ""
+                      }`}
+                    />
+                    {touched.email && errors.email && (
+                      <p className="text-[13px] font-semibold text-red-600">
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={data.phone}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="Phone *"
+                      className={`${fieldStyle} ${
+                        touched.phone && errors.phone
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : ""
+                      }`}
+                    />
+                    {touched.phone && errors.phone && (
+                      <p className="text-[13px] font-semibold text-red-600">
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <input
-                    name="lastName"
-                    value={data.lastName}
+                    name="address"
+                    value={data.address}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    placeholder="Last Name"
-                    className={`${field} ${touched.lastName && errors.lastName ? "border-red-500 focus:ring-red-500/20" : ""}`}
+                    placeholder="Address *"
+                    className={`${fieldStyle} ${
+                      touched.address && errors.address
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : ""
+                    }`}
                   />
-                  {touched.lastName && errors.lastName && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.lastName}</p>
+                  {touched.address && errors.address && (
+                    <p className="text-[13px] font-semibold text-red-600">
+                      {errors.address}
+                    </p>
                   )}
                 </div>
               </div>
 
-              {/* Email / Phone */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <input
-                    type="email"
-                    name="email"
-                    value={data.email}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="Email"
-                    className={`${field} ${touched.email && errors.email ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                  />
-                  {touched.email && errors.email && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.email}</p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={data.phone}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="Phone"
-                    className={`${field} ${touched.phone && errors.phone ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                  />
-                  {touched.phone && errors.phone && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.phone}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="space-y-1">
-                <input
-                  name="address"
-                  value={data.address}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Address"
-                  className={`${field} ${touched.address && errors.address ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                />
-                {touched.address && errors.address && (
-                  <p className="text-[13px] font-semibold text-red-600">{errors.address}</p>
-                )}
-              </div>
-
-
-              {/* Areas */}
+              {/* 2. What area/s are you looking to have serviced? */}
               <div className="space-y-2">
                 <p className="text-[15px] font-bold text-neutral-900">
-                  What area/s are you looking to have serviced? *
+                  2. What area/s are you looking to have serviced? *
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {AREA_OPTIONS.map((a) => (
-                    <Chip key={a} label={a} active={areas.includes(a)} onClick={() => toggleArea(a)} />
+                    <Chip
+                      key={a}
+                      label={a}
+                      active={areas.includes(a)}
+                      onClick={() => toggleArea(a)}
+                    />
                   ))}
                 </div>
                 <AnimatePresence>
@@ -368,55 +471,114 @@ export default function HeroQuoteForm() {
                 </AnimatePresence>
               </div>
 
-              {/* Enquiry */}
+              {/* 3. What service do you require? */}
               <div className="space-y-2">
                 <p className="text-[15px] font-bold text-neutral-900">
-                  Is your enquiry about: *
+                  3. What service do you require? *
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {ENQUIRY_OPTIONS.map((o) => (
+                  {SERVICE_OPTIONS.map((s) => (
                     <Chip
-                      key={o}
-                      label={o}
-                      active={enquiries.includes(o)}
-                      onClick={() => toggleEnquiry(o)}
+                      key={s}
+                      label={s}
+                      active={services.includes(s)}
+                      onClick={() => toggleService(s)}
                     />
                   ))}
                 </div>
                 <AnimatePresence>
-                  {enquiryError && (
+                  {serviceError && (
                     <motion.p
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
                       className="text-[13px] font-semibold text-red-600 overflow-hidden"
                     >
-                      Please select at least one option.
+                      Please select at least one service option.
                     </motion.p>
                   )}
                 </AnimatePresence>
               </div>
 
-              {/* Message */}
-              <div className="space-y-1">
+              {/* 4. Are you aware of any damaged tiles? */}
+              <div className="space-y-2">
+                <p className="text-[15px] font-bold text-neutral-900">
+                  4. Are you aware of any damaged tiles? *
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {DAMAGED_TILE_OPTIONS.map((dt) => (
+                    <Chip
+                      key={dt}
+                      label={dt}
+                      active={damagedTiles.includes(dt)}
+                      onClick={() => toggleDamagedTile(dt)}
+                    />
+                  ))}
+                </div>
+                <AnimatePresence>
+                  {damagedTileError && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="text-[13px] font-semibold text-red-600 overflow-hidden"
+                    >
+                      Please select an option.
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 5. Is the area currently leaking? */}
+              <div className="space-y-2">
+                <p className="text-[15px] font-bold text-neutral-900">
+                  5. Is the area currently leaking? *
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {LEAKING_OPTIONS.map((l) => (
+                    <Chip
+                      key={l}
+                      label={l}
+                      active={leaking === l}
+                      onClick={() => selectLeaking(l)}
+                    />
+                  ))}
+                </div>
+                <AnimatePresence>
+                  {leakingError && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="text-[13px] font-semibold text-red-600 overflow-hidden"
+                    >
+                      Please indicate if the area is leaking.
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 6. Tell us more about how we can help */}
+              <div className="space-y-2">
+                <p className="text-[15px] font-bold text-neutral-900">
+                  6. Tell us more about how we can help
+                </p>
                 <textarea
                   name="message"
                   rows={2}
                   value={data.message}
                   onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Tell us more about how we can help."
-                  className={`${field} resize-none ${touched.message && errors.message ? "border-red-500 focus:ring-red-500/20" : ""}`}
+                  placeholder="Tell us more about how we can help..."
+                  className={`${fieldStyle} resize-none`}
                 />
-                {touched.message && errors.message && (
-                  <p className="text-[13px] font-semibold text-red-600">{errors.message}</p>
-                )}
               </div>
 
-              {/* Attach photos */}
+              {/* 7. Attach photos of the area */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <p className="text-[15px] font-bold text-neutral-900">Attach photos</p>
+                  <p className="text-[15px] font-bold text-neutral-900">
+                    7. Attach photos of the area
+                  </p>
                   <div className="relative">
                     <button
                       type="button"
@@ -442,10 +604,13 @@ export default function HeroQuoteForm() {
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
-                          <p className="pr-4 font-semibold text-neutral-900">How to take good photos</p>
+                          <p className="pr-4 font-semibold text-neutral-900">
+                            How to take good photos
+                          </p>
                           <p className="mt-1">
-                            Take clear, well-lit photos of the affected area — a wide shot of the whole
-                            shower/balcony plus a close-up of any cracks, mould or damaged grout.
+                            Take clear, well-lit photos of the affected area — a wide shot
+                            of the whole shower/balcony plus a close-up of any cracks,
+                            mould or damaged tiles.
                           </p>
                         </motion.div>
                       )}
@@ -453,10 +618,21 @@ export default function HeroQuoteForm() {
                   </div>
                 </div>
 
+                <p className="text-[13px] text-neutral-600 leading-snug">
+                  For a faster and more accurate quote, please upload clear photos showing
+                  the entire area and any areas of concern
+                </p>
+
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-neutral-300 bg-white/60 px-4 py-3 text-[15px] font-medium text-neutral-600 transition-all duration-200 hover:border-secondary hover:text-secondary">
                   <Paperclip className="h-4 w-4" />
                   <span>Click to upload photos (optional)</span>
-                  <input type="file" multiple onChange={handlePhotos} className="hidden" />
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handlePhotos}
+                    className="hidden"
+                  />
                 </label>
 
                 <AnimatePresence>
@@ -476,7 +652,12 @@ export default function HeroQuoteForm() {
                           className="flex items-center justify-between gap-2 rounded-sm bg-white/70 px-3 py-1.5 text-[13px] text-neutral-700"
                         >
                           <span className="truncate">{f.name}</span>
-                          <button type="button" onClick={() => removePhoto(i)} className="text-neutral-400 hover:text-red-600 transition-colors" aria-label="Remove photo">
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(i)}
+                            className="text-neutral-400 hover:text-red-600 transition-colors"
+                            aria-label="Remove photo"
+                          >
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </motion.li>
@@ -484,29 +665,6 @@ export default function HeroQuoteForm() {
                     </motion.ul>
                   )}
                 </AnimatePresence>
-              </div>
-
-              {/* Heard about — dropdown */}
-              <div className="space-y-2">
-                <p className="text-[15px] font-bold text-neutral-900">Where have you heard about us? *</p>
-                <div className="relative space-y-1">
-                  <select
-                    name="heard"
-                    value={data.heard}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className={`${field} appearance-none pr-9 ${data.heard ? "" : "text-neutral-400"} ${touched.heard && errors.heard ? "border-red-500 focus:ring-red-500/20" : ""}`}
-                  >
-                    <option value="" disabled>Please select</option>
-                    {HEARD_OPTIONS.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                  {touched.heard && errors.heard && (
-                    <p className="text-[13px] font-semibold text-red-600">{errors.heard}</p>
-                  )}
-                </div>
               </div>
 
               {/* Cloudflare Turnstile (bot verification) */}

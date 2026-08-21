@@ -26,6 +26,9 @@ export interface SubmissionDoc {
   city?: string;
   state?: string;
   enquiry?: string;
+  service?: string;
+  damagedTiles?: string;
+  leaking?: string;
   message?: string;
   areas?: string;
   heard?: string;

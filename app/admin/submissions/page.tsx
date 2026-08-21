@@ -16,6 +16,9 @@ type Submission = {
   city?: string;
   state?: string;
   enquiry?: string;
+  service?: string;
+  damagedTiles?: string;
+  leaking?: string;
   message?: string;
   areas?: string;
   heard?: string;
@@ -344,7 +347,9 @@ function DetailDrawer({
     ["City", item.city],
     ["State", item.state],
     ["Areas to service", item.areas],
-    ["Enquiry about", item.enquiry],
+    ["Service required", item.service || item.enquiry],
+    ["Damaged tiles", item.damagedTiles],
+    ["Is area leaking", item.leaking],
     ["Heard about us", item.heard],
     ["Source page", item.sourcePage],
     ["Photos attached", item.photosCount ? String(item.photosCount) : undefined],

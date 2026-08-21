@@ -125,7 +125,10 @@ export async function POST(req: NextRequest) {
   const address = get("address");
   const city = get("city");
   const state = get("state");
-  const enquiry = get("enquiry");
+  const service = get("service") || get("enquiry");
+  const enquiry = service;
+  const damagedTiles = get("damagedTiles");
+  const leaking = get("leaking");
   const message = get("message");
   const areas = get("areas");
   const heard = get("heard");
@@ -168,7 +171,9 @@ export async function POST(req: NextRequest) {
       ${row("City", city)}
       ${row("State", state)}
       ${row("Areas to service", areas)}
-      ${row("Enquiry about", enquiry)}
+      ${row("Service required", service)}
+      ${row("Damaged tiles", damagedTiles)}
+      ${row("Is area leaking", leaking)}
       ${row("Message", message)}
       ${row("Heard about us", heard)}
       ${row("Photos attached", attachments.length ? String(attachments.length) : "")}
@@ -185,6 +190,9 @@ export async function POST(req: NextRequest) {
     city,
     state,
     enquiry,
+    service,
+    damagedTiles,
+    leaking,
     message,
     areas,
     heard,
