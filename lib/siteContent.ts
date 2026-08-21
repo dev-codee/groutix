@@ -123,7 +123,7 @@ export const DEFAULT_CONTENT: SiteContent = {
     headline:
       "Victoria's Highest Rated & Most Trusted Shower Regrouting & Leak Repair Specialists",
     subheadline:
-      "Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions—without the need for a full renovation.",
+      "Replacing deteriorated grout and failed silicone to repair leaking showers and balconies with long-lasting, 10-year warranty-backed solutions, without the need for a full renovation.",
   },
   cta: {
     heading: "Ready to fix your grout the right way?",

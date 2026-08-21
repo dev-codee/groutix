@@ -213,7 +213,7 @@ export default function HomePage({
           </div>
 
           <div className="relative z-10 flex min-h-[calc(100vh-73px)] flex-col">
-            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-center px-6 py-8 lg:px-10 lg:py-8">
+            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-center justify-center px-6 py-8 pb-24 lg:px-10 lg:py-8 lg:pb-32">
               <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_540px] lg:gap-14">
                 {/* Left: label + headline + paragraph */}
                 <div className="space-y-6 text-white">
