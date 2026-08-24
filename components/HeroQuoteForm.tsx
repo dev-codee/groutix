@@ -1,9 +1,8 @@
-"use client";
-
 import React, { useRef, useState } from "react";
-import { CheckCircle2, Paperclip, Info, X } from "lucide-react";
+import { CheckCircle2, Paperclip, Info, X, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { formatBytes, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -90,12 +89,17 @@ export default function HeroQuoteForm() {
   const [leakingError, setLeakingError] = useState(false);
 
   const [photos, setPhotos] = useState<File[]>([]);
+  const [photoError, setPhotoError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
+
+  const totalPhotoBytes = photos.reduce((acc, f) => acc + f.size, 0);
 
   const validateField = (name: string, value: string) => {
     let error = "";
@@ -185,15 +189,62 @@ export default function HeroQuoteForm() {
   };
 
   const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files)
-      setPhotos((prev) => [...prev, ...Array.from(e.target.files!)]);
+    if (!e.target.files || e.target.files.length === 0) return;
+    const newFiles = Array.from(e.target.files);
+
+    // Reset input value so selecting the same files again fires onChange
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    // Check if any non-image file was selected
+    const nonImage = newFiles.find((f) => !f.type.startsWith("image/"));
+    if (nonImage) {
+      setPhotoError(
+        `"${nonImage.name}" is not a supported image. Please select JPG, PNG, or WebP files.`
+      );
+      return;
+    }
+
+    const updatedPhotos = [...photos, ...newFiles];
+    const newTotalSize = updatedPhotos.reduce((acc, f) => acc + f.size, 0);
+
+    if (newTotalSize > MAX_TOTAL_BYTES) {
+      setPhotoError(
+        `Total photo size (${formatBytes(newTotalSize)}) exceeds our ${formatBytes(
+          MAX_TOTAL_BYTES
+        )} upload limit. Please select fewer or smaller photos.`
+      );
+    } else {
+      setPhotoError("");
+    }
+
+    setPhotos(updatedPhotos);
   };
-  const removePhoto = (i: number) =>
-    setPhotos((prev) => prev.filter((_, idx) => idx !== i));
+
+  const removePhoto = (i: number) => {
+    setPhotos((prev) => {
+      const next = prev.filter((_, idx) => idx !== i);
+      const remainingBytes = next.reduce((acc, f) => acc + f.size, 0);
+      if (remainingBytes <= MAX_TOTAL_BYTES) {
+        setPhotoError("");
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
+
+    if (photoError || totalPhotoBytes > MAX_TOTAL_BYTES) {
+      setSubmitError(
+        `Total photo size (${formatBytes(totalPhotoBytes)}) exceeds our ${formatBytes(
+          MAX_TOTAL_BYTES
+        )} upload limit. Please remove a photo before submitting.`
+      );
+      return;
+    }
 
     const newErrors: Record<string, string> = {};
     const requiredKeys = ["firstName", "lastName", "email", "phone", "address"];
@@ -623,10 +674,16 @@ export default function HeroQuoteForm() {
                   the entire area and any areas of concern
                 </p>
 
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-dashed border-neutral-300 bg-white/60 px-4 py-3 text-[15px] font-medium text-neutral-600 transition-all duration-200 hover:border-secondary hover:text-secondary">
-                  <Paperclip className="h-4 w-4" />
-                  <span>Click to upload photos (optional)</span>
+                <label className="flex flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-neutral-300 bg-white/60 px-4 py-3 text-center transition-all duration-200 cursor-pointer hover:border-secondary hover:bg-white/90">
+                  <div className="flex items-center gap-2 text-[14px] font-medium text-neutral-700">
+                    <Paperclip className="h-4 w-4 text-neutral-500" />
+                    <span>Click to upload photos (optional)</span>
+                  </div>
+                  <span className="text-[11px] text-neutral-500 font-medium">
+                    JPG, PNG, WebP • Max 4MB total
+                  </span>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     multiple
                     accept="image/*"
@@ -635,34 +692,69 @@ export default function HeroQuoteForm() {
                   />
                 </label>
 
+                {/* Inline Photo Validation Error */}
                 <AnimatePresence>
-                  {photos.length > 0 && (
-                    <motion.ul
+                  {photoError && (
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="space-y-1 overflow-hidden"
+                      className="overflow-hidden"
                     >
-                      {photos.map((f, i) => (
-                        <motion.li
-                          key={i}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="flex items-center justify-between gap-2 rounded-sm bg-white/70 px-3 py-1.5 text-[13px] text-neutral-700"
-                        >
-                          <span className="truncate">{f.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(i)}
-                            className="text-neutral-400 hover:text-red-600 transition-colors"
-                            aria-label="Remove photo"
+                      <div className="flex items-start gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-snug text-amber-900">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        <span>{photoError}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Uploaded Photos List */}
+                <AnimatePresence>
+                  {photos.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-1.5 overflow-hidden"
+                    >
+                      <ul className="space-y-1">
+                        {photos.map((f, i) => (
+                          <motion.li
+                            key={`${f.name}-${i}`}
+                            initial={{ opacity: 0, x: -15 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className="flex items-center justify-between gap-2 rounded-sm border border-neutral-200/80 bg-white/80 px-3 py-1.5 text-[13px] text-neutral-700"
                           >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </motion.li>
-                      ))}
-                    </motion.ul>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="truncate font-medium">{f.name}</span>
+                              <span className="shrink-0 text-[11px] text-neutral-500">
+                                ({formatBytes(f.size)})
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(i)}
+                              className="shrink-0 text-neutral-400 hover:text-red-600 transition-colors p-0.5"
+                              aria-label={`Remove photo ${f.name}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </motion.li>
+                        ))}
+                      </ul>
+
+                      {/* Photo Summary */}
+                      <div className="flex items-center justify-between px-1 text-[11px] text-neutral-500 font-medium">
+                        <span>
+                          {photos.length} {photos.length === 1 ? "photo" : "photos"} attached
+                        </span>
+                        <span className={totalPhotoBytes > MAX_TOTAL_BYTES ? "font-bold text-red-600" : ""}>
+                          Total: {formatBytes(totalPhotoBytes)} / {formatBytes(MAX_TOTAL_BYTES)}
+                        </span>
+                      </div>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>

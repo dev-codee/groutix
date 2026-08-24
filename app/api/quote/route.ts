@@ -141,11 +141,20 @@ export async function POST(req: NextRequest) {
 
   // Collect optional photo attachments (Brevo wants base64-encoded content).
   const photos = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
+
   let totalBytes = 0;
-  const attachments: EmailAttachment[] = [];
   for (const file of photos) {
     totalBytes += file.size;
-    if (totalBytes > MAX_ATTACHMENT_BYTES) break;
+  }
+  if (totalBytes > MAX_ATTACHMENT_BYTES) {
+    return NextResponse.json(
+      { error: "Total attachments exceed the maximum size limit. Please upload smaller images." },
+      { status: 400 }
+    );
+  }
+
+  const attachments: EmailAttachment[] = [];
+  for (const file of photos) {
     const buffer = Buffer.from(await file.arrayBuffer());
     attachments.push({
       name: file.name || "photo",
