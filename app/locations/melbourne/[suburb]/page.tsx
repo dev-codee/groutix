@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Melbourne. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/melbourne/${suburb}` },
     openGraph: {
-      title: `Shower Regrouting ${name} | Melbourne — GROUTIX`,
+      title: `Shower Regrouting ${name} | Melbourne | GROUTIX`,
       description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Melbourne. Free quotes and specialist workmanship.`,
       url: `/locations/melbourne/${suburb}`,
       type: "website",

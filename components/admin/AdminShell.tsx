@@ -25,7 +25,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/admin/logout", { method: "POST" });
     } catch {
-      /* ignore — cookie may already be gone */
+      /* ignore - cookie may already be gone */
     }
     router.replace(`${basePath}/login`);
     router.refresh();

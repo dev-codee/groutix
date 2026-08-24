@@ -174,7 +174,7 @@ export const DEFAULT_CONTENT: SiteContent = {
   testimonials: [
     {
       name: "Sarah Jenkins",
-      location: "Perth, WA",
+      location: "Geelong, VIC",
       rating: 5,
       title: "Super professional & quick!",
       content:
@@ -192,7 +192,7 @@ export const DEFAULT_CONTENT: SiteContent = {
     },
     {
       name: "Rebecca Taylor",
-      location: "Sydney, NSW",
+      location: "Frankston, VIC",
       rating: 5,
       title: "Mould is totally gone",
       content:

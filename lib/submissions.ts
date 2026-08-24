@@ -54,7 +54,7 @@ let indexesEnsured = false;
 async function collection(): Promise<Collection<SubmissionDoc>> {
   const db = await getDb();
   const col = db.collection<SubmissionDoc>("submissions");
-  // Ensure the indexes the admin panel filters/sorts by — but only once per
+  // Ensure the indexes the admin panel filters/sorts by - but only once per
   // process, so it doesn't add a round-trip to every submission/query.
   if (!indexesEnsured) {
     try {
@@ -72,7 +72,7 @@ async function collection(): Promise<Collection<SubmissionDoc>> {
 }
 
 /**
- * Persist a submission. Never throws — logs and returns null on failure so the
+ * Persist a submission. Never throws - logs and returns null on failure so the
  * caller (a public form route) can carry on delivering the email.
  */
 export async function recordSubmission(

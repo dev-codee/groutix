@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Bespoke frameless, semi-frameless, and sliding shower screens custom-measured and installed across Victoria. Premium toughened safety glass and expert fitting. Request a free quote.",
   alternates: { canonical: "/shower-screens" },
   openGraph: {
-    title: "Custom Shower Screens & Enclosures — Groutix",
+    title: "Custom Shower Screens & Enclosures | Groutix",
     description:
       "Explore bespoke frameless pivot, sliding, semi-frameless Neptune & Optima shower screens, and SwiftCloset wardrobe systems.",
     url: "/shower-screens",

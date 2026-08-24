@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Frankston. Groutix services homes and apartments throughout Frankston with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/frankston" },
   openGraph: {
-    title: "Shower Regrouting Frankston — Groutix",
+    title: "Shower Regrouting Frankston | Groutix",
     description:
       "Frankston shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/frankston",

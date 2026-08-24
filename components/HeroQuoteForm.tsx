@@ -659,7 +659,7 @@ export default function HeroQuoteForm() {
                             How to take good photos
                           </p>
                           <p className="mt-1">
-                            Take clear, well-lit photos of the affected area — a wide shot
+                            Take clear, well-lit photos of the affected area (a wide shot
                             of the whole shower/balcony plus a close-up of any cracks,
                             mould or damaged tiles.
                           </p>

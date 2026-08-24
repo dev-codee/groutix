@@ -182,7 +182,7 @@ export default function TrustedMarquee() {
         TRUSTED ACROSS VICTORIA
       </p>
 
-      {/* Marquee track — two identical sets for seamless loop */}
+      {/* Marquee track - two identical sets for seamless loop */}
       <div className="relative w-full overflow-hidden">
         {/* Left / Right fade edges */}
         <div

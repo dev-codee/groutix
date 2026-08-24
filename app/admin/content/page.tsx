@@ -48,7 +48,7 @@ export default function ContentPage() {
       else {
         setContent(data.content ?? null);
         if (data.mongo === false)
-          setError("Database is not configured — you can preview fields but saving is disabled.");
+          setError("Database is not configured - you can preview fields but saving is disabled.");
       }
     } catch {
       setError("Network error while loading content.");

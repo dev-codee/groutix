@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Kilmore. Groutix services homes and apartments throughout Kilmore with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/kilmore" },
   openGraph: {
-    title: "Shower Regrouting Kilmore — Groutix",
+    title: "Shower Regrouting Kilmore | Groutix",
     description:
       "Kilmore shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/kilmore",

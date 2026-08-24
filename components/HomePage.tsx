@@ -139,7 +139,7 @@ const SERVICES = [
   {
     slug: "shower-base-repair",
     title: "Shower Base Repair",
-    desc: "Repair cracked or leaking shower floors with targeted base restoration that rebuilds waterproofing integrity—no full tear-out required.",
+    desc: "Repair cracked or leaking shower floors with targeted base restoration that rebuilds waterproofing integrity without requiring a full tear-out.",
   },
   {
     slug: "leaking-shower-repair",
@@ -199,7 +199,7 @@ export default function HomePage({
       <Navbar />
       <main>
         {/* ══════════════════════════════════════
-            SECTION 1 — HERO
+            SECTION 1 - HERO
             Split bg: blue tiles left, photo right
             Left: label + title + desc
             Right: glass Quote Form
@@ -247,7 +247,7 @@ export default function HomePage({
               </div>
             </div>
 
-            {/* Bottom badge strip — full bleed */}
+            {/* Bottom badge strip - full bleed */}
             <div className="grid grid-cols-1 divide-y divide-white/20 bg-[#001F97] md:grid-cols-3 md:divide-x md:divide-y-0">
               {[
                 {
@@ -294,7 +294,7 @@ export default function HomePage({
         </section>
 
         {/* ══════════════════════════════════════
-            SECTION 2 — TRUSTED ACROSS AUSTRALIA (Marquee)
+            SECTION 2 - TRUSTED ACROSS AUSTRALIA (Marquee)
         ══════════════════════════════════════ */}
         <TrustedMarquee />
 
@@ -357,7 +357,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION — OUR SERVICES
+            SECTION - OUR SERVICES
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -421,7 +421,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 5 — LEAKING SHOWERS START WITH GROUT PROBLEMS
+            SECTION 5 - LEAKING SHOWERS START WITH GROUT PROBLEMS
             Left: Image
             Right: Heading + 3 problem badges
         ══════════════════════════════════════ */}
@@ -495,7 +495,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 6 — A PERMANENT SOLUTION
+            SECTION 6 - A PERMANENT SOLUTION
         ══════════════════════════════════════ */}
         <AnimatedSection
           className="py-16 lg:py-24 relative overflow-hidden"
@@ -529,7 +529,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 7 — GAIN PEACE OF MIND CTA BANNER
+            SECTION 7 - GAIN PEACE OF MIND CTA BANNER
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-primary py-14 px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
@@ -555,7 +555,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 8 — CLIENT REVIEWS & TESTIMONIALS
+            SECTION 8 - CLIENT REVIEWS & TESTIMONIALS
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -573,7 +573,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 9 — Groutix WARRANTY
+            SECTION 9 - Groutix WARRANTY
             Left: Text + 2 images
             Right: Big image
         ══════════════════════════════════════ */}
@@ -630,7 +630,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 10 — WHY CHOOSE US?
+            SECTION 10 - WHY CHOOSE US?
             Left: Heading + checklist
             Right: Image
         ══════════════════════════════════════ */}

@@ -4,7 +4,7 @@ import { AdminProvider } from "@/components/admin/AdminProvider";
 
 // Keep the whole admin area out of search engines regardless of the URL used.
 export const metadata: Metadata = {
-  title: "Admin — Groutix",
+  title: "Admin - Groutix",
   robots: { index: false, follow: false, nocache: true },
 };
 

@@ -96,7 +96,7 @@ export default function ContactClient() {
     { icon: <Phone className="h-5 w-5 text-secondary" />, label: "Call Us", value: phone, href: tel },
     { icon: <Mail className="h-5 w-5 text-secondary" />, label: "Email Us", value: email, href: mailto },
     { icon: <Clock className="h-5 w-5 text-secondary" />, label: "Our Hours", value: business.hours || "Mon – Fri: 8:00am – 5:00pm", href: null },
-    { icon: <MapPin className="h-5 w-5 text-secondary" />, label: "Areas We Serve", value: business.areasServed?.join(", ") || "Perth, Melbourne, Sydney, Brisbane, Adelaide, Geelong", href: "/locations" },
+    { icon: <MapPin className="h-5 w-5 text-secondary" />, label: "Areas We Serve", value: business.areasServed?.join(", ") || "Melbourne, Geelong, Ballarat, Frankston, Lilydale, Yarra Glen, Kilmore", href: "/locations" },
   ];
 
   return (

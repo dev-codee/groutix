@@ -38,7 +38,7 @@ function clientIp(req: NextRequest): string {
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) {
-    console.warn("TURNSTILE_SECRET_KEY not set — skipping CAPTCHA verification.");
+    console.warn("TURNSTILE_SECRET_KEY not set - skipping CAPTCHA verification.");
     return true;
   }
   if (!token) return false;
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid form submission." }, { status: 400 });
   }
 
-  // Bot check — must pass before we do any work or send any mail.
+  // Bot check - must pass before we do any work or send any mail.
   const captchaToken = ((form.get("cf-turnstile-response") as string | null) ?? "").trim();
   if (!(await verifyTurnstile(captchaToken, ip))) {
     return NextResponse.json(
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
         fromName: INTERNAL_FROM_NAME,
         fromEmail: FROM_EMAIL,
         replyTo: email || undefined,
-        subject: `New Quote Request — ${fullName || "Website"}`,
+        subject: `New Quote Request: ${fullName || "Website"}`,
         html: internalHtml,
         attachments: attachments.length ? attachments : undefined,
       });
@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
         : ""
     }
     <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">
-      — The Groutix Team
+      The Groutix Team
     </p>
   </div>`;
 
@@ -289,7 +289,7 @@ export async function POST(req: NextRequest) {
         fromName: CUSTOMER_FROM_NAME,
         fromEmail: FROM_EMAIL,
         replyTo: TO_EMAIL,
-        subject: "We've received your request — Groutix",
+        subject: "We've received your request | Groutix",
         html: customerHtml,
       });
     } catch (err) {
@@ -299,7 +299,7 @@ export async function POST(req: NextRequest) {
 
   // Await the email work before responding. On serverless hosts the instance
   // is frozen/torn down the moment we return, which would abandon any pending
-  // (un-awaited) email send — that's exactly why quotes were recording but the
+  // (un-awaited) email send - that's exactly why quotes were recording but the
   // notification email never arrived and emailDelivered stayed false.
   await processEmails();
 

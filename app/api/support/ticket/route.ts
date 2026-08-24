@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       fromName: "Groutix Support Chat",
       fromEmail: FROM_EMAIL,
       replyTo: email,
-      subject: `New Support Request — ${name}`,
+      subject: `New Support Request: ${name}`,
       html: internalHtml,
     });
   } catch (error) {
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
           CONTACT_PHONE
         )}</a>.
       </p>
-      <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">- The Groutix Team</p>
+      <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">The Groutix Team</p>
     </div>`;
 
   try {
@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
       fromName: "Groutix",
       fromEmail: FROM_EMAIL,
       replyTo: TO_EMAIL,
-      subject: "We've received your support request - Groutix",
+      subject: "We've received your support request | Groutix",
       html: customerHtml,
     });
   } catch (error) {

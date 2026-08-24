@@ -226,7 +226,7 @@ const SERVICES = [
   {
     slug: "shower-base-repair",
     title: "Shower Base Repair",
-    desc: "Repair cracked or leaking shower floors with targeted base restoration that rebuilds waterproofing integrity—no full tear-out required.",
+    desc: "Repair cracked or leaking shower floors with targeted base restoration that rebuilds waterproofing integrity without requiring a full tear-out.",
   },
   {
     slug: "leaking-shower-repair",
@@ -349,7 +349,7 @@ export default function CityPageClient({
             />
           </AnimatedImage>
         </div>
-        {/* Bottom Badges — floating white cards matching service page style */}
+        {/* Bottom Badges - floating white cards matching service page style */}
         <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10 pointer-events-none">
           <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
             {[

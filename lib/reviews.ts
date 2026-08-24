@@ -3,9 +3,9 @@
 // it transparently falls back to the curated reviews below so the site never
 // renders an empty testimonials section.
 //
-// Required env vars (set in .env.local — see .env.example):
-//   GOOGLE_PLACES_API_KEY  — a Google Cloud API key with "Places API (New)" enabled
-//   GOOGLE_PLACE_ID        — the Place ID of the Groutix business profile
+// Required env vars (set in .env.local - see .env.example):
+//   GOOGLE_PLACES_API_KEY  - a Google Cloud API key with "Places API (New)" enabled
+//   GOOGLE_PLACE_ID        - the Place ID of the Groutix business profile
 //
 // This module must only be imported from server components / route handlers so
 // the API key is never shipped to the browser.
@@ -74,7 +74,7 @@ const MIN_RATING = 4;
  * @returns      Live Google reviews, or FALLBACK_REVIEWS if unavailable.
  *
  * Google's Places API returns at most 5 reviews and picks the "most relevant"
- * ones itself — this is a documented API limitation, not something we control.
+ * ones itself - this is a documented API limitation, not something we control.
  */
 export async function getReviews(limit = 3): Promise<Review[]> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;

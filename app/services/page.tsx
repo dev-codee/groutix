@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Explore Groutix services including shower regrouting, grout repair, leaking shower repair, silicone resealing and minor tile restoration.",
   alternates: { canonical: "/services" },
   openGraph: {
-    title: "Our Services — Groutix",
+    title: "Our Services | Groutix",
     description: "Browse specialist grout and shower repair services from Groutix, including regrouting, resealing and tile restoration.",
     url: "/services",
     type: "website",

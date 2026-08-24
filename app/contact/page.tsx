@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Request a free quote for shower regrouting, grout repair, leaking shower repair or tile sealing. Call Groutix or send your details online.",
   alternates: { canonical: "/contact" },
   openGraph: {
-    title: "Contact & Free Quote — Groutix",
+    title: "Contact & Free Quote | Groutix",
     description: "Talk to Groutix about shower regrouting, leaking shower repairs and grout restoration. Fast quotes and clear advice.",
     url: "/contact",
     type: "website",

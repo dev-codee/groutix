@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Yarra Glen. Groutix services homes and apartments throughout Yarra Glen with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/yarra-glen" },
   openGraph: {
-    title: "Shower Regrouting Yarra Glen — Groutix",
+    title: "Shower Regrouting Yarra Glen | Groutix",
     description:
       "Yarra Glen shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/yarra-glen",

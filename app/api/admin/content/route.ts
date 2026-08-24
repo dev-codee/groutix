@@ -140,7 +140,7 @@ function sanitize(body: Record<string, any>): SiteContentOverrides {
 export async function PUT(req: NextRequest) {
   if (!isMongoConfigured()) {
     return NextResponse.json(
-      { error: "Database is not configured — content cannot be saved." },
+      { error: "Database is not configured - content cannot be saved." },
       { status: 503 }
     );
   }

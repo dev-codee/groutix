@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Geelong, the Bellarine and Surf Coast, backed by a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/geelong" },
   openGraph: {
-    title: "Shower Regrouting Geelong — Groutix",
+    title: "Shower Regrouting Geelong | Groutix",
     description:
       "Geelong shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/geelong",

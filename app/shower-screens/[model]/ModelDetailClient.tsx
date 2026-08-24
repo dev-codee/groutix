@@ -34,7 +34,7 @@ function ImgBox({ label, aspect = "aspect-[16/9]" }: { label: string; aspect?: s
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:20px_20px]" />
       <div className="relative text-center px-4 space-y-1.5 z-10">
         <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">{label}</p>
-        <p className="text-xs text-neutral-300">Picture space — add manually</p>
+        <p className="text-xs text-neutral-300">Picture space - add manually</p>
       </div>
     </div>
   );

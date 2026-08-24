@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Find local Groutix service areas for shower regrouting, grout repair and leaking shower solutions across Victoria.",
   alternates: { canonical: "/locations" },
   openGraph: {
-    title: "Locations — Groutix",
+    title: "Locations | Groutix",
     description: "See where Groutix provides specialist shower regrouting and grout repair services across Victoria.",
     url: "/locations",
     type: "website",

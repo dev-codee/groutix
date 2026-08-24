@@ -7,7 +7,7 @@
 //
 // It stays within a serverless request's time budget: attempts and timeout are
 // tuned so the worst case is bounded. When a send still fails after all
-// retries it throws — callers persist emailDelivered:false so the lead is
+// retries it throws - callers persist emailDelivered:false so the lead is
 // flagged in the admin panel and can be re-sent, never silently dropped.
 
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
@@ -33,7 +33,7 @@ export type SendEmailArgs = {
 };
 
 // Brevo rejects some attachment extensions (webp/heic/heif/svg). Phone photos
-// are commonly HEIC, so relabel those to .jpg — the bytes are passed through
+// are commonly HEIC, so relabel those to .jpg - the bytes are passed through
 // unchanged, we only correct the filename Brevo validates against.
 function normalizeAttachments(attachments?: EmailAttachment[]) {
   if (!attachments?.length) return undefined;

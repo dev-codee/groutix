@@ -4,7 +4,7 @@
 // prod, so we cache a single MongoClient (and its connection promise) on the
 // global object to avoid exhausting the connection pool. Reads MONGODB_URI at
 // call time so the rest of the site keeps working even when Mongo isn't
-// configured — callers should treat a thrown/absent client as "persistence
+// configured - callers should treat a thrown/absent client as "persistence
 // unavailable" and never let it break the user-facing flow.
 
 import { MongoClient, type Db } from "mongodb";

@@ -116,7 +116,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across ${region.name}. Groutix services homes and apartments throughout ${region.name} with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/${region.slug}" },
   openGraph: {
-    title: "Shower Regrouting ${region.name} — Groutix",
+    title: "Shower Regrouting ${region.name} | Groutix",
     description:
       "${region.name} shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/${region.slug}",
@@ -186,7 +186,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: \`Specialist shower regrouting, grout repair and leaking shower services in \${name}, ${region.name}. Professional wet-area repairs backed by a 10-year waterproof warranty.\`,
     alternates: { canonical: \`/locations/${region.slug}/\${suburb}\` },
     openGraph: {
-      title: \`Shower Regrouting \${name} | ${region.name} — GROUTIX\`,
+      title: \`Shower Regrouting \${name} | ${region.name} | GROUTIX\`,
       description: \`Local shower regrouting, grout repair and leaking shower solutions in \${name}, ${region.name}. Free quotes and specialist workmanship.\`,
       url: \`/locations/${region.slug}/\${suburb}\`,
       type: "website",

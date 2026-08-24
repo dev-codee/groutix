@@ -1,8 +1,8 @@
 // Central SEO/site config, reused by metadata, sitemap, robots and JSON-LD.
 //
 // IMPORTANT: set NEXT_PUBLIC_SITE_URL in .env.local (and in production) to your
-// real canonical domain. Everything below — canonical URLs, sitemap, Open Graph
-// and structured data — derives from it.
+// real canonical domain. Everything below | canonical URLs, sitemap, Open Graph
+// and structured data | derives from it.
 
 export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.Groutix.com.au"
@@ -13,7 +13,7 @@ export const OG_IMAGE = "/img11.jpeg";
 
 export const BUSINESS = {
   name: "Groutix",
-  legalName: "Groutix — Epoxy Regrouting, Shower & Balcony Leak Repairs",
+  legalName: "Groutix | Epoxy Regrouting, Shower & Balcony Leak Repairs",
   description:
     "Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.",
   phone: "7023 8094",
@@ -26,7 +26,15 @@ export const BUSINESS = {
     country: "AU",
   },
   geo: { lat: -37.6988292, lng: 144.9004402 },
-  areasServed: ["Perth", "Melbourne", "Sydney", "Brisbane", "Adelaide", "Geelong"],
+  areasServed: [
+    "Melbourne",
+    "Geelong",
+    "Ballarat",
+    "Frankston",
+    "Lilydale",
+    "Yarra Glen",
+    "Kilmore",
+  ],
   // Fallback rating used when live Google data is unavailable. Keep in sync with
   // the Google Business Profile (see getBusinessRating in lib/reviews.ts).
   rating: { value: 5, count: 236 },

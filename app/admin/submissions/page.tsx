@@ -254,13 +254,13 @@ export default function SubmissionsPage() {
                       {item.type === "quote" ? "Quote" : "Support"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.name || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{item.name || "-"}</td>
                   <td className="hidden px-4 py-3 text-slate-500 md:table-cell">
-                    <div className="truncate">{item.email || "—"}</div>
+                    <div className="truncate">{item.email || "-"}</div>
                     <div className="text-xs text-slate-400">{item.phone || ""}</div>
                   </td>
                   <td className="hidden max-w-xs truncate px-4 py-3 text-slate-500 lg:table-cell">
-                    {item.enquiry || item.issue || item.message || "—"}
+                    {item.enquiry || item.issue || item.message || "-"}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -365,7 +365,7 @@ function DetailDrawer({
             <div className="text-xs uppercase tracking-wide text-slate-400">
               {item.type === "quote" ? "Quote request" : "Support ticket"}
             </div>
-            <h2 className="text-lg font-bold text-slate-900">{item.name || "—"}</h2>
+            <h2 className="text-lg font-bold text-slate-900">{item.name || "-"}</h2>
             <div className="text-xs text-slate-400">{fmtDate(item.createdAt)}</div>
           </div>
           <button

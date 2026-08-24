@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Lilydale. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/lilydale/${suburb}` },
     openGraph: {
-      title: `Shower Regrouting ${name} | Lilydale — GROUTIX`,
+      title: `Shower Regrouting ${name} | Lilydale | GROUTIX`,
       description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Lilydale. Free quotes and specialist workmanship.`,
       url: `/locations/lilydale/${suburb}`,
       type: "website",

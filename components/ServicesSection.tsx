@@ -93,7 +93,7 @@ export default function ServicesSection() {
           </p>
         </div>
 
-        {/* Services Grid — image top, content below (matching reference site cards) */}
+        {/* Services Grid - image top, content below (matching reference site cards) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service, i) => (
             <motion.div

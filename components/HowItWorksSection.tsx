@@ -87,7 +87,7 @@ export default function HowItWorksSection() {
               </div>
           </div>
 
-          {/* Before & After — panoramic wide image */}
+          {/* Before & After - panoramic wide image */}
           <ImgBox label="Before & After Showcase Image" aspect="aspect-[21/8]" />
         </div>
       </section>
@@ -108,7 +108,7 @@ export default function HowItWorksSection() {
               </p>
             </div>
 
-          {/* Steps Grid — each step has its own image */}
+          {/* Steps Grid - each step has its own image */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {steps.map((step, i) => (
               <div key={i} className="space-y-4">

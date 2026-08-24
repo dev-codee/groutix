@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Ballarat. Groutix services homes and apartments throughout Ballarat with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/ballarat" },
   openGraph: {
-    title: "Shower Regrouting Ballarat — Groutix",
+    title: "Shower Regrouting Ballarat | Groutix",
     description:
       "Ballarat shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/ballarat",

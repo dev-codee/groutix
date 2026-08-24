@@ -127,7 +127,7 @@ export const SHOWER_SCREEN_MODELS: ShowerScreenModel[] = [
       "Versatile wardrobe sliding door systems designed for quick installation with mirror, back-painted glass, or timber inserts.",
     description: [
       "Extend your interior upgrades beyond the shower with SwiftCloset Wardrobe Systems. Designed for seamless integration into built-in and cavity wardrobe spaces, SwiftCloset combines rapid manufacturing turnarounds with versatile customization.",
-      "Enjoy a fast 5 to 10 business day turnaround without compromising quality. Personalize your robe doors with your choice of insert materials—including full-length safety mirrors, modern painted glass, laminated board, or paint-ready plaster.",
+      "Enjoy a fast 5 to 10 business day turnaround without compromising quality. Personalize your robe doors with your choice of insert materials, including full-length safety mirrors, modern painted glass, laminated board, or paint-ready plaster.",
       "Complemented by durable aluminum frames in classic and modern tones, SwiftCloset brings effortless organization and modern style to bedrooms and hallway storage.",
     ],
     features: [
@@ -166,7 +166,7 @@ export const SHOWER_SCREEN_MODELS: ShowerScreenModel[] = [
       "Continuous magnetic door closure for a secure, watertight seal",
       "Translucent spray flap with splash deflector on pivoting door",
       "Semi-frameless layout for unobstructed forward visibility",
-      "Standard height options: 1850mm and 1950mm with wide width options (740mm–1820mm)",
+      "Standard height options: 1850mm and 1950mm with wide width options (740mm to 1820mm)",
       "Optional Nano4-Glass ceramic coating to shield glass against limescale",
     ],
     specs: {

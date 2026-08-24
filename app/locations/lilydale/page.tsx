@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Lilydale. Groutix services homes and apartments throughout Lilydale with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/lilydale" },
   openGraph: {
-    title: "Shower Regrouting Lilydale — Groutix",
+    title: "Shower Regrouting Lilydale | Groutix",
     description:
       "Lilydale shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/lilydale",

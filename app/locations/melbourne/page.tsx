@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Professional shower regrouting, grout repair and leaking shower solutions across Melbourne. Groutix services homes and apartments throughout Melbourne with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/melbourne" },
   openGraph: {
-    title: "Shower Regrouting Melbourne — Groutix",
+    title: "Shower Regrouting Melbourne | Groutix",
     description:
       "Melbourne shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
     url: "/locations/melbourne",
