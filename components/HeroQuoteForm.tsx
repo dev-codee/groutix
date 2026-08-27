@@ -1,10 +1,12 @@
 import React, { useRef, useState } from "react";
-import { CheckCircle2, Paperclip, Info, X, AlertCircle } from "lucide-react";
+import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { formatBytes, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+const CUSTOMER_TYPE_OPTIONS = ["Tenant", "Owner", "Property Manager"];
 
 const AREA_OPTIONS = [
   "Main Bathroom",
@@ -64,10 +66,17 @@ function Chip({
   );
 }
 
+type TenantInfo = {
+  name: string;
+  phone: string;
+  email: string;
+};
+
 export default function HeroQuoteForm() {
   const [data, setData] = useState({
     firstName: "",
     lastName: "",
+    agency: "",
     email: "",
     phone: "",
     address: "",
@@ -84,6 +93,16 @@ export default function HeroQuoteForm() {
 
   const [damagedTiles, setDamagedTiles] = useState<string[]>([]);
   const [damagedTileError, setDamagedTileError] = useState(false);
+
+  const [customerType, setCustomerType] = useState<string>("");
+  const [customerTypeError, setCustomerTypeError] = useState(false);
+
+  const [tenants, setTenants] = useState<TenantInfo[]>([
+    { name: "", phone: "", email: "" },
+  ]);
+  const [tenantErrors, setTenantErrors] = useState<
+    Record<number, { name?: string; phone?: string }>
+  >({});
 
   const [leaking, setLeaking] = useState<string>("");
   const [leakingError, setLeakingError] = useState(false);
@@ -104,6 +123,7 @@ export default function HeroQuoteForm() {
   const validateField = (name: string, value: string) => {
     let error = "";
     if (!value.trim()) {
+      if (name === "agency" || name === "message") return "";
       error = "This field is required";
     } else {
       switch (name) {
@@ -188,6 +208,58 @@ export default function HeroQuoteForm() {
     });
   };
 
+  const selectCustomerType = (v: string) => {
+    setCustomerType((prev) => {
+      const next = prev === v ? "" : v;
+      if (customerTypeError && next) setCustomerTypeError(false);
+      return next;
+    });
+  };
+
+  const addTenant = () => {
+    if (tenants.length < 6) {
+      setTenants((prev) => [...prev, { name: "", phone: "", email: "" }]);
+    }
+  };
+
+  const removeTenant = (idx: number) => {
+    setTenants((prev) => prev.filter((_, i) => i !== idx));
+    setTenantErrors((prev) => {
+      const next = { ...prev };
+      delete next[idx];
+      return next;
+    });
+  };
+
+  const setTenantCount = (count: number) => {
+    setTenants((prev) => {
+      if (count > prev.length) {
+        const added: TenantInfo[] = Array.from(
+          { length: count - prev.length },
+          () => ({ name: "", phone: "", email: "" })
+        );
+        return [...prev, ...added];
+      } else if (count < prev.length) {
+        return prev.slice(0, count);
+      }
+      return prev;
+    });
+  };
+
+  const updateTenant = (idx: number, field: keyof TenantInfo, val: string) => {
+    setTenants((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: val };
+      return next;
+    });
+    if (tenantErrors[idx]?.[field as "name" | "phone"]) {
+      setTenantErrors((prev) => ({
+        ...prev,
+        [idx]: { ...prev[idx], [field]: undefined },
+      }));
+    }
+  };
+
   const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const newFiles = Array.from(e.target.files);
@@ -257,11 +329,35 @@ export default function HeroQuoteForm() {
       requiredKeys.reduce((acc, key) => ({ ...acc, [key]: true }), {})
     );
 
+    const hasCustomerTypeError = !customerType;
     const hasAreaError = areas.length === 0;
     const hasServiceError = services.length === 0;
     const hasDamagedTileError = damagedTiles.length === 0;
     const hasLeakingError = !leaking;
 
+    const newTenantErrors: Record<number, { name?: string; phone?: string }> = {};
+    let hasTenantError = false;
+    if (customerType === "Property Manager") {
+      tenants.forEach((t, i) => {
+        if (i === 0 || t.name.trim() || t.phone.trim()) {
+          const errs: { name?: string; phone?: string } = {};
+          if (!t.name.trim()) {
+            errs.name = "Name required";
+            hasTenantError = true;
+          }
+          if (!t.phone.trim()) {
+            errs.phone = "Phone required";
+            hasTenantError = true;
+          }
+          if (errs.name || errs.phone) {
+            newTenantErrors[i] = errs;
+          }
+        }
+      });
+    }
+    setTenantErrors(newTenantErrors);
+
+    setCustomerTypeError(hasCustomerTypeError);
     setAreaError(hasAreaError);
     setServiceError(hasServiceError);
     setDamagedTileError(hasDamagedTileError);
@@ -269,6 +365,8 @@ export default function HeroQuoteForm() {
 
     if (
       Object.keys(newErrors).length !== 0 ||
+      hasCustomerTypeError ||
+      hasTenantError ||
       hasAreaError ||
       hasServiceError ||
       hasDamagedTileError ||
@@ -285,7 +383,17 @@ export default function HeroQuoteForm() {
     setLoading(true);
     try {
       const payload = new FormData();
-      Object.entries(data).forEach(([key, value]) => payload.append(key, value));
+      payload.append("customerType", customerType);
+      if (data.agency) payload.append("agency", data.agency);
+      if (customerType === "Property Manager") {
+        const validTenants = tenants.filter((t) => t.name.trim() || t.phone.trim());
+        if (validTenants.length > 0) {
+          payload.append("tenants", JSON.stringify(validTenants));
+        }
+      }
+      Object.entries(data).forEach(([key, value]) => {
+        if (key !== "agency") payload.append(key, value);
+      });
       payload.append("areas", areas.join(", "));
       payload.append("service", services.join(", "));
       payload.append("enquiry", services.join(", "));
@@ -339,12 +447,12 @@ export default function HeroQuoteForm() {
               >
                 <CheckCircle2 className="h-9 w-9" />
               </motion.div>
-              <h3 className="text-2xl font-black tracking-tight text-neutral-900">
-                Request Received!
-              </h3>
-              <p className="max-w-sm text-base leading-relaxed text-neutral-600">
-                Thanks{data.firstName ? `, ${data.firstName}` : ""}. One of our local Groutix
-                specialists will call you back shortly.
+              <h4 className="text-xl font-bold text-neutral-900">
+                Quote Request Received!
+              </h4>
+              <p className="max-w-sm text-[15px] text-neutral-600">
+                Thank you. We have received your details and will prepare a
+                custom quote for you shortly.
               </p>
               <button
                 type="button"
@@ -355,9 +463,14 @@ export default function HeroQuoteForm() {
                   setServices([]);
                   setDamagedTiles([]);
                   setLeaking("");
+                  setCustomerType("");
+                  setCustomerTypeError(false);
+                  setTenants([{ name: "", phone: "", email: "" }]);
+                  setTenantErrors({});
                   setData({
                     firstName: "",
                     lastName: "",
+                    agency: "",
                     email: "",
                     phone: "",
                     address: "",
@@ -388,6 +501,36 @@ export default function HeroQuoteForm() {
                 <p className="text-[15px] font-bold text-neutral-900">
                   1. Customer Details
                 </p>
+
+                {/* Who is the customer / client */}
+                <div className="space-y-1.5 pb-1">
+                  <p className="text-[13px] font-semibold text-neutral-700">
+                    I am the: <span className="text-red-500">*</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {CUSTOMER_TYPE_OPTIONS.map((ct) => (
+                      <Chip
+                        key={ct}
+                        label={ct}
+                        active={customerType === ct}
+                        onClick={() => selectCustomerType(ct)}
+                      />
+                    ))}
+                  </div>
+                  <AnimatePresence>
+                    {customerTypeError && (
+                      <motion.p
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="text-[13px] font-semibold text-red-600 overflow-hidden"
+                      >
+                        Please select whether you are a Tenant, Owner, or Property Manager.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <input
@@ -395,7 +538,11 @@ export default function HeroQuoteForm() {
                       value={data.firstName}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      placeholder="First Name *"
+                      placeholder={
+                        customerType === "Property Manager"
+                          ? "Manager First Name *"
+                          : "First Name *"
+                      }
                       className={`${fieldStyle} ${
                         touched.firstName && errors.firstName
                           ? "border-red-500 focus:ring-red-500/20"
@@ -414,7 +561,11 @@ export default function HeroQuoteForm() {
                       value={data.lastName}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      placeholder="Last Name *"
+                      placeholder={
+                        customerType === "Property Manager"
+                          ? "Manager Last Name *"
+                          : "Last Name *"
+                      }
                       className={`${fieldStyle} ${
                         touched.lastName && errors.lastName
                           ? "border-red-500 focus:ring-red-500/20"
@@ -429,6 +580,18 @@ export default function HeroQuoteForm() {
                   </div>
                 </div>
 
+                {customerType === "Property Manager" && (
+                  <div className="space-y-1">
+                    <input
+                      name="agency"
+                      value={data.agency}
+                      onChange={handleChange}
+                      placeholder="Real Estate Agency / Company (Optional)"
+                      className={fieldStyle}
+                    />
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <input
@@ -437,7 +600,11 @@ export default function HeroQuoteForm() {
                       value={data.email}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      placeholder="Email *"
+                      placeholder={
+                        customerType === "Property Manager"
+                          ? "Manager Email *"
+                          : "Email *"
+                      }
                       className={`${fieldStyle} ${
                         touched.email && errors.email
                           ? "border-red-500 focus:ring-red-500/20"
@@ -457,7 +624,11 @@ export default function HeroQuoteForm() {
                       value={data.phone}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      placeholder="Phone *"
+                      placeholder={
+                        customerType === "Property Manager"
+                          ? "Manager Phone *"
+                          : "Phone *"
+                      }
                       className={`${fieldStyle} ${
                         touched.phone && errors.phone
                           ? "border-red-500 focus:ring-red-500/20"
@@ -478,7 +649,11 @@ export default function HeroQuoteForm() {
                     value={data.address}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    placeholder="Address *"
+                    placeholder={
+                      customerType === "Property Manager"
+                        ? "Rental Property Address *"
+                        : "Address *"
+                    }
                     className={`${fieldStyle} ${
                       touched.address && errors.address
                         ? "border-red-500 focus:ring-red-500/20"
@@ -491,6 +666,144 @@ export default function HeroQuoteForm() {
                     </p>
                   )}
                 </div>
+
+                {/* Property Manager: Tenant Details for Site Access */}
+                <AnimatePresence>
+                  {customerType === "Property Manager" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="space-y-3 overflow-hidden rounded-sm border border-primary/20 bg-primary/[0.03] p-3.5 pt-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 pb-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-primary" />
+                          <span className="text-[13px] font-bold text-neutral-900">
+                            Tenant Access Details
+                          </span>
+                        </div>
+
+                        {/* Tenant Quick Buttons 1, 2, 3, 4 */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-medium text-neutral-500">
+                            Tenants:
+                          </span>
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4].map((num) => (
+                              <button
+                                key={num}
+                                type="button"
+                                onClick={() => setTenantCount(num)}
+                                className={`h-6 min-w-6 rounded-xs px-1.5 text-[11px] font-bold transition-all ${
+                                  tenants.length === num
+                                    ? "bg-primary text-white shadow-xs"
+                                    : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100"
+                                }`}
+                              >
+                                {num}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-[12px] text-neutral-500 leading-tight">
+                        Provide tenant details so our technician can coordinate property access directly.
+                      </p>
+
+                      {/* Tenant Cards List */}
+                      <div className="space-y-2.5">
+                        {tenants.map((t, idx) => (
+                          <div
+                            key={idx}
+                            className="space-y-2 rounded-sm border border-neutral-200/80 bg-white p-2.5 shadow-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-[12px] font-bold text-primary">
+                                Tenant {idx + 1}
+                              </span>
+                              {tenants.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeTenant(idx)}
+                                  className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700 transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" /> Remove
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              <div className="space-y-0.5">
+                                <input
+                                  value={t.name}
+                                  onChange={(e) =>
+                                    updateTenant(idx, "name", e.target.value)
+                                  }
+                                  placeholder={`Tenant ${idx + 1} Name *`}
+                                  className={`${fieldStyle} ${
+                                    tenantErrors[idx]?.name
+                                      ? "border-red-500 focus:ring-red-500/20"
+                                      : ""
+                                  }`}
+                                />
+                                {tenantErrors[idx]?.name && (
+                                  <p className="text-[11px] font-semibold text-red-600">
+                                    {tenantErrors[idx]?.name}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="space-y-0.5">
+                                <input
+                                  type="tel"
+                                  value={t.phone}
+                                  onChange={(e) =>
+                                    updateTenant(idx, "phone", e.target.value)
+                                  }
+                                  placeholder={`Tenant ${idx + 1} Phone *`}
+                                  className={`${fieldStyle} ${
+                                    tenantErrors[idx]?.phone
+                                      ? "border-red-500 focus:ring-red-500/20"
+                                      : ""
+                                  }`}
+                                />
+                                {tenantErrors[idx]?.phone && (
+                                  <p className="text-[11px] font-semibold text-red-600">
+                                    {tenantErrors[idx]?.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <input
+                              type="email"
+                              value={t.email}
+                              onChange={(e) =>
+                                updateTenant(idx, "email", e.target.value)
+                              }
+                              placeholder={`Tenant ${idx + 1} Email (Optional)`}
+                              className={fieldStyle}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add Tenant Button */}
+                      {tenants.length < 6 && (
+                        <button
+                          type="button"
+                          onClick={addTenant}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-sm border border-dashed border-primary/40 bg-white px-3 py-2 text-[12px] font-bold text-primary transition-all hover:border-primary hover:bg-primary/5 active:scale-[0.99]"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> + Add Tenant {tenants.length + 1}
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* 2. What area/s are you looking to have serviced? */}

@@ -9,6 +9,9 @@ type Submission = {
   type: "quote" | "support_ticket";
   status: "new" | "read" | "archived";
   createdAt: string;
+  customerType?: string;
+  agency?: string;
+  tenants?: { name: string; phone: string; email?: string }[];
   name?: string;
   email?: string;
   phone?: string;
@@ -254,7 +257,14 @@ export default function SubmissionsPage() {
                       {item.type === "quote" ? "Quote" : "Support"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.name || "-"}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    <div>{item.name || "-"}</div>
+                    {item.customerType && (
+                      <span className="inline-block mt-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                        {item.customerType}
+                      </span>
+                    )}
+                  </td>
                   <td className="hidden px-4 py-3 text-slate-500 md:table-cell">
                     <div className="truncate">{item.email || "-"}</div>
                     <div className="text-xs text-slate-400">{item.phone || ""}</div>
@@ -341,6 +351,8 @@ function DetailDrawer({
   const [previewPhoto, setPreviewPhoto] = useState<{ name: string; dataUrl: string } | null>(null);
 
   const fields: [string, string | undefined][] = [
+    ["Customer type", item.customerType],
+    ["Real estate agency", item.agency],
     ["Email", item.email],
     ["Phone", item.phone],
     ["Address", item.address],
@@ -399,6 +411,25 @@ function DetailDrawer({
                 </div>
               ))}
           </dl>
+
+          {item.tenants && item.tenants.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-[#001f97]/20 bg-[#001f97]/5 p-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#001f97]">
+                Tenants for Site Access ({item.tenants.length})
+              </div>
+              <div className="space-y-1.5">
+                {item.tenants.map((t, i) => (
+                  <div key={i} className="rounded-md border border-slate-200 bg-white p-2.5 text-xs">
+                    <div className="font-bold text-slate-800">
+                      Tenant {i + 1}: {t.name || "-"}
+                    </div>
+                    {t.phone && <div className="text-slate-600">Phone: {t.phone}</div>}
+                    {t.email && <div className="text-slate-500">Email: {t.email}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {item.photos && item.photos.length > 0 ? (
             <div>

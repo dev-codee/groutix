@@ -13,12 +13,21 @@ export type SubmissionStatus = "new" | "read" | "archived";
 
 export type TranscriptMessage = { role: "user" | "assistant"; content: string };
 
+export interface TenantDoc {
+  name: string;
+  phone: string;
+  email?: string;
+}
+
 export interface SubmissionDoc {
   _id?: ObjectId;
   type: SubmissionType;
   status: SubmissionStatus;
   createdAt: Date;
   // Contact / lead fields (subset present depends on type).
+  customerType?: string;
+  agency?: string;
+  tenants?: TenantDoc[];
   name?: string;
   email?: string;
   phone?: string;
@@ -151,6 +160,8 @@ function buildFilter(params: ListParams): Filter<SubmissionDoc> {
     const rx = { $regex: escapeRegex(params.search), $options: "i" };
     filter.$or = [
       { name: rx },
+      { customerType: rx },
+      { agency: rx },
       { email: rx },
       { phone: rx },
       { message: rx },

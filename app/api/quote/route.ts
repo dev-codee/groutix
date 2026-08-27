@@ -118,6 +118,27 @@ export async function POST(req: NextRequest) {
 
   const get = (key: string) => ((form.get(key) as string | null) ?? "").trim();
 
+  const customerType = get("customerType") || get("clientType");
+  const agency = get("agency");
+  const tenantsRaw = get("tenants");
+  let tenants: { name: string; phone: string; email?: string }[] = [];
+  if (tenantsRaw) {
+    try {
+      const parsed = JSON.parse(tenantsRaw);
+      if (Array.isArray(parsed)) {
+        tenants = parsed
+          .map((t: any) => ({
+            name: String(t.name || "").trim(),
+            phone: String(t.phone || "").trim(),
+            email: String(t.email || "").trim() || undefined,
+          }))
+          .filter((t) => t.name || t.phone);
+      }
+    } catch {
+      tenants = [];
+    }
+  }
+
   const firstName = get("firstName");
   const lastName = get("lastName");
   const email = get("email");
@@ -165,6 +186,18 @@ export async function POST(req: NextRequest) {
 
   const fullName = `${firstName} ${lastName}`.trim();
 
+  const tenantRows = tenants
+    .map(
+      (t, i) =>
+        row(
+          `Tenant ${i + 1}`,
+          `${t.name || "-"}${t.phone ? ` &bull; Phone: ${t.phone}` : ""}${
+            t.email ? ` &bull; Email: ${t.email}` : ""
+          }`
+        )
+    )
+    .join("");
+
   // 1) Internal notification to the Groutix inbox with all the details.
   const internalHtml = `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
@@ -173,10 +206,13 @@ export async function POST(req: NextRequest) {
       sourcePage ? ` (${esc(sourcePage)})` : ""
     }</p>
     <table style="border-collapse:collapse;width:100%;font-size:14px;">
+      ${row("Customer / Client", customerType)}
+      ${agency ? row("Real Estate Agency", agency) : ""}
       ${row("Name", fullName)}
       ${row("Email", email)}
       ${row("Phone", phone)}
       ${row("Address", address)}
+      ${tenantRows}
       ${row("City", city)}
       ${row("State", state)}
       ${row("Areas to service", areas)}
@@ -192,6 +228,9 @@ export async function POST(req: NextRequest) {
   // 1) Save to DB immediately so we never lose a lead.
   const submissionId = await recordSubmission({
     type: "quote",
+    customerType,
+    agency: agency || undefined,
+    tenants: tenants.length ? tenants : undefined,
     name: fullName,
     email,
     phone,

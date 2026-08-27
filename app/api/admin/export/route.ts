@@ -10,12 +10,15 @@ const CSV_FIELDS: (keyof SubmissionJSON)[] = [
   "createdAt",
   "type",
   "status",
+  "customerType",
+  "agency",
   "name",
   "email",
   "phone",
   "address",
   "city",
   "state",
+  "tenants",
   "areas",
   "service",
   "enquiry",
@@ -34,6 +37,19 @@ const CSV_FIELDS: (keyof SubmissionJSON)[] = [
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) {
+    if (value.length === 0) return "";
+    // If tenants array
+    if (value[0] && typeof value[0] === "object" && ("name" in value[0] || "phone" in value[0])) {
+      const formatted = value
+        .map(
+          (t: any, i: number) =>
+            `Tenant ${i + 1}: ${t.name || "-"}${t.phone ? ` (${t.phone})` : ""}${
+              t.email ? ` [${t.email}]` : ""
+            }`
+        )
+        .join(" | ");
+      return csvCell(formatted);
+    }
     // If photos array, list filenames or counts
     const names = value.map((p: any) => p?.name || "photo").filter(Boolean);
     return csvCell(names.length ? `${names.length} file(s): ${names.join(", ")}` : "");
