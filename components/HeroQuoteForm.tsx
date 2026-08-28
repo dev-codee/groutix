@@ -6,7 +6,7 @@ import { formatBytes, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-const CUSTOMER_TYPE_OPTIONS = ["Tenant", "Owner", "Property Manager"];
+
 
 const AREA_OPTIONS = [
   "Main Bathroom",
@@ -55,11 +55,10 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${
-        active
-          ? "border-primary bg-primary text-white shadow-sm"
-          : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300"
-      }`}
+      className={`rounded-sm border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${active
+        ? "border-primary bg-primary text-white shadow-sm"
+        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300"
+        }`}
     >
       {label}
     </button>
@@ -94,8 +93,7 @@ export default function HeroQuoteForm() {
   const [damagedTiles, setDamagedTiles] = useState<string[]>([]);
   const [damagedTileError, setDamagedTileError] = useState(false);
 
-  const [customerType, setCustomerType] = useState<string>("");
-  const [customerTypeError, setCustomerTypeError] = useState(false);
+  const [isPropertyManager, setIsPropertyManager] = useState(false);
 
   const [tenants, setTenants] = useState<TenantInfo[]>([
     { name: "", phone: "", email: "" },
@@ -208,12 +206,8 @@ export default function HeroQuoteForm() {
     });
   };
 
-  const selectCustomerType = (v: string) => {
-    setCustomerType((prev) => {
-      const next = prev === v ? "" : v;
-      if (customerTypeError && next) setCustomerTypeError(false);
-      return next;
-    });
+  const togglePropertyManager = () => {
+    setIsPropertyManager((prev) => !prev);
   };
 
   const addTenant = () => {
@@ -329,7 +323,7 @@ export default function HeroQuoteForm() {
       requiredKeys.reduce((acc, key) => ({ ...acc, [key]: true }), {})
     );
 
-    const hasCustomerTypeError = !customerType;
+
     const hasAreaError = areas.length === 0;
     const hasServiceError = services.length === 0;
     const hasDamagedTileError = damagedTiles.length === 0;
@@ -337,7 +331,7 @@ export default function HeroQuoteForm() {
 
     const newTenantErrors: Record<number, { name?: string; phone?: string }> = {};
     let hasTenantError = false;
-    if (customerType === "Property Manager") {
+    if (isPropertyManager) {
       tenants.forEach((t, i) => {
         if (i === 0 || t.name.trim() || t.phone.trim()) {
           const errs: { name?: string; phone?: string } = {};
@@ -357,7 +351,7 @@ export default function HeroQuoteForm() {
     }
     setTenantErrors(newTenantErrors);
 
-    setCustomerTypeError(hasCustomerTypeError);
+
     setAreaError(hasAreaError);
     setServiceError(hasServiceError);
     setDamagedTileError(hasDamagedTileError);
@@ -365,7 +359,6 @@ export default function HeroQuoteForm() {
 
     if (
       Object.keys(newErrors).length !== 0 ||
-      hasCustomerTypeError ||
       hasTenantError ||
       hasAreaError ||
       hasServiceError ||
@@ -383,9 +376,9 @@ export default function HeroQuoteForm() {
     setLoading(true);
     try {
       const payload = new FormData();
-      payload.append("customerType", customerType);
-      if (data.agency) payload.append("agency", data.agency);
-      if (customerType === "Property Manager") {
+      if (isPropertyManager) {
+        payload.append("customerType", "Property Manager");
+        if (data.agency) payload.append("agency", data.agency);
         const validTenants = tenants.filter((t) => t.name.trim() || t.phone.trim());
         if (validTenants.length > 0) {
           payload.append("tenants", JSON.stringify(validTenants));
@@ -463,8 +456,7 @@ export default function HeroQuoteForm() {
                   setServices([]);
                   setDamagedTiles([]);
                   setLeaking("");
-                  setCustomerType("");
-                  setCustomerTypeError(false);
+                  setIsPropertyManager(false);
                   setTenants([{ name: "", phone: "", email: "" }]);
                   setTenantErrors({});
                   setData({
@@ -502,33 +494,31 @@ export default function HeroQuoteForm() {
                   1. Customer Details
                 </p>
 
-                {/* Who is the customer / client */}
-                <div className="space-y-1.5 pb-1">
-                  <p className="text-[13px] font-semibold text-neutral-700">
-                    I am the: <span className="text-red-500">*</span>
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {CUSTOMER_TYPE_OPTIONS.map((ct) => (
-                      <Chip
-                        key={ct}
-                        label={ct}
-                        active={customerType === ct}
-                        onClick={() => selectCustomerType(ct)}
+                {/* Optional: Property Manager toggle */}
+                <div className="pb-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={isPropertyManager}
+                        onChange={togglePropertyManager}
+                        className="peer sr-only"
                       />
-                    ))}
-                  </div>
-                  <AnimatePresence>
-                    {customerTypeError && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-[13px] font-semibold text-red-600 overflow-hidden"
-                      >
-                        Please select whether you are a Tenant, Owner, or Property Manager.
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
+                      <div className={`h-5 w-5 rounded border-2 transition-all duration-200 flex items-center justify-center ${isPropertyManager
+                        ? "border-primary bg-primary"
+                        : "border-neutral-300 bg-white group-hover:border-neutral-400"
+                        }`}>
+                        {isPropertyManager && (
+                          <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[13px] font-semibold text-neutral-700 select-none">
+                      I am a Property Manager
+                    </span>
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -539,15 +529,14 @@ export default function HeroQuoteForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       placeholder={
-                        customerType === "Property Manager"
+                        isPropertyManager
                           ? "Manager First Name *"
                           : "First Name *"
                       }
-                      className={`${fieldStyle} ${
-                        touched.firstName && errors.firstName
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : ""
-                      }`}
+                      className={`${fieldStyle} ${touched.firstName && errors.firstName
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : ""
+                        }`}
                     />
                     {touched.firstName && errors.firstName && (
                       <p className="text-[13px] font-semibold text-red-600">
@@ -562,15 +551,14 @@ export default function HeroQuoteForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       placeholder={
-                        customerType === "Property Manager"
+                        isPropertyManager
                           ? "Manager Last Name *"
                           : "Last Name *"
                       }
-                      className={`${fieldStyle} ${
-                        touched.lastName && errors.lastName
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : ""
-                      }`}
+                      className={`${fieldStyle} ${touched.lastName && errors.lastName
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : ""
+                        }`}
                     />
                     {touched.lastName && errors.lastName && (
                       <p className="text-[13px] font-semibold text-red-600">
@@ -580,7 +568,7 @@ export default function HeroQuoteForm() {
                   </div>
                 </div>
 
-                {customerType === "Property Manager" && (
+                {isPropertyManager && (
                   <div className="space-y-1">
                     <input
                       name="agency"
@@ -601,15 +589,14 @@ export default function HeroQuoteForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       placeholder={
-                        customerType === "Property Manager"
+                        isPropertyManager
                           ? "Manager Email *"
                           : "Email *"
                       }
-                      className={`${fieldStyle} ${
-                        touched.email && errors.email
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : ""
-                      }`}
+                      className={`${fieldStyle} ${touched.email && errors.email
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : ""
+                        }`}
                     />
                     {touched.email && errors.email && (
                       <p className="text-[13px] font-semibold text-red-600">
@@ -625,15 +612,14 @@ export default function HeroQuoteForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       placeholder={
-                        customerType === "Property Manager"
+                        isPropertyManager
                           ? "Manager Phone *"
                           : "Phone *"
                       }
-                      className={`${fieldStyle} ${
-                        touched.phone && errors.phone
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : ""
-                      }`}
+                      className={`${fieldStyle} ${touched.phone && errors.phone
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : ""
+                        }`}
                     />
                     {touched.phone && errors.phone && (
                       <p className="text-[13px] font-semibold text-red-600">
@@ -650,15 +636,14 @@ export default function HeroQuoteForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder={
-                      customerType === "Property Manager"
+                      isPropertyManager
                         ? "Rental Property Address *"
                         : "Address *"
                     }
-                    className={`${fieldStyle} ${
-                      touched.address && errors.address
-                        ? "border-red-500 focus:ring-red-500/20"
-                        : ""
-                    }`}
+                    className={`${fieldStyle} ${touched.address && errors.address
+                      ? "border-red-500 focus:ring-red-500/20"
+                      : ""
+                      }`}
                   />
                   {touched.address && errors.address && (
                     <p className="text-[13px] font-semibold text-red-600">
@@ -669,7 +654,7 @@ export default function HeroQuoteForm() {
 
                 {/* Property Manager: Tenant Details for Site Access */}
                 <AnimatePresence>
-                  {customerType === "Property Manager" && (
+                  {isPropertyManager && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
@@ -696,11 +681,10 @@ export default function HeroQuoteForm() {
                                 key={num}
                                 type="button"
                                 onClick={() => setTenantCount(num)}
-                                className={`h-6 min-w-6 rounded-xs px-1.5 text-[11px] font-bold transition-all ${
-                                  tenants.length === num
-                                    ? "bg-primary text-white shadow-xs"
-                                    : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100"
-                                }`}
+                                className={`h-6 min-w-6 rounded-xs px-1.5 text-[11px] font-bold transition-all ${tenants.length === num
+                                  ? "bg-primary text-white shadow-xs"
+                                  : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100"
+                                  }`}
                               >
                                 {num}
                               </button>
@@ -743,11 +727,10 @@ export default function HeroQuoteForm() {
                                     updateTenant(idx, "name", e.target.value)
                                   }
                                   placeholder={`Tenant ${idx + 1} Name *`}
-                                  className={`${fieldStyle} ${
-                                    tenantErrors[idx]?.name
-                                      ? "border-red-500 focus:ring-red-500/20"
-                                      : ""
-                                  }`}
+                                  className={`${fieldStyle} ${tenantErrors[idx]?.name
+                                    ? "border-red-500 focus:ring-red-500/20"
+                                    : ""
+                                    }`}
                                 />
                                 {tenantErrors[idx]?.name && (
                                   <p className="text-[11px] font-semibold text-red-600">
@@ -764,11 +747,10 @@ export default function HeroQuoteForm() {
                                     updateTenant(idx, "phone", e.target.value)
                                   }
                                   placeholder={`Tenant ${idx + 1} Phone *`}
-                                  className={`${fieldStyle} ${
-                                    tenantErrors[idx]?.phone
-                                      ? "border-red-500 focus:ring-red-500/20"
-                                      : ""
-                                  }`}
+                                  className={`${fieldStyle} ${tenantErrors[idx]?.phone
+                                    ? "border-red-500 focus:ring-red-500/20"
+                                    : ""
+                                    }`}
                                 />
                                 {tenantErrors[idx]?.phone && (
                                   <p className="text-[11px] font-semibold text-red-600">
@@ -993,7 +975,7 @@ export default function HeroQuoteForm() {
                     <span>Click to upload photos (optional)</span>
                   </div>
                   <span className="text-[11px] text-neutral-500 font-medium">
-                    JPG, PNG, WebP • Max 4MB total
+                    Max 4MB total
                   </span>
                   <input
                     ref={fileInputRef}

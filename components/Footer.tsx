@@ -46,7 +46,7 @@ export default function Footer() {
           >
             <Link href="/" className="flex items-center group">
               <Image
-                src="/footer.jpeg?v=1"
+                src="/new_logo.jpeg"
                 alt="Groutix Logo"
                 width={260}
                 height={80}

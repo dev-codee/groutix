@@ -9,7 +9,7 @@ import React from "react";
 
 function ArdexLogo() {
   return (
-    <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
+    <svg viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-14 w-auto">
       {/* Circle emblem */}
       <circle cx="25" cy="30" r="22" stroke="#1a1a1a" strokeWidth="3.5" fill="none" />
       <circle cx="25" cy="30" r="15" stroke="#1a1a1a" strokeWidth="2" fill="none" />
@@ -23,7 +23,7 @@ function ArdexLogo() {
 
 function BarryPlantLogo() {
   return (
-    <svg viewBox="0 0 160 50" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 160 50" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       {/* Red arrow/flag icon */}
       <polygon points="0,5 16,5 16,25 8,32 0,25" fill="#e02020" />
       <text x="24" y="22" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="700" fill="#1a1a1a" letterSpacing="0.3">BARRY</text>
@@ -34,7 +34,7 @@ function BarryPlantLogo() {
 
 function BigginScottLogo() {
   return (
-    <svg viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="30" fontFamily="Georgia, serif" fontSize="22" fontWeight="700" fill="#1a1a1a" letterSpacing="0.5">Biggin</text>
       <text x="82" y="30" fontFamily="Georgia, serif" fontSize="22" fontWeight="400" fill="#1a1a1a" letterSpacing="0.5">Scott</text>
       <text x="168" y="14" fontFamily="Arial, sans-serif" fontSize="7" fontWeight="400" fill="#1a1a1a">®</text>
@@ -44,7 +44,7 @@ function BigginScottLogo() {
 
 function GaryPeerLogo() {
   return (
-    <svg viewBox="0 0 140 42" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 140 42" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       {/* Circle icon */}
       <circle cx="16" cy="21" r="13" stroke="#b8860b" strokeWidth="1.5" fill="none" />
       <text x="9" y="25" fontFamily="Arial, sans-serif" fontSize="9" fontWeight="700" fill="#b8860b">GP</text>
@@ -55,7 +55,7 @@ function GaryPeerLogo() {
 
 function HarcourtsLogo() {
   return (
-    <svg viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="30" fontFamily="Arial Black, sans-serif" fontSize="22" fontWeight="900" fill="#002855" letterSpacing="0.5">Harcourts</text>
     </svg>
   );
@@ -63,7 +63,7 @@ function HarcourtsLogo() {
 
 function HouseSmartLogo() {
   return (
-    <svg viewBox="0 0 160 65" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-14 w-auto">
+    <svg viewBox="0 0 160 65" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-18 w-auto">
       {/* Blue square background */}
       <rect x="0" y="0" width="70" height="65" fill="#1a7fd4" rx="2" />
       {/* House roof */}
@@ -82,7 +82,7 @@ function HouseSmartLogo() {
 
 function JasStephensLogo() {
   return (
-    <svg viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="28" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="400" fill="#333" letterSpacing="3">JAS STEPHENS</text>
     </svg>
   );
@@ -90,7 +90,7 @@ function JasStephensLogo() {
 
 function JellisCraigLogo() {
   return (
-    <svg viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="30" fontFamily="Georgia, Times New Roman, serif" fontSize="22" fontWeight="700" fill="#1a1a1a" letterSpacing="0.3">JellisCraig</text>
     </svg>
   );
@@ -98,7 +98,7 @@ function JellisCraigLogo() {
 
 function LJHookerLogo() {
   return (
-    <svg viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       {/* Orange block */}
       <rect x="0" y="4" width="36" height="32" fill="#f47920" rx="1" />
       <text x="5" y="26" fontFamily="Arial Black, sans-serif" fontSize="15" fontWeight="900" fill="white">LJ</text>
@@ -109,7 +109,7 @@ function LJHookerLogo() {
 
 function LuxeLogo() {
   return (
-    <svg viewBox="0 0 130 55" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
+    <svg viewBox="0 0 130 55" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-16 w-auto">
       {/* Circular emblem */}
       <circle cx="20" cy="22" r="17" stroke="#1a1a1a" strokeWidth="1.5" fill="none" />
       <line x1="13" y1="15" x2="20" y2="22" stroke="#1a1a1a" strokeWidth="1" />
@@ -124,7 +124,7 @@ function LuxeLogo() {
 
 function LoveAndCoLogo() {
   return (
-    <svg viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="28" fontFamily="Georgia, serif" fontSize="18" fontWeight="700" fill="#1a1a1a" letterSpacing="0.3">LOVE</text>
       <text x="60" y="28" fontFamily="Georgia, serif" fontSize="13" fontWeight="400" fill="#c8a96e">&amp;</text>
       <text x="75" y="28" fontFamily="Georgia, serif" fontSize="18" fontWeight="700" fill="#1a1a1a" letterSpacing="0.3">CO</text>
@@ -134,7 +134,7 @@ function LoveAndCoLogo() {
 
 function McGrathLogo() {
   return (
-    <svg viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="30" fontFamily="Arial Black, sans-serif" fontSize="22" fontWeight="900" fill="#1a1a1a" letterSpacing="1">McGrath</text>
     </svg>
   );
@@ -142,7 +142,7 @@ function McGrathLogo() {
 
 function RayWhiteLogo() {
   return (
-    <svg viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="30" fontFamily="Arial Black, sans-serif" fontSize="20" fontWeight="900" fill="#ffcc00" letterSpacing="0.5">Ray White</text>
     </svg>
   );
@@ -150,7 +150,7 @@ function RayWhiteLogo() {
 
 function NelsonAlexanderLogo() {
   return (
-    <svg viewBox="0 0 190 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-auto">
+    <svg viewBox="0 0 190 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-12 w-auto">
       <text x="0" y="28" fontFamily="Georgia, serif" fontSize="16" fontWeight="700" fill="#1a1a1a" letterSpacing="0.5">Nelson Alexander</text>
     </svg>
   );
@@ -176,9 +176,9 @@ const LOGOS = [
 
 export default function TrustedMarquee() {
   return (
-    <section className="bg-white py-8 border-b border-neutral-100 overflow-hidden">
+    <section className="bg-white py-10 border-b border-neutral-100 overflow-hidden">
       {/* Label */}
-      <p className="text-center text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-6">
+      <p className="text-center text-sm font-black text-neutral-500 uppercase tracking-[0.25em] mb-8">
         TRUSTED ACROSS VICTORIA
       </p>
 
@@ -194,12 +194,12 @@ export default function TrustedMarquee() {
           style={{ background: "linear-gradient(to left, white, transparent)" }}
         />
 
-        <div className="flex w-max animate-marquee items-center gap-16 px-8">
+        <div className="flex w-max animate-marquee items-center gap-20 px-8">
           {/* First set */}
           {LOGOS.map(({ key, Logo }) => (
             <div
               key={`a-${key}`}
-              className="flex-shrink-0 flex items-center justify-center opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300 cursor-default select-none"
+              className="flex-shrink-0 flex items-center justify-center opacity-90 hover:opacity-100 transition-all duration-300 cursor-default select-none"
             >
               <Logo />
             </div>
@@ -208,7 +208,7 @@ export default function TrustedMarquee() {
           {LOGOS.map(({ key, Logo }) => (
             <div
               key={`b-${key}`}
-              className="flex-shrink-0 flex items-center justify-center opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300 cursor-default select-none"
+              className="flex-shrink-0 flex items-center justify-center opacity-90 hover:opacity-100 transition-all duration-300 cursor-default select-none"
               aria-hidden="true"
             >
               <Logo />
