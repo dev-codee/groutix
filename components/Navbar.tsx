@@ -304,7 +304,32 @@ export default function Navbar() {
               </div>
             </div>
 
-            <NavLink href="/about">About Us</NavLink>
+            {/* About Dropdown */}
+            <div className="relative group/menu">
+              <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
+                <span>About Us</span>
+                <ChevronDown className="h-4 w-4 transform transition-transform duration-200 group-hover/menu:rotate-180" />
+              </button>
+
+              <div
+                className="absolute top-full left-0 w-48 pt-2 opacity-0 translate-y-2 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:translate-y-0 group-hover/menu:pointer-events-auto transition-all duration-200 ease-out z-50"
+              >
+                <div className="bg-white rounded-xl shadow-xl border border-neutral-100 p-2 space-y-1">
+                  <Link
+                    href="/about"
+                    className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
+                  >
+                    About Groutix
+                  </Link>
+                  <Link
+                    href="/careers"
+                    className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
+                  >
+                    Careers
+                  </Link>
+                </div>
+              </div>
+            </div>
             <NavLink href="/faq">FAQs</NavLink>
             <NavLink href="/contact">Get a Quote</NavLink>
           </nav>
@@ -485,13 +510,44 @@ export default function Navbar() {
                   </AnimatePresence>
                 </div>
 
-                <Link
-                  href="/about"
-                  onClick={closeMenu}
-                  className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
-                >
-                  About Us
-                </Link>
+                {/* Mobile About Us */}
+                <div>
+                  <button
+                    onClick={() => toggleSubmenu("about")}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10"
+                    aria-expanded={activeSubmenu === "about"}
+                  >
+                    <span>About Us</span>
+                    <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${activeSubmenu === "about" ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {activeSubmenu === "about" && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-1 pl-6 pt-1 pb-1">
+                          <Link
+                            href="/about"
+                            onClick={closeMenu}
+                            className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
+                          >
+                            About Groutix
+                          </Link>
+                          <Link
+                            href="/careers"
+                            onClick={closeMenu}
+                            className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
+                          >
+                            Careers
+                          </Link>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <Link
                   href="/faq"
                   onClick={closeMenu}

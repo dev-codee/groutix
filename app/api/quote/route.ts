@@ -10,10 +10,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Where new quote requests are delivered internally.
-const TO_EMAIL = "info@Groutix.com";
+const TO_EMAIL = "info@groutix.com";
 // The "from" address must be a sender you've verified in Brevo. Set it via
 // BREVO_FROM in .env.local.
-const FROM_EMAIL = process.env.BREVO_FROM || "info@Groutix.com";
+const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
 // Shown in the inbox for the internal notification (customer confirmation
 // uses a plain "Groutix" name below).
 const INTERNAL_FROM_NAME = "Groutix Website Enquiry";

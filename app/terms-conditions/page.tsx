@@ -48,8 +48,8 @@ export default function TermsConditionsPage() {
               <p className="text-neutral-700 mb-4">
                 If you have any questions about our terms and conditions, please contact us at:
               </p>
-              <a href="mailto:info@Groutix.com" className="inline-flex font-bold text-[#001F97] hover:text-accent transition-colors underline">
-                info@Groutix.com
+              <a href="mailto:info@groutix.com" className="inline-flex font-bold text-[#001F97] hover:text-accent transition-colors underline">
+                info@groutix.com
               </a>
             </div>
 
