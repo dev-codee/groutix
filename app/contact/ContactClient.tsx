@@ -95,7 +95,17 @@ export default function ContactClient() {
   const contactInfo = [
     { icon: <Phone className="h-5 w-5 text-secondary" />, label: "Call Us", value: phone, href: tel },
     { icon: <Mail className="h-5 w-5 text-secondary" />, label: "Email Us", value: email, href: mailto },
-    { icon: <Clock className="h-5 w-5 text-secondary" />, label: "Our Hours", value: business.hours || "Mon – Fri: 8:00am – 5:00pm", href: null },
+    { 
+      icon: <Clock className="h-5 w-5 text-secondary" />, 
+      label: "Our Hours", 
+      value: (
+        <>
+          <span className="block">Mon – Fri: 9:00am – 5:00pm</span>
+          <span className="block font-medium text-neutral-600 mt-0.5">Sat – Sun: 10:00am – 3:00pm</span>
+        </>
+      ), 
+      href: null 
+    },
     { icon: <MapPin className="h-5 w-5 text-secondary" />, label: "Areas We Serve", value: business.areasServed?.join(", ") || "Melbourne, Geelong, Ballarat, Frankston, Lilydale, Yarra Glen, Kilmore", href: "/locations" },
   ];
 
@@ -161,7 +171,7 @@ export default function ContactClient() {
                     {item.href ? (
                       <a href={item.href} className="font-bold text-neutral-900 hover:text-primary transition-colors">{item.value}</a>
                     ) : (
-                      <p className="font-bold text-neutral-900">{item.value}</p>
+                      <div className="font-bold text-neutral-900">{item.value}</div>
                     )}
                   </div>
                 </motion.li>
