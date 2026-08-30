@@ -3,8 +3,7 @@ import { isMongoConfigured } from "@/lib/mongodb";
 import {
   deleteSubmission,
   getSubmission,
-  updateStatus,
-  type SubmissionStatus,
+  updateSubmission,
 } from "@/lib/submissions";
 
 export const runtime = "nodejs";
@@ -27,18 +26,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
   }
   const { id } = await params;
-  let body: { status?: string };
+  let body: Record<string, any>;
   try {
-    body = (await req.json()) as { status?: string };
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const status = body.status;
-  if (status !== "new" && status !== "read" && status !== "archived") {
-    return NextResponse.json({ error: "Invalid status." }, { status: 400 });
-  }
-  const ok = await updateStatus(id, status as SubmissionStatus);
-  if (!ok) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  const ok = await updateSubmission(id, body);
+  if (!ok) return NextResponse.json({ error: "Not found or update failed." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
 

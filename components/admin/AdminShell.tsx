@@ -15,9 +15,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const nav = [
-    { href: basePath, label: "Dashboard", icon: LayoutDashboard },
-    { href: `${basePath}/submissions`, label: "Submissions", icon: Inbox },
-    { href: `${basePath}/content`, label: "Content", icon: FileText },
+    { href: basePath, label: "CRM Dashboard", icon: LayoutDashboard },
+    { href: `${basePath}/submissions`, label: "Submissions Table", icon: Inbox },
+    { href: `${basePath}/content`, label: "Content Editor", icon: FileText },
   ];
 
   async function logout() {
