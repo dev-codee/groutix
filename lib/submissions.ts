@@ -301,7 +301,7 @@ export async function listSubmissions(
 
   const [docs, total] = await Promise.all([
     col
-      .find(filter)
+      .find(filter, { projection: { "photos.dataUrl": 0 } })
       .sort({ createdAt: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)

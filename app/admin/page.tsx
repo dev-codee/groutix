@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
+  BarChart3,
   Inbox,
   FileText,
   LogOut,
@@ -23,23 +24,21 @@ import {
   CheckSquare,
   Square,
   X,
-  Share2,
   Printer,
   Sparkles,
   Download,
   Send,
-  MapPin,
   ExternalLink,
   Users,
   Briefcase,
   UserCheck
 } from "lucide-react";
 import { useAdminBasePath } from "@/components/admin/AdminProvider";
+import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
   GROUTIX_QUOTE_TERMS,
-  bestTemplateForTask,
-  type ServiceTemplate
+  bestTemplateForTask
 } from "@/lib/serviceTemplates";
 
 export interface QuoteItem {
@@ -88,6 +87,8 @@ export interface Lead {
   phone?: string;
   email?: string;
   service?: string;
+  enquiry?: string;
+  message?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -107,7 +108,7 @@ export interface Lead {
   quoteTerms?: string;
   quoteUpdated?: string;
   quoteAmount?: number;
-  photos?: { name: string; contentType?: string; dataUrl: string; added?: string }[];
+  photos?: { name: string; contentType?: string; dataUrl?: string; added?: string }[];
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
   warranty?: WarrantyDoc;
@@ -118,6 +119,20 @@ export interface CrmTask {
   text: string;
   done: boolean;
 }
+
+type Stats = {
+  total: number;
+  today: number;
+  last7Days: number;
+  last30Days: number;
+  newCount: number;
+  byType: { type: string; count: number }[];
+  byStatus: { status: string; count: number }[];
+  timeline: { date: string; quote: number; support_ticket: number }[];
+  topEnquiries: { label: string; count: number }[];
+  topCities: { label: string; count: number }[];
+  topSources: { label: string; count: number }[];
+};
 
 const STATUS_LIST = [
   "New",
@@ -133,6 +148,16 @@ const STATUS_LIST = [
   "Payment Received",
   "Job Done"
 ] as const;
+
+function normalizeStatus(s?: string): string {
+  if (!s) return "New";
+  const lower = s.toLowerCase().trim();
+  if (lower === "new") return "New";
+  if (lower === "read") return "Contacted";
+  if (lower === "archived") return "Lost";
+  const matched = STATUS_LIST.find((x) => x.toLowerCase() === lower);
+  return matched || s;
+}
 
 function esc(s?: string) {
   return s || "";
@@ -204,7 +229,7 @@ export default function CrmDashboardPage() {
 
   // Navigation / Views
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "statuses" | "leads" | "quotes" | "jobs" | "customers" | "team"
+    "dashboard" | "analytics" | "statuses" | "leads" | "quotes" | "jobs" | "customers" | "team"
   >("dashboard");
 
   // Core Data
@@ -216,6 +241,11 @@ export default function CrmDashboardPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Analytics View State (Previous Dashboard)
+  const [analyticsDays, setAnalyticsDays] = useState<number>(30);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   // Active Modals state
   const [leadModalOpen, setLeadModalOpen] = useState(false);
@@ -232,6 +262,7 @@ export default function CrmDashboardPage() {
 
   const [photosModalOpen, setPhotosModalOpen] = useState(false);
   const [activePhotoLead, setActivePhotoLead] = useState<Lead | null>(null);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
 
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
@@ -273,7 +304,14 @@ export default function CrmDashboardPage() {
 
       if (leadsRes.ok) {
         const data = await leadsRes.json();
-        setLeads(data.items || []);
+        const rawItems = data.items || [];
+        const normalized = rawItems.map((l: any) => ({
+          ...l,
+          status: normalizeStatus(l.status),
+          service: l.service || l.enquiry || l.message || "General Quote Request",
+          address: l.address || [l.city, l.state].filter(Boolean).join(", ") || "",
+        }));
+        setLeads(normalized);
       } else {
         const err = await leadsRes.json().catch(() => ({}));
         setError(err.error || "Could not load leads from database.");
@@ -290,9 +328,30 @@ export default function CrmDashboardPage() {
     }
   }, []);
 
+  const loadAnalytics = useCallback(async (days: number) => {
+    setLoadingStats(true);
+    try {
+      const res = await fetch(`/api/admin/stats?days=${days}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data.stats || null);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingStats(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (currentView === "analytics") {
+      loadAnalytics(analyticsDays);
+    }
+  }, [currentView, analyticsDays, loadAnalytics]);
 
   async function logout() {
     setLoggingOut(true);
@@ -315,7 +374,6 @@ export default function CrmDashboardPage() {
 
     try {
       if (editingLead.id) {
-        // Update existing lead
         const res = await fetch(`/api/admin/submissions/${editingLead.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -330,7 +388,6 @@ export default function CrmDashboardPage() {
           alert("Failed to update lead.");
         }
       } else {
-        // Create new lead
         const res = await fetch("/api/admin/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -446,7 +503,7 @@ export default function CrmDashboardPage() {
           templateNo: "",
           code: "",
           service: lead.service || "Tile & Grout Works",
-          scope: lead.notes || "",
+          scope: lead.notes || lead.message || "",
           price: 0,
           qty: 1
         }];
@@ -466,7 +523,7 @@ export default function CrmDashboardPage() {
     const newItems: QuoteItem[] = [];
 
     tasks.forEach((task) => {
-      const t = bestTemplateForTask(task, lead.notes || "", used);
+      const t = bestTemplateForTask(task, lead.notes || lead.message || "", used);
       if (t) {
         used.add(t.code);
         suggested.push(t.code);
@@ -497,7 +554,6 @@ export default function CrmDashboardPage() {
     setQuoteTerms(GROUTIX_QUOTE_TERMS.slice(0, 350));
     setQuoteModalOpen(true);
 
-    // Save auto-prepared quote state
     updateLeadField(lead.id, {
       quoteItems: newItems,
       quoteItemCode: suggested[0] || "",
@@ -583,10 +639,26 @@ export default function CrmDashboardPage() {
     window.open(`https://wa.me/${phone.startsWith("0") ? "61" + phone.slice(1) : phone}?text=${text}`, "_blank");
   }
 
-  // Photos Management
-  function openPhotosModal(lead: Lead) {
+  // Photos Management with on-demand load
+  async function openPhotosModal(lead: Lead) {
     setActivePhotoLead(lead);
     setPhotosModalOpen(true);
+    if (!lead.photos?.length || !lead.photos[0]?.dataUrl) {
+      setLoadingPhotos(true);
+      try {
+        const res = await fetch(`/api/admin/submissions/${lead.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.item?.photos) {
+            setActivePhotoLead((prev) => (prev ? { ...prev, photos: data.item.photos } : prev));
+          }
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setLoadingPhotos(false);
+      }
+    }
   }
 
   async function handleAddPhotos(files: FileList | null) {
@@ -631,7 +703,7 @@ export default function CrmDashboardPage() {
   function getConversation(lead: Lead): CustomerMessage[] {
     const list = Array.isArray(lead.messages) ? [...lead.messages] : [];
     const initialExists = list.some((m) => m.initial);
-    if (!initialExists && (lead.service || lead.notes)) {
+    if (!initialExists && (lead.service || lead.notes || lead.message)) {
       list.unshift({
         id: `initial_${lead.id}`,
         from: "customer",
@@ -639,7 +711,8 @@ export default function CrmDashboardPage() {
         subject: "Original Enquiry",
         text: [
           lead.service ? `Service: ${lead.service}` : "",
-          lead.notes ? `Notes / Request: ${lead.notes}` : "",
+          lead.notes ? `Notes: ${lead.notes}` : "",
+          lead.message ? `Customer Message: ${lead.message}` : "",
           lead.source ? `Source: ${lead.source}` : ""
         ].filter(Boolean).join("\n"),
         time: lead.received || lead.createdAt,
@@ -744,25 +817,21 @@ export default function CrmDashboardPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Draw Groutix Premium 10-Year Warranty Card
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Header gradient
     const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
     grad.addColorStop(0, "#001f97");
     grad.addColorStop(1, "#1667e8");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, 160);
 
-    // Title
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 52px Arial, sans-serif";
     ctx.fillText("GROUTIX", 60, 95);
     ctx.font = "bold 26px Arial, sans-serif";
     ctx.fillText("10-YEAR WATERPROOF WARRANTY CERTIFICATE", 380, 95);
 
-    // Body content
     ctx.fillStyle = "#1e293b";
     ctx.font = "bold 24px Arial, sans-serif";
     ctx.fillText("Customer Details & Work Information", 60, 230);
@@ -791,7 +860,6 @@ export default function CrmDashboardPage() {
     ctx.fillStyle = "#0f172a";
     ctx.fillText(warrantyAuthorised, 380, 670);
 
-    // Terms notice
     ctx.font = "14px Arial, sans-serif";
     ctx.fillStyle = "#64748b";
     ctx.fillText(
@@ -829,6 +897,7 @@ export default function CrmDashboardPage() {
     setInvoiceDescription(
       lead.quoteScope ||
       lead.notes ||
+      lead.message ||
       "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints"
     );
     setInvoicePrice(lead.quoteAmount || 850);
@@ -843,7 +912,7 @@ export default function CrmDashboardPage() {
     const q = globalSearch.toLowerCase().trim();
     if (q) {
       list = list.filter((l) =>
-        [l.name, l.phone, l.email, l.service, l.address, l.notes]
+        [l.name, l.phone, l.email, l.service, l.address, l.notes, l.message]
           .join(" ")
           .toLowerCase()
           .includes(q)
@@ -870,7 +939,7 @@ export default function CrmDashboardPage() {
   return (
     <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
       {/* Sidebar Navigation */}
-      <aside className="w-60 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0">
+      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0">
         <div>
           {/* Brand */}
           <div className="flex items-center gap-3 pb-6 border-b border-[#e4e9f1]">
@@ -878,13 +947,13 @@ export default function CrmDashboardPage() {
               G
             </div>
             <div>
-              <div className="font-black text-lg leading-tight text-[#001f97]">Groutix CRM</div>
-              <div className="text-xs text-slate-400">Lead & Job Management</div>
+              <div className="font-black text-lg leading-tight text-[#001f97]">Groutix Portal</div>
+              <div className="text-xs text-slate-400">CRM & Administration</div>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="mt-6 flex flex-col gap-1.5">
+          <nav className="mt-5 flex flex-col gap-1.5">
             <button
               onClick={() => setCurrentView("dashboard")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -895,9 +964,36 @@ export default function CrmDashboardPage() {
             >
               <span className="flex items-center gap-2.5">
                 <LayoutDashboard className="w-4 h-4" />
-                Dashboard
+                CRM Dashboard
               </span>
             </button>
+
+            <button
+              onClick={() => setCurrentView("analytics")}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                currentView === "analytics"
+                  ? "bg-[#001f97] text-white shadow-sm"
+                  : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <BarChart3 className="w-4 h-4" />
+                Analytics Overview
+              </span>
+            </button>
+
+            <Link
+              href={`${basePath}/submissions`}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Inbox className="w-4 h-4" />
+                Submissions Table
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                {leads.length}
+              </span>
+            </Link>
 
             <button
               onClick={() => setCurrentView("statuses")}
@@ -908,7 +1004,7 @@ export default function CrmDashboardPage() {
               }`}
             >
               <span className="flex items-center gap-2.5">
-                <Inbox className="w-4 h-4" />
+                <UserCheck className="w-4 h-4" />
                 Statuses
               </span>
               <span
@@ -929,7 +1025,7 @@ export default function CrmDashboardPage() {
               }`}
             >
               <span className="flex items-center gap-2.5">
-                <UserCheck className="w-4 h-4" />
+                <Users className="w-4 h-4" />
                 Leads
               </span>
               <span
@@ -1011,7 +1107,7 @@ export default function CrmDashboardPage() {
               </span>
             </button>
 
-            <div className="pt-4 mt-4 border-t border-[#e4e9f1]">
+            <div className="pt-3 mt-3 border-t border-[#e4e9f1]">
               <Link
                 href={`${basePath}/content`}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
@@ -1026,7 +1122,7 @@ export default function CrmDashboardPage() {
         {/* Footer info & Logout */}
         <div className="pt-4 border-t border-[#e4e9f1] flex flex-col gap-2">
           <div className="px-2 text-xs text-slate-400">
-            Connected: <span className="font-semibold text-emerald-600">Live Database</span>
+            Database: <span className="font-semibold text-emerald-600">{leads.length} Live Submissions</span>
           </div>
           <button
             onClick={logout}
@@ -1047,6 +1143,8 @@ export default function CrmDashboardPage() {
             <h1 className="text-xl font-black text-slate-900 tracking-tight capitalize">
               {currentView === "dashboard"
                 ? "Manager Dashboard"
+                : currentView === "analytics"
+                ? "Analytics & Performance"
                 : currentView === "statuses"
                 ? "Lead Statuses"
                 : currentView === "leads"
@@ -1060,7 +1158,7 @@ export default function CrmDashboardPage() {
                 : "Team Members"}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Live tracking • inspections • quotes • jobs • warranty
+              Live tracking • {leads.length} records • inspections • quotes • jobs • warranty
             </p>
           </div>
 
@@ -1127,7 +1225,89 @@ export default function CrmDashboardPage() {
           )}
 
           {/* =========================================================================
-              VIEW: DASHBOARD
+              VIEW: ANALYTICS OVERVIEW (Previous Admin Dashboard)
+             ========================================================================= */}
+          {currentView === "analytics" && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#e4e9f1]">
+                <h2 className="text-base font-black text-slate-900">Submission Analytics & Trends</h2>
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-lg border border-slate-300 bg-white p-0.5">
+                    {[7, 14, 30, 90].map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setAnalyticsDays(r)}
+                        className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                          analyticsDays === r ? "bg-[#001f97] text-white" : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {r}d
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => loadAnalytics(analyticsDays)}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    <RefreshCcw className={`h-3.5 w-3.5 ${loadingStats ? "animate-spin" : ""}`} />
+                    Refresh Stats
+                  </button>
+                </div>
+              </div>
+
+              {stats ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                    <StatCard label="Total leads" value={stats.total} accent />
+                    <StatCard label="New / unread" value={stats.newCount} />
+                    <StatCard label="Today" value={stats.today} />
+                    <StatCard label="Last 7 days" value={stats.last7Days} />
+                    <StatCard label="Last 30 days" value={stats.last30Days} />
+                  </div>
+
+                  <Panel title={`Submissions over the last ${analyticsDays} days`}>
+                    <TimelineChart data={stats.timeline} />
+                  </Panel>
+
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <Panel title="By enquiry type">
+                      <BarList
+                        items={[
+                          { label: "Quote requests", count: stats.byType.find((t) => t.type === "quote")?.count ?? 0 },
+                          { label: "Support tickets", count: stats.byType.find((t) => t.type === "support_ticket")?.count ?? 0 },
+                        ]}
+                      />
+                    </Panel>
+                    <Panel title="By status">
+                      <BarList
+                        items={stats.byStatus.map((s) => ({
+                          label: s.status[0].toUpperCase() + s.status.slice(1),
+                          count: s.count,
+                        }))}
+                      />
+                    </Panel>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-3">
+                    <Panel title="Top enquiry categories">
+                      <BarList items={stats.topEnquiries} />
+                    </Panel>
+                    <Panel title="Top cities / suburbs">
+                      <BarList items={stats.topCities} />
+                    </Panel>
+                    <Panel title="Top source pages">
+                      <BarList items={stats.topSources} />
+                    </Panel>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-16 text-center text-xs text-slate-400">Loading analytics data...</div>
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              VIEW: CRM DASHBOARD
              ========================================================================= */}
           {currentView === "dashboard" && (
             <div className="space-y-6">
@@ -2355,35 +2535,45 @@ export default function CrmDashboardPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto p-1">
-              {(activePhotoLead.photos || []).map((photo, i) => (
-                <div key={i} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 space-y-1.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.dataUrl}
-                    alt={photo.name}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  <div className="flex items-center justify-between text-[11px] text-slate-600">
-                    <span className="truncate max-w-[120px]" title={photo.name}>
-                      {photo.name}
-                    </span>
-                    <button
-                      onClick={() => handleDeletePhoto(i)}
-                      className="text-rose-500 hover:text-rose-700 p-1"
-                      title="Delete photo"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            {loadingPhotos ? (
+              <div className="py-12 text-center text-xs text-slate-400">Loading full customer photos...</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto p-1">
+                {(activePhotoLead.photos || []).map((photo, i) => (
+                  <div key={i} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 space-y-1.5">
+                    {photo.dataUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={photo.dataUrl}
+                        alt={photo.name}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-full h-32 bg-slate-200 rounded-lg flex items-center justify-center text-xs text-slate-400">
+                        {photo.name}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-[11px] text-slate-600">
+                      <span className="truncate max-w-[120px]" title={photo.name}>
+                        {photo.name}
+                      </span>
+                      <button
+                        onClick={() => handleDeletePhoto(i)}
+                        className="text-rose-500 hover:text-rose-700 p-1"
+                        title="Delete photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {(!activePhotoLead.photos || activePhotoLead.photos.length === 0) && (
-                <div className="col-span-full py-8 text-center text-xs text-slate-400">
-                  No photos uploaded for this customer yet.
-                </div>
-              )}
-            </div>
+                ))}
+                {(!activePhotoLead.photos || activePhotoLead.photos.length === 0) && (
+                  <div className="col-span-full py-8 text-center text-xs text-slate-400">
+                    No photos uploaded for this customer yet.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
