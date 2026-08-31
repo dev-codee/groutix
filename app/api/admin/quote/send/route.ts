@@ -7,7 +7,7 @@ import {
   formatDocNumber,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { sendEmail, isEmailConfigured, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 
 export const runtime = "nodejs";
@@ -78,39 +78,39 @@ export async function POST(req: NextRequest) {
     )}</td></tr>`;
 
   const html = `
-  <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;">
-    <h2 style="color:#001f97;margin:0 0 4px;">Your Groutix Quotation</h2>
-    <p style="margin:0 0 16px;color:#64748b;">Quote ${esc(quoteNumber)}</p>
-    <p style="margin:0 0 16px;color:#334155;line-height:1.6;">Hi ${esc(
+    <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your Groutix Quotation</h2>
+    <p style="margin:0 0 24px;color:#64748b;font-size:15px;">Quote ${esc(quoteNumber)}</p>
+    <p style="margin:0 0 16px;">Hi ${esc(
       lead.name || "there"
     )}, thank you for your enquiry. Please find your quotation below.</p>
-    <table style="border-collapse:collapse;width:100%;font-size:14px;">
-      <thead>
-        <tr>
-          <th style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;text-align:left;">Service</th>
-          <th style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;text-align:right;">Price</th>
-        </tr>
-      </thead>
-      <tbody>${itemRows}</tbody>
-      <tfoot>
-        <tr>
-          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-weight:700;">Total (AUD)</td>
-          <td style="padding:10px 12px;border:1px solid #e2e8f0;font-weight:700;text-align:right;">$${total.toFixed(
-            2
-          )}</td>
-        </tr>
-      </tfoot>
-    </table>
+    
+    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:24px 0;">
+      <table style="border-collapse:collapse;width:100%;font-size:15px;text-align:left;">
+        <thead>
+          <tr>
+            <th style="padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#0f172a;font-weight:600;">Service</th>
+            <th style="padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#0f172a;font-weight:600;text-align:right;">Price</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+        <tfoot>
+          <tr>
+            <td style="padding:16px 12px;font-weight:600;color:#0f172a;background:#f8fafc;border-top:1px solid #e2e8f0;">Total (AUD)</td>
+            <td style="padding:16px 12px;font-weight:600;color:#0f172a;background:#f8fafc;text-align:right;border-top:1px solid #e2e8f0;">$${total.toFixed(
+              2
+            )}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
     ${
       lead.quoteTerms
-        ? `<p style="margin:16px 0 0;color:#64748b;font-size:12px;line-height:1.5;">${esc(
+        ? `<p style="margin:16px 0;color:#64748b;font-size:13px;line-height:1.5;">${esc(
             lead.quoteTerms
           ).replace(/\n/g, "<br/>")}</p>`
         : ""
     }
-    <p style="margin:20px 0 0;color:#334155;line-height:1.6;">Reply to this email or call us to proceed with your booking.</p>
-    <p style="margin:12px 0 0;color:#94a3b8;font-size:13px;">Stay Sealed. Stay Smiling. — The Groutix Team</p>
-  </div>`;
+    <p style="margin:24px 0 0;">Reply to this email or call us to proceed with your booking.</p>`;
 
   // Automatic step: generate a branded PDF quotation and attach it.
   const attachments: EmailAttachment[] = [];
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix Quotation ${quoteNumber} — AUD $${total.toFixed(2)}`,
-      html,
+      html: wrapEmailHtml(html, `Your Groutix quotation ${quoteNumber} is ready.`),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {

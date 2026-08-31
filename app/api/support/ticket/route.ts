@@ -3,7 +3,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import type { SupportMessage } from "@/lib/supportKnowledge";
-import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
 
 export const runtime = "nodejs";
 // Room for the send retry sequence before the platform tears the instance down.
@@ -66,10 +66,10 @@ function row(label: string, value: string) {
   if (!value) return "";
   return `
     <tr>
-      <td style="padding:8px 12px;background:#f8fafc;font-weight:600;color:#0f172a;border:1px solid #e2e8f0;white-space:nowrap;vertical-align:top;">${esc(
+      <td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;white-space:nowrap;vertical-align:top;width:120px;">${esc(
         label
       )}</td>
-      <td style="padding:8px 12px;color:#334155;border:1px solid #e2e8f0;">${esc(value).replace(
+      <td style="padding:12px;color:#334155;border-bottom:1px solid #e2e8f0;">${esc(value).replace(
         /\n/g,
         "<br/>"
       )}</td>
@@ -80,12 +80,12 @@ function transcriptHtml(transcript: SupportMessage[]): string {
   if (transcript.length === 0) return "<p style=\"color:#64748b;\">No transcript supplied.</p>";
 
   return `
-    <div style="padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+    <div style="padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
       ${transcript
         .map(
           (message) => `
-            <p style="margin:0 0 12px;color:#334155;line-height:1.6;">
-              <strong style="color:#0f172a;text-transform:capitalize;">${esc(message.role)}:</strong>
+            <p style="margin:0 0 16px;color:#334155;line-height:1.6;">
+              <strong style="color:#0f172a;text-transform:capitalize;display:block;margin-bottom:4px;">${esc(message.role)}:</strong>
               ${esc(message.content).replace(/\n/g, "<br/>")}
             </p>`
         )
@@ -134,18 +134,20 @@ export async function POST(req: NextRequest) {
   }
 
   const internalHtml = `
-    <div style="font-family:Arial,Helvetica,sans-serif;max-width:680px;margin:0 auto;color:#0f172a;">
-      <h2 style="margin:0 0 6px;">New Chat Support Request</h2>
-      <p style="margin:0 0 16px;color:#64748b;">Submitted from the website support chatbot.</p>
-      <table style="border-collapse:collapse;width:100%;font-size:14px;margin-bottom:18px;">
-        ${row("Name", name)}
-        ${row("Email", email)}
-        ${row("Phone", phone)}
-        ${row("Issue", issue)}
-      </table>
-      <h3 style="margin:0 0 10px;">Chat Transcript</h3>
-      ${transcriptHtml(transcript)}
-    </div>`;
+      <h2 style="margin:0 0 8px;color:#001f97;font-size:24px;">New Chat Support Request</h2>
+      <p style="margin:0 0 24px;color:#64748b;">Submitted from the website support chatbot.</p>
+      
+      <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:32px;">
+        <table style="border-collapse:collapse;width:100%;font-size:15px;text-align:left;">
+          ${row("Name", name)}
+          ${row("Email", email)}
+          ${row("Phone", phone)}
+          ${row("Issue", issue)}
+        </table>
+      </div>
+
+      <h3 style="margin:0 0 16px;color:#0f172a;font-size:18px;">Chat Transcript</h3>
+      ${transcriptHtml(transcript)}`;
 
   try {
     await sendEmail({
@@ -154,7 +156,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: email,
       subject: `New Support Request: ${name}`,
-      html: internalHtml,
+      html: wrapEmailHtml(internalHtml, `New support request received from ${name}.`),
     });
   } catch (error) {
     console.error("Support ticket email error:", error);
@@ -181,21 +183,17 @@ export async function POST(req: NextRequest) {
     (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
   const customerHtml = `
-    <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">
-      <h2 style="margin:0 0 8px;color:#001f97;">Thanks, ${esc(name)}.</h2>
-      <p style="margin:0 0 12px;color:#334155;line-height:1.6;">
+      <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Thanks, ${esc(name)}.</h2>
+      <p style="margin:0 0 16px;">
         Your support request has been sent to the Groutix team. We will review the details and follow up by email as soon as possible.
       </p>
-      <div style="margin:0 0 16px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#475569;">
-        <strong style="color:#0f172a;">Your request:</strong><br/>${esc(issue).replace(/\n/g, "<br/>")}
+      <div style="margin:24px 0;padding:16px;background:#f8fafc;border-left:4px solid #001f97;border-radius:4px;color:#475569;font-size:15px;">
+        <strong style="color:#0f172a;display:block;margin-bottom:8px;">Your request:</strong>
+        ${esc(issue).replace(/\n/g, "<br/>")}
       </div>
-      <p style="margin:0 0 12px;color:#334155;line-height:1.6;">
-        If your issue is urgent, please call <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:600;">${esc(
-          CONTACT_PHONE
-        )}</a>.
-      </p>
-      <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">The Groutix Team</p>
-    </div>`;
+      <p style="margin:0 0 16px;">
+        If your issue is urgent, please call <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:600;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+      </p>`;
 
   try {
     await sendEmail({
@@ -204,7 +202,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: TO_EMAIL,
       subject: "We've received your support request | Groutix",
-      html: customerHtml,
+      html: wrapEmailHtml(customerHtml, "Your support request has been sent to the Groutix team."),
     });
   } catch (error) {
     console.error("Support confirmation email error:", error);

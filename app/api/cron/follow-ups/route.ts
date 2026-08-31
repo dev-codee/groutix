@@ -4,7 +4,7 @@ import {
   updateSubmission,
   appendActivity,
 } from "@/lib/submissions";
-import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
 
 // Scheduled follow-up sweep. Lives OUTSIDE /api/admin so it isn't behind the
 // session guard; instead it requires a shared secret. Point an external
@@ -30,15 +30,14 @@ function followUpHtml(name: string, stage: number) {
     "Following up on your Groutix quote. Would you like to lock in a booking date?",
     "Last check-in on your quotation before we close the file — let us know if you'd still like to go ahead.",
   ];
-  return `
-  <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">
-    <h2 style="color:#001f97;margin:0 0 8px;">Hi ${esc(name || "there")},</h2>
-    <p style="margin:0 0 16px;color:#334155;line-height:1.6;">${esc(
-      nudges[Math.min(stage, nudges.length - 1)]
-    )}</p>
-    <p style="margin:0 0 16px;color:#334155;line-height:1.6;">Reply to this email or call us and we'll take care of the rest.</p>
-    <p style="margin:12px 0 0;color:#94a3b8;font-size:13px;">Stay Sealed. Stay Smiling. — The Groutix Team</p>
-  </div>`;
+  return wrapEmailHtml(
+    `
+      <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Hi ${esc(name || "there")},</h2>
+      <p style="margin:0 0 16px;">${esc(nudges[Math.min(stage, nudges.length - 1)])}</p>
+      <p style="margin:0 0 16px;">Reply to this email or call us and we'll take care of the rest.</p>
+    `,
+    "Checking in on your Groutix quotation."
+  );
 }
 
 async function runSweep(req: NextRequest) {

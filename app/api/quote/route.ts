@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered, pickAssignee } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
-import { sendEmail, isEmailConfigured, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -355,7 +355,7 @@ export async function POST(req: NextRequest) {
         fromEmail: FROM_EMAIL,
         replyTo: email || undefined,
         subject: `New Quote Request: ${fullName || "Website"}`,
-        html: internalHtml,
+        html: wrapEmailHtml(internalHtml),
         attachments: attachments.length ? attachments : undefined,
       });
       internalSent = true;
@@ -371,32 +371,19 @@ export async function POST(req: NextRequest) {
       (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
     const customerHtml = `
-  <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">
-    <h2 style="margin:0 0 8px;color:#001f97;">Thanks, ${esc(firstName)}!</h2>
-    <p style="margin:0 0 12px;color:#334155;line-height:1.6;">
-      We've received your quote request and a Groutix specialist will be in touch
-      shortly to arrange the next steps.
-    </p>
-    <p style="margin:0 0 16px;color:#334155;line-height:1.6;">
-      If your enquiry is urgent, call us on
-      <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:600;">${esc(
-        CONTACT_PHONE
-      )}</a>.
-    </p>
-    ${
-      message
-        ? `<div style="margin:0 0 16px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#475569;">
-             <strong style="color:#0f172a;">Your message:</strong><br/>${esc(message).replace(
-               /\n/g,
-               "<br/>"
-             )}
-           </div>`
-        : ""
-    }
-    <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">
-      The Groutix Team
-    </p>
-  </div>`;
+      <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
+      <p style="margin:0 0 16px;">We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.</p>
+      ${
+        message
+          ? `<div style="margin:24px 0;padding:16px;background:#f8fafc;border-left:4px solid #001f97;border-radius:4px;color:#475569;font-size:15px;">
+               <strong style="color:#0f172a;display:block;margin-bottom:8px;">Your message:</strong>
+               ${esc(message).replace(/\n/g, "<br/>")}
+             </div>`
+          : ""
+      }
+      <p style="margin:0 0 16px;">
+        If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:600;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+      </p>`;
 
     try {
       await sendEmail({
@@ -405,7 +392,7 @@ export async function POST(req: NextRequest) {
         fromEmail: FROM_EMAIL,
         replyTo: TO_EMAIL,
         subject: "We've received your request | Groutix",
-        html: customerHtml,
+        html: wrapEmailHtml(customerHtml, "We've received your quote request and a Groutix specialist will be in touch shortly."),
       });
     } catch (err) {
       logSendError("customer confirmation", err);

@@ -8,7 +8,7 @@ import {
   type WarrantyDoc,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { sendEmail, isEmailConfigured, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -76,24 +76,24 @@ export async function POST(req: NextRequest) {
   }
 
   const html = `
-  <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;">
-    <h2 style="color:#001f97;margin:0 0 4px;">Your 10-Year Groutix Warranty</h2>
-    <p style="margin:0 0 16px;color:#64748b;">Warranty ${esc(warrantyNo)}</p>
-    <p style="margin:0 0 16px;color:#334155;line-height:1.6;">Hi ${esc(
+    <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your 10-Year Groutix Warranty</h2>
+    <p style="margin:0 0 24px;color:#64748b;font-size:15px;">Warranty ${esc(warrantyNo)}</p>
+    <p style="margin:0 0 16px;">Hi ${esc(
       warranty.customerName || "there"
     )}, thank you for choosing Groutix. Your work is complete and covered by our 10-year warranty.</p>
-    <table style="border-collapse:collapse;width:100%;font-size:14px;">
-      <tr><td style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Warranty No.</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${esc(
-        warrantyNo
-      )}</td></tr>
-      ${warranty.jobNo ? `<tr><td style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Job No.</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${esc(warranty.jobNo)}</td></tr>` : ""}
-      ${warranty.address ? `<tr><td style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Property</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${esc(warranty.address)}</td></tr>` : ""}
-      ${warranty.completionDate ? `<tr><td style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Completed</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${esc(warranty.completionDate)}</td></tr>` : ""}
-      ${warranty.expiryDate ? `<tr><td style="padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;">Warranty Expiry</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${esc(warranty.expiryDate)} (10 Years)</td></tr>` : ""}
-    </table>
-    <p style="margin:20px 0 0;color:#334155;line-height:1.6;">Your warranty card is attached. Keep it for your records.</p>
-    <p style="margin:12px 0 0;color:#94a3b8;font-size:13px;">Stay Sealed. Stay Smiling. — The Groutix Team</p>
-  </div>`;
+    
+    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:24px 0;">
+      <table style="border-collapse:collapse;width:100%;font-size:15px;text-align:left;">
+        <tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;width:140px;">Warranty No.</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;color:#334155;">${esc(
+          warrantyNo
+        )}</td></tr>
+        ${warranty.jobNo ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">Job No.</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;color:#334155;">${esc(warranty.jobNo)}</td></tr>` : ""}
+        ${warranty.address ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">Property</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;color:#334155;">${esc(warranty.address)}</td></tr>` : ""}
+        ${warranty.completionDate ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">Completed</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;color:#334155;">${esc(warranty.completionDate)}</td></tr>` : ""}
+        ${warranty.expiryDate ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;">Warranty Expiry</td><td style="padding:12px;color:#334155;">${esc(warranty.expiryDate)} <span style="color:#64748b;font-size:13px;margin-left:4px;">(10 Years)</span></td></tr>` : ""}
+      </table>
+    </div>
+    <p style="margin:24px 0 0;">Your warranty card is attached. Keep it safe for your records.</p>`;
 
   try {
     await sendEmail({
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix 10-Year Warranty ${warrantyNo}`,
-      html,
+      html: wrapEmailHtml(html, `Your Groutix 10-year warranty (${warrantyNo}) is ready.`),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {
