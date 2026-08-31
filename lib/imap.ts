@@ -32,8 +32,8 @@ export async function syncUnreadEmails() {
       // Fetch UIDs of unread emails
       const searchResult = await client.search({ seen: false });
       
-      // Limit to the 20 most recent unread emails to prevent Vercel 60s timeout
-      const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-20) : [];
+      // Limit to the 10 most recent unread emails to prevent Vercel timeout
+      const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-10) : [];
       
       if (uidsToFetch.length > 0) {
         for await (const message of client.fetch(uidsToFetch, { source: true, envelope: true })) {
