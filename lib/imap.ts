@@ -12,9 +12,11 @@ export async function syncUnreadEmails() {
     return { error: "not_configured" };
   }
 
+  let step = "init";
+  
   // Wrap the entire process in a 25-second timeout so cron-job.org doesn't timeout (max 30s)
   return Promise.race([
-    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0 }), 25000)),
+    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0, step }), 25000)),
     (async () => {
       // imap.gmail.com is standard for Google Workspace
       const client = new ImapFlow({
@@ -28,72 +30,98 @@ export async function syncUnreadEmails() {
       let syncedCount = 0;
 
       try {
+        step = "connecting";
+        console.log("[IMAP] Connecting...");
         await client.connect();
+        step = "connected";
+        console.log("[IMAP] Connected!");
+        
+        step = "locking_inbox";
+        console.log("[IMAP] Locking INBOX...");
         const lock = await client.getMailboxLock("INBOX");
+        step = "inbox_locked";
+        console.log("[IMAP] INBOX locked.");
         try {
-      // Fetch UIDs of unread emails
-      const searchResult = await client.search({ seen: false });
-      
-      // Limit to the 10 most recent unread emails to prevent Vercel timeout
-      const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-10) : [];
-      
-      if (uidsToFetch.length > 0) {
-        for await (const message of client.fetch(uidsToFetch, { source: true, envelope: true })) {
-          if (!message.source) continue;
-        
-        // Parse the raw email source
-        const parsed = await simpleParser(message.source);
-        const fromEmail = parsed.from?.value[0]?.address?.toLowerCase();
-        
-        if (fromEmail) {
-          // Find if this email matches any active lead in the CRM
-          const db = await getDb();
-          const col = db.collection<SubmissionDoc>("submissions");
+          step = "searching";
+          console.log("[IMAP] Searching for unread...");
+          // Only fetch emails smaller than 5MB to prevent Vercel from hanging on huge attachments
+          const searchResult = await client.search({ seen: false, smaller: 5000000 });
           
-          // Match by exact email (you could also try to match Message-ID references here)
-          const lead = await col.findOne({ 
-            email: fromEmail,
-            // Prioritise open leads over completely closed/lost ones
-            status: { $nin: ["Lost"] } 
-          }, { sort: { createdAt: -1 } });
-
-          if (lead) {
-            // Append the message
-            const crmMessage: CustomerMessage = {
-              id: parsed.messageId || `msg_${Date.now()}`,
-              from: "customer",
-              channel: "email",
-              subject: parsed.subject,
-              text: parsed.text || "No text content.",
-              time: (parsed.date || new Date()).toISOString(),
-            };
-
-            await col.updateOne(
-              { _id: lead._id },
-              { $push: { messages: crmMessage } }
-            );
-
-            // Log activity
-            await appendActivity(lead._id.toString(), {
-              time: new Date().toISOString(),
-              actor: "system",
-              action: "Customer replied via Email",
-              detail: parsed.subject,
-            });
-
-            // Automatically stop follow-ups if they are in "Quote Sent"
-            if (lead.status === "Quote Sent") {
-              await updateSubmission(lead._id.toString(), { status: "In Progress" });
+          step = "slicing";
+          // Limit to the 3 most recent unread emails to ensure it completes within 25s
+          const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-3) : [];
+          console.log(`[IMAP] Found ${Array.isArray(searchResult) ? searchResult.length : 0} unread (under 5MB), fetching latest ${uidsToFetch.length}...`);
+          
+          if (uidsToFetch.length > 0) {
+            const emailsToProcess: any[] = [];
+            step = "fetching";
+            for await (const message of client.fetch(uidsToFetch, { source: true, envelope: true })) {
+              const currentId = message.uid || message.seq;
+              step = "parsing_source_" + currentId;
+              console.log("[IMAP] Parsing email ID:", currentId);
+              if (!message.source) continue;
+        
+              // Parse the raw email source
+              const parsed = await simpleParser(message.source);
+              emailsToProcess.push({ parsed, seq: message.seq });
             }
+            
+            step = "db_processing";
+            for (const item of emailsToProcess) {
+              const parsed = item.parsed;
+              const seq = item.seq;
+              const fromEmail = parsed.from?.value[0]?.address?.toLowerCase();
+              
+              if (fromEmail) {
+                step = "db_lookup_" + seq;
+                // Find if this email matches any active lead in the CRM
+                const db = await getDb();
+                const col = db.collection<SubmissionDoc>("submissions");
+                
+                // Match by exact email
+                const lead = await col.findOne({ 
+                  email: fromEmail,
+                  status: { $nin: ["Lost"] } 
+                }, { sort: { createdAt: -1 } });
 
-            syncedCount++;
+                if (lead) {
+                  step = "db_update_" + seq;
+                  // Append the message
+                  const crmMessage: CustomerMessage = {
+                    id: parsed.messageId || `msg_${Date.now()}`,
+                    from: "customer",
+                    channel: "email",
+                    subject: parsed.subject,
+                    text: parsed.text || "No text content.",
+                    time: (parsed.date || new Date()).toISOString(),
+                  };
+
+                  await col.updateOne(
+                    { _id: lead._id },
+                    { $push: { messages: crmMessage } }
+                  );
+
+                  // Log activity
+                  await appendActivity(lead._id.toString(), {
+                    time: new Date().toISOString(),
+                    actor: "system",
+                    action: "Customer replied via Email",
+                    detail: parsed.subject,
+                  });
+
+                  // Automatically stop follow-ups if they are in "Quote Sent"
+                  if (lead.status === "Quote Sent") {
+                    await updateSubmission(lead._id.toString(), { status: "In Progress" });
+                  }
+
+                  syncedCount++;
+                }
+              }
+
+              // Mark as SEEN so we don't process it again
+              await client.messageFlagsAdd(seq, ["\\Seen"]);
+            }
           }
-        }
-
-        // Mark as SEEN so we don't process it again
-        await client.messageFlagsAdd(message.seq, ["\\Seen"]);
-      }
-      }
     } finally {
       lock.release();
     }
