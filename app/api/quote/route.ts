@@ -178,6 +178,34 @@ export async function POST(req: NextRequest) {
   const attachments: EmailAttachment[] = [];
   const submissionPhotos: import("@/lib/submissions").SubmissionPhoto[] = [];
 
+  // 1) Check for pre-uploaded photos from direct browser Cloudinary upload
+  const uploadedPhotosRaw = form.get("uploadedPhotos");
+  if (typeof uploadedPhotosRaw === "string" && uploadedPhotosRaw.trim()) {
+    try {
+      const parsed = JSON.parse(uploadedPhotosRaw);
+      if (Array.isArray(parsed)) {
+        for (const p of parsed) {
+          if (p && (p.url || p.secureUrl)) {
+            submissionPhotos.push({
+              name: p.name || "photo",
+              contentType: p.contentType,
+              url: p.secureUrl || p.url,
+              secureUrl: p.secureUrl || p.url,
+              publicId: p.publicId,
+              width: p.width,
+              height: p.height,
+              size: p.size,
+              added: p.added || new Date().toISOString(),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to parse uploadedPhotos:", err);
+    }
+  }
+
+  // 2) Fallback: Process direct multipart file uploads (if direct upload was bypassed)
   for (const file of photos) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = (file.name.split(".").pop() || "").toLowerCase();
@@ -280,7 +308,7 @@ export async function POST(req: NextRequest) {
       ${row("Is area leaking", leaking)}
       ${row("Message", message)}
       ${row("Heard about us", heard)}
-      ${row("Photos attached", attachments.length ? `${attachments.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}
+      ${row("Photos attached", submissionPhotos.length ? `${submissionPhotos.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}
       ${row("Auto-assigned to", assignee)}
     </table>
   </div>`;

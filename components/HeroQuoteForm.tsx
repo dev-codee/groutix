@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { formatBytes, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
+import { formatBytes, MAX_TOTAL_BYTES, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT } from "@/lib/imageCompression";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -272,6 +272,19 @@ export default function HeroQuoteForm() {
       return;
     }
 
+    if (photos.length + newFiles.length > MAX_PHOTO_COUNT) {
+      setPhotoError(`You can upload a maximum of ${MAX_PHOTO_COUNT} photos.`);
+      return;
+    }
+
+    const oversized = newFiles.find((f) => f.size > MAX_FILE_SIZE_BYTES);
+    if (oversized) {
+      setPhotoError(
+        `"${oversized.name}" exceeds the ${formatBytes(MAX_FILE_SIZE_BYTES)} per-photo limit.`
+      );
+      return;
+    }
+
     const updatedPhotos = [...photos, ...newFiles];
     const newTotalSize = updatedPhotos.reduce((acc, f) => acc + f.size, 0);
 
@@ -279,7 +292,7 @@ export default function HeroQuoteForm() {
       setPhotoError(
         `Total photo size (${formatBytes(newTotalSize)}) exceeds our ${formatBytes(
           MAX_TOTAL_BYTES
-        )} upload limit. Please select fewer or smaller photos.`
+        )} upload limit.`
       );
     } else {
       setPhotoError("");
@@ -375,6 +388,59 @@ export default function HeroQuoteForm() {
 
     setLoading(true);
     try {
+      // 1) Direct browser upload to Cloudinary (bypasses serverless request size limits)
+      let uploadedPhotos: Array<{
+        name: string;
+        contentType: string;
+        url: string;
+        secureUrl: string;
+        publicId: string;
+        width?: number;
+        height?: number;
+        size: number;
+        added: string;
+      }> = [];
+
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "hsg6orfs";
+      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "groutix";
+
+      if (photos.length > 0 && cloudName && uploadPreset) {
+        try {
+          uploadedPhotos = await Promise.all(
+            photos.map(async (file) => {
+              const cldFormData = new FormData();
+              cldFormData.append("file", file);
+              cldFormData.append("upload_preset", uploadPreset);
+              cldFormData.append("folder", "groutix/quotes");
+
+              const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                method: "POST",
+                body: cldFormData,
+              });
+
+              if (!res.ok) {
+                throw new Error(`Upload failed for ${file.name}`);
+              }
+              const result = await res.json();
+              return {
+                name: file.name,
+                contentType: file.type || "image/jpeg",
+                url: result.secure_url || result.url,
+                secureUrl: result.secure_url || result.url,
+                publicId: result.public_id,
+                width: result.width,
+                height: result.height,
+                size: result.bytes || file.size,
+                added: new Date().toISOString(),
+              };
+            })
+          );
+        } catch (cldErr) {
+          console.warn("Direct Cloudinary upload failed, falling back to standard submit:", cldErr);
+          uploadedPhotos = [];
+        }
+      }
+
       const payload = new FormData();
       if (isPropertyManager) {
         payload.append("customerType", "Property Manager");
@@ -397,7 +463,13 @@ export default function HeroQuoteForm() {
         typeof window !== "undefined" ? window.location.pathname : ""
       );
       if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
-      photos.forEach((file) => payload.append("photos", file));
+
+      if (uploadedPhotos.length > 0) {
+        payload.append("uploadedPhotos", JSON.stringify(uploadedPhotos));
+      } else {
+        // Fallback: send raw files if direct cloud upload was bypassed
+        photos.forEach((file) => payload.append("photos", file));
+      }
 
       const res = await fetch("/api/quote", { method: "POST", body: payload });
       if (!res.ok) {
@@ -975,7 +1047,7 @@ export default function HeroQuoteForm() {
                     <span>Click to upload photos (optional)</span>
                   </div>
                   <span className="text-[11px] text-neutral-500 font-medium">
-                    Max 4MB total
+                    Up to 10 photos (JPG, PNG, WebP)
                   </span>
                   <input
                     ref={fileInputRef}
