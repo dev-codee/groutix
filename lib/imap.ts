@@ -29,11 +29,15 @@ export async function syncUnreadEmails() {
     // Select the INBOX mailbox
     const lock = await client.getMailboxLock("INBOX");
     try {
-      // Fetch all unread emails
-      const searchRequest = { seen: false };
+      // Fetch UIDs of unread emails
+      const searchResult = await client.search({ seen: false });
       
-      for await (const message of client.fetch(searchRequest, { source: true, envelope: true })) {
-        if (!message.source) continue;
+      // Limit to the 20 most recent unread emails to prevent Vercel 60s timeout
+      const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-20) : [];
+      
+      if (uidsToFetch.length > 0) {
+        for await (const message of client.fetch(uidsToFetch, { source: true, envelope: true })) {
+          if (!message.source) continue;
         
         // Parse the raw email source
         const parsed = await simpleParser(message.source);
@@ -86,6 +90,7 @@ export async function syncUnreadEmails() {
 
         // Mark as SEEN so we don't process it again
         await client.messageFlagsAdd(message.seq, ["\\Seen"]);
+      }
       }
     } finally {
       lock.release();
