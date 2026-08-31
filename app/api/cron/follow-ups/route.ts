@@ -4,7 +4,7 @@ import {
   updateSubmission,
   appendActivity,
 } from "@/lib/submissions";
-import { sendBrevoEmail } from "@/lib/email";
+import { sendEmail, isEmailConfigured } from "@/lib/email";
 
 // Scheduled follow-up sweep. Lives OUTSIDE /api/admin so it isn't behind the
 // session guard; instead it requires a shared secret. Point an external
@@ -14,7 +14,7 @@ import { sendBrevoEmail } from "@/lib/email";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
+const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 const FROM_NAME = "Groutix";
 const REPLY_TO = "info@groutix.com";
 const FOLLOWUP_DAYS = Number(process.env.FOLLOWUP_DAYS || 2);
@@ -42,21 +42,17 @@ function followUpHtml(name: string, stage: number) {
 }
 
 async function runSweep(req: NextRequest) {
-  // Cron jobs are disabled for now
-  const cronEnabled = process.env.ENABLE_CRON_FOLLOWUPS === "true";
-  if (!cronEnabled) {
-    return NextResponse.json({
-      ok: false,
-      message: "Automated follow-up cron jobs are currently disabled.",
-    });
+  if (process.env.ENABLE_CRON_FOLLOWUPS !== "true") {
+    return NextResponse.json({ skipped: true, reason: "disabled_in_env" });
   }
 
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 503 });
+    return NextResponse.json({ error: "Missing CRON_SECRET" }, { status: 500 });
   }
-  // Accept either an `x-cron-secret` header (cron-job.org and most external
-  // schedulers) or `Authorization: Bearer <secret>` (Vercel Cron sends this
+
+  // Vercel Cron sends a Bearer token; some external schedulers might use
+  // a custom header. We accept both (Vercel passes `authorization: Bearer ...`
   // automatically when CRON_SECRET is set).
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const provided = req.headers.get("x-cron-secret") || bearer;
@@ -64,7 +60,6 @@ async function runSweep(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const apiKey = process.env.BREVO_API_KEY;
   const now = Date.now();
   const candidates = await listFollowUpCandidates();
 
@@ -79,9 +74,9 @@ async function runSweep(req: NextRequest) {
     }
 
     const nextStage = stage + 1;
-    if (apiKey && lead.email) {
+    if (isEmailConfigured() && lead.email) {
       try {
-        await sendBrevoEmail(apiKey, {
+        await sendEmail({
           toEmail: lead.email,
           fromName: FROM_NAME,
           fromEmail: FROM_EMAIL,

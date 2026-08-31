@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered, pickAssignee } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
-import { sendBrevoEmail, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, type EmailAttachment } from "@/lib/email";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -11,10 +11,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Where new quote requests are delivered internally.
-const TO_EMAIL = "info@groutix.com";
-// The "from" address must be a sender you've verified in Brevo. Set it via
-// BREVO_FROM in .env.local.
-const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
+const TO_EMAIL = process.env.SUPPORT_TO_EMAIL || "info@groutix.com";
+const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 // Shown in the inbox for the internal notification (customer confirmation
 // uses a plain "Groutix" name below).
 const INTERNAL_FROM_NAME = "Groutix Website Enquiry";
@@ -84,8 +82,7 @@ function row(label: string, value: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) {
+  if (!isEmailConfigured()) {
     return NextResponse.json(
       { error: "Email service is not configured. Please try again later." },
       { status: 500 }
@@ -352,7 +349,7 @@ export async function POST(req: NextRequest) {
   const processEmails = async () => {
     let internalSent = false;
     try {
-      await sendBrevoEmail(apiKey, {
+      await sendEmail({
         toEmail: TO_EMAIL,
         fromName: INTERNAL_FROM_NAME,
         fromEmail: FROM_EMAIL,
@@ -402,7 +399,7 @@ export async function POST(req: NextRequest) {
   </div>`;
 
     try {
-      await sendBrevoEmail(apiKey, {
+      await sendEmail({
         toEmail: email,
         fromName: CUSTOMER_FROM_NAME,
         fromEmail: FROM_EMAIL,

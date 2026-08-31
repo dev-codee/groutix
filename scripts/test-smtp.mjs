@@ -1,36 +1,73 @@
-// Temporary diagnostic: reads .env.local and tests the Brevo transactional API.
-import { readFileSync } from "node:fs";
+// Temporary diagnostic: reads .env.local and tests the Nodemailer SMTP connection.
+// Run with: node scripts/test-smtp.mjs
 
-const env = {};
-for (const line of readFileSync(".env.local", "utf8").split("\n")) {
-  const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-  if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, "");
-}
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
+import nodemailer from "nodemailer";
 
-console.log("API key prefix:", (env.BREVO_API_KEY || "").slice(0, 10) + "...");
-console.log("From:", env.BREVO_FROM);
-
-try {
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": env.BREVO_API_KEY,
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({
-      sender: { name: "GROUTIX Test", email: env.BREVO_FROM },
-      to: [{ email: env.BREVO_FROM }],
-      subject: "Brevo API test",
-      htmlContent: "<p>If you received this, the Brevo API works.</p>",
-    }),
-  });
-  const body = await res.text();
-  if (res.ok) {
-    console.log("\n✅ Brevo API OK:", body);
-  } else {
-    console.error(`\n❌ Brevo API ${res.status}:`, body);
+function loadEnv() {
+  const envPath = join(process.cwd(), ".env.local");
+  if (!existsSync(envPath)) return {};
+  const content = readFileSync(envPath, "utf-8");
+  const env = {};
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^([^#=]+)=(.*)$/);
+    if (match) {
+      env[match[1].trim()] = match[2].trim();
+    }
   }
-} catch (err) {
-  console.error("\n❌ Request failed:", err);
+  return env;
 }
+
+const env = loadEnv();
+
+if (!env.SMTP_USER || !env.SMTP_PASS) {
+  console.error(
+    "❌ Missing SMTP_USER or SMTP_PASS in .env.local. Please configure your email host."
+  );
+  process.exit(1);
+}
+
+const host = env.SMTP_HOST || "smtp.gmail.com";
+const port = Number(env.SMTP_PORT || 465);
+const secure = port === 465;
+const user = env.SMTP_USER;
+const pass = env.SMTP_PASS;
+const from = env.SMTP_FROM || user;
+
+console.log("Configured SMTP:");
+console.log("- Host:", host);
+console.log("- Port:", port);
+console.log("- User:", user);
+console.log("- From:", from);
+
+console.log("\nAttempting to send a test email to:", from);
+
+const transporter = nodemailer.createTransport({
+  host,
+  port,
+  secure,
+  auth: {
+    user,
+    pass,
+  },
+});
+
+const mailOptions = {
+  from: `"GROUTIX Test" <${from}>`,
+  to: from,
+  subject: "Nodemailer SMTP Test",
+  html: "<p>If you received this, your Google Workspace SMTP works perfectly!</p>",
+};
+
+transporter.sendMail(mailOptions, (error, info) => {
+  if (error) {
+    console.error("\n❌ Email send failed:", error.message);
+    console.error("Full error:", error);
+    process.exit(1);
+  } else {
+    console.log("\n✅ Email sent successfully!");
+    console.log("Message ID:", info.messageId);
+    process.exit(0);
+  }
+});

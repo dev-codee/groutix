@@ -3,7 +3,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import type { SupportMessage } from "@/lib/supportKnowledge";
-import { sendBrevoEmail } from "@/lib/email";
+import { sendEmail, isEmailConfigured } from "@/lib/email";
 
 export const runtime = "nodejs";
 // Room for the send retry sequence before the platform tears the instance down.
@@ -14,7 +14,7 @@ const RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_FIELD_LENGTH = 1000;
 const MAX_TRANSCRIPT_MESSAGES = 20;
 const TO_EMAIL = process.env.SUPPORT_TO_EMAIL || "info@groutix.com";
-const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
+const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 const DEFAULT_CONTACT_PHONE = "7023 8094";
 
 type TicketBody = {
@@ -94,8 +94,7 @@ function transcriptHtml(transcript: SupportMessage[]): string {
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) {
+  if (!isEmailConfigured()) {
     return NextResponse.json(
       { error: "Email service is not configured. Please try again later." },
       { status: 500 }
@@ -149,7 +148,7 @@ export async function POST(req: NextRequest) {
     </div>`;
 
   try {
-    await sendBrevoEmail(apiKey, {
+    await sendEmail({
       toEmail: TO_EMAIL,
       fromName: "Groutix Support Chat",
       fromEmail: FROM_EMAIL,
@@ -199,7 +198,7 @@ export async function POST(req: NextRequest) {
     </div>`;
 
   try {
-    await sendBrevoEmail(apiKey, {
+    await sendEmail({
       toEmail: email,
       fromName: "Groutix",
       fromEmail: FROM_EMAIL,

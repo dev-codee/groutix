@@ -7,13 +7,13 @@ import {
   formatDocNumber,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { sendBrevoEmail, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const FROM_EMAIL = process.env.BREVO_FROM || "info@groutix.com";
+const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 const FROM_NAME = "Groutix";
 const REPLY_TO = "info@groutix.com";
 // How long to wait before the first follow-up is due (days).
@@ -28,8 +28,7 @@ function esc(v: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) {
+  if (!isEmailConfigured()) {
     return NextResponse.json({ error: "Email service is not configured." }, { status: 500 });
   }
 
@@ -144,7 +143,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await sendBrevoEmail(apiKey, {
+    await sendEmail({
       toEmail: lead.email,
       fromName: FROM_NAME,
       fromEmail: FROM_EMAIL,
