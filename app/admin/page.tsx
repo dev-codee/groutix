@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   BarChart3,
-  Inbox,
   FileText,
   LogOut,
   RefreshCcw,
@@ -31,9 +30,14 @@ import {
   ExternalLink,
   Users,
   Briefcase,
-  UserCheck
+  UserCheck,
+  Loader2,
+  ZoomIn,
+  Image as ImageIcon
 } from "lucide-react";
-import { useAdminBasePath } from "@/components/admin/AdminProvider";
+import { useAdminBasePath, useAdminRole } from "@/components/admin/AdminProvider";
+import { canView as roleCanView, ROLE_DEFAULT_VIEW } from "@/lib/roles";
+import { STATUS_KEYS, inRoleQueue, JOB_STATUSES } from "@/lib/pipeline";
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
@@ -70,12 +74,21 @@ export interface GpsCheckin {
 
 export interface WarrantyDoc {
   jobNo?: string;
+  warrantyNo?: string;
   completionDate?: string;
   expiryDate?: string;
   customerName?: string;
   address?: string;
   authorisedBy?: string;
   dateIssued?: string;
+  sentAt?: string;
+}
+
+export interface ActivityEntry {
+  time: string;
+  actor: string;
+  action: string;
+  detail?: string;
 }
 
 export interface Lead {
@@ -108,10 +121,26 @@ export interface Lead {
   quoteTerms?: string;
   quoteUpdated?: string;
   quoteAmount?: number;
-  photos?: { name: string; contentType?: string; dataUrl?: string; added?: string }[];
+  photosCount?: number;
+  photos?: {
+    name: string;
+    contentType?: string;
+    url?: string;
+    secureUrl?: string;
+    publicId?: string;
+    dataUrl?: string;
+    width?: number;
+    height?: number;
+    size?: number;
+    added?: string;
+  }[];
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
   warranty?: WarrantyDoc;
+  activity?: ActivityEntry[];
+  quoteNumber?: string;
+  followUpStage?: number;
+  followUpNext?: string;
 }
 
 export interface CrmTask {
@@ -134,20 +163,9 @@ type Stats = {
   topSources: { label: string; count: number }[];
 };
 
-const STATUS_LIST = [
-  "New",
-  "Contacted",
-  "Waiting for Info",
-  "Inspection Booked",
-  "Inspection Completed",
-  "Quote Pending",
-  "Quote Sent",
-  "Negotiation",
-  "Won",
-  "Lost",
-  "Payment Received",
-  "Job Done"
-] as const;
+// Ordered status list is sourced from the shared pipeline so the dashboard,
+// API, and role queues never drift apart.
+const STATUS_LIST: string[] = STATUS_KEYS;
 
 function normalizeStatus(s?: string): string {
   if (!s) return "New";
@@ -198,39 +216,67 @@ function calcResponseTime(received?: string, contacted?: string) {
   return parts.join(" ");
 }
 
+// Some templates (e.g. the WARRANTY / IMPORTANT NOTICE note) put the same text
+// in both the service title and the detailed scope. In the preview we render
+// both, so detect that overlap and skip the scope to avoid a doubled block.
+function isRedundantScope(service?: string, scope?: string): boolean {
+  if (!service || !scope) return false;
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  const svc = norm(service);
+  const scp = norm(scope);
+  if (!svc || !scp) return false;
+  return svc === scp || svc.includes(scp) || scp.includes(svc);
+}
+
 function getBadgeColor(status: string) {
   switch (status) {
+    // Completed / positive outcomes — the only place we use colour.
     case "Won":
     case "Payment Received":
     case "Job Done":
-      return "bg-emerald-100 text-emerald-800 border-emerald-200";
-    case "Lost":
-      return "bg-rose-100 text-rose-800 border-rose-200";
-    case "Quote Pending":
-    case "Quote Sent":
-      return "bg-amber-100 text-amber-800 border-amber-200";
-    case "Inspection Booked":
+    case "Warranty Sent":
     case "Inspection Completed":
-    case "Negotiation":
-      return "bg-purple-100 text-purple-800 border-purple-200";
-    case "Waiting for Info":
-      return "bg-teal-100 text-teal-800 border-teal-200";
-    case "Contacted":
-      return "bg-blue-100 text-blue-800 border-blue-200";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    // Closed / inactive — de-emphasised.
+    case "Lost":
+      return "bg-slate-100 text-slate-500 border-slate-200";
+    // New — needs attention — the navy accent.
     case "New":
+      return "bg-[#001f97]/10 text-[#001f97] border-[#001f97]/20 font-semibold";
+    // Everything in-progress — neutral.
     default:
-      return "bg-red-100 text-red-700 border-red-200 font-semibold";
+      return "bg-slate-50 text-slate-700 border-slate-200";
   }
 }
 
+type DashboardView =
+  | "dashboard"
+  | "analytics"
+  | "statuses"
+  | "leads"
+  | "quotes"
+  | "jobs"
+  | "customers"
+  | "team";
+
 export default function CrmDashboardPage() {
   const basePath = useAdminBasePath();
+  const role = useAdminRole();
   const router = useRouter();
 
-  // Navigation / Views
-  const [currentView, setCurrentView] = useState<
-    "dashboard" | "analytics" | "statuses" | "leads" | "quotes" | "jobs" | "customers" | "team"
-  >("dashboard");
+  // Which tabs this role is allowed to open.
+  const canSee = useCallback((view: DashboardView) => roleCanView(role, view), [role]);
+
+  // Navigation / Views — land on the tab this role owns.
+  const [currentView, setCurrentView] = useState<DashboardView>(
+    () => ROLE_DEFAULT_VIEW[role] as DashboardView
+  );
+
+  // Staff directory (all roles) for the Team view and assignee pickers.
+  const [staff, setStaff] = useState<
+    { id: string; name: string; role: string; active: boolean }[]
+  >([]);
 
   // Core Data
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -263,6 +309,10 @@ export default function CrmDashboardPage() {
   const [photosModalOpen, setPhotosModalOpen] = useState(false);
   const [activePhotoLead, setActivePhotoLead] = useState<Lead | null>(null);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; name: string } | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
@@ -352,6 +402,47 @@ export default function CrmDashboardPage() {
       loadAnalytics(analyticsDays);
     }
   }, [currentView, analyticsDays, loadAnalytics]);
+
+  // Load the staff directory for every role (drives the Team view and all
+  // assignee pickers) so nothing is hardcoded. Read-only names/roles only.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/staff", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setStaff(data.staff || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Active staff names for assignee dropdowns.
+  const staffNames = useMemo(
+    () => staff.filter((s) => s.active).map((s) => s.name),
+    [staff]
+  );
+
+  // Options for the "Assigned To" picker: active staff, plus whatever the lead
+  // is currently assigned to (so an auto-assigned value always shows).
+  const assigneeOptions = useMemo(() => {
+    const names = new Set<string>(staffNames);
+    if (editingLead?.assigned) names.add(editingLead.assigned);
+    if (names.size === 0) names.add("Unassigned");
+    return Array.from(names);
+  }, [staffNames, editingLead?.assigned]);
+
+  // Options for a row-level assignee picker (active staff + the row's value).
+  const rowAssigneeOptions = useCallback(
+    (current?: string) => {
+      const names = new Set<string>(staffNames);
+      if (current) names.add(current);
+      if (names.size === 0) names.add("Unassigned");
+      return Array.from(names);
+    },
+    [staffNames]
+  );
 
   async function logout() {
     setLoggingOut(true);
@@ -609,8 +700,50 @@ export default function CrmDashboardPage() {
     setQuoteModalOpen(false);
   }
 
-  function handlePrintQuote() {
-    window.print();
+  // Server-side send: emails the customer via Brevo, mints a quote number,
+  // sets status to Quote Sent, and starts the follow-up timer automatically.
+  async function handleSendQuoteEmail() {
+    if (!activeQuoteLead) return;
+    if (!activeQuoteLead.email) return alert("No email address saved for this customer.");
+    // Persist the latest edits first so the emailed quote matches the screen.
+    const { total } = quoteTotals();
+    await updateLeadField(activeQuoteLead.id, {
+      quoteItems,
+      quoteTaxMode,
+      quoteTaxRate,
+      quoteTerms,
+      quoteAmount: total,
+      quoteUpdated: new Date().toISOString(),
+    });
+    try {
+      const res = await fetch("/api/admin/quote/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: activeQuoteLead.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return alert(data.error || "Could not send the quote.");
+      alert(`Quote ${data.quoteNumber} emailed to ${activeQuoteLead.email}.`);
+      setQuoteModalOpen(false);
+      loadData();
+    } catch {
+      alert("Network error while sending the quote.");
+    }
+  }
+
+  // Persist current edits, then open the branded server-generated PDF.
+  async function handlePrintQuote() {
+    if (!activeQuoteLead) return window.print();
+    const { total } = quoteTotals();
+    await updateLeadField(activeQuoteLead.id, {
+      quoteItems,
+      quoteTaxMode,
+      quoteTaxRate,
+      quoteTerms,
+      quoteAmount: total,
+      quoteUpdated: new Date().toISOString(),
+    });
+    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}`, "_blank");
   }
 
   function handleEmailQuote() {
@@ -639,58 +772,112 @@ export default function CrmDashboardPage() {
     window.open(`https://wa.me/${phone.startsWith("0") ? "61" + phone.slice(1) : phone}?text=${text}`, "_blank");
   }
 
-  // Photos Management with on-demand load
+  // Photos Management with on-demand load and Cloudinary integration
   async function openPhotosModal(lead: Lead) {
     setActivePhotoLead(lead);
     setPhotosModalOpen(true);
-    if (!lead.photos?.length || !lead.photos[0]?.dataUrl) {
-      setLoadingPhotos(true);
-      try {
-        const res = await fetch(`/api/admin/submissions/${lead.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.item?.photos) {
-            setActivePhotoLead((prev) => (prev ? { ...prev, photos: data.item.photos } : prev));
-          }
+    setLoadingPhotos(true);
+    try {
+      const res = await fetch(`/api/admin/submissions/${lead.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.item) {
+          setActivePhotoLead(data.item);
+          setLeads((prev) =>
+            prev.map((l) =>
+              l.id === lead.id
+                ? { ...l, photos: data.item.photos, photosCount: data.item.photos?.length || 0 }
+                : l
+            )
+          );
         }
-      } catch {
-        /* ignore */
-      } finally {
-        setLoadingPhotos(false);
       }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingPhotos(false);
     }
   }
 
   async function handleAddPhotos(files: FileList | null) {
-    if (!files || !activePhotoLead) return;
-    const newPhotos = [...(activePhotoLead.photos || [])];
+    if (!files || files.length === 0 || !activePhotoLead) return;
+    setUploadingPhotos(true);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const reader = new FileReader();
-      await new Promise<void>((resolve) => {
-        reader.onload = () => {
-          newPhotos.push({
-            name: file.name,
-            contentType: file.type,
-            dataUrl: reader.result as string,
-            added: new Date().toISOString()
-          });
-          resolve();
-        };
-        reader.readAsDataURL(file);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("photos", files[i]);
+      }
+
+      const res = await fetch(`/api/admin/submissions/${activePhotoLead.id}/photos`, {
+        method: "POST",
+        body: formData,
       });
-    }
 
-    await updateLeadField(activePhotoLead.id, { photos: newPhotos });
-    setActivePhotoLead((prev) => (prev ? { ...prev, photos: newPhotos } : prev));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.photos) {
+          setActivePhotoLead((prev) =>
+            prev ? { ...prev, photos: data.photos, photosCount: data.photos.length } : prev
+          );
+          setLeads((prev) =>
+            prev.map((l) =>
+              l.id === activePhotoLead.id
+                ? { ...l, photos: data.photos, photosCount: data.photos.length }
+                : l
+            )
+          );
+        }
+      } else {
+        const err = await res.json().catch(() => null);
+        alert(err?.error || "Failed to upload photos.");
+      }
+    } catch (err: any) {
+      alert("Error uploading photos: " + (err?.message || "Network error"));
+    } finally {
+      if (photoInputRef.current) photoInputRef.current.value = "";
+      setUploadingPhotos(false);
+    }
   }
 
   async function handleDeletePhoto(index: number) {
     if (!activePhotoLead) return;
-    const newPhotos = (activePhotoLead.photos || []).filter((_, i) => i !== index);
-    await updateLeadField(activePhotoLead.id, { photos: newPhotos });
-    setActivePhotoLead((prev) => (prev ? { ...prev, photos: newPhotos } : prev));
+    const photo = activePhotoLead.photos?.[index];
+    if (!photo) return;
+
+    if (!confirm(`Are you sure you want to delete "${photo.name || "this photo"}"?`)) return;
+
+    setDeletingPhotoIndex(index);
+    try {
+      const res = await fetch(`/api/admin/submissions/${activePhotoLead.id}/photos`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicId: photo.publicId, index }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.photos) {
+          setActivePhotoLead((prev) =>
+            prev ? { ...prev, photos: data.photos, photosCount: data.photos.length } : prev
+          );
+          setLeads((prev) =>
+            prev.map((l) =>
+              l.id === activePhotoLead.id
+                ? { ...l, photos: data.photos, photosCount: data.photos.length }
+                : l
+            )
+          );
+        }
+      } else {
+        const err = await res.json().catch(() => null);
+        alert(err?.error || "Failed to delete photo.");
+      }
+    } catch (err: any) {
+      alert("Error deleting photo: " + (err?.message || "Network error"));
+    } finally {
+      setDeletingPhotoIndex(null);
+    }
   }
 
   // Conversation Management
@@ -890,6 +1077,40 @@ export default function CrmDashboardPage() {
     link.click();
   }
 
+  // Server-side send: emails the warranty card, mints a warranty number, and
+  // sets status to Warranty Sent automatically.
+  async function handleSendWarranty() {
+    if (!activeWarrantyLead) return;
+    if (!activeWarrantyLead.email) return alert("No email address saved for this customer.");
+    const imageDataUrl = canvasRef.current?.toDataURL("image/png");
+    try {
+      const res = await fetch("/api/admin/warranty/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: activeWarrantyLead.id,
+          imageDataUrl,
+          warranty: {
+            jobNo: warrantyJobNo,
+            completionDate: warrantyCompletion,
+            expiryDate: warrantyExpiry,
+            customerName: warrantyCustomer,
+            address: warrantyAddress,
+            authorisedBy: warrantyAuthorised,
+            dateIssued: warrantyIssued,
+          },
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return alert(data.error || "Could not send the warranty.");
+      alert(`Warranty ${data.warrantyNo} emailed to ${activeWarrantyLead.email}.`);
+      setWarrantyModalOpen(false);
+      loadData();
+    } catch {
+      alert("Network error while sending the warranty.");
+    }
+  }
+
   // Invoice Logic
   function openInvoiceModal(lead: Lead) {
     setActiveInvoiceLead(lead);
@@ -906,9 +1127,16 @@ export default function CrmDashboardPage() {
     setInvoiceModalOpen(true);
   }
 
+  // Role queue: non-managers only see the leads whose current stage their role
+  // owns. Managers see the whole book.
+  const scopedLeads = useMemo(
+    () => (role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status))),
+    [leads, role]
+  );
+
   // Filtering & Search
   const filteredLeads = useMemo(() => {
-    let list = leads;
+    let list = scopedLeads;
     const q = globalSearch.toLowerCase().trim();
     if (q) {
       list = list.filter((l) =>
@@ -925,16 +1153,16 @@ export default function CrmDashboardPage() {
       list = list.filter((l) => l.priority === priorityFilter);
     }
     return list;
-  }, [leads, globalSearch, statusFilter, priorityFilter]);
+  }, [scopedLeads, globalSearch, statusFilter, priorityFilter]);
 
-  // Counts for KPIs
+  // Counts for KPIs (scoped to the role's queue)
   const counts = useMemo(() => {
     const res: Record<string, number> = {};
     STATUS_LIST.forEach((s) => {
-      res[s] = leads.filter((l) => l.status === s).length;
+      res[s] = scopedLeads.filter((l) => l.status === s).length;
     });
     return res;
-  }, [leads]);
+  }, [scopedLeads]);
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
@@ -954,6 +1182,7 @@ export default function CrmDashboardPage() {
 
           {/* Navigation Links */}
           <nav className="mt-5 flex flex-col gap-1.5">
+            {canSee("dashboard") && (
             <button
               onClick={() => setCurrentView("dashboard")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -967,7 +1196,9 @@ export default function CrmDashboardPage() {
                 CRM Dashboard
               </span>
             </button>
+            )}
 
+            {canSee("analytics") && (
             <button
               onClick={() => setCurrentView("analytics")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -981,20 +1212,9 @@ export default function CrmDashboardPage() {
                 Analytics Overview
               </span>
             </button>
+            )}
 
-            <Link
-              href={`${basePath}/submissions`}
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <span className="flex items-center gap-2.5">
-                <Inbox className="w-4 h-4" />
-                Submissions Table
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {leads.length}
-              </span>
-            </Link>
-
+            {canSee("statuses") && (
             <button
               onClick={() => setCurrentView("statuses")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1012,10 +1232,12 @@ export default function CrmDashboardPage() {
                   currentView === "statuses" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                 }`}
               >
-                {leads.length}
+                {scopedLeads.length}
               </span>
             </button>
+            )}
 
+            {canSee("leads") && (
             <button
               onClick={() => setCurrentView("leads")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1033,10 +1255,12 @@ export default function CrmDashboardPage() {
                   currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                 }`}
               >
-                {leads.length}
+                {scopedLeads.length}
               </span>
             </button>
+            )}
 
+            {canSee("quotes") && (
             <button
               onClick={() => setCurrentView("quotes")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1054,10 +1278,12 @@ export default function CrmDashboardPage() {
                   currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                 }`}
               >
-                {leads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
+                {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
               </span>
             </button>
+            )}
 
+            {canSee("jobs") && (
             <button
               onClick={() => setCurrentView("jobs")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1075,10 +1301,12 @@ export default function CrmDashboardPage() {
                   currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                 }`}
               >
-                {leads.filter((l) => ["Won", "Job Done", "Payment Received"].includes(l.status)).length}
+                {scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
               </span>
             </button>
+            )}
 
+            {canSee("customers") && (
             <button
               onClick={() => setCurrentView("customers")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1092,7 +1320,9 @@ export default function CrmDashboardPage() {
                 Customers
               </span>
             </button>
+            )}
 
+            {canSee("team") && (
             <button
               onClick={() => setCurrentView("team")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1106,8 +1336,17 @@ export default function CrmDashboardPage() {
                 Team
               </span>
             </button>
+            )}
 
-            <div className="pt-3 mt-3 border-t border-[#e4e9f1]">
+            {role === "manager" && (
+            <div className="pt-3 mt-3 border-t border-[#e4e9f1] flex flex-col gap-1.5">
+              <Link
+                href={`${basePath}/users`}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                <UserCheck className="w-4 h-4" />
+                Staff Accounts
+              </Link>
               <Link
                 href={`${basePath}/content`}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
@@ -1116,13 +1355,14 @@ export default function CrmDashboardPage() {
                 Site Content Editor
               </Link>
             </div>
+            )}
           </nav>
         </div>
 
         {/* Footer info & Logout */}
         <div className="pt-4 border-t border-[#e4e9f1] flex flex-col gap-2">
           <div className="px-2 text-xs text-slate-400">
-            Database: <span className="font-semibold text-emerald-600">{leads.length} Live Submissions</span>
+            Database: <span className="font-semibold text-slate-600">{leads.length} Live Submissions</span>
           </div>
           <button
             onClick={logout}
@@ -1189,7 +1429,7 @@ export default function CrmDashboardPage() {
               onClick={() => {
                 setEditingLead({
                   status: "New",
-                  assigned: "Sarah",
+                  assigned: "",
                   priority: "Medium",
                   received: new Date().toISOString().slice(0, 16)
                 });
@@ -1315,19 +1555,19 @@ export default function CrmDashboardPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
                 <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Leads</div>
-                  <div className="text-3xl font-black text-rose-600 my-1">{counts["New"] || 0}</div>
+                  <div className="text-3xl font-black text-[#001f97] my-1">{counts["New"] || 0}</div>
                   <div className="text-[11px] text-slate-400">Needs attention</div>
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contacted</div>
-                  <div className="text-3xl font-black text-blue-600 my-1">{counts["Contacted"] || 0}</div>
+                  <div className="text-3xl font-black text-slate-900 my-1">{counts["Contacted"] || 0}</div>
                   <div className="text-[11px] text-slate-400">In progress</div>
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inspections</div>
-                  <div className="text-3xl font-black text-purple-600 my-1">
+                  <div className="text-3xl font-black text-slate-900 my-1">
                     {(counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0)}
                   </div>
                   <div className="text-[11px] text-slate-400">Booked / done</div>
@@ -1335,13 +1575,13 @@ export default function CrmDashboardPage() {
 
                 <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quotes Sent</div>
-                  <div className="text-3xl font-black text-amber-600 my-1">{counts["Quote Sent"] || 0}</div>
+                  <div className="text-3xl font-black text-slate-900 my-1">{counts["Quote Sent"] || 0}</div>
                   <div className="text-[11px] text-slate-400">Awaiting decision</div>
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Won Jobs</div>
-                  <div className="text-3xl font-black text-emerald-600 my-1">
+                  <div className="text-3xl font-black text-slate-900 my-1">
                     {(counts["Won"] || 0) + (counts["Job Done"] || 0) + (counts["Payment Received"] || 0)}
                   </div>
                   <div className="text-[11px] text-slate-400">Confirmed orders</div>
@@ -1349,7 +1589,7 @@ export default function CrmDashboardPage() {
 
                 <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lost Leads</div>
-                  <div className="text-3xl font-black text-slate-500 my-1">{counts["Lost"] || 0}</div>
+                  <div className="text-3xl font-black text-slate-400 my-1">{counts["Lost"] || 0}</div>
                   <div className="text-[11px] text-slate-400">Closed / inactive</div>
                 </div>
               </div>
@@ -1358,24 +1598,27 @@ export default function CrmDashboardPage() {
               <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
                 <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Lead Pipeline</div>
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                  <div className="bg-rose-500 text-white rounded-xl py-2 px-3 text-center text-xs font-black shadow-xs">
-                    New ({counts["New"] || 0})
-                  </div>
-                  <div className="bg-blue-600 text-white rounded-xl py-2 px-3 text-center text-xs font-black shadow-xs">
-                    Contacted ({counts["Contacted"] || 0})
-                  </div>
-                  <div className="bg-purple-600 text-white rounded-xl py-2 px-3 text-center text-xs font-black shadow-xs">
-                    Inspection ({(counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0)})
-                  </div>
-                  <div className="bg-amber-500 text-white rounded-xl py-2 px-3 text-center text-xs font-black shadow-xs">
-                    Quote Sent ({counts["Quote Sent"] || 0})
-                  </div>
-                  <div className="bg-emerald-600 text-white rounded-xl py-2 px-3 text-center text-xs font-black shadow-xs">
-                    Won ({counts["Won"] || 0})
-                  </div>
-                  <div className="bg-slate-500 text-white rounded-xl py-2 px-3 text-center text-xs font-black shadow-xs">
-                    Lost ({counts["Lost"] || 0})
-                  </div>
+                  {[
+                    { label: "New", value: counts["New"] || 0 },
+                    { label: "Contacted", value: counts["Contacted"] || 0 },
+                    {
+                      label: "Inspection",
+                      value: (counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0),
+                    },
+                    { label: "Quote Sent", value: counts["Quote Sent"] || 0 },
+                    { label: "Won", value: counts["Won"] || 0 },
+                    { label: "Lost", value: counts["Lost"] || 0 },
+                  ].map((s) => (
+                    <div
+                      key={s.label}
+                      className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-center"
+                    >
+                      <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                        {s.label}
+                      </div>
+                      <div className="text-lg font-black text-slate-900 leading-tight">{s.value}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1422,20 +1665,20 @@ export default function CrmDashboardPage() {
                                 {l.status}
                               </span>
                             </td>
-                            <td className="py-3 px-3 text-slate-600 font-medium">{l.assigned || "Sarah"}</td>
+                            <td className="py-3 px-3 text-slate-600 font-medium">{l.assigned || "Unassigned"}</td>
                             <td className="py-3 px-3 text-slate-500">{l.follow ? fmtDate(l.follow) : "—"}</td>
                             <td className="py-3 px-3 text-right">
                               <div className="flex items-center justify-end gap-1 flex-wrap">
                                 <button
                                   onClick={() => openQuoteModal(l)}
-                                  className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-[11px] font-bold transition-colors"
+                                  className="px-2 py-1 bg-[#001f97]/10 text-[#001f97] hover:bg-[#001f97]/20 rounded-lg text-[11px] font-bold transition-colors"
                                   title="Open Quote Builder"
                                 >
                                   Quote
                                 </button>
                                 <button
                                   onClick={() => handleAutoPrepareQuote(l)}
-                                  className="px-2 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-[11px] font-bold transition-colors"
+                                  className="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-[11px] font-bold transition-colors"
                                   title="Auto Prepare Quote with Templates"
                                 >
                                   <Sparkles className="w-3 h-3 inline mr-0.5" />
@@ -1695,13 +1938,15 @@ export default function CrmDashboardPage() {
                         </td>
                         <td className="py-3.5 px-3">
                           <select
-                            value={l.assigned || "Sarah"}
+                            value={l.assigned || "Unassigned"}
                             onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
                             className="text-xs bg-transparent border-0 font-medium text-slate-700 focus:outline-hidden"
                           >
-                            <option value="Sarah">Sarah</option>
-                            <option value="David">David</option>
-                            <option value="Manager">Manager</option>
+                            {rowAssigneeOptions(l.assigned).map((n) => (
+                              <option key={n} value={n}>
+                                {n}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td className="py-3.5 px-3">
@@ -1827,7 +2072,7 @@ export default function CrmDashboardPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-black text-slate-900">Active & Prepared Quotations</h2>
                 <div className="text-xs text-slate-500">
-                  {leads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent").length} Quotes in System
+                  {scopedLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent").length} Quotes in System
                 </div>
               </div>
 
@@ -1845,7 +2090,7 @@ export default function CrmDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {leads
+                    {scopedLeads
                       .filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms)
                       .map((l) => {
                         const items = Array.isArray(l.quoteItems) ? l.quoteItems : [];
@@ -1889,10 +2134,10 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "jobs" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <h2 className="text-base font-black text-slate-900">Won & Completed Jobs</h2>
+              <h2 className="text-base font-black text-slate-900">Bookings &amp; Jobs</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {leads
-                  .filter((l) => ["Won", "Job Done", "Payment Received", "Inspection Completed"].includes(l.status))
+                {scopedLeads
+                  .filter((l) => JOB_STATUSES.includes(l.status))
                   .map((l) => (
                     <div key={l.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
                       <div className="flex items-center justify-between">
@@ -1905,7 +2150,7 @@ export default function CrmDashboardPage() {
                         <div><b>Phone:</b> {l.phone || "—"}</div>
                         <div><b>Address:</b> {l.address || "—"}</div>
                         <div><b>Service:</b> {l.service || "—"}</div>
-                        <div><b>Assigned Tech:</b> {l.assigned || "David"}</div>
+                        <div><b>Assigned:</b> {l.assigned || "Unassigned"}</div>
                       </div>
                       <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
                         <button
@@ -1932,7 +2177,7 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "customers" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <h2 className="text-base font-black text-slate-900">Customer Directory ({leads.length} Records)</h2>
+              <h2 className="text-base font-black text-slate-900">Customer Directory ({scopedLeads.length} Records)</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
@@ -1946,7 +2191,7 @@ export default function CrmDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {leads.map((l) => (
+                    {scopedLeads.map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/80">
                         <td className="py-3 px-3 font-bold text-slate-900">{l.name || "Customer"}</td>
                         <td className="py-3 px-3 text-slate-600">{l.phone || "—"}</td>
@@ -1969,30 +2214,49 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "team" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <h2 className="text-base font-black text-slate-900">Groutix Operations Team</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-2">
-                  <div className="font-black text-slate-900 text-base">Sarah</div>
-                  <div className="text-xs text-blue-700 font-semibold">Office Lead & Customer Coordinator</div>
-                  <div className="text-xs text-slate-600 pt-2">
-                    Active assigned leads: <b>{leads.filter((l) => l.assigned === "Sarah").length}</b>
-                  </div>
-                </div>
-                <div className="p-5 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-2">
-                  <div className="font-black text-slate-900 text-base">David</div>
-                  <div className="text-xs text-purple-700 font-semibold">Senior Inspector & Regrouting Specialist</div>
-                  <div className="text-xs text-slate-600 pt-2">
-                    Active assigned leads: <b>{leads.filter((l) => l.assigned === "David").length}</b>
-                  </div>
-                </div>
-                <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-2">
-                  <div className="font-black text-slate-900 text-base">Manager</div>
-                  <div className="text-xs text-emerald-700 font-semibold">Operations & Accounts Admin</div>
-                  <div className="text-xs text-slate-600 pt-2">
-                    Active assigned leads: <b>{leads.filter((l) => l.assigned === "Manager").length}</b>
-                  </div>
-                </div>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-black text-slate-900">Groutix Operations Team</h2>
+                <Link
+                  href={`${basePath}/users`}
+                  className="text-xs font-semibold text-[#001f97] hover:underline"
+                >
+                  Manage staff accounts →
+                </Link>
               </div>
+              {staff.length === 0 ? (
+                <div className="text-sm text-slate-400 py-8 text-center">
+                  No staff accounts yet. Add them under Staff Accounts.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {staff.map((s) => {
+                    const activeLeads = leads.filter(
+                      (l) => l.assigned === s.name
+                    ).length;
+                    return (
+                      <div
+                        key={s.id}
+                        className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-black text-slate-900 text-base">{s.name}</div>
+                          {!s.active && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">
+                              disabled
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-[#001f97]">
+                          {s.role}
+                        </div>
+                        <div className="text-xs text-slate-600 pt-2">
+                          Assigned leads: <b>{activeLeads}</b>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2082,13 +2346,15 @@ export default function CrmDashboardPage() {
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Assigned To</label>
                   <select
-                    value={editingLead?.assigned || "Sarah"}
+                    value={editingLead?.assigned || assigneeOptions[0]}
                     onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value })}
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
                   >
-                    <option value="Sarah">Sarah</option>
-                    <option value="David">David</option>
-                    <option value="Manager">Manager</option>
+                    {assigneeOptions.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -2133,6 +2399,24 @@ export default function CrmDashboardPage() {
                   placeholder="Enter details, observations or quote instructions..."
                 />
               </div>
+
+              {editingLead?.activity && editingLead.activity.length > 0 && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Activity History</label>
+                  <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/70 divide-y divide-slate-100">
+                    {[...editingLead.activity].reverse().map((a, i) => (
+                      <div key={i} className="flex items-start justify-between gap-3 px-3 py-2 text-[11px]">
+                        <div>
+                          <span className="font-semibold text-slate-800">{a.action}</span>
+                          {a.detail ? <span className="text-slate-500"> — {a.detail}</span> : null}
+                          <div className="text-slate-400">by {a.actor}</div>
+                        </div>
+                        <div className="shrink-0 text-slate-400">{fmtDate(a.time)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
@@ -2426,7 +2710,7 @@ export default function CrmDashboardPage() {
                         <td className="py-2.5 px-2">
                           {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
                           <div className="font-black text-slate-900 text-xs">{item.service}</div>
-                          {item.scope && (
+                          {item.scope && !isRedundantScope(item.service, item.scope) && (
                             <div className="text-[10px] text-slate-600 whitespace-pre-wrap mt-1 leading-relaxed">
                               {item.scope}
                             </div>
@@ -2469,7 +2753,7 @@ export default function CrmDashboardPage() {
                 className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-100"
               >
                 <Printer className="w-3.5 h-3.5" />
-                Print / Save PDF
+                Preview / Save PDF
               </button>
               <button
                 type="button"
@@ -2481,10 +2765,20 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={handleEmailQuote}
-                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
+                className="flex items-center gap-1.5 px-3 py-2 border border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50"
+                title="Open your mail app with a draft"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Email Quote
+                Email (draft)
+              </button>
+              <button
+                type="button"
+                onClick={handleSendQuoteEmail}
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
+                title="Send the quote to the customer automatically"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Send Quote
               </button>
               <button
                 type="button"
@@ -2526,54 +2820,159 @@ export default function CrmDashboardPage() {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-2">Upload New Photo(s)</label>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => handleAddPhotos(e.target.files)}
-                className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#001f97] hover:file:bg-blue-100"
-              />
+              <div className="flex items-center gap-3">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  disabled={uploadingPhotos}
+                  onChange={(e) => handleAddPhotos(e.target.files)}
+                  className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#001f97] hover:file:bg-blue-100 disabled:opacity-50 cursor-pointer"
+                />
+                {uploadingPhotos && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#001f97] animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Uploading to Cloudinary...</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {loadingPhotos ? (
-              <div className="py-12 text-center text-xs text-slate-400">Loading full customer photos...</div>
+              <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#001f97]" />
+                <span>Loading customer photos...</span>
+              </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto p-1">
-                {(activePhotoLead.photos || []).map((photo, i) => (
-                  <div key={i} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 space-y-1.5">
-                    {photo.dataUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={photo.dataUrl}
-                        alt={photo.name}
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-full h-32 bg-slate-200 rounded-lg flex items-center justify-center text-xs text-slate-400">
-                        {photo.name}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between text-[11px] text-slate-600">
-                      <span className="truncate max-w-[120px]" title={photo.name}>
-                        {photo.name}
-                      </span>
-                      <button
-                        onClick={() => handleDeletePhoto(i)}
-                        className="text-rose-500 hover:text-rose-700 p-1"
-                        title="Delete photo"
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[55vh] overflow-y-auto p-1">
+                {(activePhotoLead.photos || []).map((photo, i) => {
+                  const imgSrc = photo.secureUrl || photo.url || photo.dataUrl || "";
+                  const isDeleting = deletingPhotoIndex === i;
+                  return (
+                    <div
+                      key={i}
+                      className="group relative border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 space-y-1.5 hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      <div
+                        className="relative w-full h-36 bg-slate-200 rounded-lg overflow-hidden cursor-pointer"
+                        onClick={() => imgSrc && setPreviewPhoto({ url: imgSrc, name: photo.name })}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        {imgSrc ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={imgSrc}
+                            alt={photo.name}
+                            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-xs text-slate-400 p-2 text-center">
+                            <ImageIcon className="w-6 h-6 mb-1 text-slate-300" />
+                            {photo.name}
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <span className="p-1.5 bg-white/90 rounded-lg text-slate-700 shadow-xs hover:bg-white">
+                            <ZoomIn className="w-4 h-4" />
+                          </span>
+                        </div>
+
+                        {photo.publicId && (
+                          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-emerald-600/90 backdrop-blur-xs text-[10px] font-bold text-white rounded-md shadow-xs">
+                            Cloud
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1">
+                        <span className="truncate max-w-[130px] font-medium" title={photo.name}>
+                          {photo.name}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {imgSrc && (
+                            <a
+                              href={imgSrc}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-slate-400 hover:text-slate-700 p-1"
+                              title="Open original in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            disabled={isDeleting}
+                            onClick={() => handleDeletePhoto(i)}
+                            className="text-rose-500 hover:text-rose-700 p-1 disabled:opacity-50"
+                            title="Delete photo"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {(!activePhotoLead.photos || activePhotoLead.photos.length === 0) && (
-                  <div className="col-span-full py-8 text-center text-xs text-slate-400">
-                    No photos uploaded for this customer yet.
+                  <div className="col-span-full py-12 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
+                    <ImageIcon className="w-8 h-8 text-slate-300" />
+                    <span>No photos uploaded for this customer yet.</span>
                   </div>
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: FULLSCREEN PHOTO LIGHTBOX PREVIEW
+         ========================================================================= */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 text-white">
+              <span className="text-xs font-semibold truncate max-w-md">{previewPhoto.name}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewPhoto.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Original
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhoto(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-2 flex items-center justify-center bg-black/40 max-h-[80vh] overflow-auto">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhoto.url}
+                alt={previewPhoto.name}
+                className="max-h-[75vh] max-w-full object-contain rounded-lg"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -2827,10 +3226,18 @@ export default function CrmDashboardPage() {
             <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
               <button
                 onClick={downloadWarrantyCard}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white rounded-xl text-xs font-bold hover:bg-[#001777]"
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
               >
                 <Download className="w-4 h-4" />
-                Download PNG Certificate
+                Download PNG
+              </button>
+              <button
+                onClick={handleSendWarranty}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
+                title="Email the warranty card to the customer and mark it sent"
+              >
+                <Send className="w-4 h-4" />
+                Email to Customer
               </button>
             </div>
           </div>

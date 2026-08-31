@@ -3,22 +3,25 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Inbox, FileText, LogOut } from "lucide-react";
-import { useAdminBasePath } from "@/components/admin/AdminProvider";
+import { LayoutDashboard, UserCheck, FileText, LogOut } from "lucide-react";
+import { useAdminBasePath, useAdminRole } from "@/components/admin/AdminProvider";
+import { ROLE_LABELS } from "@/lib/roles";
 
-// Shared chrome (top nav + logout) for authenticated admin pages. The login
-// page renders without it.
+// Shared chrome for the secondary admin pages (Submissions, Staff, Content).
+// Renders the same persistent left sidebar as the CRM dashboard so navigation
+// never jumps between a sidebar and a header. The login page renders without it.
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const basePath = useAdminBasePath();
+  const role = useAdminRole();
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const nav = [
-    { href: basePath, label: "CRM Dashboard", icon: LayoutDashboard },
-    { href: `${basePath}/submissions`, label: "Submissions Table", icon: Inbox },
-    { href: `${basePath}/content`, label: "Content Editor", icon: FileText },
-  ];
+    { href: basePath, label: "CRM Dashboard", icon: LayoutDashboard, roles: null },
+    { href: `${basePath}/users`, label: "Staff Accounts", icon: UserCheck, roles: ["manager"] },
+    { href: `${basePath}/content`, label: "Site Content", icon: FileText, roles: ["manager"] },
+  ].filter((item) => !item.roles || item.roles.includes(role));
 
   async function logout() {
     setLoggingOut(true);
@@ -32,13 +35,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 sm:px-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-6">
-          <span className="text-lg font-black tracking-tight text-[#001f97]">
-            Groutix<span className="text-slate-400"> Admin</span>
-          </span>
-          <nav className="flex items-center gap-1">
+    <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0">
+        <div>
+          {/* Brand */}
+          <div className="flex items-center gap-3 pb-6 border-b border-[#e4e9f1]">
+            <div className="w-10 h-10 bg-[#001f97] text-white flex items-center justify-center font-black text-xl shadow-sm">
+              G
+            </div>
+            <div>
+              <div className="font-black text-lg leading-tight text-[#001f97]">Groutix Portal</div>
+              <div className="text-xs text-slate-400">CRM &amp; Administration</div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="mt-5 flex flex-col gap-1.5">
             {nav.map((item) => {
               const active =
                 item.href === basePath
@@ -49,29 +62,38 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                     active
-                      ? "bg-[#001f97] text-white"
-                      : "text-slate-600 hover:bg-slate-200/70"
+                      ? "bg-[#001f97] text-white shadow-sm"
+                      : "text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="w-4 h-4" />
                   {item.label}
                 </Link>
               );
             })}
           </nav>
         </div>
-        <button
-          onClick={logout}
-          disabled={loggingOut}
-          className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
-        >
-          <LogOut className="h-4 w-4" />
-          {loggingOut ? "Signing out…" : "Sign out"}
-        </button>
-      </header>
-      <main className="flex-1">{children}</main>
+
+        {/* Footer: role + logout */}
+        <div className="pt-4 border-t border-[#e4e9f1] flex flex-col gap-2">
+          <div className="px-2 text-xs text-slate-400">{ROLE_LABELS[role]}</div>
+          <button
+            onClick={logout}
+            disabled={loggingOut}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50"
+          >
+            <LogOut className="w-4 h-4" />
+            {loggingOut ? "Signing out…" : "Sign Out"}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 min-w-0">
+        <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
+      </main>
     </div>
   );
 }

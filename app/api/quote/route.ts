@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
-import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
+import { recordSubmission, updateEmailDelivered, pickAssignee } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { sendBrevoEmail, type EmailAttachment } from "@/lib/email";
+import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
 // Give the retry sequence room to finish before the platform kills the
@@ -175,16 +176,69 @@ export async function POST(req: NextRequest) {
   }
 
   const attachments: EmailAttachment[] = [];
+  const submissionPhotos: import("@/lib/submissions").SubmissionPhoto[] = [];
+
   for (const file of photos) {
     const buffer = Buffer.from(await file.arrayBuffer());
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    let mime = file.type;
+    if (!mime) {
+      if (ext === "pdf") mime = "application/pdf";
+      else if (ext === "png") mime = "image/png";
+      else if (ext === "webp") mime = "image/webp";
+      else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
+      else mime = "application/octet-stream";
+    }
+
+    // Prepare Brevo email attachment
     attachments.push({
       name: file.name || "photo",
       content: buffer.toString("base64"),
-      contentType: file.type || undefined,
+      contentType: mime,
     });
+
+    // Upload to Cloudinary if configured
+    if (isCloudinaryConfigured()) {
+      try {
+        const cldRes = await uploadBufferToCloudinary(buffer, {
+          folder: "groutix/quotes",
+          filename: file.name,
+          tags: ["quote_submission"],
+        });
+        submissionPhotos.push({
+          name: file.name || "photo",
+          contentType: mime,
+          url: cldRes.secureUrl,
+          secureUrl: cldRes.secureUrl,
+          publicId: cldRes.publicId,
+          width: cldRes.width,
+          height: cldRes.height,
+          size: cldRes.bytes,
+          added: new Date().toISOString(),
+        });
+      } catch (uploadErr) {
+        console.error("Cloudinary upload failed (falling back to dataUrl):", uploadErr);
+        submissionPhotos.push({
+          name: file.name || "photo",
+          contentType: mime,
+          dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
+          added: new Date().toISOString(),
+        });
+      }
+    } else {
+      submissionPhotos.push({
+        name: file.name || "photo",
+        contentType: mime,
+        dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
+        added: new Date().toISOString(),
+      });
+    }
   }
 
   const fullName = `${firstName} ${lastName}`.trim();
+
+  // Automatic step: assign the new lead to the least-loaded intake staffer.
+  const assignee = await pickAssignee();
 
   const tenantRows = tenants
     .map(
@@ -197,6 +251,11 @@ export async function POST(req: NextRequest) {
         )
     )
     .join("");
+
+  const photoLinksHtml = submissionPhotos
+    .filter((p) => p.secureUrl || p.url)
+    .map((p, i) => `<a href="${esc(p.secureUrl || p.url || '')}" target="_blank" style="color:#001f97;text-decoration:underline;">Photo ${i + 1}</a>`)
+    .join(" &bull; ");
 
   // 1) Internal notification to the Groutix inbox with all the details.
   const internalHtml = `
@@ -221,11 +280,13 @@ export async function POST(req: NextRequest) {
       ${row("Is area leaking", leaking)}
       ${row("Message", message)}
       ${row("Heard about us", heard)}
-      ${row("Photos attached", attachments.length ? String(attachments.length) : "")}
+      ${row("Photos attached", attachments.length ? `${attachments.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}
+      ${row("Auto-assigned to", assignee)}
     </table>
   </div>`;
 
   // 1) Save to DB immediately so we never lose a lead.
+  const nowIso = new Date().toISOString();
   const submissionId = await recordSubmission({
     type: "quote",
     customerType,
@@ -245,25 +306,15 @@ export async function POST(req: NextRequest) {
     areas,
     heard,
     sourcePage,
-    photosCount: attachments.length,
-    photos: attachments.map((att) => {
-      const ext = (att.name.split(".").pop() || "").toLowerCase();
-      let mime = att.contentType;
-      if (!mime) {
-        if (ext === "pdf") mime = "application/pdf";
-        else if (ext === "doc") mime = "application/msword";
-        else if (ext === "docx") mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        else if (ext === "png") mime = "image/png";
-        else if (ext === "webp") mime = "image/webp";
-        else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
-        else mime = "application/octet-stream";
-      }
-      return {
-        name: att.name,
-        contentType: mime,
-        dataUrl: `data:${mime};base64,${att.content}`,
-      };
-    }),
+    assigned: assignee,
+    received: nowIso,
+    priority: "Medium",
+    activity: [
+      { time: nowIso, actor: "system", action: "Lead created", detail: sourcePage || "Website form" },
+      { time: nowIso, actor: "system", action: "Auto-assigned", detail: assignee },
+    ],
+    photosCount: submissionPhotos.length,
+    photos: submissionPhotos,
     ip,
     userAgent: req.headers.get("user-agent") || undefined,
     emailDelivered: false,

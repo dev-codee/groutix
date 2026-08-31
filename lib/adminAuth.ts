@@ -5,6 +5,8 @@
 // (no DB needed). Everything here uses the Web Crypto API so the exact same
 // code runs in edge middleware and in Node route handlers.
 
+import { type Role, isRole } from "@/lib/roles";
+
 export const SESSION_COOKIE = "gx_admin";
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 const DEFAULT_BASE_PATH = "/admin";
@@ -76,10 +78,17 @@ export function checkCredentials(username: string, password: string): boolean {
   return okU && okP;
 }
 
-type SessionPayload = { u: string; exp: number };
+type SessionPayload = { u: string; role?: Role; exp: number };
 
-export async function createSession(username: string): Promise<string> {
-  const payload: SessionPayload = { u: username, exp: Date.now() + SESSION_TTL_MS };
+export async function createSession(
+  username: string,
+  role: Role = "manager"
+): Promise<string> {
+  const payload: SessionPayload = {
+    u: username,
+    role,
+    exp: Date.now() + SESSION_TTL_MS,
+  };
   const body = toBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
   const sig = toBase64Url(await hmac(body));
   return `${body}.${sig}`;
@@ -87,7 +96,7 @@ export async function createSession(username: string): Promise<string> {
 
 export async function verifySession(
   token: string | undefined | null
-): Promise<{ username: string } | null> {
+): Promise<{ username: string; role: Role } | null> {
   if (!token || !token.includes(".")) return null;
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
@@ -100,7 +109,10 @@ export async function verifySession(
       new TextDecoder().decode(fromBase64Url(body))
     ) as SessionPayload;
     if (!payload.exp || payload.exp < Date.now()) return null;
-    return { username: payload.u };
+    // Older tokens (pre-roles) carry no role: treat as manager so an existing
+    // break-glass session keeps full access until it expires.
+    const role = isRole(payload.role) ? payload.role : "manager";
+    return { username: payload.u, role };
   } catch {
     return null;
   }

@@ -7,6 +7,8 @@ import {
   SESSION_COOKIE,
   sessionCookieOptions,
 } from "@/lib/adminAuth";
+import { findUserByUsername, verifyPassword } from "@/lib/users";
+import type { Role } from "@/lib/roles";
 
 export const runtime = "nodejs";
 
@@ -20,7 +22,9 @@ function clientIp(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminConfigured()) {
+  // We can mint sessions as long as the signing secret is present; DB user
+  // accounts work even when the env break-glass admin isn't configured.
+  if (!process.env.ADMIN_SESSION_SECRET) {
     return NextResponse.json(
       { error: "Admin panel is not configured on the server." },
       { status: 503 }
@@ -48,12 +52,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter your username and password." }, { status: 400 });
   }
 
-  if (!checkCredentials(username, password)) {
+  // 1) Try a database staff account (the four role logins).
+  let sessionUser: string | null = null;
+  let role: Role = "manager";
+  const user = await findUserByUsername(username);
+  if (user) {
+    if (user.active && (await verifyPassword(password, user.passwordHash))) {
+      sessionUser = user.username;
+      role = user.role;
+    }
+  } else if (isAdminConfigured() && checkCredentials(username, password)) {
+    // 2) Env break-glass admin (manager level). Only consulted when no DB user
+    //    owns this username, so a real account can't be shadowed by env creds.
+    sessionUser = username;
+    role = "manager";
+  }
+
+  if (!sessionUser) {
     return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
   }
 
-  const token = await createSession(username);
-  const res = NextResponse.json({ ok: true });
+  const token = await createSession(sessionUser, role);
+  const res = NextResponse.json({ ok: true, role });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return res;
 }

@@ -32,10 +32,11 @@ export async function getMongoClient(): Promise<MongoClient> {
   if (cache.client) return cache.client;
   if (!cache.promise) {
     cache.promise = new MongoClient(uri, {
-      // Keep connections lean on serverless; fail fast rather than hang the
-      // request if the cluster is unreachable.
+      // Keep connections lean on serverless. The selection timeout is generous
+      // enough to absorb a cold TLS handshake on networks that inspect traffic
+      // (where the first connection can take a few seconds per node).
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 20000,
     })
       .connect()
       .then((client) => {

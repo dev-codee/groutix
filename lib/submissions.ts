@@ -7,6 +7,7 @@
 
 import { ObjectId, type Collection, type Filter } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
+import { getActiveUsersByRole } from "@/lib/users";
 
 export type SubmissionType = "quote" | "support_ticket" | "lead";
 export type SubmissionStatus = string;
@@ -48,12 +49,36 @@ export interface GpsCheckin {
 
 export interface WarrantyDoc {
   jobNo?: string;
+  warrantyNo?: string;
   completionDate?: string;
   expiryDate?: string;
   customerName?: string;
   address?: string;
   authorisedBy?: string;
   dateIssued?: string;
+  sentAt?: string;
+}
+
+// A single entry in a lead's audit trail. `actor` is the staff username, or
+// "system" for automatic steps (assignment, follow-ups, timestamps).
+export interface ActivityEntry {
+  time: string;
+  actor: string;
+  action: string;
+  detail?: string;
+}
+
+export interface SubmissionPhoto {
+  name: string;
+  contentType?: string;
+  url?: string;
+  secureUrl?: string;
+  publicId?: string;
+  dataUrl?: string;
+  width?: number;
+  height?: number;
+  size?: number;
+  added?: string;
 }
 
 export interface SubmissionDoc {
@@ -99,10 +124,14 @@ export interface SubmissionDoc {
   // Media / Communications
   transcript?: TranscriptMessage[];
   photosCount?: number;
-  photos?: { name: string; contentType?: string; dataUrl: string; added?: string }[];
+  photos?: SubmissionPhoto[];
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
   warranty?: WarrantyDoc;
+  activity?: ActivityEntry[];
+  quoteNumber?: string;
+  followUpStage?: number; // 0 = none, 1..3 = follow-up sent, 4 = no response
+  followUpNext?: string; // ISO time the next follow-up is due
   // Request metadata.
   ip?: string;
   userAgent?: string;
@@ -149,6 +178,27 @@ async function taskCollection(): Promise<Collection<TaskDoc>> {
 }
 
 /**
+ * Atomically increment and return a named counter (e.g. "quote", "warranty").
+ * Used to mint sequential, human-friendly document numbers.
+ */
+export async function getNextSequence(name: string): Promise<number> {
+  const db = await getDb();
+  const col = db.collection<{ _id: string; seq: number }>("counters");
+  const res = await col.findOneAndUpdate(
+    { _id: name },
+    { $inc: { seq: 1 } },
+    { upsert: true, returnDocument: "after" }
+  );
+  return res?.seq ?? 1;
+}
+
+/** Format a sequential number as a padded, prefixed document number. */
+export function formatDocNumber(prefix: string, seq: number): string {
+  const yy = new Date().getFullYear().toString().slice(-2);
+  return `${prefix}-${yy}-${String(seq).padStart(4, "0")}`;
+}
+
+/**
  * Persist a submission. Never throws - logs and returns null on failure so the
  * caller (a public form route) can carry on delivering the email.
  */
@@ -177,6 +227,7 @@ export async function createLead(
   try {
     const col = await collection();
     const now = new Date();
+    const assigned = doc.assigned || (await pickAssignee());
     const fullDoc: SubmissionDoc = {
       type: (doc.type as SubmissionType) || "lead",
       status: doc.status || "New",
@@ -186,7 +237,7 @@ export async function createLead(
       email: doc.email || "",
       service: doc.service || "",
       address: doc.address || "",
-      assigned: doc.assigned || "Sarah",
+      assigned,
       priority: doc.priority || "Medium",
       received: doc.received || now.toISOString(),
       contacted: doc.contacted || "",
@@ -201,12 +252,65 @@ export async function createLead(
       messages: doc.messages || [],
       gps: doc.gps || null,
       warranty: doc.warranty,
+      activity: doc.activity || [
+        { time: now.toISOString(), actor: "system", action: "Lead created", detail: doc.source || "Manual Entry" },
+        { time: now.toISOString(), actor: "system", action: "Auto-assigned", detail: assigned },
+      ],
     };
     const res = await col.insertOne(fullDoc);
     return toJSON({ ...fullDoc, _id: res.insertedId });
   } catch (err) {
     console.error("createLead failed:", err);
     return null;
+  }
+}
+
+// ── Auto-assignment (round-robin, least-loaded) ──────────────────────────────
+
+// Stages that no longer need attention, so they don't count toward workload.
+const CLOSED_STATUSES = ["Lost", "Payment Received", "Warranty Sent"];
+
+/**
+ * Pick the active intake staffer with the fewest open leads. Falls back to
+ * "Unassigned" when no intake accounts exist yet.
+ */
+export async function pickAssignee(): Promise<string> {
+  try {
+    const intake = await getActiveUsersByRole("intake");
+    if (intake.length === 0) return "Unassigned";
+    const names = intake.map((u) => u.name);
+    const col = await collection();
+    const rows = await col
+      .aggregate<{ _id: string; count: number }>([
+        { $match: { assigned: { $in: names }, status: { $nin: CLOSED_STATUSES } } },
+        { $group: { _id: "$assigned", count: { $sum: 1 } } },
+      ])
+      .toArray();
+    const load = new Map(rows.map((r) => [r._id, r.count]));
+    let best = names[0];
+    let bestLoad = Infinity;
+    for (const name of names) {
+      const c = load.get(name) ?? 0;
+      if (c < bestLoad) {
+        bestLoad = c;
+        best = name;
+      }
+    }
+    return best;
+  } catch (err) {
+    console.error("pickAssignee failed:", err);
+    return "Unassigned";
+  }
+}
+
+/** Append one entry to a lead's audit trail. Best-effort; never throws. */
+export async function appendActivity(id: string, entry: ActivityEntry): Promise<void> {
+  if (!ObjectId.isValid(id)) return;
+  try {
+    const col = await collection();
+    await col.updateOne({ _id: new ObjectId(id) }, { $push: { activity: entry } });
+  } catch (err) {
+    console.error("appendActivity failed (non-fatal):", err);
   }
 }
 
@@ -316,6 +420,21 @@ export async function listSubmissions(
 export async function exportSubmissions(params: ListParams): Promise<SubmissionJSON[]> {
   const col = await collection();
   const docs = await col.find(buildFilter(params)).sort({ createdAt: -1 }).toArray();
+  return docs.map(toJSON);
+}
+
+/**
+ * Leads sitting in "Quote Sent" that still owe a follow-up (fewer than 3 sent).
+ * The cron endpoint decides which are actually due based on followUpNext.
+ */
+export async function listFollowUpCandidates(): Promise<SubmissionJSON[]> {
+  const col = await collection();
+  const docs = await col
+    .find({
+      status: "Quote Sent",
+      $or: [{ followUpStage: { $exists: false } }, { followUpStage: { $lt: 3 } }],
+    })
+    .toArray();
   return docs.map(toJSON);
 }
 

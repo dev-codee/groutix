@@ -46,6 +46,43 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/* ============================================================
+   Admin dashboard skin — clean, minimal, flat, sharp edges.
+   Scoped to .admin-ui so the public marketing site is untouched.
+   These are visual-only overrides (border-radius / shadow / blur),
+   so page layout is unaffected and status-colour borders keep their
+   meaning. Applied once here to guarantee a consistent look across
+   every admin page (dashboard, staff, submissions, content, login).
+   ============================================================ */
+.admin-ui,
+.admin-ui * {
+  /* Sharp edges everywhere. */
+  border-radius: 0 !important;
+}
+
+.admin-ui * {
+  /* Flat surfaces — replace shadows with the elements' own hairline borders. */
+  box-shadow: none !important;
+}
+
+/* Calmer surface: drop decorative backdrop blur behind modals/overlays. */
+.admin-ui .backdrop-blur-xs,
+.admin-ui .backdrop-blur-sm,
+.admin-ui .backdrop-blur,
+.admin-ui .backdrop-blur-md {
+  backdrop-filter: none !important;
+}
+
+/* Consistent, quiet focus ring across all inputs, selects and buttons. */
+.admin-ui input:focus,
+.admin-ui select:focus,
+.admin-ui textarea:focus,
+.admin-ui button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 0;
+  box-shadow: none !important;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
