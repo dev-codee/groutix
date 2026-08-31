@@ -12,9 +12,9 @@ export async function syncUnreadEmails() {
     return { error: "not_configured" };
   }
 
-  // Wrap the entire process in a 55-second timeout so Vercel never hits 60s Gateway Timeout
+  // Wrap the entire process in a 25-second timeout so cron-job.org doesn't timeout (max 30s)
   return Promise.race([
-    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0 }), 55000)),
+    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0 }), 25000)),
     (async () => {
       // imap.gmail.com is standard for Google Workspace
       const client = new ImapFlow({
