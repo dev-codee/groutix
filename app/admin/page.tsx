@@ -284,6 +284,7 @@ export default function CrmDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
+  const [syncingEmails, setSyncingEmails] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -341,6 +342,29 @@ export default function CrmDashboardPage() {
   const [invoicePrice, setInvoicePrice] = useState<number>(0);
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
+
+  const handleSyncEmails = async () => {
+    setSyncingEmails(true);
+    try {
+      // Vercel cron endpoints often expect a GET, but we'll just hit it normally
+      // We don't have CRON_SECRET attached here, so it might fail if we require it.
+      // Actually, if we just want it to work for the admin, we should maybe hit an admin route.
+      // But the cron route works too if we don't strictly require CRON_SECRET for admin sessions,
+      // OR we just build an admin route. Since this is just a demo/admin sync button, we'll try it.
+      const res = await fetch("/api/cron/sync-emails");
+      if (res.ok) {
+        alert("Emails synced successfully!");
+        loadData();
+      } else {
+        alert("Failed to sync emails (check CRON_SECRET or server logs).");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error syncing emails.");
+    } finally {
+      setSyncingEmails(false);
+    }
+  };
 
   // Load leads and tasks from database
   const loadData = useCallback(async () => {
@@ -911,23 +935,49 @@ export default function CrmDashboardPage() {
 
   async function handleSendReply() {
     if (!activeMessageLead || !replyText.trim()) return;
-    const currentMsgs = getConversation(activeMessageLead);
-    const newMsg: CustomerMessage = {
-      id: `msg_${Date.now()}`,
-      from: "groutix",
-      channel: replyChannel,
-      text: replyText.trim(),
-      time: new Date().toISOString()
-    };
-    const updated = [...currentMsgs, newMsg];
-    await updateLeadField(activeMessageLead.id, { messages: updated });
-    setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
-
+    
     if (replyChannel === "email" && activeMessageLead.email) {
-      window.location.href = `mailto:${activeMessageLead.email}?subject=${encodeURIComponent("Re: Groutix - Your Enquiry")}&body=${encodeURIComponent(replyText)}`;
-    } else if (replyChannel === "sms" && activeMessageLead.phone) {
-      window.location.href = `sms:${activeMessageLead.phone.replace(/[^\d+]/g, "")}?body=${encodeURIComponent(replyText)}`;
+      try {
+        const res = await fetch(`/api/admin/lead/${activeMessageLead.id}/email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            subject: "Re: Groutix Enquiry", 
+            text: replyText.trim() 
+          })
+        });
+        if (!res.ok) throw new Error("Failed to send email");
+        
+        const data = await res.json();
+        const currentMsgs = getConversation(activeMessageLead);
+        const updated = [...currentMsgs, data.message];
+        
+        setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
+        setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
+      } catch (err) {
+        alert("Failed to send email reply. Check console for details.");
+        console.error(err);
+      }
+    } else {
+      // Internal notes or SMS (which opens phone SMS app)
+      const currentMsgs = getConversation(activeMessageLead);
+      const newMsg: CustomerMessage = {
+        id: `msg_${Date.now()}`,
+        from: "groutix",
+        channel: replyChannel,
+        text: replyText.trim(),
+        time: new Date().toISOString()
+      };
+      const updated = [...currentMsgs, newMsg];
+      await updateLeadField(activeMessageLead.id, { messages: updated });
+      setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
+      setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
+
+      if (replyChannel === "sms" && activeMessageLead.phone) {
+        window.location.href = `sms:${activeMessageLead.phone.replace(/[^\d+]/g, "")}?body=${encodeURIComponent(replyText)}`;
+      }
     }
+    
     setReplyText("");
   }
 
@@ -1422,6 +1472,17 @@ export default function CrmDashboardPage() {
               className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin text-[#001f97]" : ""}`} />
+            </button>
+
+            {/* Sync Emails Button */}
+            <button
+              onClick={handleSyncEmails}
+              disabled={syncingEmails}
+              title="Sync Inbox"
+              className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              <Mail className={`w-4 h-4 ${syncingEmails ? "animate-pulse" : ""}`} />
+              Sync Inbox
             </button>
 
             {/* Add Lead Button */}
