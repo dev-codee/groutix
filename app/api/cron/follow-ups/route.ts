@@ -42,6 +42,15 @@ function followUpHtml(name: string, stage: number) {
 }
 
 async function runSweep(req: NextRequest) {
+  // Cron jobs are disabled for now
+  const cronEnabled = process.env.ENABLE_CRON_FOLLOWUPS === "true";
+  if (!cronEnabled) {
+    return NextResponse.json({
+      ok: false,
+      message: "Automated follow-up cron jobs are currently disabled.",
+    });
+  }
+
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 503 });
