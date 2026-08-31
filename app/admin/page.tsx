@@ -318,7 +318,6 @@ export default function CrmDashboardPage() {
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [replyChannel, setReplyChannel] = useState<"email" | "sms" | "internal">("email");
 
   const [gpsModalOpen, setGpsModalOpen] = useState(false);
   const [activeGpsLead, setActiveGpsLead] = useState<Lead | null>(null);
@@ -936,46 +935,31 @@ export default function CrmDashboardPage() {
   async function handleSendReply() {
     if (!activeMessageLead || !replyText.trim()) return;
     
-    if (replyChannel === "email" && activeMessageLead.email) {
-      try {
-        const res = await fetch(`/api/admin/lead/${activeMessageLead.id}/email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            subject: "Re: Groutix Enquiry", 
-            text: replyText.trim() 
-          })
-        });
-        if (!res.ok) throw new Error("Failed to send email");
-        
-        const data = await res.json();
-        const currentMsgs = getConversation(activeMessageLead);
-        const updated = [...currentMsgs, data.message];
-        
-        setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
-        setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
-      } catch (err) {
-        alert("Failed to send email reply. Check console for details.");
-        console.error(err);
-      }
-    } else {
-      // Internal notes or SMS (which opens phone SMS app)
+    if (!activeMessageLead.email) {
+      alert("This customer does not have an email address on file.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/lead/${activeMessageLead.id}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          subject: "Re: Groutix Enquiry", 
+          text: replyText.trim() 
+        })
+      });
+      if (!res.ok) throw new Error("Failed to send email");
+      
+      const data = await res.json();
       const currentMsgs = getConversation(activeMessageLead);
-      const newMsg: CustomerMessage = {
-        id: `msg_${Date.now()}`,
-        from: "groutix",
-        channel: replyChannel,
-        text: replyText.trim(),
-        time: new Date().toISOString()
-      };
-      const updated = [...currentMsgs, newMsg];
-      await updateLeadField(activeMessageLead.id, { messages: updated });
+      const updated = [...currentMsgs, data.message];
+      
       setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
       setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
-
-      if (replyChannel === "sms" && activeMessageLead.phone) {
-        window.location.href = `sms:${activeMessageLead.phone.replace(/[^\d+]/g, "")}?body=${encodeURIComponent(replyText)}`;
-      }
+    } catch (err) {
+      alert("Failed to send email reply. Check console for details.");
+      console.error(err);
     }
     
     setReplyText("");
@@ -3090,18 +3074,7 @@ export default function CrmDashboardPage() {
             {/* Reply Composer */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">Reply Channel:</span>
-                  <select
-                    value={replyChannel}
-                    onChange={(e) => setReplyChannel(e.target.value as any)}
-                    className="text-xs p-1.5 border border-slate-200 rounded-lg bg-white"
-                  >
-                    <option value="email">Email</option>
-                    <option value="sms">SMS</option>
-                    <option value="internal">Internal Note Only</option>
-                  </select>
-                </div>
+                <span className="text-xs font-bold text-slate-700">Reply via Email:</span>
                 <button
                   onClick={handleAddCustomerDemoReply}
                   className="text-xs text-[#001f97] font-semibold hover:underline"

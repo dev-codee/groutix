@@ -41,10 +41,6 @@ function followUpHtml(name: string, stage: number) {
 }
 
 async function runSweep(req: NextRequest) {
-  if (process.env.ENABLE_CRON_FOLLOWUPS !== "true") {
-    return NextResponse.json({ skipped: true, reason: "disabled_in_env" });
-  }
-
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "Missing CRON_SECRET" }, { status: 500 });
