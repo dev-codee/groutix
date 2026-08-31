@@ -12,23 +12,25 @@ export async function syncUnreadEmails() {
     return { error: "not_configured" };
   }
 
-  // imap.gmail.com is standard for Google Workspace
-  const client = new ImapFlow({
-    host: "imap.gmail.com",
-    port: 993,
-    secure: true,
-    auth: { user, pass },
-    logger: false,
-  });
+  // Wrap the entire process in a 9-second timeout so Vercel never hits 504 Gateway Timeout
+  return Promise.race([
+    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0 }), 9000)),
+    (async () => {
+      // imap.gmail.com is standard for Google Workspace
+      const client = new ImapFlow({
+        host: "imap.gmail.com",
+        port: 993,
+        secure: true,
+        auth: { user, pass },
+        logger: false,
+      });
 
-  let syncedCount = 0;
+      let syncedCount = 0;
 
-  try {
-    await client.connect();
-    
-    // Select the INBOX mailbox
-    const lock = await client.getMailboxLock("INBOX");
-    try {
+      try {
+        await client.connect();
+        const lock = await client.getMailboxLock("INBOX");
+        try {
       // Fetch UIDs of unread emails
       const searchResult = await client.search({ seen: false });
       
@@ -97,10 +99,18 @@ export async function syncUnreadEmails() {
     }
   } catch (err) {
     console.error("[IMAP Sync Error]", err);
-    throw err;
+    // don't throw, just return error so it doesn't crash the race
+    return { error: "sync_failed", syncedCount: 0 };
   } finally {
-    await client.logout();
+    // Attempt graceful logout, but don't await indefinitely if it hangs
+    Promise.race([
+      client.logout(),
+      new Promise(r => setTimeout(r, 1000))
+    ]).catch(() => {});
+    client.close();
   }
 
   return { syncedCount };
+  })()
+  ]) as Promise<{ error?: string; syncedCount?: number }>;
 }
