@@ -63,6 +63,7 @@ export interface CustomerMessage {
   text: string;
   time: string;
   initial?: boolean;
+  read?: boolean;
 }
 
 export interface GpsCheckin {
@@ -904,8 +905,23 @@ export default function CrmDashboardPage() {
   }
 
   // Conversation Management
-  function openMessagesModal(lead: Lead) {
-    setActiveMessageLead(lead);
+  async function openMessagesModal(lead: Lead) {
+    let currentLead = lead;
+    
+    // If there are any unread messages from customer, mark them read instantly
+    if (lead.messages?.some(m => m.from === "customer" && m.read === false)) {
+      const updatedMessages = lead.messages.map(m => 
+        (m.from === "customer" && m.read === false) ? { ...m, read: true } : m
+      );
+      
+      currentLead = { ...lead, messages: updatedMessages };
+      setLeads(prev => prev.map(l => l.id === lead.id ? currentLead : l));
+      
+      // Update backend silently
+      updateLeadField(lead.id, { messages: updatedMessages }).catch(console.error);
+    }
+
+    setActiveMessageLead(currentLead);
     setReplyText("");
     setMessagesModalOpen(true);
   }
@@ -1738,10 +1754,13 @@ export default function CrmDashboardPage() {
                                 </button>
                                 <button
                                   onClick={() => openMessagesModal(l)}
-                                  className="p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md"
+                                  className="relative p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md"
                                   title="Conversation"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" />
+                                  {l.messages?.some(m => m.from === "customer" && m.read === false) && (
+                                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                                  )}
                                 </button>
                                 <button
                                   onClick={() => openGpsModal(l)}
@@ -2047,10 +2066,13 @@ export default function CrmDashboardPage() {
                             </button>
                             <button
                               onClick={() => openMessagesModal(l)}
-                              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
+                              className="relative p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
                               title="Messages"
                             >
                               <MessageSquare className="w-3.5 h-3.5" />
+                              {l.messages?.some(m => m.from === "customer" && m.read === false) && (
+                                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                              )}
                             </button>
                             <button
                               onClick={() => openGpsModal(l)}

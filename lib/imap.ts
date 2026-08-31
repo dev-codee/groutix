@@ -94,6 +94,7 @@ export async function syncUnreadEmails() {
                     subject: parsed.subject,
                     text: parsed.text || "No text content.",
                     time: (parsed.date || new Date()).toISOString(),
+                    read: false,
                   };
 
                   await col.updateOne(

@@ -38,6 +38,7 @@ export interface CustomerMessage {
   text: string;
   time: string;
   initial?: boolean;
+  read?: boolean;
 }
 
 export interface GpsCheckin {
