@@ -20,10 +20,13 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 // ── Dashboard views (tabs inside /admin) each role may open ──────────────────
 // View ids match the `currentView` union in app/admin/page.tsx.
+// Each non-manager role sees ONLY the tabs for the stages it owns; the manager
+// sees everything. Keep these in sync with the pipeline ownership in
+// lib/pipeline.ts so a role's tabs always match the leads it can act on.
 export const ROLE_VIEWS: Record<Role, string[]> = {
-  intake: ["leads", "customers"],
-  field: ["jobs", "leads", "customers"],
-  finance: ["jobs", "quotes", "customers"],
+  intake: ["leads", "customers"], // sales / intake + quoting from the lead row
+  field: ["jobs", "customers"], // scheduling + job execution
+  finance: ["jobs", "quotes", "customers"], // completion, payment, warranty
   manager: [
     "dashboard",
     "analytics",

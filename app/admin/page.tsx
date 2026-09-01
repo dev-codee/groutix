@@ -307,6 +307,16 @@ export default function CrmDashboardPage() {
     () => ROLE_DEFAULT_VIEW[role] as DashboardView
   );
 
+  // Safety net: a role must never sit on a view it isn't allowed to open. If
+  // the current view ever falls outside this role's permitted tabs (stale state,
+  // a programmatic jump, a role change), snap back to the role's home tab. This
+  // enforces "each role sees only its own pages" on top of the sidebar gating.
+  useEffect(() => {
+    if (!roleCanView(role, currentView)) {
+      setCurrentView(ROLE_DEFAULT_VIEW[role] as DashboardView);
+    }
+  }, [role, currentView]);
+
   // Staff directory (all roles) for the Team view and assignee pickers.
   const [staff, setStaff] = useState<
     { id: string; name: string; role: string; active: boolean }[]
