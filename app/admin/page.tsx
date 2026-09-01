@@ -24,7 +24,6 @@ import {
   Square,
   X,
   Printer,
-  Sparkles,
   Download,
   Send,
   ExternalLink,
@@ -35,14 +34,13 @@ import {
   ZoomIn,
   Image as ImageIcon
 } from "lucide-react";
-import { useAdminBasePath, useAdminRole } from "@/components/admin/AdminProvider";
-import { canView as roleCanView, ROLE_DEFAULT_VIEW } from "@/lib/roles";
+import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
+import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS } from "@/lib/roles";
 import { STATUS_KEYS, inRoleQueue, JOB_STATUSES } from "@/lib/pipeline";
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
-  GROUTIX_QUOTE_TERMS,
-  bestTemplateForTask
+  GROUTIX_QUOTE_TERMS
 } from "@/lib/serviceTemplates";
 
 export interface QuoteItem {
@@ -264,7 +262,11 @@ type DashboardView =
 export default function CrmDashboardPage() {
   const basePath = useAdminBasePath();
   const role = useAdminRole();
+  const username = useAdminUsername();
   const router = useRouter();
+
+  // Human-friendly label for the signed-in role (e.g. "Finance / Completion").
+  const roleLabel = ROLE_LABELS[role] || "Staff";
 
   // Which tabs this role is allowed to open.
   const canSee = useCallback((view: DashboardView) => roleCanView(role, view), [role]);
@@ -627,54 +629,6 @@ export default function CrmDashboardPage() {
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
     setQuoteTerms(lead.quoteTerms || GROUTIX_QUOTE_TERMS.slice(0, 300));
     setQuoteModalOpen(true);
-  }
-
-  function handleAutoPrepareQuote(lead: Lead) {
-    const tasks = String(lead.service || "").split(",").map((x) => x.trim()).filter(Boolean);
-    if (!tasks.length) tasks.push(String(lead.service || lead.notes || "General Regrouting Work").trim());
-
-    const used = new Set<string>();
-    const suggested: string[] = [];
-    const newItems: QuoteItem[] = [];
-
-    tasks.forEach((task) => {
-      const t = bestTemplateForTask(task, lead.notes || lead.message || "", used);
-      if (t) {
-        used.add(t.code);
-        suggested.push(t.code);
-        newItems.push({
-          templateNo: t.no,
-          code: t.code,
-          service: t.service || task,
-          scope: t.scope || "",
-          price: t.price || 0,
-          qty: 1
-        });
-      } else {
-        newItems.push({
-          templateNo: "",
-          code: "",
-          service: task,
-          scope: "",
-          price: 0,
-          qty: 1
-        });
-      }
-    });
-
-    setActiveQuoteLead(lead);
-    setQuoteItems(newItems);
-    setQuoteTaxMode(lead.quoteTaxMode || "inclusive");
-    setQuoteTaxRate(lead.quoteTaxRate ?? 10);
-    setQuoteTerms(GROUTIX_QUOTE_TERMS.slice(0, 350));
-    setQuoteModalOpen(true);
-
-    updateLeadField(lead.id, {
-      quoteItems: newItems,
-      quoteItemCode: suggested[0] || "",
-      quoteScope: newItems.map((x) => x.scope).filter(Boolean).join("\n\n"),
-      quoteUpdated: new Date().toISOString()
-    });
   }
 
   function quoteTotals() {
@@ -1197,7 +1151,10 @@ export default function CrmDashboardPage() {
       );
     }
     if (statusFilter) {
-      list = list.filter((l) => l.status === statusFilter);
+      // statusFilter may be a single status (dropdown) or a "|"-joined group
+      // of statuses (KPI cards like Inspections / Won that cover several stages).
+      const wanted = statusFilter.split("|");
+      list = list.filter((l) => wanted.includes(l.status));
     }
     if (priorityFilter) {
       list = list.filter((l) => l.priority === priorityFilter);
@@ -1213,6 +1170,19 @@ export default function CrmDashboardPage() {
     });
     return res;
   }, [scopedLeads]);
+
+  // Clicking a dashboard KPI card drops the user into the full leads table with
+  // that stage (or group of stages) pre-filtered. Groups are passed as several
+  // statuses and joined with "|" so filteredLeads matches any of them.
+  const openLeadsFiltered = useCallback(
+    (statuses: string[]) => {
+      setPriorityFilter("");
+      setGlobalSearch("");
+      setStatusFilter(statuses.join("|"));
+      setCurrentView(canSee("leads") ? "leads" : "statuses");
+    },
+    [canSee]
+  );
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
@@ -1504,7 +1474,7 @@ export default function CrmDashboardPage() {
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Manager • Admin
+              {username ? `${username} • ${roleLabel}` : roleLabel}
             </div>
           </div>
         </header>
@@ -1612,75 +1582,64 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "dashboard" && (
             <div className="space-y-6">
-              {/* KPI Cards */}
+              {/* KPI Cards — click any card to open the leads table filtered to
+                  that stage (or group of stages). */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Leads</div>
-                  <div className="text-3xl font-black text-[#001f97] my-1">{counts["New"] || 0}</div>
-                  <div className="text-[11px] text-slate-400">Needs attention</div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contacted</div>
-                  <div className="text-3xl font-black text-slate-900 my-1">{counts["Contacted"] || 0}</div>
-                  <div className="text-[11px] text-slate-400">In progress</div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inspections</div>
-                  <div className="text-3xl font-black text-slate-900 my-1">
-                    {(counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0)}
-                  </div>
-                  <div className="text-[11px] text-slate-400">Booked / done</div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quotes Sent</div>
-                  <div className="text-3xl font-black text-slate-900 my-1">{counts["Quote Sent"] || 0}</div>
-                  <div className="text-[11px] text-slate-400">Awaiting decision</div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Won Jobs</div>
-                  <div className="text-3xl font-black text-slate-900 my-1">
-                    {(counts["Won"] || 0) + (counts["Job Done"] || 0) + (counts["Payment Received"] || 0)}
-                  </div>
-                  <div className="text-[11px] text-slate-400">Confirmed orders</div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lost Leads</div>
-                  <div className="text-3xl font-black text-slate-400 my-1">{counts["Lost"] || 0}</div>
-                  <div className="text-[11px] text-slate-400">Closed / inactive</div>
-                </div>
-              </div>
-
-              {/* Lead Pipeline Bar */}
-              <div className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs">
-                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Lead Pipeline</div>
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                  {[
-                    { label: "New", value: counts["New"] || 0 },
-                    { label: "Contacted", value: counts["Contacted"] || 0 },
-                    {
-                      label: "Inspection",
-                      value: (counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0),
-                    },
-                    { label: "Quote Sent", value: counts["Quote Sent"] || 0 },
-                    { label: "Won", value: counts["Won"] || 0 },
-                    { label: "Lost", value: counts["Lost"] || 0 },
-                  ].map((s) => (
-                    <div
-                      key={s.label}
-                      className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-center"
-                    >
-                      <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                        {s.label}
-                      </div>
-                      <div className="text-lg font-black text-slate-900 leading-tight">{s.value}</div>
-                    </div>
-                  ))}
-                </div>
+                {[
+                  {
+                    label: "New Leads",
+                    value: counts["New"] || 0,
+                    hint: "Needs attention",
+                    statuses: ["New"],
+                    valueClass: "text-[#001f97]",
+                  },
+                  {
+                    label: "Contacted",
+                    value: counts["Contacted"] || 0,
+                    hint: "In progress",
+                    statuses: ["Contacted"],
+                    valueClass: "text-slate-900",
+                  },
+                  {
+                    label: "Inspections",
+                    value: (counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0),
+                    hint: "Booked / done",
+                    statuses: ["Inspection Booked", "Inspection Completed"],
+                    valueClass: "text-slate-900",
+                  },
+                  {
+                    label: "Quotes Sent",
+                    value: counts["Quote Sent"] || 0,
+                    hint: "Awaiting decision",
+                    statuses: ["Quote Sent"],
+                    valueClass: "text-slate-900",
+                  },
+                  {
+                    label: "Won Jobs",
+                    value: (counts["Won"] || 0) + (counts["Job Done"] || 0) + (counts["Payment Received"] || 0),
+                    hint: "Confirmed orders",
+                    statuses: ["Won", "Job Done", "Payment Received"],
+                    valueClass: "text-slate-900",
+                  },
+                  {
+                    label: "Lost Leads",
+                    value: counts["Lost"] || 0,
+                    hint: "Closed / inactive",
+                    statuses: ["Lost"],
+                    valueClass: "text-slate-400",
+                  },
+                ].map((card) => (
+                  <button
+                    key={card.label}
+                    type="button"
+                    onClick={() => openLeadsFiltered(card.statuses)}
+                    className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs text-left transition-all hover:border-[#001f97]/40 hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer"
+                  >
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">{card.label}</div>
+                    <div className={`text-3xl font-black my-1 ${card.valueClass}`}>{card.value}</div>
+                    <div className="text-[11px] text-slate-400">{card.hint}</div>
+                  </button>
+                ))}
               </div>
 
               {/* Main Grid: Recent Leads & Task Panel */}
@@ -1736,14 +1695,6 @@ export default function CrmDashboardPage() {
                                   title="Open Quote Builder"
                                 >
                                   Quote
-                                </button>
-                                <button
-                                  onClick={() => handleAutoPrepareQuote(l)}
-                                  className="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-[11px] font-bold transition-colors"
-                                  title="Auto Prepare Quote with Templates"
-                                >
-                                  <Sparkles className="w-3 h-3 inline mr-0.5" />
-                                  Auto
                                 </button>
                                 <button
                                   onClick={() => openPhotosModal(l)}
@@ -2048,14 +1999,6 @@ export default function CrmDashboardPage() {
                               title="Open Quote Builder"
                             >
                               Quote
-                            </button>
-                            <button
-                              onClick={() => handleAutoPrepareQuote(l)}
-                              className="px-2 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-bold"
-                              title="Auto Prepare Quote with Templates"
-                            >
-                              <Sparkles className="w-3 h-3 inline mr-0.5" />
-                              Auto
                             </button>
                             <button
                               onClick={() => openPhotosModal(l)}
