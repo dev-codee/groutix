@@ -281,6 +281,73 @@ function QuoteResponseBadge({ lead }: { lead: Lead }) {
   return null;
 }
 
+// How many rows/cards to show per page in the long list views.
+const PAGE_SIZE = 20;
+
+// Reusable pager shown under long lists. Renders nothing when everything fits on
+// one page. Keeps a compact window of page numbers around the current page.
+function Pagination({
+  page,
+  pageSize,
+  total,
+  onPage,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPage: (p: number) => void;
+}) {
+  if (total <= pageSize) return null;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
+  const end = Math.min(pageCount, Math.max(page + 2, 5));
+  const start = Math.max(1, end - 4);
+  const pages: number[] = [];
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+      <div className="text-xs text-slate-500 font-medium">
+        Showing <b className="text-slate-700">{from}–{to}</b> of{" "}
+        <b className="text-slate-700">{total}</b>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPage(page - 1)}
+          disabled={page <= 1}
+          className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Prev
+        </button>
+        {start > 1 && <span className="px-1 text-slate-400 text-xs">…</span>}
+        {pages.map((p) => (
+          <button
+            key={p}
+            onClick={() => onPage(p)}
+            className={`min-w-[32px] px-2 py-1.5 rounded-lg text-xs font-bold ${
+              p === page
+                ? "bg-[#001f97] text-white"
+                : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        {end < pageCount && <span className="px-1 text-slate-400 text-xs">…</span>}
+        <button
+          onClick={() => onPage(page + 1)}
+          disabled={page >= pageCount}
+          className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 type DashboardView =
   | "dashboard"
   | "analytics"
@@ -316,6 +383,11 @@ export default function CrmDashboardPage() {
       setCurrentView(ROLE_DEFAULT_VIEW[role] as DashboardView);
     }
   }, [role, currentView]);
+
+  // Current page for the long list views. One shared page is fine because only
+  // one view renders at a time; it resets whenever the view or filters change so
+  // you never land on an out-of-range page.
+  const [page, setPage] = useState(1);
 
   // Staff directory (all roles) for the Team view and assignee pickers.
   const [staff, setStaff] = useState<
@@ -476,6 +548,12 @@ export default function CrmDashboardPage() {
       loadAnalytics(analyticsDays);
     }
   }, [currentView, analyticsDays, loadAnalytics]);
+
+  // Reset to the first page whenever the view or any filter changes, so we never
+  // show a stale/out-of-range page for the new (shorter) list.
+  useEffect(() => {
+    setPage(1);
+  }, [currentView, statusFilter, priorityFilter, globalSearch]);
 
   // Load the staff directory for every role (drives the Team view and all
   // assignee pickers) so nothing is hardcoded. Read-only names/roles only.
@@ -1260,6 +1338,34 @@ export default function CrmDashboardPage() {
     return res;
   }, [scopedLeads]);
 
+  // Derived lists backing the Quotes and Jobs views, so we can both count them
+  // and paginate the same array.
+  const quoteLeads = useMemo(
+    () => scopedLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
+    [scopedLeads]
+  );
+  const jobLeads = useMemo(
+    () => scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)),
+    [scopedLeads]
+  );
+
+  // Keep the page in range if the current view's list shrinks (e.g. a lead was
+  // deleted while paging), so we don't get stuck on an empty page.
+  useEffect(() => {
+    const total =
+      currentView === "leads"
+        ? filteredLeads.length
+        : currentView === "quotes"
+        ? quoteLeads.length
+        : currentView === "jobs"
+        ? jobLeads.length
+        : currentView === "customers"
+        ? scopedLeads.length
+        : 0;
+    const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (page > maxPage) setPage(maxPage);
+  }, [currentView, page, filteredLeads.length, quoteLeads.length, jobLeads.length, scopedLeads.length]);
+
   // Clicking a dashboard KPI card drops the user into the full leads table with
   // that stage (or group of stages) pre-filtered. Groups are passed as several
   // statuses and joined with "|" so filteredLeads matches any of them.
@@ -1977,7 +2083,7 @@ export default function CrmDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredLeads.map((l) => (
+                    {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3.5 px-3">
                           <div className="font-bold text-slate-900">{l.name || "Unnamed"}</div>
@@ -2141,6 +2247,7 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
             </div>
           )}
 
@@ -2152,7 +2259,7 @@ export default function CrmDashboardPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-black text-slate-900">Active & Prepared Quotations</h2>
                 <div className="text-xs text-slate-500">
-                  {scopedLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent").length} Quotes in System
+                  {quoteLeads.length} Quotes in System
                 </div>
               </div>
 
@@ -2170,8 +2277,8 @@ export default function CrmDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {scopedLeads
-                      .filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms)
+                    {quoteLeads
+                      .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                       .map((l) => {
                         const items = Array.isArray(l.quoteItems) ? l.quoteItems : [];
                         const sub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
@@ -2209,6 +2316,7 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination page={page} pageSize={PAGE_SIZE} total={quoteLeads.length} onPage={setPage} />
             </div>
           )}
 
@@ -2219,8 +2327,8 @@ export default function CrmDashboardPage() {
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
               <h2 className="text-base font-black text-slate-900">Bookings &amp; Jobs</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {scopedLeads
-                  .filter((l) => JOB_STATUSES.includes(l.status))
+                {jobLeads
+                  .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                   .map((l) => (
                     <div key={l.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
                       <div className="flex items-start justify-between gap-2">
@@ -2254,7 +2362,13 @@ export default function CrmDashboardPage() {
                       </div>
                     </div>
                   ))}
+                {jobLeads.length === 0 && (
+                  <div className="col-span-full py-16 text-center text-slate-400 text-sm">
+                    No bookings or jobs yet.
+                  </div>
+                )}
               </div>
+              <Pagination page={page} pageSize={PAGE_SIZE} total={jobLeads.length} onPage={setPage} />
             </div>
           )}
 
@@ -2277,7 +2391,7 @@ export default function CrmDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {scopedLeads.map((l) => (
+                    {scopedLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/80">
                         <td className="py-3 px-3 font-bold text-slate-900">{l.name || "Customer"}</td>
                         <td className="py-3 px-3 text-slate-600">{l.phone || "—"}</td>
@@ -2292,6 +2406,7 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination page={page} pageSize={PAGE_SIZE} total={scopedLeads.length} onPage={setPage} />
             </div>
           )}
 
