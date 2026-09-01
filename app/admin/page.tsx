@@ -24,6 +24,7 @@ import {
   Square,
   X,
   Printer,
+  Paperclip,
   Download,
   Send,
   ExternalLink,
@@ -62,6 +63,7 @@ export interface CustomerMessage {
   time: string;
   initial?: boolean;
   read?: boolean;
+  attachments?: { name: string; contentType?: string; size?: number }[];
 }
 
 export interface GpsCheckin {
@@ -252,7 +254,6 @@ function getBadgeColor(status: string) {
 type DashboardView =
   | "dashboard"
   | "analytics"
-  | "statuses"
   | "leads"
   | "quotes"
   | "jobs"
@@ -321,6 +322,13 @@ export default function CrmDashboardPage() {
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
   const [replyText, setReplyText] = useState("");
+  // Files staged to email along with the next reply. `content` is base64 for the
+  // API; the rest is metadata used for the chip UI and the logged message.
+  const [replyAttachments, setReplyAttachments] = useState<
+    { name: string; content: string; contentType?: string; size?: number }[]
+  >([]);
+  const [sendingReply, setSendingReply] = useState(false);
+  const replyFileRef = useRef<HTMLInputElement | null>(null);
 
   const [gpsModalOpen, setGpsModalOpen] = useState(false);
   const [activeGpsLead, setActiveGpsLead] = useState<Lead | null>(null);
@@ -877,6 +885,7 @@ export default function CrmDashboardPage() {
 
     setActiveMessageLead(currentLead);
     setReplyText("");
+    setReplyAttachments([]);
     setMessagesModalOpen(true);
   }
 
@@ -902,37 +911,77 @@ export default function CrmDashboardPage() {
     return list;
   }
 
+  // Read picked files into base64 so they can be posted as JSON and forwarded as
+  // email attachments. Cap total size to keep the request (and the mailbox) sane.
+  const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB total
+  async function handleAttachReplyFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const existing = replyAttachments.reduce((n, a) => n + (a.size || 0), 0);
+    let running = existing;
+    const next: typeof replyAttachments = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (running + file.size > MAX_ATTACHMENT_BYTES) {
+        alert(`"${file.name}" skipped — attachments must total under 10 MB.`);
+        continue;
+      }
+      running += file.size;
+      const content = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          // Strip the "data:*/*;base64," prefix to leave the raw base64 payload.
+          resolve(result.includes(",") ? result.split(",")[1] : result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      next.push({ name: file.name, content, contentType: file.type || undefined, size: file.size });
+    }
+    setReplyAttachments((prev) => [...prev, ...next]);
+    if (replyFileRef.current) replyFileRef.current.value = "";
+  }
+
+  function removeReplyAttachment(index: number) {
+    setReplyAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSendReply() {
-    if (!activeMessageLead || !replyText.trim()) return;
-    
+    if (!activeMessageLead) return;
+    if (!replyText.trim() && replyAttachments.length === 0) return;
+
     if (!activeMessageLead.email) {
       alert("This customer does not have an email address on file.");
       return;
     }
 
+    setSendingReply(true);
     try {
       const res = await fetch(`/api/admin/lead/${activeMessageLead.id}/email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          subject: "Re: Groutix Enquiry", 
-          text: replyText.trim() 
+        body: JSON.stringify({
+          subject: "Re: Groutix Enquiry",
+          text: replyText.trim(),
+          attachments: replyAttachments,
         })
       });
       if (!res.ok) throw new Error("Failed to send email");
-      
+
       const data = await res.json();
       const currentMsgs = getConversation(activeMessageLead);
       const updated = [...currentMsgs, data.message];
-      
+
       setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
       setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
+      setReplyText("");
+      setReplyAttachments([]);
     } catch (err) {
       alert("Failed to send email reply. Check console for details.");
       console.error(err);
+    } finally {
+      setSendingReply(false);
     }
-    
-    setReplyText("");
   }
 
   async function handleAddCustomerDemoReply() {
@@ -1179,9 +1228,9 @@ export default function CrmDashboardPage() {
       setPriorityFilter("");
       setGlobalSearch("");
       setStatusFilter(statuses.join("|"));
-      setCurrentView(canSee("leads") ? "leads" : "statuses");
+      setCurrentView("leads");
     },
-    [canSee]
+    []
   );
 
   return (
@@ -1230,29 +1279,6 @@ export default function CrmDashboardPage() {
               <span className="flex items-center gap-2.5">
                 <BarChart3 className="w-4 h-4" />
                 Analytics Overview
-              </span>
-            </button>
-            )}
-
-            {canSee("statuses") && (
-            <button
-              onClick={() => setCurrentView("statuses")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "statuses"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <UserCheck className="w-4 h-4" />
-                Statuses
-              </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  currentView === "statuses" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {scopedLeads.length}
               </span>
             </button>
             )}
@@ -1405,8 +1431,6 @@ export default function CrmDashboardPage() {
                 ? "Manager Dashboard"
                 : currentView === "analytics"
                 ? "Analytics & Performance"
-                : currentView === "statuses"
-                ? "Lead Statuses"
                 : currentView === "leads"
                 ? "All Leads"
                 : currentView === "quotes"
@@ -1843,9 +1867,9 @@ export default function CrmDashboardPage() {
           )}
 
           {/* =========================================================================
-              VIEW: STATUSES / LEADS (Full Table View)
+              VIEW: LEADS (Full Table View)
              ========================================================================= */}
-          {(currentView === "statuses" || currentView === "leads") && (
+          {currentView === "leads" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
               {/* Filter Toolbar */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -3031,6 +3055,21 @@ export default function CrmDashboardPage() {
                     </div>
                     {msg.subject && <div className="font-bold">{msg.subject}</div>}
                     <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {msg.attachments.map((att, i) => (
+                          <span
+                            key={i}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                              isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
+                            }`}
+                          >
+                            <Paperclip className="w-2.5 h-2.5" />
+                            {att.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -3056,13 +3095,52 @@ export default function CrmDashboardPage() {
                 className="w-full p-2.5 text-xs border border-slate-200 rounded-xl"
               />
 
-              <div className="flex justify-end gap-2">
+              {/* Staged attachments */}
+              {replyAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {replyAttachments.map((att, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700"
+                    >
+                      <Paperclip className="w-3 h-3 text-slate-400" />
+                      <span className="max-w-[160px] truncate">{att.name}</span>
+                      <button
+                        onClick={() => removeReplyAttachment(i)}
+                        className="text-slate-400 hover:text-rose-600"
+                        title="Remove attachment"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <input
+                ref={replyFileRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => handleAttachReplyFiles(e.target.files)}
+              />
+
+              <div className="flex justify-between gap-2">
+                <button
+                  onClick={() => replyFileRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50"
+                  title="Attach files to email"
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  Attach
+                </button>
                 <button
                   onClick={handleSendReply}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777]"
+                  disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  Save & Send Reply
+                  {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  {sendingReply ? "Sending…" : "Save & Send Reply"}
                 </button>
               </div>
             </div>

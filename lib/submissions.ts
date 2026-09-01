@@ -39,6 +39,10 @@ export interface CustomerMessage {
   time: string;
   initial?: boolean;
   read?: boolean;
+  // Metadata only (name/type/size) for files emailed with the message. We never
+  // persist the raw file bytes in the CRM record — they are only forwarded to
+  // the customer's email at send time.
+  attachments?: { name: string; contentType?: string; size?: number }[];
 }
 
 export interface GpsCheckin {

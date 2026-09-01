@@ -23,27 +23,57 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { subject, text, html } = body;
-  if (!text) {
-    return NextResponse.json({ error: "Email body is required." }, { status: 400 });
+  const { subject, text, html, attachments } = body;
+
+  // Normalise incoming attachments: each needs a name and base64 content to be
+  // forwarded to the mailer. Anything malformed is dropped defensively.
+  const validAttachments: { name: string; content: string; contentType?: string; size?: number }[] =
+    Array.isArray(attachments)
+      ? attachments
+          .filter((a: any) => a && typeof a.name === "string" && typeof a.content === "string")
+          .map((a: any) => ({
+            name: a.name,
+            content: a.content,
+            contentType: typeof a.contentType === "string" ? a.contentType : undefined,
+            size: typeof a.size === "number" ? a.size : undefined,
+          }))
+      : [];
+
+  if (!text && validAttachments.length === 0) {
+    return NextResponse.json({ error: "Email body or an attachment is required." }, { status: 400 });
   }
+
+  const bodyText = typeof text === "string" ? text : "";
 
   try {
     // 1. Send the email via Nodemailer
     await sendEmail({
       toEmail: lead.email,
       subject: subject || `Re: Your Groutix Enquiry`,
-      html: html || text.replace(/\n/g, "<br/>"),
+      html: html || bodyText.replace(/\n/g, "<br/>") || "(See attached files.)",
+      attachments: validAttachments.map((a) => ({
+        name: a.name,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
 
-    // 2. Log the outgoing message in the CRM
+    // 2. Log the outgoing message in the CRM (attachment metadata only — we do
+    //    not persist the raw file bytes in the record).
     const crmMessage: CustomerMessage = {
       id: `out_${Date.now()}`,
       from: "groutix",
       channel: "email",
       subject: subject || `Re: Your Groutix Enquiry`,
-      text: text,
+      text: bodyText,
       time: new Date().toISOString(),
+      ...(validAttachments.length > 0 && {
+        attachments: validAttachments.map((a) => ({
+          name: a.name,
+          contentType: a.contentType,
+          size: a.size,
+        })),
+      }),
     };
 
     const db = await getDb();
@@ -58,7 +88,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       time: new Date().toISOString(),
       actor: "admin",
       action: "Sent Email Reply",
-      detail: subject || "No subject",
+      detail:
+        (subject || "No subject") +
+        (validAttachments.length > 0 ? ` • ${validAttachments.length} attachment(s)` : ""),
     });
 
     return NextResponse.json({ ok: true, message: crmMessage });

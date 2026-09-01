@@ -21,13 +21,12 @@ export const ROLE_LABELS: Record<Role, string> = {
 // ── Dashboard views (tabs inside /admin) each role may open ──────────────────
 // View ids match the `currentView` union in app/admin/page.tsx.
 export const ROLE_VIEWS: Record<Role, string[]> = {
-  intake: ["leads", "statuses", "customers"],
-  field: ["jobs", "statuses", "customers"],
+  intake: ["leads", "customers"],
+  field: ["jobs", "leads", "customers"],
   finance: ["jobs", "quotes", "customers"],
   manager: [
     "dashboard",
     "analytics",
-    "statuses",
     "leads",
     "quotes",
     "jobs",
