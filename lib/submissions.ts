@@ -135,6 +135,8 @@ export interface SubmissionDoc {
   warranty?: WarrantyDoc;
   activity?: ActivityEntry[];
   quoteNumber?: string;
+  quoteAcceptedAt?: string; // ISO time the customer accepted the quote online
+  quoteDeclinedAt?: string; // ISO time the customer declined the quote online
   followUpStage?: number; // 0 = none, 1..3 = follow-up sent, 4 = no response
   followUpNext?: string; // ISO time the next follow-up is due
   // Request metadata.

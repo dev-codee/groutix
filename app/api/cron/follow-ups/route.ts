@@ -5,6 +5,7 @@ import {
   appendActivity,
 } from "@/lib/submissions";
 import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
+import { buildQuoteResponseUrl } from "@/lib/quoteToken";
 
 // Scheduled follow-up sweep. Lives OUTSIDE /api/admin so it isn't behind the
 // session guard; instead it requires a shared secret. Point an external
@@ -24,17 +25,29 @@ function esc(v: string) {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function followUpHtml(name: string, stage: number) {
+function followUpHtml(id: string, name: string, stage: number) {
   const nudges = [
     "Just checking you received the quotation we sent — happy to answer any questions.",
     "Following up on your Groutix quote. Would you like to lock in a booking date?",
     "Last check-in on your quotation before we close the file — let us know if you'd still like to go ahead.",
   ];
+  const acceptUrl = buildQuoteResponseUrl(id, "accept");
+  const declineUrl = buildQuoteResponseUrl(id, "decline");
   return wrapEmailHtml(
     `
       <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Hi ${esc(name || "there")},</h2>
       <p style="margin:0 0 16px;">${esc(nudges[Math.min(stage, nudges.length - 1)])}</p>
-      <p style="margin:0 0 16px;">Reply to this email or call us and we'll take care of the rest.</p>
+      <table cellpadding="0" cellspacing="0" style="margin:20px 0 8px;">
+        <tr>
+          <td style="padding-right:12px;">
+            <a href="${acceptUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✓ Accept Quote</a>
+          </td>
+          <td>
+            <a href="${declineUrl}" style="display:inline-block;background:#ffffff;color:#64748b;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #cbd5e1;">Decline</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">Or simply reply to this email or call us and we'll take care of the rest.</p>
     `,
     "Checking in on your Groutix quotation."
   );
@@ -77,7 +90,7 @@ async function runSweep(req: NextRequest) {
           fromEmail: FROM_EMAIL,
           replyTo: REPLY_TO,
           subject: `Following up on your Groutix quote`,
-          html: followUpHtml(lead.name || "", stage),
+          html: followUpHtml(lead.id, lead.name || "", stage),
         });
       } catch (err) {
         console.error("follow-up email failed:", err);

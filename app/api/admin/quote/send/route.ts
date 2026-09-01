@@ -9,6 +9,7 @@ import {
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
+import { buildQuoteResponseUrl } from "@/lib/quoteToken";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -77,6 +78,11 @@ export async function POST(req: NextRequest) {
       2
     )}</td></tr>`;
 
+  // Public, HMAC-signed links so the customer can accept/decline in one click;
+  // the /api/quote/respond route flips the CRM status when they do.
+  const acceptUrl = buildQuoteResponseUrl(body.id, "accept");
+  const declineUrl = buildQuoteResponseUrl(body.id, "decline");
+
   const html = `
     <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your Groutix Quotation</h2>
     <p style="margin:0 0 24px;color:#64748b;font-size:15px;">Quote ${esc(quoteNumber)}</p>
@@ -110,7 +116,20 @@ export async function POST(req: NextRequest) {
           ).replace(/\n/g, "<br/>")}</p>`
         : ""
     }
-    <p style="margin:24px 0 0;">Reply to this email or call us to proceed with your booking.</p>`;
+
+    <!-- One-click accept / decline. Clicking updates the lead status in the CRM. -->
+    <p style="margin:28px 0 12px;font-weight:600;color:#0f172a;">Ready to go ahead?</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+      <tr>
+        <td style="padding-right:12px;">
+          <a href="${acceptUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✓ Accept Quote</a>
+        </td>
+        <td>
+          <a href="${declineUrl}" style="display:inline-block;background:#ffffff;color:#64748b;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #cbd5e1;">Decline</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">Or simply reply to this email or call us to proceed with your booking.</p>`;
 
   // Automatic step: generate a branded PDF quotation and attach it.
   const attachments: EmailAttachment[] = [];

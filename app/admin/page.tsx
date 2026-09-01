@@ -25,6 +25,7 @@ import {
   X,
   Printer,
   Paperclip,
+  CheckCircle2,
   Download,
   Send,
   ExternalLink,
@@ -140,6 +141,8 @@ export interface Lead {
   warranty?: WarrantyDoc;
   activity?: ActivityEntry[];
   quoteNumber?: string;
+  quoteAcceptedAt?: string;
+  quoteDeclinedAt?: string;
   followUpStage?: number;
   followUpNext?: string;
 }
@@ -249,6 +252,33 @@ function getBadgeColor(status: string) {
     default:
       return "bg-slate-50 text-slate-700 border-slate-200";
   }
+}
+
+// Small indicator shown next to a lead's status when the customer accepted (or
+// declined) their quote from the emailed one-click link, so staff can tell an
+// online response apart from a status a colleague set by hand.
+function QuoteResponseBadge({ lead }: { lead: Lead }) {
+  if (lead.quoteAcceptedAt) {
+    return (
+      <span
+        title={`Accepted online • ${fmtDate(lead.quoteAcceptedAt)}`}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap"
+      >
+        <CheckCircle2 className="w-3 h-3" /> Accepted online
+      </span>
+    );
+  }
+  if (lead.quoteDeclinedAt) {
+    return (
+      <span
+        title={`Declined online • ${fmtDate(lead.quoteDeclinedAt)}`}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
+      >
+        <X className="w-3 h-3" /> Declined online
+      </span>
+    );
+  }
+  return null;
 }
 
 type DashboardView =
@@ -1705,9 +1735,12 @@ export default function CrmDashboardPage() {
                               </div>
                             </td>
                             <td className="py-3 px-3">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
-                                {l.status}
-                              </span>
+                              <div className="flex flex-col items-start gap-1">
+                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
+                                  {l.status}
+                                </span>
+                                <QuoteResponseBadge lead={l} />
+                              </div>
                             </td>
                             <td className="py-3 px-3 text-slate-600 font-medium">{l.assigned || "Unassigned"}</td>
                             <td className="py-3 px-3 text-slate-500">{l.follow ? fmtDate(l.follow) : "—"}</td>
@@ -1961,19 +1994,22 @@ export default function CrmDashboardPage() {
                           </div>
                         </td>
                         <td className="py-3.5 px-3">
-                          <select
-                            value={l.status}
-                            onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                            className={`text-[11px] font-bold px-2 py-1 rounded-lg border focus:outline-hidden ${getBadgeColor(
-                              l.status
-                            )}`}
-                          >
-                            {STATUS_LIST.map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex flex-col items-start gap-1">
+                            <select
+                              value={l.status}
+                              onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                              className={`text-[11px] font-bold px-2 py-1 rounded-lg border focus:outline-hidden ${getBadgeColor(
+                                l.status
+                              )}`}
+                            >
+                              {STATUS_LIST.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                            <QuoteResponseBadge lead={l} />
+                          </div>
                         </td>
                         <td className="py-3.5 px-3">
                           <select
@@ -2141,9 +2177,12 @@ export default function CrmDashboardPage() {
                               AUD ${total.toFixed(2)}
                             </td>
                             <td className="py-3 px-3">
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
-                                {l.status}
-                              </span>
+                              <div className="flex flex-col items-start gap-1">
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
+                                  {l.status}
+                                </span>
+                                <QuoteResponseBadge lead={l} />
+                              </div>
                             </td>
                             <td className="py-3 px-3 text-slate-500">{l.quoteUpdated ? fmtDate(l.quoteUpdated) : "—"}</td>
                             <td className="py-3 px-3 text-right">
@@ -2174,11 +2213,14 @@ export default function CrmDashboardPage() {
                   .filter((l) => JOB_STATUSES.includes(l.status))
                   .map((l) => (
                     <div key={l.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-slate-900 text-sm">{l.name}</div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getBadgeColor(l.status)}`}>
-                          {l.status}
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getBadgeColor(l.status)}`}>
+                            {l.status}
+                          </span>
+                          <QuoteResponseBadge lead={l} />
+                        </div>
                       </div>
                       <div className="text-xs text-slate-600 space-y-1">
                         <div><b>Phone:</b> {l.phone || "—"}</div>
