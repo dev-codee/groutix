@@ -24,6 +24,11 @@ export interface QuotePdfInput {
   total: number;
   terms?: string;
   businessPhone?: string;
+  // Document type controls the heading/labels so the same branded layout can
+  // render either a quotation or a tax invoice. Defaults to "quote".
+  docType?: "quote" | "invoice";
+  // Optional status line (e.g. "PAID" / "UNPAID") shown under the total.
+  statusLabel?: string;
 }
 
 /** Derive subtotal / GST / total from quote items and the tax mode. */
@@ -79,8 +84,12 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number): stri
 }
 
 export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string> {
+  const isInvoice = input.docType === "invoice";
+  const heading = isInvoice ? "TAX INVOICE" : "QUOTATION";
+  const numberLabel = isInvoice ? "Invoice No." : "Quote No.";
+
   const doc = await PDFDocument.create();
-  doc.setTitle(`Groutix Quotation ${input.quoteNumber}`);
+  doc.setTitle(`Groutix ${isInvoice ? "Invoice" : "Quotation"} ${input.quoteNumber}`);
   doc.setProducer("Groutix CRM");
 
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -129,8 +138,8 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     size: 9,
     color: MUTED,
   });
-  rightText("QUOTATION", A4.w - MARGIN, y - 4, { font: bold, size: 18, color: INK });
-  rightText(`Quote No.  ${input.quoteNumber}`, A4.w - MARGIN, y - 22, { size: 10, color: MUTED });
+  rightText(heading, A4.w - MARGIN, y - 4, { font: bold, size: 18, color: INK });
+  rightText(`${numberLabel}  ${input.quoteNumber}`, A4.w - MARGIN, y - 22, { size: 10, color: MUTED });
   rightText(`Date  ${input.date}`, A4.w - MARGIN, y - 36, { size: 10, color: MUTED });
 
   y -= 54;
@@ -237,6 +246,17 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   });
   y -= 4;
   drawTotal("Total (AUD)", money(input.total), { strong: true });
+
+  // ── Payment status (invoices) ──
+  if (input.statusLabel) {
+    const paid = /paid/i.test(input.statusLabel) && !/unpaid/i.test(input.statusLabel);
+    rightText(`Status:  ${input.statusLabel.toUpperCase()}`, colAmountRight, y, {
+      font: bold,
+      size: 10,
+      color: paid ? rgb(0.09, 0.6, 0.35) : rgb(0.86, 0.15, 0.15),
+    });
+    y -= 18;
+  }
 
   // ── Terms ──
   if (input.terms) {

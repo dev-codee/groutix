@@ -464,6 +464,7 @@ export default function CrmDashboardPage() {
   const [invoicePrice, setInvoicePrice] = useState<number>(0);
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
+  const [sendingInvoice, setSendingInvoice] = useState(false);
 
   const handleSyncEmails = async () => {
     setSyncingEmails(true);
@@ -1296,6 +1297,43 @@ export default function CrmDashboardPage() {
     setInvoiceGst(10);
     setInvoiceStatus(lead.status === "Payment Received" || lead.status === "Job Done" ? "Paid" : "Unpaid");
     setInvoiceModalOpen(true);
+  }
+
+  // Server-side send: emails a branded invoice (with PDF) to the customer, and
+  // if marked Paid moves the lead to "Payment Received" automatically.
+  async function handleSendInvoice() {
+    if (!activeInvoiceLead) return;
+    if (!activeInvoiceLead.email) {
+      alert("No email address saved for this customer.");
+      return;
+    }
+    setSendingInvoice(true);
+    try {
+      const res = await fetch("/api/admin/invoice/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: activeInvoiceLead.id,
+          service: invoiceService,
+          description: invoiceDescription,
+          price: invoicePrice,
+          gst: invoiceGst,
+          status: invoiceStatus,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Could not send the invoice.");
+        return;
+      }
+      alert(`Invoice ${data.invoiceNumber} emailed to ${activeInvoiceLead.email}.`);
+      setInvoiceModalOpen(false);
+      loadData();
+    } catch {
+      alert("Network error while sending the invoice.");
+    } finally {
+      setSendingInvoice(false);
+    }
   }
 
   // Role queue: non-managers only see the leads whose current stage their role
@@ -3608,9 +3646,19 @@ export default function CrmDashboardPage() {
                   });
                   setInvoiceModalOpen(false);
                 }}
-                className="px-5 py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800"
+                className="px-5 py-2 bg-white border border-teal-700 text-teal-700 rounded-xl text-xs font-bold hover:bg-teal-50"
               >
                 Save Invoice
+              </button>
+              <button
+                type="button"
+                onClick={handleSendInvoice}
+                disabled={sendingInvoice || !activeInvoiceLead.email}
+                title={!activeInvoiceLead.email ? "No email address saved for this customer" : "Email this invoice to the customer"}
+                className="flex items-center gap-1.5 px-5 py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {sendingInvoice ? "Sending…" : "Send Invoice"}
               </button>
             </div>
           </div>
