@@ -316,6 +316,11 @@ export default function HeroQuoteForm() {
     e.preventDefault();
     setSubmitError("");
 
+    if (photos.length === 0) {
+      setSubmitError("Please attach at least one photo.");
+      return;
+    }
+
     if (photoError || totalPhotoBytes > MAX_TOTAL_BYTES) {
       setSubmitError(
         `Total photo size (${formatBytes(totalPhotoBytes)}) exceeds our ${formatBytes(
@@ -995,7 +1000,7 @@ export default function HeroQuoteForm() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <p className="text-[15px] font-bold text-neutral-900">
-                    7. Attach photos of the area
+                    7. Attach photos of the area *
                   </p>
                   <div className="relative">
                     <button
@@ -1044,10 +1049,10 @@ export default function HeroQuoteForm() {
                 <label className="flex flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-neutral-300 bg-white/60 px-4 py-3 text-center transition-all duration-200 cursor-pointer hover:border-secondary hover:bg-white/90">
                   <div className="flex items-center gap-2 text-[14px] font-medium text-neutral-700">
                     <Paperclip className="h-4 w-4 text-neutral-500" />
-                    <span>Click to upload photos (optional)</span>
+                    <span>Click to upload photos</span>
                   </div>
                   <span className="text-[11px] text-neutral-500 font-medium">
-                    Up to 10 photos (JPG, PNG, WebP)
+                    Max 100MB upload limit
                   </span>
                   <input
                     ref={fileInputRef}
