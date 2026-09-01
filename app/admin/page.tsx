@@ -1899,7 +1899,7 @@ export default function CrmDashboardPage() {
                             <td className="py-3 px-3 text-slate-600 font-medium">{l.assigned || "Unassigned"}</td>
                             <td className="py-3 px-3 text-slate-500">{l.follow ? fmtDate(l.follow) : "—"}</td>
                             <td className="py-3 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1 flex-wrap">
+                              <div className="flex items-center justify-end gap-1 flex-nowrap">
                                 <button
                                   onClick={() => openQuoteModal(l)}
                                   className="px-2 py-1 bg-[#001f97]/10 text-[#001f97] hover:bg-[#001f97]/20 rounded-lg text-[11px] font-bold transition-colors"
@@ -1931,7 +1931,7 @@ export default function CrmDashboardPage() {
                                 >
                                   <Navigation className="w-3.5 h-3.5" />
                                 </button>
-                                {l.status === "Job Done" && (
+                                {l.status === "Payment Received" && (
                                   <button
                                     onClick={() => openWarrantyModal(l)}
                                     className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md"
@@ -2117,12 +2117,12 @@ export default function CrmDashboardPage() {
                       <th className="py-3 px-3">Status</th>
                       <th className="py-3 px-3">Assigned</th>
                       <th className="py-3 px-3">Priority</th>
-                      <th className="py-3 px-3 text-right">Actions</th>
+                      <th className="py-3 px-3 text-right sticky right-0 bg-white">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
-                      <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={l.id} className="group hover:bg-slate-50/80 transition-colors">
                         <td className="py-3.5 px-3">
                           <div className="font-bold text-slate-900">{l.name || "Unnamed"}</div>
                           <div className="text-[11px] text-slate-400">{l.phone || "No phone"}</div>
@@ -2191,8 +2191,8 @@ export default function CrmDashboardPage() {
                             {l.priority || "Medium"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                        <td className="py-3.5 px-3 text-right sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
+                          <div className="flex items-center justify-end gap-1 flex-nowrap">
                             <button
                               onClick={() => callCustomer(l)}
                               className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs"
@@ -2238,7 +2238,7 @@ export default function CrmDashboardPage() {
                             >
                               <Navigation className="w-3.5 h-3.5" />
                             </button>
-                            {l.status === "Job Done" && (
+                            {l.status === "Payment Received" && (
                               <button
                                 onClick={() => openWarrantyModal(l)}
                                 className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
@@ -2385,15 +2385,17 @@ export default function CrmDashboardPage() {
                         <div><b>Assigned:</b> {l.assigned || "Unassigned"}</div>
                       </div>
                       <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                        <button
-                          onClick={() => openWarrantyModal(l)}
-                          className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 text-center"
-                        >
-                          10-Yr Warranty Card
-                        </button>
+                        {l.status === "Payment Received" && (
+                          <button
+                            onClick={() => openWarrantyModal(l)}
+                            className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 text-center"
+                          >
+                            10-Yr Warranty Card
+                          </button>
+                        )}
                         <button
                           onClick={() => openInvoiceModal(l)}
-                          className="py-1.5 px-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100"
+                          className="flex-1 py-1.5 px-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100"
                         >
                           Invoice
                         </button>
