@@ -55,21 +55,29 @@ export function stageGroup(status: string): StageGroup | null {
   return STAGE_BY_KEY.get(status)?.group ?? null;
 }
 
+/** Group buckets used by the Jobs/Bookings board: Inspection Booked till Job Done. */
+export const JOB_STATUSES: string[] = [
+  "Inspection Booked",
+  "Inspection Completed",
+  "Job Booked",
+  "Scheduled",
+  "Job Confirmed",
+  "Job In Progress",
+  "Job Done",
+];
+
+export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) => s.key);
+
 /** Statuses a role works day-to-day (managers see everything). */
 export function roleQueue(role: Role): string[] {
   if (role === "manager") return STATUS_KEYS;
+  if (role === "field") return JOB_STATUSES;
   return STAGES.filter((s) => s.owner === role).map((s) => s.key);
 }
 
 /** Is this lead currently in the given role's queue? */
 export function inRoleQueue(role: Role, status: string): boolean {
   if (role === "manager") return true;
+  if (role === "field") return JOB_STATUSES.includes(status);
   return stageOwner(status) === role;
 }
-
-/** Group buckets used by the Jobs/Bookings board. */
-export const JOB_STATUSES = STAGES.filter((s) =>
-  ["booking", "job", "finance"].includes(s.group)
-).map((s) => s.key);
-
-export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) => s.key);

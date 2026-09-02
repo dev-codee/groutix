@@ -1392,12 +1392,12 @@ export default function CrmDashboardPage() {
   // Derived lists backing the Quotes and Jobs views, so we can both count them
   // and paginate the same array.
   const quoteLeads = useMemo(
-    () => scopedLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
-    [scopedLeads]
+    () => filteredLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
+    [filteredLeads]
   );
   const jobLeads = useMemo(
-    () => scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)),
-    [scopedLeads]
+    () => filteredLeads.filter((l) => JOB_STATUSES.includes(l.status)),
+    [filteredLeads]
   );
 
   // Keep the page in range if the current view's list shrinks (e.g. a lead was
@@ -2376,42 +2376,270 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "jobs" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <h2 className="text-base font-black text-slate-900">Bookings &amp; Jobs</h2>
+              <div className="space-y-3 pb-3 border-b border-slate-100">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-black text-slate-900">Bookings &amp; Jobs</h2>
+                    <div className="text-xs text-slate-500">
+                      Showing {jobLeads.length} bookings &amp; jobs from Inspection Booked to Job Done
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Status Filter Pills: Inspection Booked till Job Done */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("")}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs shrink-0 ${
+                      !statusFilter
+                        ? "bg-[#001f97] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    All Active ({scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length})
+                  </button>
+                  {JOB_STATUSES.map((st) => {
+                    const active = statusFilter === st;
+                    const count = scopedLeads.filter((l) => l.status === st).length;
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => setStatusFilter(active ? "" : st)}
+                        className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs flex items-center gap-1.5 shrink-0 ${
+                          active
+                            ? "bg-[#001f97] text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span>{st}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {jobLeads
                   .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                   .map((l) => (
-                    <div key={l.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="font-black text-slate-900 text-sm">{l.name}</div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getBadgeColor(l.status)}`}>
-                            {l.status}
-                          </span>
-                          <QuoteResponseBadge lead={l} />
+                    <div
+                      key={l.id}
+                      className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all shadow-2xs space-y-3 flex flex-col justify-between"
+                    >
+                      <div className="space-y-2.5">
+                        {/* Card Header: Customer Name & Status/Priority */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingLead(l);
+                                setLeadModalOpen(true);
+                              }}
+                              className="font-black text-slate-900 text-sm hover:text-[#001f97] hover:underline text-left transition-colors"
+                            >
+                              {l.name || "Customer"}
+                            </button>
+                            {l.address && (
+                              <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5" title={l.address}>
+                                {l.address}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                l.priority === "High"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : l.priority === "Low"
+                                  ? "bg-slate-100 text-slate-600"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              {l.priority || "Medium"}
+                            </span>
+                            <QuoteResponseBadge lead={l} />
+                          </div>
+                        </div>
+
+                        {/* Customer & Job Details */}
+                        <div className="text-xs text-slate-600 space-y-1 bg-white p-2.5 rounded-xl border border-slate-200/80">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Phone:</span>
+                            <span className="font-semibold text-slate-800">{l.phone || "—"}</span>
+                          </div>
+                          {l.email && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">Email:</span>
+                              <span className="font-medium text-slate-700 truncate max-w-[180px]" title={l.email}>
+                                {l.email}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Service:</span>
+                            <span className="font-semibold text-slate-800 text-right truncate max-w-[170px]" title={l.service}>
+                              {l.service || "Standard Service"}
+                            </span>
+                          </div>
+                          {l.quoteAmount && l.quoteAmount > 0 ? (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                              <span className="text-slate-400">Quote Value:</span>
+                              <span className="font-black text-emerald-700">AUD ${l.quoteAmount.toFixed(2)}</span>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Status & Assigned Technician Controls */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase tracking-wider">
+                              Status
+                            </label>
+                            <select
+                              value={l.status}
+                              onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                              className={`w-full text-[11px] font-bold px-2 py-1.5 rounded-lg border focus:outline-hidden ${getBadgeColor(
+                                l.status
+                              )}`}
+                            >
+                              <optgroup label="Active Job Stages">
+                                {JOB_STATUSES.map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
+                              </optgroup>
+                              <optgroup label="Other Stages">
+                                {STATUS_LIST.filter((s) => !JOB_STATUSES.includes(s)).map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase tracking-wider">
+                              Assigned
+                            </label>
+                            <select
+                              value={l.assigned || "Unassigned"}
+                              onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
+                              className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
+                            >
+                              {rowAssigneeOptions(l.assigned).map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-xs text-slate-600 space-y-1">
-                        <div><b>Phone:</b> {l.phone || "—"}</div>
-                        <div><b>Address:</b> {l.address || "—"}</div>
-                        <div><b>Service:</b> {l.service || "—"}</div>
-                        <div><b>Assigned:</b> {l.assigned || "Unassigned"}</div>
-                      </div>
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                        {l.status === "Payment Received" && (
+
+                      {/* Full Action Buttons Toolbar (Call, Email, Quote, Photos, Messages, GPS, Edit, Delete, Warranty) */}
+                      <div className="flex items-center justify-between gap-1 pt-3 border-t border-slate-200/80 mt-2">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <button
-                            onClick={() => openWarrantyModal(l)}
-                            className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 text-center"
+                            type="button"
+                            onClick={() => callCustomer(l)}
+                            className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs transition-colors"
+                            title="Call Phone"
                           >
-                            10-Yr Warranty Card
+                            <Phone className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        <button
-                          onClick={() => openInvoiceModal(l)}
-                          className="flex-1 py-1.5 px-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100"
-                        >
-                          Invoice
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => emailCustomer(l)}
+                            className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs transition-colors"
+                            title="Email Customer"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openQuoteModal(l)}
+                            className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-[11px] font-bold transition-colors"
+                            title="Open Quote Builder"
+                          >
+                            Quote
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openPhotosModal(l)}
+                            className="relative p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                            title="Photos"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            {((l.photos && l.photos.length > 0) || (l.photosCount && l.photosCount > 0)) && (
+                              <span className="absolute -top-1 -right-1 px-1 py-0.2 bg-blue-600 text-white rounded-full text-[9px] font-bold">
+                                {l.photos?.length || l.photosCount}
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openMessagesModal(l)}
+                            className="relative p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                            title="Messages"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {l.messages?.some((m) => m.from === "customer" && m.read === false) && (
+                              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openGpsModal(l)}
+                            className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                            title="GPS Check-in"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                          </button>
+                          {l.status === "Payment Received" && (
+                            <button
+                              type="button"
+                              onClick={() => openWarrantyModal(l)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="10-Year Warranty Card"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingLead(l);
+                              setLeadModalOpen(true);
+                            }}
+                            className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                            title="Edit Lead Details"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLead(l.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
