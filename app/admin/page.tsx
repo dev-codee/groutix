@@ -34,7 +34,8 @@ import {
   UserCheck,
   Loader2,
   ZoomIn,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Sparkles
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS } from "@/lib/roles";
@@ -44,6 +45,12 @@ import {
   SERVICE_TEMPLATES,
   GROUTIX_QUOTE_TERMS
 } from "@/lib/serviceTemplates";
+import {
+  parseCustomerServices,
+  findBestTemplateForService,
+  getMatchedQuoteItemsForLead
+} from "@/lib/serviceMatching";
+import { TemplatePicker } from "@/components/admin/TemplatePicker";
 
 export interface QuoteItem {
   templateNo?: string | number;
@@ -115,6 +122,9 @@ export interface Lead {
   source?: string;
   notes?: string;
   customerType?: string;
+  areas?: string;
+  leaking?: string;
+  damagedTiles?: string;
   quoteItems?: QuoteItem[];
   quoteItemCode?: string;
   quoteScope?: string;
@@ -741,17 +751,20 @@ export default function CrmDashboardPage() {
   // Quote Builder Logic
   function openQuoteModal(lead: Lead) {
     setActiveQuoteLead(lead);
-    const existingItems = Array.isArray(lead.quoteItems) && lead.quoteItems.length > 0
-      ? lead.quoteItems
-      : [{
-          templateNo: "",
-          code: "",
-          service: lead.service || "Tile & Grout Works",
-          scope: lead.notes || lead.message || "",
-          price: 0,
-          qty: 1
-        }];
-    setQuoteItems(existingItems);
+
+    // If existing quote items were saved, use them; otherwise auto-match templates based on customer choices
+    const hasExistingItems =
+      Array.isArray(lead.quoteItems) &&
+      lead.quoteItems.length > 0 &&
+      lead.quoteItems.some(
+        (it) => it.templateNo || (it.price && it.price > 0) || (it.scope && it.scope.length > 20)
+      );
+
+    const initialItems: QuoteItem[] = hasExistingItems
+      ? lead.quoteItems!
+      : getMatchedQuoteItemsForLead(lead);
+
+    setQuoteItems(initialItems);
     setQuoteTaxMode(lead.quoteTaxMode || "inclusive");
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
     setQuoteTerms(lead.quoteTerms || GROUTIX_QUOTE_TERMS.slice(0, 300));
@@ -2701,6 +2714,143 @@ export default function CrmDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs max-h-[72vh] overflow-y-auto p-1">
               {/* Left Column: Quote Form Controls */}
               <div className="space-y-4">
+                {/* Customer Request & Selected Services Details Card */}
+                <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-[#001f97]" />
+                      <span>Customer Request & Selected Services</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const matched = getMatchedQuoteItemsForLead(activeQuoteLead);
+                        setQuoteItems(matched);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#001f97] text-white font-bold text-[11px] hover:bg-[#001777] transition-colors shadow-2xs"
+                      title="Re-populate quote items using the best matching standard templates"
+                    >
+                      ⚡ Auto-Match All Items
+                    </button>
+                  </div>
+
+                  {/* Selected Services Badges */}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Selected Service(s):
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
+                        const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
+                        return (
+                          <div
+                            key={sIdx}
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-lg shadow-2xs text-xs font-semibold text-slate-800"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#001f97]"></span>
+                            <span>{svc}</span>
+                            {matchedTemplate && (
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
+                                {matchedTemplate.code}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Additional Property & Condition Details */}
+                  {(activeQuoteLead.areas || activeQuoteLead.leaking || activeQuoteLead.damagedTiles) && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-200/70 text-[11px]">
+                      {activeQuoteLead.areas && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700">
+                          <span className="text-slate-400 font-medium">Areas:</span>
+                          <b>{activeQuoteLead.areas}</b>
+                        </div>
+                      )}
+                      {activeQuoteLead.leaking && (
+                        <div
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${
+                            activeQuoteLead.leaking.toLowerCase() === "yes"
+                              ? "bg-rose-50 border-rose-200 text-rose-800 font-bold"
+                              : "bg-slate-100 border-slate-200 text-slate-700 font-medium"
+                          }`}
+                        >
+                          <span>Leaking:</span>
+                          <b>{activeQuoteLead.leaking}</b>
+                        </div>
+                      )}
+                      {activeQuoteLead.damagedTiles && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md text-amber-900">
+                          <span className="text-amber-600 font-medium">Tiles:</span>
+                          <b>{activeQuoteLead.damagedTiles}</b>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Customer Enquiry / Message */}
+                  {(activeQuoteLead.message || activeQuoteLead.notes) && (
+                    <div className="p-2 rounded-lg bg-white/90 border border-slate-200/80 text-[11px] text-slate-700 space-y-0.5">
+                      <div className="text-[10px] font-bold text-slate-400">Customer Note / Message:</div>
+                      <div className="italic leading-relaxed whitespace-pre-wrap">
+                        &ldquo;{activeQuoteLead.message || activeQuoteLead.notes}&rdquo;
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Click-to-Add Individual Services */}
+                  <div className="space-y-1 pt-1.5 border-t border-slate-200/60">
+                    <div className="text-[10px] font-bold text-slate-400">
+                      Click to append matching item to quote:
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
+                        const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
+                        return (
+                          <button
+                            key={sIdx}
+                            type="button"
+                            onClick={() => {
+                              if (matchedTemplate) {
+                                setQuoteItems([
+                                  ...quoteItems,
+                                  {
+                                    templateNo: matchedTemplate.no,
+                                    code: matchedTemplate.code,
+                                    service: matchedTemplate.service,
+                                    scope: matchedTemplate.scope,
+                                    price: Number(matchedTemplate.price) || 0,
+                                    qty: 1
+                                  }
+                                ]);
+                              } else {
+                                setQuoteItems([
+                                  ...quoteItems,
+                                  {
+                                    templateNo: "",
+                                    code: "",
+                                    service: svc,
+                                    scope: activeQuoteLead.message || activeQuoteLead.notes || "",
+                                    price: 0,
+                                    qty: 1
+                                  }
+                                ]);
+                              }
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-[#001f97] text-[11px] font-semibold hover:bg-blue-50 shadow-2xs transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add &ldquo;{svc}&rdquo;</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Details Form */}
                 <div className="space-y-2">
                   <div className="font-bold text-slate-800 text-sm">Customer Details</div>
                   <div className="grid grid-cols-2 gap-2">
@@ -2709,28 +2859,28 @@ export default function CrmDashboardPage() {
                       placeholder="Customer Name"
                       value={activeQuoteLead.name || ""}
                       onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, name: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg"
+                      className="p-2 border border-slate-200 rounded-lg text-xs"
                     />
                     <input
                       type="text"
                       placeholder="Phone"
                       value={activeQuoteLead.phone || ""}
                       onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, phone: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg"
+                      className="p-2 border border-slate-200 rounded-lg text-xs"
                     />
                     <input
                       type="email"
                       placeholder="Email"
                       value={activeQuoteLead.email || ""}
                       onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, email: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg"
+                      className="p-2 border border-slate-200 rounded-lg text-xs"
                     />
                     <input
                       type="text"
                       placeholder="Property Address"
                       value={activeQuoteLead.address || ""}
                       onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, address: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg"
+                      className="p-2 border border-slate-200 rounded-lg text-xs"
                     />
                   </div>
                 </div>
@@ -2739,71 +2889,113 @@ export default function CrmDashboardPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="font-bold text-slate-800 text-sm">Quote Items ({quoteItems.length})</div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setQuoteItems([
-                          ...quoteItems,
-                          { templateNo: "", code: "", service: "Additional Regrouting Work", scope: "", price: 0, qty: 1 }
-                        ])
-                      }
-                      className="px-2.5 py-1 bg-blue-50 text-[#001f97] font-bold rounded-lg hover:bg-blue-100"
-                    >
-                      + Add Item
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <TemplatePicker
+                        onSelectTemplate={(t) => {
+                          if (t) {
+                            setQuoteItems([
+                              ...quoteItems,
+                              {
+                                templateNo: t.no,
+                                code: t.code,
+                                service: t.service,
+                                scope: t.scope,
+                                price: Number(t.price) || 0,
+                                qty: 1
+                              }
+                            ]);
+                          } else {
+                            setQuoteItems([
+                              ...quoteItems,
+                              {
+                                templateNo: "",
+                                code: "",
+                                service: "Custom Service Item",
+                                scope: "",
+                                price: 0,
+                                qty: 1
+                              }
+                            ]);
+                          }
+                        }}
+                        buttonLabel="🔍 Search Library"
+                        triggerClassName="flex items-center gap-1 px-2.5 py-1 bg-[#001f97] text-white font-bold text-xs rounded-lg hover:bg-[#001777] shadow-2xs transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuoteItems([
+                            ...quoteItems,
+                            { templateNo: "", code: "", service: "Additional Regrouting Work", scope: "", price: 0, qty: 1 }
+                          ])
+                        }
+                        className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 text-xs transition-colors"
+                      >
+                        + Add Custom
+                      </button>
+                    </div>
                   </div>
 
                   {quoteItems.map((item, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
                       <div className="flex items-center justify-between font-bold text-slate-700">
-                        <span>Item #{idx + 1}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-black">
+                            {idx + 1}
+                          </span>
+                          <span>Item #{idx + 1}</span>
+                          {item.code && (
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
+                              {item.code}
+                            </span>
+                          )}
+                        </span>
                         {quoteItems.length > 1 && (
                           <button
                             type="button"
                             onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
-                            className="text-rose-500 hover:underline text-[11px]"
+                            className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1"
                           >
-                            Remove
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove</span>
                           </button>
                         )}
                       </div>
 
-                      {/* Template Selector */}
+                      {/* Template Selector with Search */}
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
                           Pick from 84 Standard Groutix Templates
                         </label>
-                        <select
-                          value={item.templateNo || ""}
-                          onChange={(e) => {
-                            const no = e.target.value;
-                            const t = SERVICE_TEMPLATES.find((x) => String(x.no) === no);
+                        <TemplatePicker
+                          selectedTemplateNo={item.templateNo}
+                          onSelectTemplate={(t) => {
+                            const updated = [...quoteItems];
                             if (t) {
-                              const updated = [...quoteItems];
                               updated[idx] = {
                                 ...updated[idx],
                                 templateNo: t.no,
                                 code: t.code,
                                 service: t.service,
                                 scope: t.scope,
-                                price: t.price || updated[idx].price || 0
+                                price: Number(t.price) || updated[idx].price || 0
                               };
-                              setQuoteItems(updated);
+                            } else {
+                              updated[idx] = {
+                                ...updated[idx],
+                                templateNo: "",
+                                code: ""
+                              };
                             }
+                            setQuoteItems(updated);
                           }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
-                        >
-                          <option value="">Manual / Custom Description</option>
-                          {SERVICE_TEMPLATES.map((t) => (
-                            <option key={t.no} value={t.no}>
-                              {t.code} - {t.service.slice(0, 45)}...
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Service Title</label>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
+                          Service Title <span className="text-slate-400 font-normal">(Editable)</span>
+                        </label>
                         <input
                           type="text"
                           value={item.service || ""}
@@ -2812,12 +3004,15 @@ export default function CrmDashboardPage() {
                             updated[idx].service = e.target.value;
                             setQuoteItems(updated);
                           }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg"
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                          placeholder="Service title..."
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Detailed Scope</label>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
+                          Detailed Scope <span className="text-slate-400 font-normal">(Editable)</span>
+                        </label>
                         <textarea
                           rows={3}
                           value={item.scope || ""}
@@ -2826,28 +3021,29 @@ export default function CrmDashboardPage() {
                             updated[idx].scope = e.target.value;
                             setQuoteItems(updated);
                           }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg"
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs leading-relaxed"
+                          placeholder="Detailed scope of works..."
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Price (AUD)</label>
+                          <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Price (AUD)</label>
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.price || ""}
+                            value={item.price ?? ""}
                             onChange={(e) => {
                               const updated = [...quoteItems];
                               updated[idx].price = parseFloat(e.target.value) || 0;
                               setQuoteItems(updated);
                             }}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold"
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Quantity</label>
+                          <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Quantity</label>
                           <input
                             type="number"
                             min="1"
@@ -2857,7 +3053,7 @@ export default function CrmDashboardPage() {
                               updated[idx].qty = parseInt(e.target.value, 10) || 1;
                               setQuoteItems(updated);
                             }}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold"
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
                           />
                         </div>
                       </div>
