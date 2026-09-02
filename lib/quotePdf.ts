@@ -282,18 +282,18 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       thickness: 0.5,
       color: LINE,
     });
-    p.drawText("Stay Sealed. Stay Smiling.  —  GROUTIX", {
+    p.drawText("Stay Sealed. Stay Smiling.  —  GROUTIX  •  Terms: groutix.com.au/terms-conditions", {
       x: MARGIN,
       y: MARGIN + 12,
-      size: 9,
+      size: 8,
       font: bold,
       color: BRAND,
     });
-    const phone = input.businessPhone ? `Call us: ${input.businessPhone}` : "info@groutix.com";
+    const phone = input.businessPhone ? `Call: ${input.businessPhone}` : "info@groutix.com";
     p.drawText(phone, {
-      x: A4.w - MARGIN - font.widthOfTextAtSize(phone, 9),
+      x: A4.w - MARGIN - font.widthOfTextAtSize(phone, 8),
       y: MARGIN + 12,
-      size: 9,
+      size: 8,
       font,
       color: MUTED,
     });

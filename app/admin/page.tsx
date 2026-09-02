@@ -886,7 +886,8 @@ export default function CrmDashboardPage() {
       `Thank you for your enquiry. We have prepared your quotation for AUD $${total.toFixed(2)}.\n\n` +
       `Items:\n` +
       quoteItems.map((item, i) => `${i + 1}. ${item.service} - $${Number(item.price || 0).toFixed(2)}`).join("\n") +
-      `\n\nPlease let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n(03) 7023 8094`
+      `\n\nAll works are subject to Groutix Terms & Conditions: https://groutix.com.au/terms-conditions\n\n` +
+      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n(03) 7023 8094`
     );
     window.location.href = `mailto:${activeQuoteLead.email}?subject=${subject}&body=${body}`;
   }
@@ -898,7 +899,7 @@ export default function CrmDashboardPage() {
     const text = encodeURIComponent(
       `Hi ${activeQuoteLead.name || ""}, your Groutix quote is ready for AUD $${total.toFixed(2)}.\n\n` +
       quoteItems.map((item, i) => `• ${item.service}: $${Number(item.price || 0).toFixed(2)}`).join("\n") +
-      `\n\nStay Sealed. Stay Smiling. - Groutix`
+      `\n\nTerms & Conditions: https://groutix.com.au/terms-conditions\n\nStay Sealed. Stay Smiling. - Groutix`
     );
     window.open(`https://wa.me/${phone.startsWith("0") ? "61" + phone.slice(1) : phone}?text=${text}`, "_blank");
   }
@@ -1248,14 +1249,19 @@ export default function CrmDashboardPage() {
     ctx.font = "14px Arial, sans-serif";
     ctx.fillStyle = "#64748b";
     ctx.fillText(
-      "This warranty guarantees against water penetration through regrouted tiled areas under normal domestic use as specified in our warranty terms.",
+      "This warranty guarantees against water penetration through regrouted tiled areas under normal domestic use subject to Clause 12 of Groutix Terms & Conditions.",
       60,
-      800
+      790
+    );
+    ctx.fillText(
+      "Terms & Conditions: https://groutix.com.au/terms-conditions  •  Claims must be submitted in writing within 10 business days of defect.",
+      60,
+      820
     );
     ctx.fillText(
       "Groutix Pty Ltd • ACN: 687 415 005 • Melbourne, VIC • Phone: (03) 7023 8094 • info@groutix.com",
       60,
-      830
+      850
     );
   }, [
     warrantyModalOpen,
@@ -3488,8 +3494,21 @@ export default function CrmDashboardPage() {
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500 border-t border-slate-200 pt-2">
-                  <b>Conditions:</b> {quoteTerms}
+                <div className="text-[10px] text-slate-500 border-t border-slate-200 pt-2 space-y-1">
+                  <div>
+                    <b>Conditions:</b> {quoteTerms}
+                  </div>
+                  <div className="pt-1">
+                    <a
+                      href="/terms-conditions"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#001f97] underline font-bold hover:text-blue-900 inline-flex items-center gap-1"
+                    >
+                      <span>View Official Terms &amp; Conditions (groutix.com.au/terms-conditions)</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4015,6 +4034,19 @@ export default function CrmDashboardPage() {
               />
             </div>
 
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
+              <span>Warranty governed by Clause 12 of Groutix Terms &amp; Conditions</span>
+              <a
+                href="/terms-conditions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#001f97] underline font-bold inline-flex items-center gap-1 hover:text-blue-900"
+              >
+                <span>View Full Terms &amp; Conditions</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
             <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
               <button
                 onClick={downloadWarrantyCard}
@@ -4135,6 +4167,18 @@ export default function CrmDashboardPage() {
                   <div className="text-xs">GST: ${(invoicePrice - (invoicePrice / 1.1) || 0).toFixed(2)}</div>
                   <div className="text-base font-black text-teal-800">Total: ${invoicePrice.toFixed(2)}</div>
                   <div className="text-xs font-bold text-slate-600">Status: {invoiceStatus}</div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-2 text-[10px] text-slate-500">
+                  <span>Payment is subject to </span>
+                  <a
+                    href="/terms-conditions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#001f97] underline font-bold"
+                  >
+                    Groutix Terms &amp; Conditions (groutix.com.au/terms-conditions)
+                  </a>
                 </div>
               </div>
             </div>

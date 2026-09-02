@@ -103,8 +103,11 @@ export async function POST(req: NextRequest) {
       </table>
     </div>
 
-    <p style="margin:0 0 24px;">Payment status: ${statusBadge}</p>
-    <p style="margin:24px 0 0;">Thank you for choosing Groutix. Reply to this email if you have any questions about this invoice.</p>`;
+    <p style="margin:0 0 20px;">Payment status: ${statusBadge}</p>
+    <div style="margin:20px 0;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
+      All services and payments are subject to <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>.
+    </div>
+    <p style="margin:20px 0 0;">Thank you for choosing Groutix. Reply to this email if you have any questions about this invoice.</p>`;
 
   // Branded PDF invoice attachment (reuses the quote layout in invoice mode).
   const attachments: EmailAttachment[] = [];

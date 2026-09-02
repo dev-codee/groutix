@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import TermsContent from "./TermsContent";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions",
-  description: "Terms and conditions for Groutix services and website usage.",
+  title: "Terms & Conditions | Groutix Australia",
+  description:
+    "Official Terms and Conditions for Groutix Pty Ltd — covering quotations, shower regrouting services, 10-year warranty, payment terms, and cancellation policies.",
   alternates: { canonical: "/terms-conditions" },
 };
 
@@ -12,52 +14,29 @@ export default function TermsConditionsPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-[73px]">
-        {/* Header Section */}
-        <section className="bg-[#001F97] text-white py-16 lg:py-24">
-          <div className="max-w-[1000px] mx-auto px-6 lg:px-10">
-            <h1 className="text-4xl lg:text-5xl font-black mb-6">Terms & Conditions</h1>
-            <p className="text-lg text-white/80 leading-relaxed max-w-2xl">
-              Please read these terms and conditions carefully before using our services or website.
+      <main className="pt-[73px] min-h-screen bg-slate-50">
+        {/* Hero Section */}
+        <section className="bg-gradient-to-br from-[#001F97] via-[#001777] to-[#000f50] text-white py-14 lg:py-20 border-b border-blue-900/40 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.12),_transparent_60%)]" />
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold text-white/90 mb-4 border border-white/15">
+              <span>Groutix Pty Ltd</span>
+              <span>•</span>
+              <span>ACN 687 415 005</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-4">
+              Terms &amp; Conditions
+            </h1>
+            <p className="text-base sm:text-lg text-white/80 leading-relaxed max-w-3xl">
+              Please review the binding terms and conditions governing all quotations, bookings, shower regrouting works, waterproof warranties, and services provided by Groutix Pty Ltd.
             </p>
           </div>
         </section>
 
-        {/* Content Section */}
-        <section className="bg-white py-16 lg:py-24 text-neutral-800">
-          <div className="max-w-[1000px] mx-auto px-6 lg:px-10 space-y-16">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold text-[#001F97] uppercase tracking-wide">Website Terms of Use</h3>
-                <p className="leading-relaxed text-neutral-700">
-                  By accessing and using this website, you accept and agree to be bound by the terms and provision of this agreement. In addition, when using this website's particular services, you shall be subject to any posted guidelines or rules applicable to such services.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold text-[#001F97] uppercase tracking-wide">Service Conditions</h3>
-                <p className="leading-relaxed text-neutral-700">
-                  Detailed terms and conditions regarding quotes, warranty limitations, and service provisions will be provided directly to clients alongside formal quotations and invoices.
-                </p>
-              </div>
-            </div>
-
-            {/* Contact Section */}
-            <div className="bg-[#001F97]/5 p-8 rounded-xl border border-[#001F97]/10 mt-12 text-center">
-              <h3 className="text-xl font-bold text-neutral-900 mb-2">Questions?</h3>
-              <p className="text-neutral-700 mb-4">
-                If you have any questions about our terms and conditions, please contact us at:
-              </p>
-              <a href="mailto:info@groutix.com" className="inline-flex font-bold text-[#001F97] hover:text-accent transition-colors underline">
-                info@groutix.com
-              </a>
-            </div>
-
-          </div>
-        </section>
+        {/* Main Content & Interactive Table of Contents */}
+        <TermsContent />
       </main>
       <Footer />
     </>
   );
 }
-

@@ -92,8 +92,10 @@ export async function POST(req: NextRequest) {
         ${warranty.completionDate ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">Completed</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;color:#334155;">${esc(warranty.completionDate)}</td></tr>` : ""}
         ${warranty.expiryDate ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;color:#0f172a;">Warranty Expiry</td><td style="padding:12px;color:#334155;">${esc(warranty.expiryDate)} <span style="color:#64748b;font-size:13px;margin-left:4px;">(10 Years)</span></td></tr>` : ""}
       </table>
+    <div style="margin:20px 0;padding:12px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;line-height:1.5;">
+      Your warranty is issued in accordance with Clause 12 of the official <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>. Please retain your certificate and tax invoice for warranty claims.
     </div>
-    <p style="margin:24px 0 0;">Your warranty card is attached. Keep it safe for your records.</p>`;
+    <p style="margin:20px 0 0;">Your warranty card is attached. Keep it safe for your records.</p>`;
 
   try {
     await sendEmail({
