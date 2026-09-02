@@ -237,7 +237,7 @@ export function TemplatePicker({
                       : "bg-amber-50 text-amber-800 hover:bg-amber-100"
                   }`}
                 >
-                  ⚡ Epoxy Only
+                  Epoxy Only
                 </button>
                 <button
                   type="button"
@@ -248,7 +248,7 @@ export function TemplatePicker({
                       : "bg-blue-50 text-blue-800 hover:bg-blue-100"
                   }`}
                 >
-                  🛡️ Polymer Only
+                  Polymer Only
                 </button>
               </div>
 
@@ -279,7 +279,7 @@ export function TemplatePicker({
               >
                 <div>
                   <div className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                    <span>✏️ Manual / Custom Description</span>
+                    <span>Manual / Custom Description</span>
                     {!selectedTemplateNo && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold">
                         Current
@@ -375,7 +375,7 @@ export function TemplatePicker({
                                 : "bg-blue-50 text-[#001f97] hover:bg-blue-100"
                             }`}
                           >
-                            {isSelected ? "Selected ✓" : "Apply"}
+                            {isSelected ? "Selected" : "Apply"}
                           </button>
                         </div>
                       </div>
@@ -394,7 +394,7 @@ export function TemplatePicker({
                           </div>
                           {t.scope.length > 120 && (
                             <span className="text-[10px] font-bold text-[#001f97] hover:underline mt-1 inline-block">
-                              {isExpanded ? "Show less ▲" : "Show full scope details ▼"}
+                              {isExpanded ? "Show less" : "Show full scope details"}
                             </span>
                           )}
                         </div>
@@ -408,7 +408,7 @@ export function TemplatePicker({
             {/* Modal Footer */}
             <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <div>
-                💡 <i>Clicking a template fills the service title, scope & rate automatically. You can edit them anytime.</i>
+                <i>Clicking a template fills the service title, scope and rate automatically. You can edit them anytime.</i>
               </div>
               <button
                 type="button"

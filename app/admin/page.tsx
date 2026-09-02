@@ -2730,7 +2730,7 @@ export default function CrmDashboardPage() {
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#001f97] text-white font-bold text-[11px] hover:bg-[#001777] transition-colors shadow-2xs"
                       title="Re-populate quote items using the best matching standard templates"
                     >
-                      ⚡ Auto-Match All Items
+                      Auto-Match All Items
                     </button>
                   </div>
 
@@ -2918,7 +2918,7 @@ export default function CrmDashboardPage() {
                             ]);
                           }
                         }}
-                        buttonLabel="🔍 Search Library"
+                        buttonLabel="Search Library"
                         triggerClassName="flex items-center gap-1 px-2.5 py-1 bg-[#001f97] text-white font-bold text-xs rounded-lg hover:bg-[#001777] shadow-2xs transition-colors"
                       />
                       <button
