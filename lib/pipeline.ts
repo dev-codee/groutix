@@ -24,7 +24,7 @@ export const STAGES: Stage[] = [
   { key: "Quote Sent", label: "Quote Sent", owner: "intake", group: "quote" },
   { key: "Negotiation", label: "Negotiation", owner: "intake", group: "quote" },
   // ── Field / scheduling (Login 2) ── accepted quote hands off here
-  { key: "Won", label: "Won (Accepted)", owner: "field", group: "booking" },
+  { key: "Won", label: "Won (Accepted)", owner: "intake", group: "booking" },
   { key: "Inspection Booked", label: "Inspection Booked", owner: "field", group: "booking" },
   { key: "Inspection Completed", label: "Inspection Completed", owner: "field", group: "booking" },
   { key: "Job Booked", label: "Job Booked", owner: "field", group: "booking" },
@@ -55,8 +55,21 @@ export function stageGroup(status: string): StageGroup | null {
   return STAGE_BY_KEY.get(status)?.group ?? null;
 }
 
-/** Group buckets used by the Jobs/Bookings board: Inspection Booked till Job Done. */
-export const JOB_STATUSES: string[] = [
+/** 1st Login (Intake / Leads): New up to Inspection Booked (handoff milestone) + Lost. */
+export const INTAKE_STATUSES: string[] = [
+  "New",
+  "Contacted",
+  "Waiting for Info",
+  "Quote Pending",
+  "Quote Sent",
+  "Negotiation",
+  "Won",
+  "Inspection Booked",
+  "Lost",
+];
+
+/** 2nd Login (Field / Scheduling): Inspection Booked through Job Done (handoff milestone). */
+export const FIELD_STATUSES: string[] = [
   "Inspection Booked",
   "Inspection Completed",
   "Job Booked",
@@ -66,18 +79,41 @@ export const JOB_STATUSES: string[] = [
   "Job Done",
 ];
 
+/** 3rd Login (Finance / Completion): Job Done to Payment Received to Warranty Sent. */
+export const FINANCE_STATUSES: string[] = [
+  "Job Done",
+  "Payment Received",
+  "Warranty Sent",
+];
+
+/** Group buckets used by the Jobs/Bookings board: Inspection Booked till Job Done. */
+export const JOB_STATUSES: string[] = FIELD_STATUSES;
+
 export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) => s.key);
 
 /** Statuses a role works day-to-day (managers see everything). */
 export function roleQueue(role: Role): string[] {
   if (role === "manager") return STATUS_KEYS;
-  if (role === "field") return JOB_STATUSES;
-  return STAGES.filter((s) => s.owner === role).map((s) => s.key);
+  if (role === "intake") return INTAKE_STATUSES;
+  if (role === "field") return FIELD_STATUSES;
+  if (role === "finance") return FINANCE_STATUSES;
+  return STATUS_KEYS;
 }
 
 /** Is this lead currently in the given role's queue? */
 export function inRoleQueue(role: Role, status: string): boolean {
   if (role === "manager") return true;
-  if (role === "field") return JOB_STATUSES.includes(status);
+  if (role === "intake") {
+    // Lead stays in intake queue until it is booked for inspection (hands off to field)
+    return ["New", "Contacted", "Waiting for Info", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Lost"].includes(status);
+  }
+  if (role === "field") {
+    // Field owns lead from Inspection Booked until Job Done (hands off to finance)
+    return ["Inspection Booked", "Inspection Completed", "Job Booked", "Scheduled", "Job Confirmed", "Job In Progress"].includes(status);
+  }
+  if (role === "finance") {
+    // Finance owns lead from Job Done through completion
+    return FINANCE_STATUSES.includes(status);
+  }
   return stageOwner(status) === role;
 }
