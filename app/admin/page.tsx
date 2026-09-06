@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
-import { STATUS_KEYS, inRoleQueue, JOB_STATUSES, INTAKE_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
+import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, JOB_STATUSES, INTAKE_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
@@ -180,6 +180,18 @@ type Stats = {
 // Ordered status list is sourced from the shared pipeline so the dashboard,
 // API, and role queues never drift apart.
 const STATUS_LIST: string[] = STATUS_KEYS;
+
+// Accent styling for the per-stage dashboard cards, keyed by pipeline group so
+// each phase of the funnel (lead → quote → booking → job → finance → closed)
+// reads as a distinct colour band.
+const STAGE_GROUP_ACCENT: Record<StageGroup, { dot: string; value: string }> = {
+  lead: { dot: "bg-blue-500", value: "text-[#001f97]" },
+  quote: { dot: "bg-amber-500", value: "text-amber-600" },
+  booking: { dot: "bg-violet-500", value: "text-violet-600" },
+  job: { dot: "bg-cyan-500", value: "text-cyan-600" },
+  finance: { dot: "bg-emerald-500", value: "text-emerald-600" },
+  closed: { dot: "bg-slate-400", value: "text-slate-400" },
+};
 
 export function getRoleStatusOptions(role: Role, currentStatus?: string): string[] {
   let base: string[];
@@ -538,9 +550,10 @@ export default function CrmDashboardPage() {
     }
   };
 
-  // Load leads and tasks from database
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // Load leads and tasks from database. Pass { silent: true } for background
+  // polling so the refresh spinner doesn't flicker on every auto-refresh.
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError("");
     try {
       const [leadsRes, tasksRes] = await Promise.all([
@@ -568,9 +581,9 @@ export default function CrmDashboardPage() {
         setTasks(data.items || []);
       }
     } catch {
-      setError("Network error while connecting to CRM backend.");
+      if (!opts?.silent) setError("Network error while connecting to CRM backend.");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
@@ -619,6 +632,27 @@ export default function CrmDashboardPage() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // Auto-refresh leads/tasks in the background so customer replies synced by the
+  // email cron appear without a manual page refresh. Silent so it doesn't spin
+  // the refresh icon. Pauses while the tab is hidden to save the free-plan quota,
+  // and refreshes immediately when the tab regains focus.
+  useEffect(() => {
+    const REFRESH_MS = 30000;
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      loadData({ silent: true });
+    };
+    const id = setInterval(tick, REFRESH_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") loadData({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [loadData]);
 
   useEffect(() => {
@@ -673,6 +707,16 @@ export default function CrmDashboardPage() {
   const totalUnread = useMemo(
     () => Object.values(unread).reduce((sum, n) => sum + (n || 0), 0),
     [unread]
+  );
+
+  // The customer-conversation modal reads a snapshot taken when it opened; re-derive
+  // it from the latest `leads` so background refreshes surface new replies live.
+  const activeMessageLeadLive = useMemo(
+    () =>
+      activeMessageLead
+        ? leads.find((l) => l.id === activeMessageLead.id) || activeMessageLead
+        : null,
+    [activeMessageLead, leads]
   );
 
   // Active staff names for assignee dropdowns.
@@ -1844,7 +1888,7 @@ export default function CrmDashboardPage() {
 
             {/* Refresh Button */}
             <button
-              onClick={loadData}
+              onClick={() => loadData()}
               title="Refresh database records"
               className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
             >
@@ -1928,7 +1972,7 @@ export default function CrmDashboardPage() {
                 <b>Notice:</b> {error}
               </div>
               <button
-                onClick={loadData}
+                onClick={() => loadData()}
                 className="text-xs bg-amber-200/60 px-3 py-1 rounded-lg font-semibold hover:bg-amber-200"
               >
                 Retry
@@ -2081,6 +2125,47 @@ export default function CrmDashboardPage() {
                     <div className="text-[11px] text-slate-400">{card.hint}</div>
                   </button>
                 ))}
+              </div>
+
+              {/* Full pipeline breakdown — one clickable box per lead status so
+                  every stage is visible and filters the leads table on click.
+                  Sourced from the shared STAGES list so it can never drift from
+                  the real pipeline. */}
+              <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-black text-slate-900">Pipeline by Stage</h2>
+                  <span className="text-[11px] text-slate-400">Click any stage to filter the leads table</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {STAGES.map((stage) => {
+                    const accent = STAGE_GROUP_ACCENT[stage.group];
+                    const value = counts[stage.key] || 0;
+                    const active = statusFilter === stage.key;
+                    return (
+                      <button
+                        key={stage.key}
+                        type="button"
+                        onClick={() => openLeadsFiltered([stage.key])}
+                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
+                          active
+                            ? "border-[#001f97] bg-[#001f97]/5"
+                            : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
+                        }`}
+                        title={`Show ${stage.label} leads`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                          <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
+                            {stage.label}
+                          </span>
+                        </div>
+                        <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                          {value}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Main Grid: Recent Leads & Task Panel */}
@@ -3998,7 +4083,7 @@ export default function CrmDashboardPage() {
               <div>
                 <h2 className="text-lg font-black text-slate-900">Customer Conversation</h2>
                 <div className="text-xs text-slate-500">
-                  {activeMessageLead.name} • {activeMessageLead.phone || "No phone"} • {activeMessageLead.email || "No email"}
+                  {activeMessageLeadLive?.name} • {activeMessageLeadLive?.phone || "No phone"} • {activeMessageLeadLive?.email || "No email"}
                 </div>
               </div>
               <button
@@ -4011,7 +4096,7 @@ export default function CrmDashboardPage() {
 
             {/* Conversation Messages Box */}
             <div className="h-72 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-              {getConversation(activeMessageLead).map((msg) => {
+              {getConversation(activeMessageLeadLive || activeMessageLead).map((msg) => {
                 const isCustomer = msg.from === "customer";
                 return (
                   <div
