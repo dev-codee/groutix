@@ -212,9 +212,9 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       ty -= 13;
     }
     const midY = y - rowH / 2 - 4;
-    rightText(String(qty), colQtyRight, midY, { size: 10 });
-    rightText(money(price), colPriceRight, midY, { size: 10 });
-    rightText(money(amount), colAmountRight, midY, { size: 10 });
+    rightText(qty > 0 ? String(qty) : "", colQtyRight, midY, { size: 10 });
+    rightText(price > 0 ? money(price) : "", colPriceRight, midY, { size: 10 });
+    rightText(amount > 0 ? money(amount) : "", colAmountRight, midY, { size: 10 });
 
     y -= rowH;
     page.drawLine({
