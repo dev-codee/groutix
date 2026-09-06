@@ -24,9 +24,12 @@ export const ROLE_LABELS: Record<Role, string> = {
 // sees everything. Keep these in sync with the pipeline ownership in
 // lib/pipeline.ts so a role's tabs always match the leads it can act on.
 export const ROLE_VIEWS: Record<Role, string[]> = {
-  intake: ["leads", "customers"], // sales / intake + quoting from the lead row
-  field: ["jobs", "customers"], // scheduling + job execution
-  finance: ["jobs", "quotes", "customers"], // completion, payment, warranty
+  // "team" is available to every role so any staff member can open the team
+  // directory and message colleagues; the manager-only actions inside it
+  // (open-as-dashboard, delete account) are gated separately in the UI.
+  intake: ["leads", "customers", "team"], // sales / intake + quoting from the lead row
+  field: ["jobs", "customers", "team"], // scheduling + job execution
+  finance: ["jobs", "quotes", "customers", "team"], // completion, payment, warranty
   manager: [
     "dashboard",
     "analytics",

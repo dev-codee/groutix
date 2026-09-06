@@ -14,9 +14,10 @@ export async function GET(req: NextRequest) {
   const users = await listUsers();
   const staff = users.map((u) => ({
     id: u.id,
+    username: u.username,
     name: u.name,
     role: u.role,
     active: u.active,
   }));
-  return NextResponse.json({ staff });
+  return NextResponse.json({ staff, me: session.username });
 }
