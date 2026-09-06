@@ -2,6 +2,7 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { getDb } from "@/lib/mongodb";
 import { updateSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
+import { sendReplyNotification } from "@/lib/email";
 
 const user = process.env.SMTP_USER || "";
 const pass = process.env.SMTP_PASS || "";
@@ -114,6 +115,16 @@ export async function syncUnreadEmails() {
                   if (lead.status === "Quote Sent") {
                     await updateSubmission(lead._id.toString(), { status: "In Progress" });
                   }
+
+                  // Alert the team by email that a reply came in (best-effort,
+                  // never throws — so a mail hiccup can't fail the sync).
+                  await sendReplyNotification({
+                    leadName: lead.name,
+                    leadEmail: fromEmail,
+                    subject: parsed.subject,
+                    snippet: parsed.text || "",
+                    leadId: lead._id.toString(),
+                  });
 
                   syncedCount++;
                 }

@@ -94,6 +94,75 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
   throw lastErr;
 }
 
+/** Who receives internal CRM alerts (new customer replies, etc.). Comma/space
+ *  separated in CRM_NOTIFY_EMAILS; falls back to the mailbox we send from. */
+export function getNotifyRecipients(): string[] {
+  const raw = process.env.CRM_NOTIFY_EMAILS || "";
+  const list = raw
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (list.length) return list;
+  const fallback = process.env.SMTP_FROM || process.env.SMTP_USER || "";
+  return fallback ? [fallback] : [];
+}
+
+/**
+ * Alert the team that a customer replied. Best-effort: never throws, so a
+ * notification failure can't break the inbox sync that triggered it.
+ */
+export async function sendReplyNotification(args: {
+  leadName?: string;
+  leadEmail?: string;
+  subject?: string;
+  snippet?: string;
+  leadId?: string;
+}): Promise<void> {
+  if (!isEmailConfigured()) return;
+  const recipients = getNotifyRecipients();
+  if (recipients.length === 0) return;
+
+  const name = args.leadName || "A customer";
+  const crmUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://groutix.com"}/admin`;
+  const snippet = (args.snippet || "").slice(0, 300);
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+      <tr><td style="background:#001f97;color:#fff;padding:18px 24px;font-size:16px;font-weight:800;">📨 New customer reply</td></tr>
+      <tr><td style="padding:24px;">
+        <p style="margin:0 0 6px;font-size:15px;"><b>${name}</b> just replied by email.</p>
+        <p style="margin:0 0 16px;font-size:13px;color:#64748b;">${args.leadEmail || ""}</p>
+        ${args.subject ? `<p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">Subject</p><p style="margin:0 0 16px;font-size:14px;font-weight:600;">${escapeHtml(args.subject)}</p>` : ""}
+        ${snippet ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.5;color:#334155;white-space:pre-wrap;">${escapeHtml(snippet)}${(args.snippet || "").length > 300 ? "…" : ""}</div>` : ""}
+        <div style="margin-top:24px;">
+          <a href="${crmUrl}" style="display:inline-block;background:#001f97;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:8px;">Open the conversation in the CRM →</a>
+        </div>
+      </td></tr>
+    </table>
+  </body></html>`;
+
+  try {
+    await sendEmail({
+      fromName: "Groutix CRM",
+      toEmail: recipients.join(", "),
+      replyTo: args.leadEmail,
+      subject: `New reply from ${name}${args.subject ? ` — ${args.subject}` : ""}`,
+      html,
+    });
+  } catch (err) {
+    console.error("sendReplyNotification failed (non-fatal):", err);
+  }
+}
+
+/** Minimal HTML escaping for values interpolated into notification emails. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 /**
  * Wraps raw email HTML in a beautiful, modern branded container for clients.
  */

@@ -30,6 +30,7 @@ import {
   Send,
   ExternalLink,
   Users,
+  Bell,
   Briefcase,
   UserCheck,
   Loader2,
@@ -464,7 +465,11 @@ export default function CrmDashboardPage() {
   const [syncingEmails, setSyncingEmails] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
+  const [onlyUnread, setOnlyUnread] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  // Tracks the last-seen unread-reply count so we only fire a desktop
+  // notification when the number actually goes UP (a genuinely new reply).
+  const prevUnreadReplies = useRef<number | null>(null);
 
   // Analytics View State (Previous Dashboard)
   const [analyticsDays, setAnalyticsDays] = useState<number>(30);
@@ -661,11 +666,22 @@ export default function CrmDashboardPage() {
     }
   }, [currentView, analyticsDays, loadAnalytics]);
 
+  // Ask once for permission to show desktop notifications for new replies.
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    ) {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
   // Reset to the first page whenever the view or any filter changes, so we never
   // show a stale/out-of-range page for the new (shorter) list.
   useEffect(() => {
     setPage(1);
-  }, [currentView, statusFilter, priorityFilter, globalSearch]);
+  }, [currentView, statusFilter, priorityFilter, globalSearch, onlyUnread]);
 
   // Load the staff directory for every role (drives the Team view and all
   // assignee pickers) so nothing is hardcoded. Read-only names/roles only.
@@ -1596,8 +1612,54 @@ export default function CrmDashboardPage() {
     if (priorityFilter) {
       list = list.filter((l) => l.priority === priorityFilter);
     }
+    if (onlyUnread) {
+      list = list.filter((l) =>
+        l.messages?.some((m) => m.from === "customer" && m.read === false)
+      );
+    }
     return list;
-  }, [scopedLeads, globalSearch, statusFilter, priorityFilter]);
+  }, [scopedLeads, globalSearch, statusFilter, priorityFilter, onlyUnread]);
+
+  // Leads with at least one unread customer reply — drives the header bell badge.
+  const unreadReplyCount = useMemo(
+    () =>
+      scopedLeads.filter((l) =>
+        l.messages?.some((m) => m.from === "customer" && m.read === false)
+      ).length,
+    [scopedLeads]
+  );
+
+  // When the unread-reply count rises, alert in-app: a desktop notification
+  // (if permitted) plus a count in the browser tab title so it's noticeable
+  // even from another tab. Only fires on an increase, never on first load.
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.title =
+        unreadReplyCount > 0 ? `(${unreadReplyCount}) Groutix CRM` : "Groutix CRM";
+    }
+    const prev = prevUnreadReplies.current;
+    prevUnreadReplies.current = unreadReplyCount;
+    if (prev === null || unreadReplyCount <= prev) return;
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    ) {
+      try {
+        const n = new Notification("New customer reply", {
+          body: `${unreadReplyCount} conversation${unreadReplyCount === 1 ? "" : "s"} with unread customer replies.`,
+          icon: "/logo.png",
+          tag: "groutix-reply",
+        });
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [unreadReplyCount]);
 
   // Counts for KPIs (scoped to the role's queue)
   const counts = useMemo(() => {
@@ -1647,11 +1709,40 @@ export default function CrmDashboardPage() {
     (statuses: string[]) => {
       setPriorityFilter("");
       setGlobalSearch("");
+      setOnlyUnread(false);
       setStatusFilter(statuses.join("|"));
       setCurrentView("leads");
     },
     []
   );
+
+  // Open the "inbox": the leads table filtered to conversations that have an
+  // unread customer reply. Used by the header bell and the hero's Open Inbox.
+  const openInbox = useCallback(() => {
+    setPriorityFilter("");
+    setGlobalSearch("");
+    setStatusFilter("");
+    setOnlyUnread(true);
+    setCurrentView("leads");
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    ) {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  // Start a brand-new lead from anywhere (hero button, etc.).
+  const startNewLead = useCallback(() => {
+    setEditingLead({
+      status: "New",
+      assigned: "",
+      priority: "Medium",
+      received: new Date().toISOString().slice(0, 16),
+    });
+    setLeadModalOpen(true);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
@@ -1886,6 +1977,24 @@ export default function CrmDashboardPage() {
               />
             </div>
 
+            {/* Unread customer replies bell — visible on every view/role. */}
+            <button
+              onClick={openInbox}
+              title={
+                unreadReplyCount > 0
+                  ? `${unreadReplyCount} conversation(s) with unread replies`
+                  : "No unread customer replies"
+              }
+              className="relative p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <Bell className={`w-4 h-4 ${unreadReplyCount > 0 ? "text-[#001f97]" : ""}`} />
+              {unreadReplyCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                  {unreadReplyCount}
+                </span>
+              )}
+            </button>
+
             {/* Refresh Button */}
             <button
               onClick={() => loadData()}
@@ -2067,64 +2176,48 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "dashboard" && (
             <div className="space-y-6">
-              {/* KPI Cards — click any card to open the leads table filtered to
-                  that stage (or group of stages). */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                {[
-                  {
-                    label: "New Leads",
-                    value: counts["New"] || 0,
-                    hint: "Needs attention",
-                    statuses: ["New"],
-                    valueClass: "text-[#001f97]",
-                  },
-                  {
-                    label: "Contacted",
-                    value: counts["Contacted"] || 0,
-                    hint: "In progress",
-                    statuses: ["Contacted"],
-                    valueClass: "text-slate-900",
-                  },
-                  {
-                    label: "Inspections",
-                    value: (counts["Inspection Booked"] || 0) + (counts["Inspection Completed"] || 0),
-                    hint: "Booked / done",
-                    statuses: ["Inspection Booked", "Inspection Completed"],
-                    valueClass: "text-slate-900",
-                  },
-                  {
-                    label: "Quotes Sent",
-                    value: counts["Quote Sent"] || 0,
-                    hint: "Awaiting decision",
-                    statuses: ["Quote Sent"],
-                    valueClass: "text-slate-900",
-                  },
-                  {
-                    label: "Won Jobs",
-                    value: (counts["Won"] || 0) + (counts["Job Done"] || 0) + (counts["Payment Received"] || 0),
-                    hint: "Confirmed orders",
-                    statuses: ["Won", "Job Done", "Payment Received"],
-                    valueClass: "text-slate-900",
-                  },
-                  {
-                    label: "Lost Leads",
-                    value: counts["Lost"] || 0,
-                    hint: "Closed / inactive",
-                    statuses: ["Lost"],
-                    valueClass: "text-slate-400",
-                  },
-                ].map((card) => (
-                  <button
-                    key={card.label}
-                    type="button"
-                    onClick={() => openLeadsFiltered(card.statuses)}
-                    className="bg-white p-4 rounded-2xl border border-[#e4e9f1] shadow-xs text-left transition-all hover:border-[#001f97]/40 hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer"
-                  >
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">{card.label}</div>
-                    <div className={`text-3xl font-black my-1 ${card.valueClass}`}>{card.value}</div>
-                    <div className="text-[11px] text-slate-400">{card.hint}</div>
-                  </button>
-                ))}
+              {/* Today at a glance — hero shortcut bar to run the whole business
+                  from one screen. */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#001f97] to-[#0a34c4] text-white p-6 shadow-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-white/60">
+                      Groutix Operations
+                    </div>
+                    <h2 className="text-2xl font-black mt-1">Today at a glance</h2>
+                    <p className="text-sm text-white/70 mt-1">
+                      Run the whole business from one screen.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                      onClick={() => setCurrentView("jobs")}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-bold transition-colors backdrop-blur-sm"
+                    >
+                      <Briefcase className="w-4 h-4" />
+                      Open Dispatch
+                    </button>
+                    <button
+                      onClick={openInbox}
+                      className="relative flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-bold transition-colors backdrop-blur-sm"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Open Inbox
+                      {unreadReplyCount > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                          {unreadReplyCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={startNewLead}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#001f97] text-sm font-black hover:bg-white/90 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      New Lead
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Full pipeline breakdown — one clickable box per lead status so
@@ -2403,12 +2496,35 @@ export default function CrmDashboardPage() {
                     <option value="Low">Low</option>
                   </select>
 
-                  {(statusFilter || priorityFilter || globalSearch) && (
+                  <button
+                    onClick={() => setOnlyUnread((v) => !v)}
+                    className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border font-semibold transition-colors ${
+                      onlyUnread
+                        ? "bg-[#001f97] text-white border-[#001f97]"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
+                    title="Show only conversations with an unread customer reply"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Unread replies
+                    {unreadReplyCount > 0 && (
+                      <span
+                        className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center ${
+                          onlyUnread ? "bg-white/25 text-white" : "bg-rose-500 text-white"
+                        }`}
+                      >
+                        {unreadReplyCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {(statusFilter || priorityFilter || globalSearch || onlyUnread) && (
                     <button
                       onClick={() => {
                         setStatusFilter("");
                         setPriorityFilter("");
                         setGlobalSearch("");
+                        setOnlyUnread(false);
                       }}
                       className="text-xs text-rose-600 hover:underline font-semibold"
                     >
