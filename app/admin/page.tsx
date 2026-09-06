@@ -14,6 +14,7 @@ import {
   Mail,
   FileSpreadsheet,
   Camera,
+  Upload,
   MessageSquare,
   Navigation,
   ShieldCheck,
@@ -692,6 +693,7 @@ export default function CrmDashboardPage() {
   const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; name: string } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
@@ -1273,6 +1275,22 @@ export default function CrmDashboardPage() {
     setQuoteModalOpen(false);
   }
 
+  async function handleMarkNegotiation() {
+    if (!activeQuoteLead) return;
+    const { total } = quoteTotals();
+    const updates: Partial<Lead> = {
+      quoteItems,
+      quoteTaxMode,
+      quoteTaxRate,
+      quoteTerms,
+      quoteAmount: total,
+      status: "Negotiation",
+      quoteUpdated: new Date().toISOString()
+    };
+    await updateLeadField(activeQuoteLead.id, updates);
+    setQuoteModalOpen(false);
+  }
+
   // Server-side send: emails the customer via Brevo, mints a quote number,
   // sets status to Quote Sent, and starts the follow-up timer automatically.
   async function handleSendQuoteEmail() {
@@ -1410,6 +1428,7 @@ export default function CrmDashboardPage() {
       alert("Error uploading photos: " + (err?.message || "Network error"));
     } finally {
       if (photoInputRef.current) photoInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
       setUploadingPhotos(false);
     }
   }
@@ -2164,20 +2183,6 @@ export default function CrmDashboardPage() {
           </nav>
         </div>
 
-        {/* Footer info & Logout */}
-        <div className="pt-4 border-t border-[#e4e9f1] flex flex-col gap-2">
-          <div className="px-2 text-xs text-slate-400">
-            Database: <span className="font-semibold text-slate-600">{leads.length} Live Submissions</span>
-          </div>
-          <button
-            onClick={logout}
-            disabled={loggingOut}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            {loggingOut ? "Signing out…" : "Sign Out"}
-          </button>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -2219,6 +2224,18 @@ export default function CrmDashboardPage() {
                 className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
               />
             </div>
+
+            <div className="h-6 w-px bg-slate-200 mx-1"></div>
+            
+            <button
+              onClick={logout}
+              disabled={loggingOut}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              {loggingOut ? "Signing out…" : "Sign Out"}
+            </button>
+
 
             {/* Unread customer replies bell — visible on every view/role. */}
             <button
@@ -4369,6 +4386,13 @@ export default function CrmDashboardPage() {
               >
                 Mark Quote Sent
               </button>
+              <button
+                type="button"
+                onClick={handleMarkNegotiation}
+                className="px-4 py-2 border-2 border-purple-600 text-purple-700 bg-purple-50 rounded-xl font-bold hover:bg-purple-100"
+              >
+                Mark Negotiation
+              </button>
             </div>
           </div>
         </div>
@@ -4396,15 +4420,39 @@ export default function CrmDashboardPage() {
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-2">Upload New Photo(s)</label>
               <div className="flex items-center gap-3">
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  disabled={uploadingPhotos}
-                  onChange={(e) => handleAddPhotos(e.target.files)}
-                  className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#001f97] hover:file:bg-blue-100 disabled:opacity-50 cursor-pointer"
-                />
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => cameraInputRef.current?.click()} 
+                    disabled={uploadingPhotos}
+                    className="flex items-center gap-2 px-3 py-2 bg-[#001f97] text-white rounded-xl text-xs font-bold hover:bg-blue-800 disabled:opacity-50"
+                  >
+                    <Camera className="w-4 h-4" /> Take Photo
+                  </button>
+                  <button 
+                    onClick={() => photoInputRef.current?.click()} 
+                    disabled={uploadingPhotos}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-[#001f97] rounded-xl text-xs font-bold hover:bg-blue-100 disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" /> Browse Gallery
+                  </button>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => handleAddPhotos(e.target.files)}
+                  />
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleAddPhotos(e.target.files)}
+                  />
+                </div>
                 {uploadingPhotos && (
                   <div className="flex items-center gap-2 text-xs font-semibold text-[#001f97] animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin" />

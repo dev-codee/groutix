@@ -24,7 +24,7 @@ function Labeled({
 const inputCls =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97] focus:ring-1 focus:ring-[#001f97]";
 
-type TabKey = "business" | "heroWhyUs" | "about" | "testimonials" | "showerScreens" | "ctaFaq";
+type TabKey = "business" | "heroWhyUs" | "about" | "testimonials" | "showerScreens" | "ctaFaq" | "templates";
 
 export default function ContentPage() {
   const [content, setContent] = useState<SiteContent | null>(null);
@@ -100,8 +100,9 @@ export default function ContentPage() {
     { key: "heroWhyUs", label: "Hero & Why Us", icon: <LayoutTemplate className="h-4 w-4" /> },
     { key: "about", label: "About Page", icon: <Info className="h-4 w-4" /> },
     { key: "testimonials", label: "Testimonials", icon: <MessageSquareQuote className="h-4 w-4" /> },
-    { key: "showerScreens", label: "Shower Screens", icon: <Shield className="h-4 w-4" /> },
-    { key: "ctaFaq", label: "CTA & FAQs", icon: <HelpCircle className="h-4 w-4" /> },
+    { key: "showerScreens", label: "Services / Showers", icon: <Shield className="h-4 w-4" /> },
+    { key: "ctaFaq", label: "CTA & FAQ", icon: <HelpCircle className="h-4 w-4" /> },
+    { key: "templates", label: "Email / SMS Templates", icon: <MessageSquareQuote className="h-4 w-4" /> },
   ];
 
   return (
@@ -693,6 +694,110 @@ export default function ContentPage() {
                 categories={content.faqCategories}
                 onChange={(faqCategories) => setContent((c) => (c ? { ...c, faqCategories } : c))}
               />
+            </div>
+          )}
+
+          {/* Templates Tab */}
+          {activeTab === "templates" && (
+            <div className="space-y-6">
+              <Panel title="Email & SMS Templates">
+                <p className="text-sm text-slate-500 mb-6">Configure automatic messages sent to customers. Variables like {"{name}"} and {"{time}"} will be replaced automatically.</p>
+                <div className="space-y-6">
+                  
+                  <h4 className="font-bold text-slate-800 border-b pb-2">Quotes</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Labeled label="Email Subject">
+                      <input
+                        className={inputCls}
+                        value={content.templates?.quoteEmailSubject || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, quoteEmailSubject: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                    <Labeled label="Email Body">
+                      <textarea
+                        className={inputCls}
+                        rows={4}
+                        value={content.templates?.quoteEmailBody || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, quoteEmailBody: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                  </div>
+
+                  <h4 className="font-bold text-slate-800 border-b pb-2 pt-4">Invoices</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Labeled label="Email Subject">
+                      <input
+                        className={inputCls}
+                        value={content.templates?.invoiceEmailSubject || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, invoiceEmailSubject: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                    <Labeled label="Email Body">
+                      <textarea
+                        className={inputCls}
+                        rows={4}
+                        value={content.templates?.invoiceEmailBody || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, invoiceEmailBody: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                  </div>
+
+                  <h4 className="font-bold text-slate-800 border-b pb-2 pt-4">Warranties</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Labeled label="Email Subject">
+                      <input
+                        className={inputCls}
+                        value={content.templates?.warrantyEmailSubject || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, warrantyEmailSubject: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                    <Labeled label="Email Body">
+                      <textarea
+                        className={inputCls}
+                        rows={4}
+                        value={content.templates?.warrantyEmailBody || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, warrantyEmailBody: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                  </div>
+
+                  <h4 className="font-bold text-slate-800 border-b pb-2 pt-4">SMS Notifications</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Labeled label="Booking SMS">
+                      <textarea
+                        className={inputCls}
+                        rows={3}
+                        value={content.templates?.bookingSms || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, bookingSms: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                    <Labeled label="Reminder SMS">
+                      <textarea
+                        className={inputCls}
+                        rows={3}
+                        value={content.templates?.reminderSms || ""}
+                        onChange={(e) =>
+                          setContent((c) => c ? { ...c, templates: { ...c.templates, reminderSms: e.target.value } as any } : c)
+                        }
+                      />
+                    </Labeled>
+                  </div>
+                </div>
+              </Panel>
             </div>
           )}
         </div>

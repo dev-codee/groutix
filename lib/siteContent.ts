@@ -73,6 +73,17 @@ export interface TestimonialItem {
   date: string;
 }
 
+export interface NotificationTemplates {
+  quoteEmailSubject: string;
+  quoteEmailBody: string;
+  invoiceEmailSubject: string;
+  invoiceEmailBody: string;
+  warrantyEmailSubject: string;
+  warrantyEmailBody: string;
+  bookingSms: string;
+  reminderSms: string;
+}
+
 export interface SiteContent {
   business: BusinessContent;
   hero: HeroContent;
@@ -82,6 +93,7 @@ export interface SiteContent {
   testimonials: TestimonialItem[];
   showerScreens: ShowerScreenModel[];
   faqCategories: FaqCategory[];
+  templates: NotificationTemplates;
 }
 
 // Deep-partial for the stored overrides (any subset can be saved).
@@ -98,6 +110,7 @@ export type SiteContentOverrides = {
   testimonials?: TestimonialItem[];
   showerScreens?: ShowerScreenModel[];
   faqCategories?: FaqCategory[];
+  templates?: Partial<NotificationTemplates>;
 };
 
 export const DEFAULT_CONTENT: SiteContent = {
@@ -118,6 +131,16 @@ export const DEFAULT_CONTENT: SiteContent = {
       instagram: "https://www.instagram.com/groutix.au/",
     },
     rating: { value: BUSINESS.rating.value, count: BUSINESS.rating.count },
+  },
+  templates: {
+    quoteEmailSubject: "Your Groutix Quote is Ready",
+    quoteEmailBody: "Hi {name},\n\nThank you for choosing Groutix! Please find your quote attached.\n\nRegards,\nThe Groutix Team",
+    invoiceEmailSubject: "Your Groutix Invoice",
+    invoiceEmailBody: "Hi {name},\n\nThank you for your business. Please find your invoice attached.\n\nRegards,\nThe Groutix Team",
+    warrantyEmailSubject: "Your Groutix Warranty Certificate",
+    warrantyEmailBody: "Hi {name},\n\nPlease find your warranty certificate attached.\n\nRegards,\nThe Groutix Team",
+    bookingSms: "Hi {name}, your appointment with Groutix is booked for {time}. Reply YES to confirm.",
+    reminderSms: "Hi {name}, this is a reminder for your Groutix appointment tomorrow at {time}."
   },
   hero: {
     headline:
@@ -264,6 +287,10 @@ export function mergeContent(overrides: SiteContentOverrides | null | undefined)
       overrides.faqCategories && overrides.faqCategories.length
         ? overrides.faqCategories
         : DEFAULT_CONTENT.faqCategories,
+    templates: {
+      ...DEFAULT_CONTENT.templates,
+      ...overrides.templates,
+    },
   };
 }
 

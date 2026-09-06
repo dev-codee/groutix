@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     // 2) Env break-glass admin (manager level). Only consulted when no DB user
     //    owns this username, so a real account can't be shadowed by env creds.
     sessionUser = username;
-    role = "manager";
+    role = "super_admin";
   }
 
   if (!sessionUser) {

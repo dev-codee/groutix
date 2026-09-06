@@ -265,10 +265,10 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     text("TERMS & CONDITIONS", MARGIN, y, { font: bold, size: 9, color: MUTED });
     y -= 14;
     for (const para of input.terms.split(/\n+/)) {
-      for (const ln of wrap(para, font, 8.5, contentW)) {
+      for (const ln of wrap(para, font, 10, contentW)) {
         ensureRoom(14);
-        text(ln, MARGIN, y, { size: 8.5, color: MUTED });
-        y -= 11;
+        text(ln, MARGIN, y, { size: 10, color: INK });
+        y -= 13;
       }
     }
   }

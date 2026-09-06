@@ -2,9 +2,9 @@
 // components. Keep this file dependency-free (no mongodb, no node:crypto) so it
 // is safe to import from the edge runtime (middleware) and the browser.
 
-export type Role = "intake" | "field" | "finance" | "manager";
+export type Role = "intake" | "field" | "finance" | "manager" | "super_admin";
 
-export const ROLES: Role[] = ["intake", "field", "finance", "manager"];
+export const ROLES: Role[] = ["intake", "field", "finance", "manager", "super_admin"];
 
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as string[]).includes(value);
@@ -15,7 +15,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   intake: "Intake / Leads",
   field: "Field / Scheduling",
   finance: "Finance / Completion",
-  manager: "Manager",
+  manager: "Business Manager (BM)",
+  super_admin: "Super Business Manager (Super BM)",
 };
 
 // ── Dashboard views (tabs inside /admin) each role may open ──────────────────
@@ -40,6 +41,16 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "customers",
     "team",
   ],
+  super_admin: [
+    "dashboard",
+    "analytics",
+    "leads",
+    "quotes",
+    "jobs",
+    "schedule",
+    "customers",
+    "team",
+  ],
 };
 
 /** The tab a role should land on when it opens the dashboard. */
@@ -48,6 +59,7 @@ export const ROLE_DEFAULT_VIEW: Record<Role, string> = {
   field: "jobs",
   finance: "jobs",
   manager: "dashboard",
+  super_admin: "dashboard",
 };
 
 export function canView(role: Role, view: string): boolean {
@@ -59,7 +71,8 @@ export const ROLE_PAGES: Record<Role, string[]> = {
   intake: [],
   field: [],
   finance: [],
-  manager: ["content", "users"],
+  manager: ["content"],
+  super_admin: ["content", "users"],
 };
 
 export function canOpenPage(role: Role, page: string): boolean {
@@ -77,7 +90,12 @@ const MANAGER_ONLY_API = [
 ];
 
 export function canAccessApi(role: Role, pathname: string): boolean {
-  if (role === "manager") return true;
+  if (role === "super_admin") return true;
+  if (role === "manager") {
+    // manager cannot access users (that's for super_admin only)
+    if (pathname.startsWith("/api/admin/users")) return false;
+    return true;
+  }
   return !MANAGER_ONLY_API.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
