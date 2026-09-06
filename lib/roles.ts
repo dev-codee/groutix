@@ -28,7 +28,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   // directory and message colleagues; the manager-only actions inside it
   // (open-as-dashboard, delete account) are gated separately in the UI.
   intake: ["leads", "customers", "team"], // sales / intake + quoting from the lead row
-  field: ["jobs", "customers", "team"], // scheduling + job execution
+  field: ["jobs", "schedule", "customers", "team"], // scheduling + job execution
   finance: ["jobs", "quotes", "customers", "team"], // completion, payment, warranty
   manager: [
     "dashboard",
@@ -36,6 +36,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "leads",
     "quotes",
     "jobs",
+    "schedule",
     "customers",
     "team",
   ],

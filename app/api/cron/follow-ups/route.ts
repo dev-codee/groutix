@@ -6,6 +6,7 @@ import {
 } from "@/lib/submissions";
 import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
 import { buildQuoteResponseUrl } from "@/lib/quoteToken";
+import { buildBookingUrl } from "@/lib/bookingToken";
 
 // Scheduled follow-up sweep. Lives OUTSIDE /api/admin so it isn't behind the
 // session guard; instead it requires a shared secret. Point an external
@@ -28,11 +29,12 @@ function esc(v: string) {
 function followUpHtml(id: string, name: string, stage: number) {
   const nudges = [
     "Just checking you received the quotation we sent — happy to answer any questions.",
-    "Following up on your Groutix quote. Would you like to lock in a booking date?",
+    "Following up on your Groutix quote. Would you like to lock in a booking date? You can book online at a time that suits you.",
     "Last check-in on your quotation before we close the file — let us know if you'd still like to go ahead.",
   ];
   const acceptUrl = buildQuoteResponseUrl(id, "accept");
   const declineUrl = buildQuoteResponseUrl(id, "decline");
+  const jobBookingUrl = buildBookingUrl(id, "job");
   return wrapEmailHtml(
     `
       <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Hi ${esc(name || "there")},</h2>
@@ -47,7 +49,13 @@ function followUpHtml(id: string, name: string, stage: number) {
           </td>
         </tr>
       </table>
-      <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">Or simply reply to this email or call us and we'll take care of the rest.</p>
+      <p style="margin:16px 0 4px;font-size:13px;color:#475569;">Ready to go? Accept and book your job day in one step:</p>
+      <table cellpadding="0" cellspacing="0" style="margin:4px 0 16px;">
+        <tr><td>
+          <a href="${jobBookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 24px;border-radius:10px;">📅 Book my job day &amp; time</a>
+        </td></tr>
+      </table>
+      <p style="margin:0;color:#94a3b8;font-size:13px;">Or simply reply to this email or call us and we'll take care of the rest.</p>
     `,
     "Checking in on your Groutix quotation."
   );
