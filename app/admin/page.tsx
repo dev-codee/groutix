@@ -2728,16 +2728,7 @@ export default function CrmDashboardPage() {
                     ))}
                   </select>
 
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden"
-                  >
-                    <option value="">All Priorities</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+
 
                   <button
                     onClick={() => setOnlyUnread((v) => !v)}
@@ -2761,7 +2752,7 @@ export default function CrmDashboardPage() {
                     )}
                   </button>
 
-                  {(statusFilter || priorityFilter || globalSearch || onlyUnread) && (
+                  {(statusFilter || globalSearch || onlyUnread) && (
                     <button
                       onClick={() => {
                         setStatusFilter("");
@@ -2793,7 +2784,6 @@ export default function CrmDashboardPage() {
                       <th className="py-3 px-3">Service / Scope</th>
                       <th className="py-3 px-3">Status</th>
                       <th className="py-3 px-3">Assigned</th>
-                      <th className="py-3 px-3">Priority</th>
                       <th className="py-3 px-3 text-right sticky right-0 bg-white">Actions</th>
                     </tr>
                   </thead>
@@ -2854,19 +2844,6 @@ export default function CrmDashboardPage() {
                               </option>
                             ))}
                           </select>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                              l.priority === "High"
-                                ? "bg-rose-100 text-rose-700"
-                                : l.priority === "Low"
-                                ? "bg-slate-100 text-slate-600"
-                                : "bg-blue-100 text-blue-700"
-                            }`}
-                          >
-                            {l.priority || "Medium"}
-                          </span>
                         </td>
                         <td className="py-3.5 px-3 text-right sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
                           <div className="flex items-center justify-end gap-1 flex-nowrap">
@@ -3167,17 +3144,6 @@ export default function CrmDashboardPage() {
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1 shrink-0">
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                l.priority === "High"
-                                  ? "bg-rose-100 text-rose-700"
-                                  : l.priority === "Low"
-                                  ? "bg-slate-100 text-slate-600"
-                                  : "bg-blue-100 text-blue-700"
-                              }`}
-                            >
-                              {l.priority || "Medium"}
-                            </span>
                             <QuoteResponseBadge lead={l} />
                             {l.invoiceOpenedAt && (
                               <span
@@ -3676,18 +3642,7 @@ export default function CrmDashboardPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Priority</label>
-                  <select
-                    value={editingLead?.priority || "Medium"}
-                    onChange={(e) => setEditingLead({ ...editingLead, priority: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl"
-                  >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
+
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Contacted Date & Time</label>
                   <input
