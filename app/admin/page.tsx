@@ -3551,7 +3551,7 @@ export default function CrmDashboardPage() {
           MODAL: ADD / EDIT LEAD
          ========================================================================= */}
       {leadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-lg font-black text-slate-900">
@@ -3821,7 +3821,7 @@ export default function CrmDashboardPage() {
           MODAL: QUOTE BUILDER & DOCUMENT PREVIEW
          ========================================================================= */}
       {quoteModalOpen && activeQuoteLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -4378,7 +4378,7 @@ export default function CrmDashboardPage() {
           MODAL: CUSTOMER PHOTOS
          ========================================================================= */}
       {photosModalOpen && activePhotoLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -4556,7 +4556,7 @@ export default function CrmDashboardPage() {
           MODAL: CUSTOMER CONVERSATION (MESSAGES)
          ========================================================================= */}
       {messagesModalOpen && activeMessageLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -4879,7 +4879,7 @@ export default function CrmDashboardPage() {
           MODAL: AUTO INVOICE
          ========================================================================= */}
       {invoiceModalOpen && activeInvoiceLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
