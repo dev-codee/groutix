@@ -669,6 +669,12 @@ export default function CrmDashboardPage() {
     }
   }, [chatMessages, chatWith]);
 
+  // Total unread team-chat messages across all senders — badges the Team nav.
+  const totalUnread = useMemo(
+    () => Object.values(unread).reduce((sum, n) => sum + (n || 0), 0),
+    [unread]
+  );
+
   // Active staff names for assignee dropdowns.
   const staffNames = useMemo(
     () => staff.filter((s) => s.active).map((s) => s.name),
@@ -1753,6 +1759,11 @@ export default function CrmDashboardPage() {
                 <ShieldCheck className="w-4 h-4" />
                 Team
               </span>
+              {totalUnread > 0 && (
+                <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                  {totalUnread}
+                </span>
+              )}
             </button>
             )}
 
