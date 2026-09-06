@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
 import { verifyQuoteToken } from "@/lib/quoteToken";
+import { buildBookingUrl } from "@/lib/bookingToken";
 import { QUOTE_STATUSES } from "@/lib/pipeline";
 
 // Public endpoint the customer hits when they click "Accept" / "Decline" in the
@@ -10,8 +11,16 @@ import { QUOTE_STATUSES } from "@/lib/pipeline";
 
 export const runtime = "nodejs";
 
-function page(title: string, message: string, tone: "ok" | "info" | "warn"): Response {
+function page(
+  title: string,
+  message: string,
+  tone: "ok" | "info" | "warn",
+  cta?: { url: string; label: string }
+): Response {
   const accent = tone === "ok" ? "#16a34a" : tone === "warn" ? "#dc2626" : "#001f97";
+  const ctaHtml = cta
+    ? `<a href="${cta.url}" style="display:inline-block;margin-top:24px;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 30px;border-radius:10px;">${cta.label}</a>`
+    : "";
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,6 +39,7 @@ function page(title: string, message: string, tone: "ok" | "info" | "warn"): Res
         <tr><td style="padding:8px 40px 40px;text-align:center;">
           <h1 style="margin:16px 0 8px;font-size:22px;color:${accent};">${title}</h1>
           <p style="margin:0;font-size:15px;line-height:1.6;color:#475569;">${message}</p>
+          ${ctaHtml}
           <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;">Stay Sealed. Stay Smiling.</p>
           <a href="https://www.groutix.com" style="display:inline-block;margin-top:20px;color:#001f97;text-decoration:none;font-size:13px;font-weight:600;">www.groutix.com</a>
         </td></tr>
@@ -92,8 +102,9 @@ export async function GET(req: NextRequest) {
     });
     return page(
       "Quote accepted 🎉",
-      "Thank you for accepting your Groutix quotation! Our scheduling team has been notified and will contact you shortly to arrange your booking.",
-      "ok"
+      "Thank you for accepting your Groutix quotation! Pick a day and time for your job below — or we'll call you shortly to arrange it.",
+      "ok",
+      { url: buildBookingUrl(id, "job"), label: "📅 Book my job day & time" }
     );
   }
 

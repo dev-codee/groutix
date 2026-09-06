@@ -3,6 +3,8 @@ import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered, pickAssignee } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
+import { buildBookingUrl } from "@/lib/bookingToken";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -370,9 +372,17 @@ export async function POST(req: NextRequest) {
     const CONTACT_PHONE =
       (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
+    const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
     const customerHtml = `
       <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
-      <p style="margin:0 0 16px;">We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.</p>
+      <p style="margin:0 0 16px;">We've received your enquiry. The first step is a <strong>FREE on-site inspection</strong> — book a day and time that suits you below and we'll come take a look, then send an accurate, no-obligation quote.</p>
+      ${
+        bookingUrl
+          ? `<table cellpadding="0" cellspacing="0" style="margin:8px 0 20px;"><tr><td>
+               <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book my FREE inspection</a>
+             </td></tr></table>`
+          : ""
+      }
       ${
         message
           ? `<div style="margin:24px 0;padding:16px;background:#f8fafc;border-left:4px solid #001f97;border-radius:4px;color:#475569;font-size:15px;">
@@ -396,6 +406,14 @@ export async function POST(req: NextRequest) {
       });
     } catch (err) {
       logSendError("customer confirmation", err);
+    }
+
+    // Acknowledge by SMS too (no-op until an SMS provider is configured).
+    if (phone) {
+      await sendSms({
+        to: phone,
+        body: `Hi ${firstName || "there"}, thanks for contacting Groutix! Book your FREE inspection here: ${bookingUrl || "we'll be in touch shortly"}`,
+      });
     }
   };
 

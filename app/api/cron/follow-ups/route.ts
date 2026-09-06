@@ -73,11 +73,25 @@ async function runSweep(req: NextRequest) {
 
   let sent = 0;
   let skipped = 0;
+  let closed = 0;
   for (const lead of candidates) {
     const stage = lead.followUpStage ?? 0;
     const due = lead.followUpNext ? new Date(lead.followUpNext).getTime() <= now : true;
-    if (!due || stage >= MAX_FOLLOWUPS) {
+    if (!due) {
       skipped++;
+      continue;
+    }
+
+    // All three nudges sent and the grace period lapsed with no response →
+    // close the lead as Lost (staff can always reopen it).
+    if (stage >= MAX_FOLLOWUPS) {
+      await updateSubmission(lead.id, { status: "Lost", followUpStage: 4 });
+      await appendActivity(lead.id, {
+        time: new Date().toISOString(),
+        actor: "system",
+        action: "Lead closed — no response after 3 follow-ups",
+      });
+      closed++;
       continue;
     }
 
@@ -101,20 +115,22 @@ async function runSweep(req: NextRequest) {
 
     const nowIso = new Date().toISOString();
     const isLast = nextStage >= MAX_FOLLOWUPS;
-    const updates: Record<string, unknown> = { followUpStage: nextStage };
-    if (!isLast) {
-      updates.followUpNext = new Date(now + FOLLOWUP_DAYS * 86400000).toISOString();
-    }
+    // Always schedule the next due time — even after the final nudge — so the
+    // next sweep can auto-close the lead if there's still no response.
+    const updates: Record<string, unknown> = {
+      followUpStage: nextStage,
+      followUpNext: new Date(now + FOLLOWUP_DAYS * 86400000).toISOString(),
+    };
     await updateSubmission(lead.id, updates);
     await appendActivity(lead.id, {
       time: nowIso,
       actor: "system",
-      action: isLast ? "Follow-up complete (no response)" : `Follow-up ${nextStage} sent`,
+      action: isLast ? `Follow-up ${nextStage} sent (final)` : `Follow-up ${nextStage} sent`,
     });
     sent++;
   }
 
-  return NextResponse.json({ ok: true, candidates: candidates.length, sent, skipped });
+  return NextResponse.json({ ok: true, candidates: candidates.length, sent, skipped, closed });
 }
 
 export async function GET(req: NextRequest) {

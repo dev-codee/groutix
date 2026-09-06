@@ -8,6 +8,7 @@ import {
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { buildQuoteResponseUrl } from "@/lib/quoteToken";
 
@@ -198,6 +199,14 @@ export async function POST(req: NextRequest) {
     action: "Quote emailed",
     detail: `${quoteNumber} to ${lead.email}`,
   });
+
+  // Also text the customer that their quote is ready (no-op until SMS is set up).
+  if (lead.phone) {
+    await sendSms({
+      to: lead.phone,
+      body: `Hi ${lead.name || "there"}, your Groutix quote ${quoteNumber} for AUD $${total.toFixed(2)} has been emailed. Reply YES to accept or call us to book. — Groutix`,
+    });
+  }
 
   return NextResponse.json({ ok: true, quoteNumber, total });
 }

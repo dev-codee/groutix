@@ -139,9 +139,17 @@ export interface SubmissionDoc {
   quoteDeclinedAt?: string; // ISO time the customer declined the quote online
   invoiceNumber?: string;
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
+  invoiceOpenedAt?: string; // ISO time the customer first opened the invoice email
   invoiceStatus?: string; // "Paid" | "Unpaid"
   followUpStage?: number; // 0 = none, 1..3 = follow-up sent, 4 = no response
   followUpNext?: string; // ISO time the next follow-up is due
+  // Scheduling — the booked date/time for the free inspection and the job. Set
+  // by staff today (and by the public booking flow in Phase E). Drive the 24h
+  // reminder cron; the *ReminderSent flags stop duplicate reminders.
+  inspectionAt?: string; // ISO datetime of the booked inspection
+  jobAt?: string; // ISO datetime of the booked job
+  inspectionReminderSent?: boolean;
+  jobReminderSent?: boolean;
   // Request metadata.
   ip?: string;
   userAgent?: string;
@@ -285,10 +293,21 @@ const CLOSED_STATUSES = ["Lost", "Payment Received", "Warranty Sent"];
  * "Unassigned" when no intake accounts exist yet.
  */
 export async function pickAssignee(): Promise<string> {
+  return pickAssigneeForRole("intake");
+}
+
+/**
+ * Pick the active staffer of a given role with the fewest open leads. Used for
+ * auto-handoff (e.g. reassign to Finance when a job is marked done). Falls back
+ * to "Unassigned" when no accounts of that role exist yet.
+ */
+export async function pickAssigneeForRole(
+  role: import("@/lib/roles").Role
+): Promise<string> {
   try {
-    const intake = await getActiveUsersByRole("intake");
-    if (intake.length === 0) return "Unassigned";
-    const names = intake.map((u) => u.name);
+    const staff = await getActiveUsersByRole(role);
+    if (staff.length === 0) return "Unassigned";
+    const names = staff.map((u) => u.name);
     const col = await collection();
     const rows = await col
       .aggregate<{ _id: string; count: number }>([
@@ -439,10 +458,30 @@ export async function exportSubmissions(params: ListParams): Promise<SubmissionJ
  */
 export async function listFollowUpCandidates(): Promise<SubmissionJSON[]> {
   const col = await collection();
+  // Include stage 3 (all nudges sent) so the sweep can auto-close it to Lost
+  // once the grace period lapses; stage 4 = already closed, so excluded.
   const docs = await col
     .find({
       status: "Quote Sent",
-      $or: [{ followUpStage: { $exists: false } }, { followUpStage: { $lt: 3 } }],
+      $or: [{ followUpStage: { $exists: false } }, { followUpStage: { $lt: 4 } }],
+    })
+    .toArray();
+  return docs.map(toJSON);
+}
+
+/**
+ * Leads with a booked inspection or job that hasn't had its 24h reminder sent
+ * yet. The cron decides which are actually within the reminder window.
+ */
+export async function listReminderCandidates(): Promise<SubmissionJSON[]> {
+  const col = await collection();
+  const docs = await col
+    .find({
+      status: { $nin: ["Lost", "Completed"] },
+      $or: [
+        { inspectionAt: { $gt: "" }, inspectionReminderSent: { $ne: true } },
+        { jobAt: { $gt: "" }, jobReminderSent: { $ne: true } },
+      ],
     })
     .toArray();
   return docs.map(toJSON);

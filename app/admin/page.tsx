@@ -156,6 +156,14 @@ export interface Lead {
   quoteDeclinedAt?: string;
   followUpStage?: number;
   followUpNext?: string;
+  invoiceNumber?: string;
+  invoiceSentAt?: string;
+  invoiceStatus?: string;
+  invoiceOpenedAt?: string;
+  inspectionAt?: string;
+  jobAt?: string;
+  inspectionReminderSent?: boolean;
+  jobReminderSent?: boolean;
 }
 
 export interface CrmTask {
@@ -181,6 +189,46 @@ type Stats = {
 // Ordered status list is sourced from the shared pipeline so the dashboard,
 // API, and role queues never drift apart.
 const STATUS_LIST: string[] = STATUS_KEYS;
+
+// ── On-site visit micro-stages (On the Way → Reached → In Progress → Done) ──
+// Both the inspection visit and the job visit share the same four-step shape;
+// each step maps to the concrete pipeline status it advances the lead to.
+type VisitStep = { label: string; status: string };
+const INSPECTION_STEPS: VisitStep[] = [
+  { label: "On the Way", status: "Inspection En Route" },
+  { label: "Reached", status: "Inspection Arrived" },
+  { label: "Start", status: "Inspection In Progress" },
+  { label: "Complete", status: "Inspection Completed" },
+];
+const JOB_STEPS: VisitStep[] = [
+  { label: "On the Way", status: "Job En Route" },
+  { label: "Reached", status: "Job Arrived" },
+  { label: "Start", status: "Job In Progress" },
+  { label: "Job Done", status: "Job Done" },
+];
+// Which phase a lead is in, so we know which step set (if any) to show.
+const INSPECTION_PHASE = [
+  "Inspection Booked",
+  "Inspection En Route",
+  "Inspection Arrived",
+  "Inspection In Progress",
+];
+const JOB_PHASE = [
+  "Won",
+  "Job Booked",
+  "Scheduled",
+  "Job Confirmed",
+  "Job En Route",
+  "Job Arrived",
+  "Job In Progress",
+];
+
+/** The visit steps to show for a lead's current status, or null if not on a visit. */
+function visitStepsFor(status: string): VisitStep[] | null {
+  if (INSPECTION_PHASE.includes(status)) return INSPECTION_STEPS;
+  if (JOB_PHASE.includes(status)) return JOB_STEPS;
+  return null;
+}
 
 // Accent styling for the per-stage dashboard cards, keyed by pipeline group so
 // each phase of the funnel (lead → quote → booking → job → finance → closed)
@@ -277,7 +325,16 @@ function getBadgeColor(status: string) {
     case "Job Done":
     case "Warranty Sent":
     case "Inspection Completed":
+    case "Completed":
       return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    // Live visit micro-stages — amber so an in-flight technician stands out.
+    case "Inspection En Route":
+    case "Inspection Arrived":
+    case "Inspection In Progress":
+    case "Job En Route":
+    case "Job Arrived":
+    case "Job In Progress":
+      return "bg-amber-50 text-amber-700 border-amber-200";
     // Closed / inactive — de-emphasised.
     case "Lost":
       return "bg-slate-100 text-slate-500 border-slate-200";
@@ -966,6 +1023,36 @@ export default function CrmDashboardPage() {
     if (!l.phone) return alert("No phone number saved.");
     const phone = l.phone.replace(/[^\d+]/g, "");
     window.location.href = `tel:${phone}`;
+  }
+
+  // Log a phone-call outcome against a lead (intake call follow-up). Refreshes
+  // the lead so the new activity entry + any status change show immediately.
+  async function logCall(leadId: string, outcome: string) {
+    try {
+      const res = await fetch(`/api/admin/lead/${leadId}/call`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Could not log the call.");
+        return;
+      }
+      await loadData({ silent: true });
+      // Reflect the new activity in the open modal without a full reopen.
+      setEditingLead((prev) => {
+        if (!prev || prev.id !== leadId) return prev;
+        const entry: ActivityEntry = {
+          time: new Date().toISOString(),
+          actor: username || "staff",
+          action: `Call — ${outcome}`,
+        };
+        return { ...prev, activity: [...(prev.activity || []), entry] };
+      });
+    } catch {
+      alert("Network error while logging the call.");
+    }
   }
 
   function emailCustomer(l: Lead) {
@@ -1676,7 +1763,6 @@ export default function CrmDashboardPage() {
     () => filteredLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
     [filteredLeads]
   );
-  const FINANCE_STATUSES = ["Job Done", "Payment Received", "Warranty Sent"];
   const jobLeads = useMemo(
     () =>
       filteredLeads.filter((l) =>
@@ -1859,7 +1945,7 @@ export default function CrmDashboardPage() {
                 }`}
               >
                 {role === "finance"
-                  ? scopedLeads.filter((l) => ["Job Done", "Payment Received", "Warranty Sent"].includes(l.status)).length
+                  ? scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length
                   : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
               </span>
             </button>
@@ -2936,6 +3022,14 @@ export default function CrmDashboardPage() {
                               {l.priority || "Medium"}
                             </span>
                             <QuoteResponseBadge lead={l} />
+                            {l.invoiceOpenedAt && (
+                              <span
+                                title={`Invoice opened • ${fmtDate(l.invoiceOpenedAt)}`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Invoice opened
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -2984,7 +3078,7 @@ export default function CrmDashboardPage() {
                                 ? FINANCE_STATUSES
                                 : role === "field"
                                 ? JOB_STATUSES
-                                : [...JOB_STATUSES, "Payment Received", "Warranty Sent"]
+                                : [...new Set([...JOB_STATUSES, ...FINANCE_STATUSES])]
                               ).map((s) => (
                                 <option key={s} value={s}>
                                   {s}
@@ -3010,6 +3104,45 @@ export default function CrmDashboardPage() {
                             </select>
                           </div>
                         </div>
+
+                        {/* On-site visit tracker: On the Way → Reached → Start →
+                            Complete. Each button advances the lead's status (and
+                            is auto-logged with a timestamp on the server). */}
+                        {(() => {
+                          const steps = visitStepsFor(l.status);
+                          if (!steps) return null;
+                          const currentIdx = steps.findIndex((s) => s.status === l.status);
+                          return (
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                                {INSPECTION_PHASE.includes(l.status) ? "Inspection visit" : "Job visit"}
+                              </label>
+                              <div className="grid grid-cols-4 gap-1">
+                                {steps.map((step, idx) => {
+                                  const done = currentIdx >= 0 && idx <= currentIdx;
+                                  const isNext = idx === currentIdx + 1;
+                                  return (
+                                    <button
+                                      key={step.status}
+                                      type="button"
+                                      onClick={() => updateLeadField(l.id, { status: step.status })}
+                                      className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                                        done
+                                          ? "bg-amber-500 text-white"
+                                          : isNext
+                                          ? "bg-[#001f97] text-white hover:bg-[#001777]"
+                                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                      }`}
+                                      title={`Set status: ${step.status}`}
+                                    >
+                                      {step.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Full Action Buttons Toolbar */}
@@ -3403,6 +3536,85 @@ export default function CrmDashboardPage() {
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
                   />
                 </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Inspection Date &amp; Time</label>
+                  <input
+                    type="datetime-local"
+                    value={editingLead?.inspectionAt ? editingLead.inspectionAt.slice(0, 16) : ""}
+                    onChange={(e) =>
+                      setEditingLead({
+                        ...editingLead,
+                        inspectionAt: e.target.value,
+                        // Any reschedule re-arms the 24h reminder.
+                        inspectionReminderSent: false,
+                      })
+                    }
+                    className="w-full p-2.5 border border-slate-200 rounded-xl"
+                  />
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <p className="text-[10px] text-slate-400">Triggers a 24-hour reminder to the customer.</p>
+                    {editingLead?.id && (
+                      <button
+                        type="button"
+                        className="text-[10px] font-semibold text-[#001f97] hover:text-[#001777] whitespace-nowrap"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/booking-link/${editingLead.id}`);
+                            const data = await res.json();
+                            if (data.inspectionUrl) {
+                              await navigator.clipboard.writeText(data.inspectionUrl);
+                              const btn = document.activeElement as HTMLButtonElement;
+                              const orig = btn.textContent;
+                              btn.textContent = "✓ Copied!";
+                              setTimeout(() => { btn.textContent = orig; }, 1500);
+                            }
+                          } catch { /* silently fail */ }
+                        }}
+                      >
+                        📋 Copy Inspection Booking Link
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Job Date &amp; Time</label>
+                  <input
+                    type="datetime-local"
+                    value={editingLead?.jobAt ? editingLead.jobAt.slice(0, 16) : ""}
+                    onChange={(e) =>
+                      setEditingLead({
+                        ...editingLead,
+                        jobAt: e.target.value,
+                        jobReminderSent: false,
+                      })
+                    }
+                    className="w-full p-2.5 border border-slate-200 rounded-xl"
+                  />
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <p className="text-[10px] text-slate-400">Triggers a 24-hour reminder to the customer.</p>
+                    {editingLead?.id && (
+                      <button
+                        type="button"
+                        className="text-[10px] font-semibold text-[#001f97] hover:text-[#001777] whitespace-nowrap"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/booking-link/${editingLead.id}`);
+                            const data = await res.json();
+                            if (data.jobUrl) {
+                              await navigator.clipboard.writeText(data.jobUrl);
+                              const btn = document.activeElement as HTMLButtonElement;
+                              const orig = btn.textContent;
+                              btn.textContent = "✓ Copied!";
+                              setTimeout(() => { btn.textContent = orig; }, 1500);
+                            }
+                          } catch { /* silently fail */ }
+                        }}
+                      >
+                        📋 Copy Job Booking Link
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -3415,6 +3627,32 @@ export default function CrmDashboardPage() {
                   placeholder="Enter details, observations or quote instructions..."
                 />
               </div>
+
+              {editingLead?.id && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Log a Call</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Call Attempted",
+                      "Connected",
+                      "No Answer",
+                      "Callback Requested",
+                      "Customer Interested",
+                      "Not Interested",
+                    ].map((outcome) => (
+                      <button
+                        key={outcome}
+                        type="button"
+                        onClick={() => logCall(editingLead.id!, outcome)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:border-[#001f97]/40 transition-colors"
+                      >
+                        <Phone className="w-3 h-3" />
+                        {outcome}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {editingLead?.activity && editingLead.activity.length > 0 && (
                 <div>

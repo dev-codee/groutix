@@ -5,11 +5,16 @@ import {
   getSubmission,
   updateSubmission,
   appendActivity,
+  pickAssigneeForRole,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { autoSendInvoice, autoSendWarranty } from "@/lib/automations";
+import { sendInternalAlert } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Email + PDF generation can run on some transitions (auto-invoice / warranty).
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -52,6 +57,54 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         action: "Status changed",
         detail: `${before.status} → ${body.status}`,
       });
+
+      // Automatic handoff between role queues. Only reassign when the caller
+      // didn't set an assignee themselves, so a manual override always wins.
+      if (typeof body.assigned !== "string") {
+        let handoffRole: "intake" | "finance" | null = null;
+        if (body.status === "Inspection Completed") handoffRole = "intake"; // back to intake to quote
+        else if (body.status === "Job Done") handoffRole = "finance"; // to finance to invoice
+        if (handoffRole) {
+          const assignee = await pickAssigneeForRole(handoffRole);
+          if (assignee && assignee !== "Unassigned" && assignee !== before.assigned) {
+            await updateSubmission(id, { assigned: assignee });
+            await appendActivity(id, {
+              time: now,
+              actor: "system",
+              action: handoffRole === "intake" ? "Handed to Intake for quoting" : "Handed to Finance for invoicing",
+              detail: assignee,
+            });
+          }
+        }
+      }
+
+      // ── Transition automations (auto-invoice / auto-warranty) ──
+      // Best-effort; each helper is internally guarded and idempotent.
+      if (body.status === "Job Done") {
+        await autoSendInvoice(id);
+        await sendInternalAlert({
+          title: "Job completed — invoice sent",
+          emoji: "🧾",
+          accent: "#001f97",
+          lines: [
+            `${before.name || "A customer"} — ${before.address || ""}`.trim(),
+            `The invoice has been auto-generated and emailed. Awaiting payment.`,
+          ],
+          leadId: id,
+        });
+      } else if (body.status === "Payment Received") {
+        await autoSendWarranty(id);
+        await sendInternalAlert({
+          title: "Payment received",
+          emoji: "💰",
+          accent: "#16a34a",
+          lines: [
+            `${before.name || "A customer"}${before.quoteAmount ? ` — AUD $${before.quoteAmount.toFixed(2)}` : ""}`,
+            `The 10-year warranty has been auto-generated and emailed. Job complete 🏆`,
+          ],
+          leadId: id,
+        });
+      }
     }
     if (typeof body.assigned === "string" && body.assigned !== before.assigned) {
       await appendActivity(id, {
