@@ -25,12 +25,14 @@ export const ROLE_LABELS: Record<Role, string> = {
 // sees everything. Keep these in sync with the pipeline ownership in
 // lib/pipeline.ts so a role's tabs always match the leads it can act on.
 export const ROLE_VIEWS: Record<Role, string[]> = {
-  // "team" is available to every role so any staff member can open the team
-  // directory and message colleagues; the manager-only actions inside it
-  // (open-as-dashboard, delete account) are gated separately in the UI.
-  intake: ["leads", "customers", "team"], // sales / intake + quoting from the lead row
-  field: ["jobs", "schedule", "customers", "team"], // scheduling + job execution
-  finance: ["jobs", "leads", "quotes", "customers", "team"], // completion, payment, warranty
+  // Non-manager roles are strictly confined to their own workspace:
+  // Login 1 (intake): Only Leads
+  intake: ["leads"],
+  // Login 2 (field): Only Jobs & Schedule
+  field: ["jobs", "schedule"],
+  // Login 3 (finance): Only Jobs (Invoicing & Warranty)
+  finance: ["jobs"],
+  // Only managers and super admins have access to all dashboards and Team directory
   manager: [
     "dashboard",
     "analytics",
