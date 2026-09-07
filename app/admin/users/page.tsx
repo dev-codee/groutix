@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { UserPlus, Trash2, ShieldCheck, RefreshCw, ExternalLink, ArrowLeft, Users, LogOut } from "lucide-react";
+import { UserPlus, Trash2, ShieldCheck, RefreshCw, ExternalLink, ArrowLeft, Users } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
@@ -21,22 +20,9 @@ export default function UsersPage() {
   const basePath = useAdminBasePath();
   const role = useAdminRole();
   const me = useAdminUsername();
-  const router = useRouter();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  async function logout() {
-    setLoggingOut(true);
-    try {
-      await fetch("/api/admin/logout", { method: "POST" });
-    } catch {
-      /* ignore */
-    }
-    router.replace(`${basePath}/login`);
-    router.refresh();
-  }
 
   // Create form
   const [username, setUsername] = useState("");
@@ -156,15 +142,6 @@ export default function UsersPage() {
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </button>
-          <button
-            onClick={logout}
-            disabled={loggingOut}
-            className="flex items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors disabled:opacity-50"
-            title="Sign out of your account"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            {loggingOut ? "Signing out…" : "Log Out"}
           </button>
         </div>
       </div>

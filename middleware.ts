@@ -52,16 +52,6 @@ export async function middleware(req: NextRequest) {
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }
-
-    // Gated sub-pages: only managers and super admins may access staff accounts or content
-    if (internalPath.startsWith("/admin/users") || internalPath.startsWith("/admin/content")) {
-      if (session.role !== "manager" && session.role !== "super_admin") {
-        const url = req.nextUrl.clone();
-        url.pathname = basePath;
-        url.search = "";
-        return NextResponse.redirect(url);
-      }
-    }
   }
 
   if (custom) {

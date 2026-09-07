@@ -129,9 +129,9 @@ export const JOB_STATUSES: string[] = FIELD_STATUSES;
 
 export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) => s.key);
 
-/** Statuses a role works day-to-day (managers and super admins see everything). */
+/** Statuses a role works day-to-day (managers see everything). */
 export function roleQueue(role: Role): string[] {
-  if (role === "manager" || role === "super_admin") return STATUS_KEYS;
+  if (role === "manager") return STATUS_KEYS;
   if (role === "intake") return INTAKE_STATUSES;
   if (role === "field") return FIELD_STATUSES;
   if (role === "finance") return FINANCE_STATUSES;
@@ -140,7 +140,7 @@ export function roleQueue(role: Role): string[] {
 
 /** Is this lead currently in the given role's queue? */
 export function inRoleQueue(role: Role, status: string): boolean {
-  if (role === "manager" || role === "super_admin") return true;
+  if (role === "manager") return true;
   if (role === "intake") {
     // Intake owns capture, the moment of booking the inspection, the quoting
     // stages after the inspection is completed, and Lost.
