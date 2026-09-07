@@ -3483,6 +3483,41 @@ export default function CrmDashboardPage() {
                           </div>
                         </div>
 
+                        {/* ── Login 2 (Field / Scheduling): Inspection Booked, Inspection Completed, Quote Pending, Job Booked ── */}
+                        {(role === "field" || role === "manager" || (!FINANCE_STATUSES.includes(l.status) && role !== "finance")) && (
+                          <div className="pt-1">
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                              Field Workflow Stages
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                              {[
+                                { label: "Inspection Booked", status: "Inspection Booked", color: "bg-blue-600 hover:bg-blue-700" },
+                                { label: "Inspection Completed", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
+                                { label: "Quote Pending", status: "Quote Pending", color: "bg-amber-600 hover:bg-amber-700" },
+                                { label: "Job Booked", status: "Job Booked", color: "bg-emerald-600 hover:bg-emerald-700" },
+                              ].map((st) => {
+                                const isCurrent = l.status === st.status;
+                                return (
+                                  <button
+                                    key={st.status}
+                                    type="button"
+                                    onClick={() => updateLeadField(l.id, { status: st.status })}
+                                    className={`px-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                      isCurrent
+                                        ? `${st.color} text-white shadow-xs`
+                                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                                    }`}
+                                    title={`Set status: ${st.label}`}
+                                  >
+                                    {isCurrent && <Check className="w-3 h-3 stroke-[2.5]" />}
+                                    <span className="truncate">{st.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {/* On-site visit tracker: On the Way → Reached → Start →
                             Complete. Each button advances the lead's status (and
                             is auto-logged with a timestamp on the server). */}
@@ -3491,9 +3526,9 @@ export default function CrmDashboardPage() {
                           if (!steps) return null;
                           const currentIdx = steps.findIndex((s) => s.status === l.status);
                           return (
-                            <div>
+                            <div className="pt-0.5">
                               <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                                {INSPECTION_PHASE.includes(l.status) ? "Inspection visit" : "Job visit"}
+                                {INSPECTION_PHASE.includes(l.status) ? "Inspection live visit" : "Job live visit"}
                               </label>
                               <div className="grid grid-cols-4 gap-1">
                                 {steps.map((step, idx) => {
@@ -3504,7 +3539,7 @@ export default function CrmDashboardPage() {
                                       key={step.status}
                                       type="button"
                                       onClick={() => updateLeadField(l.id, { status: step.status })}
-                                      className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                                      className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
                                         done
                                           ? "bg-amber-500 text-white"
                                           : isNext
@@ -3521,6 +3556,46 @@ export default function CrmDashboardPage() {
                             </div>
                           );
                         })()}
+
+                        {/* ── Login 3 (Finance / Completion): Job Done, Payment Pending, Payment Received, Warranty Sent ── */}
+                        {(role === "finance" || role === "manager" || FINANCE_STATUSES.includes(l.status)) && (
+                          <div className="pt-1">
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                              Finance &amp; Completion Stages
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                              {[
+                                { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
+                                { label: "Payment Pending", status: "Payment Pending", color: "bg-amber-600 hover:bg-amber-700" },
+                                { label: "Payment Received", status: "Payment Received", color: "bg-emerald-600 hover:bg-emerald-700" },
+                                { label: "Warranty Sent", status: "Warranty Sent", color: "bg-[#001f97] hover:bg-[#001777]" },
+                              ].map((st) => {
+                                const isCurrent = l.status === st.status;
+                                return (
+                                  <button
+                                    key={st.status}
+                                    type="button"
+                                    onClick={() => {
+                                      updateLeadField(l.id, { status: st.status });
+                                      if (st.status === "Warranty Sent") {
+                                        openWarrantyModal(l);
+                                      }
+                                    }}
+                                    className={`px-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                      isCurrent
+                                        ? `${st.color} text-white shadow-xs`
+                                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                                    }`}
+                                    title={`Set status: ${st.label}`}
+                                  >
+                                    {isCurrent && <Check className="w-3 h-3 stroke-[2.5]" />}
+                                    <span className="truncate">{st.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Full Action Buttons Toolbar */}

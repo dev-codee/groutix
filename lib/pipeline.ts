@@ -48,6 +48,7 @@ export const STAGES: Stage[] = [
   // ── Finance / completion (Login 3) ── job done hands off here
   { key: "Job Done", label: "Job Done", owner: "finance", group: "finance" },
   { key: "Invoice Sent", label: "Invoice Sent", owner: "finance", group: "finance" },
+  { key: "Payment Pending", label: "Payment Pending", owner: "finance", group: "finance" },
   { key: "Payment Received", label: "Payment Received", owner: "finance", group: "finance" },
   { key: "Warranty Sent", label: "Warranty Sent", owner: "finance", group: "finance" },
   // Everything done — invoiced, paid, warrantied.
@@ -101,6 +102,7 @@ export const FIELD_STATUSES: string[] = [
   "Inspection Arrived",
   "Inspection In Progress",
   "Inspection Completed",
+  "Quote Pending",
   "Won",
   "Job Booked",
   "Scheduled",
@@ -115,6 +117,7 @@ export const FIELD_STATUSES: string[] = [
 export const FINANCE_STATUSES: string[] = [
   "Job Done",
   "Invoice Sent",
+  "Payment Pending",
   "Payment Received",
   "Warranty Sent",
   "Completed",

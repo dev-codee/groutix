@@ -30,7 +30,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   // (open-as-dashboard, delete account) are gated separately in the UI.
   intake: ["leads", "customers", "team"], // sales / intake + quoting from the lead row
   field: ["jobs", "schedule", "customers", "team"], // scheduling + job execution
-  finance: ["jobs", "quotes", "customers", "team"], // completion, payment, warranty
+  finance: ["jobs", "leads", "quotes", "customers", "team"], // completion, payment, warranty
   manager: [
     "dashboard",
     "analytics",
