@@ -58,14 +58,20 @@ function esc(v: string) {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-async function buildMaps(area: AreaInfo) {
+async function buildMaps(area: AreaInfo, currentLeadId?: string) {
   const bookings = await listUpcomingBookings();
   const bookedByDate = new Map<string, Set<string>>();
   const sameZoneDates = new Set<string>();
   for (const b of bookings) {
+    // If the booking belongs to this customer, don't block their own slot for them
+    if (b.leadId && b.leadId === currentLeadId) {
+      continue;
+    }
     if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
     bookedByDate.get(b.date)!.add(b.time);
-    if (b.zone === area.zone) sameZoneDates.add(b.date);
+    if (b.zone === area.zone || (area.inner && b.date)) {
+      sameZoneDates.add(b.date);
+    }
   }
   return { bookedByDate, sameZoneDates };
 }
@@ -89,7 +95,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const area = resolveArea(lead.address || lead.city);
-  const { bookedByDate, sameZoneDates } = await buildMaps(area);
+  const { bookedByDate, sameZoneDates } = await buildMaps(area, id);
   const days = computeAvailability(area, bookedByDate, sameZoneDates);
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
 
@@ -117,7 +123,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "This booking link is invalid or has expired." }, { status: 403 });
   }
   const date = (body.date || "").trim();
-  const time = (body.time || "").trim();
+  const time = (body.time || "").trim().slice(0, 5).padStart(5, "0");
   if (!date || !time) return NextResponse.json({ error: "Pick a day and time." }, { status: 400 });
 
   const lead = await getSubmission(id);

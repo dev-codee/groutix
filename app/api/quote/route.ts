@@ -5,6 +5,7 @@ import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
+import { resolveArea, getAvailableDaysSummary } from "@/lib/scheduling";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -74,12 +75,12 @@ function row(label: string, value: string) {
   return `
     <tr>
       <td style="padding:8px 12px;background:#f8fafc;font-weight:600;color:#0f172a;border:1px solid #e2e8f0;white-space:nowrap;vertical-align:top;">${esc(
-        label
-      )}</td>
+    label
+  )}</td>
       <td style="padding:8px 12px;color:#334155;border:1px solid #e2e8f0;">${esc(value).replace(
-        /\n/g,
-        "<br/>"
-      )}</td>
+    /\n/g,
+    "<br/>"
+  )}</td>
     </tr>`;
 }
 
@@ -272,8 +273,7 @@ export async function POST(req: NextRequest) {
       (t, i) =>
         row(
           `Tenant ${i + 1}`,
-          `${t.name || "-"}${t.phone ? ` &bull; Phone: ${t.phone}` : ""}${
-            t.email ? ` &bull; Email: ${t.email}` : ""
+          `${t.name || "-"}${t.phone ? ` &bull; Phone: ${t.phone}` : ""}${t.email ? ` &bull; Email: ${t.email}` : ""
           }`
         )
     )
@@ -288,8 +288,7 @@ export async function POST(req: NextRequest) {
   const internalHtml = `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
     <h2 style="margin:0 0 4px;">New Quote Request</h2>
-    <p style="margin:0 0 16px;color:#64748b;">Submitted via the Groutix website${
-      sourcePage ? ` (${esc(sourcePage)})` : ""
+    <p style="margin:0 0 16px;color:#64748b;">Submitted via the Groutix website${sourcePage ? ` (${esc(sourcePage)})` : ""
     }</p>
     <table style="border-collapse:collapse;width:100%;font-size:14px;">
       ${row("Customer / Client", customerType)}
@@ -372,27 +371,52 @@ export async function POST(req: NextRequest) {
     const CONTACT_PHONE =
       (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
+    const area = resolveArea(address || city);
+    const daysSummary = getAvailableDaysSummary(area);
     const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
     const customerHtml = `
-      <h2 style="margin:0 0 12px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
-      <p style="margin:0 0 16px;">We've received your enquiry. The first step is a <strong>FREE on-site inspection</strong> — book a day and time that suits you below and we'll come take a look, then send an accurate, no-obligation quote.</p>
-      ${
-        bookingUrl
-          ? `<table cellpadding="0" cellspacing="0" style="margin:8px 0 20px;"><tr><td>
-               <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book my FREE inspection</a>
-             </td></tr></table>`
-          : ""
-      }
+      <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
+        We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
+        If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+      </p>
+
+      <div style="margin:24px 0;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+        <h3 style="margin:0 0 8px;color:#001f97;font-size:17px;font-weight:700;">Book your free Inspection;</h3>
+        <p style="margin:0 0 14px;font-size:14px;color:#334155;">
+          <strong>Available Days:</strong> ${esc(daysSummary)}
+        </p>
+        ${
+          bookingUrl
+            ? `<table cellpadding="0" cellspacing="0" style="margin:12px 0 14px;">
+                 <tr>
+                   <td>
+                     <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;text-align:center;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
+                       📅 BOOK YOUR FREE INSPECTION CLICK HERE
+                     </a>
+                   </td>
+                 </tr>
+               </table>
+               <div style="font-size:12px;color:#64748b;font-weight:700;letter-spacing:0.5px;">
+                 AVAILABLE DAYS WITH TIME (09:00 AM &ndash; 03:00 PM)
+               </div>`
+            : ""
+        }
+      </div>
+
       ${
         message
-          ? `<div style="margin:24px 0;padding:16px;background:#f8fafc;border-left:4px solid #001f97;border-radius:4px;color:#475569;font-size:15px;">
-               <strong style="color:#0f172a;display:block;margin-bottom:8px;">Your message:</strong>
+          ? `<div style="margin:20px 0;padding:16px;background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid #001f97;border-radius:6px;color:#475569;font-size:14px;">
+               <strong style="color:#0f172a;display:block;margin-bottom:6px;">Your message:</strong>
                ${esc(message).replace(/\n/g, "<br/>")}
              </div>`
           : ""
       }
-      <p style="margin:0 0 16px;">
-        If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:600;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+
+      <p style="margin:28px 0 0;font-size:16px;font-weight:700;color:#001f97;">
+        Stay Sealed. Stay Smiling.
       </p>`;
 
     try {
@@ -412,7 +436,7 @@ export async function POST(req: NextRequest) {
     if (phone) {
       await sendSms({
         to: phone,
-        body: `Hi ${firstName || "there"}, thanks for contacting Groutix! Book your FREE inspection here: ${bookingUrl || "we'll be in touch shortly"}`,
+        body: `Thanks, ${firstName || "there"}! We've received your quote request. Book your free inspection here: ${bookingUrl || "we'll contact you"}. Available: ${daysSummary}. Urgent? Call ${CONTACT_PHONE}. Stay Sealed. Stay Smiling.`,
       });
     }
   };

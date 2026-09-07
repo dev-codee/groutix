@@ -10,6 +10,8 @@ import {
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { autoSendInvoice, autoSendWarranty } from "@/lib/automations";
 import { sendInternalAlert } from "@/lib/email";
+import { createBooking, deleteBooking } from "@/lib/bookings";
+import { resolveArea } from "@/lib/scheduling";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,6 +119,47 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (typeof body.contacted === "string" && body.contacted && body.contacted !== before.contacted) {
       await appendActivity(id, { time: now, actor, action: "Marked contacted" });
     }
+
+    // ── Keep bookings collection in lockstep with manual staff changes ──
+    if (body.status === "Lost" || body.status === "Cancelled") {
+      await deleteBooking(id);
+    } else {
+      const area = resolveArea(before.address || before.city);
+      if (typeof body.inspectionAt === "string" && body.inspectionAt !== before.inspectionAt) {
+        if (body.inspectionAt.includes("T")) {
+          const [d, tRaw] = body.inspectionAt.split("T");
+          const t = tRaw.slice(0, 5).padStart(5, "0");
+          await createBooking({
+            leadId: id,
+            type: "inspection",
+            date: d,
+            time: t,
+            zone: area.zone,
+            suburb: area.suburb || undefined,
+            reference: `GX-ADM-${id.slice(-6)}`,
+          });
+        } else if (!body.inspectionAt) {
+          await deleteBooking(id, "inspection");
+        }
+      }
+      if (typeof body.jobAt === "string" && body.jobAt !== before.jobAt) {
+        if (body.jobAt.includes("T")) {
+          const [d, tRaw] = body.jobAt.split("T");
+          const t = tRaw.slice(0, 5).padStart(5, "0");
+          await createBooking({
+            leadId: id,
+            type: "job",
+            date: d,
+            time: t,
+            zone: area.zone,
+            suburb: area.suburb || undefined,
+            reference: `GX-ADM-${id.slice(-6)}`,
+          });
+        } else if (!body.jobAt) {
+          await deleteBooking(id, "job");
+        }
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });
@@ -129,5 +172,6 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const ok = await deleteSubmission(id);
   if (!ok) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  await deleteBooking(id);
   return NextResponse.json({ ok: true });
 }
