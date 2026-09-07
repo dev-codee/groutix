@@ -88,6 +88,7 @@ export const INTAKE_STATUSES: string[] = [
   "Quote Sent",
   "Negotiation",
   "Won",
+  "Job Booked",
   "Lost",
 ];
 

@@ -3040,6 +3040,44 @@ export default function CrmDashboardPage() {
                             </select>
                           </div>
 
+                          {/* ── Login 1 (Intake / Leads): New, Contacted, Inspections, Quotes, Job Booked ── */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Intake Workflow
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-5 gap-1">
+                              {[
+                                { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
+                                { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
+                                { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
+                                { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
+                                { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
+                              ].map((st) => (
+                                <button
+                                  key={st.label}
+                                  type="button"
+                                  onClick={() =>
+                                    updateLeadField(l.id, {
+                                      status: st.status,
+                                      ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
+                                    })
+                                  }
+                                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                                    st.active
+                                      ? `${st.color} text-white shadow-2xs`
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                                  }`}
+                                  title={`Set status: ${st.label}`}
+                                >
+                                  {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
+                                  <span className="truncate">{st.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
                           {/* Follow-up card */}
                           <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
                             <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
@@ -3482,6 +3520,44 @@ export default function CrmDashboardPage() {
                             </select>
                           </div>
                         </div>
+
+                        {/* ── Login 1 (Intake / Leads): New, Contacted, Inspections, Quotes, Job Booked ── */}
+                        {(role === "intake" || role === "manager") && (
+                          <div className="pt-1">
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                              Intake Workflow Stages
+                            </label>
+                            <div className="grid grid-cols-5 gap-1">
+                              {[
+                                { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
+                                { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
+                                { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
+                                { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
+                                { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
+                              ].map((st) => (
+                                <button
+                                  key={st.label}
+                                  type="button"
+                                  onClick={() =>
+                                    updateLeadField(l.id, {
+                                      status: st.status,
+                                      ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
+                                    })
+                                  }
+                                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                                    st.active
+                                      ? `${st.color} text-white shadow-2xs`
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                                  }`}
+                                  title={`Set status: ${st.label}`}
+                                >
+                                  {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
+                                  <span className="truncate">{st.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* ── Login 2 (Field / Scheduling): Inspection Booked, Inspection Completed, Quote Pending, Job Booked ── */}
                         {(role === "field" || role === "manager" || (!FINANCE_STATUSES.includes(l.status) && role !== "finance")) && (
