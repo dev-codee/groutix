@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { UserPlus, Trash2, ShieldCheck, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { UserPlus, Trash2, ShieldCheck, RefreshCw, ExternalLink, ArrowLeft, Users } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
+import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
 
 type UserRow = {
@@ -16,6 +17,7 @@ type UserRow = {
 };
 
 export default function UsersPage() {
+  const basePath = useAdminBasePath();
   const role = useAdminRole();
   const me = useAdminUsername();
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -113,21 +115,35 @@ export default function UsersPage() {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-black text-slate-900">
             <ShieldCheck className="h-5 w-5 text-[#001f97]" /> Staff Accounts
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Create the four role logins. Each staffer sees only the parts of the CRM their role owns.
+            Manage staff logins and roles. Use &ldquo;Open Dashboard&rdquo; to preview any staff member&rsquo;s view.
           </p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
-        >
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={basePath}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to CRM
+          </Link>
+          <Link
+            href={`${basePath}?view=team`}
+            className="flex items-center gap-1.5 rounded-lg border border-[#001f97]/30 bg-[#001f97]/5 px-3 py-1.5 text-xs font-bold text-[#001f97] hover:bg-[#001f97]/10 transition-colors"
+          >
+            <Users className="h-3.5 w-3.5" /> Team Directory &amp; Chat
+          </Link>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Create form */}
@@ -254,17 +270,29 @@ export default function UsersPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2">
+                      <Link
+                        href={
+                          u.role === "manager" || u.role === "super_admin"
+                            ? `${basePath}?view=dashboard`
+                            : `${basePath}?viewAsRole=${u.role}&viewAsName=${encodeURIComponent(u.name || u.username)}`
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#001f97] px-2.5 py-1 text-xs font-bold text-white hover:bg-[#001777] transition-colors shadow-xs"
+                        title={`Open & preview ${u.name || u.username}'s dashboard`}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open Dashboard
+                      </Link>
                       <button
                         onClick={() => resetPassword(u)}
-                        className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                        className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 transition-colors"
                       >
                         Reset password
                       </button>
                       <button
                         onClick={() => removeUser(u)}
                         disabled={u.username === me}
-                        className="rounded-md border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+                        className="rounded-md border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-40 transition-colors"
                         title={u.username === me ? "You can't delete your own account" : "Delete"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

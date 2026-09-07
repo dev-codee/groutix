@@ -688,7 +688,7 @@ export default function CrmDashboardPage() {
   // view override only: API calls still carry the manager's own session (which
   // has full access), so it never escalates privileges — it just narrows the UI
   // to what the chosen role sees. Non-managers can't set this.
-  const isManager = realRole === "manager";
+  const isManager = realRole === "manager" || realRole === "super_admin";
   const [viewAs, setViewAs] = useState<{ role: Role; name: string } | null>(null);
   const role: Role = viewAs ? viewAs.role : realRole;
 
@@ -712,6 +712,26 @@ export default function CrmDashboardPage() {
       setCurrentView(ROLE_DEFAULT_VIEW[role] as DashboardView);
     }
   }, [role, currentView]);
+
+  // Deep linking: support ?viewAsRole=field&viewAsName=John or ?view=team from Staff Accounts
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const vRole = params.get("viewAsRole");
+    const vName = params.get("viewAsName");
+    const vView = params.get("view");
+    if (vRole && isRole(vRole)) {
+      if (vRole === "manager" || vRole === "super_admin") {
+        setViewAs(null);
+        setCurrentView("dashboard");
+      } else {
+        setViewAs({ role: vRole, name: vName ? decodeURIComponent(vName) : (ROLE_LABELS[vRole] || vRole) });
+        setCurrentView((ROLE_DEFAULT_VIEW[vRole] as DashboardView) || "leads");
+      }
+    } else if (vView && roleCanView(realRole, vView)) {
+      setCurrentView(vView as DashboardView);
+    }
+  }, [realRole]);
 
   // Current page for the long list views. One shared page is fine because only
   // one view renders at a time; it resets whenever the view or filters change so
@@ -1058,10 +1078,10 @@ export default function CrmDashboardPage() {
   }
 
   // ── Manager "Open Dashboard" (view-as) ──────────────────────────────────────
-  // Preview a staff member's dashboard without logging out. Managers only.
+  // Preview a staff member's dashboard without logging out. Managers and super admins.
   function openAsRole(member: { role: string; name: string }) {
     if (!isManager || !isRole(member.role)) return;
-    if (member.role === "manager") {
+    if (member.role === "manager" || member.role === "super_admin") {
       // The manager's own dashboard — just drop the override.
       returnToManager();
       return;
@@ -1075,6 +1095,9 @@ export default function CrmDashboardPage() {
     setViewAs(null);
     setCurrentView("dashboard");
     setPage(1);
+    if (typeof window !== "undefined" && window.location.search) {
+      router.replace(basePath);
+    }
   }
 
   // ── Team chat ───────────────────────────────────────────────────────────────
