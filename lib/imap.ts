@@ -2,7 +2,7 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { getDb } from "@/lib/mongodb";
 import { updateSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
-import { sendReplyNotification } from "@/lib/email";
+import { sendReplyNotification, getNotifyRecipients } from "@/lib/email";
 
 const user = process.env.SMTP_USER || "";
 const pass = process.env.SMTP_PASS || "";
@@ -74,6 +74,21 @@ export async function syncUnreadEmails() {
               const fromEmail = parsed.from?.value[0]?.address?.toLowerCase();
               
               if (fromEmail) {
+                // Ignore any emails sent by staff / Groutix company addresses (outgoing messages, alerts, etc.)
+                const staffEmails = new Set(
+                  [
+                    user.toLowerCase(),
+                    (process.env.SMTP_FROM || "").toLowerCase(),
+                    ...getNotifyRecipients().map((e) => e.toLowerCase()),
+                  ].filter(Boolean)
+                );
+
+                if (staffEmails.has(fromEmail)) {
+                  console.log("[IMAP] Skipping staff/outgoing email from:", fromEmail);
+                  await client.messageFlagsAdd(seq, ["\\Seen"]);
+                  continue;
+                }
+
                 step = "db_lookup_" + seq;
                 // Find if this email matches any active lead in the CRM
                 const db = await getDb();
@@ -86,6 +101,12 @@ export async function syncUnreadEmails() {
                 }, { sort: { createdAt: -1 } });
 
                 if (lead) {
+                  // Prevent duplicate processing if already recorded
+                  if (parsed.messageId && lead.messages?.some((m) => m.id === parsed.messageId)) {
+                    await client.messageFlagsAdd(seq, ["\\Seen"]);
+                    continue;
+                  }
+
                   step = "db_update_" + seq;
                   // Append the message
                   const crmMessage: CustomerMessage = {
