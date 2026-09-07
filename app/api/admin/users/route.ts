@@ -5,22 +5,21 @@ import type { Role } from "@/lib/roles";
 
 export const runtime = "nodejs";
 
-// Middleware already restricts /api/admin/users to super_admin; we re-check here so
-// the guarantee doesn't depend solely on the edge layer.
-async function requireSuperAdmin(req: NextRequest) {
+// Restricts /api/admin/users to manager and super_admin
+async function requireManagerOrSuperAdmin(req: NextRequest) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  return session?.role === "super_admin" ? session : null;
+  return session?.role === "super_admin" || session?.role === "manager" ? session : null;
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await requireSuperAdmin(req)))
+  if (!(await requireManagerOrSuperAdmin(req)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const users = await listUsers();
   return NextResponse.json({ users });
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await requireSuperAdmin(req)))
+  if (!(await requireManagerOrSuperAdmin(req)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   let body: { username?: string; name?: string; password?: string; role?: Role };

@@ -2249,7 +2249,7 @@ export default function CrmDashboardPage() {
             </button>
             )}
 
-            {role === "manager" && (
+            {(role === "manager" || role === "super_admin") && (
             <div className="pt-3 mt-3 border-t border-[#e4e9f1] flex flex-col gap-1.5">
               <Link
                 href={`${basePath}/users`}

@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 async function requireManager(req: NextRequest) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  return session?.role === "manager" ? session : null;
+  return session?.role === "manager" || session?.role === "super_admin" ? session : null;
 }
 
 export async function PATCH(

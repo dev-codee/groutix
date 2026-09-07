@@ -71,7 +71,7 @@ export const ROLE_PAGES: Record<Role, string[]> = {
   intake: [],
   field: [],
   finance: [],
-  manager: ["content"],
+  manager: ["content", "users"],
   super_admin: ["content", "users"],
 };
 
@@ -90,12 +90,7 @@ const MANAGER_ONLY_API = [
 ];
 
 export function canAccessApi(role: Role, pathname: string): boolean {
-  if (role === "super_admin") return true;
-  if (role === "manager") {
-    // manager cannot access users (that's for super_admin only)
-    if (pathname.startsWith("/api/admin/users")) return false;
-    return true;
-  }
+  if (role === "super_admin" || role === "manager") return true;
   return !MANAGER_ONLY_API.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );

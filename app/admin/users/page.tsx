@@ -101,11 +101,11 @@ export default function UsersPage() {
     else alert("Delete failed.");
   }
 
-  if (role !== "super_admin") {
+  if (role !== "super_admin" && role !== "manager") {
     return (
       <AdminShell>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-800">
-          Only super admins can manage staff accounts.
+          Only managers and super admins can manage staff accounts.
         </div>
       </AdminShell>
     );
