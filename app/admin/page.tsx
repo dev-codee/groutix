@@ -38,7 +38,11 @@ import {
   ZoomIn,
   Image as ImageIcon,
   Sparkles,
-  CalendarDays
+  CalendarDays,
+  Check,
+  ChevronRight,
+  Clock,
+  ArrowRight
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -293,6 +297,89 @@ function fmtDateOnly(iso?: string) {
     month: "short",
     year: "numeric"
   });
+}
+
+function fmtDateBadge(iso?: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const day = d.getDate();
+  const month = d.toLocaleString("en-AU", { month: "short" }).toUpperCase();
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+function fmtTimeBadge(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-AU", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  }).toUpperCase();
+}
+
+function getLeadQuoteTotal(l: Lead): number {
+  const items = Array.isArray(l.quoteItems) ? l.quoteItems : [];
+  const sub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
+  return l.quoteAmount || (l.quoteTaxMode === "exclusive" ? sub * (1 + (l.quoteTaxRate || 10) / 100) : sub);
+}
+
+function getFollowupPrompt(lead: Lead): string {
+  const hasUnread = lead.messages?.some((m) => m.from === "customer" && m.read === false);
+  if (hasUnread) return "Customer replied! Answer enquiry";
+  if (["Job Done", "Invoice Sent", "Payment Pending", "Payment Request"].includes(lead.status)) {
+    return "Track outstanding payment";
+  }
+  if (["Payment Received", "Warranty Sent", "Completed"].includes(lead.status)) {
+    return "Job complete — 10-year warranty active";
+  }
+  if (lead.status === "Contacted") {
+    return "Customer replied? Schedule inspection";
+  }
+  if (lead.status === "Inspection Booked" || lead.status === "Inspection Scheduled") {
+    return lead.inspectionAt ? `Inspection booked: ${fmtDate(lead.inspectionAt)}` : "Inspection booked — Prepare assessment";
+  }
+  if (lead.status === "Quote Sent") {
+    return "Follow up on quotation offer";
+  }
+  if (lead.status === "New") {
+    return "New enquiry — Contact customer";
+  }
+  return "Review lead status & workflow";
+}
+
+function getWhatsAppLink(phone?: string): string {
+  if (!phone) return "#";
+  const clean = phone.replace(/[^0-9+]/g, "");
+  if (!clean) return "#";
+  const num = clean.startsWith("+")
+    ? clean.replace("+", "")
+    : clean.startsWith("0")
+    ? "61" + clean.slice(1)
+    : clean;
+  return `https://wa.me/${num}`;
+}
+
+function getStepActive(lead: Lead, step: string): boolean {
+  const s = lead.status;
+  switch (step) {
+    case "Job Done":
+      return ["Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+    case "Invoice Sent":
+      return Boolean(lead.invoiceSentAt) || ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+    case "Payment Request":
+      return ["Payment Request", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+    case "Payment Pending":
+      return ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+    case "Payment Received":
+      return ["Payment Received", "Warranty Sent", "Completed"].includes(s);
+    case "Warranty":
+      return Boolean(lead.warranty?.sentAt) || ["Warranty Sent", "Completed"].includes(s);
+    default:
+      return false;
+  }
 }
 
 function calcResponseTime(received?: string, contacted?: string) {
@@ -2725,19 +2812,30 @@ export default function CrmDashboardPage() {
           )}
 
           {/* =========================================================================
-              VIEW: LEADS (Full Table View)
+              VIEW: LEADS (Modern 4-Column Card Layout)
              ========================================================================= */}
           {currentView === "leads" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              {/* Filter Toolbar */}
+              {/* Filter Toolbar matching screenshot */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3 flex-wrap flex-1">
+                  <div className="relative flex-1 min-w-[280px]">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search name, phone, email, service..."
+                      value={globalSearch}
+                      onChange={(e) => setGlobalSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                    />
+                  </div>
+
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden"
+                    className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
                   >
-                    <option value="">All Statuses ({leads.length})</option>
+                    <option value="">All statuses ({leads.length})</option>
                     {STATUS_LIST.map((s) => (
                       <option key={s} value={s}>
                         {s} ({counts[s] || 0})
@@ -2745,11 +2843,9 @@ export default function CrmDashboardPage() {
                     ))}
                   </select>
 
-
-
                   <button
                     onClick={() => setOnlyUnread((v) => !v)}
-                    className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border font-semibold transition-colors ${
+                    className={`flex items-center gap-1.5 text-xs px-3.5 py-2.5 rounded-xl border font-semibold transition-colors ${
                       onlyUnread
                         ? "bg-[#001f97] text-white border-[#001f97]"
                         : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -2789,56 +2885,152 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                      <th className="py-3 px-3">Customer</th>
-                      <th className="py-3 px-3">Received</th>
-                      <th className="py-3 px-3">Contacted</th>
-                      <th className="py-3 px-3">Response Time</th>
-                      <th className="py-3 px-3">Service / Scope</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3">Assigned</th>
-                      <th className="py-3 px-3 text-right sticky right-0 bg-white">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
-                      <tr key={l.id} className="group hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-3">
-                          <div className="font-bold text-slate-900">{l.name || "Unnamed"}</div>
-                          <div className="text-[11px] text-slate-400">{l.phone || "No phone"}</div>
-                          {l.email && <div className="text-[11px] text-slate-400">{l.email}</div>}
-                          {l.address && <div className="text-[10px] text-slate-400 italic">{l.address}</div>}
-                        </td>
-                        <td className="py-3.5 px-3 text-slate-600">{fmtDate(l.received || l.createdAt)}</td>
-                        <td className="py-3.5 px-3">
-                          {l.contacted ? (
-                            <span className="text-slate-700 font-medium">{fmtDate(l.contacted)}</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-500 font-semibold">
-                              Not yet
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-3 font-bold text-slate-700">
-                          {calcResponseTime(l.received || l.createdAt, l.contacted)}
-                        </td>
-                        <td className="py-3.5 px-3 max-w-[220px]">
-                          <div className="line-clamp-2 text-slate-800 font-medium" title={l.service}>
-                            {l.service || "General Service"}
+              {/* Table / Card Header Bar */}
+              <div className="hidden xl:grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl">
+                <div>CLIENT</div>
+                <div>SERVICE &amp; PHOTOS</div>
+                <div>FOLLOW-UP &amp; CONVERSATION</div>
+                <div>FINANCE &amp; COMPLETION</div>
+              </div>
+
+              {/* Leads List */}
+              <div className="divide-y divide-slate-200/80">
+                {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
+                  const total = getLeadQuoteTotal(l);
+                  const photosTotal = l.photos?.length || l.photosCount || 0;
+                  const followupPrompt = getFollowupPrompt(l);
+                  const waUrl = getWhatsAppLink(l.phone);
+                  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+                  const hasReplied = l.messages?.some((m) => m.from === "customer");
+
+                  return (
+                    <div
+                      key={l.id}
+                      className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+                        {/* COLUMN 1: CLIENT */}
+                        <div className="space-y-2">
+                          <div className="font-bold text-slate-900 text-sm">
+                            {l.name || "Unnamed Customer"}
                           </div>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <div className="flex flex-col items-start gap-1">
+
+                          <div className="space-y-1 text-xs text-slate-600">
+                            {l.email ? (
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="truncate" title={l.email}>{l.email}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-slate-400">
+                                <Mail className="w-3.5 h-3.5 shrink-0" />
+                                <span>No email</span>
+                              </div>
+                            )}
+
+                            {l.phone ? (
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span>{l.phone}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-slate-400">
+                                <Phone className="w-3.5 h-3.5 shrink-0" />
+                                <span>No phone</span>
+                              </div>
+                            )}
+
+                            {l.address && (
+                              <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
+                                {l.address}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2">
+                            <button
+                              onClick={() => {
+                                setEditingLead(l);
+                                setLeadModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dbeafe] hover:bg-blue-200 text-[#1d4ed8] text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
+                            >
+                              <span>Open Client / Workflow</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* COLUMN 2: SERVICE & PHOTOS */}
+                        <div className="space-y-2.5">
+                          <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
+                            {l.service || "Standard Work"}
+                          </div>
+
+                          <div>
+                            <div className="inline-flex flex-wrap items-center gap-2 px-2.5 py-1 bg-[#e8f0fe] text-[#1e40af] text-[11px] font-bold rounded-md">
+                              <span>RECEIVED</span>
+                              <span className="flex items-center gap-1">
+                                📅 {fmtDateBadge(l.received || l.createdAt)}
+                              </span>
+                              {(l.received || l.createdAt) && (
+                                <span className="flex items-center gap-1">
+                                  🕒 {fmtTimeBadge(l.received || l.createdAt)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-0.5">
+                            {/* Photos / Camera Button */}
+                            <button
+                              onClick={() => openPhotosModal(l)}
+                              className="w-full px-3 py-2 bg-[#f1f5f9] hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-between border border-slate-200/80 transition-colors cursor-pointer"
+                              title="View & upload job / inspection photos"
+                            >
+                              <span className="flex items-center gap-2 text-slate-800">
+                                <Camera className="w-3.5 h-3.5 text-slate-600" />
+                                <span>Photos / Camera</span>
+                              </span>
+                              <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-[#001f97] text-[11px] font-black flex items-center justify-center">
+                                {photosTotal}
+                              </span>
+                            </button>
+
+                            {/* Quote Button */}
+                            <button
+                              onClick={() => openQuoteModal(l)}
+                              className="w-full px-3 py-2 bg-[#f1f5f9] hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-between border border-slate-200/80 transition-colors cursor-pointer"
+                              title="Open quote builder"
+                            >
+                              <span className="flex items-center gap-2 text-slate-800">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Quote</span>
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-semibold">
+                                Finalize &amp; Share
+                              </span>
+                            </button>
+                          </div>
+
+                          <div className="text-[10px] text-slate-400 italic">
+                            Service is taken from the Quote Form.
+                          </div>
+                        </div>
+
+                        {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
+                        <div className="space-y-2.5">
+                          {/* Auto status header & dropdown */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">AUTO STATUS</span>
+                            </div>
+
                             <select
                               value={l.status}
                               onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                              className={`text-[11px] font-bold px-2 py-1 rounded-lg border focus:outline-hidden ${getBadgeColor(
-                                l.status
-                              )}`}
+                              className="text-xs font-bold text-slate-700 bg-transparent border-0 text-right focus:outline-none cursor-pointer hover:text-[#001f97]"
                             >
                               {getRoleStatusOptions(role, l.status).map((s) => (
                                 <option key={s} value={s}>
@@ -2846,116 +3038,162 @@ export default function CrmDashboardPage() {
                                 </option>
                               ))}
                             </select>
-                            <QuoteResponseBadge lead={l} />
                           </div>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <select
-                            value={l.assigned || "Unassigned"}
-                            onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
-                            className="text-xs bg-transparent border-0 font-medium text-slate-700 focus:outline-hidden"
-                          >
-                            {rowAssigneeOptions(l.assigned).map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-3.5 px-3 text-right sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">
-                          <div className="flex items-center justify-end gap-1 flex-nowrap">
+
+                          {/* Follow-up card */}
+                          <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
+                            <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
+                              FOLLOW-UP
+                            </div>
+                            <div className="text-xs font-semibold text-slate-800 mt-0.5">
+                              {followupPrompt}
+                            </div>
+                          </div>
+
+                          {/* 4 Quick Action Buttons */}
+                          <div className="grid grid-cols-4 gap-1.5">
                             <button
                               onClick={() => callCustomer(l)}
-                              className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs"
-                              title="Call Phone"
+                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                              title="Call customer phone"
                             >
-                              <Phone className="w-3.5 h-3.5" />
+                              <Phone className="w-3 h-3 shrink-0" />
+                              <span>Call</span>
                             </button>
+
                             <button
                               onClick={() => emailCustomer(l)}
-                              className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs"
-                              title="Email Customer"
+                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                              title="Send email"
                             >
-                              <Mail className="w-3.5 h-3.5" />
+                              <Mail className="w-3 h-3 shrink-0" />
+                              <span>Email</span>
                             </button>
-                            <button
-                              onClick={() => openQuoteModal(l)}
-                              className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-xs font-bold"
-                              title="Open Quote Builder"
-                            >
-                              Quote
-                            </button>
-                            <button
-                              onClick={() => openPhotosModal(l)}
-                              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
-                              title="Photos"
-                            >
-                              <Camera className="w-3.5 h-3.5" />
-                            </button>
+
                             <button
                               onClick={() => openMessagesModal(l)}
-                              className="relative p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
-                              title="Messages"
+                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                              title="Send SMS"
                             >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              {l.messages?.some(m => m.from === "customer" && m.read === false) && (
-                                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-                              )}
+                              <span>SMS</span>
                             </button>
-                            <button
-                              onClick={() => openGpsModal(l)}
-                              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
-                              title="GPS"
+
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
+                              title="Open WhatsApp chat"
                             >
-                              <Navigation className="w-3.5 h-3.5" />
-                            </button>
-                            {l.status === "Payment Received" && (
-                              <button
-                                onClick={() => openWarrantyModal(l)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
-                                title="10-Year Warranty Card"
-                              >
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => openInvoiceModal(l)}
-                              className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg"
-                              title="Auto Invoice"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingLead(l);
-                                setLeadModalOpen(true);
-                              }}
-                              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
-                              title="Edit Lead"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLead(l.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-                              title="Delete Lead"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              <span>WhatsApp</span>
+                            </a>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredLeads.length === 0 && (
-                      <tr>
-                        <td colSpan={9} className="py-16 text-center text-slate-400">
-                          No leads matching the current filters.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+
+                          {/* Customer replied / conversation button */}
+                          <button
+                            onClick={() => openMessagesModal(l)}
+                            className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
+                            title="Open messaging conversation"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>
+                              {hasCustomerUnread
+                                ? "Customer replied!"
+                                : hasReplied
+                                ? "Customer replied"
+                                : "Conversation"}
+                            </span>
+                            {hasCustomerUnread && (
+                              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* COLUMN 4: FINANCE & COMPLETION */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between pb-1">
+                            <div className="font-black text-slate-900 text-sm">
+                              AUD ${total.toFixed(2)}
+                            </div>
+
+                            {/* Utility icons: GPS, Edit, Delete */}
+                            <div className="flex items-center gap-1 text-slate-400">
+                              <button
+                                onClick={() => openGpsModal(l)}
+                                title="GPS Navigation"
+                                className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Navigation className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingLead(l);
+                                  setLeadModalOpen(true);
+                                }}
+                                title="Edit Lead"
+                                className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLead(l.id)}
+                                title="Delete Lead"
+                                className="p-1 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 6 Step Checklist */}
+                          <div className="space-y-1.5">
+                            {[
+                              { label: "Job Done", step: "Job Done" },
+                              { label: "Invoice Sent", step: "Invoice Sent" },
+                              { label: "Payment Request", step: "Payment Request" },
+                              { label: "Payment Pending", step: "Payment Pending" },
+                              { label: "Payment Received", step: "Payment Received" },
+                              { label: "Warranty", step: "Warranty" }
+                            ].map(({ label, step }) => {
+                              const isActive = getStepActive(l, step);
+                              return (
+                                <button
+                                  key={step}
+                                  onClick={() => {
+                                    if (step === "Invoice Sent") openInvoiceModal(l);
+                                    else if (step === "Warranty") openWarrantyModal(l);
+                                    else updateLeadField(l.id, { status: step });
+                                  }}
+                                  className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between border transition-all cursor-pointer ${
+                                    isActive
+                                      ? "bg-[#ccfbf1]/80 text-[#0f766e] border-teal-200/80 shadow-2xs"
+                                      : "bg-[#f8fafc] text-slate-600 border-slate-200/70 hover:bg-slate-100 hover:border-slate-300"
+                                  }`}
+                                  title={`Click to manage ${label}`}
+                                >
+                                  <span>{label}</span>
+                                  {isActive ? (
+                                    <Check className="w-3.5 h-3.5 text-[#0f766e] stroke-[2.5]" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredLeads.length === 0 && (
+                  <div className="py-16 text-center text-slate-400">
+                    No leads matching the current filters.
+                  </div>
+                )}
               </div>
+
               <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
             </div>
           )}
