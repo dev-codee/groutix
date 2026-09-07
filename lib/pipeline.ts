@@ -131,7 +131,7 @@ export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) 
 
 /** Statuses a role works day-to-day (managers see everything). */
 export function roleQueue(role: Role): string[] {
-  if (role === "manager") return STATUS_KEYS;
+  if (role === "manager" || role === "super_admin") return STATUS_KEYS;
   if (role === "intake") return INTAKE_STATUSES;
   if (role === "field") return FIELD_STATUSES;
   if (role === "finance") return FINANCE_STATUSES;
@@ -140,10 +140,9 @@ export function roleQueue(role: Role): string[] {
 
 /** Is this lead currently in the given role's queue? */
 export function inRoleQueue(role: Role, status: string): boolean {
-  if (role === "manager") return true;
+  if (role === "manager" || role === "super_admin") return true;
   if (role === "intake") {
-    // Intake owns capture, the moment of booking the inspection, the quoting
-    // stages after the inspection is completed, and Lost.
+    // Intake owns capture, booking the inspection, quoting after inspection, and Won/Job Booked
     return [
       "New",
       "Contacted",
@@ -153,6 +152,8 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Quote Pending",
       "Quote Sent",
       "Negotiation",
+      "Won",
+      "Job Booked",
       "Lost",
     ].includes(status);
   }
@@ -164,6 +165,8 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Inspection En Route",
       "Inspection Arrived",
       "Inspection In Progress",
+      "Inspection Completed",
+      "Quote Pending",
       "Won",
       "Job Booked",
       "Scheduled",
@@ -171,6 +174,7 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Job En Route",
       "Job Arrived",
       "Job In Progress",
+      "Job Done",
     ].includes(status);
   }
   if (role === "finance") {

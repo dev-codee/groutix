@@ -2838,7 +2838,87 @@ export default function CrmDashboardPage() {
               VIEW: LEADS (Modern 4-Column Card Layout)
              ========================================================================= */}
           {currentView === "leads" && (
-            <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
+            <div className="space-y-6">
+              {/* Pipeline by Stage (for Leads view / Login 1) */}
+              <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-slate-900">Pipeline by Stage</h2>
+                    {statusFilter && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#001f97]/10 text-[#001f97]">
+                        Filtered: {statusFilter}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {statusFilter && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter("");
+                          setPage(1);
+                        }}
+                        className="text-[11px] font-bold text-[#001f97] hover:underline cursor-pointer"
+                      >
+                        Clear Filter
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">Click any stage to filter the leads table</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {(role === "intake"
+                    ? STAGES.filter((s) =>
+                        [
+                          "New",
+                          "Contacted",
+                          "Waiting for Info",
+                          "Inspection Booked",
+                          "Inspection Completed",
+                          "Quote Pending",
+                          "Quote Sent",
+                          "Negotiation",
+                          "Won",
+                          "Job Booked",
+                          "Lost",
+                        ].includes(s.key)
+                      )
+                    : STAGES
+                  ).map((stage) => {
+                    const accent = STAGE_GROUP_ACCENT[stage.group] || { dot: "bg-blue-500", value: "text-[#001f97]" };
+                    const value = counts[stage.key] || 0;
+                    const active = statusFilter === stage.key;
+                    return (
+                      <button
+                        key={stage.key}
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(active ? "" : stage.key);
+                          setPage(1);
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
+                          active
+                            ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
+                            : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
+                        }`}
+                        title={`Show ${stage.label} leads`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                          <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
+                            {stage.label}
+                          </span>
+                        </div>
+                        <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                          {value}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
               {/* Filter Toolbar matching screenshot */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3 flex-wrap flex-1">
@@ -3257,6 +3337,7 @@ export default function CrmDashboardPage() {
 
               <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
             </div>
+          </div>
           )}
 
           {/* =========================================================================
@@ -3332,13 +3413,100 @@ export default function CrmDashboardPage() {
               VIEW: JOBS / BOOKINGS
              ========================================================================= */}
           {currentView === "jobs" && (
-            <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <div className="space-y-3 pb-3 border-b border-slate-100">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+            <div className="space-y-6">
+              {/* Pipeline by Stage (for Jobs & Finance view / Login 2 & 3) */}
+              <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <h2 className="text-base font-black text-slate-900">
-                      {role === "finance" ? "Finance & Job Completion" : "Bookings &amp; Jobs"}
+                      {role === "finance" ? "Finance Pipeline by Stage" : "Jobs Pipeline by Stage"}
                     </h2>
+                    {statusFilter && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#001f97]/10 text-[#001f97]">
+                        Filtered: {statusFilter}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {statusFilter && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter("");
+                          setPage(1);
+                        }}
+                        className="text-[11px] font-bold text-[#001f97] hover:underline cursor-pointer"
+                      >
+                        Clear Filter
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">Click any stage to filter jobs</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {(role === "finance"
+                    ? STAGES.filter((s) => FINANCE_STATUSES.includes(s.key))
+                    : role === "field"
+                    ? STAGES.filter((s) =>
+                        [
+                          "Inspection Booked",
+                          "Inspection En Route",
+                          "Inspection Arrived",
+                          "Inspection In Progress",
+                          "Inspection Completed",
+                          "Quote Pending",
+                          "Won",
+                          "Job Booked",
+                          "Scheduled",
+                          "Job Confirmed",
+                          "Job En Route",
+                          "Job Arrived",
+                          "Job In Progress",
+                          "Job Done",
+                        ].includes(s.key)
+                      )
+                    : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key))
+                  ).map((stage) => {
+                    const accent = STAGE_GROUP_ACCENT[stage.group] || { dot: "bg-cyan-500", value: "text-cyan-600" };
+                    const value = counts[stage.key] || 0;
+                    const active = statusFilter === stage.key;
+                    return (
+                      <button
+                        key={stage.key}
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(active ? "" : stage.key);
+                          setPage(1);
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
+                          active
+                            ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
+                            : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
+                        }`}
+                        title={`Filter by ${stage.label}`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                          <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
+                            {stage.label}
+                          </span>
+                        </div>
+                        <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                          {value}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
+                <div className="space-y-3 pb-3 border-b border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-black text-slate-900">
+                        {role === "finance" ? "Finance & Job Completion" : "Bookings &amp; Jobs"}
+                      </h2>
                     <div className="text-xs text-slate-500">
                       {role === "finance"
                         ? `Showing ${jobLeads.length} completed jobs for invoicing, payment & warranty`
@@ -3822,6 +3990,7 @@ export default function CrmDashboardPage() {
               </div>
               <Pagination page={page} pageSize={PAGE_SIZE} total={jobLeads.length} onPage={setPage} />
             </div>
+          </div>
           )}
 
           {/* =========================================================================
