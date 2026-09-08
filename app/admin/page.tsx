@@ -3252,7 +3252,7 @@ export default function CrmDashboardPage() {
                                 Intake Workflow
                               </span>
                             </div>
-                            <div className="grid grid-cols-5 gap-1">
+                            <div className="grid grid-cols-2 gap-1.5">
                               {[
                                 { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
                                 { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
@@ -3269,7 +3269,7 @@ export default function CrmDashboardPage() {
                                       ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
                                     })
                                   }
-                                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
                                     st.active
                                       ? `${st.color} text-white shadow-2xs`
                                       : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
@@ -3277,7 +3277,7 @@ export default function CrmDashboardPage() {
                                   title={`Set status: ${st.label}`}
                                 >
                                   {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                                  <span className="truncate">{st.label}</span>
+                                  <span className="text-center leading-tight">{st.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -3578,6 +3578,32 @@ export default function CrmDashboardPage() {
                         ? single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"])
                         : role === "field"
                         ? single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"])
+                        : role === "manager"
+                        ? [
+                            { label: "New leads", group: "lead", statuses: ["New"] },
+                            { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                            {
+                              label: "Inspection",
+                              group: "booking",
+                              statuses: [
+                                "Inspection Booked",
+                                "Inspection En Route",
+                                "Inspection Arrived",
+                                "Inspection In Progress",
+                                "Inspection Completed",
+                              ],
+                            },
+                            { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                            {
+                              label: "Job Booked",
+                              group: "job",
+                              statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
+                            },
+                            { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+                            { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
+                            { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
+                            { label: "Achievements", group: "closed", statuses: ["Completed"] },
+                          ]
                         : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
                             label: s.label,
                             group: s.group,
@@ -3791,7 +3817,7 @@ export default function CrmDashboardPage() {
                             <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
                               Intake Workflow Stages
                             </label>
-                            <div className="grid grid-cols-5 gap-1">
+                            <div className="grid grid-cols-2 gap-1.5">
                               {[
                                 { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
                                 { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
@@ -3808,7 +3834,7 @@ export default function CrmDashboardPage() {
                                       ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
                                     })
                                   }
-                                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer ${
+                                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
                                     st.active
                                       ? `${st.color} text-white shadow-2xs`
                                       : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
@@ -3816,7 +3842,7 @@ export default function CrmDashboardPage() {
                                   title={`Set status: ${st.label}`}
                                 >
                                   {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                                  <span className="truncate">{st.label}</span>
+                                  <span className="text-center leading-tight">{st.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -3830,7 +3856,7 @@ export default function CrmDashboardPage() {
                             <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
                               Field Workflow Stages
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                            <div className="grid grid-cols-2 gap-1.5">
                               {[
                                 { label: "Inspection Booked", status: "Inspection Booked", color: "bg-blue-600 hover:bg-blue-700" },
                                 { label: "Inspection Completed", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
@@ -3844,7 +3870,7 @@ export default function CrmDashboardPage() {
                                     key={st.status}
                                     type="button"
                                     onClick={() => updateLeadField(l.id, { status: st.status })}
-                                    className={`px-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                    className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
                                       isCurrent
                                         ? `${st.color} text-white shadow-xs`
                                         : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
@@ -3852,7 +3878,7 @@ export default function CrmDashboardPage() {
                                     title={`Set status: ${st.label}`}
                                   >
                                     {isCurrent && <Check className="w-3 h-3 stroke-[2.5]" />}
-                                    <span className="truncate">{st.label}</span>
+                                    <span className="text-center leading-tight">{st.label}</span>
                                   </button>
                                 );
                               })}
@@ -3994,7 +4020,7 @@ export default function CrmDashboardPage() {
                             <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
                               Finance &amp; Completion Stages
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            <div className="grid grid-cols-2 gap-1.5">
                               {[
                                 { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
                                 { label: "Payment Pending", status: "Payment Pending", color: "bg-amber-600 hover:bg-amber-700" },
@@ -4012,7 +4038,7 @@ export default function CrmDashboardPage() {
                                         openWarrantyModal(l);
                                       }
                                     }}
-                                    className={`px-1.5 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                    className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
                                       isCurrent
                                         ? `${st.color} text-white shadow-xs`
                                         : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
@@ -4020,7 +4046,7 @@ export default function CrmDashboardPage() {
                                     title={`Set status: ${st.label}`}
                                   >
                                     {isCurrent && <Check className="w-3 h-3 stroke-[2.5]" />}
-                                    <span className="truncate">{st.label}</span>
+                                    <span className="text-center leading-tight">{st.label}</span>
                                   </button>
                                 );
                               })}

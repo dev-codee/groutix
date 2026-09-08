@@ -27,7 +27,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const ROLE_VIEWS: Record<Role, string[]> = {
   // All three non-manager operational roles share the exact same UI layout:
   // primary board ("jobs"), schedule, customer directory, and team directory.
-  intake: ["jobs", "schedule", "customers", "team"],
+  intake: ["jobs", "customers", "team"],
   field: ["jobs", "schedule", "customers", "team"],
   finance: ["jobs", "schedule", "customers", "team"],
   manager: [
