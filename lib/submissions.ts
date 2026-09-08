@@ -121,6 +121,12 @@ export interface SubmissionDoc {
   source?: string;
   issue?: string;
   assigned?: string;
+  // Field technician (from the technicians roster) dispatched to physically do
+  // the inspection/job. Separate from `assigned`, which is the CRM staffer who
+  // owns the lead. `technician` is the display name; `technicianId` links to the
+  // technicians collection so we can notify them by email.
+  technician?: string;
+  technicianId?: string;
   priority?: string;
   received?: string;
   contacted?: string;

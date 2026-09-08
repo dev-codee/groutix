@@ -9,9 +9,10 @@ import {
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { autoSendInvoice } from "@/lib/automations";
-import { sendInternalAlert } from "@/lib/email";
+import { sendInternalAlert, sendEmail, wrapEmailHtml, isEmailConfigured } from "@/lib/email";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
+import { getTechnician } from "@/lib/technicians";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,45 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
+
+/**
+ * Email a newly dispatched field technician the job details. Best-effort:
+ * silently no-ops if email isn't configured or the technician can't be found.
+ */
+async function notifyTechnicianAssigned(
+  technicianId: string,
+  lead: Awaited<ReturnType<typeof getSubmission>>
+): Promise<void> {
+  if (!isEmailConfigured() || !lead) return;
+  const tech = await getTechnician(technicianId);
+  if (!tech || !tech.email) return;
+
+  const when = lead.jobAt || lead.inspectionAt;
+  const whenLabel = lead.jobAt ? "Job" : lead.inspectionAt ? "Inspection" : "";
+  const rows: string[] = [];
+  if (lead.name) rows.push(`<p><b>Customer:</b> ${lead.name}</p>`);
+  if (lead.address) rows.push(`<p><b>Address:</b> ${lead.address}</p>`);
+  if (lead.phone) rows.push(`<p><b>Phone:</b> ${lead.phone}</p>`);
+  if (lead.service) rows.push(`<p><b>Service:</b> ${lead.service}</p>`);
+  if (when) {
+    const dt = new Date(when);
+    rows.push(
+      `<p><b>${whenLabel} time:</b> ${Number.isNaN(dt.getTime()) ? when : dt.toLocaleString("en-AU")}</p>`
+    );
+  }
+
+  await sendEmail({
+    toEmail: tech.email,
+    subject: `New Groutix assignment${lead.address ? ` — ${lead.address}` : ""}`,
+    html: wrapEmailHtml(
+      `<h2 style="margin:0 0 12px">You've been assigned a job</h2>
+       <p>Hi ${tech.name}, you've been dispatched to the following:</p>
+       ${rows.join("\n")}
+       <p style="margin-top:16px;color:#64748b">Please review the details and be on site on time.</p>`,
+      "You've been assigned a new Groutix job"
+    ),
+  });
+}
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   if (!isMongoConfigured()) {
@@ -115,6 +155,22 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         action: "Reassigned",
         detail: body.assigned,
       });
+    }
+
+    // Field-technician dispatch: log it, and email the technician the job
+    // details so they know where to go. Best-effort — never blocks the save.
+    if (typeof body.technician === "string" && body.technician !== (before.technician || "")) {
+      await appendActivity(id, {
+        time: now,
+        actor,
+        action: body.technician ? "Technician assigned" : "Technician unassigned",
+        detail: body.technician || undefined,
+      });
+      if (body.technician && typeof body.technicianId === "string" && body.technicianId) {
+        await notifyTechnicianAssigned(body.technicianId, before).catch((err) =>
+          console.error("notifyTechnicianAssigned failed (non-fatal):", err)
+        );
+      }
     }
     if (typeof body.contacted === "string" && body.contacted && body.contacted !== before.contacted) {
       await appendActivity(id, { time: now, actor, action: "Marked contacted" });
