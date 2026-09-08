@@ -62,7 +62,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
   useEffect(() => {
     if (!isOpen) return;
 
-    const existing = lead.inspectionReport || {};
+    const existing: Partial<InspectionReportDoc> = lead.inspectionReport || {};
     const defaultDate = lead.inspectionAt
       ? lead.inspectionAt.slice(0, 10)
       : new Date().toISOString().slice(0, 10);

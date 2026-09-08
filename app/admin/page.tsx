@@ -5759,7 +5759,7 @@ export default function CrmDashboardPage() {
             setActiveInspectionLead(null);
           }}
           lead={activeInspectionLead}
-          currentUsername={adminUsername || undefined}
+          currentUsername={username || undefined}
           onSave={async (report, markCompleted) => {
             const updates: Partial<Lead> = {
               inspectionReport: report,
