@@ -41,6 +41,7 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  ChevronDown,
   Clock,
   ArrowRight,
   ClipboardList
@@ -772,6 +773,8 @@ export default function CrmDashboardPage() {
   const [globalSearch, setGlobalSearch] = useState("");
   const [syncingEmails, setSyncingEmails] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
+  // Finance cards: which leads have their "Previous Details" panel expanded.
+  const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
   const [priorityFilter, setPriorityFilter] = useState("");
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -3693,22 +3696,33 @@ export default function CrmDashboardPage() {
                 {/* Quick Status Filter Dropdown */}
                 <div className="flex items-center gap-1.5 pb-1 text-xs">
                   {(() => {
-                    const statusList = getRoleStatusOptions(role);
+                    // Full role status set drives the "All Active" count; the dropdown
+                    // itself lists only the curated stages that match the dashboard
+                    // buttons (the micro-stages stay out of the filter to reduce noise).
+                    const boardStatuses = getRoleStatusOptions(role);
+                    const filterOptions =
+                      role === "field"
+                        ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
+                        : role === "finance"
+                        ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
+                        : role === "intake"
+                        ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
+                        : boardStatuses;
                     const allLabel =
                       role === "finance"
                         ? "All Finance Jobs"
                         : role === "intake"
                         ? "All Leads"
                         : "All Active";
-                    const totalActive = scopedLeads.filter((l) => statusList.includes(l.status)).length;
+                    const totalActive = scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
                     return (
                       <select
-                        value={statusList.includes(statusFilter) ? statusFilter : ""}
+                        value={filterOptions.includes(statusFilter) ? statusFilter : ""}
                         onChange={(e) => setStatusFilter(e.target.value)}
                         className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
                       >
                         <option value="">{allLabel} ({totalActive})</option>
-                        {statusList.map((st) => {
+                        {filterOptions.map((st) => {
                           const count = scopedLeads.filter((l) => l.status === st).length;
                           return (
                             <option key={st} value={st}>
@@ -4013,27 +4027,38 @@ export default function CrmDashboardPage() {
                             ["Quote", quoteRows],
                           ];
                           const hasAny = sections.some(([, rows]) => rows.length > 0);
+                          const isOpen = !!openDetails[l.id];
                           return (
                             <div className="pt-1">
-                              <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                                Previous Details — Lead → Quote
-                              </label>
-                              <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2.5">
-                                {!hasAny && <div className="text-slate-400 italic">No earlier details recorded.</div>}
-                                {sections.map(([title, rows]) =>
-                                  rows.length === 0 ? null : (
-                                    <div key={title} className="space-y-1">
-                                      <div className="text-[9px] font-black uppercase tracking-wider text-[#001f97]/70">{title}</div>
-                                      {rows.map(([k, v]) => (
-                                        <div key={k} className="flex items-start justify-between gap-2">
-                                          <span className="text-slate-400 shrink-0">{k}:</span>
-                                          <span className="font-semibold text-slate-700 text-right break-words max-w-[190px]">{v}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )
-                                )}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setOpenDetails((prev) => ({ ...prev, [l.id]: !prev[l.id] }))}
+                                className="w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <ClipboardList className="w-4 h-4" />
+                                  <span>Previous Details — Lead → Quote</span>
+                                </span>
+                                <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                              </button>
+                              {isOpen && (
+                                <div className="mt-1.5 text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2.5">
+                                  {!hasAny && <div className="text-slate-400 italic">No earlier details recorded.</div>}
+                                  {sections.map(([title, rows]) =>
+                                    rows.length === 0 ? null : (
+                                      <div key={title} className="space-y-1">
+                                        <div className="text-[9px] font-black uppercase tracking-wider text-[#001f97]/70">{title}</div>
+                                        {rows.map(([k, v]) => (
+                                          <div key={k} className="flex items-start justify-between gap-2">
+                                            <span className="text-slate-400 shrink-0">{k}:</span>
+                                            <span className="font-semibold text-slate-700 text-right break-words max-w-[190px]">{v}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
