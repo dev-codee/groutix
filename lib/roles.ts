@@ -25,12 +25,11 @@ export const ROLE_LABELS: Record<Role, string> = {
 // sees everything. Keep these in sync with the pipeline ownership in
 // lib/pipeline.ts so a role's tabs always match the leads it can act on.
 export const ROLE_VIEWS: Record<Role, string[]> = {
-  // "team" is available to every role so any staff member can open the team
-  // directory and message colleagues; the manager-only actions inside it
-  // (open-as-dashboard, delete account) are gated separately in the UI.
-  intake: ["leads", "customers", "team"], // sales / intake + quoting from the lead row
-  field: ["jobs", "schedule", "customers", "team"], // scheduling + job execution
-  finance: ["jobs", "leads", "quotes", "customers", "team"], // completion, payment, warranty
+  // All three non-manager operational roles share the exact same UI layout:
+  // primary board ("jobs"), schedule, customer directory, and team directory.
+  intake: ["jobs", "schedule", "customers", "team"],
+  field: ["jobs", "schedule", "customers", "team"],
+  finance: ["jobs", "schedule", "customers", "team"],
   manager: [
     "dashboard",
     "analytics",
@@ -55,7 +54,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
 
 /** The tab a role should land on when it opens the dashboard. */
 export const ROLE_DEFAULT_VIEW: Record<Role, string> = {
-  intake: "leads",
+  intake: "jobs",
   field: "jobs",
   finance: "jobs",
   manager: "dashboard",

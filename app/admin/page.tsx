@@ -2046,7 +2046,11 @@ export default function CrmDashboardPage() {
   const jobLeads = useMemo(
     () =>
       filteredLeads.filter((l) =>
-        role === "finance" ? FINANCE_STATUSES.includes(l.status) : JOB_STATUSES.includes(l.status)
+        role === "finance"
+          ? FINANCE_STATUSES.includes(l.status)
+          : role === "intake"
+          ? INTAKE_STATUSES.includes(l.status)
+          : JOB_STATUSES.includes(l.status)
       ),
     [filteredLeads, role]
   );
@@ -2217,7 +2221,11 @@ export default function CrmDashboardPage() {
             >
               <span className="flex items-center gap-2.5">
                 <Briefcase className="w-4 h-4" />
-                {role === "finance" ? "Invoicing & Warranty" : "Jobs / Bookings"}
+                {role === "finance"
+                  ? "Finance & Jobs"
+                  : role === "intake"
+                  ? "Leads & Bookings"
+                  : "Bookings & Jobs"}
               </span>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full ${
@@ -2226,6 +2234,8 @@ export default function CrmDashboardPage() {
               >
                 {role === "finance"
                   ? scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length
+                  : role === "intake"
+                  ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
                   : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
               </span>
             </button>
@@ -3553,97 +3563,79 @@ export default function CrmDashboardPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-base font-black text-slate-900">
-                        {role === "finance" ? "Finance & Job Completion" : "Bookings &amp; Jobs"}
+                        {role === "finance"
+                          ? "Finance & Job Completion"
+                          : role === "intake"
+                          ? "Leads & Bookings"
+                          : "Bookings & Jobs"}
                       </h2>
-                    <div className="text-xs text-slate-500">
-                      {role === "finance"
-                        ? `Showing ${jobLeads.length} completed jobs for invoicing, payment & warranty`
-                        : `Showing ${jobLeads.length} bookings & jobs from Inspection Booked to Job Done`}
+                      <div className="text-xs text-slate-500">
+                        {role === "finance"
+                          ? `Showing ${jobLeads.length} completed jobs for invoicing, payment & warranty`
+                          : role === "intake"
+                          ? `Showing ${jobLeads.length} active leads from New to Job Booked`
+                          : `Showing ${jobLeads.length} bookings & jobs from Inspection Booked to Job Done`}
+                      </div>
                     </div>
                   </div>
-                </div>
 
                 {/* Quick Status Filter Pills */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-                  {role === "finance" ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setStatusFilter("")}
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs shrink-0 ${
-                          !statusFilter
-                            ? "bg-[#001f97] text-white shadow-xs"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        All Finance Jobs ({scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length})
-                      </button>
-                      {FINANCE_STATUSES.map((st) => {
-                        const active = statusFilter === st;
-                        const count = scopedLeads.filter((l) => l.status === st).length;
-                        return (
-                          <button
-                            key={st}
-                            type="button"
-                            onClick={() => setStatusFilter(active ? "" : st)}
-                            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs flex items-center gap-1.5 shrink-0 ${
-                              active
-                                ? "bg-[#001f97] text-white shadow-xs"
-                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                            }`}
-                          >
-                            <span>{st}</span>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                                active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                  {(() => {
+                    const statusList =
+                      role === "finance"
+                        ? FINANCE_STATUSES
+                        : role === "intake"
+                        ? INTAKE_STATUSES
+                        : JOB_STATUSES;
+                    const allLabel =
+                      role === "finance"
+                        ? "All Finance Jobs"
+                        : role === "intake"
+                        ? "All Leads"
+                        : "All Active";
+                    const totalActive = scopedLeads.filter((l) => statusList.includes(l.status)).length;
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setStatusFilter("")}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs shrink-0 cursor-pointer ${
+                            !statusFilter
+                              ? "bg-[#001f97] text-white shadow-xs"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {allLabel} ({totalActive})
+                        </button>
+                        {statusList.map((st) => {
+                          const active = statusFilter === st;
+                          const count = scopedLeads.filter((l) => l.status === st).length;
+                          return (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={() => setStatusFilter(active ? "" : st)}
+                              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                                active
+                                  ? "bg-[#001f97] text-white shadow-xs"
+                                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                               }`}
                             >
-                              {count}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setStatusFilter("")}
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs shrink-0 ${
-                          !statusFilter
-                            ? "bg-[#001f97] text-white shadow-xs"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        All Active ({scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length})
-                      </button>
-                      {JOB_STATUSES.map((st) => {
-                        const active = statusFilter === st;
-                        const count = scopedLeads.filter((l) => l.status === st).length;
-                        return (
-                          <button
-                            key={st}
-                            type="button"
-                            onClick={() => setStatusFilter(active ? "" : st)}
-                            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs flex items-center gap-1.5 shrink-0 ${
-                              active
-                                ? "bg-[#001f97] text-white shadow-xs"
-                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                            }`}
-                          >
-                            <span>{st}</span>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                                active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
-                              }`}
-                            >
-                              {count}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </>
-                  )}
+                              <span>{st}</span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                  active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                                }`}
+                              >
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -3962,6 +3954,21 @@ export default function CrmDashboardPage() {
                             title="Open Quote Builder"
                           >
                             Quote
+                          </button>
+
+                          {/* Inspection Form Button */}
+                          <button
+                            type="button"
+                            onClick={() => openInspectionModal(l)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                              l.inspectionReport?.status === "completed"
+                                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                : "bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200"
+                            }`}
+                            title="Groutix Field Inspection Form"
+                          >
+                            <ClipboardList className="w-3.5 h-3.5 text-teal-700" />
+                            <span>Inspection</span>
                           </button>
 
                           {/* Invoice Action (shown for 3rd login - Finance & Manager) */}
