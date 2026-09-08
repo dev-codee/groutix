@@ -3120,7 +3120,14 @@ export default function CrmDashboardPage() {
                             )}
                           </div>
 
-                          <div className="pt-2">
+                          <div className="pt-2 flex flex-wrap gap-2">
+                            <button
+                              onClick={() => setJobCardLead(l)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
+                            >
+                              <span>Open Client / Workflow</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
                             <button
                               onClick={() => {
                                 setEditingLead(l);
@@ -3128,8 +3135,7 @@ export default function CrmDashboardPage() {
                               }}
                               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dbeafe] hover:bg-blue-200 text-[#1d4ed8] text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
                             >
-                              <span>Open Client / Workflow</span>
-                              <ArrowRight className="w-3 h-3" />
+                              <span>Edit</span>
                             </button>
                           </div>
                         </div>
