@@ -40,10 +40,18 @@ export interface CustomerMessage {
   time: string;
   initial?: boolean;
   read?: boolean;
-  // Metadata only (name/type/size) for files emailed with the message. We never
-  // persist the raw file bytes in the CRM record — they are only forwarded to
-  // the customer's email at send time.
-  attachments?: { name: string; contentType?: string; size?: number }[];
+  // Files attached to the message. For outbound mail we keep metadata only
+  // (the bytes are forwarded to the customer at send time). For inbound customer
+  // emails we upload the file to Cloudinary and keep a link so staff can open it
+  // straight from the dashboard.
+  attachments?: {
+    name: string;
+    contentType?: string;
+    size?: number;
+    url?: string;
+    secureUrl?: string;
+    publicId?: string;
+  }[];
 }
 
 export interface GpsCheckin {

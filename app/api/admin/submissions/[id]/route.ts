@@ -8,7 +8,7 @@ import {
   pickAssigneeForRole,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { autoSendInvoice, autoSendWarranty } from "@/lib/automations";
+import { autoSendInvoice } from "@/lib/automations";
 import { sendInternalAlert } from "@/lib/email";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
@@ -95,14 +95,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           leadId: id,
         });
       } else if (body.status === "Payment Received") {
-        await autoSendWarranty(id);
+        // Warranty is NOT auto-sent — Finance (Login 3) issues it manually.
         await sendInternalAlert({
           title: "Payment received",
           emoji: "💰",
           accent: "#16a34a",
           lines: [
             `${before.name || "A customer"}${before.quoteAmount ? ` — AUD $${before.quoteAmount.toFixed(2)}` : ""}`,
-            `The 10-year warranty has been auto-generated and emailed. Job complete 🏆`,
+            `Send the 10-year warranty from the CRM when ready.`,
           ],
           leadId: id,
         });

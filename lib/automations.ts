@@ -127,7 +127,8 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
       invoiceSentAt: now,
       invoiceStatus: "Unpaid",
       quoteAmount: total,
-      status: "Invoice Sent",
+      // Invoice emailed → awaiting the customer's payment.
+      status: "Payment Pending",
     });
     await appendActivity(leadId, {
       time: now,

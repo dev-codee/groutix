@@ -3,6 +3,7 @@ import { simpleParser } from "mailparser";
 import { getDb } from "@/lib/mongodb";
 import { updateSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendReplyNotification, getNotifyRecipients } from "@/lib/email";
+import { uploadBufferToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 
 const user = process.env.SMTP_USER || "";
 const pass = process.env.SMTP_PASS || "";
@@ -107,6 +108,39 @@ export async function syncUnreadEmails() {
                     continue;
                   }
 
+                  step = "attachments_" + seq;
+                  // Capture any real file attachments (skip inline/related parts
+                  // like signature logos). Upload each to Cloudinary so staff can
+                  // open them from the dashboard; fall back to metadata-only if the
+                  // upload isn't configured or fails.
+                  const crmAttachments: NonNullable<CustomerMessage["attachments"]> = [];
+                  const rawAttachments = Array.isArray(parsed.attachments) ? parsed.attachments : [];
+                  for (const att of rawAttachments) {
+                    if (att.related) continue; // inline (e.g. logo in signature)
+                    const name = att.filename || "attachment";
+                    if (isCloudinaryConfigured() && att.content) {
+                      try {
+                        const up = await uploadBufferToCloudinary(att.content as Buffer, {
+                          folder: "groutix/inbound",
+                          filename: name,
+                          tags: ["inbound-email"],
+                        });
+                        crmAttachments.push({
+                          name,
+                          contentType: att.contentType,
+                          size: att.size,
+                          url: up.secureUrl,
+                          secureUrl: up.secureUrl,
+                          publicId: up.publicId,
+                        });
+                        continue;
+                      } catch (e) {
+                        console.error("[IMAP] attachment upload failed:", e);
+                      }
+                    }
+                    crmAttachments.push({ name, contentType: att.contentType, size: att.size });
+                  }
+
                   step = "db_update_" + seq;
                   // Append the message
                   const crmMessage: CustomerMessage = {
@@ -117,6 +151,7 @@ export async function syncUnreadEmails() {
                     text: parsed.text || "No text content.",
                     time: (parsed.date || new Date()).toISOString(),
                     read: false,
+                    ...(crmAttachments.length ? { attachments: crmAttachments } : {}),
                   };
 
                   await col.updateOne(

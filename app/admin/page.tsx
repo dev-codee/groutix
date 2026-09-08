@@ -82,7 +82,14 @@ export interface CustomerMessage {
   time: string;
   initial?: boolean;
   read?: boolean;
-  attachments?: { name: string; contentType?: string; size?: number }[];
+  attachments?: {
+    name: string;
+    contentType?: string;
+    size?: number;
+    url?: string;
+    secureUrl?: string;
+    publicId?: string;
+  }[];
 }
 
 export interface GpsCheckin {
@@ -1913,7 +1920,8 @@ export default function CrmDashboardPage() {
     );
     setInvoicePrice(lead.quoteAmount || 850);
     setInvoiceGst(10);
-    setInvoiceStatus(lead.status === "Payment Received" || lead.status === "Job Done" ? "Paid" : "Unpaid");
+    // Default to Unpaid; only pre-mark Paid if payment was already recorded.
+    setInvoiceStatus(lead.status === "Payment Received" ? "Paid" : "Unpaid");
     setInvoiceModalOpen(true);
   }
 
@@ -2680,7 +2688,7 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
-              {/* Main Grid: Recent Leads & Task Panel */}
+              {/* Main Grid: Recent Leads & Today's Attention */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left 2 Cols: Lead Table */}
                 <div className="lg:col-span-2 bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs flex flex-col">
@@ -2839,56 +2847,6 @@ export default function CrmDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Task Panel */}
-                  <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs">
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-base font-black text-slate-900">Task Panel</h2>
-                      <button
-                        onClick={handleAddTask}
-                        className="text-xs font-bold text-[#001f97] bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors"
-                      >
-                        + Add Task
-                      </button>
-                    </div>
-
-                    <div className="space-y-2">
-                      {tasks.map((t) => (
-                        <div
-                          key={t.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded-xl border border-slate-100 hover:bg-slate-50"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <button
-                              onClick={() => handleToggleTask(t.id, !t.done)}
-                              className="text-slate-400 hover:text-[#001f97]"
-                            >
-                              {t.done ? (
-                                <CheckSquare className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <Square className="w-4 h-4" />
-                              )}
-                            </button>
-                            <span
-                              className={`text-xs truncate ${
-                                t.done ? "line-through text-slate-400" : "text-slate-800 font-medium"
-                              }`}
-                            >
-                              {t.text}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteTask(t.id)}
-                            className="text-slate-300 hover:text-rose-500 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                      {tasks.length === 0 && (
-                        <div className="text-xs text-slate-400 text-center py-4">No tasks pending.</div>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -3797,6 +3755,18 @@ export default function CrmDashboardPage() {
                               {l.service || "Standard Service"}
                             </span>
                           </div>
+                          {(role === "field" || role === "manager") && l.inspectionAt && (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                              <span className="text-slate-400">Inspection:</span>
+                              <span className="font-bold text-[#001f97] text-right">{fmtDate(l.inspectionAt)}</span>
+                            </div>
+                          )}
+                          {(role === "field" || role === "manager") && l.jobAt && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">Job:</span>
+                              <span className="font-bold text-emerald-700 text-right">{fmtDate(l.jobAt)}</span>
+                            </div>
+                          )}
                           {l.quoteAmount && l.quoteAmount > 0 ? (
                             <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                               <span className="text-slate-400">Quote Value:</span>
@@ -5529,17 +5499,30 @@ export default function CrmDashboardPage() {
                     <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {msg.attachments.map((att, i) => (
-                          <span
-                            key={i}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                              isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
-                            }`}
-                          >
-                            <Paperclip className="w-2.5 h-2.5" />
-                            {att.name}
-                          </span>
-                        ))}
+                        {msg.attachments.map((att, i) => {
+                          const href = att.secureUrl || att.url;
+                          const chipClass = `inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                            isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
+                          }`;
+                          return href ? (
+                            <a
+                              key={i}
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`${chipClass} underline hover:opacity-80`}
+                              title={`Open ${att.name}`}
+                            >
+                              <Paperclip className="w-2.5 h-2.5" />
+                              {att.name}
+                            </a>
+                          ) : (
+                            <span key={i} className={chipClass}>
+                              <Paperclip className="w-2.5 h-2.5" />
+                              {att.name}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -5691,7 +5674,7 @@ export default function CrmDashboardPage() {
           MODAL: 10-YEAR WARRANTY CARD (HTML5 Canvas)
          ========================================================================= */}
       {warrantyModalOpen && activeWarrantyLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>

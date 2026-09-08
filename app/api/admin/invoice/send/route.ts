@@ -163,9 +163,9 @@ export async function POST(req: NextRequest) {
     invoiceSentAt: now,
     invoiceStatus: status,
     quoteAmount: total,
-    // Marking an invoice Paid moves the lead into the finance "Payment Received"
-    // stage; otherwise leave the stage where it is.
-    ...(status === "Paid" ? { status: "Payment Received" } : {}),
+    // Sending the invoice advances the finance stage: Paid → "Payment Received",
+    // otherwise → "Payment Pending" (we're now awaiting the customer's payment).
+    status: status === "Paid" ? "Payment Received" : "Payment Pending",
   });
   await appendActivity(body.id, {
     time: now,
