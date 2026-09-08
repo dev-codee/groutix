@@ -2899,97 +2899,99 @@ export default function CrmDashboardPage() {
                     <span className="text-[11px] text-slate-400 hidden sm:inline">Click any stage to filter the leads table</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
-                  {role === "intake"
-                    ? (
-                        [
-                          { label: "New", group: "lead" as StageGroup, statuses: ["New"] },
-                          { label: "Contacted", group: "lead" as StageGroup, statuses: ["Contacted", "Waiting for Info"] },
-                          {
-                            label: "Inspections",
-                            group: "booking" as StageGroup,
-                            statuses: [
-                              "Inspection Booked",
-                              "Inspection En Route",
-                              "Inspection Arrived",
-                              "Inspection In Progress",
-                              "Inspection Completed",
-                            ],
-                          },
-                          {
-                            label: "Quotes",
-                            group: "quote" as StageGroup,
-                            statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"],
-                          },
-                          {
-                            label: "Job Booked",
-                            group: "job" as StageGroup,
-                            statuses: ["Job Booked", "Scheduled", "Job Confirmed"],
-                          },
-                        ].map((grp) => {
-                          const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-blue-500", value: "text-[#001f97]" };
-                          const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
-                          const joined = grp.statuses.join("|");
-                          const active = statusFilter === joined;
-                          return (
-                            <button
-                              key={grp.label}
-                              type="button"
-                              onClick={() => {
-                                setStatusFilter(active ? "" : joined);
-                                setPage(1);
-                              }}
-                              className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
-                                active
-                                  ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
-                                  : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                              }`}
-                              title={`Show ${grp.label} leads`}
-                            >
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
-                                <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
-                                  {grp.label}
-                                </span>
-                              </div>
-                              <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
-                                {value}
-                              </div>
-                            </button>
-                          );
-                        })
-                      )
-                    : STAGES.map((stage) => {
-                        const accent = STAGE_GROUP_ACCENT[stage.group] || { dot: "bg-blue-500", value: "text-[#001f97]" };
-                        const value = counts[stage.key] || 0;
-                        const active = statusFilter === stage.key;
-                        return (
-                          <button
-                            key={stage.key}
-                            type="button"
-                            onClick={() => {
-                              setStatusFilter(active ? "" : stage.key);
-                              setPage(1);
-                            }}
-                            className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
-                              active
-                                ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
-                                : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                            }`}
-                            title={`Show ${stage.label} leads`}
-                          >
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
-                              <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
-                                {stage.label}
-                              </span>
-                            </div>
-                            <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
-                              {value}
-                            </div>
-                          </button>
-                        );
-                      })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {(() => {
+                    // Grouped dashboard "buttons" per role (matches the login sketches).
+                    // Each button filters the leads table to all of its statuses.
+                    const intakeGroups: { label: string; group: StageGroup; statuses: string[] }[] = [
+                      { label: "New leads", group: "lead", statuses: ["New"] },
+                      { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                      {
+                        label: "Inspections",
+                        group: "booking",
+                        statuses: [
+                          "Inspection Booked",
+                          "Inspection En Route",
+                          "Inspection Arrived",
+                          "Inspection In Progress",
+                          "Inspection Completed",
+                        ],
+                      },
+                      { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                      { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+                    ];
+                    // Manager sees the full pipeline end-to-end across every login.
+                    const managerGroups: { label: string; group: StageGroup; statuses: string[] }[] = [
+                      { label: "New leads", group: "lead", statuses: ["New"] },
+                      { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                      {
+                        label: "Inspection",
+                        group: "booking",
+                        statuses: [
+                          "Inspection Booked",
+                          "Inspection En Route",
+                          "Inspection Arrived",
+                          "Inspection In Progress",
+                          "Inspection Completed",
+                        ],
+                      },
+                      { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                      {
+                        label: "Job Booked",
+                        group: "job",
+                        statuses: [
+                          "Job Booked",
+                          "Scheduled",
+                          "Job Confirmed",
+                          "Job En Route",
+                          "Job Arrived",
+                          "Job In Progress",
+                        ],
+                      },
+                      { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+                      { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
+                      { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
+                      { label: "Achievements", group: "closed", statuses: ["Completed"] },
+                    ];
+                    const groups =
+                      role === "intake"
+                        ? intakeGroups
+                        : role === "manager"
+                        ? managerGroups
+                        : STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] }));
+                    return groups.map((grp) => {
+                      const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-blue-500", value: "text-[#001f97]" };
+                      const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
+                      const joined = grp.statuses.join("|");
+                      const active = statusFilter === joined;
+                      return (
+                        <button
+                          key={grp.label}
+                          type="button"
+                          onClick={() => {
+                            setStatusFilter(active ? "" : joined);
+                            setPage(1);
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
+                            active
+                              ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
+                              : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
+                          }`}
+                          title={`Show ${grp.label} leads`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                            <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
+                              {grp.label}
+                            </span>
+                          </div>
+                          <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                            {value}
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
