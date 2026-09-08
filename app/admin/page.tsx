@@ -3503,23 +3503,16 @@ export default function CrmDashboardPage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {(role === "finance"
-                    ? STAGES.filter((s) => FINANCE_STATUSES.includes(s.key))
+                    ? STAGES.filter((s) =>
+                        ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"].includes(s.key)
+                      )
                     : role === "field"
                     ? STAGES.filter((s) =>
                         [
                           "Inspection Booked",
-                          "Inspection En Route",
-                          "Inspection Arrived",
-                          "Inspection In Progress",
                           "Inspection Completed",
                           "Quote Pending",
-                          "Won",
                           "Job Booked",
-                          "Scheduled",
-                          "Job Confirmed",
-                          "Job En Route",
-                          "Job Arrived",
-                          "Job In Progress",
                           "Job Done",
                         ].includes(s.key)
                       )
@@ -3762,18 +3755,19 @@ export default function CrmDashboardPage() {
                           </div>
                         )}
 
-                        {/* ── Login 2 (Field / Scheduling): Inspection Booked, Inspection Completed, Quote Pending, Job Booked ── */}
+                        {/* ── Login 2 (Field / Scheduling): Inspection Booked → Inspection Completed → Quote Pending → Job Booked → Job Done ── */}
                         {(role === "field" || role === "manager" || (!FINANCE_STATUSES.includes(l.status) && role !== "finance")) && (
                           <div className="pt-1">
                             <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
                               Field Workflow Stages
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                               {[
                                 { label: "Inspection Booked", status: "Inspection Booked", color: "bg-blue-600 hover:bg-blue-700" },
                                 { label: "Inspection Completed", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
                                 { label: "Quote Pending", status: "Quote Pending", color: "bg-amber-600 hover:bg-amber-700" },
                                 { label: "Job Booked", status: "Job Booked", color: "bg-emerald-600 hover:bg-emerald-700" },
+                                { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
                               ].map((st) => {
                                 const isCurrent = l.status === st.status;
                                 return (
