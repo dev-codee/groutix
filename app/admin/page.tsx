@@ -844,6 +844,8 @@ export default function CrmDashboardPage() {
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [activeInvoiceLead, setActiveInvoiceLead] = useState<Lead | null>(null);
+  // Manager "Client Job Card" workflow modal (full pipeline timeline + advance).
+  const [jobCardLead, setJobCardLead] = useState<Lead | null>(null);
   const [invoiceService, setInvoiceService] = useState("");
   const [invoiceDescription, setInvoiceDescription] = useState("");
   const [invoicePrice, setInvoicePrice] = useState<number>(0);
@@ -3990,10 +3992,23 @@ export default function CrmDashboardPage() {
                         </div>
                         )}
 
-                        {/* ── Full client history — every detail from the start.
-                            Finance sees Lead → Quote; the Manager sees the entire
-                            journey through Job & Finance too. ── */}
-                        {(role === "finance" || role === "manager") && (() => {
+                        {/* Manager: open the full Client Job Card workflow modal. */}
+                        {role === "manager" && (
+                          <button
+                            type="button"
+                            onClick={() => setJobCardLead(l)}
+                            className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-xs transition-colors cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <ClipboardList className="w-4 h-4" />
+                              <span>Client Job Card / Workflow</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* ── Finance: previous history — all info from lead → quote ── */}
+                        {role === "finance" && (() => {
                           const leadRows = ([
                             ["Source", l.source],
                             ["Received", l.createdAt ? fmtDate(l.createdAt) : undefined],
@@ -4025,28 +4040,10 @@ export default function CrmDashboardPage() {
                               l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
                             ],
                           ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
-                          const isManager = role === "manager";
-                          const jobRows = isManager
-                            ? (([
-                                ["Job date", l.jobAt ? fmtDate(l.jobAt) : undefined],
-                                ["Current stage", l.status],
-                                ["Assigned to", l.assigned],
-                              ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][])
-                            : [];
-                          const financeRows = isManager
-                            ? (([
-                                ["Invoice #", l.invoiceNumber],
-                                ["Invoice sent", l.invoiceSentAt ? fmtDate(l.invoiceSentAt) : undefined],
-                                ["Invoice status", l.invoiceStatus],
-                                ["Invoice opened", l.invoiceOpenedAt ? fmtDate(l.invoiceOpenedAt) : undefined],
-                                ["Warranty", l.warranty?.sentAt ? `Sent ${fmtDate(l.warranty.sentAt)}` : undefined],
-                              ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][])
-                            : [];
                           const sections: [string, [string, string][]][] = [
                             ["Lead", leadRows],
                             ["Inspection", inspectionRows],
                             ["Quote", quoteRows],
-                            ...(isManager ? ([["Job", jobRows], ["Finance", financeRows]] as [string, [string, string][]][]) : []),
                           ];
                           const hasAny = sections.some(([, rows]) => rows.length > 0);
                           const isOpen = !!openDetails[l.id];
@@ -4059,7 +4056,7 @@ export default function CrmDashboardPage() {
                               >
                                 <span className="flex items-center gap-2">
                                   <ClipboardList className="w-4 h-4" />
-                                  <span>{isManager ? "Previous Details — Full History" : "Previous Details — Lead → Quote"}</span>
+                                  <span>Previous Details — Lead → Quote</span>
                                 </span>
                                 <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                               </button>
@@ -5814,6 +5811,136 @@ export default function CrmDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* =========================================================================
+          MODAL: CLIENT JOB CARD (Manager workflow — full pipeline timeline)
+         ========================================================================= */}
+      {jobCardLead && (() => {
+        const l = leads.find((x) => x.id === jobCardLead.id) || jobCardLead;
+        const milestones: { label: string; status: string }[] = [
+          { label: "Lead Received", status: "New" },
+          { label: "Contacted", status: "Contacted" },
+          { label: "Inspection Booked", status: "Inspection Booked" },
+          { label: "Inspection Completed", status: "Inspection Completed" },
+          { label: "Quote Created", status: "Quote Pending" },
+          { label: "Quote Sent", status: "Quote Sent" },
+          { label: "Quote Accepted", status: "Won" },
+          { label: "Job Booked", status: "Job Booked" },
+          { label: "Job Done", status: "Job Done" },
+          { label: "Invoice Sent", status: "Invoice Sent" },
+          { label: "Payment Pending", status: "Payment Pending" },
+          { label: "Payment Received", status: "Payment Received" },
+          { label: "Warranty Sent", status: "Warranty Sent" },
+          { label: "Completed", status: "Completed" },
+        ];
+        const currentIdx = STATUS_KEYS.indexOf(l.status);
+        const next = milestones.find((m) => {
+          const mi = STATUS_KEYS.indexOf(m.status);
+          return mi !== -1 && mi > currentIdx;
+        });
+        const total = getLeadQuoteTotal(l);
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-5 my-6">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">{l.name || "Customer"} — Client Job Card</h2>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {[l.email, l.phone, l.address].filter(Boolean).join("  •  ")}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setJobCardLead(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "Current Stage", value: l.status, strong: true },
+                  { label: "Service", value: l.service || "Standard Service" },
+                  { label: "Received", value: l.createdAt ? fmtDate(l.createdAt) : "—" },
+                  { label: "Quote / Job Value", value: `AUD $${total.toFixed(2)}`, strong: true },
+                ].map((c) => (
+                  <div key={c.label} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{c.label}</div>
+                    <div className={`text-slate-900 ${c.strong ? "text-base font-black" : "text-xs font-semibold leading-snug"}`}>
+                      {c.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pipeline timeline */}
+              <div className="flex items-start overflow-x-auto pb-2 no-scrollbar">
+                {milestones.map((m, i) => {
+                  const mi = STATUS_KEYS.indexOf(m.status);
+                  const done = mi !== -1 && mi <= currentIdx;
+                  const current = m.status === l.status;
+                  return (
+                    <div key={m.status} className="flex items-center shrink-0">
+                      {i > 0 && <div className={`h-0.5 w-8 ${done ? "bg-emerald-500" : "bg-slate-200"}`} />}
+                      <div className="flex flex-col items-center w-24 px-1">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            done ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400 border border-slate-200"
+                          } ${current ? "ring-2 ring-[#001f97] ring-offset-2" : ""}`}
+                        >
+                          {done ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[10px] font-black">{i + 1}</span>}
+                        </div>
+                        <span
+                          className={`mt-1.5 text-[10px] font-bold text-center leading-tight ${
+                            current ? "text-[#001f97]" : done ? "text-slate-600" : "text-slate-400"
+                          }`}
+                        >
+                          {m.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Workflow action */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                <div>
+                  <div className="text-sm font-black text-slate-900">Workflow Action</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Current: <b className="text-slate-700">{l.status}</b>
+                    {next ? (
+                      <> → Next: <b className="text-slate-700">{next.label}</b></>
+                    ) : (
+                      <> → Fully completed 🏆</>
+                    )}
+                  </div>
+                </div>
+                {next && (
+                  <button
+                    type="button"
+                    onClick={() => updateLeadField(l.id, { status: next.status })}
+                    className="px-5 py-2.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-sm font-black shadow-xs transition-colors cursor-pointer"
+                  >
+                    Move to {next.label} →
+                  </button>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-100 pt-3">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Conversation — updates every few seconds
+                </span>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-slate-600">🏅 Finance &amp; Automation</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* =========================================================================
           MODAL: AUTO INVOICE
