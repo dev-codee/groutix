@@ -3579,8 +3579,8 @@ export default function CrmDashboardPage() {
                     </div>
                   </div>
 
-                {/* Quick Status Filter Pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                {/* Quick Status Filter Dropdown */}
+                <div className="flex items-center gap-1.5 pb-1 text-xs">
                   {(() => {
                     const statusList =
                       role === "finance"
@@ -3596,44 +3596,21 @@ export default function CrmDashboardPage() {
                         : "All Active";
                     const totalActive = scopedLeads.filter((l) => statusList.includes(l.status)).length;
                     return (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setStatusFilter("")}
-                          className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs shrink-0 cursor-pointer ${
-                            !statusFilter
-                              ? "bg-[#001f97] text-white shadow-xs"
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                          }`}
-                        >
-                          {allLabel} ({totalActive})
-                        </button>
+                      <select
+                        value={statusList.includes(statusFilter) ? statusFilter : ""}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
+                      >
+                        <option value="">{allLabel} ({totalActive})</option>
                         {statusList.map((st) => {
-                          const active = statusFilter === st;
                           const count = scopedLeads.filter((l) => l.status === st).length;
                           return (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => setStatusFilter(active ? "" : st)}
-                              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all text-xs flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                                active
-                                  ? "bg-[#001f97] text-white shadow-xs"
-                                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                              }`}
-                            >
-                              <span>{st}</span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                                  active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
-                                }`}
-                              >
-                                {count}
-                              </span>
-                            </button>
+                            <option key={st} value={st}>
+                              {st} ({count})
+                            </option>
                           );
                         })}
-                      </>
+                      </select>
                     );
                   })()}
                 </div>
