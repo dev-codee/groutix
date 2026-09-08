@@ -79,10 +79,9 @@ export async function POST(req: NextRequest) {
       2
     )}</td></tr>`;
 
-  // Public, HMAC-signed links so the customer can accept/decline in one click;
+  // Public, HMAC-signed link so the customer can accept in one click;
   // the /api/quote/respond route flips the CRM status when they do.
   const acceptUrl = buildQuoteResponseUrl(body.id, "accept");
-  const declineUrl = buildQuoteResponseUrl(body.id, "decline");
 
   const html = `
     <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your Groutix Quotation</h2>
@@ -123,15 +122,12 @@ export async function POST(req: NextRequest) {
       All works and quotations are subject to the official <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>. Full shower epoxy regrouting includes our comprehensive 10-Year Waterproof Warranty.
     </div>
 
-    <!-- One-click accept / decline. Clicking updates the lead status in the CRM. -->
+    <!-- One-click accept. Clicking updates the lead status in the CRM. -->
     <p style="margin:24px 0 12px;font-weight:600;color:#0f172a;">Ready to go ahead?</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
       <tr>
         <td style="padding-right:12px;">
           <a href="${acceptUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✓ Accept Quote</a>
-        </td>
-        <td style="padding-right:12px;">
-          <a href="${declineUrl}" style="display:inline-block;background:#ffffff;color:#64748b;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #cbd5e1;">Decline</a>
         </td>
         <td>
           <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">📥 Download PDF</a>
