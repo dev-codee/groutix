@@ -3924,6 +3924,32 @@ export default function CrmDashboardPage() {
                           </div>
                         )}
 
+                        {/* ── Hand-off: Field (Login 2) → Booking Office (Login 1) ──
+                            Marking the inspection complete moves the lead into Intake's
+                            queue (carrying all inspection info) so they can build & send
+                            the quote. Once the quote is accepted the lead returns here. */}
+                        {(role === "field" || role === "manager") &&
+                          (INSPECTION_PHASE.includes(l.status) || l.status === "Inspection Completed") && (
+                            <div className="pt-1">
+                              {l.status === "Inspection Completed" ? (
+                                <div className="w-full px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                  <Check className="w-4 h-4" />
+                                  Shared to Booking Office — awaiting quote
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                                  className="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                                  title="Send this lead back to the Booking Office (Login 1) with all inspection info so they can send the quote"
+                                >
+                                  <Send className="w-4 h-4" />
+                                  Share to Booking Office
+                                </button>
+                              )}
+                            </div>
+                          )}
+
                         {/* On-site visit tracker: On the Way → Reached → Start →
                             Complete. Each button advances the lead's status (and
                             is auto-logged with a timestamp on the server). */}
