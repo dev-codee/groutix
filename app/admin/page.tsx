@@ -42,7 +42,8 @@ import {
   Check,
   ChevronRight,
   Clock,
-  ArrowRight
+  ArrowRight,
+  ClipboardList
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -58,6 +59,8 @@ import {
   getMatchedQuoteItemsForLead
 } from "@/lib/serviceMatching";
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
+import { InspectionModal } from "@/components/admin/InspectionModal";
+import type { InspectionReportDoc } from "@/lib/inspection";
 
 export interface QuoteItem {
   templateNo?: string | number;
@@ -170,6 +173,7 @@ export interface Lead {
   jobAt?: string;
   inspectionReminderSent?: boolean;
   jobReminderSent?: boolean;
+  inspectionReport?: InspectionReportDoc;
 }
 
 export interface CrmTask {
@@ -836,6 +840,14 @@ export default function CrmDashboardPage() {
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
   const [sendingInvoice, setSendingInvoice] = useState(false);
+
+  const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
+  const [activeInspectionLead, setActiveInspectionLead] = useState<Lead | null>(null);
+
+  function openInspectionModal(lead: Lead) {
+    setActiveInspectionLead(lead);
+    setInspectionModalOpen(true);
+  }
 
   const handleSyncEmails = async () => {
     setSyncingEmails(true);
@@ -2712,6 +2724,17 @@ export default function CrmDashboardPage() {
                                 >
                                   <Navigation className="w-3.5 h-3.5" />
                                 </button>
+                                <button
+                                  onClick={() => openInspectionModal(l)}
+                                  className={`p-1 rounded-md transition-colors ${
+                                    l.inspectionReport?.status === "completed"
+                                      ? "text-emerald-600 hover:bg-emerald-50"
+                                      : "text-slate-500 hover:text-[#001f97] hover:bg-slate-100"
+                                  }`}
+                                  title="Inspection Report Form"
+                                >
+                                  <ClipboardList className="w-3.5 h-3.5" />
+                                </button>
                                 {l.status === "Payment Received" && (
                                   <button
                                     onClick={() => openWarrantyModal(l)}
@@ -3097,6 +3120,31 @@ export default function CrmDashboardPage() {
                               </span>
                               <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-[#001f97] text-[11px] font-black flex items-center justify-center">
                                 {photosTotal}
+                              </span>
+                            </button>
+
+                            {/* Inspection Report Button */}
+                            <button
+                              onClick={() => openInspectionModal(l)}
+                              className={`w-full px-3 py-2 font-bold rounded-xl text-xs flex items-center justify-between border transition-colors cursor-pointer ${
+                                l.inspectionReport?.status === "completed"
+                                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
+                                  : "bg-teal-50/70 hover:bg-teal-100/80 text-teal-900 border-teal-200"
+                              }`}
+                              title="Open Groutix Inspection Report form"
+                            >
+                              <span className="flex items-center gap-2">
+                                <ClipboardList className="w-3.5 h-3.5 text-teal-700" />
+                                <span>Inspection Form</span>
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                  l.inspectionReport?.status === "completed"
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-teal-200 text-teal-800"
+                                }`}
+                              >
+                                {l.inspectionReport?.status === "completed" ? "Done" : "Fill"}
                               </span>
                             </button>
 
@@ -3824,6 +3872,29 @@ export default function CrmDashboardPage() {
                           );
                         })()}
 
+                        {/* ── Inspection Report Action (Field / Intake / Manager) ── */}
+                        <div className="pt-1.5 pb-0.5">
+                          <button
+                            type="button"
+                            onClick={() => openInspectionModal(l)}
+                            className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-xs transition-colors cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <ClipboardList className="w-4 h-4 text-white" />
+                              <span>GROUTIX Field Inspection Report</span>
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                l.inspectionReport?.status === "completed"
+                                  ? "bg-emerald-500 text-white"
+                                  : "bg-white/20 text-white"
+                              }`}
+                            >
+                              {l.inspectionReport?.status === "completed" ? "Completed" : "Fill / View Form"}
+                            </span>
+                          </button>
+                        </div>
+
                         {/* ── Login 3 (Finance / Completion): Job Done, Payment Pending, Payment Received, Warranty Sent ── */}
                         {(role === "finance" || role === "manager" || FINANCE_STATUSES.includes(l.status)) && (
                           <div className="pt-1">
@@ -4481,6 +4552,28 @@ export default function CrmDashboardPage() {
                         );
                       })}
                     </div>
+                  </div>
+
+                  {/* Field Inspection Report Summary */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-teal-200 text-xs">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="w-4 h-4 text-teal-700 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-900">Field Inspection Report: </span>
+                        <span className={activeQuoteLead.inspectionReport ? "text-emerald-700 font-semibold" : "text-slate-500"}>
+                          {activeQuoteLead.inspectionReport
+                            ? `${activeQuoteLead.inspectionReport.status === "completed" ? "Completed" : "Draft saved"} by ${activeQuoteLead.inspectionReport.inspectorName || "Inspector"}`
+                            : "Not filled yet"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openInspectionModal(activeQuoteLead)}
+                      className="px-2.5 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 text-[11px] font-bold cursor-pointer shrink-0"
+                    >
+                      {activeQuoteLead.inspectionReport ? "View Findings" : "Open Form"}
+                    </button>
                   </div>
 
                   {/* Additional Property & Condition Details */}
@@ -5653,6 +5746,34 @@ export default function CrmDashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: GROUTIX FIELD INSPECTION REPORT
+         ========================================================================= */}
+      {inspectionModalOpen && activeInspectionLead && (
+        <InspectionModal
+          isOpen={inspectionModalOpen}
+          onClose={() => {
+            setInspectionModalOpen(false);
+            setActiveInspectionLead(null);
+          }}
+          lead={activeInspectionLead}
+          currentUsername={adminUsername || undefined}
+          onSave={async (report, markCompleted) => {
+            const updates: Partial<Lead> = {
+              inspectionReport: report,
+            };
+            if (markCompleted) {
+              updates.status = "Inspection Completed";
+            }
+            const ok = await updateLeadField(activeInspectionLead.id, updates);
+            if (ok) {
+              setActiveInspectionLead((prev) => (prev ? { ...prev, ...updates } : null));
+            }
+            return ok;
+          }}
+        />
       )}
 
       {/* =========================================================================

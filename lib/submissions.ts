@@ -8,6 +8,7 @@
 import { ObjectId, type Collection, type Filter } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
 import { getActiveUsersByRole } from "@/lib/users";
+import type { InspectionReportDoc } from "@/lib/inspection";
 
 export type SubmissionType = "quote" | "support_ticket" | "lead";
 export type SubmissionStatus = string;
@@ -150,6 +151,7 @@ export interface SubmissionDoc {
   jobAt?: string; // ISO datetime of the booked job
   inspectionReminderSent?: boolean;
   jobReminderSent?: boolean;
+  inspectionReport?: InspectionReportDoc;
   // Request metadata.
   ip?: string;
   userAgent?: string;
