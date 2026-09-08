@@ -3582,12 +3582,7 @@ export default function CrmDashboardPage() {
                 {/* Quick Status Filter Dropdown */}
                 <div className="flex items-center gap-1.5 pb-1 text-xs">
                   {(() => {
-                    const statusList =
-                      role === "finance"
-                        ? FINANCE_STATUSES
-                        : role === "intake"
-                        ? INTAKE_STATUSES
-                        : JOB_STATUSES;
+                    const statusList = getRoleStatusOptions(role);
                     const allLabel =
                       role === "finance"
                         ? "All Finance Jobs"
