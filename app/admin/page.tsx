@@ -3859,6 +3859,70 @@ export default function CrmDashboardPage() {
                           </button>
                         </div>
 
+                        {/* ── Login 3 (Finance): full previous history — all info from lead → quote ── */}
+                        {role === "finance" && (() => {
+                          const leadRows = ([
+                            ["Source", l.source],
+                            ["Received", l.createdAt ? fmtDate(l.createdAt) : undefined],
+                            ["Customer type", l.customerType],
+                            ["Contacted", l.contacted ? fmtDate(l.contacted) : undefined],
+                            ["Enquiry", l.enquiry || l.message],
+                            ["Areas", l.areas],
+                            ["Leaking", l.leaking],
+                            ["Damaged tiles", l.damagedTiles],
+                            ["Notes", l.notes],
+                          ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                          const photoCount = l.photosCount ?? l.photos?.length ?? 0;
+                          const inspectionRows = ([
+                            ["Inspection date", l.inspectionAt ? fmtDate(l.inspectionAt) : undefined],
+                            [
+                              "Inspection report",
+                              l.inspectionReport?.status === "completed" ? "Completed" : l.inspectionReport ? "Draft" : undefined,
+                            ],
+                            ["Photos", photoCount > 0 ? String(photoCount) : undefined],
+                          ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                          const quoteTotal = getLeadQuoteTotal(l);
+                          const quoteRows = ([
+                            ["Quote #", l.quoteNumber],
+                            ["Quote value", quoteTotal > 0 ? `AUD $${quoteTotal.toFixed(2)}` : undefined],
+                            ["Scope", l.quoteScope],
+                            ["Quote sent", l.quoteUpdated ? fmtDate(l.quoteUpdated) : undefined],
+                            [
+                              "Quote response",
+                              l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
+                            ],
+                          ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                          const sections: [string, [string, string][]][] = [
+                            ["Lead", leadRows],
+                            ["Inspection", inspectionRows],
+                            ["Quote", quoteRows],
+                          ];
+                          const hasAny = sections.some(([, rows]) => rows.length > 0);
+                          return (
+                            <div className="pt-1">
+                              <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                                Previous Details — Lead → Quote
+                              </label>
+                              <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2.5">
+                                {!hasAny && <div className="text-slate-400 italic">No earlier details recorded.</div>}
+                                {sections.map(([title, rows]) =>
+                                  rows.length === 0 ? null : (
+                                    <div key={title} className="space-y-1">
+                                      <div className="text-[9px] font-black uppercase tracking-wider text-[#001f97]/70">{title}</div>
+                                      {rows.map(([k, v]) => (
+                                        <div key={k} className="flex items-start justify-between gap-2">
+                                          <span className="text-slate-400 shrink-0">{k}:</span>
+                                          <span className="font-semibold text-slate-700 text-right break-words max-w-[190px]">{v}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* ── Login 3 (Finance / Completion): Job Done, Payment Pending, Payment Received, Warranty Sent ── */}
                         {(role === "finance" || role === "manager" || FINANCE_STATUSES.includes(l.status)) && (
                           <div className="pt-1">
