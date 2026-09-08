@@ -3546,52 +3546,76 @@ export default function CrmDashboardPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                  {(role === "finance"
-                    ? STAGES.filter((s) =>
-                        ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"].includes(s.key)
-                      )
-                    : role === "field"
-                    ? STAGES.filter((s) =>
-                        [
-                          "Inspection Booked",
-                          "Inspection Completed",
-                          "Quote Pending",
-                          "Job Booked",
-                          "Job Done",
-                        ].includes(s.key)
-                      )
-                    : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key))
-                  ).map((stage) => {
-                    const accent = STAGE_GROUP_ACCENT[stage.group] || { dot: "bg-cyan-500", value: "text-cyan-600" };
-                    const value = counts[stage.key] || 0;
-                    const active = statusFilter === stage.key;
-                    return (
-                      <button
-                        key={stage.key}
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter(active ? "" : stage.key);
-                          setPage(1);
-                        }}
-                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
-                          active
-                            ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
-                            : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                        }`}
-                        title={`Filter by ${stage.label}`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
-                          <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
-                            {stage.label}
-                          </span>
-                        </div>
-                        <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
-                          {value}
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {(() => {
+                    // Grouped dashboard "buttons" per role (matches the login sketches).
+                    // Each button filters the board to all of its statuses.
+                    const single = (keys: string[]) =>
+                      STAGES.filter((s) => keys.includes(s.key)).map((s) => ({
+                        label: s.label,
+                        group: s.group,
+                        statuses: [s.key],
+                      }));
+                    const groups: { label: string; group: StageGroup; statuses: string[] }[] =
+                      role === "intake"
+                        ? [
+                            { label: "New leads", group: "lead", statuses: ["New"] },
+                            { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                            {
+                              label: "Inspections",
+                              group: "booking",
+                              statuses: [
+                                "Inspection Booked",
+                                "Inspection En Route",
+                                "Inspection Arrived",
+                                "Inspection In Progress",
+                                "Inspection Completed",
+                              ],
+                            },
+                            { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                            { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+                          ]
+                        : role === "finance"
+                        ? single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"])
+                        : role === "field"
+                        ? single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"])
+                        : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
+                            label: s.label,
+                            group: s.group,
+                            statuses: [s.key],
+                          }));
+                    return groups.map((grp) => {
+                      const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-cyan-500", value: "text-cyan-600" };
+                      const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
+                      const joined = grp.statuses.join("|");
+                      const active = statusFilter === joined;
+                      return (
+                        <button
+                          key={grp.label}
+                          type="button"
+                          onClick={() => {
+                            setStatusFilter(active ? "" : joined);
+                            setPage(1);
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
+                            active
+                              ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
+                              : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
+                          }`}
+                          title={`Filter by ${grp.label}`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                            <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
+                              {grp.label}
+                            </span>
+                          </div>
+                          <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                            {value}
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -3799,8 +3823,9 @@ export default function CrmDashboardPage() {
                           </div>
                         )}
 
-                        {/* ── Login 2 (Field / Scheduling): Inspection Booked → Inspection Completed → Quote Pending → Job Booked → Job Done ── */}
-                        {(role === "field" || role === "manager" || (!FINANCE_STATUSES.includes(l.status) && role !== "finance")) && (
+                        {/* ── Login 2 (Field / Scheduling): Inspection Booked → Inspection Completed → Quote Pending → Job Booked → Job Done ──
+                            Field execution controls are hidden from Intake (Login 1) — Intake only books the inspection via its own workflow. */}
+                        {(role === "field" || role === "manager") && (
                           <div className="pt-1">
                             <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
                               Field Workflow Stages
@@ -3838,7 +3863,7 @@ export default function CrmDashboardPage() {
                         {/* On-site visit tracker: On the Way → Reached → Start →
                             Complete. Each button advances the lead's status (and
                             is auto-logged with a timestamp on the server). */}
-                        {(() => {
+                        {role !== "intake" && (() => {
                           const steps = visitStepsFor(l.status);
                           if (!steps) return null;
                           const currentIdx = steps.findIndex((s) => s.status === l.status);
@@ -3874,7 +3899,8 @@ export default function CrmDashboardPage() {
                           );
                         })()}
 
-                        {/* ── Inspection Report Action (Field / Intake / Manager) ── */}
+                        {/* ── Inspection Report Action (Field / Manager) — hidden from Intake ── */}
+                        {role !== "intake" && (
                         <div className="pt-1.5 pb-0.5">
                           <button
                             type="button"
@@ -3896,6 +3922,7 @@ export default function CrmDashboardPage() {
                             </span>
                           </button>
                         </div>
+                        )}
 
                         {/* ── Login 3 (Finance): full previous history — all info from lead → quote ── */}
                         {role === "finance" && (() => {
