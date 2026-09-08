@@ -2148,22 +2148,6 @@ export default function CrmDashboardPage() {
             </button>
             )}
 
-            {canSee("analytics") && (
-            <button
-              onClick={() => setCurrentView("analytics")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "analytics"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <BarChart3 className="w-4 h-4" />
-                Analytics Overview
-              </span>
-            </button>
-            )}
-
             {canSee("leads") && (
             <button
               onClick={() => setCurrentView("leads")}
@@ -2291,6 +2275,22 @@ export default function CrmDashboardPage() {
                   {totalUnread}
                 </span>
               )}
+            </button>
+            )}
+
+            {canSee("analytics") && (
+            <button
+              onClick={() => setCurrentView("analytics")}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                currentView === "analytics"
+                  ? "bg-[#001f97] text-white shadow-sm"
+                  : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <BarChart3 className="w-4 h-4" />
+                Analytics Overview
+              </span>
             </button>
             )}
 
@@ -2622,26 +2622,50 @@ export default function CrmDashboardPage() {
                   <span className="text-[11px] text-slate-400">Click any stage to filter the leads table</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                  {STAGES.map((stage) => {
-                    const accent = STAGE_GROUP_ACCENT[stage.group];
-                    const value = counts[stage.key] || 0;
-                    const active = statusFilter === stage.key;
+                  {([
+                    { label: "New leads", group: "lead", statuses: ["New"] },
+                    { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                    {
+                      label: "Inspection",
+                      group: "booking",
+                      statuses: [
+                        "Inspection Booked",
+                        "Inspection En Route",
+                        "Inspection Arrived",
+                        "Inspection In Progress",
+                        "Inspection Completed",
+                      ],
+                    },
+                    { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                    {
+                      label: "Job Booked",
+                      group: "job",
+                      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
+                    },
+                    { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+                    { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
+                    { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
+                    { label: "Achievements", group: "closed", statuses: ["Completed"] },
+                  ] as { label: string; group: StageGroup; statuses: string[] }[]).map((grp) => {
+                    const accent = STAGE_GROUP_ACCENT[grp.group];
+                    const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
+                    const active = statusFilter === grp.statuses.join("|");
                     return (
                       <button
-                        key={stage.key}
+                        key={grp.label}
                         type="button"
-                        onClick={() => openLeadsFiltered([stage.key])}
+                        onClick={() => openLeadsFiltered(grp.statuses)}
                         className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
                           active
                             ? "border-[#001f97] bg-[#001f97]/5"
                             : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
                         }`}
-                        title={`Show ${stage.label} leads`}
+                        title={`Show ${grp.label} leads`}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
                           <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
-                            {stage.label}
+                            {grp.label}
                           </span>
                         </div>
                         <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
