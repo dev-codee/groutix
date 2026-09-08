@@ -3,9 +3,11 @@ import { listReminderCandidates, updateSubmission, appendActivity } from "@/lib/
 import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 
-// 24-hour appointment reminders for booked inspections and jobs. Guarded by the
+// Appointment reminders for booked inspections and jobs. Sends two reminders per
+// appointment: one ~24 hours before and another ~1 hour before. Guarded by the
 // same shared CRON_SECRET as the follow-up sweep. Point a scheduler at this URL
-// a few times a day (e.g. hourly) with header `x-cron-secret: <CRON_SECRET>`.
+// frequently (e.g. every 15 min) with header `x-cron-secret: <CRON_SECRET>` so
+// the 1-hour reminder lands close to the appointment time.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,7 +15,16 @@ export const maxDuration = 60;
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 const FROM_NAME = "Groutix";
 const REPLY_TO = "info@groutix.com";
-const WINDOW_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+// Reminder tiers, evaluated closest-deadline first so the 1-hour reminder wins
+// when both happen to be due in the same sweep. `floor`/`within` bound the
+// "time until the appointment" that makes each tier due.
+const TIERS = [
+  { key: "1h" as const, floor: 0, within: HOUR_MS, when: "in about an hour", soon: true },
+  { key: "24h" as const, floor: HOUR_MS, within: DAY_MS, when: "tomorrow", soon: false },
+];
 
 function esc(v: string) {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -29,8 +40,14 @@ function fmt(dt: Date): string {
   });
 }
 
-function reminderHtml(name: string, kind: "inspection" | "job", whenLabel: string, address: string) {
-  const heading = kind === "inspection" ? "Your Groutix inspection is tomorrow" : "Your Groutix job is tomorrow";
+function reminderHtml(
+  name: string,
+  kind: "inspection" | "job",
+  whenLabel: string,
+  address: string,
+  tierWhen: string
+) {
+  const heading = `Your Groutix ${kind} is ${tierWhen}`;
   return wrapEmailHtml(
     `
       <h2 style="margin:0 0 12px;color:#001f97;font-size:22px;">Hi ${esc(name || "there")},</h2>
@@ -59,58 +76,75 @@ async function runSweep(req: NextRequest) {
   let sent = 0;
 
   for (const lead of candidates) {
-    // Evaluate the inspection reminder, then the job reminder, independently.
-    const jobs: { kind: "inspection" | "job"; at?: string; sentFlag: boolean }[] = [
-      { kind: "inspection", at: lead.inspectionAt, sentFlag: Boolean(lead.inspectionReminderSent) },
-      { kind: "job", at: lead.jobAt, sentFlag: Boolean(lead.jobReminderSent) },
+    // Evaluate the inspection appointment, then the job appointment, independently.
+    const appts: { kind: "inspection" | "job"; at?: string }[] = [
+      { kind: "inspection", at: lead.inspectionAt },
+      { kind: "job", at: lead.jobAt },
     ];
 
-    for (const j of jobs) {
-      if (!j.at || j.sentFlag) continue;
-      const when = new Date(j.at).getTime();
+    for (const a of appts) {
+      if (!a.at) continue;
+      const when = new Date(a.at).getTime();
       if (Number.isNaN(when)) continue;
       const delta = when - now;
-      // Due when the appointment is within the next 24h and still in the future.
-      if (delta > WINDOW_MS || delta < 0) continue;
+      if (delta < 0) continue; // appointment already passed
 
-      const whenLabel = fmt(new Date(when));
-      if (isEmailConfigured() && lead.email) {
-        try {
-          await sendEmail({
-            toEmail: lead.email,
-            fromName: FROM_NAME,
-            fromEmail: FROM_EMAIL,
-            replyTo: REPLY_TO,
-            subject:
-              j.kind === "inspection"
-                ? "Reminder: Your Groutix inspection is tomorrow"
-                : "Reminder: Your Groutix job is tomorrow",
-            html: reminderHtml(lead.name || "", j.kind, whenLabel, lead.address || ""),
-          });
-        } catch (err) {
-          console.error("reminder email failed:", err);
-          continue; // leave the flag unset so the next sweep retries
+      for (const tier of TIERS) {
+        // Has this specific tier's reminder already gone out for this appointment?
+        const alreadySent =
+          a.kind === "inspection"
+            ? tier.key === "1h"
+              ? Boolean(lead.inspectionReminder1hSent)
+              : Boolean(lead.inspectionReminderSent)
+            : tier.key === "1h"
+            ? Boolean(lead.jobReminder1hSent)
+            : Boolean(lead.jobReminderSent);
+        if (alreadySent) continue;
+        // Due when the time-until-appointment falls inside this tier's window.
+        if (delta <= tier.floor || delta > tier.within) continue;
+
+        const whenLabel = fmt(new Date(when));
+        if (isEmailConfigured() && lead.email) {
+          try {
+            await sendEmail({
+              toEmail: lead.email,
+              fromName: FROM_NAME,
+              fromEmail: FROM_EMAIL,
+              replyTo: REPLY_TO,
+              subject: `Reminder: Your Groutix ${a.kind} is ${tier.when}`,
+              html: reminderHtml(lead.name || "", a.kind, whenLabel, lead.address || "", tier.when),
+            });
+          } catch (err) {
+            console.error("reminder email failed:", err);
+            continue; // leave the flag unset so the next sweep retries
+          }
         }
-      }
 
-      if (lead.phone) {
-        await sendSms({
-          to: lead.phone,
-          body: `Reminder: your Groutix ${j.kind} is on ${whenLabel}. Reply or call us to reschedule. — Groutix`,
+        if (lead.phone) {
+          await sendSms({
+            to: lead.phone,
+            body: `Reminder: your Groutix ${a.kind} is ${tier.soon ? "coming up " : ""}on ${whenLabel}. Reply or call us to reschedule. — Groutix`,
+          });
+        }
+
+        const flagField =
+          a.kind === "inspection"
+            ? tier.key === "1h"
+              ? "inspectionReminder1hSent"
+              : "inspectionReminderSent"
+            : tier.key === "1h"
+            ? "jobReminder1hSent"
+            : "jobReminderSent";
+        await updateSubmission(lead.id, { [flagField]: true });
+        await appendActivity(lead.id, {
+          time: new Date().toISOString(),
+          actor: "system",
+          action: `${tier.key} ${a.kind} reminder sent`,
+          detail: whenLabel,
         });
+        sent++;
+        break; // one reminder per appointment per sweep
       }
-
-      await updateSubmission(
-        lead.id,
-        j.kind === "inspection" ? { inspectionReminderSent: true } : { jobReminderSent: true }
-      );
-      await appendActivity(lead.id, {
-        time: new Date().toISOString(),
-        actor: "system",
-        action: `24h ${j.kind} reminder sent`,
-        detail: whenLabel,
-      });
-      sent++;
     }
   }
 

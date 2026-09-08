@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
-import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, JOB_STATUSES, INTAKE_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
+import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STATUSES, INTAKE_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
@@ -1062,30 +1062,36 @@ export default function CrmDashboardPage() {
     [activeMessageLead, leads]
   );
 
-  // Active staff names for assignee dropdowns.
-  const staffNames = useMemo(
-    () => staff.filter((s) => s.active).map((s) => s.name),
-    [staff]
-  );
-
-  // Options for the "Assigned To" picker: active staff, plus whatever the lead
-  // is currently assigned to (so an auto-assigned value always shows).
-  const assigneeOptions = useMemo(() => {
-    const names = new Set<string>(staffNames);
-    if (editingLead?.assigned) names.add(editingLead.assigned);
-    if (names.size === 0) names.add("Unassigned");
-    return Array.from(names);
-  }, [staffNames, editingLead?.assigned]);
-
-  // Options for a row-level assignee picker (active staff + the row's value).
-  const rowAssigneeOptions = useCallback(
-    (current?: string) => {
-      const names = new Set<string>(staffNames);
+  // Build assignee options scoped to the role that owns a lead's current stage,
+  // so e.g. an inspection-stage lead only offers Field techs, a quoting-stage
+  // lead only offers Intake staff, etc. Falls back to all active staff when no
+  // one holds that role (so the picker is never empty), and always keeps the
+  // lead's current value visible.
+  const assigneeOptionsFor = useCallback(
+    (status?: string, current?: string) => {
+      const active = staff.filter((s) => s.active);
+      const owner = status ? stageOwner(status) : null;
+      let pool = owner ? active.filter((s) => s.role === owner) : active;
+      if (pool.length === 0) pool = active;
+      const names = new Set<string>(pool.map((s) => s.name));
       if (current) names.add(current);
       if (names.size === 0) names.add("Unassigned");
       return Array.from(names);
     },
-    [staffNames]
+    [staff]
+  );
+
+  // Options for the "Assigned To" picker in the lead modal (scoped to the
+  // editing lead's stage owner), plus whatever it is currently assigned to.
+  const assigneeOptions = useMemo(
+    () => assigneeOptionsFor(editingLead?.status, editingLead?.assigned),
+    [assigneeOptionsFor, editingLead?.status, editingLead?.assigned]
+  );
+
+  // Options for a row-level assignee picker (staff owning that lead's stage).
+  const rowAssigneeOptions = useCallback(
+    (current?: string, status?: string) => assigneeOptionsFor(status, current),
+    [assigneeOptionsFor]
   );
 
   async function logout() {
@@ -3810,7 +3816,7 @@ export default function CrmDashboardPage() {
                               onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
                               className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
                             >
-                              {rowAssigneeOptions(l.assigned).map((n) => (
+                              {rowAssigneeOptions(l.assigned, l.status).map((n) => (
                                 <option key={n} value={n}>
                                   {n}
                                 </option>
@@ -3984,8 +3990,10 @@ export default function CrmDashboardPage() {
                         </div>
                         )}
 
-                        {/* ── Login 3 (Finance): full previous history — all info from lead → quote ── */}
-                        {role === "finance" && (() => {
+                        {/* ── Full client history — every detail from the start.
+                            Finance sees Lead → Quote; the Manager sees the entire
+                            journey through Job & Finance too. ── */}
+                        {(role === "finance" || role === "manager") && (() => {
                           const leadRows = ([
                             ["Source", l.source],
                             ["Received", l.createdAt ? fmtDate(l.createdAt) : undefined],
@@ -4017,10 +4025,28 @@ export default function CrmDashboardPage() {
                               l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
                             ],
                           ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                          const isManager = role === "manager";
+                          const jobRows = isManager
+                            ? (([
+                                ["Job date", l.jobAt ? fmtDate(l.jobAt) : undefined],
+                                ["Current stage", l.status],
+                                ["Assigned to", l.assigned],
+                              ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][])
+                            : [];
+                          const financeRows = isManager
+                            ? (([
+                                ["Invoice #", l.invoiceNumber],
+                                ["Invoice sent", l.invoiceSentAt ? fmtDate(l.invoiceSentAt) : undefined],
+                                ["Invoice status", l.invoiceStatus],
+                                ["Invoice opened", l.invoiceOpenedAt ? fmtDate(l.invoiceOpenedAt) : undefined],
+                                ["Warranty", l.warranty?.sentAt ? `Sent ${fmtDate(l.warranty.sentAt)}` : undefined],
+                              ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][])
+                            : [];
                           const sections: [string, [string, string][]][] = [
                             ["Lead", leadRows],
                             ["Inspection", inspectionRows],
                             ["Quote", quoteRows],
+                            ...(isManager ? ([["Job", jobRows], ["Finance", financeRows]] as [string, [string, string][]][]) : []),
                           ];
                           const hasAny = sections.some(([, rows]) => rows.length > 0);
                           const isOpen = !!openDetails[l.id];
@@ -4033,7 +4059,7 @@ export default function CrmDashboardPage() {
                               >
                                 <span className="flex items-center gap-2">
                                   <ClipboardList className="w-4 h-4" />
-                                  <span>Previous Details — Lead → Quote</span>
+                                  <span>{isManager ? "Previous Details — Full History" : "Previous Details — Lead → Quote"}</span>
                                 </span>
                                 <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                               </button>

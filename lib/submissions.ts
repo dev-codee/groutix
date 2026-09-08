@@ -157,8 +157,10 @@ export interface SubmissionDoc {
   // reminder cron; the *ReminderSent flags stop duplicate reminders.
   inspectionAt?: string; // ISO datetime of the booked inspection
   jobAt?: string; // ISO datetime of the booked job
-  inspectionReminderSent?: boolean;
-  jobReminderSent?: boolean;
+  inspectionReminderSent?: boolean; // 24h-before reminder
+  jobReminderSent?: boolean; // 24h-before reminder
+  inspectionReminder1hSent?: boolean; // 1h-before reminder
+  jobReminder1hSent?: boolean; // 1h-before reminder
   inspectionReport?: InspectionReportDoc;
   // Request metadata.
   ip?: string;
@@ -490,7 +492,9 @@ export async function listReminderCandidates(): Promise<SubmissionJSON[]> {
       status: { $nin: ["Lost", "Completed"] },
       $or: [
         { inspectionAt: { $gt: "" }, inspectionReminderSent: { $ne: true } },
+        { inspectionAt: { $gt: "" }, inspectionReminder1hSent: { $ne: true } },
         { jobAt: { $gt: "" }, jobReminderSent: { $ne: true } },
+        { jobAt: { $gt: "" }, jobReminder1hSent: { $ne: true } },
       ],
     })
     .toArray();
