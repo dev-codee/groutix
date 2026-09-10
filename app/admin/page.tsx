@@ -15,6 +15,7 @@ import {
   FileSpreadsheet,
   Camera,
   Upload,
+  Download,
   MessageSquare,
   Navigation,
   ShieldCheck,
