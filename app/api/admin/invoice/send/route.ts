@@ -104,9 +104,20 @@ export async function POST(req: NextRequest) {
       </table>
     </div>
 
-    <p style="margin:0 0 20px;">Payment status: ${statusBadge}</p>
+    <p style="margin:0 0 16px;">Payment status: ${statusBadge}</p>
+
+    <div style="margin:20px 0;padding:16px;border:1px solid #fca5a5;border-radius:8px;background:#fff5f5;font-size:13px;line-height:1.6;color:#1e293b;">
+      <div style="font-weight:800;color:#0f172a;font-size:14px;margin-bottom:6px;">PAYMENT INFORMATION</div>
+      <div>• Bank Name: <b>ANZ</b></div>
+      <div>• Account Name: <b>Groutix Pty Ltd</b></div>
+      <div>• Account Number: <b>123456789</b></div>
+      <div>• BSB: <b>013442</b></div>
+    </div>
+
     <div style="margin:20px 0;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
-      All services and payments are subject to <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>.
+      <div>• Payment is due within 7 days of invoice date.</div>
+      <div>• Access our Terms &amp; Conditions: <a href="https://groutix.com/terms-and-conditions/" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/terms-and-conditions/</a></div>
+      <div style="margin-top:4px;">• Access our Service Warranty: <a href="https://groutix.com/service-warranty" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/service-warranty</a></div>
     </div>
     <p style="margin:20px 0 0;">Thank you for choosing Groutix. Reply to this email if you have any questions about this invoice.</p>
     ${invoiceTrackingPixel(body.id)}`;
@@ -127,6 +138,7 @@ export async function POST(req: NextRequest) {
       address: lead.address,
       phone: lead.phone,
       email: lead.email,
+      jobDescription: lead.issue || lead.message || service,
       items: [{ service, description, price: total, qty: 1 }],
       subtotal,
       gst,

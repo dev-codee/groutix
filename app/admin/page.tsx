@@ -7264,7 +7264,7 @@ export default function CrmDashboardPage() {
          ========================================================================= */}
       {invoiceModalOpen && activeInvoiceLead && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-4 my-6">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
@@ -7336,48 +7336,114 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
-              {/* Invoice Preview */}
-              <div className="border border-slate-300 rounded-xl p-5 bg-white space-y-3 font-sans shadow-xs">
-                <div className="flex items-start justify-between border-b border-slate-300 pb-3">
+              {/* Invoice Preview (Matches official Groutix Tax Invoice layout) */}
+              <div className="border border-slate-300 rounded-xl p-5 bg-white space-y-3 font-sans shadow-sm text-slate-800 max-h-[70vh] overflow-y-auto">
+                {/* 1. Header: Logo & Right Column */}
+                <div className="flex items-start justify-between gap-4 pb-1">
                   <div>
-                    <div className="text-xl font-black text-teal-700">GROUTIX</div>
-                    <div className="text-[10px] text-slate-500">Professional Re-Grouting Services</div>
+                    <img src="/logo.png" alt="Groutix" className="h-10 object-contain" />
                   </div>
-                  <div className="text-right text-[10px] text-slate-600">
-                    <div className="font-black text-sm text-slate-900">TAX INVOICE</div>
-                    <div>Date: {new Date().toLocaleDateString("en-AU")}</div>
-                    <div>Inv #: INV-{activeInvoiceLead.id.slice(-6).toUpperCase()}</div>
+                  <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
+                    <div>Melbourne, VIC</div>
+                    <div>1300 476 884</div>
+                    <div>info@groutix.com.au</div>
+                    <div className="pt-1.5 font-black text-xs text-slate-900">TAX INVOICE</div>
+                    <div className="font-bold text-slate-900">ACN: 687 415 005</div>
+                    <div className="pt-1.5 font-bold text-slate-900">Tax Invoice No: INV-{activeInvoiceLead.id.slice(-6).toUpperCase()}</div>
+                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
 
-                <div className="text-[11px]">
-                  <b>Bill To:</b> {activeInvoiceLead.name}<br />
-                  {activeInvoiceLead.address}<br />
-                  {activeInvoiceLead.email}
+                {/* 2. Customer / Billing Address */}
+                <div className="text-[11px] leading-relaxed text-slate-800">
+                  <div className="font-bold text-slate-900">{activeInvoiceLead.name}</div>
+                  {activeInvoiceLead.address && <div>{activeInvoiceLead.address}</div>}
+                  {(activeInvoiceLead.phone || activeInvoiceLead.email) && (
+                    <div className="text-slate-500 text-[10px]">
+                      {[activeInvoiceLead.phone, activeInvoiceLead.email].filter(Boolean).join(" • ")}
+                    </div>
+                  )}
                 </div>
 
-                <div className="border-t border-slate-200 pt-2 space-y-1">
-                  <div className="font-bold text-slate-900">{invoiceService}</div>
-                  <div className="text-[10px] text-slate-600 whitespace-pre-wrap">{invoiceDescription}</div>
+                {/* 3. WORK COMPLETED */}
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">WORK COMPLETED</div>
+                  <div className="text-[11px] text-slate-700 whitespace-pre-wrap">
+                    {invoiceDescription || invoiceService || "Full shower epoxy regrouting, deep clean, and perimeter silicone reseal."}
+                  </div>
                 </div>
 
-                <div className="border-t border-slate-300 pt-3 text-right space-y-0.5">
-                  <div className="text-xs">Subtotal: ${((invoicePrice / 1.1) || 0).toFixed(2)}</div>
-                  <div className="text-xs">GST: ${(invoicePrice - (invoicePrice / 1.1) || 0).toFixed(2)}</div>
-                  <div className="text-base font-black text-teal-800">Total: ${invoicePrice.toFixed(2)}</div>
-                  <div className="text-xs font-bold text-slate-600">Status: {invoiceStatus}</div>
+                {/* 4. Table */}
+                <div>
+                  <div className="grid grid-cols-12 text-[10px] font-bold text-[#e5a910] uppercase pb-1 border-b border-slate-200">
+                    <div className="col-span-6">DESCRIPTION</div>
+                    <div className="col-span-2 text-right">QUANTITY</div>
+                    <div className="col-span-2 text-right">PRICE</div>
+                    <div className="col-span-2 text-right">TOTAL</div>
+                  </div>
+                  <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200">
+                    <div className="col-span-6 font-medium">{invoiceService || "Shower Cubicle Regrouting"}</div>
+                    <div className="col-span-2 text-right">1</div>
+                    <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
+                    <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
+                  </div>
                 </div>
 
-                <div className="border-t border-slate-200 pt-2 text-[10px] text-slate-500">
-                  <span>Payment is subject to </span>
-                  <a
-                    href="/terms-conditions"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#001f97] underline font-bold"
-                  >
-                    Groutix Terms &amp; Conditions (groutix.com.au/terms-conditions)
-                  </a>
+                {/* 5. Financial Summary */}
+                <div className="text-right text-[11px] space-y-1 text-slate-800">
+                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${((invoicePrice / 1.1) || 0).toFixed(2)}</span></div>
+                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${(invoicePrice - (invoicePrice / 1.1) || 0).toFixed(2)}</span></div>
+                  <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${invoicePrice.toFixed(2)}</span></div>
+                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? invoicePrice.toFixed(2) : "0.00"}</span></div>
+                  <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : invoicePrice.toFixed(2)}</span></div>
+                </div>
+
+                {/* 6. HOW TO PAY: */}
+                <div className="space-y-1 pt-1">
+                  <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">HOW TO PAY:</div>
+                  <div className="text-[10px] text-slate-700">We accept payment by: Deposit</div>
+                  
+                  {/* Coral/red payment box */}
+                  <div className="border border-red-300 rounded-lg p-2.5 bg-red-50/20 max-w-sm text-[10px] space-y-0.5">
+                    <div className="font-black text-[11px] text-slate-900 pb-0.5">PAYMENT INFORMATION</div>
+                    <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">ANZ</span></div>
+                    <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">Groutix Pty Ltd</span></div>
+                    <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">123456789</span></div>
+                    <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">013442</span></div>
+                  </div>
+                </div>
+
+                {/* 7. TERMS & CONDITIONS */}
+                <div className="text-center pt-2 space-y-0.5">
+                  <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">TERMS &amp; CONDITIONS</div>
+                  <div className="text-[10px] text-slate-600 space-y-0.5">
+                    <div>• Payment is due within 7 days of invoice date</div>
+                    <div>• Access our Terms &amp; Conditions</div>
+                    <a
+                      href="https://groutix.com/terms-and-conditions/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline font-medium"
+                    >
+                      https://groutix.com/terms-and-conditions/
+                    </a>
+                  </div>
+                </div>
+
+                {/* 8. SERVICE WARRANTY (Page 2) */}
+                <div className="text-center pt-2 border-t border-dashed border-slate-200 space-y-0.5">
+                  <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">SERVICE WARRANTY</div>
+                  <div className="text-[10px] text-slate-600 space-y-0.5">
+                    <div>• Access our Service Warranty</div>
+                    <a
+                      href="https://groutix.com/service-warranty"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline font-medium"
+                    >
+                      https://groutix.com/service-warranty
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -7385,10 +7451,12 @@ export default function CrmDashboardPage() {
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                onClick={() => window.open(`/api/admin/invoice/pdf/${activeInvoiceLead.id}`, "_blank")}
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                title="Print or view official PDF invoice"
               >
-                Print Invoice
+                <Printer className="w-3.5 h-3.5" />
+                Print / View PDF
               </button>
               <button
                 type="button"
