@@ -19,6 +19,7 @@ import {
   Navigation,
   ShieldCheck,
   Edit3,
+  Save,
   Trash2,
   Search,
   CheckSquare,
@@ -65,6 +66,7 @@ import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
+import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
 
 export interface QuoteItem {
   templateNo?: string | number;
@@ -840,6 +842,18 @@ export default function CrmDashboardPage() {
 
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(EMAIL_TEMPLATES);
+  const [manageTemplatesModalOpen, setManageTemplatesModalOpen] = useState(false);
+  const [templateFormOpen, setTemplateFormOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [formCategory, setFormCategory] = useState("General");
+  const [formName, setFormName] = useState("");
+  const [formSubject, setFormSubject] = useState("");
+  const [formBody, setFormBody] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [replySubject, setReplySubject] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [replyText, setReplyText] = useState("");
   // Files staged to email along with the next reply. `content` is base64 for the
   // API; the rest is metadata used for the chip UI and the logged message.
@@ -1084,6 +1098,39 @@ export default function CrmDashboardPage() {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatMessages, chatWith]);
+
+  // Fetch dynamic email templates (persisted in DB or localStorage)
+  const fetchTemplates = useCallback(async () => {
+    try {
+      if (typeof window !== "undefined") {
+        const cached = localStorage.getItem("gx_email_templates");
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setEmailTemplates(parsed);
+            }
+          } catch {}
+        }
+      }
+      const res = await fetch("/api/admin/email-templates");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.templates) && data.templates.length > 0) {
+          setEmailTemplates(data.templates);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("gx_email_templates", JSON.stringify(data.templates));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load email templates:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   // Total unread team-chat messages across all senders — badges the Team nav.
   const totalUnread = useMemo(
@@ -1424,12 +1471,8 @@ export default function CrmDashboardPage() {
   }
 
   function emailCustomer(l: Lead) {
-    if (!l.email) return alert("No email address saved.");
-    const subject = encodeURIComponent("Groutix - Your Enquiry");
-    const body = encodeURIComponent(
-      `Hi ${l.name || ""},\n\nThank you for contacting Groutix regarding your enquiry.\n\nRegards,\nGroutix Team`
-    );
-    window.location.href = `mailto:${l.email}?subject=${subject}&body=${body}`;
+    if (!l.email) return alert("This customer does not have an email address saved.");
+    openMessagesModal(l);
   }
 
   // Quote Builder Logic
@@ -1718,6 +1761,8 @@ export default function CrmDashboardPage() {
     }
 
     setActiveMessageLead(currentLead);
+    setSelectedTemplateId("");
+    setReplySubject(`Re: Groutix Enquiry - ${currentLead.name || "Customer"}`);
     setReplyText("");
     setReplyAttachments([]);
     setMessagesModalOpen(true);
@@ -1780,6 +1825,197 @@ export default function CrmDashboardPage() {
     setReplyAttachments((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function handleSelectEmailTemplate(templateId: string) {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+    const template = emailTemplates.find((t) => t.id === templateId);
+    if (!template || !activeMessageLead) return;
+
+    const leadCtx = activeMessageLeadLive || activeMessageLead;
+    const rendered = renderEmailTemplate(template, leadCtx);
+
+    if (replyText.trim() && replyText.trim() !== "") {
+      const confirmReplace = window.confirm("Replace your current email text with the selected template?");
+      if (!confirmReplace) return;
+    }
+
+    setReplySubject(rendered.subject);
+    setReplyText(rendered.body);
+  }
+
+  function handleOpenCreateTemplate() {
+    setEditingTemplate(null);
+    setFormCategory("General");
+    setFormName("");
+    setFormSubject("");
+    setFormBody("");
+    setFormDescription("");
+    setTemplateFormOpen(true);
+  }
+
+  function handleOpenEditTemplate(tmpl: EmailTemplate) {
+    setEditingTemplate(tmpl);
+    setFormCategory(tmpl.category || "General");
+    setFormName(tmpl.name);
+    setFormSubject(tmpl.subject);
+    setFormBody(tmpl.body);
+    setFormDescription(tmpl.description || "");
+    setTemplateFormOpen(true);
+  }
+
+  async function handleSaveTemplate() {
+    if (!formName.trim()) {
+      alert("Please enter a template name.");
+      return;
+    }
+    if (!formBody.trim()) {
+      alert("Please enter the email body text.");
+      return;
+    }
+
+    setSavingTemplate(true);
+    const tmpl: EmailTemplate = {
+      id: editingTemplate ? editingTemplate.id : `tmpl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      category: formCategory.trim() || "General",
+      name: formName.trim(),
+      description: formDescription.trim(),
+      subject: formSubject.trim() || "Re: Groutix Enquiry",
+      body: formBody.trim(),
+    };
+
+    try {
+      const res = await fetch("/api/admin/email-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tmpl),
+      });
+      if (!res.ok) throw new Error("Failed to save template");
+
+      setEmailTemplates((prev) => {
+        const exists = prev.some((t) => t.id === tmpl.id);
+        const updated = exists ? prev.map((t) => (t.id === tmpl.id ? tmpl : t)) : [...prev, tmpl];
+        if (typeof window !== "undefined") {
+          localStorage.setItem("gx_email_templates", JSON.stringify(updated));
+        }
+        return updated;
+      });
+
+      setTemplateFormOpen(false);
+      setEditingTemplate(null);
+    } catch (err) {
+      console.error(err);
+      alert("Could not save to server. Saved locally.");
+      setEmailTemplates((prev) => {
+        const exists = prev.some((t) => t.id === tmpl.id);
+        const updated = exists ? prev.map((t) => (t.id === tmpl.id ? tmpl : t)) : [...prev, tmpl];
+        if (typeof window !== "undefined") {
+          localStorage.setItem("gx_email_templates", JSON.stringify(updated));
+        }
+        return updated;
+      });
+      setTemplateFormOpen(false);
+      setEditingTemplate(null);
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  async function handleDeleteTemplate(id: string) {
+    const tmpl = emailTemplates.find((t) => t.id === id);
+    if (!window.confirm(`Are you sure you want to delete the template "${tmpl?.name || id}"?`)) return;
+
+    try {
+      await fetch(`/api/admin/email-templates?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error(err);
+    }
+
+    setEmailTemplates((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("gx_email_templates", JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (selectedTemplateId === id) {
+      setSelectedTemplateId("");
+    }
+  }
+
+  async function handleResetTemplates() {
+    if (!window.confirm("Reset all templates back to standard Groutix defaults? Any custom templates will be removed.")) return;
+    try {
+      const res = await fetch("/api/admin/email-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.templates)) {
+          setEmailTemplates(data.templates);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("gx_email_templates", JSON.stringify(data.templates));
+          }
+          return;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    // Fallback reset
+    setEmailTemplates(EMAIL_TEMPLATES);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gx_email_templates", JSON.stringify(EMAIL_TEMPLATES));
+    }
+  }
+
+  function handleInsertVariable(variableName: string) {
+    if (!activeMessageLead) return;
+    const leadCtx = activeMessageLeadLive || activeMessageLead;
+    let val = "";
+    switch (variableName) {
+      case "name":
+        val = leadCtx.name?.trim() || "Customer";
+        break;
+      case "firstName":
+        val = leadCtx.name?.trim().split(/\s+/)[0] || "there";
+        break;
+      case "service":
+        val = leadCtx.service?.trim() || "tiling & grouting service";
+        break;
+      case "address":
+        val = leadCtx.address?.trim() || [leadCtx.city, leadCtx.state].filter(Boolean).join(", ") || "your property";
+        break;
+      case "phone":
+        val = leadCtx.phone || "";
+        break;
+      case "quoteAmount":
+        val = leadCtx.quoteAmount ? `$${Number(leadCtx.quoteAmount).toFixed(2)}` : "";
+        break;
+      case "technician":
+        val = leadCtx.technician || leadCtx.assigned || "our specialist";
+        break;
+      default:
+        val = "";
+    }
+    if (!val) return;
+    setReplyText((prev) => (prev ? `${prev} ${val}` : val));
+  }
+
+  function handleOpenMailApp() {
+    if (!activeMessageLead?.email) {
+      alert("This customer does not have an email address on file.");
+      return;
+    }
+    const subj = encodeURIComponent(replySubject.trim() || `Re: Groutix Enquiry - ${activeMessageLead.name || "Customer"}`);
+    const body = encodeURIComponent(replyText.trim());
+    window.location.href = `mailto:${activeMessageLead.email}?subject=${subj}&body=${body}`;
+  }
+
   async function handleSendReply() {
     if (!activeMessageLead) return;
     if (!replyText.trim() && replyAttachments.length === 0) return;
@@ -1795,7 +2031,7 @@ export default function CrmDashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: "Re: Groutix Enquiry",
+          subject: replySubject.trim() || `Re: Groutix Enquiry - ${activeMessageLead.name || "Customer"}`,
           text: replyText.trim(),
           attachments: replyAttachments,
         })
@@ -1809,6 +2045,7 @@ export default function CrmDashboardPage() {
       setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
       setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
       setReplyText("");
+      setSelectedTemplateId("");
       setReplyAttachments([]);
     } catch (err) {
       alert("Failed to send email reply. Check console for details.");
@@ -6160,24 +6397,171 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Reply Composer */}
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-2 border-t border-slate-200">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Reply via Email:</span>
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
+                  <Mail className="w-3.5 h-3.5 text-[#001f97]" />
+                  <span>Compose & Send Email</span>
+                </div>
                 <button
+                  type="button"
                   onClick={handleAddCustomerDemoReply}
-                  className="text-xs text-[#001f97] font-semibold hover:underline"
+                  className="text-[11px] text-[#001f97] font-semibold hover:underline"
                 >
-                  + Add Customer Message
+                  + Add Customer Message Note
                 </button>
               </div>
 
-              <textarea
-                rows={3}
-                placeholder="Type your reply or internal note here..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                className="w-full p-2.5 text-xs border border-slate-200 rounded-xl"
-              />
+              {/* Template Picker Dropdown */}
+              <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Choose Predefined Template:</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManageTemplatesModalOpen(true);
+                        handleOpenCreateTemplate();
+                      }}
+                      className="text-[11px] text-[#001f97] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Template</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setManageTemplatesModalOpen(true)}
+                      className="text-[11px] text-slate-600 hover:text-slate-900 underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Manage / Remove</span>
+                    </button>
+                    {selectedTemplateId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTemplateId("");
+                          setReplyText("");
+                          setReplySubject(
+                            `Re: Groutix Enquiry - ${activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}`
+                          );
+                        }}
+                        className="text-[11px] text-slate-400 hover:text-slate-700 underline font-medium ml-1 cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => handleSelectEmailTemplate(e.target.value)}
+                  className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] transition shadow-2xs cursor-pointer"
+                >
+                  <option value="">-- Select an Email Template (or write custom) --</option>
+                  {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => (
+                    <optgroup key={cat} label={cat}>
+                      {emailTemplates.filter((t) => t.category === cat).map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+
+                {selectedTemplateId && (
+                  <p className="text-[11px] text-slate-500 italic">
+                    {emailTemplates.find((t) => t.id === selectedTemplateId)?.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Subject Input */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Email Subject:</label>
+                <input
+                  type="text"
+                  value={replySubject}
+                  onChange={(e) => setReplySubject(e.target.value)}
+                  placeholder="Enter email subject line..."
+                  className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                />
+              </div>
+
+              {/* Quick-Insert Variables */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">
+                  Insert Tag:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("firstName")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + First Name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("name")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Full Name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("service")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Service
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("address")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Address
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("phone")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Phone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("technician")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Specialist
+                </button>
+                {Boolean(activeMessageLeadLive?.quoteAmount || activeMessageLead?.quoteAmount) && (
+                  <button
+                    type="button"
+                    onClick={() => handleInsertVariable("quoteAmount")}
+                    className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                  >
+                    + Quote Total
+                  </button>
+                )}
+              </div>
+
+              {/* Email Body */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
+                <textarea
+                  rows={6}
+                  placeholder="Type your email message or pick a template from the dropdown above..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans"
+                />
+              </div>
 
               {/* Staged attachments */}
               {replyAttachments.length > 0 && (
@@ -6190,6 +6574,7 @@ export default function CrmDashboardPage() {
                       <Paperclip className="w-3 h-3 text-slate-400" />
                       <span className="max-w-[160px] truncate">{att.name}</span>
                       <button
+                        type="button"
                         onClick={() => removeReplyAttachment(i)}
                         className="text-slate-400 hover:text-rose-600"
                         title="Remove attachment"
@@ -6209,22 +6594,37 @@ export default function CrmDashboardPage() {
                 onChange={(e) => handleAttachReplyFiles(e.target.files)}
               />
 
-              <div className="flex justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => replyFileRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Attach files to email"
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>Attach Files</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenMailApp}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Open your default desktop email client with this draft"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in Mail App</span>
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => replyFileRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50"
-                  title="Attach files to email"
-                >
-                  <Paperclip className="w-3.5 h-3.5" />
-                  Attach
-                </button>
-                <button
+                  type="button"
                   onClick={handleSendReply}
                   disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
                 >
                   {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  {sendingReply ? "Sending…" : "Save & Send Reply"}
+                  <span>{sendingReply ? "Sending…" : "Save & Send Email"}</span>
                 </button>
               </div>
             </div>
@@ -6232,6 +6632,288 @@ export default function CrmDashboardPage() {
         </div>
       )}
 
+      {/* =========================================================================
+          MODAL: MANAGE EMAIL TEMPLATES (ADD / EDIT / REMOVE / RESET)
+         ========================================================================= */}
+      {manageTemplatesModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-8 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-5 border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#001f97]">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-black text-slate-900">Email Templates Manager</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#001f97] text-xs font-bold border border-blue-200">
+                      {emailTemplates.length} templates
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Add, customize, or remove email templates used across the CRM dashboard.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!templateFormOpen && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleResetTemplates}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                      title="Reset all templates back to standard Groutix defaults"
+                    >
+                      <RefreshCcw className="w-3.5 h-3.5" />
+                      <span>Reset Defaults</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenCreateTemplate}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#001f97] hover:bg-[#001777] rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Template</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManageTemplatesModalOpen(false);
+                    setTemplateFormOpen(false);
+                  }}
+                  className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+                  title="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Add / Edit Form */}
+            {templateFormOpen ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-blue-600" />
+                    <span>{editingTemplate ? "Edit Template" : "Create New Email Template"}</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setTemplateFormOpen(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Template Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Booking Deposit Request"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Category *</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                    >
+                      <option value="Enquiries & Leads">Enquiries & Leads</option>
+                      <option value="Inspections">Inspections</option>
+                      <option value="Quotations">Quotations</option>
+                      <option value="Bookings">Bookings</option>
+                      <option value="Job Completion & Care">Job Completion & Care</option>
+                      <option value="Billing">Billing</option>
+                      <option value="General">General</option>
+                      <option value="Promotions">Promotions</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Short Description</label>
+                  <input
+                    type="text"
+                    placeholder="Brief note on when staff should use this template"
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Email Subject Line *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
+                    value={formSubject}
+                    onChange={(e) => setFormSubject(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                  />
+                </div>
+
+                {/* Variable helper chips */}
+                <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[11px]">
+                  <span className="font-bold text-[#001f97] mr-1">Insert Dynamic Tag:</span>
+                  {[
+                    { label: "+ First Name", val: "{first_name}" },
+                    { label: "+ Full Name", val: "{customer_name}" },
+                    { label: "+ Service", val: "{service}" },
+                    { label: "+ Address", val: "{address}" },
+                    { label: "+ Phone", val: "{phone}" },
+                    { label: "+ Specialist", val: "{technician_name}" },
+                    { label: "+ Inspection Date", val: "{inspection_date}" },
+                    { label: "+ Booking Date", val: "{booking_date}" },
+                    { label: "+ Quote #", val: "{quote_number}" },
+                    { label: "+ Invoice #", val: "{invoice_number}" },
+                    { label: "+ Total Due", val: "{invoice_total}" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.val}
+                      type="button"
+                      onClick={() => setFormBody((prev) => `${prev} ${chip.val}`)}
+                      className="px-2 py-0.5 bg-white border border-blue-200 rounded-md text-slate-700 hover:bg-blue-100 hover:text-blue-900 font-medium transition cursor-pointer"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Message Body *</label>
+                  <textarea
+                    rows={8}
+                    placeholder="Write your email body here... You can use variables like {first_name}, {service}, etc."
+                    value={formBody}
+                    onChange={(e) => setFormBody(e.target.value)}
+                    className="w-full p-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateFormOpen(false)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTemplate}
+                    disabled={savingTemplate || !formName.trim() || !formBody.trim()}
+                    className="px-5 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {savingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>{savingTemplate ? "Saving..." : editingTemplate ? "Update Template" : "Create Template"}</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Template List Cards */}
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => {
+                const group = emailTemplates.filter((t) => t.category === cat);
+                return (
+                  <div key={cat} className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-500">{cat}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
+                        {group.length}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {group.map((t) => (
+                        <div
+                          key={t.id}
+                          className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-3.5 space-y-2.5 transition shadow-2xs flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-xs font-black text-slate-800 line-clamp-1">{t.name}</h4>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditTemplate(t)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                                  title="Edit this template"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTemplate(t.id)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Delete this template"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {t.description && (
+                              <p className="text-[11px] text-slate-500 line-clamp-1">{t.description}</p>
+                            )}
+
+                            <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-[11px] text-slate-600 space-y-1">
+                              <div className="font-semibold text-slate-700 truncate">
+                                Subject: <span className="font-normal text-slate-600">{t.subject}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                                {t.body}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectEmailTemplate(t.id);
+                                setManageTemplatesModalOpen(false);
+                              }}
+                              className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-[#001f97] font-bold rounded-lg text-center transition cursor-pointer"
+                            >
+                              Use in Composer →
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {emailTemplates.length === 0 && (
+                <div className="text-center py-12 text-slate-400 space-y-2">
+                  <FileText className="w-8 h-8 mx-auto text-slate-300" />
+                  <p className="text-xs font-semibold">No templates found.</p>
+                  <button
+                    type="button"
+                    onClick={handleResetTemplates}
+                    className="text-xs text-[#001f97] underline font-bold cursor-pointer"
+                  >
+                    Click here to load standard default templates
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* =========================================================================
           MODAL: INSPECTION GPS
          ========================================================================= */}

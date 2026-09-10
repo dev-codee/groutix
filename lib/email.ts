@@ -53,7 +53,7 @@ function getTransporter(): nodemailer.Transporter {
 }
 
 /**
- * Send an email via Google Workspace / SMTP with retry logic.
+ * Send an email via Google Workspace / SMTP with retry logic.  it is connect to workspace.
  */
 export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const user = process.env.SMTP_USER || "info@groutix.com";
@@ -216,7 +216,7 @@ function escapeHtml(s: string): string {
  */
 export function wrapEmailHtml(contentHtml: string, preheaderText?: string): string {
   const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/logo.png`;
-  
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -225,11 +225,10 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string): stri
   <title>Groutix</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#334155;-webkit-font-smoothing:antialiased;">
-  ${
-    preheaderText
+  ${preheaderText
       ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheaderText}</div>`
       : ""
-  }
+    }
   <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
     <tr>
       <td align="center">
