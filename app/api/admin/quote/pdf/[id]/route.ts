@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSubmission } from "@/lib/submissions";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
+import { getMatchedQuoteItemsForLead } from "@/lib/serviceMatching";
 
 export const runtime = "nodejs";
 
@@ -10,12 +11,23 @@ type Ctx = { params: Promise<{ id: string }> };
 // Download/preview the branded quotation PDF for a lead. Auth is enforced by
 // the /api/admin middleware guard. Uses the existing quote number if one has
 // been minted, otherwise labels the document DRAFT (no number is consumed).
-export async function GET(_req: NextRequest, { params }: Ctx) {
+export async function GET(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const lead = await getSubmission(id);
   if (!lead) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
+  const sp = req.nextUrl.searchParams;
+  let items = Array.isArray(lead.quoteItems) && lead.quoteItems.length > 0 ? lead.quoteItems : [];
+  if (sp.get("items")) {
+    try {
+      const parsed = JSON.parse(sp.get("items")!);
+      if (Array.isArray(parsed) && parsed.length > 0) items = parsed;
+    } catch {}
+  }
+  if (items.length === 0) {
+    items = getMatchedQuoteItemsForLead(lead);
+  }
+
   const { subtotal, gst, total } = computeQuoteTotals(
     items,
     lead.quoteTaxMode,
@@ -29,6 +41,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     lead.message ||
     lead.issue ||
     (items[0]?.scope || items[0]?.description || "");
+
+  const specialNotes =
+    sp.get("notes") ||
+    (lead.quoteTerms && lead.quoteTerms.length < 500 && !/^Groutix terms/i.test(lead.quoteTerms)
+      ? lead.quoteTerms
+      : DEFAULT_QUOTE_CONDITIONS);
 
   const base64 = await buildQuotePdfBase64({
     quoteNumber,
@@ -47,10 +65,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     gst,
     total,
     taxName: lead.quoteTaxMode === "none" ? "No Tax" : "GST (10%)",
-    specialNotes:
-      lead.quoteTerms && lead.quoteTerms.length < 500 && !/^Groutix terms/i.test(lead.quoteTerms)
-        ? lead.quoteTerms
-        : DEFAULT_QUOTE_CONDITIONS,
+    specialNotes,
     terms: GROUTIX_OFFICIAL_TERMS,
   });
 
@@ -60,7 +75,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="Groutix_Quote_${quoteNumber}.pdf"`,
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
     },
   });
 }

@@ -1612,7 +1612,9 @@ export default function CrmDashboardPage() {
       quoteAmount: total,
       quoteUpdated: new Date().toISOString(),
     });
-    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}`, "_blank");
+    const itemsParam = encodeURIComponent(JSON.stringify(quoteItems));
+    const notesParam = encodeURIComponent(quoteTerms || "");
+    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}&t=${Date.now()}`, "_blank");
   }
 
   function handleEmailQuote() {
@@ -1624,8 +1626,8 @@ export default function CrmDashboardPage() {
       `Thank you for your enquiry. We have prepared your quotation for AUD $${total.toFixed(2)}.\n\n` +
       `Items:\n` +
       quoteItems.map((item, i) => `${i + 1}. ${item.service} - $${Number(item.price || 0).toFixed(2)}`).join("\n") +
-      `\n\nAll works are subject to Groutix Terms & Conditions: https://groutix.com.au/terms-conditions\n\n` +
-      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n(03) 7023 8094`
+      `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
+      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n1300 476 884`
     );
     window.location.href = `mailto:${activeQuoteLead.email}?subject=${subject}&body=${body}`;
   }
@@ -1637,7 +1639,7 @@ export default function CrmDashboardPage() {
     const text = encodeURIComponent(
       `Hi ${activeQuoteLead.name || ""}, your Groutix quote is ready for AUD $${total.toFixed(2)}.\n\n` +
       quoteItems.map((item, i) => `• ${item.service}: $${Number(item.price || 0).toFixed(2)}`).join("\n") +
-      `\n\nTerms & Conditions: https://groutix.com.au/terms-conditions\n\nStay Sealed. Stay Smiling. - Groutix`
+      `\n\nOfficial terms and conditions are included directly with your quote document.\n\nStay Sealed. Stay Smiling. - Groutix`
     );
     window.open(`https://wa.me/${phone.startsWith("0") ? "61" + phone.slice(1) : phone}?text=${text}`, "_blank");
   }
@@ -5967,71 +5969,73 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
-              {/* Right Column: Branded Quotation Document Preview */}
-              <div className="border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4">
-                <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
+              <div className="border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* 1. Header: Logo (left) & Right-Aligned Address + Gold Quote + ACN + Quote # + Date */}
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <img
                       src="/logo.png"
-                      alt="Groutix Logo"
-                      className="h-9 w-auto object-contain mb-2"
+                      alt="Groutix"
+                      className="h-11 w-auto object-contain"
                     />
-                    <div className="text-[11px] text-slate-600 leading-tight">
-                      Melbourne, VIC<br />
-                      Phone: (03) 7023 8094<br />
-                      Email: info@groutix.com
-                    </div>
                   </div>
-                  <div className="text-right text-[11px] text-slate-700 space-y-0.5">
-                    <div className="text-lg font-black text-slate-900">QUOTATION</div>
-                    <div><b>ACN:</b> 687 415 005</div>
-                    <div><b>Quote #:</b> GQ-{activeQuoteLead.id.slice(-6).toUpperCase()}</div>
-                    <div><b>Date:</b> {new Date().toLocaleDateString("en-AU")}</div>
+                  <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
+                    <div>1/14 St Andrews St</div>
+                    <div>Brighton VIC 3186</div>
+                    <div>1300 476 884</div>
+                    <div>info@groutix.com.au</div>
+                    <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
+                    <div className="font-bold text-slate-900">ACN: 687 415 005</div>
+                    <div className="pt-1.5 text-slate-900">Quote # GQ-{activeQuoteLead.id.slice(-6).toUpperCase()}</div>
+                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
 
-                <div className="text-[11px] font-semibold text-slate-700 italic">
-                  Thank you for choosing Groutix. Stay Sealed. Stay Smiling.
-                </div>
-
-                <div className="text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                {/* 2. Customer Details / Billing Address («job.instantpost_billing_address») */}
+                <div className="text-[11px] leading-relaxed text-slate-800 pt-3">
                   <div className="font-bold text-slate-900">{activeQuoteLead.name || "Customer Name"}</div>
-                  <div>{activeQuoteLead.phone}</div>
-                  <div>{activeQuoteLead.email}</div>
-                  <div>{activeQuoteLead.address}</div>
+                  {activeQuoteLead.address && <div>{activeQuoteLead.address}</div>}
+                  {(activeQuoteLead.phone || activeQuoteLead.email) && (
+                    <div className="text-slate-500 text-[10.5px]">
+                      {[activeQuoteLead.phone, activeQuoteLead.email].filter(Boolean).join(" • ")}
+                    </div>
+                  )}
                 </div>
 
-                {(activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry) && (
-                  <div className="text-[11px] bg-blue-50/50 p-2.5 rounded-lg border border-blue-100">
-                    <div className="font-bold text-[#001f97] text-[10px] tracking-wide mb-1">JOB DESCRIPTION:</div>
-                    <div className="text-slate-700 whitespace-pre-wrap">{activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry}</div>
+                {/* 3. JOB DESCRIPTION («job.work_done_description») */}
+                <div className="pt-2 space-y-1">
+                  <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wide">JOB DESCRIPTION:</div>
+                  <div className="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified."}
                   </div>
-                )}
+                </div>
 
-                <table className="w-full text-left text-[11px] border-collapse">
+                {/* 4. Table: DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE with light-gray bar */}
+                <table className="w-full text-left text-[11px] border-collapse mt-2">
                   <thead>
-                    <tr className="border-b border-slate-800 bg-slate-100 font-bold uppercase text-[9px] text-slate-700">
-                      <th className="py-2 px-2">Description / Scope</th>
-                      <th className="py-2 px-2 text-right">Qty</th>
-                      <th className="py-2 px-2 text-right">Unit Price</th>
-                      <th className="py-2 px-2 text-right">Total Price</th>
+                    <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[9.5px]">
+                      <th className="py-2 px-2.5">DESCRIPTION</th>
+                      <th className="py-2 px-2.5 text-right">QTY</th>
+                      <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
+                      <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {quoteItems.map((item, i) => (
                       <tr key={i}>
-                        <td className="py-2.5 px-2">
+                        <td className="py-2.5 px-2.5">
                           {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
-                          <div className="font-black text-slate-900 text-xs">{item.service}</div>
+                          <div className="font-bold text-slate-900 text-xs">{item.service}</div>
                           {item.scope && !isRedundantScope(item.service, item.scope) && (
                             <div className="text-[10px] text-slate-600 whitespace-pre-wrap mt-1 leading-relaxed">
                               {item.scope}
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-2 text-right">{item.qty || 1}</td>
-                        <td className="py-2.5 px-2 text-right">${Number(item.price || 0).toFixed(2)}</td>
-                        <td className="py-2.5 px-2 text-right font-bold">
+                        <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
+                        <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
+                        <td className="py-2.5 px-2.5 text-right font-bold">
                           ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
                         </td>
                       </tr>
@@ -6039,51 +6043,48 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
 
-                {/* Totals */}
-                <div className="border-t border-slate-800 pt-3 flex flex-col items-end text-xs space-y-1">
-                  <div>
-                    Subtotal: <b>AUD ${quoteTotals().subtotal.toFixed(2)}</b>
+                {/* 5. Totals */}
+                <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
+                  <div className="flex justify-end gap-6">
+                    <span className="text-slate-600 font-medium">SUBTOTAL:</span>
+                    <span className="w-24 text-right font-semibold">${quoteTotals().subtotal.toFixed(2)}</span>
                   </div>
-                  <div>
-                    GST ({quoteTaxRate}%): <b>AUD ${quoteTotals().gst.toFixed(2)}</b>
+                  <div className="flex justify-end gap-6">
+                    <span className="text-slate-600 font-medium">GST ({quoteTaxRate}%):</span>
+                    <span className="w-24 text-right font-semibold">${quoteTotals().gst.toFixed(2)}</span>
                   </div>
-                  <div className="text-base font-black text-[#001f97] border-t border-slate-300 pt-1">
-                    TOTAL: AUD ${quoteTotals().total.toFixed(2)}
+                  <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
+                    <span>TOTAL:</span>
+                    <span className="w-24 text-right">${quoteTotals().total.toFixed(2)}</span>
                   </div>
                 </div>
 
-                {/* Conditions / Notes & Terms Attachment Notice */}
-                <div className="border-t border-slate-200 pt-3 space-y-2">
-                  {quoteTerms && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-600 leading-relaxed">
-                      <span className="font-bold text-slate-800 uppercase tracking-wider text-[9px] block mb-0.5">
-                        Quote Conditions / Special Notes:
-                      </span>
-                      <div className="whitespace-pre-wrap">
-                        {quoteTerms.length > 500 || /^Groutix terms and conditions/i.test(quoteTerms)
-                          ? DEFAULT_QUOTE_CONDITIONS
-                          : quoteTerms}
-                      </div>
-                    </div>
-                  )}
+                {/* 6. Centered «final_note» */}
+                <div className="pt-4 text-center">
+                  <div className="text-[10px] text-slate-500 italic">
+                    {quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
+                      ? quoteTerms
+                      : DEFAULT_QUOTE_CONDITIONS}
+                  </div>
+                </div>
 
-                  <div className="bg-blue-50/70 border border-blue-200/80 rounded-lg p-2.5 text-[10px] text-blue-950 flex items-start gap-2">
-                    <div className="mt-0.5 text-[#001f97] font-bold text-xs leading-none">✓</div>
-                    <div className="flex-1 leading-relaxed">
-                      <span className="font-bold text-[#001f97]">Official Groutix Terms &amp; Conditions (20 Clauses)</span> and Customer Signature block are automatically attached to the official PDF quotation.
-                      <div className="mt-1">
-                        <a
-                          href="https://groutix.com.au/terms-conditions"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#001f97] underline font-bold hover:text-blue-900 inline-flex items-center gap-1"
-                        >
-                          <span>groutix.com.au/terms-conditions</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      </div>
+                {/* 7. Full Text of All 20 Terms & Conditions Clauses Preview */}
+                <div className="border-t border-slate-200 pt-4 space-y-3">
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 text-[10.5px] text-amber-950 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#b8860b]">✓ 10-Page Quotation Template Active</span>
+                      <span className="text-[10px] text-slate-600">All 20 Clauses &amp; Signature block printed in PDF (No external terms links)</span>
                     </div>
                   </div>
+
+                  <details className="text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <summary className="font-bold text-slate-800 cursor-pointer hover:text-[#001f97] select-none">
+                      Preview All 20 Terms &amp; Conditions Clauses (Pages 2–10)
+                    </summary>
+                    <div className="mt-3 text-[10px] text-slate-700 space-y-2 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono bg-white p-2.5 rounded border border-slate-200">
+                      {GROUTIX_QUOTE_TERMS}
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>

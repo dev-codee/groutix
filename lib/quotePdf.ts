@@ -132,9 +132,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     return buildInvoicePdfBase64(input);
   }
 
-  const heading = "QUOTATION";
-  const numberLabel = "Quote No.";
-
   const doc = await PDFDocument.create();
   doc.setTitle(`Groutix Quotation ${input.quoteNumber}`);
   doc.setProducer("Groutix CRM");
@@ -142,159 +139,180 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  let page = doc.addPage([A4.w, A4.h]);
+  const GOLD = rgb(0.85, 0.72, 0.28);
+  const INK = rgb(0.1, 0.1, 0.1);
+  const MUTED = rgb(0.38, 0.42, 0.48);
+  const LINE = rgb(0.88, 0.9, 0.93);
+  const BRAND = rgb(0, 0.122, 0.592);
+  const ZEBRA = rgb(0.97, 0.98, 0.99);
+
   const contentW = A4.w - MARGIN * 2;
-  let y = A4.h - MARGIN;
+  const bottomLimit = 55;
 
-  const text = (
-    s: string,
-    x: number,
-    yy: number,
-    opts: { font?: PDFFont; size?: number; color?: ReturnType<typeof rgb> } = {}
-  ) => {
-    const cleaned = cleanPdfText(s);
-    page.drawText(cleaned, {
-      x,
-      y: yy,
-      size: opts.size ?? 10,
-      font: opts.font ?? font,
-      color: opts.color ?? INK,
-    });
-  };
-
-  const rightText = (
-    s: string,
-    rightX: number,
-    yy: number,
-    opts: { font?: PDFFont; size?: number; color?: ReturnType<typeof rgb> } = {}
-  ) => {
-    const cleaned = cleanPdfText(s);
-    const f = opts.font ?? font;
-    const size = opts.size ?? 10;
-    text(cleaned, rightX - f.widthOfTextAtSize(cleaned, size), yy, opts);
-  };
-
-  const ensureRoom = (needed: number) => {
-    if (y - needed < MARGIN + 45) {
-      page = doc.addPage([A4.w, A4.h]);
-      y = A4.h - MARGIN;
-    }
-  };
-
-  // ── 1. Top Header ──
-  let logoDrawn = false;
+  let logoImg: any = null;
   try {
     const logoPath = path.join(process.cwd(), "public", "logo.png");
     if (fs.existsSync(logoPath)) {
-      const logoBytes = fs.readFileSync(logoPath);
-      const logoImg = await doc.embedPng(logoBytes);
-      const drawH = 30;
+      logoImg = await doc.embedPng(fs.readFileSync(logoPath));
+    }
+  } catch {
+    // fallback if logo unavailable
+  }
+
+  // Draw official Groutix header on every page: Logo on left, right-aligned contact, Quote in gold, ACN, Quote # & Date on right
+  const drawQuoteHeader = (targetPage: any) => {
+    // 1. Logo (Top-Left)
+    if (logoImg) {
+      const drawH = 46;
       const drawW = (logoImg.width / logoImg.height) * drawH;
-      page.drawImage(logoImg, {
+      targetPage.drawImage(logoImg, {
         x: MARGIN,
-        y: y - drawH,
+        y: A4.h - MARGIN - drawH + 4,
         width: drawW,
         height: drawH,
       });
-      logoDrawn = true;
+    } else {
+      targetPage.drawText("GROUTIX", {
+        x: MARGIN,
+        y: A4.h - MARGIN - 20,
+        size: 24,
+        font: bold,
+        color: BRAND,
+      });
     }
-  } catch {
-    // fallback to text if logo file is unavailable
-  }
 
-  if (!logoDrawn) {
-    text("GROUTIX", MARGIN, y - 6, { font: bold, size: 24, color: BRAND });
-  }
+    // 2. Right-aligned header column
+    const rightX = A4.w - MARGIN;
+    let ry = A4.h - MARGIN;
 
-  const sublineY = logoDrawn ? y - 41 : y - 22;
-  const acnY = logoDrawn ? y - 52 : y - 33;
-  text("Tile Regrouting * Waterproofing * Shower Sealing", MARGIN, sublineY, {
-    size: 8.5,
-    color: MUTED,
-  });
-  text("ACN: 687 415 005 | Melbourne, VIC", MARGIN, acnY, {
-    size: 8,
-    color: MUTED,
-  });
+    const drawR = (str: string, f: PDFFont, sz: number, clr: any) => {
+      const cleaned = cleanPdfText(str);
+      const w = f.widthOfTextAtSize(cleaned, sz);
+      targetPage.drawText(cleaned, {
+        x: rightX - w,
+        y: ry,
+        size: sz,
+        font: f,
+        color: clr,
+      });
+    };
 
-  rightText(heading, A4.w - MARGIN, y - 4, { font: bold, size: 18, color: INK });
-  rightText(`${numberLabel}  ${input.quoteNumber}`, A4.w - MARGIN, y - 20, { size: 9.5, color: MUTED });
-  rightText(`Date  ${input.date}`, A4.w - MARGIN, y - 33, { size: 9.5, color: MUTED });
-
-  y -= logoDrawn ? 66 : 48;
-  page.drawLine({
-    start: { x: MARGIN, y },
-    end: { x: A4.w - MARGIN, y },
-    thickness: 1.5,
-    color: BRAND,
-  });
-  y -= 18;
-
-  // ── 2. Billing Address / Customer Info («job.instantpost_billing_address») ──
-  text("CUSTOMER DETAILS & BILLING ADDRESS", MARGIN, y, { font: bold, size: 8.5, color: MUTED });
-  y -= 13;
-  text(input.customerName || "Customer", MARGIN, y, { font: bold, size: 11, color: INK });
-  y -= 13;
-
-  if (input.address) {
-    const addrLines = wrapLines(input.address, font, 9, contentW - 160);
-    for (const ln of addrLines) {
-      if (ln) {
-        text(ln, MARGIN, y, { size: 9, color: INK });
-        y -= 11.5;
-      }
+    const addrLines = input.businessAddress
+      ? input.businessAddress.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+      : ["1/14 St Andrews St", "Brighton VIC", "3186"];
+    for (const line of addrLines) {
+      drawR(line, font, 8.5, INK);
+      ry -= 10.5;
     }
-  }
+    drawR(input.businessPhone || "1300 476 884", font, 8.5, INK);
+    ry -= 10.5;
+    drawR(input.businessEmail || "info@groutix.com.au", font, 8.5, INK);
+    ry -= 14;
 
-  const contactPieces: string[] = [];
-  if (input.phone) contactPieces.push(`Phone: ${input.phone}`);
-  if (input.email) contactPieces.push(`Email: ${input.email}`);
-  if (contactPieces.length > 0) {
-    text(contactPieces.join("   *   "), MARGIN, y, { size: 8.5, color: MUTED });
+    drawR("Quote", bold, 15, GOLD);
+    ry -= 13;
+    drawR("ACN: 687 415 005", bold, 8.5, INK);
+    ry -= 16;
+
+    drawR(`Quote # ${input.quoteNumber}`, font, 8.5, INK);
+    ry -= 11;
+    drawR(input.date || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }), font, 8.5, INK);
+  };
+
+  // Draw centered «final_note» at the bottom of the page (no terms links)
+  const drawQuoteFooter = (targetPage: any) => {
+    const noteText = input.specialNotes?.trim();
+    if (!noteText) return;
+    const cleaned = cleanPdfText(noteText);
+    const sz = 8;
+    const w = font.widthOfTextAtSize(cleaned, sz);
+    targetPage.drawText(cleaned, {
+      x: (A4.w - w) / 2,
+      y: 35,
+      size: sz,
+      font,
+      color: INK,
+    });
+  };
+
+  // ── PAGE 1: Quotation Details & Itemized Table ──
+  let page1 = doc.addPage([A4.w, A4.h]);
+  drawQuoteHeader(page1);
+  drawQuoteFooter(page1);
+
+  let y = 600;
+
+  const rightTextOnPage = (
+    p: any,
+    s: string,
+    rx: number,
+    yy: number,
+    f: PDFFont,
+    sz: number,
+    clr: any = INK
+  ) => {
+    const cleaned = cleanPdfText(s);
+    const w = f.widthOfTextAtSize(cleaned, sz);
+    p.drawText(cleaned, { x: rx - w, y: yy, size: sz, font: f, color: clr });
+  };
+
+  // 1. Customer Details / Billing Address («job.instantpost_billing_address»)
+  if (input.customerName) {
+    page1.drawText(cleanPdfText(input.customerName), { x: MARGIN, y, size: 9.5, font: bold, color: INK });
     y -= 12;
   }
-  y -= 8;
+  if (input.address) {
+    const addrLines = wrapLines(input.address, font, 9, 300);
+    for (const ln of addrLines) {
+      page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 9, font, color: INK });
+      y -= 11.5;
+    }
+  }
+  const contactParts: string[] = [];
+  if (input.phone) contactParts.push(input.phone);
+  if (input.email) contactParts.push(input.email);
+  if (contactParts.length > 0) {
+    page1.drawText(cleanPdfText(contactParts.join("   *   ")), { x: MARGIN, y, size: 8.5, font, color: MUTED });
+    y -= 12;
+  }
+  y -= 14;
 
-  // ── 3. JOB DESCRIPTION («job.work_done_description») ──
+  // 2. JOB DESCRIPTION («job.work_done_description»)
   const jobDesc = (input.jobDescription || "").trim();
   if (jobDesc) {
-    ensureRoom(40);
-    text("JOB DESCRIPTION:", MARGIN, y, { font: bold, size: 9.5, color: BRAND });
-    y -= 12;
+    page1.drawText("JOB DESCRIPTION:", { x: MARGIN, y, size: 9.5, font: bold, color: INK });
+    y -= 13;
     const descLines = wrapLines(jobDesc, font, 8.5, contentW);
     for (const ln of descLines) {
-      ensureRoom(12);
       if (ln === "") {
-        y -= 5;
+        y -= 4;
       } else {
-        text(ln, MARGIN, y, { size: 8.5, color: INK });
+        page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 8.5, font, color: INK });
         y -= 11;
       }
     }
-    y -= 10;
+    y -= 14;
   }
 
-  // ── 4. Items Table (DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE) ──
+  // 3. Items Table (DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE)
   const colDescX = MARGIN + 8;
   const colQtyRight = A4.w - MARGIN - 170;
   const colPriceRight = A4.w - MARGIN - 85;
   const colAmountRight = A4.w - MARGIN - 8;
-  const rowPadY = 6;
 
-  ensureRoom(35);
   // Header row
-  page.drawRectangle({
+  page1.drawRectangle({
     x: MARGIN,
-    y: y - 18,
+    y: y - 16,
     width: contentW,
-    height: 20,
-    color: BRAND,
+    height: 18,
+    color: rgb(0.95, 0.95, 0.96),
   });
-  text("DESCRIPTION", colDescX, y - 12, { font: bold, size: 8.5, color: rgb(1, 1, 1) });
-  rightText("QTY", colQtyRight, y - 12, { font: bold, size: 8.5, color: rgb(1, 1, 1) });
-  rightText("UNIT PRICE", colPriceRight, y - 12, { font: bold, size: 8.5, color: rgb(1, 1, 1) });
-  rightText("TOTAL PRICE", colAmountRight, y - 12, { font: bold, size: 8.5, color: rgb(1, 1, 1) });
-  y -= 20;
+  page1.drawText("DESCRIPTION", { x: colDescX, y: y - 11, size: 8.5, font: bold, color: INK });
+  rightTextOnPage(page1, "QTY", colQtyRight, y - 11, bold, 8.5);
+  rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - 11, bold, 8.5);
+  rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - 11, bold, 8.5);
+  y -= 22;
 
   const items = input.items.length
     ? input.items
@@ -305,41 +323,52 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     const label = it.service || it.description || "Regrouting & waterproof resealing";
     const descLines = wrapLines(label, bold, 9, colQtyRight - colDescX - 15).filter(Boolean);
 
-    // If item has distinct scope/description, add it beneath the title
-    const extraScope = it.scope && it.scope !== label ? it.scope : (it.description && it.description !== label ? it.description : "");
-    const scopeLines = extraScope ? wrapLines(extraScope, font, 7.5, colQtyRight - colDescX - 15).filter(Boolean) : [];
+    const extraScope =
+      it.scope && it.scope !== label
+        ? it.scope
+        : it.description && it.description !== label
+        ? it.description
+        : "";
+    const scopeLines = extraScope
+      ? wrapLines(extraScope, font, 7.5, colQtyRight - colDescX - 15).filter(Boolean)
+      : [];
 
     const qty = Number(it.qty || 1);
     const price = Number(it.price || 0);
     const amount = price * qty;
 
     const rowContentH = descLines.length * 11 + scopeLines.length * 9.5;
-    const rowH = Math.max(22, rowContentH + rowPadY * 2);
+    const rowH = Math.max(22, rowContentH + 12);
 
-    ensureRoom(rowH + 10);
+    if (y - rowH < bottomLimit + 75) {
+      page1 = doc.addPage([A4.w, A4.h]);
+      drawQuoteHeader(page1);
+      drawQuoteFooter(page1);
+      y = 635;
+    }
 
     if (zebra) {
-      page.drawRectangle({ x: MARGIN, y: y - rowH, width: contentW, height: rowH, color: ZEBRA });
+      page1.drawRectangle({ x: MARGIN, y: y - rowH, width: contentW, height: rowH, color: ZEBRA });
     }
     zebra = !zebra;
 
-    let ty = y - rowPadY - 7;
+    let ty = y - 6 - 7;
     for (const ln of descLines) {
-      text(ln, colDescX, ty, { font: bold, size: 9, color: INK });
+      page1.drawText(cleanPdfText(ln), { x: colDescX, y: ty, size: 9, font: bold, color: INK });
       ty -= 11;
     }
     for (const ln of scopeLines) {
-      text(ln, colDescX, ty, { font, size: 7.5, color: MUTED });
+      page1.drawText(cleanPdfText(ln), { x: colDescX, y: ty, size: 7.5, font, color: MUTED });
       ty -= 9.5;
     }
 
-    const midY = y - rowPadY - 7;
-    rightText(qty > 0 ? String(qty) : "1", colQtyRight, midY, { size: 9 });
-    rightText(money(price), colPriceRight, midY, { size: 9 });
-    rightText(money(amount), colAmountRight, midY, { font: bold, size: 9 });
+    const midY = y - 6 - 7;
+    rightTextOnPage(page1, qty > 0 ? String(qty) : "1", colQtyRight, midY, font, 9);
+    rightTextOnPage(page1, money(price), colPriceRight, midY, font, 9);
+    rightTextOnPage(page1, money(amount), colAmountRight, midY, bold, 9);
 
     y -= rowH;
-    page.drawLine({
+    page1.drawLine({
       start: { x: MARGIN, y },
       end: { x: A4.w - MARGIN, y },
       thickness: 0.5,
@@ -347,118 +376,106 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     });
   }
 
-  // ── 5. Financial Summary (SUBTOTAL | TAX | TOTAL) ──
+  // 4. Financial Summary (SUBTOTAL | TAX | TOTAL)
+  y -= 20;
+  rightTextOnPage(page1, `SUBTOTAL:   ${money(input.subtotal)}`, colAmountRight, y, font, 9.5);
   y -= 14;
-  ensureRoom(75);
-  const totalsLabelRight = colPriceRight;
-  const drawTotal = (label: string, value: string, opts: { strong?: boolean } = {}) => {
-    const f = opts.strong ? bold : font;
-    const size = opts.strong ? 11 : 9.5;
-    rightText(label, totalsLabelRight, y, { font: f, size, color: opts.strong ? INK : MUTED });
-    rightText(value, colAmountRight, y, { font: f, size, color: opts.strong ? BRAND : INK });
-    y -= opts.strong ? 18 : 14;
-  };
-
-  drawTotal("SUBTOTAL:", money(input.subtotal));
   const taxLabel = input.taxName || "GST (10%):";
-  drawTotal(taxLabel, money(input.gst));
+  rightTextOnPage(page1, `${taxLabel}   ${money(input.gst)}`, colAmountRight, y, font, 9.5);
+  y -= 16;
+  rightTextOnPage(page1, `TOTAL:   ${money(input.total)}`, colAmountRight, y, bold, 10.5);
 
-  page.drawLine({
-    start: { x: totalsLabelRight - 50, y: y + 4 },
-    end: { x: colAmountRight, y: y + 4 },
-    thickness: 1,
-    color: BRAND,
-  });
-  y -= 4;
-  drawTotal("TOTAL:", money(input.total), { strong: true });
-
-  // Payment status (invoices)
   if (input.statusLabel) {
+    y -= 15;
     const paid = /paid/i.test(input.statusLabel) && !/unpaid/i.test(input.statusLabel);
-    rightText(`Status:  ${input.statusLabel.toUpperCase()}`, colAmountRight, y, {
-      font: bold,
-      size: 9.5,
-      color: paid ? rgb(0.09, 0.6, 0.35) : rgb(0.86, 0.15, 0.15),
-    });
-    y -= 16;
+    rightTextOnPage(
+      page1,
+      `Status:  ${input.statusLabel.toUpperCase()}`,
+      colAmountRight,
+      y,
+      bold,
+      9.5,
+      paid ? rgb(0.09, 0.6, 0.35) : rgb(0.86, 0.15, 0.15)
+    );
   }
 
-  // ── 6. Special Notes / Quote Conditions (Page 1) ──
-  const specialNotesText = (
-    input.specialNotes?.trim() ||
-    (input.terms && input.terms.length < 500 && !/^Groutix terms/i.test(input.terms)
-      ? input.terms.trim()
-      : "")
+  // ── PAGES 2+: Full Text of All 20 Terms & Conditions Across Pages ──
+  const termsContent = (
+    input.terms && input.terms.length > 500 ? input.terms : GROUTIX_QUOTE_TERMS
   ).trim();
 
-  if (specialNotesText) {
-    y -= 12;
-    ensureRoom(40);
-    text("SPECIAL NOTES / CONDITIONS:", MARGIN, y, { font: bold, size: 8, color: BRAND });
-    y -= 11;
-    const noteLines = wrapLines(specialNotesText, font, 7.5, contentW);
-    for (const nl of noteLines) {
-      ensureRoom(9.5);
-      text(nl, MARGIN, y, { font, size: 7.5, color: INK });
-      y -= 9.5;
-    }
-  }
-
-  // ── 7. Official Groutix Terms and Conditions (20 clauses) ──
-  // Always begin the contract schedule on a fresh page for an executive-grade quotation layout
-  page = doc.addPage([A4.w, A4.h]);
-  y = A4.h - MARGIN;
-
-  const termsContent = (input.terms && input.terms.length > 500 ? input.terms : GROUTIX_QUOTE_TERMS).trim();
-
   if (termsContent) {
-    page.drawLine({
-      start: { x: MARGIN, y: y + 4 },
-      end: { x: A4.w - MARGIN, y: y + 4 },
-      thickness: 1,
-      color: BRAND,
-    });
-    text("Groutix terms and conditions", MARGIN, y - 8, { font: bold, size: 10.5, color: BRAND });
-    y -= 22;
+    let curPage = doc.addPage([A4.w, A4.h]);
+    drawQuoteHeader(curPage);
+    drawQuoteFooter(curPage);
+
+    let ty = 635;
+
+    const newTermsPage = () => {
+      curPage = doc.addPage([A4.w, A4.h]);
+      drawQuoteHeader(curPage);
+      drawQuoteFooter(curPage);
+      ty = 635;
+    };
 
     const termLines = termsContent.split(/\r?\n/);
-    for (const raw of termLines) {
-      const trimmed = cleanPdfText(raw).trim();
-      if (!trimmed || /^Groutix terms and conditions/i.test(trimmed)) continue;
+    for (let i = 0; i < termLines.length; i++) {
+      const raw = termLines[i].trim();
+      if (!raw) continue;
 
-      // Skip acceptance / signature markers if they are in the terms text; rendered explicitly below
+      // Skip signature placeholders from the raw string as we render the signature block explicitly at the end
       if (
-        /^I have read and agree/i.test(trimmed) ||
-        /^\.{5,}/.test(trimmed) ||
-        /^…{5,}/.test(trimmed) ||
-        /^Customer Signature/i.test(trimmed)
+        /^I have read and agree/i.test(raw) ||
+        /^\.{5,}/.test(raw) ||
+        /^…{5,}/.test(raw) ||
+        /^Customer Signature/i.test(raw)
       ) {
         continue;
       }
 
-      const isClauseHeading = /^\d{1,2}\s+[A-Za-z]/.test(trimmed);
-      const f = isClauseHeading ? bold : font;
-      const sz = isClauseHeading ? 7.5 : 7;
-      const lh = isClauseHeading ? 9.5 : 8.4;
+      const isMainTitle = /^Groutix terms and conditions/i.test(raw);
+      const isClauseHeading = /^\d{1,2}\s+[A-Za-z]/.test(raw);
+
+      const f = isMainTitle || isClauseHeading ? bold : font;
+      const sz = isMainTitle ? 12 : isClauseHeading ? 9.8 : 9.1;
+      const lh = isMainTitle ? 16 : isClauseHeading ? 13.5 : 12.3;
 
       if (isClauseHeading) {
-        ensureRoom(lh + 4);
-        y -= 3;
+        ty -= 7;
       }
 
-      const wrapped = wrapLines(trimmed, f, sz, contentW);
+      const wrapped = wrapLines(raw, f, sz, contentW);
       for (const w of wrapped) {
-        ensureRoom(lh);
-        text(w, MARGIN, y, { font: f, size: sz, color: isClauseHeading ? INK : rgb(0.12, 0.16, 0.24) });
-        y -= lh;
+        if (ty - lh < bottomLimit) {
+          newTermsPage();
+        }
+        curPage.drawText(cleanPdfText(w), {
+          x: MARGIN,
+          y: ty,
+          size: sz,
+          font: f,
+          color: INK,
+        });
+        ty -= lh;
       }
+      ty -= 3.5;
     }
 
-    // ── 7. Customer Acceptance & Signature Block ──
-    ensureRoom(80);
-    y -= 10;
-    text("I have read and agree to the terms and conditions.", MARGIN, y, { font: bold, size: 8.5, color: INK });
-    y -= 22;
+    // Customer Acceptance & Signature Block
+    const sigNeeded = input.customerSignatureImage ? 110 : 70;
+    if (ty - sigNeeded < bottomLimit) {
+      newTermsPage();
+    }
+
+    ty -= 14;
+    curPage.drawText("I have read and agree to the terms and conditions.", {
+      x: MARGIN,
+      y: ty,
+      size: 9,
+      font,
+      color: INK,
+    });
+    ty -= 20;
 
     if (input.customerSignatureImage) {
       try {
@@ -470,56 +487,44 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
         const dims = img.scale(0.35);
         const drawW = Math.min(dims.width, 160);
         const drawH = (dims.height / dims.width) * drawW;
-        ensureRoom(drawH + 40);
-        page.drawImage(img, {
+        curPage.drawImage(img, {
           x: MARGIN,
-          y: y - drawH,
+          y: ty - drawH,
           width: drawW,
           height: drawH,
         });
-        y -= drawH + 4;
+        ty -= drawH + 6;
       } catch (e) {
         console.warn("Could not embed signature image in quote PDF:", e);
       }
     }
 
-    text("........................................................................", MARGIN, y, { size: 9, color: MUTED });
-    y -= 12;
-    text("Customer Signature", MARGIN, y, { font: bold, size: 8.5, color: INK });
+    curPage.drawText("………………………………………………..", {
+      x: MARGIN,
+      y: ty,
+      size: 9,
+      font,
+      color: INK,
+    });
+    ty -= 12;
+    curPage.drawText("Customer Signature", {
+      x: MARGIN,
+      y: ty,
+      size: 9,
+      font,
+      color: INK,
+    });
     if (input.customerSignedAt) {
-      y -= 10;
-      text(`Date: ${input.customerSignedAt}`, MARGIN, y, { size: 8, color: MUTED });
+      ty -= 10;
+      curPage.drawText(`Date: ${input.customerSignedAt}`, {
+        x: MARGIN,
+        y: ty,
+        size: 8,
+        font,
+        color: MUTED,
+      });
     }
   }
-
-  // ── 8. Footers on Every Page ──
-  const pages = doc.getPages();
-  const totalPages = pages.length;
-  pages.forEach((p, idx) => {
-    p.drawLine({
-      start: { x: MARGIN, y: MARGIN + 26 },
-      end: { x: A4.w - MARGIN, y: MARGIN + 26 },
-      thickness: 0.5,
-      color: LINE,
-    });
-    p.drawText("Stay Sealed. Stay Smiling.  -  GROUTIX  *  Terms: groutix.com.au/terms-conditions", {
-      x: MARGIN,
-      y: MARGIN + 12,
-      size: 8,
-      font: bold,
-      color: BRAND,
-    });
-    const phone = input.businessPhone ? `Call: ${input.businessPhone}` : "info@groutix.com";
-    const pageStr = `Page ${idx + 1} of ${totalPages}`;
-    const rightInfo = `${phone}   |   ${pageStr}`;
-    p.drawText(rightInfo, {
-      x: A4.w - MARGIN - font.widthOfTextAtSize(rightInfo, 8),
-      y: MARGIN + 12,
-      size: 8,
-      font,
-      color: MUTED,
-    });
-  });
 
   const bytes = await doc.save();
   return Buffer.from(bytes).toString("base64");
