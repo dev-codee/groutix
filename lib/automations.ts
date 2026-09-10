@@ -91,7 +91,6 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
       <div style="margin:16px 0;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
         <div>• Payment is due within 7 days of invoice date.</div>
         <div>• Access our Terms &amp; Conditions: <a href="https://groutix.com/terms-and-conditions/" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/terms-and-conditions/</a></div>
-        <div style="margin-top:4px;">• Access our Service Warranty: <a href="https://groutix.com/service-warranty" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/service-warranty</a></div>
       </div>
       ${invoiceTrackingPixel(leadId)}`;
 

@@ -6,33 +6,41 @@ export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// Download/preview the branded Tax Invoice PDF for a lead.
-export async function GET(_req: NextRequest, { params }: Ctx) {
+// Download/preview the branded Tax Invoice PDF for a lead with custom or default payment details.
+export async function GET(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const lead = await getSubmission(id);
   if (!lead) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const items = Array.isArray(lead.quoteItems) && lead.quoteItems.length > 0
-    ? lead.quoteItems
-    : [{ service: lead.service || "Regrouting & waterproof resealing", description: "", price: lead.quoteAmount || 0, qty: 1 }];
+  const sp = req.nextUrl.searchParams;
+  const bankName = sp.get("bankName") || "ANZ";
+  const accountName = sp.get("accountName") || "Groutix Pty Ltd";
+  const accountNumber = sp.get("accountNumber") || "123456789";
+  const bsb = sp.get("bsb") || "013442";
+  const dueDate = sp.get("dueDate") || "within 7 days of invoice date";
+  const overridePrice = sp.get("price") ? parseFloat(sp.get("price")!) : undefined;
+  const overrideService = sp.get("service") || undefined;
+  const overrideDesc = sp.get("description") || undefined;
+  const overrideStatus = sp.get("status") || lead.invoiceStatus || "Unpaid";
 
+  const price = overridePrice !== undefined && !isNaN(overridePrice) ? overridePrice : (lead.quoteAmount || 850);
+  const service = overrideService || lead.service || "Regrouting & waterproof resealing";
+  const description = overrideDesc !== undefined ? overrideDesc : (lead.quoteScope || lead.message || lead.issue || "");
+
+  const items = [{ service, description, price, qty: 1 }];
   const { subtotal, gst, total } = computeQuoteTotals(
     items,
     lead.quoteTaxMode,
     lead.quoteTaxRate ?? 10,
-    lead.quoteAmount
+    price
   );
 
   const invoiceNumber = lead.invoiceNumber || lead.quoteNumber || "INV-DRAFT";
-  const jobDescription =
-    lead.quoteScope ||
-    lead.message ||
-    lead.issue ||
-    (items[0]?.scope || items[0]?.description || "");
+  const jobDescription = description || service;
 
   const base64 = await buildQuotePdfBase64({
     docType: "invoice",
-    statusLabel: lead.invoiceStatus || "Unpaid",
+    statusLabel: overrideStatus,
     quoteNumber: invoiceNumber,
     date: new Date().toLocaleDateString("en-AU", {
       day: "2-digit",
@@ -49,6 +57,11 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     gst,
     total,
     taxName: lead.quoteTaxMode === "none" ? "No Tax" : "GST (10%)",
+    bankName,
+    accountName,
+    accountNumber,
+    bsb,
+    dueDate,
   });
 
   const bytes = Buffer.from(base64, "base64");

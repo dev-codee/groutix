@@ -889,6 +889,11 @@ export default function CrmDashboardPage() {
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
   const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [invoiceBankName, setInvoiceBankName] = useState("ANZ");
+  const [invoiceAccountName, setInvoiceAccountName] = useState("Groutix Pty Ltd");
+  const [invoiceAccountNumber, setInvoiceAccountNumber] = useState("123456789");
+  const [invoiceBsb, setInvoiceBsb] = useState("013442");
+  const [invoiceDueDate, setInvoiceDueDate] = useState("Within 7 days of invoice date");
 
   const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
   const [activeInspectionLead, setActiveInspectionLead] = useState<Lead | null>(null);
@@ -2257,6 +2262,13 @@ export default function CrmDashboardPage() {
     setInvoiceGst(10);
     // Default to Unpaid; only pre-mark Paid if payment was already recorded.
     setInvoiceStatus(lead.status === "Payment Received" ? "Paid" : "Unpaid");
+    try {
+      setInvoiceBankName(localStorage.getItem("groutix_inv_bank") || "ANZ");
+      setInvoiceAccountName(localStorage.getItem("groutix_inv_acc_name") || "Groutix Pty Ltd");
+      setInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num") || "123456789");
+      setInvoiceBsb(localStorage.getItem("groutix_inv_bsb") || "013442");
+      setInvoiceDueDate(localStorage.getItem("groutix_inv_due_date") || "Within 7 days of invoice date");
+    } catch {}
     setInvoiceModalOpen(true);
   }
 
@@ -2280,6 +2292,11 @@ export default function CrmDashboardPage() {
           price: invoicePrice,
           gst: invoiceGst,
           status: invoiceStatus,
+          bankName: invoiceBankName,
+          accountName: invoiceAccountName,
+          accountNumber: invoiceAccountNumber,
+          bsb: invoiceBsb,
+          dueDate: invoiceDueDate,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -7334,6 +7351,88 @@ export default function CrmDashboardPage() {
                     </select>
                   </div>
                 </div>
+
+                {/* Editable Payment Information Box */}
+                <div className="pt-2.5 border-t border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      💳 Payment &amp; Bank Details
+                    </label>
+                    <span className="text-[10px] text-slate-400">Shown in payment box</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Bank Name</label>
+                      <input
+                        type="text"
+                        value={invoiceBankName}
+                        onChange={(e) => {
+                          setInvoiceBankName(e.target.value);
+                          try { localStorage.setItem("groutix_inv_bank", e.target.value); } catch {}
+                        }}
+                        placeholder="ANZ"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">BSB</label>
+                      <input
+                        type="text"
+                        value={invoiceBsb}
+                        onChange={(e) => {
+                          setInvoiceBsb(e.target.value);
+                          try { localStorage.setItem("groutix_inv_bsb", e.target.value); } catch {}
+                        }}
+                        placeholder="013442"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Name</label>
+                      <input
+                        type="text"
+                        value={invoiceAccountName}
+                        onChange={(e) => {
+                          setInvoiceAccountName(e.target.value);
+                          try { localStorage.setItem("groutix_inv_acc_name", e.target.value); } catch {}
+                        }}
+                        placeholder="Groutix Pty Ltd"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Number</label>
+                      <input
+                        type="text"
+                        value={invoiceAccountNumber}
+                        onChange={(e) => {
+                          setInvoiceAccountNumber(e.target.value);
+                          try { localStorage.setItem("groutix_inv_acc_num", e.target.value); } catch {}
+                        }}
+                        placeholder="123456789"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Payment Due Date Note</label>
+                    <input
+                      type="text"
+                      value={invoiceDueDate}
+                      onChange={(e) => {
+                        setInvoiceDueDate(e.target.value);
+                        try { localStorage.setItem("groutix_inv_due_date", e.target.value); } catch {}
+                      }}
+                      placeholder="Within 7 days of invoice date"
+                      className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Invoice Preview (Matches official Groutix Tax Invoice layout) */}
@@ -7403,13 +7502,13 @@ export default function CrmDashboardPage() {
                   <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">HOW TO PAY:</div>
                   <div className="text-[10px] text-slate-700">We accept payment by: Deposit</div>
                   
-                  {/* Coral/red payment box */}
+                  {/* Coral/red payment box with dynamic values */}
                   <div className="border border-red-300 rounded-lg p-2.5 bg-red-50/20 max-w-sm text-[10px] space-y-0.5">
                     <div className="font-black text-[11px] text-slate-900 pb-0.5">PAYMENT INFORMATION</div>
-                    <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">ANZ</span></div>
-                    <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">Groutix Pty Ltd</span></div>
-                    <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">123456789</span></div>
-                    <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">013442</span></div>
+                    <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">{invoiceBankName || "ANZ"}</span></div>
+                    <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">{invoiceAccountName || "Groutix Pty Ltd"}</span></div>
+                    <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">{invoiceAccountNumber || "123456789"}</span></div>
+                    <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">{invoiceBsb || "013442"}</span></div>
                   </div>
                 </div>
 
@@ -7417,7 +7516,7 @@ export default function CrmDashboardPage() {
                 <div className="text-center pt-2 space-y-0.5">
                   <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">TERMS &amp; CONDITIONS</div>
                   <div className="text-[10px] text-slate-600 space-y-0.5">
-                    <div>• Payment is due within 7 days of invoice date</div>
+                    <div>• Payment is due {invoiceDueDate || "within 7 days of invoice date"}</div>
                     <div>• Access our Terms &amp; Conditions</div>
                     <a
                       href="https://groutix.com/terms-and-conditions/"
@@ -7429,31 +7528,28 @@ export default function CrmDashboardPage() {
                     </a>
                   </div>
                 </div>
-
-                {/* 8. SERVICE WARRANTY (Page 2) */}
-                <div className="text-center pt-2 border-t border-dashed border-slate-200 space-y-0.5">
-                  <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">SERVICE WARRANTY</div>
-                  <div className="text-[10px] text-slate-600 space-y-0.5">
-                    <div>• Access our Service Warranty</div>
-                    <a
-                      href="https://groutix.com/service-warranty"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline font-medium"
-                    >
-                      https://groutix.com/service-warranty
-                    </a>
-                  </div>
-                </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => window.open(`/api/admin/invoice/pdf/${activeInvoiceLead.id}`, "_blank")}
+                onClick={() => {
+                  const q = new URLSearchParams({
+                    bankName: invoiceBankName,
+                    accountName: invoiceAccountName,
+                    accountNumber: invoiceAccountNumber,
+                    bsb: invoiceBsb,
+                    dueDate: invoiceDueDate,
+                    price: String(invoicePrice),
+                    status: invoiceStatus,
+                    service: invoiceService,
+                    description: invoiceDescription,
+                  });
+                  window.open(`/api/admin/invoice/pdf/${activeInvoiceLead.id}?${q.toString()}`, "_blank");
+                }}
                 className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
-                title="Print or view official PDF invoice"
+                title="Print or view official PDF invoice with current payment information"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Print / View PDF

@@ -848,28 +848,6 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
     color: LINK_BLUE,
   });
 
-  // 9. SERVICE WARRANTY (Page 2)
-  const page2 = doc.addPage([A4.w, A4.h]);
-  let y2 = A4.h - 55;
-
-  const swTitle = "SERVICE WARRANTY";
-  const swW = bold.widthOfTextAtSize(swTitle, 15);
-  page2.drawText(swTitle, { x: (A4.w - swW) / 2, y: y2, size: 15, font: bold, color: BLUE_TITLE });
-  y2 -= 18;
-
-  page2.drawCircle({ x: tcStartX, y: y2 + 2.5, size: 1.5, color: INK });
-  page2.drawText("Access our Service Warranty", { x: tcStartX + 8, y: y2, size: 9, font, color: INK });
-  y2 -= 11;
-
-  const swLink = "https://groutix.com/service-warranty";
-  page2.drawText(swLink, { x: tcStartX + 8, y: y2, size: 9, font, color: LINK_BLUE });
-  page2.drawLine({
-    start: { x: tcStartX + 8, y: y2 - 1 },
-    end: { x: tcStartX + 8 + font.widthOfTextAtSize(swLink, 9), y: y2 - 1 },
-    thickness: 0.5,
-    color: LINK_BLUE,
-  });
-
   const bytes = await doc.save();
   return Buffer.from(bytes).toString("base64");
 }
