@@ -3252,6 +3252,70 @@ export default function CrmDashboardPage() {
                               </div>
                             </div>
 
+                            {/* Contact Action Buttons */}
+                            <div className="space-y-1.5 pt-0.5">
+                              <div className="grid grid-cols-4 gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => callCustomer(l)}
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                  title="Call customer phone"
+                                >
+                                  <Phone className="w-3 h-3 shrink-0" />
+                                  <span>Call</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => emailCustomer(l)}
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                  title="Send email"
+                                >
+                                  <Mail className="w-3 h-3 shrink-0" />
+                                  <span>Email</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => openMessagesModal(l)}
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                  title="Send SMS"
+                                >
+                                  <span>SMS</span>
+                                </button>
+
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
+                                  title="Open WhatsApp chat"
+                                >
+                                  <span>WhatsApp</span>
+                                </a>
+                              </div>
+
+                              {/* Customer replied / conversation button */}
+                              <button
+                                type="button"
+                                onClick={() => openMessagesModal(l)}
+                                className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
+                                title="Open messaging conversation"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>
+                                  {hasCustomerUnread
+                                    ? "Customer replied!"
+                                    : hasReplied
+                                      ? "Customer replied"
+                                      : "Conversation"}
+                                </span>
+                                {hasCustomerUnread && (
+                                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                                )}
+                              </button>
+                            </div>
+
                             {/* Service & Received */}
                             <div className="space-y-1.5 pt-1 border-t border-slate-100">
                               <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
@@ -3290,15 +3354,8 @@ export default function CrmDashboardPage() {
                               </button>
                             </div>
 
-                            {/* Workflow and Edit Buttons */}
+                            {/* Edit Button */}
                             <div className="pt-1 flex flex-wrap gap-2">
-                              <button
-                                onClick={() => setJobCardLead(l)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
-                              >
-                                <span>Open Client / Workflow</span>
-                                <ArrowRight className="w-3 h-3" />
-                              </button>
                               <button
                                 onClick={() => {
                                   setEditingLead(l);
@@ -3498,15 +3555,8 @@ export default function CrmDashboardPage() {
                           {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
                           <div className="space-y-2.5">
                             {/* ── FINANCE SUMMARY ── */}
-                            <div className="border border-slate-200 rounded-xl overflow-hidden">
-                              <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between">
-                                <span className="text-[10px] font-black text-white uppercase tracking-wider">Finance</span>
-                                <span className="text-[10px] font-black text-emerald-300">
-                                  AUD ${total.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="p-2 space-y-1.5">
-                                {/* Invoice & Payment status badges */}
+                            <div className="border border-slate-200 rounded-xl p-2 space-y-1.5">
+                              {/* Invoice & Payment status badges */}
                                 {l.invoiceSentAt && (
                                   <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-1">
                                     <CheckCircle2 className="w-3 h-3 shrink-0" />
@@ -3580,7 +3630,6 @@ export default function CrmDashboardPage() {
                                   })}
                                 </div>
                               </div>
-                            </div>
 
 
                             {/* Follow-up card */}
@@ -3592,65 +3641,6 @@ export default function CrmDashboardPage() {
                                 {followupPrompt}
                               </div>
                             </div>
-
-                            {/* 4 Quick Action Buttons */}
-                            <div className="grid grid-cols-4 gap-1.5">
-                              <button
-                                onClick={() => callCustomer(l)}
-                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                                title="Call customer phone"
-                              >
-                                <Phone className="w-3 h-3 shrink-0" />
-                                <span>Call</span>
-                              </button>
-
-                              <button
-                                onClick={() => emailCustomer(l)}
-                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                                title="Send email"
-                              >
-                                <Mail className="w-3 h-3 shrink-0" />
-                                <span>Email</span>
-                              </button>
-
-                              <button
-                                onClick={() => openMessagesModal(l)}
-                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                                title="Send SMS"
-                              >
-                                <span>SMS</span>
-                              </button>
-
-                              <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
-                                title="Open WhatsApp chat"
-                              >
-                                <span>WhatsApp</span>
-                              </a>
-                            </div>
-
-                            {/* Customer replied / conversation button */}
-                            <button
-                              onClick={() => openMessagesModal(l)}
-                              className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
-                              title="Open messaging conversation"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              <span>
-                                {hasCustomerUnread
-                                  ? "Customer replied!"
-                                  : hasReplied
-                                    ? "Customer replied"
-                                    : "Conversation"}
-                              </span>
-                              {hasCustomerUnread && (
-                                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                              )}
-                            </button>
-
                           </div>
 
                           {/* COLUMN 4: FINANCE & COMPLETION */}
@@ -4156,6 +4146,70 @@ export default function CrmDashboardPage() {
                                 </div>
                               </div>
 
+                              {/* Contact Action Buttons */}
+                              <div className="space-y-1.5 pt-0.5">
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => callCustomer(l)}
+                                    className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                    title="Call customer phone"
+                                  >
+                                    <Phone className="w-3 h-3 shrink-0" />
+                                    <span>Call</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => emailCustomer(l)}
+                                    className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                    title="Send email"
+                                  >
+                                    <Mail className="w-3 h-3 shrink-0" />
+                                    <span>Email</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => openMessagesModal(l)}
+                                    className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                    title="Send SMS"
+                                  >
+                                    <span>SMS</span>
+                                  </button>
+
+                                  <a
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
+                                    title="Open WhatsApp chat"
+                                  >
+                                    <span>WhatsApp</span>
+                                  </a>
+                                </div>
+
+                                {/* Customer replied / conversation button */}
+                                <button
+                                  type="button"
+                                  onClick={() => openMessagesModal(l)}
+                                  className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
+                                  title="Open messaging conversation"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>
+                                    {hasCustomerUnread
+                                      ? "Customer replied!"
+                                      : hasReplied
+                                        ? "Customer replied"
+                                        : "Conversation"}
+                                  </span>
+                                  {hasCustomerUnread && (
+                                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                                  )}
+                                </button>
+                              </div>
+
                               {/* Service & Dates */}
                               <div className="space-y-1.5 pt-1 border-t border-slate-100">
                                 <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
@@ -4201,15 +4255,8 @@ export default function CrmDashboardPage() {
                                 </button>
                               </div>
 
-                              {/* Workflow and Edit Buttons */}
+                              {/* Edit Button */}
                               <div className="pt-1 flex flex-wrap gap-2">
-                                <button
-                                  onClick={() => setJobCardLead(l)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
-                                >
-                                  <span>Open Client / Workflow</span>
-                                  <ArrowRight className="w-3 h-3" />
-                                </button>
                                 <button
                                   onClick={() => {
                                     setEditingLead(l);
@@ -4523,63 +4570,6 @@ export default function CrmDashboardPage() {
                                 </div>
                               </div>
 
-                              {/* 4 Quick Action Buttons */}
-                              <div className="grid grid-cols-4 gap-1.5">
-                                <button
-                                  onClick={() => callCustomer(l)}
-                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                                  title="Call customer phone"
-                                >
-                                  <Phone className="w-3 h-3 shrink-0" />
-                                  <span>Call</span>
-                                </button>
-
-                                <button
-                                  onClick={() => emailCustomer(l)}
-                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                                  title="Send email"
-                                >
-                                  <Mail className="w-3 h-3 shrink-0" />
-                                  <span>Email</span>
-                                </button>
-
-                                <button
-                                  onClick={() => openMessagesModal(l)}
-                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                                  title="Send SMS"
-                                >
-                                  <span>SMS</span>
-                                </button>
-
-                                <a
-                                  href={waUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
-                                  title="Open WhatsApp chat"
-                                >
-                                  <span>WhatsApp</span>
-                                </a>
-                              </div>
-
-                              {/* Customer replied / conversation button */}
-                              <button
-                                onClick={() => openMessagesModal(l)}
-                                className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
-                                title="Open messaging conversation"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>
-                                  {hasCustomerUnread
-                                    ? "Customer replied!"
-                                    : hasReplied
-                                      ? "Customer replied"
-                                      : "Conversation"}
-                                </span>
-                                {hasCustomerUnread && (
-                                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                                )}
-                              </button>
                             </div>
 
                             {/* COLUMN 4: FINANCE & COMPLETION */}
