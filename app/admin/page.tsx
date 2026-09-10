@@ -55,6 +55,7 @@ import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STAT
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
+  DEFAULT_QUOTE_CONDITIONS,
   GROUTIX_QUOTE_TERMS
 } from "@/lib/serviceTemplates";
 import {
@@ -1494,7 +1495,9 @@ export default function CrmDashboardPage() {
     setQuoteItems(initialItems);
     setQuoteTaxMode(lead.quoteTaxMode || "inclusive");
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
-    setQuoteTerms(lead.quoteTerms || GROUTIX_QUOTE_TERMS.slice(0, 300));
+    const existingTerms = (lead.quoteTerms || "").trim();
+    const isFullTermsDump = existingTerms.length > 500 || /^Groutix terms and conditions/i.test(existingTerms);
+    setQuoteTerms(!existingTerms || isFullTermsDump ? DEFAULT_QUOTE_CONDITIONS : existingTerms);
     setQuoteModalOpen(true);
   }
 
@@ -5977,6 +5980,13 @@ export default function CrmDashboardPage() {
                   <div>{activeQuoteLead.address}</div>
                 </div>
 
+                {(activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry) && (
+                  <div className="text-[11px] bg-blue-50/50 p-2.5 rounded-lg border border-blue-100">
+                    <div className="font-bold text-[#001f97] text-[10px] tracking-wide mb-1">JOB DESCRIPTION:</div>
+                    <div className="text-slate-700 whitespace-pre-wrap">{activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry}</div>
+                  </div>
+                )}
+
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800 bg-slate-100 font-bold uppercase text-[9px] text-slate-700">
@@ -6021,20 +6031,37 @@ export default function CrmDashboardPage() {
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500 border-t border-slate-200 pt-2 space-y-1">
-                  <div>
-                    <b>Conditions:</b> {quoteTerms}
-                  </div>
-                  <div className="pt-1">
-                    <a
-                      href="/terms-conditions"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#001f97] underline font-bold hover:text-blue-900 inline-flex items-center gap-1"
-                    >
-                      <span>View Official Terms &amp; Conditions (groutix.com.au/terms-conditions)</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                {/* Conditions / Notes & Terms Attachment Notice */}
+                <div className="border-t border-slate-200 pt-3 space-y-2">
+                  {quoteTerms && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-600 leading-relaxed">
+                      <span className="font-bold text-slate-800 uppercase tracking-wider text-[9px] block mb-0.5">
+                        Quote Conditions / Special Notes:
+                      </span>
+                      <div className="whitespace-pre-wrap">
+                        {quoteTerms.length > 500 || /^Groutix terms and conditions/i.test(quoteTerms)
+                          ? DEFAULT_QUOTE_CONDITIONS
+                          : quoteTerms}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-blue-50/70 border border-blue-200/80 rounded-lg p-2.5 text-[10px] text-blue-950 flex items-start gap-2">
+                    <div className="mt-0.5 text-[#001f97] font-bold text-xs leading-none">✓</div>
+                    <div className="flex-1 leading-relaxed">
+                      <span className="font-bold text-[#001f97]">Official Groutix Terms &amp; Conditions (20 Clauses)</span> and Customer Signature block are automatically attached to the official PDF quotation.
+                      <div className="mt-1">
+                        <a
+                          href="https://groutix.com.au/terms-conditions"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#001f97] underline font-bold hover:text-blue-900 inline-flex items-center gap-1"
+                        >
+                          <span>groutix.com.au/terms-conditions</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

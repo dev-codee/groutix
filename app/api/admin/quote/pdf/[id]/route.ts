@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission } from "@/lib/submissions";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
+import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   );
 
   const quoteNumber = lead.quoteNumber || "DRAFT";
+  const jobDescription =
+    lead.quoteScope ||
+    lead.message ||
+    lead.issue ||
+    (items[0]?.scope || items[0]?.description || "");
+
   const base64 = await buildQuotePdfBase64({
     quoteNumber,
     date: new Date().toLocaleDateString("en-AU", {
@@ -34,11 +41,17 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     address: lead.address,
     phone: lead.phone,
     email: lead.email,
+    jobDescription,
     items,
     subtotal,
     gst,
     total,
-    terms: lead.quoteTerms,
+    taxName: lead.quoteTaxMode === "none" ? "No Tax" : "GST (10%)",
+    specialNotes:
+      lead.quoteTerms && lead.quoteTerms.length < 500 && !/^Groutix terms/i.test(lead.quoteTerms)
+        ? lead.quoteTerms
+        : DEFAULT_QUOTE_CONDITIONS,
+    terms: GROUTIX_OFFICIAL_TERMS,
   });
 
   const bytes = Buffer.from(base64, "base64");
