@@ -5954,8 +5954,12 @@ export default function CrmDashboardPage() {
               <div className="border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4">
                 <div className="flex items-start justify-between border-b border-slate-800 pb-4">
                   <div>
-                    <div className="text-2xl font-black text-[#001f97]">GROUTIX</div>
-                    <div className="text-[11px] text-slate-600 leading-tight mt-1">
+                    <img
+                      src="/logo.png"
+                      alt="Groutix Logo"
+                      className="h-9 w-auto object-contain mb-2"
+                    />
+                    <div className="text-[11px] text-slate-600 leading-tight">
                       Melbourne, VIC<br />
                       Phone: (03) 7023 8094<br />
                       Email: info@groutix.com

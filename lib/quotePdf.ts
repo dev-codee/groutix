@@ -3,6 +3,8 @@
 // job description, itemized pricing table, full 20-clause terms & conditions,
 // and customer signature block.
 
+import fs from "fs";
+import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { GROUTIX_QUOTE_TERMS } from "./serviceTemplates";
 
@@ -167,12 +169,37 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   };
 
   // ── 1. Top Header ──
-  text("GROUTIX", MARGIN, y - 6, { font: bold, size: 24, color: BRAND });
-  text("Tile Regrouting * Waterproofing * Shower Sealing", MARGIN, y - 22, {
+  let logoDrawn = false;
+  try {
+    const logoPath = path.join(process.cwd(), "public", "logo.png");
+    if (fs.existsSync(logoPath)) {
+      const logoBytes = fs.readFileSync(logoPath);
+      const logoImg = await doc.embedPng(logoBytes);
+      const drawH = 30;
+      const drawW = (logoImg.width / logoImg.height) * drawH;
+      page.drawImage(logoImg, {
+        x: MARGIN,
+        y: y - drawH,
+        width: drawW,
+        height: drawH,
+      });
+      logoDrawn = true;
+    }
+  } catch {
+    // fallback to text if logo file is unavailable
+  }
+
+  if (!logoDrawn) {
+    text("GROUTIX", MARGIN, y - 6, { font: bold, size: 24, color: BRAND });
+  }
+
+  const sublineY = logoDrawn ? y - 41 : y - 22;
+  const acnY = logoDrawn ? y - 52 : y - 33;
+  text("Tile Regrouting * Waterproofing * Shower Sealing", MARGIN, sublineY, {
     size: 8.5,
     color: MUTED,
   });
-  text("ACN: 687 415 005 | Melbourne, VIC", MARGIN, y - 33, {
+  text("ACN: 687 415 005 | Melbourne, VIC", MARGIN, acnY, {
     size: 8,
     color: MUTED,
   });
@@ -181,7 +208,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   rightText(`${numberLabel}  ${input.quoteNumber}`, A4.w - MARGIN, y - 20, { size: 9.5, color: MUTED });
   rightText(`Date  ${input.date}`, A4.w - MARGIN, y - 33, { size: 9.5, color: MUTED });
 
-  y -= 48;
+  y -= logoDrawn ? 66 : 48;
   page.drawLine({
     start: { x: MARGIN, y },
     end: { x: A4.w - MARGIN, y },
