@@ -4690,8 +4690,8 @@ export default function CrmDashboardPage() {
                 {/* Table / Card Header Bar */}
                 {role === "intake" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-4">CLIENT DETAILS</div>
-                    <div className="col-span-2">STATUS &amp; ASSIGNED</div>
+                    <div className="col-span-3">CLIENT DETAILS</div>
+                    <div className="col-span-3">STATUS &amp; FOLLOW-UP</div>
                     <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
@@ -5664,8 +5664,8 @@ export default function CrmDashboardPage() {
                 {/* Table / Card Header Bar */}
                 {role === "intake" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-4">CLIENT DETAILS</div>
-                    <div className="col-span-2">STATUS &amp; ASSIGNED</div>
+                    <div className="col-span-3">CLIENT DETAILS</div>
+                    <div className="col-span-3">STATUS &amp; FOLLOW-UP</div>
                     <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
