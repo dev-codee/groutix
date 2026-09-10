@@ -76,6 +76,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
       room: existing.room || "Main Bathroom",
       findings: existing.findings || {},
       otherDetails: existing.otherDetails || "",
+      estimatedTime: existing.estimatedTime || "",
       quoteBuildFromReport: existing.quoteBuildFromReport || "YES",
       inspectorNotes: existing.inspectorNotes || "",
       inspectorSignature: existing.inspectorSignature || (existing.inspectorName || currentUsername || ""),
@@ -365,92 +366,189 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
 
         {/* Scrollable Checklist Sections Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {INSPECTION_SECTIONS.map((section) => (
-              <div
-                key={section.key}
-                className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-xs"
-              >
-                {/* Section Header */}
-                <div className="bg-slate-900 text-white px-3 py-1.5 flex items-center justify-between text-xs font-black tracking-wider uppercase">
-                  <span>{section.title}</span>
-                  <span className="text-[10px] text-slate-400 font-medium lowercase">
-                    {section.items.length} items
-                  </span>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            {/* Column 1: Sections 1-4 (Property/Room, Area/Work Coverage, Water/Leakage, Grout Condition) */}
+            <div className="space-y-4">
+              {INSPECTION_SECTIONS.slice(0, 4).map((section) => (
+                <div
+                  key={section.key}
+                  className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-xs"
+                >
+                  {/* Section Header */}
+                  <div className="bg-slate-900 text-white px-3 py-2 flex items-center justify-between text-xs font-black tracking-wider uppercase">
+                    <span>{section.title}</span>
+                    <span className="text-[10px] text-slate-400 font-medium lowercase">
+                      {section.items.length} items
+                    </span>
+                  </div>
 
-                {/* Section Items */}
-                <div className="divide-y divide-slate-100">
-                  {section.items.map((item) => {
-                    const value = report.findings[item.id] || "";
-                    return (
-                      <div
-                        key={item.id}
-                        className={`px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-colors ${
-                          value === "YES"
-                            ? "bg-emerald-50/50"
-                            : value === "NO"
-                            ? "bg-slate-50/30"
-                            : "hover:bg-slate-50/70"
-                        }`}
-                      >
-                        <span className="font-medium text-slate-800 leading-tight">
-                          {item.label}
-                        </span>
+                  {/* Section Items */}
+                  <div className="divide-y divide-slate-100">
+                    {section.items.map((item) => {
+                      const value = report.findings[item.id] || "";
+                      return (
+                        <div
+                          key={item.id}
+                          className={`px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-colors ${
+                            value === "YES"
+                              ? "bg-emerald-50/50"
+                              : value === "NO"
+                              ? "bg-slate-50/30"
+                              : "hover:bg-slate-50/70"
+                          }`}
+                        >
+                          <span className="font-medium text-slate-800 leading-tight">
+                            {item.label}
+                          </span>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          {/* YES Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleFindingChange(item.id, "YES")}
-                            className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
-                              value === "YES"
-                                ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
-                                : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
-                            }`}
-                          >
-                            <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
-                              {value === "YES" ? "■" : "□"}
-                            </span>
-                            <span>YES</span>
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* YES Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleFindingChange(item.id, "YES")}
+                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                                value === "YES"
+                                  ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
+                                  : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                              }`}
+                            >
+                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                                {value === "YES" ? "■" : "□"}
+                              </span>
+                              <span>YES</span>
+                            </button>
 
-                          {/* NO Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleFindingChange(item.id, "NO")}
-                            className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
-                              value === "NO"
-                                ? "bg-slate-800 border-slate-900 text-white shadow-xs"
-                                : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
-                            }`}
-                          >
-                            <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
-                              {value === "NO" ? "■" : "□"}
-                            </span>
-                            <span>NO</span>
-                          </button>
+                            {/* NO Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleFindingChange(item.id, "NO")}
+                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                                value === "NO"
+                                  ? "bg-slate-800 border-slate-900 text-white shadow-xs"
+                                  : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
+                              }`}
+                            >
+                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                                {value === "NO" ? "■" : "□"}
+                              </span>
+                              <span>NO</span>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Column 2: Sections 5-8 (Tiles/Surface, Silicone/Sealing, Treatment/Additional Work, Junctions/Movement) */}
+            <div className="space-y-4">
+              {INSPECTION_SECTIONS.slice(4).map((section) => (
+                <div
+                  key={section.key}
+                  className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-xs"
+                >
+                  {/* Section Header */}
+                  <div className="bg-slate-900 text-white px-3 py-2 flex items-center justify-between text-xs font-black tracking-wider uppercase">
+                    <span>{section.title}</span>
+                    <span className="text-[10px] text-slate-400 font-medium lowercase">
+                      {section.items.length} items
+                    </span>
+                  </div>
+
+                  {/* Section Items */}
+                  <div className="divide-y divide-slate-100">
+                    {section.items.map((item) => {
+                      const value = report.findings[item.id] || "";
+                      return (
+                        <div
+                          key={item.id}
+                          className={`px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-colors ${
+                            value === "YES"
+                              ? "bg-emerald-50/50"
+                              : value === "NO"
+                              ? "bg-slate-50/30"
+                              : "hover:bg-slate-50/70"
+                          }`}
+                        >
+                          <span className="font-medium text-slate-800 leading-tight">
+                            {item.label}
+                          </span>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* YES Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleFindingChange(item.id, "YES")}
+                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                                value === "YES"
+                                  ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
+                                  : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                              }`}
+                            >
+                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                                {value === "YES" ? "■" : "□"}
+                              </span>
+                              <span>YES</span>
+                            </button>
+
+                            {/* NO Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleFindingChange(item.id, "NO")}
+                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                                value === "NO"
+                                  ? "bg-slate-800 border-slate-900 text-white shadow-xs"
+                                  : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
+                              }`}
+                            >
+                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                                {value === "NO" ? "■" : "□"}
+                              </span>
+                              <span>NO</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Observations / Other Details */}
-          <div className="border border-slate-300 rounded-xl p-3.5 bg-white shadow-xs">
-            <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
-              OTHER DETAILS / OBSERVATIONS:
-            </label>
-            <textarea
-              rows={3}
-              value={report.otherDetails || ""}
-              onChange={(e) => setReport({ ...report, otherDetails: e.target.value })}
-              placeholder="Record any specific site observations, water leak source, crack locations, substrate notes..."
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
-            />
+          {/* Observations / Other Details + Estimated Time */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2 border border-slate-300 rounded-xl p-3.5 bg-white shadow-xs">
+              <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
+                OTHER DETAILS / OBSERVATIONS:
+              </label>
+              <textarea
+                rows={3}
+                value={report.otherDetails || ""}
+                onChange={(e) => setReport({ ...report, otherDetails: e.target.value })}
+                placeholder="Record any specific site observations, water leak source, crack locations, substrate notes..."
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+              />
+            </div>
+
+            {/* Estimated Time */}
+            <div className="border border-[#001f97]/30 rounded-xl p-3.5 bg-[#001f97]/[0.03] shadow-xs flex flex-col">
+              <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
+                Estimated Time:
+              </label>
+              <p className="text-[10px] text-slate-500 mb-2 leading-snug">
+                Hours, days, or full estimate (e.g. &quot;4–6 hrs&quot;, &quot;1.5 days&quot;)
+              </p>
+              <input
+                type="text"
+                value={report.estimatedTime || ""}
+                onChange={(e) => setReport({ ...report, estimatedTime: e.target.value })}
+                placeholder="e.g. 4–6 hours, 1.5 days"
+                className="mt-auto w-full px-3 py-2 text-xs bg-white border border-[#001f97]/40 rounded-lg font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Inspection Summary Bar */}

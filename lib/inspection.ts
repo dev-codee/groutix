@@ -16,39 +16,20 @@ export interface InspectionSectionDef {
 
 export const INSPECTION_SECTIONS: InspectionSectionDef[] = [
   {
-    key: "waterLeakage",
-    title: "WATER / LEAKAGE",
+    key: "propertyRoom",
+    title: "Property / Room",
     items: [
-      { id: "leakage_water_ingress", label: "Leakage / Water Ingress" },
-      { id: "water_staining", label: "Water Staining / Discolouration" },
-      { id: "moisture_shower_base", label: "Moisture / Dampness Beneath Shower Base" },
-      { id: "balcony_water_ingress", label: "Existing / Known Balcony Water-Ingress Issue" },
+      { id: "main_bathroom", label: "Main Bathroom" },
+      { id: "ensuite", label: "Ensuite" },
+      { id: "guest_bathroom", label: "Guest Bathroom" },
+      { id: "balcony_exterior", label: "Balcony / Exterior" },
+      { id: "single_shower", label: "Single Shower" },
+      { id: "double_shower", label: "Double Shower" },
     ],
   },
   {
-    key: "groutCondition",
-    title: "GROUT CONDITION",
-    items: [
-      { id: "failed_cracked_grout", label: "Failed / Cracked / Missing Grout" },
-      { id: "mould_black_grout", label: "Mould / Black Grout" },
-      { id: "grout_joints_prep", label: "Grout Joints Require Preparation" },
-      { id: "movement_joints_attention", label: "Movement Joints Require Attention" },
-    ],
-  },
-  {
-    key: "tilesSurface",
-    title: "TILES / SURFACE",
-    items: [
-      { id: "loose_damaged_tiles", label: "Loose / Damaged Tiles" },
-      { id: "cracked_tile_repair", label: "Cracked Tile / Localised Tile Repair" },
-      { id: "mosaic_tiles_present", label: "Mosaic Tiles Present" },
-      { id: "surface_dirt_contamination", label: "Surface Dirt / Contamination" },
-      { id: "deep_staining_contamination", label: "Deep Staining / Embedded Contamination" },
-    ],
-  },
-  {
-    key: "areaLocation",
-    title: "AREA / LOCATION",
+    key: "areaWorkCoverage",
+    title: "Area / Work Coverage",
     items: [
       { id: "shower_walls", label: "Shower Walls" },
       { id: "shower_floor", label: "Shower Floor" },
@@ -58,51 +39,73 @@ export const INSPECTION_SECTIONS: InspectionSectionDef[] = [
       { id: "walls_only", label: "Walls Only" },
       { id: "walls_and_floor", label: "Walls & Floor" },
       { id: "walls_to_pan", label: "Walls to Pan" },
-      { id: "ceiling_height_works", label: "Ceiling Height Works" },
+      { id: "ceiling_height", label: "Ceiling Height" },
       { id: "shower_screen_height", label: "Shower Screen Height / Approx. 2.1 m" },
     ],
   },
   {
-    key: "siliconeSealing",
-    title: "SILICONE / SEALING",
+    key: "waterLeakage",
+    title: "Water / Leakage",
     items: [
-      { id: "failed_silicone", label: "Failed Silicone / Sealant" },
-      { id: "tile_to_tile_junctions", label: "Tile-to-Tile Junctions" },
-      { id: "tile_to_floor_junctions", label: "Tile-to-Floor Junctions" },
-      { id: "tile_to_bath_junction", label: "Tile-to-Bath Junction" },
-      { id: "tile_to_pan_junction", label: "Tile-to-Pan Junction" },
-      { id: "perimeter_junction_sealing", label: "Perimeter / Junction Sealing" },
-      { id: "plumbing_penetrations", label: "Plumbing Penetrations" },
+      { id: "leakage_water_ingress", label: "Leakage / Water Ingress" },
+      { id: "water_staining", label: "Water Staining / Discolouration" },
+      { id: "moisture_shower_base", label: "Moisture Beneath Shower Base" },
+      { id: "balcony_water_ingress", label: "Known Balcony Waterproofing / Leak Issue" },
     ],
   },
   {
-    key: "showerScreenCaulking",
-    title: "SHOWER SCREEN CAULKING",
+    key: "groutCondition",
+    title: "Grout Condition",
     items: [
-      { id: "vertical_inside", label: "Vertical Inside" },
-      { id: "vertical_outside", label: "Vertical Outside" },
-      { id: "horizontal_inside", label: "Horizontal Inside" },
-      { id: "horizontal_outside", label: "Horizontal Outside" },
+      { id: "failed_cracked_grout", label: "Failed / Cracked / Missing Grout" },
+      { id: "mould_black_grout", label: "Mould / Black Grout" },
+      { id: "grout_joints_prep", label: "Grout Joint Preparation" },
+      { id: "movement_joint_condition", label: "Movement Joint Condition" },
+    ],
+  },
+  {
+    key: "tilesSurface",
+    title: "Tiles / Surface",
+    items: [
+      { id: "loose_damaged_tiles", label: "Loose / Damaged Tiles" },
+      { id: "cracked_tile_repair", label: "Cracked Tile Repair" },
+      { id: "mosaic_tiles", label: "Mosaic Tiles" },
+      { id: "dirt_surface_contamination", label: "Dirt / Surface Contamination" },
+      { id: "deep_staining_contamination", label: "Deep Staining / Embedded Contamination" },
+    ],
+  },
+  {
+    key: "siliconeSealing",
+    title: "Silicone / Sealing",
+    items: [
+      { id: "failed_silicone", label: "Failed Silicone / Sealant" },
+      { id: "tile_to_tile", label: "Tile-to-Tile" },
+      { id: "tile_to_floor", label: "Tile-to-Floor" },
+      { id: "tile_to_bath", label: "Tile-to-Bath" },
+      { id: "tile_to_pan", label: "Tile-to-Pan" },
+      { id: "perimeter_joints", label: "Perimeter Joints" },
+      { id: "plumbing_penetrations", label: "Plumbing Penetrations" },
+      { id: "shower_screen_vertical_io", label: "Shower Screen Vertical Inside/Outside" },
+      { id: "shower_screen_horizontal_io", label: "Shower Screen Horizontal Inside/Outside" },
     ],
   },
   {
     key: "treatmentAdditionalWork",
-    title: "TREATMENT / ADDITIONAL WORK",
+    title: "Treatment / Additional Work",
     items: [
-      { id: "mould_treatment_required", label: "Mould Treatment Required" },
-      { id: "cleaning_surface_prep", label: "Cleaning / Surface Preparation Required" },
-      { id: "penetrating_grout_sealer", label: "Penetrating Grout Sealer Required" },
-      { id: "epoxy_grout_upgrade", label: "Epoxy Grout Upgrade Appropriate" },
-      { id: "polymer_flex_grout", label: "Polymer / Flex Grout Appropriate" },
-      { id: "shower_screen_replacement", label: "Shower Screen Replacement / Additional Work" },
+      { id: "mould_treatment", label: "Mould Treatment" },
+      { id: "pressure_washing_prep", label: "Pressure Washing / Surface Preparation" },
+      { id: "penetrating_grout_sealer", label: "Penetrating Grout Sealer" },
+      { id: "epoxy_grout_upgrade", label: "Epoxy Grout Upgrade" },
+      { id: "shower_screen_replacement", label: "Shower Screen Replacement" },
     ],
   },
   {
     key: "junctionsMovement",
-    title: "JUNCTIONS / MOVEMENT",
+    title: "Junctions / Movement",
     items: [
-      { id: "wall_to_floor_junctions", label: "Wall-to-Floor Junctions" },
-      { id: "wall_to_wall_junctions", label: "Wall-to-Wall / Tile-to-Tile Junctions" },
+      { id: "wall_to_floor", label: "Wall-to-Floor" },
+      { id: "wall_to_wall", label: "Wall-to-Wall / Tile-to-Tile" },
       { id: "movement_joints", label: "Movement Joints" },
     ],
   },
@@ -122,6 +125,7 @@ export interface InspectionReportDoc {
 
   // Additional freeform fields
   otherDetails?: string;
+  estimatedTime?: string;
   quoteBuildFromReport?: CheckValue;
   inspectorNotes?: string;
   inspectorSignature?: string;

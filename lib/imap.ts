@@ -4,6 +4,7 @@ import { getDb } from "@/lib/mongodb";
 import { updateSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendReplyNotification, getNotifyRecipients } from "@/lib/email";
 import { uploadBufferToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { stripQuotedReply } from "@/lib/emailClean";
 
 const user = process.env.SMTP_USER || "";
 const pass = process.env.SMTP_PASS || "";
@@ -142,13 +143,16 @@ export async function syncUnreadEmails() {
                   }
 
                   step = "db_update_" + seq;
+                  // Clean email text to remove previous quoted thread/history
+                  const cleanText = stripQuotedReply(parsed.text || "");
+
                   // Append the message
                   const crmMessage: CustomerMessage = {
                     id: parsed.messageId || `msg_${Date.now()}`,
                     from: "customer",
                     channel: "email",
                     subject: parsed.subject,
-                    text: parsed.text || "No text content.",
+                    text: cleanText || parsed.text || "No text content.",
                     time: (parsed.date || new Date()).toISOString(),
                     read: false,
                     ...(crmAttachments.length ? { attachments: crmAttachments } : {}),
@@ -178,7 +182,7 @@ export async function syncUnreadEmails() {
                     leadName: lead.name,
                     leadEmail: fromEmail,
                     subject: parsed.subject,
-                    snippet: parsed.text || "",
+                    snippet: cleanText || parsed.text || "",
                     leadId: lead._id.toString(),
                   });
 

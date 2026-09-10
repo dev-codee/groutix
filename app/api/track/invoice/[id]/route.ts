@@ -32,10 +32,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const lead = await getSubmission(id);
-    // Only record the FIRST open, and only for a lead that was actually invoiced.
-    if (lead && lead.invoiceSentAt && !lead.invoiceOpenedAt) {
+    // Record the first open when the pixel is requested.
+    if (lead && !lead.invoiceOpenedAt) {
       const now = new Date().toISOString();
-      await updateSubmission(id, { invoiceOpenedAt: now });
+      await updateSubmission(id, {
+        invoiceOpenedAt: now,
+        ...(!lead.invoiceSentAt ? { invoiceSentAt: now } : {}),
+      });
       await appendActivity(id, {
         time: now,
         actor: "customer",

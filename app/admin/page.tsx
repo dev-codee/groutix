@@ -45,7 +45,8 @@ import {
   Clock,
   ArrowRight,
   ClipboardList,
-  HardHat
+  HardHat,
+  Eye
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -63,6 +64,7 @@ import {
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
+import { stripQuotedReply } from "@/lib/emailClean";
 
 export interface QuoteItem {
   templateNo?: string | number;
@@ -372,8 +374,8 @@ function getWhatsAppLink(phone?: string): string {
   const num = clean.startsWith("+")
     ? clean.replace("+", "")
     : clean.startsWith("0")
-    ? "61" + clean.slice(1)
-    : clean;
+      ? "61" + clean.slice(1)
+      : clean;
   return `https://wa.me/${num}`;
 }
 
@@ -391,7 +393,10 @@ function getStepActive(lead: Lead, step: string): boolean {
     case "Payment Received":
       return ["Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Warranty":
+    case "Warranty Sent":
       return Boolean(lead.warranty?.sentAt) || ["Warranty Sent", "Completed"].includes(s);
+    case "Completed":
+      return s === "Completed";
     default:
       return false;
   }
@@ -523,11 +528,10 @@ function Pagination({
           <button
             key={p}
             onClick={() => onPage(p)}
-            className={`min-w-[32px] px-2 py-1.5 rounded-lg text-xs font-bold ${
-              p === page
+            className={`min-w-[32px] px-2 py-1.5 rounded-lg text-xs font-bold ${p === page
                 ? "bg-[#001f97] text-white"
                 : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
+              }`}
           >
             {p}
           </button>
@@ -651,11 +655,10 @@ function ScheduleView({ onOpenLead }: { onOpenLead: (id: string) => void }) {
                         <span className="text-sm font-bold text-slate-900 truncate">
                           {b.customer?.name || "Customer"}
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          b.type === "inspection"
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${b.type === "inspection"
                             ? "bg-blue-100 text-blue-700"
                             : "bg-emerald-100 text-emerald-700"
-                        }`}>
+                          }`}>
                           {b.type === "inspection" ? "Inspection" : "Job"}
                         </span>
                       </div>
@@ -1021,7 +1024,7 @@ export default function CrmDashboardPage() {
       "Notification" in window &&
       Notification.permission === "default"
     ) {
-      Notification.requestPermission().catch(() => {});
+      Notification.requestPermission().catch(() => { });
     }
   }, []);
 
@@ -1040,7 +1043,7 @@ export default function CrmDashboardPage() {
       .then((data) => {
         if (!cancelled && data) setStaff(data.staff || []);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       cancelled = true;
     };
@@ -1054,7 +1057,7 @@ export default function CrmDashboardPage() {
       .then((data) => {
         if (data) setTechnicians(data.technicians || []);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -1171,7 +1174,7 @@ export default function CrmDashboardPage() {
     setChatLoading(true);
     await loadConversation(member.username);
     setChatLoading(false);
-    // Opening clears unread for this sender; refresh the badges.
+    // Opening clears unread for this sender; refresh the badges. 
     loadUnread();
   }
 
@@ -1700,16 +1703,16 @@ export default function CrmDashboardPage() {
   // Conversation Management
   async function openMessagesModal(lead: Lead) {
     let currentLead = lead;
-    
+
     // If there are any unread messages from customer, mark them read instantly
     if (lead.messages?.some(m => m.from === "customer" && m.read === false)) {
-      const updatedMessages = lead.messages.map(m => 
+      const updatedMessages = lead.messages.map(m =>
         (m.from === "customer" && m.read === false) ? { ...m, read: true } : m
       );
-      
+
       currentLead = { ...lead, messages: updatedMessages };
       setLeads(prev => prev.map(l => l.id === lead.id ? currentLead : l));
-      
+
       // Update backend silently
       updateLeadField(lead.id, { messages: updatedMessages }).catch(console.error);
     }
@@ -2152,8 +2155,8 @@ export default function CrmDashboardPage() {
         role === "finance"
           ? FINANCE_STATUSES.includes(l.status)
           : role === "intake"
-          ? INTAKE_STATUSES.includes(l.status)
-          : JOB_STATUSES.includes(l.status)
+            ? INTAKE_STATUSES.includes(l.status)
+            : JOB_STATUSES.includes(l.status)
       ),
     [filteredLeads, role]
   );
@@ -2165,12 +2168,12 @@ export default function CrmDashboardPage() {
       currentView === "leads"
         ? filteredLeads.length
         : currentView === "quotes"
-        ? quoteLeads.length
-        : currentView === "jobs"
-        ? jobLeads.length
-        : currentView === "customers"
-        ? scopedLeads.length
-        : 0;
+          ? quoteLeads.length
+          : currentView === "jobs"
+            ? jobLeads.length
+            : currentView === "customers"
+              ? scopedLeads.length
+              : 0;
     const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     if (page > maxPage) setPage(maxPage);
   }, [currentView, page, filteredLeads.length, quoteLeads.length, jobLeads.length, scopedLeads.length]);
@@ -2202,7 +2205,7 @@ export default function CrmDashboardPage() {
       "Notification" in window &&
       Notification.permission === "default"
     ) {
-      Notification.requestPermission().catch(() => {});
+      Notification.requestPermission().catch(() => { });
     }
   }, []);
 
@@ -2236,200 +2239,188 @@ export default function CrmDashboardPage() {
           {/* Navigation Links */}
           <nav className="mt-5 flex flex-col gap-1.5">
             {canSee("dashboard") && (
-            <button
-              onClick={() => setCurrentView("dashboard")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "dashboard"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <LayoutDashboard className="w-4 h-4" />
-                CRM Dashboard
-              </span>
-            </button>
+              <button
+                onClick={() => setCurrentView("dashboard")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "dashboard"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <LayoutDashboard className="w-4 h-4" />
+                  CRM Dashboard
+                </span>
+              </button>
             )}
 
             {canSee("leads") && (
-            <button
-              onClick={() => setCurrentView("leads")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "leads"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <Users className="w-4 h-4" />
-                Leads
-              </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                }`}
+              <button
+                onClick={() => setCurrentView("leads")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "leads"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
               >
-                {scopedLeads.length}
-              </span>
-            </button>
+                <span className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4" />
+                  Leads
+                </span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                >
+                  {scopedLeads.length}
+                </span>
+              </button>
             )}
 
             {canSee("quotes") && (
-            <button
-              onClick={() => setCurrentView("quotes")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "quotes"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <FileSpreadsheet className="w-4 h-4" />
-                Quotes
-              </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                }`}
+              <button
+                onClick={() => setCurrentView("quotes")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "quotes"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
               >
-                {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
-              </span>
-            </button>
+                <span className="flex items-center gap-2.5">
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Quotes
+                </span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                >
+                  {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
+                </span>
+              </button>
             )}
 
             {canSee("jobs") && (
-            <button
-              onClick={() => setCurrentView("jobs")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "jobs"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <Briefcase className="w-4 h-4" />
-                {role === "finance"
-                  ? "Finance & Jobs"
-                  : role === "intake"
-                  ? "Leads & Bookings"
-                  : "Bookings & Jobs"}
-              </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                }`}
+              <button
+                onClick={() => setCurrentView("jobs")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "jobs"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
               >
-                {role === "finance"
-                  ? scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length
-                  : role === "intake"
-                  ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
-                  : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
-              </span>
-            </button>
+                <span className="flex items-center gap-2.5">
+                  <Briefcase className="w-4 h-4" />
+                  {role === "finance"
+                    ? "Finance & Jobs"
+                    : role === "intake"
+                      ? "Leads & Bookings"
+                      : "Bookings & Jobs"}
+                </span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                >
+                  {role === "finance"
+                    ? scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length
+                    : role === "intake"
+                      ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
+                      : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
+                </span>
+              </button>
             )}
 
             {canSee("schedule") && (
-            <button
-              onClick={() => setCurrentView("schedule")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "schedule"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <CalendarDays className="w-4 h-4" />
-                Schedule
-              </span>
-            </button>
+              <button
+                onClick={() => setCurrentView("schedule")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "schedule"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <CalendarDays className="w-4 h-4" />
+                  Schedule
+                </span>
+              </button>
             )}
 
             {canSee("customers") && (
-            <button
-              onClick={() => setCurrentView("customers")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "customers"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <Users className="w-4 h-4" />
-                Customers
-              </span>
-            </button>
+              <button
+                onClick={() => setCurrentView("customers")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "customers"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4" />
+                  Customers
+                </span>
+              </button>
             )}
 
             {canSee("team") && (
-            <button
-              onClick={() => setCurrentView("team")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "team"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <ShieldCheck className="w-4 h-4" />
-                Team
-              </span>
-              {totalUnread > 0 && (
-                <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
-                  {totalUnread}
+              <button
+                onClick={() => setCurrentView("team")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "team"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  Team
                 </span>
-              )}
-            </button>
+                {totalUnread > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                    {totalUnread}
+                  </span>
+                )}
+              </button>
             )}
 
             {canSee("technicians") && (
-            <button
-              onClick={() => setCurrentView("technicians")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "technicians"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <HardHat className="w-4 h-4" />
-                Technicians
-              </span>
-            </button>
+              <button
+                onClick={() => setCurrentView("technicians")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "technicians"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <HardHat className="w-4 h-4" />
+                  Technicians
+                </span>
+              </button>
             )}
 
             {canSee("analytics") && (
-            <button
-              onClick={() => setCurrentView("analytics")}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === "analytics"
-                  ? "bg-[#001f97] text-white shadow-sm"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <BarChart3 className="w-4 h-4" />
-                Analytics Overview
-              </span>
-            </button>
+              <button
+                onClick={() => setCurrentView("analytics")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "analytics"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <BarChart3 className="w-4 h-4" />
+                  Analytics Overview
+                </span>
+              </button>
             )}
 
             {(role === "manager" || role === "super_admin") && (
-            <div className="pt-3 mt-3 border-t border-[#e4e9f1] flex flex-col gap-1.5">
-              <Link
-                href={`${basePath}/users`}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
-              >
-                <UserCheck className="w-4 h-4" />
-                Staff Accounts
-              </Link>
-              <Link
-                href={`${basePath}/content`}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
-              >
-                <FileText className="w-4 h-4" />
-                Site Content Editor
-              </Link>
-            </div>
+              <div className="pt-3 mt-3 border-t border-[#e4e9f1] flex flex-col gap-1.5">
+                <Link
+                  href={`${basePath}/users`}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  Staff Accounts
+                </Link>
+                <Link
+                  href={`${basePath}/content`}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  <FileText className="w-4 h-4" />
+                  Site Content Editor
+                </Link>
+              </div>
             )}
           </nav>
         </div>
@@ -2445,20 +2436,20 @@ export default function CrmDashboardPage() {
               {currentView === "dashboard"
                 ? "Manager Dashboard"
                 : currentView === "analytics"
-                ? "Analytics & Performance"
-                : currentView === "leads"
-                ? "All Leads"
-                : currentView === "quotes"
-                ? "Quotations"
-                : currentView === "jobs"
-                ? "Jobs & Bookings"
-                : currentView === "customers"
-                ? "Customer Directory"
-                : currentView === "schedule"
-                ? "Schedule & Calendar"
-                : currentView === "technicians"
-                ? "Field Technicians"
-                : "Team Members"}
+                  ? "Analytics & Performance"
+                  : currentView === "leads"
+                    ? "All Leads"
+                    : currentView === "quotes"
+                      ? "Quotations"
+                      : currentView === "jobs"
+                        ? "Jobs & Bookings"
+                        : currentView === "customers"
+                          ? "Customer Directory"
+                          : currentView === "schedule"
+                            ? "Schedule & Calendar"
+                            : currentView === "technicians"
+                              ? "Field Technicians"
+                              : "Team Members"}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               Live tracking • {leads.length} records • inspections • quotes • jobs • warranty
@@ -2479,7 +2470,7 @@ export default function CrmDashboardPage() {
             </div>
 
             <div className="h-6 w-px bg-slate-200 mx-1"></div>
-            
+
             <button
               onClick={logout}
               disabled={loggingOut}
@@ -2546,22 +2537,20 @@ export default function CrmDashboardPage() {
             </button>
 
             <div
-              className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${
-                viewAs
+              className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${viewAs
                   ? "border-amber-300 bg-amber-50 text-amber-800"
                   : "border-slate-200 bg-white text-slate-700"
-              }`}
+                }`}
             >
               <span
-                className={`w-2 h-2 rounded-full ${
-                  viewAs ? "bg-amber-500" : "bg-emerald-500"
-                }`}
+                className={`w-2 h-2 rounded-full ${viewAs ? "bg-amber-500" : "bg-emerald-500"
+                  }`}
               ></span>
               {viewAs
                 ? `Viewing as ${viewAs.name} • ${roleLabel}`
                 : username
-                ? `${username} • ${roleLabel}`
-                : roleLabel}
+                  ? `${username} • ${roleLabel}`
+                  : roleLabel}
             </div>
           </div>
         </header>
@@ -2615,9 +2604,8 @@ export default function CrmDashboardPage() {
                       <button
                         key={r}
                         onClick={() => setAnalyticsDays(r)}
-                        className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                          analyticsDays === r ? "bg-[#001f97] text-white" : "text-slate-600 hover:bg-slate-100"
-                        }`}
+                        className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${analyticsDays === r ? "bg-[#001f97] text-white" : "text-slate-600 hover:bg-slate-100"
+                          }`}
                       >
                         {r}d
                       </button>
@@ -2776,11 +2764,10 @@ export default function CrmDashboardPage() {
                         key={grp.label}
                         type="button"
                         onClick={() => openLeadsFiltered(grp.statuses)}
-                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
-                          active
+                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
                             ? "border-[#001f97] bg-[#001f97]/5"
                             : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                        }`}
+                          }`}
                         title={`Show ${grp.label} leads`}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
@@ -2881,11 +2868,10 @@ export default function CrmDashboardPage() {
                                 </button>
                                 <button
                                   onClick={() => openInspectionModal(l)}
-                                  className={`p-1 rounded-md transition-colors ${
-                                    l.inspectionReport?.status === "completed"
+                                  className={`p-1 rounded-md transition-colors ${l.inspectionReport?.status === "completed"
                                       ? "text-emerald-600 hover:bg-emerald-50"
                                       : "text-slate-500 hover:text-[#001f97] hover:bg-slate-100"
-                                  }`}
+                                    }`}
                                   title="Inspection Report Form"
                                 >
                                   <ClipboardList className="w-3.5 h-3.5" />
@@ -3052,8 +3038,8 @@ export default function CrmDashboardPage() {
                       role === "intake"
                         ? intakeGroups
                         : role === "manager"
-                        ? managerGroups
-                        : STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] }));
+                          ? managerGroups
+                          : STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] }));
                     return groups.map((grp) => {
                       const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-blue-500", value: "text-[#001f97]" };
                       const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
@@ -3067,11 +3053,10 @@ export default function CrmDashboardPage() {
                             setStatusFilter(active ? "" : joined);
                             setPage(1);
                           }}
-                          className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
-                            active
+                          className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
                               ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
                               : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                          }`}
+                            }`}
                           title={`Show ${grp.label} leads`}
                         >
                           <div className="flex items-center gap-1.5 mb-1">
@@ -3091,456 +3076,699 @@ export default function CrmDashboardPage() {
               </div>
 
               <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              {/* Filter Toolbar matching screenshot */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-3 flex-wrap flex-1">
-                  <div className="relative flex-1 min-w-[280px]">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search name, phone, email, service..."
-                      value={globalSearch}
-                      onChange={(e) => setGlobalSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
-                    />
+                {/* Filter Toolbar matching screenshot */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-3 flex-wrap flex-1">
+                    <div className="relative flex-1 min-w-[280px]">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search name, phone, email, service..."
+                        value={globalSearch}
+                        onChange={(e) => setGlobalSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                      />
+                    </div>
+
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
+                    >
+                      <option value="">All statuses ({leads.length})</option>
+                      {STATUS_LIST.map((s) => (
+                        <option key={s} value={s}>
+                          {s} ({counts[s] || 0})
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={() => setOnlyUnread((v) => !v)}
+                      className={`flex items-center gap-1.5 text-xs px-3.5 py-2.5 rounded-xl border font-semibold transition-colors ${onlyUnread
+                          ? "bg-[#001f97] text-white border-[#001f97]"
+                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      title="Show only conversations with an unread customer reply"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Unread replies
+                      {unreadReplyCount > 0 && (
+                        <span
+                          className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center ${onlyUnread ? "bg-white/25 text-white" : "bg-rose-500 text-white"
+                            }`}
+                        >
+                          {unreadReplyCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {(statusFilter || globalSearch || onlyUnread) && (
+                      <button
+                        onClick={() => {
+                          setStatusFilter("");
+                          setPriorityFilter("");
+                          setGlobalSearch("");
+                          setOnlyUnread(false);
+                        }}
+                        className="text-xs text-rose-600 hover:underline font-semibold"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
                   </div>
 
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
-                  >
-                    <option value="">All statuses ({leads.length})</option>
-                    {STATUS_LIST.map((s) => (
-                      <option key={s} value={s}>
-                        {s} ({counts[s] || 0})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="text-xs font-semibold text-slate-500">
+                    Showing {filteredLeads.length} of {leads.length} leads
+                  </div>
+                </div>
 
-                  <button
-                    onClick={() => setOnlyUnread((v) => !v)}
-                    className={`flex items-center gap-1.5 text-xs px-3.5 py-2.5 rounded-xl border font-semibold transition-colors ${
-                      onlyUnread
-                        ? "bg-[#001f97] text-white border-[#001f97]"
-                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                    }`}
-                    title="Show only conversations with an unread customer reply"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    Unread replies
-                    {unreadReplyCount > 0 && (
-                      <span
-                        className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center ${
-                          onlyUnread ? "bg-white/25 text-white" : "bg-rose-500 text-white"
-                        }`}
+                {/* Table / Card Header Bar */}
+                <div className="hidden xl:grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl">
+                  <div>CLIENT</div>
+                  <div>INSPECTION &amp; QUOTE</div>
+                  <div>FINANCE</div>
+                  <div>WORKFLOW &amp; COMPLETION</div>
+                </div>
+
+                {/* Leads List */}
+                <div className="divide-y divide-slate-200/80">
+                  {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
+                    const total = getLeadQuoteTotal(l);
+                    const photosTotal = l.photos?.length || l.photosCount || 0;
+                    const followupPrompt = getFollowupPrompt(l);
+                    const waUrl = getWhatsAppLink(l.phone);
+                    const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+                    const hasReplied = l.messages?.some((m) => m.from === "customer");
+
+                    return (
+                      <div
+                        key={l.id}
+                        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
                       >
-                        {unreadReplyCount}
-                      </span>
-                    )}
-                  </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+                          {/* COLUMN 1: CLIENT (includes Service & Photos) */}
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-2.5">
+                              {/* Left: Client info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-slate-900 text-sm truncate" title={l.name || "Unnamed Customer"}>
+                                  {l.name || "Unnamed Customer"}
+                                </div>
 
-                  {(statusFilter || globalSearch || onlyUnread) && (
-                    <button
-                      onClick={() => {
-                        setStatusFilter("");
-                        setPriorityFilter("");
-                        setGlobalSearch("");
-                        setOnlyUnread(false);
-                      }}
-                      className="text-xs text-rose-600 hover:underline font-semibold"
-                    >
-                      Clear Filters
-                    </button>
-                  )}
-                </div>
+                                <div className="space-y-1 text-xs text-slate-600 mt-1">
+                                  {l.email ? (
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <span className="truncate" title={l.email}>{l.email}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 text-slate-400">
+                                      <Mail className="w-3.5 h-3.5 shrink-0" />
+                                      <span>No email</span>
+                                    </div>
+                                  )}
 
-                <div className="text-xs font-semibold text-slate-500">
-                  Showing {filteredLeads.length} of {leads.length} leads
-                </div>
-              </div>
+                                  {l.phone ? (
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <span>{l.phone}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 text-slate-400">
+                                      <Phone className="w-3.5 h-3.5 shrink-0" />
+                                      <span>No phone</span>
+                                    </div>
+                                  )}
 
-              {/* Table / Card Header Bar */}
-              <div className="hidden xl:grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl">
-                <div>CLIENT</div>
-                <div>SERVICE &amp; PHOTOS</div>
-                <div>FOLLOW-UP &amp; CONVERSATION</div>
-                <div>FINANCE &amp; COMPLETION</div>
-              </div>
-
-              {/* Leads List */}
-              <div className="divide-y divide-slate-200/80">
-                {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
-                  const total = getLeadQuoteTotal(l);
-                  const photosTotal = l.photos?.length || l.photosCount || 0;
-                  const followupPrompt = getFollowupPrompt(l);
-                  const waUrl = getWhatsAppLink(l.phone);
-                  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-                  const hasReplied = l.messages?.some((m) => m.from === "customer");
-
-                  return (
-                    <div
-                      key={l.id}
-                      className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-                        {/* COLUMN 1: CLIENT */}
-                        <div className="space-y-2">
-                          <div className="font-bold text-slate-900 text-sm">
-                            {l.name || "Unnamed Customer"}
-                          </div>
-
-                          <div className="space-y-1 text-xs text-slate-600">
-                            {l.email ? (
-                              <div className="flex items-center gap-2 text-slate-600">
-                                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span className="truncate" title={l.email}>{l.email}</span>
+                                  {l.address && (
+                                    <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
+                                      {l.address}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-slate-400">
-                                <Mail className="w-3.5 h-3.5 shrink-0" />
-                                <span>No email</span>
+
+                              {/* Right: Manual Status Dropdown & Badges */}
+                              <div className="w-[145px] shrink-0 space-y-1.5">
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                                    Status
+                                  </label>
+                                  <select
+                                    value={l.status || "New"}
+                                    onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                                    className={`w-full text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#001f97] ${
+                                      l.status === "Completed"
+                                        ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 hover:border-emerald-400"
+                                        : "bg-white border-slate-200 text-slate-800 hover:border-[#001f97]"
+                                    }`}
+                                    title="Change status manually"
+                                  >
+                                    {Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean).map((s) => (
+                                      <option key={s} value={s}>
+                                        {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="flex flex-wrap gap-1">
+                                  {l.status === "Completed" && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                                      🏆 Completed
+                                    </span>
+                                  )}
+                                  {l.invoiceOpenedAt && (
+                                    <span
+                                      title={`Customer opened invoice on ${fmtDate(l.invoiceOpenedAt)}`}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 whitespace-nowrap"
+                                    >
+                                      <Eye className="w-2.5 h-2.5 text-emerald-600" />
+                                      Opened: {fmtDate(l.invoiceOpenedAt)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            )}
-
-                            {l.phone ? (
-                              <div className="flex items-center gap-2 text-slate-600">
-                                <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span>{l.phone}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-slate-400">
-                                <Phone className="w-3.5 h-3.5 shrink-0" />
-                                <span>No phone</span>
-                              </div>
-                            )}
-
-                            {l.address && (
-                              <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
-                                {l.address}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="pt-2 flex flex-wrap gap-2">
-                            <button
-                              onClick={() => setJobCardLead(l)}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
-                            >
-                              <span>Open Client / Workflow</span>
-                              <ArrowRight className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingLead(l);
-                                setLeadModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dbeafe] hover:bg-blue-200 text-[#1d4ed8] text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
-                            >
-                              <span>Edit</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* COLUMN 2: SERVICE & PHOTOS */}
-                        <div className="space-y-2.5">
-                          <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
-                            {l.service || "Standard Work"}
-                          </div>
-
-                          <div>
-                            <div className="inline-flex flex-wrap items-center gap-2 px-2.5 py-1 bg-[#e8f0fe] text-[#1e40af] text-[11px] font-bold rounded-md">
-                              <span>RECEIVED</span>
-                              <span className="flex items-center gap-1">
-                                📅 {fmtDateBadge(l.received || l.createdAt)}
-                              </span>
-                              {(l.received || l.createdAt) && (
-                                <span className="flex items-center gap-1">
-                                  🕒 {fmtTimeBadge(l.received || l.createdAt)}
-                                </span>
-                              )}
                             </div>
-                          </div>
 
-                          <div className="space-y-2 pt-0.5">
+                            {/* Service & Received */}
+                            <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                              <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
+                                {l.service || "Standard Work"}
+                              </div>
+
+                              <div>
+                                <div className="inline-flex flex-wrap items-center gap-2 px-2.5 py-1 bg-[#e8f0fe] text-[#1e40af] text-[11px] font-bold rounded-md">
+                                  <span>RECEIVED</span>
+                                  <span className="flex items-center gap-1">
+                                    📅 {fmtDateBadge(l.received || l.createdAt)}
+                                  </span>
+                                  {(l.received || l.createdAt) && (
+                                    <span className="flex items-center gap-1">
+                                      🕒 {fmtTimeBadge(l.received || l.createdAt)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
                             {/* Photos / Camera Button */}
-                            <button
-                              onClick={() => openPhotosModal(l)}
-                              className="w-full px-3 py-2 bg-[#f1f5f9] hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-between border border-slate-200/80 transition-colors cursor-pointer"
-                              title="View & upload job / inspection photos"
-                            >
-                              <span className="flex items-center gap-2 text-slate-800">
-                                <Camera className="w-3.5 h-3.5 text-slate-600" />
-                                <span>Photos / Camera</span>
-                              </span>
-                              <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-[#001f97] text-[11px] font-black flex items-center justify-center">
-                                {photosTotal}
-                              </span>
-                            </button>
-
-                            {/* Inspection Report Button */}
-                            <button
-                              onClick={() => openInspectionModal(l)}
-                              className={`w-full px-3 py-2 font-bold rounded-xl text-xs flex items-center justify-between border transition-colors cursor-pointer ${
-                                l.inspectionReport?.status === "completed"
-                                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
-                                  : "bg-teal-50/70 hover:bg-teal-100/80 text-teal-900 border-teal-200"
-                              }`}
-                              title="Open Groutix Inspection Report form"
-                            >
-                              <span className="flex items-center gap-2">
-                                <ClipboardList className="w-3.5 h-3.5 text-teal-700" />
-                                <span>Inspection Form</span>
-                              </span>
-                              <span
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                  l.inspectionReport?.status === "completed"
-                                    ? "bg-emerald-600 text-white"
-                                    : "bg-teal-200 text-teal-800"
-                                }`}
-                              >
-                                {l.inspectionReport?.status === "completed" ? "Done" : "Fill"}
-                              </span>
-                            </button>
-
-                            {/* Quote Button */}
-                            <button
-                              onClick={() => openQuoteModal(l)}
-                              className="w-full px-3 py-2 bg-[#f1f5f9] hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-between border border-slate-200/80 transition-colors cursor-pointer"
-                              title="Open quote builder"
-                            >
-                              <span className="flex items-center gap-2 text-slate-800">
-                                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                                <span>Quote</span>
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-semibold">
-                                Finalize &amp; Share
-                              </span>
-                            </button>
-                          </div>
-
-                          <div className="text-[10px] text-slate-400 italic">
-                            Service is taken from the Quote Form.
-                          </div>
-                        </div>
-
-                        {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
-                        <div className="space-y-2.5">
-                          {/* Auto status header & dropdown */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">AUTO STATUS</span>
-                            </div>
-
-                            <select
-                              value={l.status}
-                              onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                              className="text-xs font-bold text-slate-700 bg-transparent border-0 text-right focus:outline-none cursor-pointer hover:text-[#001f97]"
-                            >
-                              {getRoleStatusOptions(role, l.status).map((s) => (
-                                <option key={s} value={s}>
-                                  {s}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* ── Login 1 (Intake / Leads): New, Contacted, Inspections, Quotes, Job Booked ── */}
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Intake Workflow
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {[
-                                { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
-                                { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
-                                { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
-                                { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
-                                { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
-                              ].map((st) => (
-                                <button
-                                  key={st.label}
-                                  type="button"
-                                  onClick={() =>
-                                    updateLeadField(l.id, {
-                                      status: st.status,
-                                      ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
-                                    })
-                                  }
-                                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
-                                    st.active
-                                      ? `${st.color} text-white shadow-2xs`
-                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                                  }`}
-                                  title={`Set status: ${st.label}`}
-                                >
-                                  {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                                  <span className="text-center leading-tight">{st.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Follow-up card */}
-                          <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
-                            <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
-                              FOLLOW-UP
-                            </div>
-                            <div className="text-xs font-semibold text-slate-800 mt-0.5">
-                              {followupPrompt}
-                            </div>
-                          </div>
-
-                          {/* 4 Quick Action Buttons */}
-                          <div className="grid grid-cols-4 gap-1.5">
-                            <button
-                              onClick={() => callCustomer(l)}
-                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                              title="Call customer phone"
-                            >
-                              <Phone className="w-3 h-3 shrink-0" />
-                              <span>Call</span>
-                            </button>
-
-                            <button
-                              onClick={() => emailCustomer(l)}
-                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                              title="Send email"
-                            >
-                              <Mail className="w-3 h-3 shrink-0" />
-                              <span>Email</span>
-                            </button>
-
-                            <button
-                              onClick={() => openMessagesModal(l)}
-                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                              title="Send SMS"
-                            >
-                              <span>SMS</span>
-                            </button>
-
-                            <a
-                              href={waUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
-                              title="Open WhatsApp chat"
-                            >
-                              <span>WhatsApp</span>
-                            </a>
-                          </div>
-
-                          {/* Customer replied / conversation button */}
-                          <button
-                            onClick={() => openMessagesModal(l)}
-                            className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
-                            title="Open messaging conversation"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            <span>
-                              {hasCustomerUnread
-                                ? "Customer replied!"
-                                : hasReplied
-                                ? "Customer replied"
-                                : "Conversation"}
-                            </span>
-                            {hasCustomerUnread && (
-                              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* COLUMN 4: FINANCE & COMPLETION */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between pb-1">
-                            <div className="font-black text-slate-900 text-sm">
-                              AUD ${total.toFixed(2)}
-                            </div>
-
-                            {/* Utility icons: GPS, Edit, Delete */}
-                            <div className="flex items-center gap-1 text-slate-400">
+                            <div className="pt-0.5">
                               <button
-                                onClick={() => openGpsModal(l)}
-                                title="GPS Navigation"
-                                className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                onClick={() => openPhotosModal(l)}
+                                className="w-full px-3 py-2 bg-[#f1f5f9] hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-between border border-slate-200/80 transition-colors cursor-pointer"
+                                title="View & upload job / inspection photos"
                               >
-                                <Navigation className="w-3.5 h-3.5" />
+                                <span className="flex items-center gap-2 text-slate-800">
+                                  <Camera className="w-3.5 h-3.5 text-slate-600" />
+                                  <span>Photos / Camera</span>
+                                </span>
+                                <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-[#001f97] text-[11px] font-black flex items-center justify-center">
+                                  {photosTotal}
+                                </span>
+                              </button>
+                            </div>
+
+                            {/* Workflow and Edit Buttons */}
+                            <div className="pt-1 flex flex-wrap gap-2">
+                              <button
+                                onClick={() => setJobCardLead(l)}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
+                              >
+                                <span>Open Client / Workflow</span>
+                                <ArrowRight className="w-3 h-3" />
                               </button>
                               <button
                                 onClick={() => {
                                   setEditingLead(l);
                                   setLeadModalOpen(true);
                                 }}
-                                title="Edit Lead"
-                                className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dbeafe] hover:bg-blue-200 text-[#1d4ed8] text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
                               >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLead(l.id)}
-                                title="Delete Lead"
-                                className="p-1 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Edit</span>
                               </button>
                             </div>
                           </div>
 
-                          {/* 6 Step Checklist */}
-                          <div className="space-y-1.5">
-                            {[
-                              { label: "Job Done", step: "Job Done" },
-                              { label: "Invoice Sent", step: "Invoice Sent" },
-                              { label: "Payment Request", step: "Payment Request" },
-                              { label: "Payment Pending", step: "Payment Pending" },
-                              { label: "Payment Received", step: "Payment Received" },
-                              { label: "Warranty", step: "Warranty" }
-                            ].map(({ label, step }) => {
-                              const isActive = getStepActive(l, step);
-                              return (
+                          {/* COLUMN 2: INSPECTION & QUOTE */}
+                          <div className="space-y-2.5">
+                            {/* ── 1. Inspection Booked & Assigned Dropdown ── */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Inspection &amp; Assigned
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5 items-center">
                                 <button
-                                  key={step}
-                                  onClick={() => {
-                                    if (step === "Invoice Sent") openInvoiceModal(l);
-                                    else if (step === "Warranty") openWarrantyModal(l);
-                                    else updateLeadField(l.id, { status: step });
-                                  }}
-                                  className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between border transition-all cursor-pointer ${
-                                    isActive
-                                      ? "bg-[#ccfbf1]/80 text-[#0f766e] border-teal-200/80 shadow-2xs"
-                                      : "bg-[#f8fafc] text-slate-600 border-slate-200/70 hover:bg-slate-100 hover:border-slate-300"
+                                  type="button"
+                                  onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
+                                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
+                                    l.status === "Inspection Booked" || INSPECTION_PHASE.includes(l.status)
+                                      ? "bg-blue-600 text-white shadow-xs"
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
                                   }`}
-                                  title={`Click to manage ${label}`}
+                                  title="Set status: Inspection Booked"
                                 >
-                                  <span>{label}</span>
-                                  {isActive ? (
-                                    <Check className="w-3.5 h-3.5 text-[#0f766e] stroke-[2.5]" />
-                                  ) : (
-                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                                  {(l.status === "Inspection Booked" || INSPECTION_PHASE.includes(l.status)) && (
+                                    <Check className="w-3 h-3 stroke-[2.5]" />
                                   )}
+                                  <span className="text-center leading-tight">Inspection Booked</span>
                                 </button>
+
+                                <select
+                                  value={l.assigned || "Unassigned"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const tech = technicians.find((t) => t.name === val);
+                                    updateLeadField(l.id, {
+                                      assigned: val === "Unassigned" ? "" : val,
+                                      ...(tech ? { technicianId: tech.id, technician: tech.name } : {}),
+                                    });
+                                  }}
+                                  className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden min-h-[34px] cursor-pointer"
+                                  title="Assign staff or technician"
+                                >
+                                  <option value="Unassigned">Unassigned</option>
+                                  {Array.from(
+                                    new Set([
+                                      ...rowAssigneeOptions(l.assigned, l.status).filter((n) => n && n !== "Unassigned"),
+                                      ...technicians.filter((t) => t.active).map((t) => t.name),
+                                      ...(l.assigned && l.assigned !== "Unassigned" ? [l.assigned] : []),
+                                    ])
+                                  ).map((name) => (
+                                    <option key={name} value={name}>
+                                      {name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* ── 2. Inspection Live Visit ── */}
+                            {(() => {
+                              const steps = visitStepsFor(l.status) || INSPECTION_STEPS;
+                              const currentIdx = steps.findIndex((s) => s.status === l.status);
+                              return (
+                                <div className="pt-0.5">
+                                  <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                                    Inspection live visit
+                                  </label>
+                                  <div className="grid grid-cols-4 gap-1">
+                                    {steps.map((step, idx) => {
+                                      const done = currentIdx >= 0 && idx <= currentIdx;
+                                      const isNext = idx === currentIdx + 1;
+                                      return (
+                                        <button
+                                          key={step.status}
+                                          type="button"
+                                          onClick={() => updateLeadField(l.id, { status: step.status })}
+                                          className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                            done
+                                              ? "bg-amber-500 text-white"
+                                              : isNext
+                                                ? "bg-[#001f97] text-white hover:bg-[#001777]"
+                                                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                          }`}
+                                          title={`Set status: ${step.status}`}
+                                        >
+                                          {step.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               );
-                            })}
+                            })()}
+
+                            {/* ── 3. GROUTIX Field Inspection Report Form ── */}
+                            <div className="pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => openInspectionModal(l)}
+                                className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-xs transition-colors cursor-pointer"
+                                title="Open GROUTIX Field Inspection Report form"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <ClipboardList className="w-4 h-4 text-white" />
+                                  <span>GROUTIX Field Inspection Report</span>
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                    l.inspectionReport?.status === "completed"
+                                      ? "bg-emerald-500 text-white"
+                                      : "bg-white/20 text-white"
+                                  }`}
+                                >
+                                  {l.inspectionReport?.status === "completed" ? "Completed" : "Fill / View Form"}
+                                </span>
+                              </button>
+                            </div>
+
+                            {/* ── 4. Hand-off: Share to Booking Office ── */}
+                            <div className="pt-0.5">
+                              {l.status === "Inspection Completed" ? (
+                                <div className="w-full px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                  <Check className="w-4 h-4" />
+                                  Shared to Booking Office — awaiting quote
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                                  className="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                                  title="Send this lead back to the Booking Office (Login 1) with all inspection info so they can send the quote"
+                                >
+                                  <Send className="w-4 h-4" />
+                                  Share to Booking Office
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-1.5 items-center">
+                              <button
+                                onClick={() => openQuoteModal(l)}
+                                className="px-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                                title="Open quote builder"
+                              >
+                                Quote
+                              </button>
+                              {([
+                                { label: "Sent", status: "Quote Sent", color: "bg-blue-600 hover:bg-blue-700" },
+                                { label: "Job Booked", status: "Job Booked", color: "bg-violet-600 hover:bg-violet-700" },
+                              ] as const).map((st) => (
+                                <button
+                                  key={st.status}
+                                  type="button"
+                                  onClick={() => updateLeadField(l.id, { status: st.status })}
+                                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                    l.status === st.status
+                                      ? st.color + " text-white ring-2 ring-offset-1 ring-current"
+                                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                  }`}
+                                  title={`Set: ${st.status}`}
+                                >
+                                  {st.label}
+                                </button>
+                              ))}
+                              <select
+                                value={l.technicianId || ""}
+                                onChange={(e) => {
+                                  const tech = technicians.find((t) => t.id === e.target.value);
+                                  updateLeadField(l.id, {
+                                    technicianId: e.target.value,
+                                    technician: tech?.name || "",
+                                  });
+                                }}
+                                className="w-full text-[10px] px-1 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden cursor-pointer truncate"
+                                title="Assign technician"
+                              >
+                                <option value="">Assign Tech</option>
+                                {technicians.filter((t) => t.active).map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                                {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                                  <option value={l.technicianId}>{l.technician || "Former tech"}</option>
+                                )}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
+                          <div className="space-y-2.5">
+                            {/* ── FINANCE SUMMARY ── */}
+                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                              <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between">
+                                <span className="text-[10px] font-black text-white uppercase tracking-wider">Finance</span>
+                                <span className="text-[10px] font-black text-emerald-300">
+                                  AUD ${total.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="p-2 space-y-1.5">
+                                {/* Invoice & Payment status badges */}
+                                {l.invoiceSentAt && (
+                                  <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                    <span>Invoice Sent — {fmtDate(l.invoiceSentAt)}</span>
+                                  </div>
+                                )}
+                                {l.invoiceOpenedAt ? (
+                                  <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center justify-between">
+                                    <span className="flex items-center gap-1">
+                                      <Eye className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>Invoice Opened</span>
+                                    </span>
+                                    <span className="text-[9.5px] font-black text-emerald-700">
+                                      {fmtDate(l.invoiceOpenedAt)}
+                                    </span>
+                                  </div>
+                                ) : l.invoiceSentAt ? (
+                                  <div className="text-[10px] font-medium px-2 py-1 rounded-lg bg-slate-50 text-slate-500 border border-slate-200 flex items-center justify-between">
+                                    <span className="flex items-center gap-1">
+                                      <Eye className="w-3 h-3 text-slate-400 shrink-0 opacity-40" />
+                                      <span>Invoice Opened</span>
+                                    </span>
+                                    <span className="text-[9px] text-amber-600 font-semibold">Not opened yet</span>
+                                  </div>
+                                ) : null}
+                                {l.quoteAcceptedAt && (
+                                  <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                    <span>Quote Accepted — {fmtDate(l.quoteAcceptedAt)}</span>
+                                  </div>
+                                )}
+
+                                {l.status === "Completed" && (
+                                  <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
+                                    <span className="flex items-center gap-1">
+                                      <span>🏆</span>
+                                      <span>Saved in Achievements</span>
+                                    </span>
+                                    <span className="text-[9px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">Completed Record</span>
+                                  </div>
+                                )}
+
+                                {/* Finance quick actions */}
+                                <div className="grid grid-cols-4 gap-1">
+                                  {([
+                                    { label: "Invoice", step: "Invoice Sent", color: "bg-sky-600 hover:bg-sky-700" },
+                                    { label: "Paid", step: "Payment Received", color: "bg-green-600 hover:bg-green-700" },
+                                    { label: "Warranty", step: "Warranty Sent", color: "bg-slate-700 hover:bg-slate-800" },
+                                    { label: "Complete 🏆", step: "Completed", color: "bg-emerald-600 hover:bg-emerald-700" },
+                                  ] as const).map((st) => {
+                                    const isActive = getStepActive(l, st.step);
+                                    return (
+                                      <button
+                                        key={st.step}
+                                        type="button"
+                                        onClick={() => {
+                                          if (st.step === "Invoice Sent") openInvoiceModal(l);
+                                          else if (st.step === "Warranty Sent") openWarrantyModal(l);
+                                          else updateLeadField(l.id, { status: st.step });
+                                        }}
+                                        className={`px-1 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors cursor-pointer text-center ${
+                                          isActive
+                                            ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
+                                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                        }`}
+                                        title={`${st.label}`}
+                                      >
+                                        {st.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+
+
+                            {/* Follow-up card */}
+                            <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
+                              <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
+                                FOLLOW-UP
+                              </div>
+                              <div className="text-xs font-semibold text-slate-800 mt-0.5">
+                                {followupPrompt}
+                              </div>
+                            </div>
+
+                            {/* 4 Quick Action Buttons */}
+                            <div className="grid grid-cols-4 gap-1.5">
+                              <button
+                                onClick={() => callCustomer(l)}
+                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                title="Call customer phone"
+                              >
+                                <Phone className="w-3 h-3 shrink-0" />
+                                <span>Call</span>
+                              </button>
+
+                              <button
+                                onClick={() => emailCustomer(l)}
+                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                title="Send email"
+                              >
+                                <Mail className="w-3 h-3 shrink-0" />
+                                <span>Email</span>
+                              </button>
+
+                              <button
+                                onClick={() => openMessagesModal(l)}
+                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                title="Send SMS"
+                              >
+                                <span>SMS</span>
+                              </button>
+
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
+                                title="Open WhatsApp chat"
+                              >
+                                <span>WhatsApp</span>
+                              </a>
+                            </div>
+
+                            {/* Customer replied / conversation button */}
+                            <button
+                              onClick={() => openMessagesModal(l)}
+                              className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
+                              title="Open messaging conversation"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>
+                                {hasCustomerUnread
+                                  ? "Customer replied!"
+                                  : hasReplied
+                                    ? "Customer replied"
+                                    : "Conversation"}
+                              </span>
+                              {hasCustomerUnread && (
+                                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                              )}
+                            </button>
+
+                          </div>
+
+                          {/* COLUMN 4: FINANCE & COMPLETION */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between pb-1">
+                              <div className="font-black text-slate-900 text-sm">
+                                AUD ${total.toFixed(2)}
+                              </div>
+
+                              {/* Utility icons: GPS, Edit, Delete */}
+                              <div className="flex items-center gap-1 text-slate-400">
+                                <button
+                                  onClick={() => openGpsModal(l)}
+                                  title="GPS Navigation"
+                                  className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                >
+                                  <Navigation className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingLead(l);
+                                    setLeadModalOpen(true);
+                                  }}
+                                  title="Edit Lead"
+                                  className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLead(l.id)}
+                                  title="Delete Lead"
+                                  className="p-1 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 6 Step Checklist */}
+                            <div className="space-y-1.5">
+                              {[
+                                { label: "Job Done", step: "Job Done" },
+                                { label: "Invoice Sent", step: "Invoice Sent" },
+                                { label: "Payment Request", step: "Payment Request" },
+                                { label: "Payment Pending", step: "Payment Pending" },
+                                { label: "Payment Received", step: "Payment Received" },
+                                { label: "Warranty Sent", step: "Warranty Sent" },
+                                { label: "Completed 🏆", step: "Completed" }
+                              ].map(({ label, step }) => {
+                                const isActive = getStepActive(l, step);
+                                return (
+                                  <button
+                                    key={step}
+                                    onClick={() => {
+                                      if (step === "Invoice Sent") openInvoiceModal(l);
+                                      else if (step === "Warranty Sent") openWarrantyModal(l);
+                                      else updateLeadField(l.id, { status: step });
+                                    }}
+                                    className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between border transition-all cursor-pointer ${isActive
+                                        ? "bg-[#ccfbf1]/80 text-[#0f766e] border-teal-200/80 shadow-2xs"
+                                        : "bg-[#f8fafc] text-slate-600 border-slate-200/70 hover:bg-slate-100 hover:border-slate-300"
+                                      }`}
+                                    title={`Click to manage ${label}`}
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="truncate">{label}</span>
+                                      {step === "Invoice Sent" && l.invoiceOpenedAt && (
+                                        <span
+                                          className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 flex items-center gap-0.5 whitespace-nowrap"
+                                          title={`Customer opened invoice: ${fmtDate(l.invoiceOpenedAt)}`}
+                                        >
+                                          <Eye className="w-2.5 h-2.5 text-emerald-600" />
+                                          {fmtDate(l.invoiceOpenedAt)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isActive ? (
+                                      <Check className="w-3.5 h-3.5 text-[#0f766e] stroke-[2.5]" />
+                                    ) : (
+                                      <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Complete & Archive Button */}
+                            {l.status === "Completed" ? (
+                              <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-800 flex items-center justify-center gap-1.5">
+                                <span>🏆</span>
+                                <span>Saved in Achievements</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => updateLeadField(l.id, { status: "Completed" })}
+                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                                title="Mark this lead as completed and save to Achievements"
+                              >
+                                <span>Complete &amp; Save to Achievements 🏆</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
+                    );
+                  })}
+
+                  {filteredLeads.length === 0 && (
+                    <div className="py-16 text-center text-slate-400">
+                      No leads matching the current filters.
                     </div>
-                  );
-                })}
+                  )}
+                </div>
 
-                {filteredLeads.length === 0 && (
-                  <div className="py-16 text-center text-slate-400">
-                    No leads matching the current filters.
-                  </div>
-                )}
+                <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
               </div>
-
-              <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
             </div>
-          </div>
           )}
 
           {/* =========================================================================
@@ -3659,57 +3887,57 @@ export default function CrmDashboardPage() {
                     const groups: { label: string; group: StageGroup; statuses: string[] }[] =
                       role === "intake"
                         ? [
-                            { label: "New leads", group: "lead", statuses: ["New"] },
-                            { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
-                            {
-                              label: "Inspections",
-                              group: "booking",
-                              statuses: [
-                                "Inspection Booked",
-                                "Inspection En Route",
-                                "Inspection Arrived",
-                                "Inspection In Progress",
-                                "Inspection Completed",
-                              ],
-                            },
-                            { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
-                            { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
-                          ]
+                          { label: "New leads", group: "lead", statuses: ["New"] },
+                          { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                          {
+                            label: "Inspections",
+                            group: "booking",
+                            statuses: [
+                              "Inspection Booked",
+                              "Inspection En Route",
+                              "Inspection Arrived",
+                              "Inspection In Progress",
+                              "Inspection Completed",
+                            ],
+                          },
+                          { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                          { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+                        ]
                         : role === "finance"
-                        ? single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"])
-                        : role === "field"
-                        ? single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"])
-                        : role === "manager"
-                        ? [
-                            { label: "New leads", group: "lead", statuses: ["New"] },
-                            { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
-                            {
-                              label: "Inspection",
-                              group: "booking",
-                              statuses: [
-                                "Inspection Booked",
-                                "Inspection En Route",
-                                "Inspection Arrived",
-                                "Inspection In Progress",
-                                "Inspection Completed",
-                              ],
-                            },
-                            { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
-                            {
-                              label: "Job Booked",
-                              group: "job",
-                              statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
-                            },
-                            { label: "Job Done", group: "finance", statuses: ["Job Done"] },
-                            { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
-                            { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
-                            { label: "Achievements", group: "closed", statuses: ["Completed"] },
-                          ]
-                        : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
-                            label: s.label,
-                            group: s.group,
-                            statuses: [s.key],
-                          }));
+                          ? single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"])
+                          : role === "field"
+                            ? single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"])
+                            : role === "manager"
+                              ? [
+                                { label: "New leads", group: "lead", statuses: ["New"] },
+                                { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                                {
+                                  label: "Inspection",
+                                  group: "booking",
+                                  statuses: [
+                                    "Inspection Booked",
+                                    "Inspection En Route",
+                                    "Inspection Arrived",
+                                    "Inspection In Progress",
+                                    "Inspection Completed",
+                                  ],
+                                },
+                                { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                                {
+                                  label: "Job Booked",
+                                  group: "job",
+                                  statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
+                                },
+                                { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+                                { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
+                                { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
+                                { label: "Achievements", group: "closed", statuses: ["Completed"] },
+                              ]
+                              : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
+                                label: s.label,
+                                group: s.group,
+                                statuses: [s.key],
+                              }));
                     return groups.map((grp) => {
                       const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-cyan-500", value: "text-cyan-600" };
                       const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
@@ -3723,11 +3951,10 @@ export default function CrmDashboardPage() {
                             setStatusFilter(active ? "" : joined);
                             setPage(1);
                           }}
-                          className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
-                            active
+                          className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
                               ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
                               : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                          }`}
+                            }`}
                           title={`Filter by ${grp.label}`}
                         >
                           <div className="flex items-center gap-1.5 mb-1">
@@ -3754,659 +3981,796 @@ export default function CrmDashboardPage() {
                         {role === "finance"
                           ? "Finance & Job Completion"
                           : role === "intake"
-                          ? "Leads & Bookings"
-                          : "Bookings & Jobs"}
+                            ? "Leads & Bookings"
+                            : "Bookings & Jobs"}
                       </h2>
                       <div className="text-xs text-slate-500">
                         {role === "finance"
                           ? `Showing ${jobLeads.length} completed jobs for invoicing, payment & warranty`
                           : role === "intake"
-                          ? `Showing ${jobLeads.length} active leads from New to Job Booked`
-                          : `Showing ${jobLeads.length} bookings & jobs from Inspection Booked to Job Done`}
+                            ? `Showing ${jobLeads.length} active leads from New to Job Booked`
+                            : `Showing ${jobLeads.length} bookings & jobs from Inspection Booked to Job Done`}
                       </div>
                     </div>
                   </div>
 
-                {/* Quick Status Filter Dropdown */}
-                <div className="flex items-center gap-1.5 pb-1 text-xs">
-                  {(() => {
-                    // Full role status set drives the "All Active" count; the dropdown
-                    // itself lists only the curated stages that match the dashboard
-                    // buttons (the micro-stages stay out of the filter to reduce noise).
-                    const boardStatuses = getRoleStatusOptions(role);
-                    const filterOptions =
-                      role === "field"
-                        ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
-                        : role === "finance"
-                        ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
-                        : role === "intake"
-                        ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
-                        : boardStatuses;
-                    const allLabel =
-                      role === "finance"
-                        ? "All Finance Jobs"
-                        : role === "intake"
-                        ? "All Leads"
-                        : "All Active";
-                    const totalActive = scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
-                    return (
-                      <select
-                        value={filterOptions.includes(statusFilter) ? statusFilter : ""}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
-                      >
-                        <option value="">{allLabel} ({totalActive})</option>
-                        {filterOptions.map((st) => {
-                          const count = scopedLeads.filter((l) => l.status === st).length;
-                          return (
-                            <option key={st} value={st}>
-                              {st} ({count})
-                            </option>
-                          );
-                        })}
-                      </select>
-                    );
-                  })()}
+                  {/* Quick Status Filter Dropdown */}
+                  <div className="flex items-center gap-1.5 pb-1 text-xs">
+                    {(() => {
+                      // Full role status set drives the "All Active" count; the dropdown
+                      // itself lists only the curated stages that match the dashboard
+                      // buttons (the micro-stages stay out of the filter to reduce noise).
+                      const boardStatuses = getRoleStatusOptions(role);
+                      const filterOptions =
+                        role === "field"
+                          ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
+                          : role === "finance"
+                            ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
+                            : role === "intake"
+                              ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
+                              : boardStatuses;
+                      const allLabel =
+                        role === "finance"
+                          ? "All Finance Jobs"
+                          : role === "intake"
+                            ? "All Leads"
+                            : "All Active";
+                      const totalActive = scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
+                      return (
+                        <select
+                          value={filterOptions.includes(statusFilter) ? statusFilter : ""}
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                          className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
+                        >
+                          <option value="">{allLabel} ({totalActive})</option>
+                          {filterOptions.map((st) => {
+                            const count = scopedLeads.filter((l) => l.status === st).length;
+                            return (
+                              <option key={st} value={st}>
+                                {st} ({count})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {jobLeads
-                  .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-                  .map((l) => (
-                    <div
-                      key={l.id}
-                      className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all shadow-2xs space-y-3 flex flex-col justify-between"
-                    >
-                      <div className="space-y-2.5">
-                        {/* Card Header: Customer Name & Status/Priority */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingLead(l);
-                                setLeadModalOpen(true);
-                              }}
-                              className="font-black text-slate-900 text-sm hover:text-[#001f97] hover:underline text-left transition-colors"
-                            >
-                              {l.name || "Customer"}
-                            </button>
-                            {l.address && (
-                              <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5" title={l.address}>
-                                {l.address}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <QuoteResponseBadge lead={l} />
-                            {l.invoiceOpenedAt && (
-                              <span
-                                title={`Invoice opened • ${fmtDate(l.invoiceOpenedAt)}`}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap"
-                              >
-                                <CheckCircle2 className="w-3 h-3" /> Invoice opened
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                {/* Table / Card Header Bar */}
+                <div className="hidden xl:grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl">
+                  <div>CLIENT</div>
+                  <div>INSPECTION &amp; QUOTE</div>
+                  <div>FINANCE</div>
+                  <div>WORKFLOW &amp; COMPLETION</div>
+                </div>
 
-                        {/* Customer & Job Details */}
-                        <div className="text-xs text-slate-600 space-y-1 bg-white p-2.5 rounded-xl border border-slate-200/80">
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Phone:</span>
-                            <span className="font-semibold text-slate-800">{l.phone || "—"}</span>
-                          </div>
-                          {l.email && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-400">Email:</span>
-                              <span className="font-medium text-slate-700 truncate max-w-[180px]" title={l.email}>
-                                {l.email}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Service:</span>
-                            <span className="font-semibold text-slate-800 text-right truncate max-w-[170px]" title={l.service}>
-                              {l.service || "Standard Service"}
-                            </span>
-                          </div>
-                          {(role === "field" || role === "manager") && l.inspectionAt && (
-                            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                              <span className="text-slate-400">Inspection:</span>
-                              <span className="font-bold text-[#001f97] text-right">{fmtDate(l.inspectionAt)}</span>
-                            </div>
-                          )}
-                          {(role === "field" || role === "manager") && l.jobAt && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-400">Job:</span>
-                              <span className="font-bold text-emerald-700 text-right">{fmtDate(l.jobAt)}</span>
-                            </div>
-                          )}
-                          {l.quoteAmount && l.quoteAmount > 0 ? (
-                            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                              <span className="text-slate-400">Quote Value:</span>
-                              <span className="font-black text-emerald-700">AUD ${l.quoteAmount.toFixed(2)}</span>
-                            </div>
-                          ) : null}
-                        </div>
+                {/* Jobs / Bookings List */}
+                <div className="divide-y divide-slate-200/80">
+                  {jobLeads
+                    .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                    .map((l) => {
+                      const total = getLeadQuoteTotal(l);
+                      const photosTotal = l.photos?.length || l.photosCount || 0;
+                      const followupPrompt = getFollowupPrompt(l);
+                      const waUrl = getWhatsAppLink(l.phone);
+                      const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+                      const hasReplied = l.messages?.some((m) => m.from === "customer");
 
-                        {/* Status & Assigned Technician Controls */}
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase tracking-wider">
-                              Status
-                            </label>
-                            <select
-                              value={l.status}
-                              onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                              className={`w-full text-[11px] font-bold px-2 py-1.5 rounded-lg border focus:outline-hidden ${getBadgeColor(
-                                l.status
-                              )}`}
-                            >
-                              {(role === "finance"
-                                ? FINANCE_STATUSES
-                                : role === "field"
-                                ? JOB_STATUSES
-                                : [...new Set([...JOB_STATUSES, ...FINANCE_STATUSES])]
-                              ).map((s) => (
-                                <option key={s} value={s}>
-                                  {s}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase tracking-wider">
-                              Assigned
-                            </label>
-                            <select
-                              value={l.assigned || "Unassigned"}
-                              onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
-                              className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
-                            >
-                              {rowAssigneeOptions(l.assigned, l.status).map((n) => (
-                                <option key={n} value={n}>
-                                  {n}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Field technician dispatch — Login 2 (Field) + managers only. */}
-                        {canManageTechs && (
-                          <div className="pt-1">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase tracking-wider flex items-center gap-1">
-                              <HardHat className="w-3 h-3" />
-                              Technician on site
-                            </label>
-                            <select
-                              value={l.technicianId || ""}
-                              onChange={(e) => {
-                                const tech = technicians.find((t) => t.id === e.target.value);
-                                updateLeadField(l.id, {
-                                  technicianId: e.target.value,
-                                  technician: tech?.name || "",
-                                });
-                              }}
-                              className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
-                            >
-                              <option value="">Unassigned</option>
-                              {technicians.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.name}
-                                  {!t.active ? " (inactive)" : ""}
-                                </option>
-                              ))}
-                              {/* Keep a stale assignment visible even if the tech was removed. */}
-                              {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
-                                <option value={l.technicianId}>
-                                  {l.technician || "Former technician"}
-                                </option>
-                              )}
-                            </select>
-                          </div>
-                        )}
-
-                        {/* ── Login 1 (Intake / Leads): New, Contacted, Inspections, Quotes, Job Booked ── */}
-                        {(role === "intake" || role === "manager") && (
-                          <div className="pt-1">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                              Intake Workflow Stages
-                            </label>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {[
-                                { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
-                                { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
-                                { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
-                                { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
-                                { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
-                              ].map((st) => (
-                                <button
-                                  key={st.label}
-                                  type="button"
-                                  onClick={() =>
-                                    updateLeadField(l.id, {
-                                      status: st.status,
-                                      ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
-                                    })
-                                  }
-                                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
-                                    st.active
-                                      ? `${st.color} text-white shadow-2xs`
-                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                                  }`}
-                                  title={`Set status: ${st.label}`}
-                                >
-                                  {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                                  <span className="text-center leading-tight">{st.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── Login 2 (Field / Scheduling): Inspection Booked → Inspection Completed → Quote Pending → Job Booked → Job Done ──
-                            Field execution controls are hidden from Intake (Login 1) — Intake only books the inspection via its own workflow. */}
-                        {(role === "field" || role === "manager") && (
-                          <div className="pt-1">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                              Field Workflow Stages
-                            </label>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {[
-                                { label: "Inspection Booked", status: "Inspection Booked", color: "bg-blue-600 hover:bg-blue-700" },
-                                { label: "Inspection Completed", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
-                                { label: "Quote Pending", status: "Quote Pending", color: "bg-amber-600 hover:bg-amber-700" },
-                                { label: "Job Booked", status: "Job Booked", color: "bg-emerald-600 hover:bg-emerald-700" },
-                                { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
-                              ].map((st) => {
-                                const isCurrent = l.status === st.status;
-                                return (
+                      return (
+                        <div
+                          key={l.id}
+                          className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+                            {/* COLUMN 1: CLIENT (includes Service, Dates & Photos) */}
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2.5">
+                                {/* Left: Client info */}
+                                <div className="flex-1 min-w-0">
                                   <button
-                                    key={st.status}
                                     type="button"
-                                    onClick={() => updateLeadField(l.id, { status: st.status })}
-                                    className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
-                                      isCurrent
-                                        ? `${st.color} text-white shadow-xs`
-                                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                                    }`}
-                                    title={`Set status: ${st.label}`}
+                                    onClick={() => {
+                                      setEditingLead(l);
+                                      setLeadModalOpen(true);
+                                    }}
+                                    className="font-bold text-slate-900 text-sm hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
+                                    title={l.name || "Unnamed Customer"}
                                   >
-                                    {isCurrent && <Check className="w-3 h-3 stroke-[2.5]" />}
-                                    <span className="text-center leading-tight">{st.label}</span>
+                                    {l.name || "Unnamed Customer"}
                                   </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
 
-                        {/* ── Hand-off: Field (Login 2) → Booking Office (Login 1) ──
-                            Marking the inspection complete moves the lead into Intake's
-                            queue (carrying all inspection info) so they can build & send
-                            the quote. Once the quote is accepted the lead returns here. */}
-                        {(role === "field" || role === "manager") &&
-                          (INSPECTION_PHASE.includes(l.status) || l.status === "Inspection Completed") && (
-                            <div className="pt-1">
-                              {l.status === "Inspection Completed" ? (
-                                <div className="w-full px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                                  <Check className="w-4 h-4" />
-                                  Shared to Booking Office — awaiting quote
+                                  <div className="space-y-1 text-xs text-slate-600 mt-1">
+                                    {l.email ? (
+                                      <div className="flex items-center gap-1.5 text-slate-600">
+                                        <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <span className="truncate" title={l.email}>{l.email}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 text-slate-400">
+                                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                                        <span>No email</span>
+                                      </div>
+                                    )}
+
+                                    {l.phone ? (
+                                      <div className="flex items-center gap-1.5 text-slate-600">
+                                        <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                        <span>{l.phone}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 text-slate-400">
+                                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                                        <span>No phone</span>
+                                      </div>
+                                    )}
+
+                                    {l.address && (
+                                      <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
+                                        {l.address}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                                  className="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
-                                  title="Send this lead back to the Booking Office (Login 1) with all inspection info so they can send the quote"
-                                >
-                                  <Send className="w-4 h-4" />
-                                  Share to Booking Office
-                                </button>
-                              )}
-                            </div>
-                          )}
 
-                        {/* On-site visit tracker: On the Way → Reached → Start →
-                            Complete. Each button advances the lead's status (and
-                            is auto-logged with a timestamp on the server). */}
-                        {role !== "intake" && (() => {
-                          const steps = visitStepsFor(l.status);
-                          if (!steps) return null;
-                          const currentIdx = steps.findIndex((s) => s.status === l.status);
-                          return (
-                            <div className="pt-0.5">
-                              <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                                {INSPECTION_PHASE.includes(l.status) ? "Inspection live visit" : "Job live visit"}
-                              </label>
-                              <div className="grid grid-cols-4 gap-1">
-                                {steps.map((step, idx) => {
-                                  const done = currentIdx >= 0 && idx <= currentIdx;
-                                  const isNext = idx === currentIdx + 1;
-                                  return (
+                                {/* Right: Manual Status Dropdown & Badges */}
+                                <div className="w-[145px] shrink-0 space-y-1.5">
+                                  <div>
+                                    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                                      Status
+                                    </label>
+                                    <select
+                                      value={l.status || "New"}
+                                      onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                                      className={`w-full text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#001f97] ${
+                                        l.status === "Completed"
+                                          ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 hover:border-emerald-400"
+                                          : "bg-white border-slate-200 text-slate-800 hover:border-[#001f97]"
+                                      }`}
+                                      title="Change status manually"
+                                    >
+                                      {Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean).map((s) => (
+                                        <option key={s} value={s}>
+                                          {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-1">
+                                    <QuoteResponseBadge lead={l} />
+                                    {l.status === "Completed" && (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                                        🏆 Completed
+                                      </span>
+                                    )}
+                                    {l.invoiceOpenedAt && (
+                                      <span
+                                        title={`Invoice opened • ${fmtDate(l.invoiceOpenedAt)}`}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap"
+                                      >
+                                        <Eye className="w-2.5 h-2.5 text-emerald-600" /> Opened: {fmtDate(l.invoiceOpenedAt)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Service & Dates */}
+                              <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                                <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
+                                  {l.service || "Standard Work"}
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5">
+                                  <div>
+                                    <div className="inline-flex flex-wrap items-center gap-1.5 px-2 py-0.5 bg-[#e8f0fe] text-[#1e40af] text-[10px] font-bold rounded-md">
+                                      <span>RECEIVED</span>
+                                      <span>📅 {fmtDateBadge(l.received || l.createdAt)}</span>
+                                    </div>
+                                  </div>
+                                  {l.inspectionAt && (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-50 text-teal-800 text-[10px] font-bold rounded-md border border-teal-200">
+                                      <span>INSPECTION:</span>
+                                      <span>{fmtDate(l.inspectionAt)}</span>
+                                    </div>
+                                  )}
+                                  {l.jobAt && (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-md border border-emerald-200">
+                                      <span>JOB:</span>
+                                      <span>{fmtDate(l.jobAt)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Photos / Camera Button */}
+                              <div className="pt-0.5">
+                                <button
+                                  onClick={() => openPhotosModal(l)}
+                                  className="w-full px-3 py-2 bg-[#f1f5f9] hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-between border border-slate-200/80 transition-colors cursor-pointer"
+                                  title="View & upload job / inspection photos"
+                                >
+                                  <span className="flex items-center gap-2 text-slate-800">
+                                    <Camera className="w-3.5 h-3.5 text-slate-600" />
+                                    <span>Photos / Camera</span>
+                                  </span>
+                                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-[#001f97] text-[11px] font-black flex items-center justify-center">
+                                    {photosTotal}
+                                  </span>
+                                </button>
+                              </div>
+
+                              {/* Workflow and Edit Buttons */}
+                              <div className="pt-1 flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => setJobCardLead(l)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
+                                >
+                                  <span>Open Client / Workflow</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingLead(l);
+                                    setLeadModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dbeafe] hover:bg-blue-200 text-[#1d4ed8] text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
+                                >
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* COLUMN 2: INSPECTION & QUOTE */}
+                            <div className="space-y-2.5">
+                              <div className="space-y-2">
+                                {/* Inspection Report Button */}
+                                <button
+                                  onClick={() => openInspectionModal(l)}
+                                  className={`w-full px-3 py-2 font-bold rounded-xl text-xs flex items-center justify-between border transition-colors cursor-pointer ${l.inspectionReport?.status === "completed"
+                                      ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
+                                      : "bg-teal-50/70 hover:bg-teal-100/80 text-teal-900 border-teal-200"
+                                    }`}
+                                  title="Open Groutix Inspection Report form"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <ClipboardList className="w-3.5 h-3.5 text-teal-700" />
+                                    <span>Inspection Form</span>
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${l.inspectionReport?.status === "completed"
+                                        ? "bg-emerald-600 text-white"
+                                        : "bg-teal-200 text-teal-800"
+                                      }`}
+                                  >
+                                    {l.inspectionReport?.status === "completed" ? "Done" : "Fill"}
+                                  </span>
+                                </button>
+
+                                <div className="grid grid-cols-4 gap-1.5 items-center">
+                                  <button
+                                    onClick={() => openQuoteModal(l)}
+                                    className="px-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                                    title="Open quote builder"
+                                  >
+                                    Quote
+                                  </button>
+                                  {([
+                                    { label: "Sent", status: "Quote Sent", color: "bg-blue-600 hover:bg-blue-700" },
+                                    { label: "Job Booked", status: "Job Booked", color: "bg-violet-600 hover:bg-violet-700" },
+                                  ] as const).map((st) => (
                                     <button
-                                      key={step.status}
+                                      key={st.status}
                                       type="button"
-                                      onClick={() => updateLeadField(l.id, { status: step.status })}
+                                      onClick={() => updateLeadField(l.id, { status: st.status })}
                                       className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                        done
-                                          ? "bg-amber-500 text-white"
-                                          : isNext
-                                          ? "bg-[#001f97] text-white hover:bg-[#001777]"
+                                        l.status === st.status
+                                          ? st.color + " text-white ring-2 ring-offset-1 ring-current"
                                           : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                                       }`}
-                                      title={`Set status: ${step.status}`}
+                                      title={`Set: ${st.status}`}
                                     >
-                                      {step.label}
+                                      {st.label}
+                                    </button>
+                                  ))}
+                                  <select
+                                    value={l.technicianId || ""}
+                                    onChange={(e) => {
+                                      const tech = technicians.find((t) => t.id === e.target.value);
+                                      updateLeadField(l.id, {
+                                        technicianId: e.target.value,
+                                        technician: tech?.name || "",
+                                      });
+                                    }}
+                                    className="w-full text-[10px] px-1 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden cursor-pointer truncate"
+                                    title="Assign technician"
+                                  >
+                                    <option value="">Assign Tech</option>
+                                    {technicians.filter((t) => t.active).map((t) => (
+                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                    {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                                      <option value={l.technicianId}>{l.technician || "Former tech"}</option>
+                                    )}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Field live visit steps */}
+                              {role !== "intake" && (() => {
+                                const steps = visitStepsFor(l.status);
+                                if (!steps) return null;
+                                const currentIdx = steps.findIndex((s) => s.status === l.status);
+                                return (
+                                  <div className="pt-1">
+                                    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
+                                      {INSPECTION_PHASE.includes(l.status) ? "Inspection live visit" : "Job live visit"}
+                                    </label>
+                                    <div className="grid grid-cols-4 gap-1">
+                                      {steps.map((step, idx) => {
+                                        const done = currentIdx >= 0 && idx <= currentIdx;
+                                        const isNext = idx === currentIdx + 1;
+                                        return (
+                                          <button
+                                            key={step.status}
+                                            type="button"
+                                            onClick={() => updateLeadField(l.id, { status: step.status })}
+                                            className={`px-1 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${done
+                                                ? "bg-amber-500 text-white"
+                                                : isNext
+                                                  ? "bg-[#001f97] text-white hover:bg-[#001777]"
+                                                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                              }`}
+                                            title={`Set status: ${step.status}`}
+                                          >
+                                            {step.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Field technician dispatch */}
+                              {canManageTechs && (
+                                <div className="pt-1">
+                                  <label className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase tracking-wider flex items-center gap-1">
+                                    <HardHat className="w-3 h-3" />
+                                    Technician on site
+                                  </label>
+                                  <select
+                                    value={l.technicianId || ""}
+                                    onChange={(e) => {
+                                      const tech = technicians.find((t) => t.id === e.target.value);
+                                      updateLeadField(l.id, {
+                                        technicianId: e.target.value,
+                                        technician: tech?.name || "",
+                                      });
+                                    }}
+                                    className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {technicians.map((t) => (
+                                      <option key={t.id} value={t.id}>
+                                        {t.name}
+                                        {!t.active ? " (inactive)" : ""}
+                                      </option>
+                                    ))}
+                                    {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                                      <option value={l.technicianId}>
+                                        {l.technician || "Former technician"}
+                                      </option>
+                                    )}
+                                  </select>
+                                </div>
+                              )}
+
+                              {/* Hand-off: Field → Booking Office */}
+                              {(role === "field" || role === "manager") &&
+                                (INSPECTION_PHASE.includes(l.status) || l.status === "Inspection Completed") && (
+                                  <div className="pt-1">
+                                    {l.status === "Inspection Completed" ? (
+                                      <div className="w-full px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5">
+                                        <Check className="w-3.5 h-3.5" />
+                                        Shared to Booking Office
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                                        className="w-full px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                                        title="Send back to Booking Office with inspection info"
+                                      >
+                                        <Send className="w-3.5 h-3.5" />
+                                        Share to Booking Office
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+
+                              <div className="text-[10px] text-slate-400 italic">
+                                Service is taken from the Quote Form.
+                              </div>
+                            </div>
+
+                            {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
+                            <div className="space-y-2.5">
+                              {/* Auto status header & dropdowns */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">AUTO STATUS</span>
+                                </div>
+
+                                <select
+                                  value={l.status}
+                                  onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                                  className="text-xs font-bold text-slate-700 bg-transparent border-0 text-right focus:outline-none cursor-pointer hover:text-[#001f97]"
+                                >
+                                  {(role === "finance"
+                                    ? FINANCE_STATUSES
+                                    : role === "field"
+                                      ? JOB_STATUSES
+                                      : [...new Set([...JOB_STATUSES, ...FINANCE_STATUSES, ...INTAKE_STATUSES])]
+                                  ).map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Assigned row */}
+                              <div className="flex items-center justify-between text-xs pt-0.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Staff</span>
+                                <select
+                                  value={l.assigned || "Unassigned"}
+                                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
+                                  className="text-[11px] px-2 py-1 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
+                                >
+                                  {rowAssigneeOptions(l.assigned, l.status).map((n) => (
+                                    <option key={n} value={n}>
+                                      {n}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Workflow buttons depending on role */}
+                              {(role === "intake" || role === "manager") && (
+                                <div>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                      Intake Workflow
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    {[
+                                      { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
+                                      { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
+                                      { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
+                                      { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
+                                      { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
+                                    ].map((st) => (
+                                      <button
+                                        key={st.label}
+                                        type="button"
+                                        onClick={() =>
+                                          updateLeadField(l.id, {
+                                            status: st.status,
+                                            ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
+                                          })
+                                        }
+                                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${st.active
+                                            ? `${st.color} text-white shadow-2xs`
+                                            : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                                          }`}
+                                        title={`Set status: ${st.label}`}
+                                      >
+                                        {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
+                                        <span className="text-center leading-tight">{st.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {(role === "field" || role === "manager") && (
+                                <div className="pt-0.5">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                      Field Workflow
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    {[
+                                      { label: "Inspection Booked", status: "Inspection Booked", color: "bg-blue-600 hover:bg-blue-700" },
+                                      { label: "Inspection Completed", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
+                                      { label: "Quote Pending", status: "Quote Pending", color: "bg-amber-600 hover:bg-amber-700" },
+                                      { label: "Job Booked", status: "Job Booked", color: "bg-emerald-600 hover:bg-emerald-700" },
+                                      { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
+                                    ].map((st) => {
+                                      const isCurrent = l.status === st.status;
+                                      return (
+                                        <button
+                                          key={st.status}
+                                          type="button"
+                                          onClick={() => updateLeadField(l.id, { status: st.status })}
+                                          className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${isCurrent
+                                              ? `${st.color} text-white shadow-xs`
+                                              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                                            }`}
+                                          title={`Set status: ${st.label}`}
+                                        >
+                                          {isCurrent && <Check className="w-2.5 h-2.5 stroke-[2.5]" />}
+                                          <span className="text-center leading-tight">{st.label}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Follow-up card */}
+                              <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
+                                <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
+                                  FOLLOW-UP
+                                </div>
+                                <div className="text-xs font-semibold text-slate-800 mt-0.5">
+                                  {followupPrompt}
+                                </div>
+                              </div>
+
+                              {/* 4 Quick Action Buttons */}
+                              <div className="grid grid-cols-4 gap-1.5">
+                                <button
+                                  onClick={() => callCustomer(l)}
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                  title="Call customer phone"
+                                >
+                                  <Phone className="w-3 h-3 shrink-0" />
+                                  <span>Call</span>
+                                </button>
+
+                                <button
+                                  onClick={() => emailCustomer(l)}
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                  title="Send email"
+                                >
+                                  <Mail className="w-3 h-3 shrink-0" />
+                                  <span>Email</span>
+                                </button>
+
+                                <button
+                                  onClick={() => openMessagesModal(l)}
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                                  title="Send SMS"
+                                >
+                                  <span>SMS</span>
+                                </button>
+
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs"
+                                  title="Open WhatsApp chat"
+                                >
+                                  <span>WhatsApp</span>
+                                </a>
+                              </div>
+
+                              {/* Customer replied / conversation button */}
+                              <button
+                                onClick={() => openMessagesModal(l)}
+                                className="w-full py-2 px-3 bg-[#e8f0fe]/80 hover:bg-blue-100 text-[#1e40af] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-blue-200/70 transition-colors cursor-pointer"
+                                title="Open messaging conversation"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>
+                                  {hasCustomerUnread
+                                    ? "Customer replied!"
+                                    : hasReplied
+                                      ? "Customer replied"
+                                      : "Conversation"}
+                                </span>
+                                {hasCustomerUnread && (
+                                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                                )}
+                              </button>
+                            </div>
+
+                            {/* COLUMN 4: FINANCE & COMPLETION */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between pb-1">
+                                <div className="font-black text-slate-900 text-sm">
+                                  AUD ${total.toFixed(2)}
+                                </div>
+
+                                {/* Utility icons: GPS, Edit, Delete */}
+                                <div className="flex items-center gap-1 text-slate-400">
+                                  <button
+                                    onClick={() => openGpsModal(l)}
+                                    title="GPS Navigation"
+                                    className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                  >
+                                    <Navigation className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingLead(l);
+                                      setLeadModalOpen(true);
+                                    }}
+                                    title="Edit Lead"
+                                    className="p-1 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteLead(l.id)}
+                                    title="Delete Lead"
+                                    className="p-1 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Quick Invoice & Warranty Actions */}
+                              {(role === "finance" || role === "manager" || l.status === "Payment Received" || l.status === "Warranty Sent") && (
+                                <div className="grid grid-cols-2 gap-1.5 pb-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => openInvoiceModal(l)}
+                                    className="px-2 py-1.5 bg-[#001f97] text-white hover:bg-[#001777] rounded-lg text-[11px] font-bold transition-colors shadow-2xs cursor-pointer"
+                                    title="Generate / Email Invoice"
+                                  >
+                                    Invoice
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openWarrantyModal(l)}
+                                    className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer ${l.status === "Warranty Sent"
+                                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                        : l.status === "Payment Received"
+                                          ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs"
+                                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                                      }`}
+                                    title="10-Year Warranty Card Generator"
+                                  >
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                    <span>10-Yr Warranty</span>
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* 6 Step Checklist */}
+                              <div className="space-y-1.5">
+                                {[
+                                  { label: "Job Done", step: "Job Done" },
+                                  { label: "Invoice Sent", step: "Invoice Sent" },
+                                  { label: "Payment Request", step: "Payment Request" },
+                                  { label: "Payment Pending", step: "Payment Pending" },
+                                  { label: "Payment Received", step: "Payment Received" },
+                                  { label: "Warranty Sent", step: "Warranty Sent" }
+                                ].map(({ label, step }) => {
+                                  const isActive = getStepActive(l, step);
+                                  return (
+                                    <button
+                                      key={step}
+                                      onClick={() => {
+                                        if (step === "Invoice Sent") openInvoiceModal(l);
+                                        else if (step === "Warranty" || step === "Warranty Sent") openWarrantyModal(l);
+                                        else updateLeadField(l.id, { status: step });
+                                      }}
+                                      className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between border transition-all cursor-pointer ${isActive
+                                          ? "bg-[#ccfbf1]/80 text-[#0f766e] border-teal-200/80 shadow-2xs"
+                                          : "bg-[#f8fafc] text-slate-600 border-slate-200/70 hover:bg-slate-100 hover:border-slate-300"
+                                        }`}
+                                      title={`Click to manage ${label}`}
+                                    >
+                                      <span>{label}</span>
+                                      {isActive ? (
+                                        <Check className="w-3.5 h-3.5 text-[#0f766e] stroke-[2.5]" />
+                                      ) : (
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                                      )}
                                     </button>
                                   );
                                 })}
                               </div>
-                            </div>
-                          );
-                        })()}
 
-                        {/* ── Inspection Report Action (Field / Manager) — hidden from Intake ── */}
-                        {role !== "intake" && (
-                        <div className="pt-1.5 pb-0.5">
-                          <button
-                            type="button"
-                            onClick={() => openInspectionModal(l)}
-                            className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-xs transition-colors cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <ClipboardList className="w-4 h-4 text-white" />
-                              <span>GROUTIX Field Inspection Report</span>
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                                l.inspectionReport?.status === "completed"
-                                  ? "bg-emerald-500 text-white"
-                                  : "bg-white/20 text-white"
-                              }`}
-                            >
-                              {l.inspectionReport?.status === "completed" ? "Completed" : "Fill / View Form"}
-                            </span>
-                          </button>
-                        </div>
-                        )}
-
-                        {/* Manager: open the full Client Job Card workflow modal. */}
-                        {role === "manager" && (
-                          <button
-                            type="button"
-                            onClick={() => setJobCardLead(l)}
-                            className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-xs transition-colors cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <ClipboardList className="w-4 h-4" />
-                              <span>Client Job Card / Workflow</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        )}
-
-                        {/* ── Finance: previous history — all info from lead → quote ── */}
-                        {role === "finance" && (() => {
-                          const leadRows = ([
-                            ["Source", l.source],
-                            ["Received", l.createdAt ? fmtDate(l.createdAt) : undefined],
-                            ["Customer type", l.customerType],
-                            ["Contacted", l.contacted ? fmtDate(l.contacted) : undefined],
-                            ["Enquiry", l.enquiry || l.message],
-                            ["Areas", l.areas],
-                            ["Leaking", l.leaking],
-                            ["Damaged tiles", l.damagedTiles],
-                            ["Notes", l.notes],
-                          ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
-                          const photoCount = l.photosCount ?? l.photos?.length ?? 0;
-                          const inspectionRows = ([
-                            ["Inspection date", l.inspectionAt ? fmtDate(l.inspectionAt) : undefined],
-                            [
-                              "Inspection report",
-                              l.inspectionReport?.status === "completed" ? "Completed" : l.inspectionReport ? "Draft" : undefined,
-                            ],
-                            ["Photos", photoCount > 0 ? String(photoCount) : undefined],
-                          ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
-                          const quoteTotal = getLeadQuoteTotal(l);
-                          const quoteRows = ([
-                            ["Quote #", l.quoteNumber],
-                            ["Quote value", quoteTotal > 0 ? `AUD $${quoteTotal.toFixed(2)}` : undefined],
-                            ["Scope", l.quoteScope],
-                            ["Quote sent", l.quoteUpdated ? fmtDate(l.quoteUpdated) : undefined],
-                            [
-                              "Quote response",
-                              l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
-                            ],
-                          ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
-                          const sections: [string, [string, string][]][] = [
-                            ["Lead", leadRows],
-                            ["Inspection", inspectionRows],
-                            ["Quote", quoteRows],
-                          ];
-                          const hasAny = sections.some(([, rows]) => rows.length > 0);
-                          const isOpen = !!openDetails[l.id];
-                          return (
-                            <div className="pt-1">
-                              <button
-                                type="button"
-                                onClick={() => setOpenDetails((prev) => ({ ...prev, [l.id]: !prev[l.id] }))}
-                                className="w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer"
-                              >
-                                <span className="flex items-center gap-2">
-                                  <ClipboardList className="w-4 h-4" />
-                                  <span>Previous Details — Lead → Quote</span>
-                                </span>
-                                <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                              </button>
-                              {isOpen && (
-                                <div className="mt-1.5 text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2.5">
-                                  {!hasAny && <div className="text-slate-400 italic">No earlier details recorded.</div>}
-                                  {sections.map(([title, rows]) =>
-                                    rows.length === 0 ? null : (
-                                      <div key={title} className="space-y-1">
-                                        <div className="text-[9px] font-black uppercase tracking-wider text-[#001f97]/70">{title}</div>
-                                        {rows.map(([k, v]) => (
-                                          <div key={k} className="flex items-start justify-between gap-2">
-                                            <span className="text-slate-400 shrink-0">{k}:</span>
-                                            <span className="font-semibold text-slate-700 text-right break-words max-w-[190px]">{v}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* ── Login 3 (Finance / Completion): Job Done, Payment Pending, Payment Received, Warranty Sent ── */}
-                        {(role === "finance" || role === "manager" || FINANCE_STATUSES.includes(l.status)) && (
-                          <div className="pt-1">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                              Finance &amp; Completion Stages
-                            </label>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {[
-                                { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
-                                { label: "Payment Pending", status: "Payment Pending", color: "bg-amber-600 hover:bg-amber-700" },
-                                { label: "Payment Received", status: "Payment Received", color: "bg-emerald-600 hover:bg-emerald-700" },
-                                { label: "Warranty Sent", status: "Warranty Sent", color: "bg-[#001f97] hover:bg-[#001777]" },
-                              ].map((st) => {
-                                const isCurrent = l.status === st.status;
+                              {/* Finance: previous history collapsible */}
+                              {role === "finance" && (() => {
+                                const leadRows = ([
+                                  ["Source", l.source],
+                                  ["Received", l.createdAt ? fmtDate(l.createdAt) : undefined],
+                                  ["Customer type", l.customerType],
+                                  ["Contacted", l.contacted ? fmtDate(l.contacted) : undefined],
+                                  ["Enquiry", l.enquiry || l.message],
+                                  ["Areas", l.areas],
+                                  ["Leaking", l.leaking],
+                                  ["Damaged tiles", l.damagedTiles],
+                                  ["Notes", l.notes],
+                                ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                                const photoCount = l.photosCount ?? l.photos?.length ?? 0;
+                                const inspectionRows = ([
+                                  ["Inspection date", l.inspectionAt ? fmtDate(l.inspectionAt) : undefined],
+                                  [
+                                    "Inspection report",
+                                    l.inspectionReport?.status === "completed" ? "Completed" : l.inspectionReport ? "Draft" : undefined,
+                                  ],
+                                  ["Photos", photoCount > 0 ? String(photoCount) : undefined],
+                                ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                                const quoteTotal = getLeadQuoteTotal(l);
+                                const quoteRows = ([
+                                  ["Quote #", l.quoteNumber],
+                                  ["Quote value", quoteTotal > 0 ? `AUD $${quoteTotal.toFixed(2)}` : undefined],
+                                  ["Scope", l.quoteScope],
+                                  ["Quote sent", l.quoteUpdated ? fmtDate(l.quoteUpdated) : undefined],
+                                  [
+                                    "Quote response",
+                                    l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
+                                  ],
+                                ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+                                const sections: [string, [string, string][]][] = [
+                                  ["Lead", leadRows],
+                                  ["Inspection", inspectionRows],
+                                  ["Quote", quoteRows],
+                                ];
+                                const hasAny = sections.some(([, rows]) => rows.length > 0);
+                                const isOpen = !!openDetails[l.id];
                                 return (
-                                  <button
-                                    key={st.status}
-                                    type="button"
-                                    onClick={() => {
-                                      updateLeadField(l.id, { status: st.status });
-                                      if (st.status === "Warranty Sent") {
-                                        openWarrantyModal(l);
-                                      }
-                                    }}
-                                    className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
-                                      isCurrent
-                                        ? `${st.color} text-white shadow-xs`
-                                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                                    }`}
-                                    title={`Set status: ${st.label}`}
-                                  >
-                                    {isCurrent && <Check className="w-3 h-3 stroke-[2.5]" />}
-                                    <span className="text-center leading-tight">{st.label}</span>
-                                  </button>
+                                  <div className="pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenDetails((prev) => ({ ...prev, [l.id]: !prev[l.id] }))}
+                                      className="w-full px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer"
+                                    >
+                                      <span className="flex items-center gap-1.5">
+                                        <ClipboardList className="w-3.5 h-3.5" />
+                                        <span>History Details</span>
+                                      </span>
+                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                    </button>
+                                    {isOpen && (
+                                      <div className="mt-1.5 text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2.5">
+                                        {!hasAny && <div className="text-slate-400 italic">No earlier details recorded.</div>}
+                                        {sections.map(([title, rows]) =>
+                                          rows.length === 0 ? null : (
+                                            <div key={title} className="space-y-1">
+                                              <div className="text-[9px] font-black uppercase tracking-wider text-[#001f97]/70">{title}</div>
+                                              {rows.map(([k, v]) => (
+                                                <div key={k} className="flex items-start justify-between gap-2">
+                                                  <span className="text-slate-400 shrink-0">{k}:</span>
+                                                  <span className="font-semibold text-slate-700 text-right break-words max-w-[190px]">{v}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 );
-                              })}
+                              })()}
                             </div>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Full Action Buttons Toolbar */}
-                      <div className="flex items-center justify-between gap-1 pt-3 border-t border-slate-200/80 mt-2">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => callCustomer(l)}
-                            className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs transition-colors"
-                            title="Call Phone"
-                          >
-                            <Phone className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => emailCustomer(l)}
-                            className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs transition-colors"
-                            title="Email Customer"
-                          >
-                            <Mail className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openQuoteModal(l)}
-                            className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-[11px] font-bold transition-colors"
-                            title="Open Quote Builder"
-                          >
-                            Quote
-                          </button>
-
-                          {/* Inspection Form Button */}
-                          <button
-                            type="button"
-                            onClick={() => openInspectionModal(l)}
-                            className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer ${
-                              l.inspectionReport?.status === "completed"
-                                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                                : "bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200"
-                            }`}
-                            title="Groutix Field Inspection Form"
-                          >
-                            <ClipboardList className="w-3.5 h-3.5 text-teal-700" />
-                            <span>Inspection</span>
-                          </button>
-
-                          {/* Invoice Action (shown for 3rd login - Finance & Manager) */}
-                          {(role === "finance" || role === "manager") && (
-                            <button
-                              type="button"
-                              onClick={() => openInvoiceModal(l)}
-                              className="px-2.5 py-1 bg-[#001f97] text-white hover:bg-[#001777] rounded-lg text-[11px] font-bold transition-colors shadow-2xs"
-                              title="Generate / Email Invoice"
-                            >
-                              Invoice
-                            </button>
-                          )}
-
-                          {/* Warranty Action (shown for Finance & Manager, or when Payment Received) */}
-                          {(role === "finance" || role === "manager" || l.status === "Payment Received" || l.status === "Warranty Sent") && (
-                            <button
-                              type="button"
-                              onClick={() => openWarrantyModal(l)}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 ${
-                                l.status === "Warranty Sent"
-                                  ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                                  : l.status === "Payment Received"
-                                  ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs"
-                                  : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-                              }`}
-                              title="10-Year Warranty Card Generator"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              <span>10-Yr Warranty</span>
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => openPhotosModal(l)}
-                            className="relative p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
-                            title="Photos"
-                          >
-                            <Camera className="w-3.5 h-3.5" />
-                            {((l.photos && l.photos.length > 0) || (l.photosCount && l.photosCount > 0)) && (
-                              <span className="absolute -top-1 -right-1 px-1 py-0.2 bg-blue-600 text-white rounded-full text-[9px] font-bold">
-                                {l.photos?.length || l.photosCount}
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openMessagesModal(l)}
-                            className="relative p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
-                            title="Messages"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            {l.messages?.some((m) => m.from === "customer" && m.read === false) && (
-                              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openGpsModal(l)}
-                            className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
-                            title="GPS Check-in"
-                          >
-                            <Navigation className="w-3.5 h-3.5" />
-                          </button>
                         </div>
+                      );
+                    })}
 
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingLead(l);
-                              setLeadModalOpen(true);
-                            }}
-                            className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
-                            title="Edit Lead Details"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLead(l.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Delete Lead"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                  {jobLeads.length === 0 && (
+                    <div className="py-16 text-center text-slate-400 text-sm">
+                      No bookings or jobs matching this filter.
                     </div>
-                  ))}
-                {jobLeads.length === 0 && (
-                  <div className="col-span-full py-16 text-center text-slate-400 text-sm">
-                    No bookings or jobs yet.
-                  </div>
-                )}
+                  )}
+                </div>
+                <Pagination page={page} pageSize={PAGE_SIZE} total={jobLeads.length} onPage={setPage} />
               </div>
-              <Pagination page={page} pageSize={PAGE_SIZE} total={jobLeads.length} onPage={setPage} />
             </div>
-          </div>
           )}
 
           {/* =========================================================================
@@ -5026,11 +5390,10 @@ export default function CrmDashboardPage() {
                       )}
                       {activeQuoteLead.leaking && (
                         <div
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${
-                            activeQuoteLead.leaking.toLowerCase() === "yes"
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${activeQuoteLead.leaking.toLowerCase() === "yes"
                               ? "bg-rose-50 border-rose-200 text-rose-800 font-bold"
                               : "bg-slate-100 border-slate-200 text-slate-700 font-medium"
-                          }`}
+                            }`}
                         >
                           <span>Leaking:</span>
                           <b>{activeQuoteLead.leaking}</b>
@@ -5534,15 +5897,15 @@ export default function CrmDashboardPage() {
               <label className="block text-xs font-bold text-slate-700 mb-2">Upload New Photo(s)</label>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => cameraInputRef.current?.click()} 
+                  <button
+                    onClick={() => cameraInputRef.current?.click()}
                     disabled={uploadingPhotos}
                     className="flex items-center gap-2 px-3 py-2 bg-[#001f97] text-white rounded-xl text-xs font-bold hover:bg-blue-800 disabled:opacity-50"
                   >
                     <Camera className="w-4 h-4" /> Take Photo
                   </button>
-                  <button 
-                    onClick={() => photoInputRef.current?.click()} 
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
                     disabled={uploadingPhotos}
                     className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-[#001f97] rounded-xl text-xs font-bold hover:bg-blue-100 disabled:opacity-50"
                   >
@@ -5741,29 +6104,45 @@ export default function CrmDashboardPage() {
                 return (
                   <div
                     key={msg.id}
-                    className={`p-3 rounded-2xl max-w-[85%] text-xs shadow-xs space-y-1 ${
-                      isCustomer
+                    className={`p-3 rounded-2xl max-w-[85%] text-xs shadow-xs space-y-1 ${isCustomer
                         ? "mr-auto bg-white border border-slate-200 text-slate-800"
                         : "ml-auto bg-[#001f97] text-white"
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`flex items-center justify-between gap-4 text-[10px] font-bold ${
-                        isCustomer ? "text-slate-400" : "text-blue-200"
-                      }`}
+                      className={`flex items-center justify-between gap-4 text-[10px] font-bold ${isCustomer ? "text-slate-400" : "text-blue-200"
+                        }`}
                     >
                       <span>{isCustomer ? "Customer" : "Groutix Team"} ({msg.channel || "note"})</span>
                       <span>{fmtDate(msg.time)}</span>
                     </div>
                     {msg.subject && <div className="font-bold">{msg.subject}</div>}
-                    <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                    {(() => {
+                      const isCustomerEmail = isCustomer && !msg.initial;
+                      const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
+                      const hasQuoted = isCustomerEmail && cleanText !== msg.text;
+                      return (
+                        <div className="space-y-1">
+                          <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
+                          {hasQuoted && (
+                            <details className="mt-1 text-[10px] text-slate-400">
+                              <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
+                                ••• Show quoted email history
+                              </summary>
+                              <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
+                                {msg.text}
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {msg.attachments.map((att, i) => {
                           const href = att.secureUrl || att.url;
-                          const chipClass = `inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                            isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
-                          }`;
+                          const chipClass = `inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
+                            }`;
                           return href ? (
                             <a
                               key={i}
@@ -6123,16 +6502,14 @@ export default function CrmDashboardPage() {
                       {i > 0 && <div className={`h-0.5 w-8 ${done ? "bg-emerald-500" : "bg-slate-200"}`} />}
                       <div className="flex flex-col items-center w-24 px-1">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            done ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400 border border-slate-200"
-                          } ${current ? "ring-2 ring-[#001f97] ring-offset-2" : ""}`}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${done ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400 border border-slate-200"
+                            } ${current ? "ring-2 ring-[#001f97] ring-offset-2" : ""}`}
                         >
                           {done ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[10px] font-black">{i + 1}</span>}
                         </div>
                         <span
-                          className={`mt-1.5 text-[10px] font-bold text-center leading-tight ${
-                            current ? "text-[#001f97]" : done ? "text-slate-600" : "text-slate-400"
-                          }`}
+                          className={`mt-1.5 text-[10px] font-bold text-center leading-tight ${current ? "text-[#001f97]" : done ? "text-slate-600" : "text-slate-400"
+                            }`}
                         >
                           {m.label}
                         </span>
@@ -6186,7 +6563,15 @@ export default function CrmDashboardPage() {
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
+              <div>
+                <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
+                {activeInvoiceLead.invoiceOpenedAt && (
+                  <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 mt-0.5">
+                    <Eye className="w-3 h-3 text-emerald-600" />
+                    Customer opened invoice email on: {fmtDate(activeInvoiceLead.invoiceOpenedAt)}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => setInvoiceModalOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
@@ -6405,17 +6790,15 @@ export default function CrmDashboardPage() {
                       className={`flex ${mine ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-sm shadow-xs ${
-                          mine
+                        className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-sm shadow-xs ${mine
                             ? "bg-[#001f97] text-white rounded-br-sm"
                             : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
-                        }`}
+                          }`}
                       >
                         <div className="whitespace-pre-wrap break-words">{m.text}</div>
                         <div
-                          className={`text-[10px] mt-1 ${
-                            mine ? "text-white/60" : "text-slate-400"
-                          }`}
+                          className={`text-[10px] mt-1 ${mine ? "text-white/60" : "text-slate-400"
+                            }`}
                         >
                           {new Date(m.createdAt).toLocaleString("en-AU", {
                             day: "2-digit",
