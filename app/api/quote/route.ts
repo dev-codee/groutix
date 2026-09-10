@@ -5,7 +5,8 @@ import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
-import { resolveArea, getAvailableDaysSummary } from "@/lib/scheduling";
+import { resolveArea, getAvailableDaysSummary, computeAvailability } from "@/lib/scheduling";
+import { listUpcomingBookings } from "@/lib/bookings";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -68,6 +69,14 @@ function esc(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// 24h "HH:mm" → friendly "9:00 AM" for the availability list.
+function timeLabel(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hr = h % 12 === 0 ? 12 : h % 12;
+  return `${hr}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 function row(label: string, value: string) {
@@ -374,6 +383,39 @@ export async function POST(req: NextRequest) {
     const area = resolveArea(address || city);
     const daysSummary = getAvailableDaysSummary(area);
     const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
+
+    // Compute the customer's real bookable days/times using the SAME scheduling
+    // logic the booking page/API use, so the email and the booking button always
+    // agree (15 km Tullamarine = every day; otherwise the suburb's zone day).
+    let availableDays: { label: string; times: string[] }[] = [];
+    try {
+      const bookings = await listUpcomingBookings();
+      const bookedByDate = new Map<string, Set<string>>();
+      const sameZoneDates = new Set<string>();
+      for (const b of bookings) {
+        if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
+        bookedByDate.get(b.date)!.add(b.time);
+        if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
+      }
+      availableDays = computeAvailability(area, bookedByDate, sameZoneDates)
+        .slice(0, 5)
+        .map((d) => ({ label: d.label, times: d.times }));
+    } catch (err) {
+      console.error("availability computation for confirmation email failed:", err);
+    }
+
+    const availableDaysHtml = availableDays.length
+      ? `<div style="margin-top:6px;">
+           ${availableDays
+             .map(
+               (d) => `<div style="font-size:13px;color:#334155;padding:6px 0;border-top:1px solid #e2e8f0;">
+                   <span style="font-weight:700;color:#0f172a;">${esc(d.label)}</span>
+                   <span style="color:#64748b;"> — ${d.times.map((t) => esc(timeLabel(t))).join(", ")}</span>
+                 </div>`
+             )
+             .join("")}
+         </div>`
+      : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Times from 9:00 AM to 3:00 PM — pick a slot on the booking page.</div>`;
     const customerHtml = `
       <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
       <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
@@ -400,8 +442,9 @@ export async function POST(req: NextRequest) {
                  </tr>
                </table>
                <div style="font-size:12px;color:#64748b;font-weight:700;letter-spacing:0.5px;">
-                 AVAILABLE DAYS WITH TIME (09:00 AM &ndash; 03:00 PM)
-               </div>`
+                 AVAILABLE DAYS WITH TIME
+               </div>
+               ${availableDaysHtml}`
             : ""
         }
       </div>

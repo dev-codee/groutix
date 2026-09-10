@@ -870,6 +870,7 @@ export default function CrmDashboardPage() {
 
   const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
   const [activeWarrantyLead, setActiveWarrantyLead] = useState<Lead | null>(null);
+  const [warrantyTab, setWarrantyTab] = useState<"page1" | "page2">("page1");
   const [warrantyJobNo, setWarrantyJobNo] = useState("");
   const [warrantyCompletion, setWarrantyCompletion] = useState("");
   const [warrantyExpiry, setWarrantyExpiry] = useState("");
@@ -877,7 +878,16 @@ export default function CrmDashboardPage() {
   const [warrantyAddress, setWarrantyAddress] = useState("");
   const [warrantyAuthorised, setWarrantyAuthorised] = useState("GROUTIX PTY LTD");
   const [warrantyIssued, setWarrantyIssued] = useState("");
+  const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Preload the Groutix logo image once so the warranty card renders the real
+  // brand mark (not "GROUTIX" text) and is present when exporting to PNG.
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setWarrantyLogo(img);
+    img.src = "/logo.png";
+  }, []);
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [activeInvoiceLead, setActiveInvoiceLead] = useState<Lead | null>(null);
@@ -2129,6 +2139,7 @@ export default function CrmDashboardPage() {
     setWarrantyAddress(lead.warranty?.address || lead.address || "");
     setWarrantyAuthorised(lead.warranty?.authorisedBy || "GROUTIX PTY LTD");
     setWarrantyIssued(lead.warranty?.dateIssued || today);
+    setWarrantyTab("page1");
     setWarrantyModalOpen(true);
   }
 
@@ -2138,80 +2149,418 @@ export default function CrmDashboardPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // A4 portrait: 1000 x 1414
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Background
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
 
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    grad.addColorStop(0, "#001f97");
-    grad.addColorStop(1, "#1667e8");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, 160);
+    // Decorative corner waves (on both pages)
+    const drawCornerSwooshes = () => {
+      // Top-right swooshes
+      ctx.save();
+      // Outer cyan curve
+      ctx.beginPath();
+      ctx.arc(W + 50, -30, 230, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00a8cc";
+      ctx.lineWidth = 14;
+      ctx.stroke();
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 52px Arial, sans-serif";
-    ctx.fillText("GROUTIX", 60, 95);
-    ctx.font = "bold 26px Arial, sans-serif";
-    ctx.fillText("10-YEAR WATERPROOF WARRANTY CERTIFICATE", 380, 95);
+      // Inner navy circle
+      ctx.beginPath();
+      ctx.arc(W + 50, -30, 200, 0, Math.PI * 2);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
 
-    ctx.fillStyle = "#1e293b";
-    ctx.font = "bold 24px Arial, sans-serif";
-    ctx.fillText("Customer Details & Work Information", 60, 230);
+      // Bottom-left swooshes
+      ctx.save();
+      // Outer cyan curve
+      ctx.beginPath();
+      ctx.arc(-50, H + 30, 230, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00a8cc";
+      ctx.lineWidth = 14;
+      ctx.stroke();
 
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(60, 260, canvas.width - 120, 480);
+      // Inner navy circle
+      ctx.beginPath();
+      ctx.arc(-50, H + 30, 200, 0, Math.PI * 2);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
+    };
 
-    ctx.font = "20px Arial, sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText("Job / Certificate No:", 90, 320);
-    ctx.fillText("Customer Name:", 90, 390);
-    ctx.fillText("Property Address:", 90, 460);
-    ctx.fillText("Completion Date:", 90, 530);
-    ctx.fillText("Warranty Expiry Date:", 90, 600);
-    ctx.fillText("Authorised Issuer:", 90, 670);
+    drawCornerSwooshes();
 
-    ctx.font = "bold 22px Arial, sans-serif";
-    ctx.fillStyle = "#0f172a";
-    ctx.fillText(warrantyJobNo, 380, 320);
-    ctx.fillText(warrantyCustomer, 380, 390);
-    ctx.fillText(warrantyAddress, 380, 460);
-    ctx.fillText(fmtDateOnly(warrantyCompletion), 380, 530);
-    ctx.fillStyle = "#16a05e";
-    ctx.fillText(fmtDateOnly(warrantyExpiry) + " (10 Years Guaranteed)", 380, 600);
-    ctx.fillStyle = "#0f172a";
-    ctx.fillText(warrantyAuthorised, 380, 670);
+    // Helper text wrapper
+    function wrapText(
+      text: string,
+      x: number,
+      y: number,
+      maxWidth: number,
+      lineHeight: number
+    ): number {
+      const words = text.split(" ");
+      let line = "";
+      let curY = y;
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + " ";
+        const metrics = ctx!.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx!.fillText(line, x, curY);
+          line = words[n] + " ";
+          curY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx!.fillText(line, x, curY);
+      return curY + lineHeight;
+    }
 
-    ctx.font = "14px Arial, sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText(
-      "This warranty guarantees against water penetration through regrouted tiled areas under normal domestic use subject to Clause 12 of Groutix Terms & Conditions.",
-      60,
-      790
-    );
-    ctx.fillText(
-      "Terms & Conditions: https://groutix.com.au/terms-conditions  •  Claims must be submitted in writing within 10 business days of defect.",
-      60,
-      820
-    );
-    ctx.fillText(
-      "Groutix Pty Ltd • ACN: 687 415 005 • Melbourne, VIC • Phone: (03) 7023 8094 • info@groutix.com",
-      60,
-      850
-    );
+    // Shared: draw the real Groutix logo (falls back to text only if unavailable)
+    const drawLogo = (x: number, y: number, targetH: number) => {
+      if (warrantyLogo && warrantyLogo.naturalWidth) {
+        const w = (warrantyLogo.naturalWidth / warrantyLogo.naturalHeight) * targetH;
+        ctx!.drawImage(warrantyLogo, x, y, w, targetH);
+      } else {
+        ctx!.fillStyle = "#071c4d";
+        ctx!.font = "bold 40px Arial, sans-serif";
+        ctx!.fillText("GROUTIX", x, y + targetH * 0.78);
+      }
+    };
+
+    // Shared: navy footer banner with contact badges + page label
+    const drawWarrantyFooter = (pageLabel: string) => {
+      const fY = H - 70;
+      ctx!.fillStyle = "#071c4d";
+      ctx!.fillRect(0, fY, W, 70);
+      const cy = fY + 35;
+      const badge = (cx: number, icon: string) => {
+        ctx!.beginPath();
+        ctx!.arc(cx, cy, 13, 0, Math.PI * 2);
+        ctx!.fillStyle = "#00a8cc";
+        ctx!.fill();
+        ctx!.fillStyle = "#ffffff";
+        ctx!.font = "bold 13px Arial, sans-serif";
+        ctx!.textAlign = "center";
+        ctx!.fillText(icon, cx, cy + 5);
+        ctx!.textAlign = "left";
+      };
+      ctx!.textBaseline = "middle";
+      badge(78, "P");
+      ctx!.fillStyle = "#ffffff";
+      ctx!.font = "bold 16px Arial, sans-serif";
+      ctx!.fillText("70238094", 100, cy);
+      ctx!.fillStyle = "#3f5f9a";
+      ctx!.font = "16px Arial, sans-serif";
+      ctx!.fillText("|", 300, cy);
+      badge(330, "@");
+      ctx!.fillStyle = "#ffffff";
+      ctx!.font = "bold 16px Arial, sans-serif";
+      ctx!.fillText("info@groutix.com", 352, cy);
+      ctx!.fillStyle = "#3f5f9a";
+      ctx!.font = "16px Arial, sans-serif";
+      ctx!.fillText("|", 610, cy);
+      badge(640, "W");
+      ctx!.fillStyle = "#ffffff";
+      ctx!.font = "bold 16px Arial, sans-serif";
+      ctx!.fillText("www.groutix.com", 662, cy);
+      ctx!.textAlign = "right";
+      ctx!.fillStyle = "#9cc3f0";
+      ctx!.font = "13px Arial, sans-serif";
+      ctx!.fillText(pageLabel, W - 60, cy);
+      ctx!.textAlign = "left";
+      ctx!.textBaseline = "alphabetic";
+    };
+
+    if (warrantyTab === "page1") {
+      // ==========================================
+      // PAGE 1: WARRANTY CERTIFICATE
+      // ==========================================
+
+      // 1. Top-Left Logo (real brand mark)
+      drawLogo(60, 46, 74);
+
+      // 2. Top-Right Stacked Title (navy)
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "bold 30px Arial, sans-serif";
+      ctx.fillText("10-YEAR", W - 60, 82);
+      ctx.fillText("FULL SHOWER", W - 60, 118);
+      ctx.fillText("RE-GROUT WARRANTY", W - 60, 154);
+      ctx.textAlign = "left";
+
+      // 3. Navy Ribbon
+      ctx.fillStyle = "#071c4d";
+      ctx.fillRect(0, 185, W, 44);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 19px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("YOUR PEACE OF MIND. ENGINEERED TO LAST.", W / 2, 213);
+      ctx.textAlign = "left";
+
+      // 4. Warranting statement
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "500 15px Arial, sans-serif";
+      wrapText(
+        "Groutix Pty Ltd trading as Groutix warrants that a qualifying full shower re-grout performed by Groutix will remain waterproof for a period of 10 years from the date of the Services are completed, subject to the terms, conditions and exclusions set out in this Warranty Document.",
+        60,
+        272,
+        W - 120,
+        24
+      );
+
+      // 5. Left Shield Badge & Right 4 Checkmark bullets (titles only)
+      const sx = 132;
+      const sy = 428;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + 55, sy + 25);
+      ctx.lineTo(sx + 55, sy + 105);
+      ctx.quadraticCurveTo(sx + 55, sy + 175, sx, sy + 205);
+      ctx.quadraticCurveTo(sx - 55, sy + 175, sx - 55, sy + 105);
+      ctx.lineTo(sx - 55, sy + 25);
+      ctx.closePath();
+      ctx.fillStyle = "#e8f4fc";
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#071c4d";
+      ctx.stroke();
+
+      // Shield droplet icon
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + 62);
+      ctx.quadraticCurveTo(sx + 26, sy + 100, sx + 26, sy + 128);
+      ctx.arc(sx, sy + 128, 26, 0, Math.PI, false);
+      ctx.quadraticCurveTo(sx - 26, sy + 100, sx, sy + 62);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
+
+      // Right 4 Bullets (titles only, matching official card)
+      const bx = 262;
+      const bulletTitles = [
+        "10 YEARS WORKMANSHIP WARRANTY",
+        "WATERPROOF PROTECTION",
+        "QUALITY MATERIALS",
+        "EXPERT INSTALLATION",
+      ];
+      bulletTitles.forEach((title, i) => {
+        const itemY = 470 + i * 52;
+        // Cyan circle
+        ctx.beginPath();
+        ctx.arc(bx + 14, itemY - 5, 15, 0, Math.PI * 2);
+        ctx.fillStyle = "#00a8cc";
+        ctx.fill();
+        // White checkmark
+        ctx.beginPath();
+        ctx.moveTo(bx + 8, itemY - 5);
+        ctx.lineTo(bx + 12, itemY - 1);
+        ctx.lineTo(bx + 21, itemY - 11);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        // Title
+        ctx.fillStyle = "#071c4d";
+        ctx.font = "bold 18px Arial, sans-serif";
+        ctx.fillText(title, bx + 42, itemY);
+      });
+
+      // 6. Australian Consumer Law callout box (light blue)
+      const aclY = 690;
+      const aclW = W - 120;
+      const aclH = 66;
+      ctx.save();
+      ctx.fillStyle = "#e8f4fc";
+      ctx.strokeStyle = "#bce1f8";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(60, aclY, aclW, aclH, 12);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "500 15px Arial, sans-serif";
+      wrapText(
+        "This warranty is in addition to any rights and remedies available under the Australian Consumer Law.",
+        84,
+        aclY + 28,
+        aclW - 48,
+        22
+      );
+      ctx.restore();
+
+      // 7. Certificate detail fields (single column with underlines)
+      let fldY = 812;
+      const drawField = (label: string, value: string) => {
+        ctx.fillStyle = "#071c4d";
+        ctx.font = "bold 15px Arial, sans-serif";
+        ctx.fillText(label, 60, fldY);
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(360, fldY + 6);
+        ctx.lineTo(W - 60, fldY + 6);
+        ctx.stroke();
+        if (value) {
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "15px Arial, sans-serif";
+          ctx.fillText(value, 372, fldY);
+        }
+        fldY += 48;
+      };
+      drawField("JOB / INVOICE NO.:", warrantyJobNo);
+      drawField("COMPLETION DATE:", fmtDateOnly(warrantyCompletion));
+      drawField("WARRANTY EXPIRY DATE:", fmtDateOnly(warrantyExpiry));
+      drawField("CUSTOMER NAME:", warrantyCustomer);
+      drawField("PROPERTY ADDRESS:", warrantyAddress);
+      fldY += 18;
+      drawField("AUTHORISED BY GROUTIX:", warrantyAuthorised);
+      drawField("DATE ISSUED:", fmtDateOnly(warrantyIssued));
+
+      // 8. Bottom footer banner
+      drawWarrantyFooter("Page 1 of 2");
+    } else {
+      // ==========================================
+      // PAGE 2: TERMS & CONDITIONS
+      // ==========================================
+
+      // 1. Header: logo left, TERMS & CONDITIONS pill right + subtitle
+      drawLogo(60, 40, 66);
+
+      const pillW = 320;
+      const pillH = 44;
+      const pillX = W - 60 - pillW;
+      const pillY = 46;
+      ctx.save();
+      ctx.fillStyle = "#071c4d";
+      ctx.beginPath();
+      ctx.roundRect(pillX, pillY, pillW, pillH, 8);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 20px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("TERMS & CONDITIONS", pillX + pillW / 2, pillY + 29);
+      ctx.textAlign = "left";
+      ctx.restore();
+
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "bold 13px Arial, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText("10-YEAR FULL SHOWER RE-GROUT WARRANTY", W - 60, pillY + pillH + 22);
+      ctx.textAlign = "left";
+
+      // Divider
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(60, 150);
+      ctx.lineTo(W - 60, 150);
+      ctx.stroke();
+
+      // Two-column layout
+      const c1X = 60;
+      const colGap = 40;
+      const colW = (W - 120 - colGap) / 2;
+      const c2X = c1X + colW + colGap;
+
+      // Section banner helper
+      const banner = (title: string, x: number, y: number) => {
+        ctx!.save();
+        ctx!.fillStyle = "#e8f4fc";
+        ctx!.beginPath();
+        ctx!.roundRect(x, y, colW, 30, 6);
+        ctx!.fill();
+        ctx!.fillStyle = "#071c4d";
+        ctx!.font = "bold 14px Arial, sans-serif";
+        ctx!.fillText(title, x + 12, y + 20);
+        ctx!.restore();
+        return y + 42;
+      };
+
+      // Paragraph flow helper (returns next y)
+      const para = (
+        text: string,
+        x: number,
+        y: number,
+        opts?: { color?: string; indent?: number }
+      ) => {
+        const indent = opts?.indent || 0;
+        ctx!.fillStyle = opts?.color || "#334155";
+        ctx!.font = "11px Arial, sans-serif";
+        const ny = wrapText(text, x + indent, y, colW - indent, 15);
+        return ny + 3;
+      };
+
+      // ---- COLUMN 1 ----
+      let y1 = 175;
+      y1 = banner("1. Service Warranty", c1X, y1);
+      y1 = para(
+        "1.1 Groutix warrants that, subject to the terms and conditions of this warranty, for a period of 10 years from the date of supply of the Service to the party who purchased the Service from Groutix:",
+        c1X,
+        y1,
+        { color: "#1e293b" }
+      );
+      y1 = para("(1) The grout applied to the tiled surface or tile installation during the Service will stay waterproof.", c1X, y1, { indent: 14 });
+      y1 = para("(2) If the grout applied to the tiled surface or tile installation during the Service does not stay waterproof, it will at Groutix's election, be replaced or repaired without cost to you or you will be refunded the price you paid for the Service.", c1X, y1, { indent: 14 });
+
+      y1 += 8;
+      y1 = banner("2. Exclusions and limitations", c1X, y1);
+      y1 = para("2.1 This warranty is not transferable to any subsequent owner of your property.", c1X, y1);
+      y1 = para("2.2 This warranty will be void where:", c1X, y1);
+      y1 = para("(1) The tiled surface or tile installation has been subjected to misuse, negligence or accident by you or any third party; or", c1X, y1, { indent: 14 });
+      y1 = para("(2) The tiled surface or tile installation has been modified, repaired or altered by you or any third party; or", c1X, y1, { indent: 14 });
+      y1 = para("(3) The tiled surface or tile installation is affixed to a building which has experienced structural movement and/or defects and/or cracking; or", c1X, y1, { indent: 14 });
+      y1 = para("(4) You have not followed the after-care and maintenance instructions we provided to you.", c1X, y1, { indent: 14 });
+      y1 = para("2.3 This warranty does not apply to a partial shower re-grout service. It applies only to a full shower re-grout service.", c1X, y1);
+      y1 = para("2.4 This warranty applies only to grouting services and where grout has been applied. It does not apply to silicone and where silicone has been applied.", c1X, y1);
+      y1 = para("2.5 This warranty only applies if the grout applied to the tiled surface or tile installation during the Service is no longer waterproof. It does not apply to shower leaks or mould.", c1X, y1);
+
+      // ---- COLUMN 2 ----
+      let y2 = 175;
+      y2 = para("2.6 Groutix will not be liable under this warranty for any damages, losses, costs or expenses including, without limitation, loss of market, loss of profit, loss of production or for any financial or economic loss including indirect or consequential loss or damage which may be suffered by you or by any third party arising out of or in any way connected with failure of the Service or any defect in materials and workmanship except as provided by this warranty.", c2X, y2);
+      y2 = para("2.7 The obligations of Groutix under this warranty will be limited to one of the following at the election of Groutix:", c2X, y2);
+      y2 = para("(1) Repair of the tiled surface or tile installation the subject of the Service; or", c2X, y2, { indent: 14 });
+      y2 = para("(2) Provision of a replacement Service or, where this is not possible for any reason, the provision of an equivalent service or product; or", c2X, y2, { indent: 14 });
+      y2 = para("(3) A refund of the price you paid for the Service.", c2X, y2, { indent: 14 });
+      y2 = para("2.8 Notwithstanding any other provision of this warranty, Groutix's liability arising from, under or in connection with this warranty will be limited to the full replacement value of the Service.", c2X, y2);
+      y2 = para("2.9 Whilst Groutix will endeavor to ensure that the color and texture of the grout and any other materials used in any repair or replacement will match any existing grout and other relevant materials, it does not warrant that they will be an exact match and will not be liable if they are not an exact match.", c2X, y2);
+      y2 = para("2.10 You acknowledge that Groutix is not the manufacturer of the materials used to provide the Service. To the extent permitted by law, Groutix shall not be liable as the manufacturer of the materials used to provide the Service.", c2X, y2);
+      y2 = para("2.11 This warranty is only valid and enforceable in Australia.", c2X, y2);
+
+      y2 += 8;
+      y2 = banner("3. How to claim", c2X, y2);
+      y2 = para(
+        "3.1 Upon discovery of any evidence that the grout applied to the tiled surface or tile installation during the Service is no longer waterproof and to make a claim under this warranty, you must promptly contact Groutix by email at info@groutix.com. You must provide a copy of your invoice and proof of payment for the Service, and photographs of the relevant surface or installation.",
+        c2X,
+        y2,
+        { color: "#1e293b" }
+      );
+
+      // Bottom footer banner
+      drawWarrantyFooter("Page 2 of 2");
+    }
   }, [
     warrantyModalOpen,
+    warrantyTab,
     warrantyJobNo,
     warrantyCustomer,
     warrantyAddress,
     warrantyCompletion,
     warrantyExpiry,
-    warrantyAuthorised
+    warrantyAuthorised,
+    warrantyIssued,
+    warrantyLogo
   ]);
 
   function downloadWarrantyCard() {
     if (!canvasRef.current || !activeWarrantyLead) return;
     const link = document.createElement("a");
-    link.download = `Groutix_Warranty_${(activeWarrantyLead.name || "Customer").replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+    const suffix = warrantyTab === "page1" ? "Certificate" : "Terms";
+    link.download = `Groutix_Warranty_${(activeWarrantyLead.name || "Customer").replace(/[^a-zA-Z0-9]/g, "_")}_${suffix}.png`;
     link.href = canvasRef.current.toDataURL("image/png");
     link.click();
   }
@@ -5543,7 +5892,7 @@ export default function CrmDashboardPage() {
          ========================================================================= */}
       {quoteModalOpen && activeQuoteLead && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-4 my-6">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-900">Create & Send Groutix Quotation</h2>
@@ -5557,7 +5906,7 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs max-h-[72vh] overflow-y-auto p-1">
+            <div className="grid grid-cols-1 gap-6 text-xs max-h-[72vh] overflow-y-auto p-1">
               {/* Left Column: Quote Form Controls */}
               <div className="space-y-4">
                 {/* Customer Request & Selected Services Details Card */}
@@ -5803,129 +6152,141 @@ export default function CrmDashboardPage() {
                     </div>
                   </div>
 
-                  {quoteItems.map((item, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
-                      <div className="flex items-center justify-between font-bold text-slate-700">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-black">
-                            {idx + 1}
-                          </span>
-                          <span>Item #{idx + 1}</span>
-                          {item.code && (
-                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
-                              {item.code}
-                            </span>
-                          )}
-                        </span>
-                        {quoteItems.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
-                            className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove</span>
-                          </button>
-                        )}
-                      </div>
+                  {/* Spreadsheet-style items table (Item Code | Item Name | Qty | Price | Total) */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 900 }}>
+                      <colgroup>
+                        <col style={{ width: 36 }} />
+                        <col style={{ width: 260 }} />
+                        <col />
+                        <col style={{ width: 60 }} />
+                        <col style={{ width: 100 }} />
+                        <col style={{ width: 100 }} />
+                        <col style={{ width: 40 }} />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 text-left">
+                          <th className="py-2 px-2 font-bold text-center">#</th>
+                          <th className="py-2 px-2 font-bold">Item Code</th>
+                          <th className="py-2 px-2 font-bold">Item Name</th>
+                          <th className="py-2 px-2 font-bold text-center">Qty</th>
+                          <th className="py-2 px-2 font-bold text-right">Price ex GST</th>
+                          <th className="py-2 px-2 font-bold text-right">Total ex GST</th>
+                          <th className="py-2 px-2" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {quoteItems.map((item, idx) => (
+                          <tr key={idx} className="bg-white hover:bg-slate-50/70 align-top">
+                            <td className="py-2 px-2 text-center font-black text-slate-400">{idx + 1}</td>
 
-                      {/* Template Selector with Search */}
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Pick from 84 Standard Groutix Templates
-                        </label>
-                        <TemplatePicker
-                          selectedTemplateNo={item.templateNo}
-                          onSelectTemplate={(t) => {
-                            const updated = [...quoteItems];
-                            if (t) {
-                              updated[idx] = {
-                                ...updated[idx],
-                                templateNo: t.no,
-                                code: t.code,
-                                service: t.service,
-                                scope: t.scope,
-                                price: Number(t.price) || updated[idx].price || 0
-                              };
-                            } else {
-                              updated[idx] = {
-                                ...updated[idx],
-                                templateNo: "",
-                                code: ""
-                              };
-                            }
-                            setQuoteItems(updated);
-                          }}
-                        />
-                      </div>
+                            {/* Item Code — template picker */}
+                            <td className="py-2 px-2">
+                              <TemplatePicker
+                                selectedTemplateNo={item.templateNo}
+                                onSelectTemplate={(t) => {
+                                  const updated = [...quoteItems];
+                                  if (t) {
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      templateNo: t.no,
+                                      code: t.code,
+                                      service: t.service,
+                                      scope: t.scope,
+                                      price: Number(t.price) || updated[idx].price || 0
+                                    };
+                                  } else {
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      templateNo: "",
+                                      code: ""
+                                    };
+                                  }
+                                  setQuoteItems(updated);
+                                }}
+                              />
+                            </td>
 
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                          Service Title <span className="text-slate-400 font-normal">(Editable)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={item.service || ""}
-                          onChange={(e) => {
-                            const updated = [...quoteItems];
-                            updated[idx].service = e.target.value;
-                            setQuoteItems(updated);
-                          }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
-                          placeholder="Service title..."
-                        />
-                      </div>
+                            {/* Item Name — editable title + scope */}
+                            <td className="py-2 px-2 space-y-1.5">
+                              <input
+                                type="text"
+                                value={item.service || ""}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].service = e.target.value;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                                placeholder="Service title..."
+                              />
+                              <textarea
+                                rows={3}
+                                value={item.scope || ""}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].scope = e.target.value;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed text-slate-600"
+                                placeholder="Detailed scope of works..."
+                              />
+                            </td>
 
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                          Detailed Scope <span className="text-slate-400 font-normal">(Editable)</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={item.scope || ""}
-                          onChange={(e) => {
-                            const updated = [...quoteItems];
-                            updated[idx].scope = e.target.value;
-                            setQuoteItems(updated);
-                          }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs leading-relaxed"
-                          placeholder="Detailed scope of works..."
-                        />
-                      </div>
+                            {/* Qty */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.qty || 1}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].qty = parseInt(e.target.value, 10) || 1;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-center"
+                              />
+                            </td>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Price (AUD)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.price ?? ""}
-                            onChange={(e) => {
-                              const updated = [...quoteItems];
-                              updated[idx].price = parseFloat(e.target.value) || 0;
-                              setQuoteItems(updated);
-                            }}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Quantity</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.qty || 1}
-                            onChange={(e) => {
-                              const updated = [...quoteItems];
-                              updated[idx].qty = parseInt(e.target.value, 10) || 1;
-                              setQuoteItems(updated);
-                            }}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            {/* Price ex GST */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.price ?? ""}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].price = parseFloat(e.target.value) || 0;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
+                              />
+                            </td>
+
+                            {/* Total ex GST */}
+                            <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
+                              ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                            </td>
+
+                            {/* Remove */}
+                            <td className="py-2 px-2 text-center">
+                              {quoteItems.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
+                                  className="text-rose-400 hover:text-rose-600"
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Tax Settings */}
@@ -7050,7 +7411,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Warranty Form Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
                 <input
@@ -7086,11 +7447,29 @@ export default function CrmDashboardPage() {
                 />
               </div>
               <div>
+                <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
+                <input
+                  type="date"
+                  value={warrantyIssued}
+                  onChange={(e) => setWarrantyIssued(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg"
+                />
+              </div>
+              <div>
                 <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
                 <input
                   type="text"
                   value={warrantyCustomer}
                   onChange={(e) => setWarrantyCustomer(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
+                <input
+                  type="text"
+                  value={warrantyAuthorised}
+                  onChange={(e) => setWarrantyAuthorised(e.target.value)}
                   className="w-full p-2 border border-slate-200 rounded-lg"
                 />
               </div>
@@ -7105,18 +7484,49 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
+            {/* Tab Switcher */}
+            <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWarrantyTab("page1")}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    warrantyTab === "page1"
+                      ? "bg-[#071c4d] text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Page 1: Warranty Certificate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWarrantyTab("page2")}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    warrantyTab === "page2"
+                      ? "bg-[#071c4d] text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Page 2: Terms &amp; Conditions
+                </button>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                Official 2-Page Executive Template
+              </span>
+            </div>
+
             {/* Canvas Preview */}
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-100">
+            <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
               <canvas
                 ref={canvasRef}
-                width={1536}
-                height={900}
-                className="w-full h-auto block"
+                width={1000}
+                height={1414}
+                className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
               />
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
-              <span>Warranty governed by Clause 12 of Groutix Terms &amp; Conditions</span>
+              <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
               <a
                 href="/terms-conditions"
                 target="_blank"
@@ -7128,22 +7538,50 @@ export default function CrmDashboardPage() {
               </a>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-              <button
-                onClick={downloadWarrantyCard}
-                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
-              >
-                <Download className="w-4 h-4" />
-                Download PNG
-              </button>
-              <button
-                onClick={handleSendWarranty}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
-                title="Email the warranty card to the customer and mark it sent"
-              >
-                <Send className="w-4 h-4" />
-                Email to Customer
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="text-[11px] text-slate-500">
+                <span>Both pages are included in the official PDF &amp; customer email.</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = new URLSearchParams({
+                      jobNo: warrantyJobNo,
+                      completion: warrantyCompletion,
+                      expiry: warrantyExpiry,
+                      customer: warrantyCustomer,
+                      address: warrantyAddress,
+                      authorised: warrantyAuthorised,
+                      issued: warrantyIssued,
+                      t: String(Date.now()),
+                    });
+                    window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                  title="Print or view official 2-page PDF warranty certificate"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print / View PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadWarrantyCard}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PNG
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendWarranty}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
+                  title="Email the official 2-page warranty certificate to the customer and mark it sent"
+                >
+                  <Send className="w-4 h-4" />
+                  Email to Customer
+                </button>
+              </div>
             </div>
           </div>
         </div>

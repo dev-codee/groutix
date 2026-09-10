@@ -142,7 +142,7 @@ export function TemplatePicker({
                 </div>
               ) : (
                 <span className="text-slate-500 text-xs italic">
-                  Manual / Custom Description (Click to search 84 templates)
+                  Manual / Custom Description (Click to search {SERVICE_TEMPLATES.length} templates)
                 </span>
               )}
             </div>
@@ -172,7 +172,7 @@ export function TemplatePicker({
                     {modalTitle}
                   </h3>
                   <div className="text-xs text-slate-500">
-                    Search & select from 84 official Groutix service templates with pre-set scopes
+                    Search & select from {SERVICE_TEMPLATES.length} official Groutix service templates with pre-set scopes
                   </div>
                 </div>
               </div>
@@ -254,7 +254,7 @@ export function TemplatePicker({
 
               <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
                 <span>
-                  Showing <b>{filteredTemplates.length}</b> of 84 templates
+                  Showing <b>{filteredTemplates.length}</b> of {SERVICE_TEMPLATES.length} templates
                 </span>
                 <button
                   type="button"
