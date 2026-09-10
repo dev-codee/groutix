@@ -737,6 +737,10 @@ export default function CrmDashboardPage() {
   // Field / Scheduling (Login 2) + managers can add technicians and dispatch
   // them to jobs. The API enforces this too; this just gates the UI.
   const canManageTechs = role === "field" || role === "manager" || role === "super_admin";
+  // Per-role visibility for the lead-row sections (managers/super-admins see all).
+  // Field tools (live visit, job status, tech dispatch) reuse canManageTechs.
+  const showFinanceTools = role === "finance" || role === "manager" || role === "super_admin";
+  const showIntakeTools = role === "intake" || role === "manager" || role === "super_admin";
 
   // Human-friendly label for the effective role (e.g. "Finance / Completion").
   const roleLabel = ROLE_LABELS[role] || "Staff";
@@ -3853,7 +3857,7 @@ export default function CrmDashboardPage() {
                                     }`}
                                     title="Change status manually"
                                   >
-                                    {Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean).map((s) => (
+                                    {(role === "intake" ? getRoleStatusOptions(role, l.status) : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)).map((s) => (
                                       <option key={s} value={s}>
                                         {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
                                       </option>
@@ -4805,7 +4809,7 @@ export default function CrmDashboardPage() {
                                       }`}
                                       title="Change status manually"
                                     >
-                                      {Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean).map((s) => (
+                                      {(role === "intake" ? getRoleStatusOptions(role, l.status) : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)).map((s) => (
                                         <option key={s} value={s}>
                                           {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
                                         </option>
@@ -4953,7 +4957,7 @@ export default function CrmDashboardPage() {
                             <div className="space-y-2.5">
                               <div className="space-y-2">
                                 {/* Field live visit steps — Inspection + inline form button */}
-                                {role !== "intake" && (() => {
+                                {canManageTechs && (() => {
                                   const rawSteps = visitStepsFor(l.status);
                                   if (!rawSteps) {
                                     // Not on a live visit; still show Inspection steps as default with inline form
@@ -5112,33 +5116,39 @@ export default function CrmDashboardPage() {
                                     </div>
                                   )}
 
-                                {/* Quote quick status (with Assign Tech after Job Booked) */}
-                                <div className="grid grid-cols-4 gap-1.5 items-center">
-                                  <button
-                                    onClick={() => openQuoteModal(l)}
-                                    className="px-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
-                                    title="Open quote builder"
-                                  >
-                                    Quote
-                                  </button>
-                                  {([
-                                    { label: "Sent", status: "Quote Sent", color: "bg-blue-600 hover:bg-blue-700" },
-                                    { label: "Job Booked", status: "Job Booked", color: "bg-violet-600 hover:bg-violet-700" },
-                                  ] as const).map((st) => (
+                                {/* Quote quick status — intake/manager only */}
+                                {showIntakeTools && (
+                                  <div className="grid grid-cols-3 gap-1.5 items-center">
                                     <button
-                                      key={st.status}
-                                      type="button"
-                                      onClick={() => updateLeadField(l.id, { status: st.status })}
-                                      className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                        l.status === st.status
-                                          ? st.color + " text-white ring-2 ring-offset-1 ring-current"
-                                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                                      }`}
-                                      title={`Set: ${st.status}`}
+                                      onClick={() => openQuoteModal(l)}
+                                      className="px-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                                      title="Open quote builder"
                                     >
-                                      {st.label}
+                                      Quote
                                     </button>
-                                  ))}
+                                    {([
+                                      { label: "Sent", status: "Quote Sent", color: "bg-blue-600 hover:bg-blue-700" },
+                                      { label: "Job Booked", status: "Job Booked", color: "bg-violet-600 hover:bg-violet-700" },
+                                    ] as const).map((st) => (
+                                      <button
+                                        key={st.status}
+                                        type="button"
+                                        onClick={() => updateLeadField(l.id, { status: st.status })}
+                                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                          l.status === st.status
+                                            ? st.color + " text-white ring-2 ring-offset-1 ring-current"
+                                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                        }`}
+                                        title={`Set: ${st.status}`}
+                                      >
+                                        {st.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Assign technician — field/manager only */}
+                                {canManageTechs && (
                                   <select
                                     value={l.technicianId || ""}
                                     onChange={(e) => {
@@ -5159,10 +5169,10 @@ export default function CrmDashboardPage() {
                                       <option value={l.technicianId}>{l.technician || "Former tech"}</option>
                                     )}
                                   </select>
-                                </div>
+                                )}
 
-                                {/* Job Status heading + buttons (On the Way, Reached, Start, Job Done, Complete) */}
-                                {(() => {
+                                {/* Job Status heading + buttons — field job micro-stages, hidden from the intake role */}
+                                {canManageTechs && (() => {
                                   const steps = JOB_STEPS;
                                   const currentIdx = steps.findIndex((s) => s.status === l.status);
                                   return (
@@ -5291,7 +5301,9 @@ export default function CrmDashboardPage() {
                                     ? FINANCE_STATUSES
                                     : role === "field"
                                       ? JOB_STATUSES
-                                      : [...new Set([...JOB_STATUSES, ...FINANCE_STATUSES, ...INTAKE_STATUSES])]
+                                      : role === "intake"
+                                        ? getRoleStatusOptions(role, l.status)
+                                        : [...new Set([...JOB_STATUSES, ...FINANCE_STATUSES, ...INTAKE_STATUSES])]
                                   ).map((s) => (
                                     <option key={s} value={s}>
                                       {s}
@@ -5435,8 +5447,8 @@ export default function CrmDashboardPage() {
                                 </div>
                               </div>
 
-                              {/* Quick Invoice & Warranty Actions */}
-                              {(role === "finance" || role === "manager" || l.status === "Payment Received" || l.status === "Warranty Sent") && (
+                              {/* Quick Invoice & Warranty Actions (finance/manager only) */}
+                              {showFinanceTools && (
                                 <div className="grid grid-cols-2 gap-1.5 pb-1">
                                   <button
                                     type="button"
@@ -5463,7 +5475,8 @@ export default function CrmDashboardPage() {
                                 </div>
                               )}
 
-                              {/* 6 Step Checklist */}
+                              {/* 6 Step Checklist (finance progression — only finance/manager) */}
+                              {showFinanceTools && (
                               <div className="space-y-1.5">
                                 {(() => {
                                   const steps = [
@@ -5499,6 +5512,7 @@ export default function CrmDashboardPage() {
                                   });
                                 })()}
                               </div>
+                              )}
 
                               {/* Finance: previous history collapsible */}
                               {role === "finance" && (() => {
