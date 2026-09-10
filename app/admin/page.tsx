@@ -129,6 +129,7 @@ export interface Lead {
   type?: "quote" | "support_ticket" | "lead";
   status: string;
   createdAt: string;
+  jobNo?: string;
   name?: string;
   phone?: string;
   email?: string;
@@ -190,6 +191,61 @@ export interface Lead {
   inspectionReminderSent?: boolean;
   jobReminderSent?: boolean;
   inspectionReport?: InspectionReportDoc;
+}
+
+const JOB_NO_START = 1201;
+const JOB_NO_PREFIX = "GQ-";
+const NEW_LEADS_CUTOFF_KEY = "gx_new_leads_cutoff_ms";
+
+function getNewLeadsCutoffMs(): number {
+  if (typeof window === "undefined") return Date.now();
+  const existing = window.localStorage.getItem(NEW_LEADS_CUTOFF_KEY);
+  if (existing) {
+    const n = parseInt(existing, 10);
+    if (!isNaN(n) && n > 0) return n;
+  }
+  const now = Date.now();
+  try {
+    window.localStorage.setItem(NEW_LEADS_CUTOFF_KEY, String(now));
+  } catch {
+    /* ignore */
+  }
+  return now;
+}
+
+function isLegacyLead(lead: Lead, cutoffMs: number): boolean {
+  const t = new Date(lead.createdAt).getTime();
+  return isNaN(t) ? false : t < cutoffMs;
+}
+
+function extractJobNoNumeric(jobNo?: string): number | null {
+  if (!jobNo) return null;
+  const match = jobNo.match(/^GQ-(\d+)$/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function generateJobNos(leads: Lead[], cutoffMs: number): Lead[] {
+  const byId = new Map<string, Lead>();
+  for (const l of leads) byId.set(l.id, { ...l, jobNo: isLegacyLead(l, cutoffMs) ? undefined : l.jobNo });
+
+  const newOnly = leads
+    .filter((l) => !isLegacyLead(l, cutoffMs))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  let maxExisting = JOB_NO_START - 1;
+  for (const ref of newOnly) {
+    const l = byId.get(ref.id)!;
+    const n = extractJobNoNumeric(l.jobNo);
+    if (n !== null && n > maxExisting) maxExisting = n;
+  }
+  let next = maxExisting + 1;
+  for (const ref of newOnly) {
+    const l = byId.get(ref.id)!;
+    if (!l.jobNo) {
+      l.jobNo = `${JOB_NO_PREFIX}${next++}`;
+    }
+  }
+  return leads.map((l) => byId.get(l.id)!);
 }
 
 export interface CrmTask {
@@ -830,6 +886,8 @@ export default function CrmDashboardPage() {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [newLeadsCutoffMs, setNewLeadsCutoffMs] = useState<number>(0);
+  const [showLegacyLeads, setShowLegacyLeads] = useState(false);
   // Tracks the last-seen unread-reply count so we only fire a desktop
   // notification when the number actually goes UP (a genuinely new reply).
   const prevUnreadReplies = useRef<number | null>(null);
@@ -961,6 +1019,8 @@ export default function CrmDashboardPage() {
   const loadData = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
     setError("");
+    const cutoffMs = getNewLeadsCutoffMs();
+    setNewLeadsCutoffMs(cutoffMs);
     try {
       const [leadsRes, tasksRes] = await Promise.all([
         fetch("/api/admin/submissions?all=true", { cache: "no-store" }),
@@ -976,7 +1036,25 @@ export default function CrmDashboardPage() {
           service: l.service || l.enquiry || l.message || "General Quote Request",
           address: l.address || [l.city, l.state].filter(Boolean).join(", ") || "",
         }));
-        setLeads(normalized);
+        const withJobNos = generateJobNos(normalized, cutoffMs);
+        const changes: { id: string; jobNo: string | undefined }[] = [];
+        for (let i = 0; i < withJobNos.length; i++) {
+          const before = normalized[i]?.jobNo;
+          const after = withJobNos[i]?.jobNo;
+          if (before !== after) changes.push({ id: withJobNos[i].id, jobNo: after });
+        }
+        if (changes.length > 0) {
+          Promise.all(
+            changes.map((c) =>
+              fetch(`/api/admin/submissions/${c.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jobNo: c.jobNo ?? null }),
+              }).catch(() => {})
+            )
+          ).catch(() => {});
+        }
+        setLeads(withJobNos);
       } else {
         const err = await leadsRes.json().catch(() => ({}));
         setError(err.error || "Could not load leads from database.");
@@ -1082,7 +1160,7 @@ export default function CrmDashboardPage() {
   // show a stale/out-of-range page for the new (shorter) list.
   useEffect(() => {
     setPage(1);
-  }, [currentView, statusFilter, priorityFilter, globalSearch, onlyUnread]);
+  }, [currentView, statusFilter, priorityFilter, globalSearch, onlyUnread, showLegacyLeads]);
 
   // Load the staff directory for every role (drives the Team view and all
   // assignee pickers) so nothing is hardcoded. Read-only names/roles only.
@@ -1379,14 +1457,21 @@ export default function CrmDashboardPage() {
           alert("Failed to update lead.");
         }
       } else {
+        let maxN = JOB_NO_START - 1;
+        for (const l of leads) {
+          const n = extractJobNoNumeric(l.jobNo);
+          if (n !== null && n > maxN) maxN = n;
+        }
+        const newJobNo = `${JOB_NO_PREFIX}${maxN + 1}`;
+        const leadToCreate: Partial<Lead> = { ...editingLead, jobNo: newJobNo };
         const res = await fetch("/api/admin/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editingLead)
+          body: JSON.stringify(leadToCreate)
         });
         if (res.ok) {
           const { item } = await res.json();
-          setLeads((prev) => [item, ...prev]);
+          setLeads((prev) => [{ ...item, jobNo: newJobNo }, ...prev]);
           setLeadModalOpen(false);
         } else {
           alert("Failed to create lead.");
@@ -2686,11 +2771,19 @@ export default function CrmDashboardPage() {
   }
 
   // Role queue: non-managers only see the leads whose current stage their role
-  // owns. Managers see the whole book.
-  const scopedLeads = useMemo(
-    () => (role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status))),
-    [leads, role]
-  );
+  // owns. Managers see the whole book. Legacy leads are hidden by default
+  // unless the manager explicitly toggles showLegacyLeads.
+  const scopedLeads = useMemo(() => {
+    const roleScoped = role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status));
+    if (isManager && showLegacyLeads) return roleScoped;
+    if (newLeadsCutoffMs <= 0) return roleScoped;
+    return roleScoped.filter((l) => !isLegacyLead(l, newLeadsCutoffMs));
+  }, [leads, role, isManager, showLegacyLeads, newLeadsCutoffMs]);
+
+  const hiddenLegacyCount = useMemo(() => {
+    if (!isManager || newLeadsCutoffMs <= 0) return 0;
+    return leads.filter((l) => isLegacyLead(l, newLeadsCutoffMs)).length;
+  }, [leads, isManager, newLeadsCutoffMs]);
 
   // Filtering & Search
   const filteredLeads = useMemo(() => {
@@ -2698,7 +2791,7 @@ export default function CrmDashboardPage() {
     const q = globalSearch.toLowerCase().trim();
     if (q) {
       list = list.filter((l) =>
-        [l.name, l.phone, l.email, l.service, l.address, l.notes, l.message]
+        [l.jobNo, l.name, l.phone, l.email, l.service, l.address, l.notes, l.message]
           .join(" ")
           .toLowerCase()
           .includes(q)
@@ -3345,6 +3438,29 @@ export default function CrmDashboardPage() {
                       <Plus className="w-4 h-4" />
                       New Lead
                     </button>
+                    {isManager && (
+                      <button
+                        onClick={() => setShowLegacyLeads((v) => !v)}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors backdrop-blur-sm ${
+                          showLegacyLeads
+                            ? "bg-amber-400 text-[#001f97] hover:bg-amber-300"
+                            : "bg-white/15 text-white hover:bg-white/25"
+                        }`}
+                        title={showLegacyLeads ? "Hide legacy leads" : `Show ${hiddenLegacyCount > 0 ? hiddenLegacyCount : ""} archived legacy leads`}
+                      >
+                        {showLegacyLeads ? (
+                          <Eye className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                        {showLegacyLeads ? "Hide Legacy" : "Show Legacy"}
+                        {!showLegacyLeads && hiddenLegacyCount > 0 && (
+                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                            {hiddenLegacyCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3360,11 +3476,12 @@ export default function CrmDashboardPage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {([
-                    { label: "New leads", group: "lead", statuses: ["New"] },
-                    { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+                    { label: "Total Leads", group: "lead" as StageGroup, statuses: [] as string[], totalCount: true },
+                    { label: "New leads", group: "lead" as StageGroup, statuses: ["New"] },
+                    { label: "Contacted", group: "lead" as StageGroup, statuses: ["Contacted", "Waiting for Info"] },
                     {
                       label: "Inspection",
-                      group: "booking",
+                      group: "booking" as StageGroup,
                       statuses: [
                         "Inspection Booked",
                         "Inspection En Route",
@@ -3373,38 +3490,45 @@ export default function CrmDashboardPage() {
                         "Inspection Completed",
                       ],
                     },
-                    { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                    { label: "Quotes", group: "quote" as StageGroup, statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                    { label: "Pending Quote", group: "quote" as StageGroup, statuses: ["Quote Pending"] },
                     {
                       label: "Job Booked",
-                      group: "job",
+                      group: "job" as StageGroup,
                       statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
                     },
-                    { label: "Job Done", group: "finance", statuses: ["Job Done"] },
-                    { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
-                    { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
-                    { label: "Achievements", group: "closed", statuses: ["Completed"] },
-                  ] as { label: string; group: StageGroup; statuses: string[] }[]).map((grp) => {
+                    { label: "Job Done", group: "finance" as StageGroup, statuses: ["Job Done"] },
+                    { label: "Payment Pending", group: "finance" as StageGroup, statuses: ["Payment Pending"] },
+                    { label: "Payment Received", group: "finance" as StageGroup, statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
+                    { label: "Warranty Sent", group: "finance" as StageGroup, statuses: ["Warranty Sent"] },
+                    { label: "Achievements", group: "closed" as StageGroup, statuses: ["Completed"] },
+                  ] as { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean }[]).map((grp) => {
                     const accent = STAGE_GROUP_ACCENT[grp.group];
-                    const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
-                    const active = statusFilter === grp.statuses.join("|");
+                    const value = grp.totalCount
+                      ? scopedLeads.length
+                      : grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
+                    const filterKey = grp.statuses.join("|");
+                    const active = grp.totalCount
+                      ? statusFilter === ""
+                      : statusFilter === filterKey;
                     return (
                       <button
                         key={grp.label}
                         type="button"
-                        onClick={() => openLeadsFiltered(grp.statuses)}
+                        onClick={() => grp.totalCount ? openLeadsFiltered([]) : openLeadsFiltered(grp.statuses)}
                         className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
                             ? "border-[#001f97] bg-[#001f97]/5"
                             : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
                           }`}
-                        title={`Show ${grp.label} leads`}
+                        title={grp.totalCount ? "Show all leads (clear stage filter)" : `Show ${grp.label} leads`}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                          <span className={`w-2 h-2 rounded-full ${grp.totalCount ? "bg-[#001f97]" : accent.dot}`} />
                           <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
                             {grp.label}
                           </span>
                         </div>
-                        <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                        <div className={`text-2xl font-black ${value ? (grp.totalCount ? "text-[#001f97]" : accent.value) : "text-slate-300"}`}>
                           {value}
                         </div>
                       </button>
@@ -3443,6 +3567,7 @@ export default function CrmDashboardPage() {
                         {filteredLeads.slice(0, 10).map((l) => (
                           <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
                             <td className="py-3 px-3">
+                              <div className="font-black text-[#001f97] text-[11px] tracking-tight mb-0.5">{l.jobNo || "—"}</div>
                               <div className="font-bold text-slate-900">{l.name || "Unnamed"}</div>
                               <div className="text-[11px] text-slate-400">{l.phone || l.email || "No contact"}</div>
                             </td>
@@ -3536,7 +3661,7 @@ export default function CrmDashboardPage() {
                         ))}
                         {filteredLeads.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="py-12 text-center text-slate-400">
+                            <td colSpan={7} className="py-12 text-center text-slate-400">
                               {loading ? "Loading leads from database…" : "No customer leads in the database yet."}
                             </td>
                           </tr>
@@ -3612,7 +3737,9 @@ export default function CrmDashboardPage() {
                   {(() => {
                     // Grouped dashboard "buttons" per role (matches the login sketches).
                     // Each button filters the leads table to all of its statuses.
-                    const intakeGroups: { label: string; group: StageGroup; statuses: string[] }[] = [
+                    type Grp = { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean };
+                    const intakeGroups: Grp[] = [
+                      { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                       { label: "New leads", group: "lead", statuses: ["New"] },
                       { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
                       {
@@ -3627,10 +3754,12 @@ export default function CrmDashboardPage() {
                         ],
                       },
                       { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                      { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
                       { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
                     ];
                     // Manager sees the full pipeline end-to-end across every login.
-                    const managerGroups: { label: string; group: StageGroup; statuses: string[] }[] = [
+                    const managerGroups: Grp[] = [
+                      { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                       { label: "New leads", group: "lead", statuses: ["New"] },
                       { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
                       {
@@ -3645,6 +3774,7 @@ export default function CrmDashboardPage() {
                         ],
                       },
                       { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                      { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
                       {
                         label: "Job Booked",
                         group: "job",
@@ -3658,42 +3788,54 @@ export default function CrmDashboardPage() {
                         ],
                       },
                       { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+                      { label: "Payment Pending", group: "finance", statuses: ["Payment Pending"] },
                       { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
                       { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
                       { label: "Achievements", group: "closed", statuses: ["Completed"] },
                     ];
-                    const groups =
+                    const groups: Grp[] =
                       role === "intake"
                         ? intakeGroups
                         : role === "manager"
                           ? managerGroups
-                          : STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] }));
+                          : [
+                            { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+                            ...STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] })),
+                          ];
                     return groups.map((grp) => {
                       const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-blue-500", value: "text-[#001f97]" };
-                      const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
+                      const value = grp.totalCount
+                        ? scopedLeads.length
+                        : grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
                       const joined = grp.statuses.join("|");
-                      const active = statusFilter === joined;
+                      const active = grp.totalCount
+                        ? statusFilter === ""
+                        : statusFilter === joined;
                       return (
                         <button
                           key={grp.label}
                           type="button"
                           onClick={() => {
-                            setStatusFilter(active ? "" : joined);
+                            if (grp.totalCount) {
+                              setStatusFilter("");
+                            } else {
+                              setStatusFilter(active ? "" : joined);
+                            }
                             setPage(1);
                           }}
                           className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
                               ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
                               : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
                             }`}
-                          title={`Show ${grp.label} leads`}
+                          title={grp.totalCount ? "Show all leads (clear stage filter)" : `Show ${grp.label} leads`}
                         >
                           <div className="flex items-center gap-1.5 mb-1">
-                            <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                            <span className={`w-2 h-2 rounded-full ${grp.totalCount ? "bg-[#001f97]" : accent.dot}`} />
                             <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
                               {grp.label}
                             </span>
                           </div>
-                          <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                          <div className={`text-2xl font-black ${value ? (grp.totalCount ? "text-[#001f97]" : accent.value) : "text-slate-300"}`}>
                             {value}
                           </div>
                         </button>
@@ -3795,11 +3937,17 @@ export default function CrmDashboardPage() {
                         className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-                          {/* COLUMN 1: CLIENT (includes Service & Photos) */}
+                          {/* COLUMN 0: CLIENT (includes Service & Photos) */}
                           <div className="space-y-3">
                             <div className="flex items-start justify-between gap-2.5">
                               {/* Left: Client info */}
                               <div className="flex-1 min-w-0">
+                                <div className="xl:hidden text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                                  Job No
+                                </div>
+                                <div className="font-black text-[#001f97] text-sm xl:text-base whitespace-nowrap tracking-tight mb-1">
+                                  {l.jobNo || "—"}
+                                </div>
                                 <div className="font-bold text-slate-900 text-sm truncate" title={l.name || "Unnamed Customer"}>
                                   {l.name || "Unnamed Customer"}
                                 </div>
@@ -4481,7 +4629,10 @@ export default function CrmDashboardPage() {
                         const total = l.quoteAmount || (l.quoteTaxMode === "exclusive" ? sub * (1 + (l.quoteTaxRate || 10) / 100) : sub);
                         return (
                           <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-3 px-3 font-bold text-slate-900">{l.name || "Customer"}</td>
+                            <td className="py-3 px-3">
+                              <div className="font-black text-[#001f97] text-[11px] tracking-tight mb-0.5">{l.jobNo || "—"}</div>
+                              <div className="font-bold text-slate-900">{l.name || "Customer"}</div>
+                            </td>
                             <td className="py-3 px-3 text-slate-600">{l.phone || "—"}</td>
                             <td className="py-3 px-3 text-slate-700 max-w-[240px] truncate">
                               {l.service || items[0]?.service || "Standard Work"}
@@ -4554,15 +4705,17 @@ export default function CrmDashboardPage() {
                   {(() => {
                     // Grouped dashboard "buttons" per role (matches the login sketches).
                     // Each button filters the board to all of its statuses.
+                    type Grp = { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean };
                     const single = (keys: string[]) =>
                       STAGES.filter((s) => keys.includes(s.key)).map((s) => ({
                         label: s.label,
                         group: s.group,
                         statuses: [s.key],
                       }));
-                    const groups: { label: string; group: StageGroup; statuses: string[] }[] =
+                    const groups: Grp[] =
                       role === "intake"
                         ? [
+                          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                           { label: "New leads", group: "lead", statuses: ["New"] },
                           { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
                           {
@@ -4577,14 +4730,22 @@ export default function CrmDashboardPage() {
                             ],
                           },
                           { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                          { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
                           { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
                         ]
                         : role === "finance"
-                          ? single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"])
+                          ? [
+                            { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+                            ...single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]),
+                          ]
                           : role === "field"
-                            ? single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"])
+                            ? [
+                              { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+                              ...single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]),
+                            ]
                             : role === "manager"
                               ? [
+                                { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                                 { label: "New leads", group: "lead", statuses: ["New"] },
                                 { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
                                 {
@@ -4599,47 +4760,60 @@ export default function CrmDashboardPage() {
                                   ],
                                 },
                                 { label: "Quotes", group: "quote", statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
+                                { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
                                 {
                                   label: "Job Booked",
                                   group: "job",
                                   statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
                                 },
                                 { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+                                { label: "Payment Pending", group: "finance", statuses: ["Payment Pending"] },
                                 { label: "Payment Received", group: "finance", statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
                                 { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
                                 { label: "Achievements", group: "closed", statuses: ["Completed"] },
                               ]
-                              : STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
-                                label: s.label,
-                                group: s.group,
-                                statuses: [s.key],
-                              }));
+                              : [
+                                { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+                                ...STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
+                                  label: s.label,
+                                  group: s.group,
+                                  statuses: [s.key],
+                                })),
+                              ];
                     return groups.map((grp) => {
                       const accent = STAGE_GROUP_ACCENT[grp.group] || { dot: "bg-cyan-500", value: "text-cyan-600" };
-                      const value = grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
+                      const value = grp.totalCount
+                        ? scopedLeads.length
+                        : grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
                       const joined = grp.statuses.join("|");
-                      const active = statusFilter === joined;
+                      const active = grp.totalCount
+                        ? statusFilter === ""
+                        : statusFilter === joined;
                       return (
                         <button
                           key={grp.label}
                           type="button"
                           onClick={() => {
-                            setStatusFilter(active ? "" : joined);
+                            if (grp.totalCount) {
+                              setStatusFilter("");
+                            } else {
+                              setStatusFilter(active ? "" : joined);
+                            }
                             setPage(1);
                           }}
                           className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
                               ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
                               : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
                             }`}
-                          title={`Filter by ${grp.label}`}
+                          title={grp.totalCount ? "Show all leads (clear stage filter)" : `Filter by ${grp.label}`}
                         >
                           <div className="flex items-center gap-1.5 mb-1">
-                            <span className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                            <span className={`w-2 h-2 rounded-full ${grp.totalCount ? "bg-[#001f97]" : accent.dot}`} />
                             <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
                               {grp.label}
                             </span>
                           </div>
-                          <div className={`text-2xl font-black ${value ? accent.value : "text-slate-300"}`}>
+                          <div className={`text-2xl font-black ${value ? (grp.totalCount ? "text-[#001f97]" : accent.value) : "text-slate-300"}`}>
                             {value}
                           </div>
                         </button>
@@ -4739,11 +4913,17 @@ export default function CrmDashboardPage() {
                           className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
                         >
                           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start xl:grid-rows-[auto_auto_1fr_auto_auto]">
-                            {/* COLUMN 1: CLIENT (includes Service, Dates & Photos) */}
+                            {/* COLUMN 0: CLIENT (includes Service, Dates & Photos) */}
                             <div className="space-y-3 xl:contents">
                               <div className="flex items-start justify-between gap-2.5">
                                 {/* Left: Client info */}
                                 <div className="flex-1 min-w-0">
+                                  <div className="xl:hidden text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                                    Job No
+                                  </div>
+                                  <div className="font-black text-[#001f97] text-sm xl:text-base whitespace-nowrap tracking-tight mb-1">
+                                    {l.jobNo || "—"}
+                                  </div>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -5612,7 +5792,10 @@ export default function CrmDashboardPage() {
                   <tbody className="divide-y divide-slate-100">
                     {scopedLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-3 font-bold text-slate-900">{l.name || "Customer"}</td>
+                        <td className="py-3 px-3">
+                          <div className="font-black text-[#001f97] text-[11px] tracking-tight mb-0.5">{l.jobNo || "—"}</div>
+                          <div className="font-bold text-slate-900">{l.name || "Customer"}</div>
+                        </td>
                         <td className="py-3 px-3 text-slate-600">{l.phone || "—"}</td>
                         <td className="py-3 px-3 text-slate-600">{l.email || "—"}</td>
                         <td className="py-3 px-3 text-slate-600">{l.address || "Melbourne, VIC"}</td>
