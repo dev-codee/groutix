@@ -26,6 +26,12 @@ const CUSTOMER_FROM_NAME = "Groutix";
 // admin edits to the contact number flow through to confirmation emails.
 const DEFAULT_CONTACT_PHONE = "7023 8094";
 
+// TEMPORARY: the customer self-service inspection booking button is disabled in
+// the confirmation email/SMS for now. Flip this back to `true` to re-enable the
+// "Book your free inspection" button + available-days list (all logic is kept
+// below, only its rendering is gated by this flag).
+const SHOW_INSPECTION_BOOKING = false;
+
 // Anti-spam limits.
 const RATE_LIMIT = 5; // submissions...
 const RATE_WINDOW_MS = 10 * 60 * 1000; // ...per 10 minutes per IP.
@@ -416,15 +422,10 @@ export async function POST(req: NextRequest) {
              .join("")}
          </div>`
       : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Times from 9:00 AM to 3:00 PM — pick a slot on the booking page.</div>`;
-    const customerHtml = `
-      <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
-      <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
-        We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
-      </p>
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-        If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
-      </p>
 
+    // Inspection self-booking card. Rendered only when SHOW_INSPECTION_BOOKING is
+    // true (currently disabled — see the flag near the top of this file).
+    const inspectionBookingHtml = `
       <div style="margin:24px 0;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
         <h3 style="margin:0 0 8px;color:#001f97;font-size:17px;font-weight:700;">Book your free Inspection;</h3>
         <p style="margin:0 0 14px;font-size:14px;color:#334155;">
@@ -447,7 +448,18 @@ export async function POST(req: NextRequest) {
                ${availableDaysHtml}`
             : ""
         }
-      </div>
+      </div>`;
+
+    const customerHtml = `
+      <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
+        We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
+        If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+      </p>
+
+      ${SHOW_INSPECTION_BOOKING ? inspectionBookingHtml : ""}
 
       ${
         message
@@ -477,10 +489,10 @@ export async function POST(req: NextRequest) {
 
     // Acknowledge by SMS too (no-op until an SMS provider is configured).
     if (phone) {
-      await sendSms({
-        to: phone,
-        body: `Thanks, ${firstName || "there"}! We've received your quote request. Book your free inspection here: ${bookingUrl || "we'll contact you"}. Available: ${daysSummary}. Urgent? Call ${CONTACT_PHONE}. Stay Sealed. Stay Smiling.`,
-      });
+      const smsBody = SHOW_INSPECTION_BOOKING
+        ? `Thanks, ${firstName || "there"}! We've received your quote request. Book your free inspection here: ${bookingUrl || "we'll contact you"}. Available: ${daysSummary}. Urgent? Call ${CONTACT_PHONE}. Stay Sealed. Stay Smiling.`
+        : `Thanks, ${firstName || "there"}! We've received your quote request and a Groutix specialist will be in touch shortly. Urgent? Call ${CONTACT_PHONE}. Stay Sealed. Stay Smiling.`;
+      await sendSms({ to: phone, body: smsBody });
     }
   };
 

@@ -397,6 +397,51 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
   };
 }
 
+/**
+ * Resolve a customer's area from precise GPS coordinates (e.g. captured via the
+ * browser "use my location" button on the booking page). This is the most
+ * accurate classifier: the 15 km "every day" rule is applied as a true distance
+ * to Tullamarine, and the corridor day is taken from the nearest known suburb.
+ */
+export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { suburb: null, zone: "flexible", distanceKm: null, inner: false, label: ZONE_LABEL.flexible };
+  }
+  const pt = { lat, lng };
+
+  // Nearest catalogued suburb (for the outer-zone day assignment).
+  let nearest = SUBURBS[0];
+  let best = Infinity;
+  for (const s of SUBURBS) {
+    const d = distanceKm(pt, s);
+    if (d < best) {
+      best = d;
+      nearest = s;
+    }
+  }
+
+  const distToTulla = distanceKm(TULLAMARINE, pt);
+  // 15 km Tullamarine rule as a real geographic circle → available every day.
+  if (distToTulla <= RADIUS_KM) {
+    return {
+      suburb: nearest.name,
+      zone: "inner",
+      distanceKm: distToTulla,
+      inner: true,
+      label: ZONE_LABEL.inner,
+    };
+  }
+
+  const zone = nearest.outerZone;
+  return {
+    suburb: nearest.name,
+    zone,
+    distanceKm: distToTulla,
+    inner: false,
+    label: ZONE_LABEL[zone],
+  };
+}
+
 /** Weekdays (0=Sun, 1=Mon … 6=Sat) a given area may be booked on. */
 export function allowedWeekdays(area: AreaInfo): Set<number> {
   if (area.inner || area.zone === "inner" || area.zone === "flexible") {
@@ -430,11 +475,17 @@ export function getAvailableDaysSummary(area: AreaInfo): string {
   }
 }
 
+export interface TimeSlot {
+  time: string; // "HH:mm"
+  booked: boolean; // already locked by another customer
+}
+
 export interface DayOption {
   date: string; // YYYY-MM-DD
   label: string; // e.g. "Monday, 08 Sep"
   weekday: string;
-  times: string[]; // free start times
+  times: string[]; // free start times (kept for email/SMS summaries)
+  slots: TimeSlot[]; // every offered slot with its booked status (for the UI)
   recommended: boolean; // route-grouping nudge
 }
 
@@ -460,14 +511,17 @@ export function computeAvailability(
 
     const dateStr = ymd(d);
     const locked = bookedByDate.get(dateStr) || new Set<string>();
-    const times = TIME_SLOTS.filter((t) => !locked.has(t));
-    if (times.length === 0) continue;
+    // Keep every slot, flagging the ones already taken so the customer can see
+    // them as "Booked" rather than them silently disappearing.
+    const slots: TimeSlot[] = TIME_SLOTS.map((t) => ({ time: t, booked: locked.has(t) }));
+    const times = slots.filter((s) => !s.booked).map((s) => s.time);
 
     out.push({
       date: dateStr,
       label: d.toLocaleDateString("en-AU", { weekday: "long", day: "2-digit", month: "short" }),
       weekday: d.toLocaleDateString("en-AU", { weekday: "long" }),
       times,
+      slots,
       recommended: sameZoneDates.has(dateStr),
     });
   }

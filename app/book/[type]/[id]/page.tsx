@@ -3,18 +3,28 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 
+type TimeSlot = { time: string; booked: boolean };
+
 type DayOption = {
   date: string;
   label: string;
   weekday: string;
   times: string[];
+  slots: TimeSlot[];
   recommended: boolean;
 };
 
 type Availability = {
   customer: { name: string; address: string };
   type: "inspection" | "job";
-  area: { label: string; inner: boolean; suburb: string | null };
+  area: {
+    label: string;
+    inner: boolean;
+    suburb: string | null;
+    zone?: string;
+    distanceKm?: number | null;
+    located?: boolean;
+  };
   days: DayOption[];
   current: string | null;
 };
@@ -40,12 +50,16 @@ export default function BookingPage() {
   const [selectedTime, setSelectedTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState<{ reference: string; whenLabel: string } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/book/${id}?type=${type}&token=${encodeURIComponent(token)}`, {
+      const coordQs = coords ? `&lat=${coords.lat}&lng=${coords.lng}` : "";
+      const res = await fetch(`/api/book/${id}?type=${type}&token=${encodeURIComponent(token)}${coordQs}`, {
         cache: "no-store",
       });
       const json = await res.json();
@@ -59,11 +73,36 @@ export default function BookingPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, type, token]);
+  }, [id, type, token, coords]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setLocateError("Location isn't supported on this device. We'll use your address instead.");
+      return;
+    }
+    setLocating(true);
+    setLocateError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSelectedDate("");
+        setSelectedTime("");
+        setCoords({
+          lat: Math.round(pos.coords.latitude * 1e6) / 1e6,
+          lng: Math.round(pos.coords.longitude * 1e6) / 1e6,
+        });
+        setLocating(false);
+      },
+      () => {
+        setLocateError("We couldn't access your location. We'll use your address instead.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  }
 
   const selectedDay = data?.days.find((d) => d.date === selectedDate) || null;
 
@@ -75,7 +114,13 @@ export default function BookingPage() {
       const res = await fetch(`/api/book/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, type, date: selectedDate, time: selectedTime }),
+        body: JSON.stringify({
+          token,
+          type,
+          date: selectedDate,
+          time: selectedTime,
+          ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -140,9 +185,28 @@ export default function BookingPage() {
               <p className="text-sm text-slate-500 mt-1">
                 Hi {data.customer.name || "there"}, choose a day and time that suits you.
               </p>
-              <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#001f97] bg-[#001f97]/10 px-2.5 py-1 rounded-full">
-                📍 {data.area.label}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#001f97] bg-[#001f97]/10 px-2.5 py-1 rounded-full">
+                  📍 {data.area.label}
+                  {data.area.distanceKm != null ? ` · ${data.area.distanceKm} km from Tullamarine` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={useMyLocation}
+                  disabled={locating}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
+                >
+                  {locating ? "Locating…" : data.area.located ? "↻ Update my location" : "📍 Use my current location"}
+                </button>
               </div>
+              {data.area.located && (
+                <p className="mt-1.5 text-[11px] text-emerald-600 font-medium">
+                  ✓ Days below are matched to your exact location.
+                </p>
+              )}
+              {locateError && (
+                <p className="mt-1.5 text-[11px] text-amber-600">{locateError}</p>
+              )}
             </div>
 
             {data.current && (
@@ -185,21 +249,36 @@ export default function BookingPage() {
                       Select time
                     </label>
                     <div className="grid grid-cols-3 gap-2">
-                      {selectedDay.times.map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setSelectedTime(t)}
-                          className={`py-2.5 rounded-xl text-sm font-bold border transition-colors ${
-                            selectedTime === t
-                              ? "bg-[#001f97] text-white border-[#001f97]"
-                              : "bg-white text-slate-700 border-slate-300 hover:border-[#001f97]"
-                          }`}
-                        >
-                          {timeLabel(t)}
-                        </button>
-                      ))}
+                      {selectedDay.slots.map((s) => {
+                        const isSelected = selectedTime === s.time;
+                        return (
+                          <button
+                            key={s.time}
+                            type="button"
+                            disabled={s.booked}
+                            onClick={() => !s.booked && setSelectedTime(s.time)}
+                            className={`py-2.5 rounded-xl text-sm font-bold border transition-colors relative ${
+                              s.booked
+                                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through decoration-slate-400"
+                                : isSelected
+                                ? "bg-[#001f97] text-white border-[#001f97]"
+                                : "bg-white text-slate-700 border-slate-300 hover:border-[#001f97]"
+                            }`}
+                            title={s.booked ? "Already booked by another customer" : undefined}
+                          >
+                            {timeLabel(s.time)}
+                            {s.booked && (
+                              <span className="block text-[9px] font-semibold not-italic no-underline text-rose-400 leading-none mt-0.5">
+                                Booked
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      Greyed-out times are already booked by other customers.
+                    </p>
                   </div>
                 )}
 
