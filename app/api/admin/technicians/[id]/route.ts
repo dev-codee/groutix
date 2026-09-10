@@ -4,7 +4,7 @@ import { deleteTechnician } from "@/lib/technicians";
 
 export const runtime = "nodejs";
 
-const ALLOWED = ["field", "manager", "super_admin"];
+const ALLOWED = ["field", "technician", "manager", "super_admin"];
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);

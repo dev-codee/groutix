@@ -133,7 +133,7 @@ export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) 
 export function roleQueue(role: Role): string[] {
   if (role === "manager" || role === "super_admin") return STATUS_KEYS;
   if (role === "intake") return INTAKE_STATUSES;
-  if (role === "field") return FIELD_STATUSES;
+  if (role === "field" || role === "technician") return FIELD_STATUSES;
   if (role === "finance") return FINANCE_STATUSES;
   return STATUS_KEYS;
 }
@@ -157,9 +157,9 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Lost",
     ].includes(status);
   }
-  if (role === "field") {
-    // Field owns the inspection visit and (after acceptance) the job visit,
-    // up to Job Done which hands off to finance.....
+  if (role === "field" || role === "technician") {
+    // Field / Technician owns the inspection visit and (after acceptance) the job visit,
+    // up to Job Done which hands off to finance.
     return [
       "Inspection Booked",
       "Inspection En Route",

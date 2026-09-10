@@ -5,7 +5,7 @@ import { listTechnicians, addTechnician } from "@/lib/technicians";
 export const runtime = "nodejs";
 
 // Field techs are dispatched by the Field login (Login 2) and by managers.
-const ALLOWED = ["field", "manager", "super_admin"];
+const ALLOWED = ["field", "technician", "manager", "super_admin"];
 
 async function requireDispatcher(req: NextRequest) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);

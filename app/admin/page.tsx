@@ -327,7 +327,7 @@ const STAGE_GROUP_ACCENT: Record<StageGroup, { dot: string; value: string }> = {
 export function getRoleStatusOptions(role: Role, currentStatus?: string): string[] {
   let base: string[];
   if (role === "intake") base = INTAKE_STATUSES;
-  else if (role === "field") base = FIELD_STATUSES;
+  else if (role === "field" || role === "technician") base = FIELD_STATUSES;
   else if (role === "finance") base = FINANCE_STATUSES;
   else base = STATUS_LIST;
 
@@ -792,7 +792,7 @@ export default function CrmDashboardPage() {
 
   // Field / Scheduling (Login 2) + managers can add technicians and dispatch
   // them to jobs. The API enforces this too; this just gates the UI.
-  const canManageTechs = role === "field" || role === "manager" || role === "super_admin";
+  const canManageTechs = role === "field" || role === "technician" || role === "manager" || role === "super_admin";
   // Per-role visibility for the lead-row sections (managers/super-admins see all).
   // Field tools (live visit, job status, tech dispatch) reuse canManageTechs.
   const showFinanceTools = role === "finance" || role === "manager" || role === "super_admin";
@@ -3691,15 +3691,16 @@ export default function CrmDashboardPage() {
   // unless the manager explicitly toggles showLegacyLeads.
   const scopedLeads = useMemo(() => {
     const roleScoped = role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status));
-    if (isManager && showLegacyLeads) return roleScoped;
+    if (showLegacyLeads) return roleScoped;
     if (newLeadsCutoffMs <= 0) return roleScoped;
     return roleScoped.filter((l) => !isLegacyLead(l, newLeadsCutoffMs));
-  }, [leads, role, isManager, showLegacyLeads, newLeadsCutoffMs]);
+  }, [leads, role, showLegacyLeads, newLeadsCutoffMs]);
 
   const hiddenLegacyCount = useMemo(() => {
-    if (!isManager || newLeadsCutoffMs <= 0) return 0;
-    return leads.filter((l) => isLegacyLead(l, newLeadsCutoffMs)).length;
-  }, [leads, isManager, newLeadsCutoffMs]);
+    if (newLeadsCutoffMs <= 0) return 0;
+    const pool = role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status));
+    return pool.filter((l) => isLegacyLead(l, newLeadsCutoffMs)).length;
+  }, [leads, role, newLeadsCutoffMs]);
 
   // Filtering & Search
   const filteredLeads = useMemo(() => {
@@ -4622,6 +4623,70 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "leads" && (
             <div className="space-y-6">
+              {/* Today at a glance — hero shortcut bar to run the whole business from one screen. */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#001f97] to-[#0a34c4] text-white p-6 shadow-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-white/60">
+                      Groutix Operations
+                    </div>
+                    <h2 className="text-2xl font-black mt-1">Today at a glance</h2>
+                    <p className="text-sm text-white/70 mt-1">
+                      Run the whole business from one screen.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentView("jobs")}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-bold transition-colors backdrop-blur-sm cursor-pointer"
+                    >
+                      <Briefcase className="w-4 h-4" />
+                      Open Dispatch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openInbox}
+                      className="relative flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-bold transition-colors backdrop-blur-sm cursor-pointer"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Open Inbox
+                      {unreadReplyCount > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                          {unreadReplyCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startNewLead}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#001f97] text-sm font-black hover:bg-white/90 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                      New Lead
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowLegacyLeads((v) => !v)}
+                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors backdrop-blur-sm cursor-pointer ${
+                        showLegacyLeads
+                          ? "bg-amber-400 text-[#001f97] hover:bg-amber-300"
+                          : "bg-white/15 text-white hover:bg-white/25"
+                      }`}
+                      title={showLegacyLeads ? "Hide legacy leads" : `Show ${hiddenLegacyCount > 0 ? hiddenLegacyCount : ""} archived legacy leads`}
+                    >
+                      <Eye className="w-4 h-4" />
+                      {showLegacyLeads ? "Hide Legacy" : "Show Legacy"}
+                      {!showLegacyLeads && hiddenLegacyCount > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                          {hiddenLegacyCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Pipeline by Stage (for Leads view / Login 1) */}
               <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
@@ -4837,7 +4902,7 @@ export default function CrmDashboardPage() {
                     <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
-                ) : role === "field" ? (
+                ) : role === "field" || role === "technician" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
                     <div className="col-span-3">CLIENT DETAILS</div>
                     <div className="col-span-3">STATUS &amp; DISPATCH</div>
@@ -4866,7 +4931,7 @@ export default function CrmDashboardPage() {
                     if ((role as string) === "intake") {
                       return renderIntakeLeadRow(l);
                     }
-                    if ((role as string) === "field") {
+                    if ((role as string) === "field" || (role as string) === "technician") {
                       return renderFieldLeadRow(l);
                     }
                     if ((role as string) === "finance") {
@@ -5686,7 +5751,7 @@ export default function CrmDashboardPage() {
                             { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                             ...single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]),
                           ]
-                          : role === "field"
+                          : role === "field" || role === "technician"
                             ? [
                               { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                               ...single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]),
@@ -5800,7 +5865,7 @@ export default function CrmDashboardPage() {
                       // buttons (the micro-stages stay out of the filter to reduce noise).
                       const boardStatuses = getRoleStatusOptions(role);
                       const filterOptions =
-                        role === "field"
+                        role === "field" || role === "technician"
                           ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
                           : role === "finance"
                             ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
@@ -5843,7 +5908,7 @@ export default function CrmDashboardPage() {
                     <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
-                ) : role === "field" ? (
+                ) : role === "field" || role === "technician" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
                     <div className="col-span-3">CLIENT DETAILS</div>
                     <div className="col-span-3">STATUS &amp; DISPATCH</div>
@@ -5874,7 +5939,7 @@ export default function CrmDashboardPage() {
                       if ((role as string) === "intake") {
                         return renderIntakeLeadRow(l);
                       }
-                      if ((role as string) === "field") {
+                      if ((role as string) === "field" || (role as string) === "technician") {
                         return renderFieldLeadRow(l);
                       }
                       if ((role as string) === "finance") {
@@ -6250,7 +6315,7 @@ export default function CrmDashboardPage() {
                                 })()}
 
                                 {/* Hand-off: Field → Booking Office */}
-                                {(role === "field" || role === "manager") &&
+                                {(role === "field" || role === "technician" || role === "manager") &&
                                   (INSPECTION_PHASE.includes(l.status) || l.status === "Inspection Completed") && (
                                     <div className="pt-1">
                                       {l.status === "Inspection Completed" ? (
@@ -6455,7 +6520,7 @@ export default function CrmDashboardPage() {
                                 >
                                   {(role === "finance"
                                     ? FINANCE_STATUSES
-                                    : role === "field"
+                                    : role === "field" || role === "technician"
                                       ? JOB_STATUSES
                                       : role === "intake"
                                         ? getRoleStatusOptions(role, l.status)
@@ -6519,7 +6584,7 @@ export default function CrmDashboardPage() {
                                 </div>
                               )}
 
-                              {(role === "field" || role === "manager") && (
+                              {(role === "field" || role === "technician" || role === "manager") && (
                                 <div className="pt-0.5">
                                   <div className="flex items-center justify-between mb-1">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -6926,8 +6991,7 @@ export default function CrmDashboardPage() {
                   <h2 className="text-base font-black text-slate-900">Add a Field Technician</h2>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
-                  Technicians are dispatched to inspections and jobs and notified by email. They are
-                  not login accounts — add CRM staff logins under Staff Accounts.
+                  Technicians are dispatched to inspections and jobs. To allow a technician to log into the portal, create their account in Staff Accounts with the <b>Technician / Inspection</b> role.
                 </p>
                 <form onSubmit={handleAddTechnician} className="flex flex-col sm:flex-row gap-3">
                   <input
