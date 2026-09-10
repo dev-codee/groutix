@@ -9,6 +9,7 @@ import {
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { buildWarrantyPdfBase64 } from "@/lib/warrantyPdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -61,8 +62,31 @@ export async function POST(req: NextRequest) {
     sentAt: now.toISOString(),
   };
 
-  // Optional PNG card generated client-side (canvas dataURL).
+  // Generate the official 2-page executive Warranty PDF
   const attachments: EmailAttachment[] = [];
+  try {
+    const pdfBase64 = await buildWarrantyPdfBase64({
+      jobNo: warranty.jobNo || warrantyNo,
+      completionDate: warranty.completionDate || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
+      expiryDate: warranty.expiryDate || "",
+      customerName: warranty.customerName || lead.name || "Customer",
+      address: warranty.address || lead.address || "",
+      authorisedBy: warranty.authorisedBy || "GROUTIX PTY LTD",
+      dateIssued: warranty.dateIssued || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
+      phone: "70238094",
+      email: "info@groutix.com",
+      website: "www.groutix.com",
+    });
+    attachments.push({
+      name: `Groutix_Warranty_${warrantyNo}.pdf`,
+      content: pdfBase64,
+      contentType: "application/pdf",
+    });
+  } catch (e) {
+    console.error("Could not generate warranty PDF attachment:", e);
+  }
+
+  // Also attach PNG card if provided
   if (body.imageDataUrl && body.imageDataUrl.startsWith("data:")) {
     const comma = body.imageDataUrl.indexOf(",");
     const meta = body.imageDataUrl.slice(5, comma); // e.g. image/png;base64

@@ -35,6 +35,11 @@ export async function POST(req: NextRequest) {
     price?: number;
     gst?: number;
     status?: string;
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    bsb?: string;
+    dueDate?: string;
   };
   try {
     body = await req.json();
@@ -56,6 +61,11 @@ export async function POST(req: NextRequest) {
   const service = body.service || lead.service || "Regrouting & waterproof resealing";
   const description = body.description || "";
   const status = body.status === "Paid" ? "Paid" : "Unpaid";
+  const bankName = body.bankName || "ANZ";
+  const accountName = body.accountName || "Groutix Pty Ltd";
+  const accountNumber = body.accountNumber || "123456789";
+  const bsb = body.bsb || "013442";
+  const dueDate = body.dueDate || "Within 7 days of invoice date";
 
   // Deterministic invoice number so the preview and the emailed copy match.
   const invoiceNumber = lead.invoiceNumber || `INV-${body.id.slice(-6).toUpperCase()}`;
@@ -104,9 +114,19 @@ export async function POST(req: NextRequest) {
       </table>
     </div>
 
-    <p style="margin:0 0 20px;">Payment status: ${statusBadge}</p>
+    <p style="margin:0 0 16px;">Payment status: ${statusBadge}</p>
+
+    <div style="margin:20px 0;padding:16px;border:1px solid #fca5a5;border-radius:8px;background:#fff5f5;font-size:13px;line-height:1.6;color:#1e293b;">
+      <div style="font-weight:800;color:#0f172a;font-size:14px;margin-bottom:6px;">PAYMENT INFORMATION</div>
+      <div>• Bank Name: <b>${esc(bankName)}</b></div>
+      <div>• Account Name: <b>${esc(accountName)}</b></div>
+      <div>• Account Number: <b>${esc(accountNumber)}</b></div>
+      <div>• BSB: <b>${esc(bsb)}</b></div>
+    </div>
+
     <div style="margin:20px 0;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
-      All services and payments are subject to <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>.
+      <div>• Payment is due ${esc(dueDate)}.</div>
+      <div>• Access our Terms &amp; Conditions: <a href="https://groutix.com/terms-and-conditions/" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/terms-and-conditions/</a></div>
     </div>
     <p style="margin:20px 0 0;">Thank you for choosing Groutix. Reply to this email if you have any questions about this invoice.</p>
     ${invoiceTrackingPixel(body.id)}`;
@@ -127,10 +147,16 @@ export async function POST(req: NextRequest) {
       address: lead.address,
       phone: lead.phone,
       email: lead.email,
+      jobDescription: lead.issue || lead.message || service,
       items: [{ service, description, price: total, qty: 1 }],
       subtotal,
       gst,
       total,
+      bankName,
+      accountName,
+      accountNumber,
+      bsb,
+      dueDate,
     });
     attachments.push({
       name: `Groutix_Invoice_${invoiceNumber}.pdf`,

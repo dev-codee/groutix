@@ -10,6 +10,7 @@ import {
 import { verifyBookingToken } from "@/lib/bookingToken";
 import {
   resolveArea,
+  resolveAreaByCoords,
   computeAvailability,
   isSlotOffered,
   type AreaInfo,
@@ -58,6 +59,26 @@ function esc(v: string) {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Resolve the customer's service area. Precise GPS coordinates (captured via the
+// booking page "use my location" button) win over the lead's stored address text
+// because they classify the 15 km Tullamarine circle and corridor day exactly.
+function resolveLeadArea(
+  lead: { address?: string | null; city?: string | null },
+  lat?: number | null,
+  lng?: number | null
+): AreaInfo {
+  if (typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng)) {
+    return resolveAreaByCoords(lat, lng);
+  }
+  return resolveArea(lead.address || lead.city);
+}
+
+function parseCoord(v: string | null | undefined): number | null {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 async function buildMaps(area: AreaInfo, currentLeadId?: string) {
   const bookings = await listUpcomingBookings();
   const bookedByDate = new Map<string, Set<string>>();
@@ -94,7 +115,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 
-  const area = resolveArea(lead.address || lead.city);
+  const lat = parseCoord(req.nextUrl.searchParams.get("lat"));
+  const lng = parseCoord(req.nextUrl.searchParams.get("lng"));
+  const area = resolveLeadArea(lead, lat, lng);
   const { bookedByDate, sameZoneDates } = await buildMaps(area, id);
   const days = computeAvailability(area, bookedByDate, sameZoneDates);
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
@@ -102,7 +125,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({
     customer: { name: lead.name || "", address: lead.address || "" },
     type,
-    area: { label: area.label, inner: area.inner, suburb: area.suburb },
+    area: {
+      label: area.label,
+      inner: area.inner,
+      suburb: area.suburb,
+      zone: area.zone,
+      distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
+      located: lat != null && lng != null,
+    },
     days,
     current: already || null,
   });
@@ -111,7 +141,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // ── POST: lock a slot & confirm the booking ────────────────────────────────
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let body: { token?: string; type?: string; date?: string; time?: string };
+  let body: { token?: string; type?: string; date?: string; time?: string; lat?: number; lng?: number };
   try {
     body = await req.json();
   } catch {
@@ -132,7 +162,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "This booking link is no longer active." }, { status: 409 });
   }
 
-  const area = resolveArea(lead.address || lead.city);
+  const area = resolveLeadArea(
+    lead,
+    typeof body.lat === "number" ? body.lat : null,
+    typeof body.lng === "number" ? body.lng : null
+  );
   if (!isSlotOffered(area, date, time)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }

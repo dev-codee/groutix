@@ -19,6 +19,7 @@ import {
   Navigation,
   ShieldCheck,
   Edit3,
+  Save,
   Trash2,
   Search,
   CheckSquare,
@@ -53,6 +54,7 @@ import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STAT
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
+  DEFAULT_QUOTE_CONDITIONS,
   GROUTIX_QUOTE_TERMS
 } from "@/lib/serviceTemplates";
 import {
@@ -64,6 +66,7 @@ import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
+import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
 
 export interface QuoteItem {
   templateNo?: string | number;
@@ -859,6 +862,18 @@ export default function CrmDashboardPage() {
 
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(EMAIL_TEMPLATES);
+  const [manageTemplatesModalOpen, setManageTemplatesModalOpen] = useState(false);
+  const [templateFormOpen, setTemplateFormOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [formCategory, setFormCategory] = useState("General");
+  const [formName, setFormName] = useState("");
+  const [formSubject, setFormSubject] = useState("");
+  const [formBody, setFormBody] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [replySubject, setReplySubject] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [replyText, setReplyText] = useState("");
   // Files staged to email along with the next reply. `content` is base64 for the
   // API; the rest is metadata used for the chip UI and the logged message.
@@ -874,6 +889,7 @@ export default function CrmDashboardPage() {
 
   const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
   const [activeWarrantyLead, setActiveWarrantyLead] = useState<Lead | null>(null);
+  const [warrantyTab, setWarrantyTab] = useState<"page1" | "page2">("page1");
   const [warrantyJobNo, setWarrantyJobNo] = useState("");
   const [warrantyCompletion, setWarrantyCompletion] = useState("");
   const [warrantyExpiry, setWarrantyExpiry] = useState("");
@@ -881,7 +897,16 @@ export default function CrmDashboardPage() {
   const [warrantyAddress, setWarrantyAddress] = useState("");
   const [warrantyAuthorised, setWarrantyAuthorised] = useState("GROUTIX PTY LTD");
   const [warrantyIssued, setWarrantyIssued] = useState("");
+  const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Preload the Groutix logo image once so the warranty card renders the real
+  // brand mark (not "GROUTIX" text) and is present when exporting to PNG.
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setWarrantyLogo(img);
+    img.src = "/logo.png";
+  }, []);
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [activeInvoiceLead, setActiveInvoiceLead] = useState<Lead | null>(null);
@@ -893,6 +918,11 @@ export default function CrmDashboardPage() {
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
   const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [invoiceBankName, setInvoiceBankName] = useState("ANZ");
+  const [invoiceAccountName, setInvoiceAccountName] = useState("Groutix Pty Ltd");
+  const [invoiceAccountNumber, setInvoiceAccountNumber] = useState("123456789");
+  const [invoiceBsb, setInvoiceBsb] = useState("013442");
+  const [invoiceDueDate, setInvoiceDueDate] = useState("Within 7 days of invoice date");
 
   const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
   const [activeInspectionLead, setActiveInspectionLead] = useState<Lead | null>(null);
@@ -1103,6 +1133,39 @@ export default function CrmDashboardPage() {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatMessages, chatWith]);
+
+  // Fetch dynamic email templates (persisted in DB or localStorage)
+  const fetchTemplates = useCallback(async () => {
+    try {
+      if (typeof window !== "undefined") {
+        const cached = localStorage.getItem("gx_email_templates");
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setEmailTemplates(parsed);
+            }
+          } catch {}
+        }
+      }
+      const res = await fetch("/api/admin/email-templates");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.templates) && data.templates.length > 0) {
+          setEmailTemplates(data.templates);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("gx_email_templates", JSON.stringify(data.templates));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load email templates:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   // Total unread team-chat messages across all senders — badges the Team nav.
   const totalUnread = useMemo(
@@ -1443,12 +1506,8 @@ export default function CrmDashboardPage() {
   }
 
   function emailCustomer(l: Lead) {
-    if (!l.email) return alert("No email address saved.");
-    const subject = encodeURIComponent("Groutix - Your Enquiry");
-    const body = encodeURIComponent(
-      `Hi ${l.name || ""},\n\nThank you for contacting Groutix regarding your enquiry.\n\nRegards,\nGroutix Team`
-    );
-    window.location.href = `mailto:${l.email}?subject=${subject}&body=${body}`;
+    if (!l.email) return alert("This customer does not have an email address saved.");
+    openMessagesModal(l);
   }
 
   // Quote Builder Logic
@@ -1470,7 +1529,9 @@ export default function CrmDashboardPage() {
     setQuoteItems(initialItems);
     setQuoteTaxMode(lead.quoteTaxMode || "inclusive");
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
-    setQuoteTerms(lead.quoteTerms || GROUTIX_QUOTE_TERMS.slice(0, 300));
+    const existingTerms = (lead.quoteTerms || "").trim();
+    const isFullTermsDump = existingTerms.length > 500 || /^Groutix terms and conditions/i.test(existingTerms);
+    setQuoteTerms(!existingTerms || isFullTermsDump ? DEFAULT_QUOTE_CONDITIONS : existingTerms);
     setQuoteModalOpen(true);
   }
 
@@ -1580,7 +1641,9 @@ export default function CrmDashboardPage() {
       quoteAmount: total,
       quoteUpdated: new Date().toISOString(),
     });
-    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}`, "_blank");
+    const itemsParam = encodeURIComponent(JSON.stringify(quoteItems));
+    const notesParam = encodeURIComponent(quoteTerms || "");
+    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}&t=${Date.now()}`, "_blank");
   }
 
   function handleEmailQuote() {
@@ -1592,8 +1655,8 @@ export default function CrmDashboardPage() {
       `Thank you for your enquiry. We have prepared your quotation for AUD $${total.toFixed(2)}.\n\n` +
       `Items:\n` +
       quoteItems.map((item, i) => `${i + 1}. ${item.service} - $${Number(item.price || 0).toFixed(2)}`).join("\n") +
-      `\n\nAll works are subject to Groutix Terms & Conditions: https://groutix.com.au/terms-conditions\n\n` +
-      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n(03) 7023 8094`
+      `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
+      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n1300 476 884`
     );
     window.location.href = `mailto:${activeQuoteLead.email}?subject=${subject}&body=${body}`;
   }
@@ -1605,7 +1668,7 @@ export default function CrmDashboardPage() {
     const text = encodeURIComponent(
       `Hi ${activeQuoteLead.name || ""}, your Groutix quote is ready for AUD $${total.toFixed(2)}.\n\n` +
       quoteItems.map((item, i) => `• ${item.service}: $${Number(item.price || 0).toFixed(2)}`).join("\n") +
-      `\n\nTerms & Conditions: https://groutix.com.au/terms-conditions\n\nStay Sealed. Stay Smiling. - Groutix`
+      `\n\nOfficial terms and conditions are included directly with your quote document.\n\nStay Sealed. Stay Smiling. - Groutix`
     );
     window.open(`https://wa.me/${phone.startsWith("0") ? "61" + phone.slice(1) : phone}?text=${text}`, "_blank");
   }
@@ -1737,6 +1800,8 @@ export default function CrmDashboardPage() {
     }
 
     setActiveMessageLead(currentLead);
+    setSelectedTemplateId("");
+    setReplySubject(`Re: Groutix Enquiry - ${currentLead.name || "Customer"}`);
     setReplyText("");
     setReplyAttachments([]);
     setMessagesModalOpen(true);
@@ -1799,6 +1864,197 @@ export default function CrmDashboardPage() {
     setReplyAttachments((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function handleSelectEmailTemplate(templateId: string) {
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+    const template = emailTemplates.find((t) => t.id === templateId);
+    if (!template || !activeMessageLead) return;
+
+    const leadCtx = activeMessageLeadLive || activeMessageLead;
+    const rendered = renderEmailTemplate(template, leadCtx);
+
+    if (replyText.trim() && replyText.trim() !== "") {
+      const confirmReplace = window.confirm("Replace your current email text with the selected template?");
+      if (!confirmReplace) return;
+    }
+
+    setReplySubject(rendered.subject);
+    setReplyText(rendered.body);
+  }
+
+  function handleOpenCreateTemplate() {
+    setEditingTemplate(null);
+    setFormCategory("General");
+    setFormName("");
+    setFormSubject("");
+    setFormBody("");
+    setFormDescription("");
+    setTemplateFormOpen(true);
+  }
+
+  function handleOpenEditTemplate(tmpl: EmailTemplate) {
+    setEditingTemplate(tmpl);
+    setFormCategory(tmpl.category || "General");
+    setFormName(tmpl.name);
+    setFormSubject(tmpl.subject);
+    setFormBody(tmpl.body);
+    setFormDescription(tmpl.description || "");
+    setTemplateFormOpen(true);
+  }
+
+  async function handleSaveTemplate() {
+    if (!formName.trim()) {
+      alert("Please enter a template name.");
+      return;
+    }
+    if (!formBody.trim()) {
+      alert("Please enter the email body text.");
+      return;
+    }
+
+    setSavingTemplate(true);
+    const tmpl: EmailTemplate = {
+      id: editingTemplate ? editingTemplate.id : `tmpl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      category: formCategory.trim() || "General",
+      name: formName.trim(),
+      description: formDescription.trim(),
+      subject: formSubject.trim() || "Re: Groutix Enquiry",
+      body: formBody.trim(),
+    };
+
+    try {
+      const res = await fetch("/api/admin/email-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tmpl),
+      });
+      if (!res.ok) throw new Error("Failed to save template");
+
+      setEmailTemplates((prev) => {
+        const exists = prev.some((t) => t.id === tmpl.id);
+        const updated = exists ? prev.map((t) => (t.id === tmpl.id ? tmpl : t)) : [...prev, tmpl];
+        if (typeof window !== "undefined") {
+          localStorage.setItem("gx_email_templates", JSON.stringify(updated));
+        }
+        return updated;
+      });
+
+      setTemplateFormOpen(false);
+      setEditingTemplate(null);
+    } catch (err) {
+      console.error(err);
+      alert("Could not save to server. Saved locally.");
+      setEmailTemplates((prev) => {
+        const exists = prev.some((t) => t.id === tmpl.id);
+        const updated = exists ? prev.map((t) => (t.id === tmpl.id ? tmpl : t)) : [...prev, tmpl];
+        if (typeof window !== "undefined") {
+          localStorage.setItem("gx_email_templates", JSON.stringify(updated));
+        }
+        return updated;
+      });
+      setTemplateFormOpen(false);
+      setEditingTemplate(null);
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  async function handleDeleteTemplate(id: string) {
+    const tmpl = emailTemplates.find((t) => t.id === id);
+    if (!window.confirm(`Are you sure you want to delete the template "${tmpl?.name || id}"?`)) return;
+
+    try {
+      await fetch(`/api/admin/email-templates?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error(err);
+    }
+
+    setEmailTemplates((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("gx_email_templates", JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (selectedTemplateId === id) {
+      setSelectedTemplateId("");
+    }
+  }
+
+  async function handleResetTemplates() {
+    if (!window.confirm("Reset all templates back to standard Groutix defaults? Any custom templates will be removed.")) return;
+    try {
+      const res = await fetch("/api/admin/email-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.templates)) {
+          setEmailTemplates(data.templates);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("gx_email_templates", JSON.stringify(data.templates));
+          }
+          return;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    // Fallback reset
+    setEmailTemplates(EMAIL_TEMPLATES);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gx_email_templates", JSON.stringify(EMAIL_TEMPLATES));
+    }
+  }
+
+  function handleInsertVariable(variableName: string) {
+    if (!activeMessageLead) return;
+    const leadCtx = activeMessageLeadLive || activeMessageLead;
+    let val = "";
+    switch (variableName) {
+      case "name":
+        val = leadCtx.name?.trim() || "Customer";
+        break;
+      case "firstName":
+        val = leadCtx.name?.trim().split(/\s+/)[0] || "there";
+        break;
+      case "service":
+        val = leadCtx.service?.trim() || "tiling & grouting service";
+        break;
+      case "address":
+        val = leadCtx.address?.trim() || [leadCtx.city, leadCtx.state].filter(Boolean).join(", ") || "your property";
+        break;
+      case "phone":
+        val = leadCtx.phone || "";
+        break;
+      case "quoteAmount":
+        val = leadCtx.quoteAmount ? `$${Number(leadCtx.quoteAmount).toFixed(2)}` : "";
+        break;
+      case "technician":
+        val = leadCtx.technician || leadCtx.assigned || "our specialist";
+        break;
+      default:
+        val = "";
+    }
+    if (!val) return;
+    setReplyText((prev) => (prev ? `${prev} ${val}` : val));
+  }
+
+  function handleOpenMailApp() {
+    if (!activeMessageLead?.email) {
+      alert("This customer does not have an email address on file.");
+      return;
+    }
+    const subj = encodeURIComponent(replySubject.trim() || `Re: Groutix Enquiry - ${activeMessageLead.name || "Customer"}`);
+    const body = encodeURIComponent(replyText.trim());
+    window.location.href = `mailto:${activeMessageLead.email}?subject=${subj}&body=${body}`;
+  }
+
   async function handleSendReply() {
     if (!activeMessageLead) return;
     if (!replyText.trim() && replyAttachments.length === 0) return;
@@ -1814,7 +2070,7 @@ export default function CrmDashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: "Re: Groutix Enquiry",
+          subject: replySubject.trim() || `Re: Groutix Enquiry - ${activeMessageLead.name || "Customer"}`,
           text: replyText.trim(),
           attachments: replyAttachments,
         })
@@ -1828,6 +2084,7 @@ export default function CrmDashboardPage() {
       setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
       setLeads((prev) => prev.map(l => l.id === activeMessageLead.id ? { ...l, messages: updated } : l));
       setReplyText("");
+      setSelectedTemplateId("");
       setReplyAttachments([]);
     } catch (err) {
       alert("Failed to send email reply. Check console for details.");
@@ -1901,6 +2158,7 @@ export default function CrmDashboardPage() {
     setWarrantyAddress(lead.warranty?.address || lead.address || "");
     setWarrantyAuthorised(lead.warranty?.authorisedBy || "GROUTIX PTY LTD");
     setWarrantyIssued(lead.warranty?.dateIssued || today);
+    setWarrantyTab("page1");
     setWarrantyModalOpen(true);
   }
 
@@ -1910,80 +2168,418 @@ export default function CrmDashboardPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // A4 portrait: 1000 x 1414
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Background
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
 
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    grad.addColorStop(0, "#001f97");
-    grad.addColorStop(1, "#1667e8");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, 160);
+    // Decorative corner waves (on both pages)
+    const drawCornerSwooshes = () => {
+      // Top-right swooshes
+      ctx.save();
+      // Outer cyan curve
+      ctx.beginPath();
+      ctx.arc(W + 50, -30, 230, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00a8cc";
+      ctx.lineWidth = 14;
+      ctx.stroke();
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 52px Arial, sans-serif";
-    ctx.fillText("GROUTIX", 60, 95);
-    ctx.font = "bold 26px Arial, sans-serif";
-    ctx.fillText("10-YEAR WATERPROOF WARRANTY CERTIFICATE", 380, 95);
+      // Inner navy circle
+      ctx.beginPath();
+      ctx.arc(W + 50, -30, 200, 0, Math.PI * 2);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
 
-    ctx.fillStyle = "#1e293b";
-    ctx.font = "bold 24px Arial, sans-serif";
-    ctx.fillText("Customer Details & Work Information", 60, 230);
+      // Bottom-left swooshes
+      ctx.save();
+      // Outer cyan curve
+      ctx.beginPath();
+      ctx.arc(-50, H + 30, 230, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00a8cc";
+      ctx.lineWidth = 14;
+      ctx.stroke();
 
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(60, 260, canvas.width - 120, 480);
+      // Inner navy circle
+      ctx.beginPath();
+      ctx.arc(-50, H + 30, 200, 0, Math.PI * 2);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
+    };
 
-    ctx.font = "20px Arial, sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText("Job / Certificate No:", 90, 320);
-    ctx.fillText("Customer Name:", 90, 390);
-    ctx.fillText("Property Address:", 90, 460);
-    ctx.fillText("Completion Date:", 90, 530);
-    ctx.fillText("Warranty Expiry Date:", 90, 600);
-    ctx.fillText("Authorised Issuer:", 90, 670);
+    drawCornerSwooshes();
 
-    ctx.font = "bold 22px Arial, sans-serif";
-    ctx.fillStyle = "#0f172a";
-    ctx.fillText(warrantyJobNo, 380, 320);
-    ctx.fillText(warrantyCustomer, 380, 390);
-    ctx.fillText(warrantyAddress, 380, 460);
-    ctx.fillText(fmtDateOnly(warrantyCompletion), 380, 530);
-    ctx.fillStyle = "#16a05e";
-    ctx.fillText(fmtDateOnly(warrantyExpiry) + " (10 Years Guaranteed)", 380, 600);
-    ctx.fillStyle = "#0f172a";
-    ctx.fillText(warrantyAuthorised, 380, 670);
+    // Helper text wrapper
+    function wrapText(
+      text: string,
+      x: number,
+      y: number,
+      maxWidth: number,
+      lineHeight: number
+    ): number {
+      const words = text.split(" ");
+      let line = "";
+      let curY = y;
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + " ";
+        const metrics = ctx!.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx!.fillText(line, x, curY);
+          line = words[n] + " ";
+          curY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx!.fillText(line, x, curY);
+      return curY + lineHeight;
+    }
 
-    ctx.font = "14px Arial, sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText(
-      "This warranty guarantees against water penetration through regrouted tiled areas under normal domestic use subject to Clause 12 of Groutix Terms & Conditions.",
-      60,
-      790
-    );
-    ctx.fillText(
-      "Terms & Conditions: https://groutix.com.au/terms-conditions  •  Claims must be submitted in writing within 10 business days of defect.",
-      60,
-      820
-    );
-    ctx.fillText(
-      "Groutix Pty Ltd • ACN: 687 415 005 • Melbourne, VIC • Phone: (03) 7023 8094 • info@groutix.com",
-      60,
-      850
-    );
+    // Shared: draw the real Groutix logo (falls back to text only if unavailable)
+    const drawLogo = (x: number, y: number, targetH: number) => {
+      if (warrantyLogo && warrantyLogo.naturalWidth) {
+        const w = (warrantyLogo.naturalWidth / warrantyLogo.naturalHeight) * targetH;
+        ctx!.drawImage(warrantyLogo, x, y, w, targetH);
+      } else {
+        ctx!.fillStyle = "#071c4d";
+        ctx!.font = "bold 40px Arial, sans-serif";
+        ctx!.fillText("GROUTIX", x, y + targetH * 0.78);
+      }
+    };
+
+    // Shared: navy footer banner with contact badges + page label
+    const drawWarrantyFooter = (pageLabel: string) => {
+      const fY = H - 70;
+      ctx!.fillStyle = "#071c4d";
+      ctx!.fillRect(0, fY, W, 70);
+      const cy = fY + 35;
+      const badge = (cx: number, icon: string) => {
+        ctx!.beginPath();
+        ctx!.arc(cx, cy, 13, 0, Math.PI * 2);
+        ctx!.fillStyle = "#00a8cc";
+        ctx!.fill();
+        ctx!.fillStyle = "#ffffff";
+        ctx!.font = "bold 13px Arial, sans-serif";
+        ctx!.textAlign = "center";
+        ctx!.fillText(icon, cx, cy + 5);
+        ctx!.textAlign = "left";
+      };
+      ctx!.textBaseline = "middle";
+      badge(78, "P");
+      ctx!.fillStyle = "#ffffff";
+      ctx!.font = "bold 16px Arial, sans-serif";
+      ctx!.fillText("70238094", 100, cy);
+      ctx!.fillStyle = "#3f5f9a";
+      ctx!.font = "16px Arial, sans-serif";
+      ctx!.fillText("|", 300, cy);
+      badge(330, "@");
+      ctx!.fillStyle = "#ffffff";
+      ctx!.font = "bold 16px Arial, sans-serif";
+      ctx!.fillText("info@groutix.com", 352, cy);
+      ctx!.fillStyle = "#3f5f9a";
+      ctx!.font = "16px Arial, sans-serif";
+      ctx!.fillText("|", 610, cy);
+      badge(640, "W");
+      ctx!.fillStyle = "#ffffff";
+      ctx!.font = "bold 16px Arial, sans-serif";
+      ctx!.fillText("www.groutix.com", 662, cy);
+      ctx!.textAlign = "right";
+      ctx!.fillStyle = "#9cc3f0";
+      ctx!.font = "13px Arial, sans-serif";
+      ctx!.fillText(pageLabel, W - 60, cy);
+      ctx!.textAlign = "left";
+      ctx!.textBaseline = "alphabetic";
+    };
+
+    if (warrantyTab === "page1") {
+      // ==========================================
+      // PAGE 1: WARRANTY CERTIFICATE
+      // ==========================================
+
+      // 1. Top-Left Logo (real brand mark)
+      drawLogo(60, 46, 74);
+
+      // 2. Top-Right Stacked Title (navy)
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "bold 30px Arial, sans-serif";
+      ctx.fillText("10-YEAR", W - 60, 82);
+      ctx.fillText("FULL SHOWER", W - 60, 118);
+      ctx.fillText("RE-GROUT WARRANTY", W - 60, 154);
+      ctx.textAlign = "left";
+
+      // 3. Navy Ribbon
+      ctx.fillStyle = "#071c4d";
+      ctx.fillRect(0, 185, W, 44);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 19px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("YOUR PEACE OF MIND. ENGINEERED TO LAST.", W / 2, 213);
+      ctx.textAlign = "left";
+
+      // 4. Warranting statement
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "500 15px Arial, sans-serif";
+      wrapText(
+        "Groutix Pty Ltd trading as Groutix warrants that a qualifying full shower re-grout performed by Groutix will remain waterproof for a period of 10 years from the date of the Services are completed, subject to the terms, conditions and exclusions set out in this Warranty Document.",
+        60,
+        272,
+        W - 120,
+        24
+      );
+
+      // 5. Left Shield Badge & Right 4 Checkmark bullets (titles only)
+      const sx = 132;
+      const sy = 428;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + 55, sy + 25);
+      ctx.lineTo(sx + 55, sy + 105);
+      ctx.quadraticCurveTo(sx + 55, sy + 175, sx, sy + 205);
+      ctx.quadraticCurveTo(sx - 55, sy + 175, sx - 55, sy + 105);
+      ctx.lineTo(sx - 55, sy + 25);
+      ctx.closePath();
+      ctx.fillStyle = "#e8f4fc";
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#071c4d";
+      ctx.stroke();
+
+      // Shield droplet icon
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + 62);
+      ctx.quadraticCurveTo(sx + 26, sy + 100, sx + 26, sy + 128);
+      ctx.arc(sx, sy + 128, 26, 0, Math.PI, false);
+      ctx.quadraticCurveTo(sx - 26, sy + 100, sx, sy + 62);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
+
+      // Right 4 Bullets (titles only, matching official card)
+      const bx = 262;
+      const bulletTitles = [
+        "10 YEARS WORKMANSHIP WARRANTY",
+        "WATERPROOF PROTECTION",
+        "QUALITY MATERIALS",
+        "EXPERT INSTALLATION",
+      ];
+      bulletTitles.forEach((title, i) => {
+        const itemY = 470 + i * 52;
+        // Cyan circle
+        ctx.beginPath();
+        ctx.arc(bx + 14, itemY - 5, 15, 0, Math.PI * 2);
+        ctx.fillStyle = "#00a8cc";
+        ctx.fill();
+        // White checkmark
+        ctx.beginPath();
+        ctx.moveTo(bx + 8, itemY - 5);
+        ctx.lineTo(bx + 12, itemY - 1);
+        ctx.lineTo(bx + 21, itemY - 11);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        // Title
+        ctx.fillStyle = "#071c4d";
+        ctx.font = "bold 18px Arial, sans-serif";
+        ctx.fillText(title, bx + 42, itemY);
+      });
+
+      // 6. Australian Consumer Law callout box (light blue)
+      const aclY = 690;
+      const aclW = W - 120;
+      const aclH = 66;
+      ctx.save();
+      ctx.fillStyle = "#e8f4fc";
+      ctx.strokeStyle = "#bce1f8";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(60, aclY, aclW, aclH, 12);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "500 15px Arial, sans-serif";
+      wrapText(
+        "This warranty is in addition to any rights and remedies available under the Australian Consumer Law.",
+        84,
+        aclY + 28,
+        aclW - 48,
+        22
+      );
+      ctx.restore();
+
+      // 7. Certificate detail fields (single column with underlines)
+      let fldY = 812;
+      const drawField = (label: string, value: string) => {
+        ctx.fillStyle = "#071c4d";
+        ctx.font = "bold 15px Arial, sans-serif";
+        ctx.fillText(label, 60, fldY);
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(360, fldY + 6);
+        ctx.lineTo(W - 60, fldY + 6);
+        ctx.stroke();
+        if (value) {
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "15px Arial, sans-serif";
+          ctx.fillText(value, 372, fldY);
+        }
+        fldY += 48;
+      };
+      drawField("JOB / INVOICE NO.:", warrantyJobNo);
+      drawField("COMPLETION DATE:", fmtDateOnly(warrantyCompletion));
+      drawField("WARRANTY EXPIRY DATE:", fmtDateOnly(warrantyExpiry));
+      drawField("CUSTOMER NAME:", warrantyCustomer);
+      drawField("PROPERTY ADDRESS:", warrantyAddress);
+      fldY += 18;
+      drawField("AUTHORISED BY GROUTIX:", warrantyAuthorised);
+      drawField("DATE ISSUED:", fmtDateOnly(warrantyIssued));
+
+      // 8. Bottom footer banner
+      drawWarrantyFooter("Page 1 of 2");
+    } else {
+      // ==========================================
+      // PAGE 2: TERMS & CONDITIONS
+      // ==========================================
+
+      // 1. Header: logo left, TERMS & CONDITIONS pill right + subtitle
+      drawLogo(60, 40, 66);
+
+      const pillW = 320;
+      const pillH = 44;
+      const pillX = W - 60 - pillW;
+      const pillY = 46;
+      ctx.save();
+      ctx.fillStyle = "#071c4d";
+      ctx.beginPath();
+      ctx.roundRect(pillX, pillY, pillW, pillH, 8);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 20px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("TERMS & CONDITIONS", pillX + pillW / 2, pillY + 29);
+      ctx.textAlign = "left";
+      ctx.restore();
+
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "bold 13px Arial, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText("10-YEAR FULL SHOWER RE-GROUT WARRANTY", W - 60, pillY + pillH + 22);
+      ctx.textAlign = "left";
+
+      // Divider
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(60, 150);
+      ctx.lineTo(W - 60, 150);
+      ctx.stroke();
+
+      // Two-column layout
+      const c1X = 60;
+      const colGap = 40;
+      const colW = (W - 120 - colGap) / 2;
+      const c2X = c1X + colW + colGap;
+
+      // Section banner helper
+      const banner = (title: string, x: number, y: number) => {
+        ctx!.save();
+        ctx!.fillStyle = "#e8f4fc";
+        ctx!.beginPath();
+        ctx!.roundRect(x, y, colW, 30, 6);
+        ctx!.fill();
+        ctx!.fillStyle = "#071c4d";
+        ctx!.font = "bold 14px Arial, sans-serif";
+        ctx!.fillText(title, x + 12, y + 20);
+        ctx!.restore();
+        return y + 42;
+      };
+
+      // Paragraph flow helper (returns next y)
+      const para = (
+        text: string,
+        x: number,
+        y: number,
+        opts?: { color?: string; indent?: number }
+      ) => {
+        const indent = opts?.indent || 0;
+        ctx!.fillStyle = opts?.color || "#334155";
+        ctx!.font = "11px Arial, sans-serif";
+        const ny = wrapText(text, x + indent, y, colW - indent, 15);
+        return ny + 3;
+      };
+
+      // ---- COLUMN 1 ----
+      let y1 = 175;
+      y1 = banner("1. Service Warranty", c1X, y1);
+      y1 = para(
+        "1.1 Groutix warrants that, subject to the terms and conditions of this warranty, for a period of 10 years from the date of supply of the Service to the party who purchased the Service from Groutix:",
+        c1X,
+        y1,
+        { color: "#1e293b" }
+      );
+      y1 = para("(1) The grout applied to the tiled surface or tile installation during the Service will stay waterproof.", c1X, y1, { indent: 14 });
+      y1 = para("(2) If the grout applied to the tiled surface or tile installation during the Service does not stay waterproof, it will at Groutix's election, be replaced or repaired without cost to you or you will be refunded the price you paid for the Service.", c1X, y1, { indent: 14 });
+
+      y1 += 8;
+      y1 = banner("2. Exclusions and limitations", c1X, y1);
+      y1 = para("2.1 This warranty is not transferable to any subsequent owner of your property.", c1X, y1);
+      y1 = para("2.2 This warranty will be void where:", c1X, y1);
+      y1 = para("(1) The tiled surface or tile installation has been subjected to misuse, negligence or accident by you or any third party; or", c1X, y1, { indent: 14 });
+      y1 = para("(2) The tiled surface or tile installation has been modified, repaired or altered by you or any third party; or", c1X, y1, { indent: 14 });
+      y1 = para("(3) The tiled surface or tile installation is affixed to a building which has experienced structural movement and/or defects and/or cracking; or", c1X, y1, { indent: 14 });
+      y1 = para("(4) You have not followed the after-care and maintenance instructions we provided to you.", c1X, y1, { indent: 14 });
+      y1 = para("2.3 This warranty does not apply to a partial shower re-grout service. It applies only to a full shower re-grout service.", c1X, y1);
+      y1 = para("2.4 This warranty applies only to grouting services and where grout has been applied. It does not apply to silicone and where silicone has been applied.", c1X, y1);
+      y1 = para("2.5 This warranty only applies if the grout applied to the tiled surface or tile installation during the Service is no longer waterproof. It does not apply to shower leaks or mould.", c1X, y1);
+
+      // ---- COLUMN 2 ----
+      let y2 = 175;
+      y2 = para("2.6 Groutix will not be liable under this warranty for any damages, losses, costs or expenses including, without limitation, loss of market, loss of profit, loss of production or for any financial or economic loss including indirect or consequential loss or damage which may be suffered by you or by any third party arising out of or in any way connected with failure of the Service or any defect in materials and workmanship except as provided by this warranty.", c2X, y2);
+      y2 = para("2.7 The obligations of Groutix under this warranty will be limited to one of the following at the election of Groutix:", c2X, y2);
+      y2 = para("(1) Repair of the tiled surface or tile installation the subject of the Service; or", c2X, y2, { indent: 14 });
+      y2 = para("(2) Provision of a replacement Service or, where this is not possible for any reason, the provision of an equivalent service or product; or", c2X, y2, { indent: 14 });
+      y2 = para("(3) A refund of the price you paid for the Service.", c2X, y2, { indent: 14 });
+      y2 = para("2.8 Notwithstanding any other provision of this warranty, Groutix's liability arising from, under or in connection with this warranty will be limited to the full replacement value of the Service.", c2X, y2);
+      y2 = para("2.9 Whilst Groutix will endeavor to ensure that the color and texture of the grout and any other materials used in any repair or replacement will match any existing grout and other relevant materials, it does not warrant that they will be an exact match and will not be liable if they are not an exact match.", c2X, y2);
+      y2 = para("2.10 You acknowledge that Groutix is not the manufacturer of the materials used to provide the Service. To the extent permitted by law, Groutix shall not be liable as the manufacturer of the materials used to provide the Service.", c2X, y2);
+      y2 = para("2.11 This warranty is only valid and enforceable in Australia.", c2X, y2);
+
+      y2 += 8;
+      y2 = banner("3. How to claim", c2X, y2);
+      y2 = para(
+        "3.1 Upon discovery of any evidence that the grout applied to the tiled surface or tile installation during the Service is no longer waterproof and to make a claim under this warranty, you must promptly contact Groutix by email at info@groutix.com. You must provide a copy of your invoice and proof of payment for the Service, and photographs of the relevant surface or installation.",
+        c2X,
+        y2,
+        { color: "#1e293b" }
+      );
+
+      // Bottom footer banner
+      drawWarrantyFooter("Page 2 of 2");
+    }
   }, [
     warrantyModalOpen,
+    warrantyTab,
     warrantyJobNo,
     warrantyCustomer,
     warrantyAddress,
     warrantyCompletion,
     warrantyExpiry,
-    warrantyAuthorised
+    warrantyAuthorised,
+    warrantyIssued,
+    warrantyLogo
   ]);
 
   function downloadWarrantyCard() {
     if (!canvasRef.current || !activeWarrantyLead) return;
     const link = document.createElement("a");
-    link.download = `Groutix_Warranty_${(activeWarrantyLead.name || "Customer").replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+    const suffix = warrantyTab === "page1" ? "Certificate" : "Terms";
+    link.download = `Groutix_Warranty_${(activeWarrantyLead.name || "Customer").replace(/[^a-zA-Z0-9]/g, "_")}_${suffix}.png`;
     link.href = canvasRef.current.toDataURL("image/png");
     link.click();
   }
@@ -2036,6 +2632,13 @@ export default function CrmDashboardPage() {
     setInvoiceGst(10);
     // Default to Unpaid; only pre-mark Paid if payment was already recorded.
     setInvoiceStatus(lead.status === "Payment Received" ? "Paid" : "Unpaid");
+    try {
+      setInvoiceBankName(localStorage.getItem("groutix_inv_bank") || "ANZ");
+      setInvoiceAccountName(localStorage.getItem("groutix_inv_acc_name") || "Groutix Pty Ltd");
+      setInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num") || "123456789");
+      setInvoiceBsb(localStorage.getItem("groutix_inv_bsb") || "013442");
+      setInvoiceDueDate(localStorage.getItem("groutix_inv_due_date") || "Within 7 days of invoice date");
+    } catch {}
     setInvoiceModalOpen(true);
   }
 
@@ -2059,6 +2662,11 @@ export default function CrmDashboardPage() {
           price: invoicePrice,
           gst: invoiceGst,
           status: invoiceStatus,
+          bankName: invoiceBankName,
+          accountName: invoiceAccountName,
+          accountNumber: invoiceAccountNumber,
+          bsb: invoiceBsb,
+          dueDate: invoiceDueDate,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -5503,7 +6111,7 @@ export default function CrmDashboardPage() {
          ========================================================================= */}
       {quoteModalOpen && activeQuoteLead && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-4 my-6">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-900">Create & Send Groutix Quotation</h2>
@@ -5517,7 +6125,7 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs max-h-[72vh] overflow-y-auto p-1">
+            <div className="grid grid-cols-1 gap-6 text-xs max-h-[72vh] overflow-y-auto p-1">
               {/* Left Column: Quote Form Controls */}
               <div className="space-y-4">
                 {/* Customer Request & Selected Services Details Card */}
@@ -5763,129 +6371,141 @@ export default function CrmDashboardPage() {
                     </div>
                   </div>
 
-                  {quoteItems.map((item, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
-                      <div className="flex items-center justify-between font-bold text-slate-700">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-black">
-                            {idx + 1}
-                          </span>
-                          <span>Item #{idx + 1}</span>
-                          {item.code && (
-                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
-                              {item.code}
-                            </span>
-                          )}
-                        </span>
-                        {quoteItems.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
-                            className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove</span>
-                          </button>
-                        )}
-                      </div>
+                  {/* Spreadsheet-style items table (Item Code | Item Name | Qty | Price | Total) */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 900 }}>
+                      <colgroup>
+                        <col style={{ width: 36 }} />
+                        <col style={{ width: 260 }} />
+                        <col />
+                        <col style={{ width: 60 }} />
+                        <col style={{ width: 100 }} />
+                        <col style={{ width: 100 }} />
+                        <col style={{ width: 40 }} />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 text-left">
+                          <th className="py-2 px-2 font-bold text-center">#</th>
+                          <th className="py-2 px-2 font-bold">Item Code</th>
+                          <th className="py-2 px-2 font-bold">Item Name</th>
+                          <th className="py-2 px-2 font-bold text-center">Qty</th>
+                          <th className="py-2 px-2 font-bold text-right">Price ex GST</th>
+                          <th className="py-2 px-2 font-bold text-right">Total ex GST</th>
+                          <th className="py-2 px-2" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {quoteItems.map((item, idx) => (
+                          <tr key={idx} className="bg-white hover:bg-slate-50/70 align-top">
+                            <td className="py-2 px-2 text-center font-black text-slate-400">{idx + 1}</td>
 
-                      {/* Template Selector with Search */}
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Pick from 84 Standard Groutix Templates
-                        </label>
-                        <TemplatePicker
-                          selectedTemplateNo={item.templateNo}
-                          onSelectTemplate={(t) => {
-                            const updated = [...quoteItems];
-                            if (t) {
-                              updated[idx] = {
-                                ...updated[idx],
-                                templateNo: t.no,
-                                code: t.code,
-                                service: t.service,
-                                scope: t.scope,
-                                price: Number(t.price) || updated[idx].price || 0
-                              };
-                            } else {
-                              updated[idx] = {
-                                ...updated[idx],
-                                templateNo: "",
-                                code: ""
-                              };
-                            }
-                            setQuoteItems(updated);
-                          }}
-                        />
-                      </div>
+                            {/* Item Code — template picker */}
+                            <td className="py-2 px-2">
+                              <TemplatePicker
+                                selectedTemplateNo={item.templateNo}
+                                onSelectTemplate={(t) => {
+                                  const updated = [...quoteItems];
+                                  if (t) {
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      templateNo: t.no,
+                                      code: t.code,
+                                      service: t.service,
+                                      scope: t.scope,
+                                      price: Number(t.price) || updated[idx].price || 0
+                                    };
+                                  } else {
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      templateNo: "",
+                                      code: ""
+                                    };
+                                  }
+                                  setQuoteItems(updated);
+                                }}
+                              />
+                            </td>
 
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                          Service Title <span className="text-slate-400 font-normal">(Editable)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={item.service || ""}
-                          onChange={(e) => {
-                            const updated = [...quoteItems];
-                            updated[idx].service = e.target.value;
-                            setQuoteItems(updated);
-                          }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
-                          placeholder="Service title..."
-                        />
-                      </div>
+                            {/* Item Name — editable title + scope */}
+                            <td className="py-2 px-2 space-y-1.5">
+                              <input
+                                type="text"
+                                value={item.service || ""}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].service = e.target.value;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                                placeholder="Service title..."
+                              />
+                              <textarea
+                                rows={3}
+                                value={item.scope || ""}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].scope = e.target.value;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed text-slate-600"
+                                placeholder="Detailed scope of works..."
+                              />
+                            </td>
 
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
-                          Detailed Scope <span className="text-slate-400 font-normal">(Editable)</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={item.scope || ""}
-                          onChange={(e) => {
-                            const updated = [...quoteItems];
-                            updated[idx].scope = e.target.value;
-                            setQuoteItems(updated);
-                          }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs leading-relaxed"
-                          placeholder="Detailed scope of works..."
-                        />
-                      </div>
+                            {/* Qty */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.qty || 1}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].qty = parseInt(e.target.value, 10) || 1;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-center"
+                              />
+                            </td>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Price (AUD)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.price ?? ""}
-                            onChange={(e) => {
-                              const updated = [...quoteItems];
-                              updated[idx].price = parseFloat(e.target.value) || 0;
-                              setQuoteItems(updated);
-                            }}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Quantity</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.qty || 1}
-                            onChange={(e) => {
-                              const updated = [...quoteItems];
-                              updated[idx].qty = parseInt(e.target.value, 10) || 1;
-                              setQuoteItems(updated);
-                            }}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            {/* Price ex GST */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.price ?? ""}
+                                onChange={(e) => {
+                                  const updated = [...quoteItems];
+                                  updated[idx].price = parseFloat(e.target.value) || 0;
+                                  setQuoteItems(updated);
+                                }}
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
+                              />
+                            </td>
+
+                            {/* Total ex GST */}
+                            <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
+                              ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                            </td>
+
+                            {/* Remove */}
+                            <td className="py-2 px-2 text-center">
+                              {quoteItems.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
+                                  className="text-rose-400 hover:text-rose-600"
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Tax Settings */}
@@ -5929,60 +6549,73 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
-              {/* Right Column: Branded Quotation Document Preview */}
-              <div className="border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4">
-                <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
+              <div className="border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* 1. Header: Logo (left) & Right-Aligned Address + Gold Quote + ACN + Quote # + Date */}
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-2xl font-black text-[#001f97]">GROUTIX</div>
-                    <div className="text-[11px] text-slate-600 leading-tight mt-1">
-                      Melbourne, VIC<br />
-                      Phone: (03) 7023 8094<br />
-                      Email: info@groutix.com
-                    </div>
+                    <img
+                      src="/logo.png"
+                      alt="Groutix"
+                      className="h-11 w-auto object-contain"
+                    />
                   </div>
-                  <div className="text-right text-[11px] text-slate-700 space-y-0.5">
-                    <div className="text-lg font-black text-slate-900">QUOTATION</div>
-                    <div><b>ACN:</b> 687 415 005</div>
-                    <div><b>Quote #:</b> GQ-{activeQuoteLead.id.slice(-6).toUpperCase()}</div>
-                    <div><b>Date:</b> {new Date().toLocaleDateString("en-AU")}</div>
+                  <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
+                    <div>1/14 St Andrews St</div>
+                    <div>Brighton VIC 3186</div>
+                    <div>1300 476 884</div>
+                    <div>info@groutix.com.au</div>
+                    <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
+                    <div className="font-bold text-slate-900">ACN: 687 415 005</div>
+                    <div className="pt-1.5 text-slate-900">Quote # GQ-{activeQuoteLead.id.slice(-6).toUpperCase()}</div>
+                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
 
-                <div className="text-[11px] font-semibold text-slate-700 italic">
-                  Thank you for choosing Groutix. Stay Sealed. Stay Smiling.
-                </div>
-
-                <div className="text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                {/* 2. Customer Details / Billing Address («job.instantpost_billing_address») */}
+                <div className="text-[11px] leading-relaxed text-slate-800 pt-3">
                   <div className="font-bold text-slate-900">{activeQuoteLead.name || "Customer Name"}</div>
-                  <div>{activeQuoteLead.phone}</div>
-                  <div>{activeQuoteLead.email}</div>
-                  <div>{activeQuoteLead.address}</div>
+                  {activeQuoteLead.address && <div>{activeQuoteLead.address}</div>}
+                  {(activeQuoteLead.phone || activeQuoteLead.email) && (
+                    <div className="text-slate-500 text-[10.5px]">
+                      {[activeQuoteLead.phone, activeQuoteLead.email].filter(Boolean).join(" • ")}
+                    </div>
+                  )}
                 </div>
 
-                <table className="w-full text-left text-[11px] border-collapse">
+                {/* 3. JOB DESCRIPTION («job.work_done_description») */}
+                <div className="pt-2 space-y-1">
+                  <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wide">JOB DESCRIPTION:</div>
+                  <div className="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified."}
+                  </div>
+                </div>
+
+                {/* 4. Table: DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE with light-gray bar */}
+                <table className="w-full text-left text-[11px] border-collapse mt-2">
                   <thead>
-                    <tr className="border-b border-slate-800 bg-slate-100 font-bold uppercase text-[9px] text-slate-700">
-                      <th className="py-2 px-2">Description / Scope</th>
-                      <th className="py-2 px-2 text-right">Qty</th>
-                      <th className="py-2 px-2 text-right">Unit Price</th>
-                      <th className="py-2 px-2 text-right">Total Price</th>
+                    <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[9.5px]">
+                      <th className="py-2 px-2.5">DESCRIPTION</th>
+                      <th className="py-2 px-2.5 text-right">QTY</th>
+                      <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
+                      <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {quoteItems.map((item, i) => (
                       <tr key={i}>
-                        <td className="py-2.5 px-2">
+                        <td className="py-2.5 px-2.5">
                           {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
-                          <div className="font-black text-slate-900 text-xs">{item.service}</div>
+                          <div className="font-bold text-slate-900 text-xs">{item.service}</div>
                           {item.scope && !isRedundantScope(item.service, item.scope) && (
                             <div className="text-[10px] text-slate-600 whitespace-pre-wrap mt-1 leading-relaxed">
                               {item.scope}
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-2 text-right">{item.qty || 1}</td>
-                        <td className="py-2.5 px-2 text-right">${Number(item.price || 0).toFixed(2)}</td>
-                        <td className="py-2.5 px-2 text-right font-bold">
+                        <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
+                        <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
+                        <td className="py-2.5 px-2.5 text-right font-bold">
                           ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
                         </td>
                       </tr>
@@ -5990,34 +6623,48 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
 
-                {/* Totals */}
-                <div className="border-t border-slate-800 pt-3 flex flex-col items-end text-xs space-y-1">
-                  <div>
-                    Subtotal: <b>AUD ${quoteTotals().subtotal.toFixed(2)}</b>
+                {/* 5. Totals */}
+                <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
+                  <div className="flex justify-end gap-6">
+                    <span className="text-slate-600 font-medium">SUBTOTAL:</span>
+                    <span className="w-24 text-right font-semibold">${quoteTotals().subtotal.toFixed(2)}</span>
                   </div>
-                  <div>
-                    GST ({quoteTaxRate}%): <b>AUD ${quoteTotals().gst.toFixed(2)}</b>
+                  <div className="flex justify-end gap-6">
+                    <span className="text-slate-600 font-medium">GST ({quoteTaxRate}%):</span>
+                    <span className="w-24 text-right font-semibold">${quoteTotals().gst.toFixed(2)}</span>
                   </div>
-                  <div className="text-base font-black text-[#001f97] border-t border-slate-300 pt-1">
-                    TOTAL: AUD ${quoteTotals().total.toFixed(2)}
+                  <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
+                    <span>TOTAL:</span>
+                    <span className="w-24 text-right">${quoteTotals().total.toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500 border-t border-slate-200 pt-2 space-y-1">
-                  <div>
-                    <b>Conditions:</b> {quoteTerms}
+                {/* 6. Centered «final_note» */}
+                <div className="pt-4 text-center">
+                  <div className="text-[10px] text-slate-500 italic">
+                    {quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
+                      ? quoteTerms
+                      : DEFAULT_QUOTE_CONDITIONS}
                   </div>
-                  <div className="pt-1">
-                    <a
-                      href="/terms-conditions"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#001f97] underline font-bold hover:text-blue-900 inline-flex items-center gap-1"
-                    >
-                      <span>View Official Terms &amp; Conditions (groutix.com.au/terms-conditions)</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                </div>
+
+                {/* 7. Full Text of All 20 Terms & Conditions Clauses Preview */}
+                <div className="border-t border-slate-200 pt-4 space-y-3">
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 text-[10.5px] text-amber-950 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#b8860b]">✓ 10-Page Quotation Template Active</span>
+                      <span className="text-[10px] text-slate-600">All 20 Clauses &amp; Signature block printed in PDF (No external terms links)</span>
+                    </div>
                   </div>
+
+                  <details className="text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <summary className="font-bold text-slate-800 cursor-pointer hover:text-[#001f97] select-none">
+                      Preview All 20 Terms &amp; Conditions Clauses (Pages 2–10)
+                    </summary>
+                    <div className="mt-3 text-[10px] text-slate-700 space-y-2 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono bg-white p-2.5 rounded border border-slate-200">
+                      {GROUTIX_QUOTE_TERMS}
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>
@@ -6379,24 +7026,171 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Reply Composer */}
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-2 border-t border-slate-200">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Reply via Email:</span>
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
+                  <Mail className="w-3.5 h-3.5 text-[#001f97]" />
+                  <span>Compose & Send Email</span>
+                </div>
                 <button
+                  type="button"
                   onClick={handleAddCustomerDemoReply}
-                  className="text-xs text-[#001f97] font-semibold hover:underline"
+                  className="text-[11px] text-[#001f97] font-semibold hover:underline"
                 >
-                  + Add Customer Message
+                  + Add Customer Message Note
                 </button>
               </div>
 
-              <textarea
-                rows={3}
-                placeholder="Type your reply or internal note here..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                className="w-full p-2.5 text-xs border border-slate-200 rounded-xl"
-              />
+              {/* Template Picker Dropdown */}
+              <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Choose Predefined Template:</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManageTemplatesModalOpen(true);
+                        handleOpenCreateTemplate();
+                      }}
+                      className="text-[11px] text-[#001f97] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Template</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setManageTemplatesModalOpen(true)}
+                      className="text-[11px] text-slate-600 hover:text-slate-900 underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Manage / Remove</span>
+                    </button>
+                    {selectedTemplateId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTemplateId("");
+                          setReplyText("");
+                          setReplySubject(
+                            `Re: Groutix Enquiry - ${activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}`
+                          );
+                        }}
+                        className="text-[11px] text-slate-400 hover:text-slate-700 underline font-medium ml-1 cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => handleSelectEmailTemplate(e.target.value)}
+                  className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] transition shadow-2xs cursor-pointer"
+                >
+                  <option value="">-- Select an Email Template (or write custom) --</option>
+                  {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => (
+                    <optgroup key={cat} label={cat}>
+                      {emailTemplates.filter((t) => t.category === cat).map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+
+                {selectedTemplateId && (
+                  <p className="text-[11px] text-slate-500 italic">
+                    {emailTemplates.find((t) => t.id === selectedTemplateId)?.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Subject Input */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Email Subject:</label>
+                <input
+                  type="text"
+                  value={replySubject}
+                  onChange={(e) => setReplySubject(e.target.value)}
+                  placeholder="Enter email subject line..."
+                  className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                />
+              </div>
+
+              {/* Quick-Insert Variables */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">
+                  Insert Tag:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("firstName")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + First Name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("name")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Full Name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("service")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Service
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("address")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Address
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("phone")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Phone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertVariable("technician")}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                >
+                  + Specialist
+                </button>
+                {Boolean(activeMessageLeadLive?.quoteAmount || activeMessageLead?.quoteAmount) && (
+                  <button
+                    type="button"
+                    onClick={() => handleInsertVariable("quoteAmount")}
+                    className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                  >
+                    + Quote Total
+                  </button>
+                )}
+              </div>
+
+              {/* Email Body */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
+                <textarea
+                  rows={6}
+                  placeholder="Type your email message or pick a template from the dropdown above..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans"
+                />
+              </div>
 
               {/* Staged attachments */}
               {replyAttachments.length > 0 && (
@@ -6409,6 +7203,7 @@ export default function CrmDashboardPage() {
                       <Paperclip className="w-3 h-3 text-slate-400" />
                       <span className="max-w-[160px] truncate">{att.name}</span>
                       <button
+                        type="button"
                         onClick={() => removeReplyAttachment(i)}
                         className="text-slate-400 hover:text-rose-600"
                         title="Remove attachment"
@@ -6428,22 +7223,37 @@ export default function CrmDashboardPage() {
                 onChange={(e) => handleAttachReplyFiles(e.target.files)}
               />
 
-              <div className="flex justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => replyFileRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Attach files to email"
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>Attach Files</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenMailApp}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Open your default desktop email client with this draft"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in Mail App</span>
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => replyFileRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50"
-                  title="Attach files to email"
-                >
-                  <Paperclip className="w-3.5 h-3.5" />
-                  Attach
-                </button>
-                <button
+                  type="button"
                   onClick={handleSendReply}
                   disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
                 >
                   {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  {sendingReply ? "Sending…" : "Save & Send Reply"}
+                  <span>{sendingReply ? "Sending…" : "Save & Send Email"}</span>
                 </button>
               </div>
             </div>
@@ -6451,6 +7261,288 @@ export default function CrmDashboardPage() {
         </div>
       )}
 
+      {/* =========================================================================
+          MODAL: MANAGE EMAIL TEMPLATES (ADD / EDIT / REMOVE / RESET)
+         ========================================================================= */}
+      {manageTemplatesModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-8 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-5 border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#001f97]">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-black text-slate-900">Email Templates Manager</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#001f97] text-xs font-bold border border-blue-200">
+                      {emailTemplates.length} templates
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Add, customize, or remove email templates used across the CRM dashboard.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!templateFormOpen && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleResetTemplates}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                      title="Reset all templates back to standard Groutix defaults"
+                    >
+                      <RefreshCcw className="w-3.5 h-3.5" />
+                      <span>Reset Defaults</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenCreateTemplate}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#001f97] hover:bg-[#001777] rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Template</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManageTemplatesModalOpen(false);
+                    setTemplateFormOpen(false);
+                  }}
+                  className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+                  title="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Add / Edit Form */}
+            {templateFormOpen ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-blue-600" />
+                    <span>{editingTemplate ? "Edit Template" : "Create New Email Template"}</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setTemplateFormOpen(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Template Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Booking Deposit Request"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Category *</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                    >
+                      <option value="Enquiries & Leads">Enquiries & Leads</option>
+                      <option value="Inspections">Inspections</option>
+                      <option value="Quotations">Quotations</option>
+                      <option value="Bookings">Bookings</option>
+                      <option value="Job Completion & Care">Job Completion & Care</option>
+                      <option value="Billing">Billing</option>
+                      <option value="General">General</option>
+                      <option value="Promotions">Promotions</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Short Description</label>
+                  <input
+                    type="text"
+                    placeholder="Brief note on when staff should use this template"
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Email Subject Line *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
+                    value={formSubject}
+                    onChange={(e) => setFormSubject(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                  />
+                </div>
+
+                {/* Variable helper chips */}
+                <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[11px]">
+                  <span className="font-bold text-[#001f97] mr-1">Insert Dynamic Tag:</span>
+                  {[
+                    { label: "+ First Name", val: "{first_name}" },
+                    { label: "+ Full Name", val: "{customer_name}" },
+                    { label: "+ Service", val: "{service}" },
+                    { label: "+ Address", val: "{address}" },
+                    { label: "+ Phone", val: "{phone}" },
+                    { label: "+ Specialist", val: "{technician_name}" },
+                    { label: "+ Inspection Date", val: "{inspection_date}" },
+                    { label: "+ Booking Date", val: "{booking_date}" },
+                    { label: "+ Quote #", val: "{quote_number}" },
+                    { label: "+ Invoice #", val: "{invoice_number}" },
+                    { label: "+ Total Due", val: "{invoice_total}" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.val}
+                      type="button"
+                      onClick={() => setFormBody((prev) => `${prev} ${chip.val}`)}
+                      className="px-2 py-0.5 bg-white border border-blue-200 rounded-md text-slate-700 hover:bg-blue-100 hover:text-blue-900 font-medium transition cursor-pointer"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Message Body *</label>
+                  <textarea
+                    rows={8}
+                    placeholder="Write your email body here... You can use variables like {first_name}, {service}, etc."
+                    value={formBody}
+                    onChange={(e) => setFormBody(e.target.value)}
+                    className="w-full p-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateFormOpen(false)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTemplate}
+                    disabled={savingTemplate || !formName.trim() || !formBody.trim()}
+                    className="px-5 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {savingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>{savingTemplate ? "Saving..." : editingTemplate ? "Update Template" : "Create Template"}</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Template List Cards */}
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => {
+                const group = emailTemplates.filter((t) => t.category === cat);
+                return (
+                  <div key={cat} className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-500">{cat}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
+                        {group.length}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {group.map((t) => (
+                        <div
+                          key={t.id}
+                          className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-3.5 space-y-2.5 transition shadow-2xs flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-xs font-black text-slate-800 line-clamp-1">{t.name}</h4>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditTemplate(t)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                                  title="Edit this template"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTemplate(t.id)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Delete this template"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {t.description && (
+                              <p className="text-[11px] text-slate-500 line-clamp-1">{t.description}</p>
+                            )}
+
+                            <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-[11px] text-slate-600 space-y-1">
+                              <div className="font-semibold text-slate-700 truncate">
+                                Subject: <span className="font-normal text-slate-600">{t.subject}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                                {t.body}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectEmailTemplate(t.id);
+                                setManageTemplatesModalOpen(false);
+                              }}
+                              className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-[#001f97] font-bold rounded-lg text-center transition cursor-pointer"
+                            >
+                              Use in Composer →
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {emailTemplates.length === 0 && (
+                <div className="text-center py-12 text-slate-400 space-y-2">
+                  <FileText className="w-8 h-8 mx-auto text-slate-300" />
+                  <p className="text-xs font-semibold">No templates found.</p>
+                  <button
+                    type="button"
+                    onClick={handleResetTemplates}
+                    className="text-xs text-[#001f97] underline font-bold cursor-pointer"
+                  >
+                    Click here to load standard default templates
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* =========================================================================
           MODAL: INSPECTION GPS
          ========================================================================= */}
@@ -6538,7 +7630,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Warranty Form Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
                 <input
@@ -6574,11 +7666,29 @@ export default function CrmDashboardPage() {
                 />
               </div>
               <div>
+                <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
+                <input
+                  type="date"
+                  value={warrantyIssued}
+                  onChange={(e) => setWarrantyIssued(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg"
+                />
+              </div>
+              <div>
                 <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
                 <input
                   type="text"
                   value={warrantyCustomer}
                   onChange={(e) => setWarrantyCustomer(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
+                <input
+                  type="text"
+                  value={warrantyAuthorised}
+                  onChange={(e) => setWarrantyAuthorised(e.target.value)}
                   className="w-full p-2 border border-slate-200 rounded-lg"
                 />
               </div>
@@ -6593,18 +7703,49 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
+            {/* Tab Switcher */}
+            <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWarrantyTab("page1")}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    warrantyTab === "page1"
+                      ? "bg-[#071c4d] text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Page 1: Warranty Certificate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWarrantyTab("page2")}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    warrantyTab === "page2"
+                      ? "bg-[#071c4d] text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Page 2: Terms &amp; Conditions
+                </button>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                Official 2-Page Executive Template
+              </span>
+            </div>
+
             {/* Canvas Preview */}
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-100">
+            <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
               <canvas
                 ref={canvasRef}
-                width={1536}
-                height={900}
-                className="w-full h-auto block"
+                width={1000}
+                height={1414}
+                className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
               />
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
-              <span>Warranty governed by Clause 12 of Groutix Terms &amp; Conditions</span>
+              <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
               <a
                 href="/terms-conditions"
                 target="_blank"
@@ -6616,22 +7757,50 @@ export default function CrmDashboardPage() {
               </a>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-              <button
-                onClick={downloadWarrantyCard}
-                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
-              >
-                <Download className="w-4 h-4" />
-                Download PNG
-              </button>
-              <button
-                onClick={handleSendWarranty}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
-                title="Email the warranty card to the customer and mark it sent"
-              >
-                <Send className="w-4 h-4" />
-                Email to Customer
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="text-[11px] text-slate-500">
+                <span>Both pages are included in the official PDF &amp; customer email.</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = new URLSearchParams({
+                      jobNo: warrantyJobNo,
+                      completion: warrantyCompletion,
+                      expiry: warrantyExpiry,
+                      customer: warrantyCustomer,
+                      address: warrantyAddress,
+                      authorised: warrantyAuthorised,
+                      issued: warrantyIssued,
+                      t: String(Date.now()),
+                    });
+                    window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                  title="Print or view official 2-page PDF warranty certificate"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print / View PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadWarrantyCard}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PNG
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendWarranty}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
+                  title="Email the official 2-page warranty certificate to the customer and mark it sent"
+                >
+                  <Send className="w-4 h-4" />
+                  Email to Customer
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -6769,7 +7938,7 @@ export default function CrmDashboardPage() {
          ========================================================================= */}
       {invoiceModalOpen && activeInvoiceLead && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-4 my-6">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
@@ -6839,50 +8008,182 @@ export default function CrmDashboardPage() {
                     </select>
                   </div>
                 </div>
+
+                {/* Editable Payment Information Box */}
+                <div className="pt-2.5 border-t border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      💳 Payment &amp; Bank Details
+                    </label>
+                    <span className="text-[10px] text-slate-400">Shown in payment box</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Bank Name</label>
+                      <input
+                        type="text"
+                        value={invoiceBankName}
+                        onChange={(e) => {
+                          setInvoiceBankName(e.target.value);
+                          try { localStorage.setItem("groutix_inv_bank", e.target.value); } catch {}
+                        }}
+                        placeholder="ANZ"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">BSB</label>
+                      <input
+                        type="text"
+                        value={invoiceBsb}
+                        onChange={(e) => {
+                          setInvoiceBsb(e.target.value);
+                          try { localStorage.setItem("groutix_inv_bsb", e.target.value); } catch {}
+                        }}
+                        placeholder="013442"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Name</label>
+                      <input
+                        type="text"
+                        value={invoiceAccountName}
+                        onChange={(e) => {
+                          setInvoiceAccountName(e.target.value);
+                          try { localStorage.setItem("groutix_inv_acc_name", e.target.value); } catch {}
+                        }}
+                        placeholder="Groutix Pty Ltd"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Number</label>
+                      <input
+                        type="text"
+                        value={invoiceAccountNumber}
+                        onChange={(e) => {
+                          setInvoiceAccountNumber(e.target.value);
+                          try { localStorage.setItem("groutix_inv_acc_num", e.target.value); } catch {}
+                        }}
+                        placeholder="123456789"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Payment Due Date Note</label>
+                    <input
+                      type="text"
+                      value={invoiceDueDate}
+                      onChange={(e) => {
+                        setInvoiceDueDate(e.target.value);
+                        try { localStorage.setItem("groutix_inv_due_date", e.target.value); } catch {}
+                      }}
+                      placeholder="Within 7 days of invoice date"
+                      className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Invoice Preview */}
-              <div className="border border-slate-300 rounded-xl p-5 bg-white space-y-3 font-sans shadow-xs">
-                <div className="flex items-start justify-between border-b border-slate-300 pb-3">
+              {/* Invoice Preview (Matches official Groutix Tax Invoice layout) */}
+              <div className="border border-slate-300 rounded-xl p-5 bg-white space-y-3 font-sans shadow-sm text-slate-800 max-h-[70vh] overflow-y-auto">
+                {/* 1. Header: Logo & Right Column */}
+                <div className="flex items-start justify-between gap-4 pb-1">
                   <div>
-                    <div className="text-xl font-black text-teal-700">GROUTIX</div>
-                    <div className="text-[10px] text-slate-500">Professional Re-Grouting Services</div>
+                    <img src="/logo.png" alt="Groutix" className="h-10 object-contain" />
                   </div>
-                  <div className="text-right text-[10px] text-slate-600">
-                    <div className="font-black text-sm text-slate-900">TAX INVOICE</div>
-                    <div>Date: {new Date().toLocaleDateString("en-AU")}</div>
-                    <div>Inv #: INV-{activeInvoiceLead.id.slice(-6).toUpperCase()}</div>
+                  <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
+                    <div>Melbourne, VIC</div>
+                    <div>1300 476 884</div>
+                    <div>info@groutix.com.au</div>
+                    <div className="pt-1.5 font-black text-xs text-slate-900">TAX INVOICE</div>
+                    <div className="font-bold text-slate-900">ACN: 687 415 005</div>
+                    <div className="pt-1.5 font-bold text-slate-900">Tax Invoice No: INV-{activeInvoiceLead.id.slice(-6).toUpperCase()}</div>
+                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
 
-                <div className="text-[11px]">
-                  <b>Bill To:</b> {activeInvoiceLead.name}<br />
-                  {activeInvoiceLead.address}<br />
-                  {activeInvoiceLead.email}
+                {/* 2. Customer / Billing Address */}
+                <div className="text-[11px] leading-relaxed text-slate-800">
+                  <div className="font-bold text-slate-900">{activeInvoiceLead.name}</div>
+                  {activeInvoiceLead.address && <div>{activeInvoiceLead.address}</div>}
+                  {(activeInvoiceLead.phone || activeInvoiceLead.email) && (
+                    <div className="text-slate-500 text-[10px]">
+                      {[activeInvoiceLead.phone, activeInvoiceLead.email].filter(Boolean).join(" • ")}
+                    </div>
+                  )}
                 </div>
 
-                <div className="border-t border-slate-200 pt-2 space-y-1">
-                  <div className="font-bold text-slate-900">{invoiceService}</div>
-                  <div className="text-[10px] text-slate-600 whitespace-pre-wrap">{invoiceDescription}</div>
+                {/* 3. WORK COMPLETED */}
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">WORK COMPLETED</div>
+                  <div className="text-[11px] text-slate-700 whitespace-pre-wrap">
+                    {invoiceDescription || invoiceService || "Full shower epoxy regrouting, deep clean, and perimeter silicone reseal."}
+                  </div>
                 </div>
 
-                <div className="border-t border-slate-300 pt-3 text-right space-y-0.5">
-                  <div className="text-xs">Subtotal: ${((invoicePrice / 1.1) || 0).toFixed(2)}</div>
-                  <div className="text-xs">GST: ${(invoicePrice - (invoicePrice / 1.1) || 0).toFixed(2)}</div>
-                  <div className="text-base font-black text-teal-800">Total: ${invoicePrice.toFixed(2)}</div>
-                  <div className="text-xs font-bold text-slate-600">Status: {invoiceStatus}</div>
+                {/* 4. Table */}
+                <div>
+                  <div className="grid grid-cols-12 text-[10px] font-bold text-[#e5a910] uppercase pb-1 border-b border-slate-200">
+                    <div className="col-span-6">DESCRIPTION</div>
+                    <div className="col-span-2 text-right">QUANTITY</div>
+                    <div className="col-span-2 text-right">PRICE</div>
+                    <div className="col-span-2 text-right">TOTAL</div>
+                  </div>
+                  <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200">
+                    <div className="col-span-6 font-medium">{invoiceService || "Shower Cubicle Regrouting"}</div>
+                    <div className="col-span-2 text-right">1</div>
+                    <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
+                    <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
+                  </div>
                 </div>
 
-                <div className="border-t border-slate-200 pt-2 text-[10px] text-slate-500">
-                  <span>Payment is subject to </span>
-                  <a
-                    href="/terms-conditions"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#001f97] underline font-bold"
-                  >
-                    Groutix Terms &amp; Conditions (groutix.com.au/terms-conditions)
-                  </a>
+                {/* 5. Financial Summary */}
+                <div className="text-right text-[11px] space-y-1 text-slate-800">
+                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${((invoicePrice / 1.1) || 0).toFixed(2)}</span></div>
+                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${(invoicePrice - (invoicePrice / 1.1) || 0).toFixed(2)}</span></div>
+                  <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${invoicePrice.toFixed(2)}</span></div>
+                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? invoicePrice.toFixed(2) : "0.00"}</span></div>
+                  <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : invoicePrice.toFixed(2)}</span></div>
+                </div>
+
+                {/* 6. HOW TO PAY: */}
+                <div className="space-y-1 pt-1">
+                  <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">HOW TO PAY:</div>
+                  <div className="text-[10px] text-slate-700">We accept payment by: Deposit</div>
+                  
+                  {/* Coral/red payment box with dynamic values */}
+                  <div className="border border-red-300 rounded-lg p-2.5 bg-red-50/20 max-w-sm text-[10px] space-y-0.5">
+                    <div className="font-black text-[11px] text-slate-900 pb-0.5">PAYMENT INFORMATION</div>
+                    <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">{invoiceBankName || "ANZ"}</span></div>
+                    <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">{invoiceAccountName || "Groutix Pty Ltd"}</span></div>
+                    <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">{invoiceAccountNumber || "123456789"}</span></div>
+                    <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">{invoiceBsb || "013442"}</span></div>
+                  </div>
+                </div>
+
+                {/* 7. TERMS & CONDITIONS */}
+                <div className="text-center pt-2 space-y-0.5">
+                  <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">TERMS &amp; CONDITIONS</div>
+                  <div className="text-[10px] text-slate-600 space-y-0.5">
+                    <div>• Payment is due {invoiceDueDate || "within 7 days of invoice date"}</div>
+                    <div>• Access our Terms &amp; Conditions</div>
+                    <a
+                      href="https://groutix.com/terms-and-conditions/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline font-medium"
+                    >
+                      https://groutix.com/terms-and-conditions/
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -6890,10 +8191,25 @@ export default function CrmDashboardPage() {
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                onClick={() => {
+                  const q = new URLSearchParams({
+                    bankName: invoiceBankName,
+                    accountName: invoiceAccountName,
+                    accountNumber: invoiceAccountNumber,
+                    bsb: invoiceBsb,
+                    dueDate: invoiceDueDate,
+                    price: String(invoicePrice),
+                    status: invoiceStatus,
+                    service: invoiceService,
+                    description: invoiceDescription,
+                  });
+                  window.open(`/api/admin/invoice/pdf/${activeInvoiceLead.id}?${q.toString()}`, "_blank");
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                title="Print or view official PDF invoice with current payment information"
               >
-                Print Invoice
+                <Printer className="w-3.5 h-3.5" />
+                Print / View PDF
               </button>
               <button
                 type="button"

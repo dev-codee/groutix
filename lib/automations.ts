@@ -80,8 +80,18 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
           <tr><td style="padding:14px 12px;font-weight:700;background:#f8fafc;text-align:right;">Total (AUD)</td><td style="padding:14px 12px;font-weight:700;background:#f8fafc;text-align:right;">$${total.toFixed(2)}</td></tr>
         </table>
       </div>
-      <p style="margin:0 0 8px;">Payment status: <b style="color:#b91c1c;">UNPAID</b></p>
-      <p style="margin:16px 0 0;color:#64748b;font-size:13px;">All services and payments are subject to the <a href="https://groutix.com.au/terms-conditions" style="color:#001f97;font-weight:700;">Groutix Terms &amp; Conditions</a>.</p>
+      <p style="margin:0 0 12px;">Payment status: <b style="color:#b91c1c;">UNPAID</b></p>
+      <div style="margin:16px 0;padding:14px;border:1px solid #fca5a5;border-radius:8px;background:#fff5f5;font-size:13px;line-height:1.6;color:#1e293b;">
+        <div style="font-weight:800;color:#0f172a;font-size:13px;margin-bottom:4px;">PAYMENT INFORMATION</div>
+        <div>• Bank Name: <b>ANZ</b></div>
+        <div>• Account Name: <b>Groutix Pty Ltd</b></div>
+        <div>• Account Number: <b>123456789</b></div>
+        <div>• BSB: <b>013442</b></div>
+      </div>
+      <div style="margin:16px 0;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
+        <div>• Payment is due within 7 days of invoice date.</div>
+        <div>• Access our Terms &amp; Conditions: <a href="https://groutix.com/terms-and-conditions/" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/terms-and-conditions/</a></div>
+      </div>
       ${invoiceTrackingPixel(leadId)}`;
 
     const attachments = [];
@@ -95,6 +105,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
         address: lead.address,
         phone: lead.phone,
         email: lead.email,
+        jobDescription: lead.issue || lead.message || service,
         items: [{ service, description: "", price: total, qty: 1 }],
         subtotal,
         gst,
