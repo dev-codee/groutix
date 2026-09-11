@@ -85,18 +85,7 @@ export async function POST(req: NextRequest) {
     console.error("Could not generate warranty PDF attachment:", e);
   }
 
-  // Also attach PNG card if provided
-  if (body.imageDataUrl && body.imageDataUrl.startsWith("data:")) {
-    const comma = body.imageDataUrl.indexOf(",");
-    const meta = body.imageDataUrl.slice(5, comma); // e.g. image/png;base64
-    const contentType = meta.split(";")[0] || "image/png";
-    const content = body.imageDataUrl.slice(comma + 1);
-    attachments.push({
-      name: `Groutix_Warranty_${warrantyNo}.png`,
-      content,
-      contentType,
-    });
-  }
+
 
   const html = `
     <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your 10-Year Groutix Warranty</h2>
