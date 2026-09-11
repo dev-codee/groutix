@@ -487,11 +487,11 @@ export async function POST(req: NextRequest) {
       logSendError("customer confirmation", err);
     }
 
-    // Acknowledge by SMS too (no-op until an SMS provider is configured).
+    // Acknowledge by SMS (strictly 1 credit <= 160 chars GSM-7).
     if (phone) {
-      const smsBody = SHOW_INSPECTION_BOOKING
-        ? `Thanks, ${firstName || "there"}! We've received your quote request. Book your free inspection here: ${bookingUrl || "we'll contact you"}. Available: ${daysSummary}. Urgent? Call ${CONTACT_PHONE}. Stay Sealed. Stay Smiling.`
-        : `Thanks, ${firstName || "there"}! We've received your quote request and a Groutix specialist will be in touch shortly. Urgent? Call ${CONTACT_PHONE}. Stay Sealed. Stay Smiling.`;
+      const smsBody = SHOW_INSPECTION_BOOKING && bookingUrl
+        ? `Groutix: Thanks ${firstName || "there"}! We received your quote request. Book your inspection: ${bookingUrl} or call ${CONTACT_PHONE}.`
+        : `Groutix: Thanks ${firstName || "there"}! We received your quote request and a specialist will be in touch shortly. Call ${CONTACT_PHONE}.`;
       await sendSms({ to: phone, body: smsBody });
     }
   };

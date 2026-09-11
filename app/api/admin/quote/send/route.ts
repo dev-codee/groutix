@@ -235,11 +235,12 @@ export async function POST(req: NextRequest) {
     detail: `${quoteNumber} to ${lead.email}`,
   });
 
-  // Also text the customer that their quote is ready (no-op until SMS is set up).
+  // Text customer that their quote is ready (strictly 1 credit GSM-7).
   if (lead.phone) {
+    const firstName = (lead.name || "there").trim().split(/\s+/)[0];
     await sendSms({
       to: lead.phone,
-      body: `Hi ${lead.name || "there"}, your Groutix quote ${quoteNumber} for AUD $${total.toFixed(2)} has been emailed. Reply YES to accept or call us to book. — Groutix`,
+      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) has been emailed. Reply YES to accept or call 0488 852 444 to book.`,
     });
   }
 

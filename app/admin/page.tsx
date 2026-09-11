@@ -47,7 +47,8 @@ import {
   ClipboardList,
   HardHat,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -969,6 +970,11 @@ export default function CrmDashboardPage() {
   >([]);
   const [sendingReply, setSendingReply] = useState(false);
   const replyFileRef = useRef<HTMLInputElement | null>(null);
+
+  // SMS messaging states (Texto integration)
+  const [messageChannel, setMessageChannel] = useState<"email" | "sms">("email");
+  const [smsText, setSmsText] = useState("");
+  const [sendingSms, setSendingSms] = useState(false);
 
   const [gpsModalOpen, setGpsModalOpen] = useState(false);
   const [activeGpsLead, setActiveGpsLead] = useState<Lead | null>(null);
@@ -1967,7 +1973,7 @@ export default function CrmDashboardPage() {
   }
 
   // Conversation Management
-  async function openMessagesModal(lead: Lead) {
+  async function openMessagesModal(lead: Lead, initialChannel: "email" | "sms" = "email") {
     let currentLead = lead;
 
     // If there are any unread messages from customer, mark them read instantly
@@ -1984,9 +1990,12 @@ export default function CrmDashboardPage() {
     }
 
     setActiveMessageLead(currentLead);
+    setMessageChannel(initialChannel);
     setSelectedTemplateId("");
     setReplySubject(`Re: Groutix Enquiry - ${currentLead.name || "Customer"}`);
     setReplyText("");
+    const firstName = currentLead.name ? currentLead.name.trim().split(/\s+/)[0] : "there";
+    setSmsText(`Hi ${firstName}, regarding your Groutix service: `);
     setReplyAttachments([]);
     setMessagesModalOpen(true);
   }
@@ -2275,6 +2284,45 @@ export default function CrmDashboardPage() {
       console.error(err);
     } finally {
       setSendingReply(false);
+    }
+  }
+
+  async function handleSendSmsReply() {
+    if (!activeMessageLead) return;
+    if (!smsText.trim()) return;
+
+    if (!activeMessageLead.phone) {
+      alert("This customer does not have a phone number on file.");
+      return;
+    }
+
+    setSendingSms(true);
+    try {
+      const res = await fetch(`/api/admin/lead/${activeMessageLead.id}/sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: smsText.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to send SMS.");
+        return;
+      }
+
+      const currentMsgs = getConversation(activeMessageLead);
+      const updated = [...currentMsgs, data.message];
+
+      setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
+      setLeads((prev) => prev.map((l) => (l.id === activeMessageLead.id ? { ...l, messages: updated } : l)));
+      setSmsText("");
+      alert(`SMS successfully sent via Texto!${typeof data.creditsRemaining === "number" ? ` (${data.creditsRemaining} credits remaining)` : ""}`);
+    } catch (err) {
+      alert("Failed to send SMS. Check console or verify your TEXTO_API_KEY.");
+      console.error(err);
+    } finally {
+      setSendingSms(false);
     }
   }
 
@@ -5501,7 +5549,7 @@ export default function CrmDashboardPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => openMessagesModal(l)}
+                                  onClick={() => openMessagesModal(l, "sms")}
                                   className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
                                   title="Send SMS"
                                 >
@@ -6552,7 +6600,7 @@ export default function CrmDashboardPage() {
 
                                   <button
                                     type="button"
-                                    onClick={() => openMessagesModal(l)}
+                                    onClick={() => openMessagesModal(l, "sms")}
                                     className="flex items-center justify-center gap-1 py-1.5 px-1 bg-[#e8f0fe] hover:bg-blue-100 text-[#1e40af] rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
                                     title="Send SMS"
                                   >
@@ -8782,9 +8830,31 @@ export default function CrmDashboardPage() {
             {/* Reply Composer */}
             <div className="space-y-3 pt-2 border-t border-slate-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
-                  <Mail className="w-3.5 h-3.5 text-[#001f97]" />
-                  <span>Compose & Send Email</span>
+                <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setMessageChannel("email")}
+                    className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      messageChannel === "email"
+                        ? "bg-white text-[#001f97] shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Email</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMessageChannel("sms")}
+                    className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      messageChannel === "sms"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>SMS (Texto)</span>
+                  </button>
                 </div>
                 <button
                   type="button"
@@ -8794,6 +8864,104 @@ export default function CrmDashboardPage() {
                   + Add Customer Message Note
                 </button>
               </div>
+
+              {messageChannel === "sms" ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-emerald-600" />
+                        <span>Send SMS to:</span>
+                        <span className="font-black text-slate-900">
+                          {activeMessageLeadLive?.phone || activeMessageLead?.phone || "No phone number available"}
+                        </span>
+                      </span>
+                      {(() => {
+                        const preview = smsText.toLowerCase().includes("groutix") ? smsText.trim() : `Groutix: ${smsText.trim()}`;
+                        const charCount = preview.length;
+                        const isUnder160 = charCount <= 160;
+                        return (
+                          <span className={`text-[11px] font-semibold flex items-center gap-1.5 ${isUnder160 ? "text-emerald-700" : "text-amber-700"}`}>
+                            <span>{charCount}/160 chars</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isUnder160 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                              {isUnder160 ? "1 Credit" : "Trimmed to 1 Credit"}
+                            </span>
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {!Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone) && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                        ⚠️ This customer does not have a phone number recorded. Please add a phone number before sending an SMS.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SMS Quick Variables */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-bold text-slate-500 mr-1">Insert:</span>
+                    <button
+                      type="button"
+                      onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.name ? activeMessageLeadLive.name.split(" ")[0] : "there"))}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                    >
+                      + Name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.service || "grouting service"))}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                    >
+                      + Service
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.address || "your property"))}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                    >
+                      + Address
+                    </button>
+                    {activeMessageLeadLive?.technician && (
+                      <button
+                        type="button"
+                        onClick={() => setSmsText(prev => prev + activeMessageLeadLive.technician)}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                      >
+                        + Specialist
+                      </button>
+                    )}
+                  </div>
+
+                  {/* SMS Body */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600">SMS Text Message:</label>
+                    <textarea
+                      rows={5}
+                      placeholder="Type your SMS message to send via Texto API..."
+                      value={smsText}
+                      onChange={(e) => setSmsText(e.target.value)}
+                      className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="text-[11px] text-slate-400">
+                      ⚡ Direct gateway via <b>Texto SMS API</b>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSendSmsReply}
+                      disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
+                      className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
+                    >
+                      {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      <span>{sendingSms ? "Sending SMS…" : "Send SMS"}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
 
               {/* Template Picker Dropdown */}
               <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
@@ -9010,7 +9178,9 @@ export default function CrmDashboardPage() {
                   <span>{sendingReply ? "Sending…" : "Save & Send Email"}</span>
                 </button>
               </div>
-            </div>
+            </>
+          )}
+        </div>
           </div>
         </div>
       )}

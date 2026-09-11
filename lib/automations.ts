@@ -149,9 +149,10 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
     });
 
     if (lead.phone) {
+      const firstName = (lead.name || "there").trim().split(/\s+/)[0];
       await sendSms({
         to: lead.phone,
-        body: `Hi ${lead.name || "there"}, your Groutix tax invoice ${invoiceNumber} for AUD $${total.toFixed(2)} has been emailed to you. Thank you! — Groutix`,
+        body: `Groutix: Hi ${firstName}, your tax invoice ${invoiceNumber} ($${total.toFixed(2)}) has been emailed. Thank you for your business!`,
       });
     }
   } catch (err) {
@@ -238,12 +239,7 @@ export async function autoSendWarranty(leadId: string): Promise<void> {
       action: "Job 100% completed 🏆",
     });
 
-    if (lead.phone) {
-      await sendSms({
-        to: lead.phone,
-        body: `Hi ${lead.name || "there"}, your Groutix 10-year warranty ${warrantyNo} has been emailed to you. Thank you for choosing Groutix!`,
-      });
-    }
+    // Warranty is sent via email only (no SMS).
   } catch (err) {
     console.error("autoSendWarranty failed (non-fatal):", err);
   }

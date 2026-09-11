@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listReminderCandidates, updateSubmission, appendActivity } from "@/lib/submissions";
 import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
-import { sendSms } from "@/lib/sms";
 
 // Appointment reminders for booked inspections and jobs. Sends two reminders per
 // appointment: one ~24 hours before and another ~1 hour before. Guarded by the
@@ -120,12 +119,7 @@ async function runSweep(req: NextRequest) {
           }
         }
 
-        if (lead.phone) {
-          await sendSms({
-            to: lead.phone,
-            body: `Reminder: your Groutix ${a.kind} is ${tier.soon ? "coming up " : ""}on ${whenLabel}. Reply or call us to reschedule. — Groutix`,
-          });
-        }
+        // Reminder is sent via email only (no SMS).
 
         const flagField =
           a.kind === "inspection"
