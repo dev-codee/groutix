@@ -48,8 +48,13 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       ? lead.quoteTerms
       : DEFAULT_QUOTE_CONDITIONS);
 
+  const isScope = sp.get("type") === "scope";
+  const docType = isScope ? ("scope" as const) : ("quote" as const);
+  const filename = isScope ? `Groutix_Scope_Of_Work_${quoteNumber}.pdf` : `Groutix_Quote_${quoteNumber}.pdf`;
+
   const base64 = await buildQuotePdfBase64({
     quoteNumber,
+    docType,
     date: new Date().toLocaleDateString("en-AU", {
       day: "2-digit",
       month: "short",
@@ -82,7 +87,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="Groutix_Quote_${quoteNumber}.pdf"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       "Pragma": "no-cache",
       "Expires": "0",

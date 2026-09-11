@@ -33,8 +33,8 @@ export interface QuotePdfInput {
   terms?: string;
   businessPhone?: string;
   // Document type controls the heading/labels so the same branded layout can
-  // render either a quotation or a tax invoice. Defaults to "quote".
-  docType?: "quote" | "invoice";
+  // render a quotation, tax invoice, or Scope of Work (pricing-free for technicians). Defaults to "quote".
+  docType?: "quote" | "invoice" | "scope";
   // Optional status line (e.g. "PAID" / "UNPAID") shown under the total.
   statusLabel?: string;
   customerSignatureImage?: string; // base64 / data URL for «image_customer_signature»
@@ -209,12 +209,19 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     drawR(input.businessEmail || "info@groutix.com.au", font, 8.5, INK);
     ry -= 14;
 
-    drawR("Quote", bold, 15, GOLD);
-    ry -= 13;
-    drawR("ACN: 687 415 005", bold, 8.5, INK);
-    ry -= 16;
-
-    drawR(`Quote # ${input.quoteNumber}`, font, 8.5, INK);
+    if (input.docType === "scope") {
+      drawR("Scope of Work", bold, 15, GOLD);
+      ry -= 13;
+      drawR("ACN: 687 415 005", bold, 8.5, INK);
+      ry -= 16;
+      drawR(`Job # ${input.quoteNumber}`, font, 8.5, INK);
+    } else {
+      drawR(input.docType === "invoice" ? "Tax Invoice" : "Quote", bold, 15, GOLD);
+      ry -= 13;
+      drawR("ACN: 687 415 005", bold, 8.5, INK);
+      ry -= 16;
+      drawR(`${input.docType === "invoice" ? "Invoice" : "Quote"} # ${input.quoteNumber}`, font, 8.5, INK);
+    }
     ry -= 11;
     drawR(input.date || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }), font, 8.5, INK);
   };
@@ -235,7 +242,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     });
   };
 
-  // ── PAGE 1: Quotation Details & Itemized Table ──
+  // ── PAGE 1: Quotation / Scope Details & Itemized Table ──
   let page1 = doc.addPage([A4.w, A4.h]);
   drawQuoteHeader(page1);
   drawQuoteFooter(page1);
@@ -294,9 +301,11 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     y -= 14;
   }
 
-  // 3. Items Table (DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE)
+  const isScopeDoc = input.docType === "scope";
+
+  // 3. Items Table
   const colDescX = MARGIN + 8;
-  const colQtyRight = A4.w - MARGIN - 170;
+  const colQtyRight = isScopeDoc ? A4.w - MARGIN - 8 : A4.w - MARGIN - 170;
   const colPriceRight = A4.w - MARGIN - 85;
   const colAmountRight = A4.w - MARGIN - 8;
 
@@ -310,8 +319,10 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   });
   page1.drawText("DESCRIPTION", { x: colDescX, y: y - 11, size: 8.5, font: bold, color: INK });
   rightTextOnPage(page1, "QTY", colQtyRight, y - 11, bold, 8.5);
-  rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - 11, bold, 8.5);
-  rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - 11, bold, 8.5);
+  if (!isScopeDoc) {
+    rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - 11, bold, 8.5);
+    rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - 11, bold, 8.5);
+  }
   y -= 22;
 
   const items = input.items.length
@@ -321,7 +332,8 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   let zebra = false;
   for (const it of items) {
     const label = it.service || it.description || "Regrouting & waterproof resealing";
-    const descLines = wrapLines(label, bold, 9, colQtyRight - colDescX - 15).filter(Boolean);
+    const descMaxWidth = isScopeDoc ? colQtyRight - colDescX - 35 : colQtyRight - colDescX - 15;
+    const descLines = wrapLines(label, bold, 9, descMaxWidth).filter(Boolean);
 
     const extraScope =
       it.scope && it.scope !== label
@@ -330,7 +342,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
         ? it.description
         : "";
     const scopeLines = extraScope
-      ? wrapLines(extraScope, font, 7.5, colQtyRight - colDescX - 15).filter(Boolean)
+      ? wrapLines(extraScope, font, 7.5, descMaxWidth).filter(Boolean)
       : [];
 
     const qty = Number(it.qty || 1);
@@ -364,8 +376,10 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
 
     const midY = y - 6 - 7;
     rightTextOnPage(page1, qty > 0 ? String(qty) : "1", colQtyRight, midY, font, 9);
-    rightTextOnPage(page1, money(price), colPriceRight, midY, font, 9);
-    rightTextOnPage(page1, money(amount), colAmountRight, midY, bold, 9);
+    if (!isScopeDoc) {
+      rightTextOnPage(page1, money(price), colPriceRight, midY, font, 9);
+      rightTextOnPage(page1, money(amount), colAmountRight, midY, bold, 9);
+    }
 
     y -= rowH;
     page1.drawLine({
@@ -376,27 +390,29 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     });
   }
 
-  // 4. Financial Summary (SUBTOTAL | TAX | TOTAL)
-  y -= 20;
-  rightTextOnPage(page1, `SUBTOTAL:   ${money(input.subtotal)}`, colAmountRight, y, font, 9.5);
-  y -= 14;
-  const taxLabel = input.taxName || "GST (10%):";
-  rightTextOnPage(page1, `${taxLabel}   ${money(input.gst)}`, colAmountRight, y, font, 9.5);
-  y -= 16;
-  rightTextOnPage(page1, `TOTAL:   ${money(input.total)}`, colAmountRight, y, bold, 10.5);
+  // 4. Financial Summary (only if not a Scope of Work doc)
+  if (!isScopeDoc) {
+    y -= 20;
+    rightTextOnPage(page1, `SUBTOTAL:   ${money(input.subtotal)}`, colAmountRight, y, font, 9.5);
+    y -= 14;
+    const taxLabel = input.taxName || "GST (10%):";
+    rightTextOnPage(page1, `${taxLabel}   ${money(input.gst)}`, colAmountRight, y, font, 9.5);
+    y -= 16;
+    rightTextOnPage(page1, `TOTAL:   ${money(input.total)}`, colAmountRight, y, bold, 10.5);
 
-  if (input.statusLabel) {
-    y -= 15;
-    const paid = /paid/i.test(input.statusLabel) && !/unpaid/i.test(input.statusLabel);
-    rightTextOnPage(
-      page1,
-      `Status:  ${input.statusLabel.toUpperCase()}`,
-      colAmountRight,
-      y,
-      bold,
-      9.5,
-      paid ? rgb(0.09, 0.6, 0.35) : rgb(0.86, 0.15, 0.15)
-    );
+    if (input.statusLabel) {
+      y -= 15;
+      const paid = /paid/i.test(input.statusLabel) && !/unpaid/i.test(input.statusLabel);
+      rightTextOnPage(
+        page1,
+        `Status:  ${input.statusLabel.toUpperCase()}`,
+        colAmountRight,
+        y,
+        bold,
+        9.5,
+        paid ? rgb(0.09, 0.6, 0.35) : rgb(0.86, 0.15, 0.15)
+      );
+    }
   }
 
   // ── PAGES 2+: Full Text of All 20 Terms & Conditions Across Pages ──

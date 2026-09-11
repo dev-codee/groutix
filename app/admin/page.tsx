@@ -815,6 +815,7 @@ export default function CrmDashboardPage() {
   const isManager = realRole === "manager" || realRole === "super_admin";
   const [viewAs, setViewAs] = useState<{ role: Role; name: string } | null>(null);
   const role: Role = viewAs ? viewAs.role : realRole;
+  const isTechnician = role === "technician";
 
   // Inspection, Technician, Intake / Office, and managers can dispatch
   // technicians to jobs. The API enforces this too; this gates the UI.
@@ -1753,7 +1754,7 @@ export default function CrmDashboardPage() {
       quoteUpdated: new Date().toISOString()
     };
     await updateLeadField(activeQuoteLead.id, updates);
-    alert("Quote saved successfully.");
+    alert(isTechnician ? "Scope of work saved successfully." : "Quote saved successfully.");
   }
 
   async function handleMarkQuoteSent() {
@@ -1833,7 +1834,8 @@ export default function CrmDashboardPage() {
     });
     const itemsParam = encodeURIComponent(JSON.stringify(quoteItems));
     const notesParam = encodeURIComponent(quoteTerms || "");
-    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}&t=${Date.now()}`, "_blank");
+    const typeParam = isTechnician ? "&type=scope" : "";
+    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}${typeParam}&t=${Date.now()}`, "_blank");
   }
 
   function handleEmailQuote() {
@@ -3685,10 +3687,11 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openQuoteModal(l)}
-                className="px-3 py-1.5 border border-amber-200 bg-amber-50 text-amber-800 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
-                title="View Quote / Job Scope"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 bg-indigo-50 text-indigo-800 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                title="View Scope of Work & Job Specifications"
               >
-                Scope / Quote
+                <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Scope of Work</span>
               </button>
             </div>
 
@@ -3777,20 +3780,20 @@ export default function CrmDashboardPage() {
 
     const quoteTotal = getLeadQuoteTotal(l);
     const quoteRows = ([
-      ["Quote #", l.quoteNumber],
-      ["Quote value", quoteTotal > 0 ? `AUD $${quoteTotal.toFixed(2)}` : undefined],
-      ["Scope", l.quoteScope],
-      ["Quote sent", l.quoteUpdated ? fmtDate(l.quoteUpdated) : undefined],
+      [isTechnician ? "Scope / Job Ref" : "Quote #", l.jobNo || l.quoteNumber],
+      [!isTechnician && quoteTotal > 0 ? "Quote value" : "", !isTechnician && quoteTotal > 0 ? `AUD $${quoteTotal.toFixed(2)}` : undefined],
+      ["Scope", l.quoteScope || l.service],
+      [isTechnician ? "Scope updated" : "Quote sent", l.quoteUpdated ? fmtDate(l.quoteUpdated) : undefined],
       [
         "Quote response",
-        l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
+        !isTechnician && l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : !isTechnician && l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
       ],
-    ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+    ] as [string, string | undefined][]).filter((r) => r[0] && r[1]) as [string, string][];
 
     const sections: [string, [string, string][]][] = [
       ["Lead", leadRows],
       ["Inspection", inspectionRows],
-      ["Quote", quoteRows],
+      [isTechnician ? "Scope of Work" : "Quote", quoteRows],
     ];
     const hasAny = sections.some(([, rows]) => rows.length > 0);
     const isOpen = !!openDetails[l.id];
