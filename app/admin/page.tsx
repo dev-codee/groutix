@@ -244,20 +244,38 @@ function generateJobNos(leads: Lead[], cutoffMs: number): Lead[] {
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   let maxExisting = JOB_NO_START - 1;
+  const usedNumbers = new Set<number>();
+  
   for (const ref of newOnly) {
     const l = byId.get(ref.id)!;
     const n = extractJobNoNumeric(l.jobNo);
-    if (n !== null && n > maxExisting) maxExisting = n;
+    if (n !== null) {
+      if (usedNumbers.has(n)) {
+        // Duplicate found, clear it so it gets reassigned
+        l.jobNo = undefined;
+      } else {
+        usedNumbers.add(n);
+        if (n > maxExisting) maxExisting = n;
+      }
+    }
   }
+
   let next = maxExisting + 1;
   for (const ref of newOnly) {
     const l = byId.get(ref.id)!;
     if (!l.jobNo) {
-      l.jobNo = `${JOB_NO_PREFIX}${next++}`;
+      // Find the next available number that isn't used
+      while (usedNumbers.has(next)) {
+        next++;
+      }
+      l.jobNo = `${JOB_NO_PREFIX}${next}`;
+      usedNumbers.add(next);
+      next++;
     } else if (/^(?:GQ|JobNo)-/i.test(l.jobNo)) {
       l.jobNo = l.jobNo.replace(/^(?:GQ|JobNo)-/i, JOB_NO_PREFIX);
     }
   }
+
   return leads.map((l) => byId.get(l.id)!);
 }
 
@@ -2944,21 +2962,34 @@ export default function CrmDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-start">
           {/* SECTION 1: Client Info & Details Box (3 columns) */}
           <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
-              {(l.message || l.notes) && (
-                <div className="text-xs text-slate-500 line-clamp-1">
-                  {l.message || l.notes}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+                {(l.message || l.notes) && (
+                  <div className="text-xs text-slate-500 line-clamp-1">
+                    {l.message || l.notes}
+                  </div>
+                )}
+              </div>
+              {l.createdAt && (
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
+                  <div className="text-[11px] font-semibold text-slate-600">
+                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </div>
                 </div>
               )}
             </div>
@@ -3218,21 +3249,34 @@ export default function CrmDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-center">
           {/* SECTION 1: Client Info & Details Box (3 columns) */}
           <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
-              {(l.message || l.notes) && (
-                <div className="text-xs text-slate-500 line-clamp-1">
-                  {l.message || l.notes}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+                {(l.message || l.notes) && (
+                  <div className="text-xs text-slate-500 line-clamp-1">
+                    {l.message || l.notes}
+                  </div>
+                )}
+              </div>
+              {l.createdAt && (
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
+                  <div className="text-[11px] font-semibold text-slate-600">
+                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </div>
                 </div>
               )}
             </div>
@@ -3560,26 +3604,39 @@ export default function CrmDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-center">
           {/* SECTION 1: Client Info & Details Box (3 columns) */}
           <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  {l.jobNo || "Job"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block flex-1"
-                  title={l.name || "Unnamed Customer"}
-                >
-                  {l.name || "Unnamed Customer"}
-                </button>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    {l.jobNo || "Job"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingLead(l);
+                      setLeadModalOpen(true);
+                    }}
+                    className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block flex-1"
+                    title={l.name || "Unnamed Customer"}
+                  >
+                    {l.name || "Unnamed Customer"}
+                  </button>
+                </div>
+                {(l.message || l.notes) && (
+                  <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                    {l.message || l.notes}
+                  </div>
+                )}
               </div>
-              {(l.message || l.notes) && (
-                <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
-                  {l.message || l.notes}
+              {l.createdAt && (
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
+                  <div className="text-[11px] font-semibold text-slate-600">
+                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </div>
                 </div>
               )}
             </div>
@@ -3872,27 +3929,40 @@ export default function CrmDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-start">
           {/* SECTION 1: Client Info & Details Box (3 columns) */}
           <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
-              {(l.address || l.notes || l.message) && (
-                <div className="text-xs text-slate-500 line-clamp-1">
-                  {l.address || l.notes || l.message}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+                {(l.address || l.notes || l.message) && (
+                  <div className="text-xs text-slate-500 line-clamp-1">
+                    {l.address || l.notes || l.message}
+                  </div>
+                )}
+                {l.status === "Completed" && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                    🏆 Completed
+                  </span>
+                )}
+              </div>
+              {l.createdAt && (
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
+                  <div className="text-[11px] font-semibold text-slate-600">
+                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </div>
                 </div>
-              )}
-              {l.status === "Completed" && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
-                  🏆 Completed
-                </span>
               )}
             </div>
 
@@ -5557,29 +5627,7 @@ export default function CrmDashboardPage() {
                       <Plus className="w-4 h-4" />
                       New Lead
                     </button>
-                    {isManager && (
-                      <button
-                        onClick={() => setShowLegacyLeads((v) => !v)}
-                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors backdrop-blur-sm ${
-                          showLegacyLeads
-                            ? "bg-amber-400 text-[#001f97] hover:bg-amber-300"
-                            : "bg-white/15 text-white hover:bg-white/25"
-                        }`}
-                        title={showLegacyLeads ? "Hide legacy leads" : `Show ${hiddenLegacyCount > 0 ? hiddenLegacyCount : ""} archived legacy leads`}
-                      >
-                        {showLegacyLeads ? (
-                          <Eye className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                        {showLegacyLeads ? "Hide Legacy" : "Show Legacy"}
-                        {!showLegacyLeads && hiddenLegacyCount > 0 && (
-                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
-                            {hiddenLegacyCount}
-                          </span>
-                        )}
-                      </button>
-                    )}
+
                   </div>
                 </div>
               </div>
@@ -5867,24 +5915,7 @@ export default function CrmDashboardPage() {
                       <Plus className="w-4 h-4" />
                       New Lead
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowLegacyLeads((v) => !v)}
-                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors backdrop-blur-sm cursor-pointer ${
-                        showLegacyLeads
-                          ? "bg-amber-400 text-[#001f97] hover:bg-amber-300"
-                          : "bg-white/15 text-white hover:bg-white/25"
-                      }`}
-                      title={showLegacyLeads ? "Hide legacy leads" : `Show ${hiddenLegacyCount > 0 ? hiddenLegacyCount : ""} archived legacy leads`}
-                    >
-                      <Eye className="w-4 h-4" />
-                      {showLegacyLeads ? "Hide Legacy" : "Show Legacy"}
-                      {!showLegacyLeads && hiddenLegacyCount > 0 && (
-                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
-                          {hiddenLegacyCount}
-                        </span>
-                      )}
-                    </button>
+
                   </div>
                 </div>
               </div>
@@ -7149,7 +7180,7 @@ export default function CrmDashboardPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full p-6 space-y-4 my-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h2 className="text-lg font-black text-slate-900">Create & Send Groutix Quotation</h2>
+                <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
                 <div className="text-xs text-slate-500">Customer: {activeQuoteLead.name}</div>
               </div>
               <button
@@ -7424,8 +7455,12 @@ export default function CrmDashboardPage() {
                           <th className="py-2 px-2 font-bold">Item Code</th>
                           <th className="py-2 px-2 font-bold">Item Name</th>
                           <th className="py-2 px-2 font-bold text-center">Qty</th>
-                          <th className="py-2 px-2 font-bold text-right">Price ex GST</th>
-                          <th className="py-2 px-2 font-bold text-right">Total ex GST</th>
+                          {!isTechnician && (
+                            <>
+                              <th className="py-2 px-2 font-bold text-right">Price ex GST</th>
+                              <th className="py-2 px-2 font-bold text-right">Total ex GST</th>
+                            </>
+                          )}
                           <th className="py-2 px-2" />
                         </tr>
                       </thead>
@@ -7503,25 +7538,29 @@ export default function CrmDashboardPage() {
                             </td>
 
                             {/* Price ex GST */}
-                            <td className="py-2 px-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={item.price ?? ""}
-                                onChange={(e) => {
-                                  const updated = [...quoteItems];
-                                  updated[idx].price = parseFloat(e.target.value) || 0;
-                                  setQuoteItems(updated);
-                                }}
-                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
-                              />
-                            </td>
+                            {!isTechnician && (
+                              <td className="py-2 px-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.price ?? ""}
+                                  onChange={(e) => {
+                                    const updated = [...quoteItems];
+                                    updated[idx].price = parseFloat(e.target.value) || 0;
+                                    setQuoteItems(updated);
+                                  }}
+                                  className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
+                                />
+                              </td>
+                            )}
 
                             {/* Total ex GST */}
-                            <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
-                              ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
-                            </td>
+                            {!isTechnician && (
+                              <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
+                                ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                              </td>
+                            )}
 
                             {/* Remove */}
                             <td className="py-2 px-2 text-center">
@@ -7544,34 +7583,36 @@ export default function CrmDashboardPage() {
                 </div>
 
                 {/* Tax Settings */}
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
-                  <div className="font-bold text-slate-800 text-xs">Tax Calculation Settings</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Tax Mode</label>
-                      <select
-                        value={quoteTaxMode}
-                        onChange={(e) => setQuoteTaxMode(e.target.value as any)}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
-                      >
-                        <option value="inclusive">GST Inclusive (prices include tax)</option>
-                        <option value="exclusive">GST Exclusive (tax added on top)</option>
-                        <option value="none">No Tax</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">GST Rate</label>
-                      <select
-                        value={quoteTaxRate}
-                        onChange={(e) => setQuoteTaxRate(Number(e.target.value))}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
-                      >
-                        <option value="10">10%</option>
-                        <option value="0">0%</option>
-                      </select>
+                {!isTechnician && (
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div className="font-bold text-slate-800 text-xs">Tax Calculation Settings</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Tax Mode</label>
+                        <select
+                          value={quoteTaxMode}
+                          onChange={(e) => setQuoteTaxMode(e.target.value as any)}
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                        >
+                          <option value="inclusive">GST Inclusive (prices include tax)</option>
+                          <option value="exclusive">GST Exclusive (tax added on top)</option>
+                          <option value="none">No Tax</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">GST Rate</label>
+                        <select
+                          value={quoteTaxRate}
+                          onChange={(e) => setQuoteTaxRate(Number(e.target.value))}
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                        >
+                          <option value="10">10%</option>
+                          <option value="0">0%</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Quote Conditions / Special Notes</label>
@@ -7632,8 +7673,12 @@ export default function CrmDashboardPage() {
                     <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[9.5px]">
                       <th className="py-2 px-2.5">DESCRIPTION</th>
                       <th className="py-2 px-2.5 text-right">QTY</th>
-                      <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
-                      <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
+                      {!isTechnician && (
+                        <>
+                          <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
+                          <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -7649,30 +7694,36 @@ export default function CrmDashboardPage() {
                           )}
                         </td>
                         <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
-                        <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
-                        <td className="py-2.5 px-2.5 text-right font-bold">
-                          ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
-                        </td>
+                        {!isTechnician && (
+                          <>
+                            <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
+                            <td className="py-2.5 px-2.5 text-right font-bold">
+                              ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
                 {/* 5. Totals */}
-                <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
-                  <div className="flex justify-end gap-6">
-                    <span className="text-slate-600 font-medium">SUBTOTAL:</span>
-                    <span className="w-24 text-right font-semibold">${quoteTotals().subtotal.toFixed(2)}</span>
+                {!isTechnician && (
+                  <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
+                    <div className="flex justify-end gap-6">
+                      <span className="text-slate-600 font-medium">SUBTOTAL:</span>
+                      <span className="w-24 text-right font-semibold">${quoteTotals().subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-end gap-6">
+                      <span className="text-slate-600 font-medium">GST ({quoteTaxRate}%):</span>
+                      <span className="w-24 text-right font-semibold">${quoteTotals().gst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
+                      <span>TOTAL:</span>
+                      <span className="w-24 text-right">${quoteTotals().total.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-end gap-6">
-                    <span className="text-slate-600 font-medium">GST ({quoteTaxRate}%):</span>
-                    <span className="w-24 text-right font-semibold">${quoteTotals().gst.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
-                    <span>TOTAL:</span>
-                    <span className="w-24 text-right">${quoteTotals().total.toFixed(2)}</span>
-                  </div>
-                </div>
+                )}
 
                 {/* 6. Centered «final_note» */}
                 <div className="pt-4 text-center">
@@ -7714,37 +7765,41 @@ export default function CrmDashboardPage() {
                 <Printer className="w-3.5 h-3.5" />
                 Preview / Save PDF
               </button>
-              <button
-                type="button"
-                onClick={handleWhatsappQuote}
-                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700"
-              >
-                WhatsApp Quote
-              </button>
-              <button
-                type="button"
-                onClick={handleEmailQuote}
-                className="flex items-center gap-1.5 px-3 py-2 border border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50"
-                title="Open your mail app with a draft"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                Email (draft)
-              </button>
-              <button
-                type="button"
-                onClick={handleSendQuoteEmail}
-                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
-                title="Send the quote to the customer automatically"
-              >
-                <Send className="w-3.5 h-3.5" />
-                Send Quote
-              </button>
+              {!isTechnician && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleWhatsappQuote}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700"
+                  >
+                    WhatsApp Quote
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEmailQuote}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50"
+                    title="Open your mail app with a draft"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Email (draft)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendQuoteEmail}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
+                    title="Send the quote to the customer automatically"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Send Quote
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={handleSaveQuote}
                 className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900"
               >
-                Save Quote
+                {isTechnician ? "Save Scope" : "Save Quote"}
               </button>
               <button
                 type="button"
