@@ -3034,13 +3034,6 @@ export default function CrmDashboardPage() {
     const statusOptions = getRoleStatusOptions(role, l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
 
-    const fieldStages = [
-      { label: "Inspection Booked", status: "Inspection Booked", color: "bg-blue-600 hover:bg-blue-700" },
-      { label: "Inspection Completed", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
-      { label: "Quote Pending", status: "Quote Pending", color: "bg-amber-600 hover:bg-amber-700" },
-      { label: "Job Booked", status: "Job Booked", color: "bg-emerald-600 hover:bg-emerald-700" },
-      { label: "Job Done", status: "Job Done", color: "bg-sky-600 hover:bg-sky-700" },
-    ];
 
     return (
       <div
@@ -3160,36 +3153,52 @@ export default function CrmDashboardPage() {
             </div>
           </div>
 
-          {/* SECTION 3: FIELD WORKFLOW STAGES & BANNERS (3 columns) */}
+          {/* SECTION 3: INSPECTION LIVE VISIT & REPORT (3 columns) */}
           <div className="xl:col-span-3 space-y-2">
+            {/* Inspection Live Visit micro-stages */}
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                FIELD WORKFLOW STAGES
+                INSPECTION LIVE VISIT
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {fieldStages.map((st) => {
-                  const isCurrent = l.status === st.status;
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { label: "On the\nWay", status: "Inspection En Route", color: "bg-orange-500 hover:bg-orange-600" },
+                  { label: "Reached", status: "Inspection Arrived", color: "bg-[#1e3a5f] hover:bg-[#162d4a]" },
+                  { label: "Start", status: "Inspection In Progress", color: "bg-slate-600 hover:bg-slate-700" },
+                  { label: "Inspection\nForm", status: "__open_form__", color: "bg-emerald-600 hover:bg-emerald-700" },
+                  { label: "Complete", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
+                ].map((st) => {
+                  const isFormBtn = st.status === "__open_form__";
+                  const isCurrent = !isFormBtn && l.status === st.status;
+                  const formFilled = l.inspectionReport?.status === "completed";
                   return (
                     <button
                       key={st.label}
                       type="button"
-                      onClick={() => updateLeadField(l.id, { status: st.status })}
-                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[32px] cursor-pointer ${
-                        isCurrent
-                          ? `${st.color} text-white shadow-2xs`
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                      onClick={() => {
+                        if (isFormBtn) { openInspectionModal(l); return; }
+                        updateLeadField(l.id, { status: st.status });
+                      }}
+                      className={`px-1 py-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 text-center leading-tight min-h-[36px] cursor-pointer ${
+                        isFormBtn
+                          ? formFilled
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
+                          : isCurrent
+                            ? `${st.color} text-white shadow-sm`
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/80"
                       }`}
-                      title={`Set status: ${st.label}`}
+                      title={isFormBtn ? "Open Inspection Form" : `Set status: ${st.status}`}
                     >
                       {isCurrent && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                      <span className="text-center leading-tight">{st.label}</span>
+                      <span className="text-center leading-tight whitespace-pre-line">{st.label}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Hand-off banner */}
+            {/* Share to Booking Office banner */}
             {l.status === "Inspection Completed" ? (
               <div className="w-full px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5">
                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -3207,7 +3216,7 @@ export default function CrmDashboardPage() {
               </button>
             )}
 
-            {/* Inspection Report Banner */}
+            {/* GROUTIX Field Inspection Report */}
             <div
               onClick={() => openInspectionModal(l)}
               className="w-full px-3 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg flex items-center justify-between cursor-pointer transition-colors shadow-2xs"
@@ -3245,14 +3254,6 @@ export default function CrmDashboardPage() {
                 <Mail className="w-4 h-4" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => openQuoteModal(l)}
-                className="px-3 py-1.5 border border-amber-200 bg-[#fef3c7] text-[#b45309] rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
-                title="Open Quote Builder"
-              >
-                Quote
-              </button>
 
               <button
                 type="button"
@@ -4905,8 +4906,8 @@ export default function CrmDashboardPage() {
                 ) : role === "field" || role === "technician" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
                     <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">STATUS &amp; DISPATCH</div>
-                    <div className="col-span-3">FIELD WORKFLOW &amp; REPORT</div>
+                    <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
+                    <div className="col-span-3">INSPECTION LIVE VISIT</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
                 ) : role === "finance" ? (
@@ -5911,8 +5912,8 @@ export default function CrmDashboardPage() {
                 ) : role === "field" || role === "technician" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
                     <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">STATUS &amp; DISPATCH</div>
-                    <div className="col-span-3">FIELD WORKFLOW &amp; REPORT</div>
+                    <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
+                    <div className="col-span-3">INSPECTION LIVE VISIT</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
                 ) : role === "finance" ? (

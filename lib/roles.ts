@@ -4,10 +4,10 @@
 
 export type Role = "intake" | "field" | "technician" | "finance" | "manager" | "super_admin";
 
-export const ROLES: Role[] = ["intake", "field", "technician", "finance", "manager", "super_admin"];
+export const ROLES: Role[] = ["intake", "field", "technician", "finance", "manager"];
 
 export function isRole(value: unknown): value is Role {
-  return typeof value === "string" && (ROLES as string[]).includes(value);
+  return typeof value === "string" && (["intake", "field", "technician", "finance", "manager", "super_admin"] as string[]).includes(value);
 }
 
 /** Human labels for the roles. */
@@ -17,7 +17,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   technician: "Technician / Inspection",
   finance: "Finance / Completion",
   manager: "Business Manager (BM)",
-  super_admin: "Super Business Manager (Super BM)",
+  super_admin: "Business Manager (BM)",
 };
 
 // ── Dashboard views (tabs inside /admin) each role may open ──────────────────

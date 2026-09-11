@@ -247,7 +247,7 @@ export default function UsersPage() {
                   <td className="px-4 py-3">
                     <select
                       className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"
-                      value={u.role}
+                      value={u.role === "super_admin" ? "manager" : u.role}
                       onChange={(e) => patchUser(u.id, { role: e.target.value })}
                     >
                       {ROLES.map((r) => (
