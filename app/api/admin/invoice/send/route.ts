@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   const dueDate = body.dueDate || "Within 7 days of invoice date";
 
   // Deterministic invoice number so the preview and the emailed copy match.
-  const invoiceNumber = lead.invoiceNumber || `INV-${body.id.slice(-6).toUpperCase()}`;
+  const invoiceNumber = lead.jobNo ? lead.jobNo.replace(/^JOBNO-/i, "INV-") : (lead.invoiceNumber || `INV-${body.id.slice(-6).toUpperCase()}`);
 
   const statusBadge =
     status === "Paid"

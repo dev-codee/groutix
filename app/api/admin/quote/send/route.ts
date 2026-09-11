@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (!lead.email) return NextResponse.json({ error: "This lead has no email address." }, { status: 400 });
 
   // Automatic step: mint a sequential quote number the first time it's sent.
-  const quoteNumber = lead.quoteNumber || formatDocNumber("GX-Q", await getNextSequence("quote"));
+  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^JOBNO-/i, "QT-") : (lead.quoteNumber || formatDocNumber("GX-Q", await getNextSequence("quote")));
 
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(

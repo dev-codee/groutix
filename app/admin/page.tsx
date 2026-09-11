@@ -2966,6 +2966,10 @@ export default function CrmDashboardPage() {
             {/* Details Box */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
               <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
+                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
                 <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
               </div>
@@ -2973,6 +2977,12 @@ export default function CrmDashboardPage() {
                 <span className="text-slate-400 font-semibold shrink-0">Email:</span>
                 <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
               </div>
+              {l.address && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
+                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Service:</span>
                 <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
@@ -3140,14 +3150,26 @@ export default function CrmDashboardPage() {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                  className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Share to Booking Office / Inspection Completed"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+                {l.address ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
+                    title="GPS Location"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    <span className="text-[10px] font-bold">GPS</span>
+                  </a>
+                ) : (
+                  <div
+                    className="p-1.5 text-slate-400 cursor-not-allowed flex items-center gap-1"
+                    title="No address provided"
+                  >
+                    <Navigation className="w-4 h-4 opacity-50" />
+                    <span className="text-[10px] font-bold opacity-50">GPS</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-1 text-slate-400">
@@ -3218,6 +3240,10 @@ export default function CrmDashboardPage() {
             {/* Details Box with Phone, Email, Service, and Inspection */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
               <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
+                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
                 <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
               </div>
@@ -3225,6 +3251,12 @@ export default function CrmDashboardPage() {
                 <span className="text-slate-400 font-semibold shrink-0">Email:</span>
                 <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
               </div>
+              {l.address && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
+                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Service:</span>
                 <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
@@ -3459,14 +3491,26 @@ export default function CrmDashboardPage() {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                  className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Share to Booking Office / Inspection Completed"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+                {l.address ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
+                    title="GPS Location"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    <span className="text-[10px] font-bold">GPS</span>
+                  </a>
+                ) : (
+                  <div
+                    className="p-1.5 text-slate-400 cursor-not-allowed flex items-center gap-1"
+                    title="No address provided"
+                  >
+                    <Navigation className="w-4 h-4 opacity-50" />
+                    <span className="text-[10px] font-bold opacity-50">GPS</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-1 text-slate-400">
@@ -3542,6 +3586,10 @@ export default function CrmDashboardPage() {
 
             {/* Details Box with Phone, Email, Address, Service, and Job Date */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
+                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+              </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
                 <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
@@ -3851,6 +3899,10 @@ export default function CrmDashboardPage() {
             {/* Details Box with Phone, Email, Service */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
               <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
+                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
                 <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
               </div>
@@ -3858,6 +3910,12 @@ export default function CrmDashboardPage() {
                 <span className="text-slate-400 font-semibold shrink-0">Email:</span>
                 <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
               </div>
+              {l.address && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
+                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-slate-400 font-semibold shrink-0">Service:</span>
                 <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Other"}</span>

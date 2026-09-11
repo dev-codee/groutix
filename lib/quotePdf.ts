@@ -199,47 +199,62 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
 
     const addrLines = input.businessAddress
       ? input.businessAddress.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
-      : ["1/14 St Andrews St", "Brighton VIC", "3186"];
+      : ["Melbourne", "VIC"];
     for (const line of addrLines) {
-      drawR(line, font, 8.5, INK);
-      ry -= 10.5;
+      drawR(line, font, 9, INK);
+      ry -= 12;
     }
-    drawR(input.businessPhone || "1300 476 884", font, 8.5, INK);
-    ry -= 10.5;
-    drawR(input.businessEmail || "info@groutix.com.au", font, 8.5, INK);
-    ry -= 14;
+    drawR(input.businessPhone || "(03) 7023 8094", font, 9, INK);
+    ry -= 12;
+    drawR(input.businessEmail || "info@groutix.com", font, 9, INK);
+    ry -= 18;
 
     if (input.docType === "scope") {
-      drawR("Scope of Work", bold, 15, GOLD);
-      ry -= 13;
-      drawR("ACN: 687 415 005", bold, 8.5, INK);
-      ry -= 16;
-      drawR(`Job # ${input.quoteNumber}`, font, 8.5, INK);
+      drawR("Scope of Work", bold, 12, GOLD);
+      ry -= 14;
+      drawR("ACN: 687 415 005", bold, 9, INK);
+      ry -= 20;
+      drawR(`Job # ${input.quoteNumber}`, font, 9, INK);
     } else {
-      drawR(input.docType === "invoice" ? "Tax Invoice" : "Quote", bold, 15, GOLD);
-      ry -= 13;
-      drawR("ACN: 687 415 005", bold, 8.5, INK);
-      ry -= 16;
-      drawR(`${input.docType === "invoice" ? "Invoice" : "Quote"} # ${input.quoteNumber}`, font, 8.5, INK);
+      drawR(input.docType === "invoice" ? "Tax Invoice" : "Quote", bold, 12, GOLD);
+      ry -= 14;
+      drawR("ACN: 687 415 005", bold, 9, INK);
+      ry -= 20;
+      drawR(`${input.docType === "invoice" ? "Invoice" : "Quote"} # ${input.quoteNumber}`, font, 9, INK);
     }
-    ry -= 11;
-    drawR(input.date || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }), font, 8.5, INK);
+    ry -= 14;
+    const displayDate = input.date || new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+    drawR(displayDate, font, 9, INK);
   };
 
-  // Draw centered «final_note» at the bottom of the page (no terms links)
+  // Draw centered «final_note» and fixed footer at the bottom of the page
   const drawQuoteFooter = (targetPage: any) => {
-    const noteText = input.specialNotes?.trim();
-    if (!noteText) return;
-    const cleaned = cleanPdfText(noteText);
-    const sz = 8;
-    const w = font.widthOfTextAtSize(cleaned, sz);
-    targetPage.drawText(cleaned, {
-      x: (A4.w - w) / 2,
-      y: 35,
-      size: sz,
+    // 1. Fixed Footer
+    const fixedText = "Thank you for choosing Groutix. Stay Sealed. Stay Smiling.";
+    const fixedSz = 9;
+    const fixedW = font.widthOfTextAtSize(fixedText, fixedSz);
+    targetPage.drawText(fixedText, {
+      x: (A4.w - fixedW) / 2,
+      y: 20,
+      size: fixedSz,
       font,
       color: INK,
     });
+
+    // 2. Dynamic Special Notes
+    const noteText = input.specialNotes?.trim();
+    if (noteText) {
+      const cleaned = cleanPdfText(noteText);
+      const sz = 8;
+      const w = font.widthOfTextAtSize(cleaned, sz);
+      targetPage.drawText(cleaned, {
+        x: (A4.w - w) / 2,
+        y: 40,
+        size: sz,
+        font,
+        color: INK,
+      });
+    }
   };
 
   // ── PAGE 1: Quotation / Scope Details & Itemized Table ──
@@ -264,25 +279,26 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   };
 
   // 1. Customer Details / Billing Address («job.instantpost_billing_address»)
+  const billingX = MARGIN + 80;
   if (input.customerName) {
-    page1.drawText(cleanPdfText(input.customerName), { x: MARGIN, y, size: 9.5, font: bold, color: INK });
-    y -= 12;
+    page1.drawText(cleanPdfText(input.customerName), { x: billingX, y, size: 10, font, color: INK });
+    y -= 13;
   }
   if (input.address) {
-    const addrLines = wrapLines(input.address, font, 9, 300);
+    const addrLines = wrapLines(input.address, font, 10, 300);
     for (const ln of addrLines) {
-      page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 9, font, color: INK });
-      y -= 11.5;
+      page1.drawText(cleanPdfText(ln), { x: billingX, y, size: 10, font, color: INK });
+      y -= 13;
     }
   }
   const contactParts: string[] = [];
   if (input.phone) contactParts.push(input.phone);
   if (input.email) contactParts.push(input.email);
   if (contactParts.length > 0) {
-    page1.drawText(cleanPdfText(contactParts.join("   *   ")), { x: MARGIN, y, size: 8.5, font, color: MUTED });
-    y -= 12;
+    page1.drawText(cleanPdfText(contactParts.join("   *   ")), { x: billingX, y, size: 9, font, color: MUTED });
+    y -= 13;
   }
-  y -= 14;
+  y -= 10;
 
   // 2. JOB DESCRIPTION («job.work_done_description»)
   const jobDesc = (input.jobDescription || "").trim();
@@ -583,6 +599,15 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   const contentW = A4.w - MARGIN * 2;
   let y = A4.h - 45;
 
+  const drawInvoiceFooter = (targetPage: any) => {
+    const noteText = "Thank you for choosing Groutix. Stay Sealed. Stay Smiling.";
+    const cleaned = cleanPdfText(noteText);
+    const sz = 9;
+    const w = font.widthOfTextAtSize(cleaned, sz);
+    targetPage.drawText(cleaned, { x: (A4.w - w) / 2, y: 35, size: sz, font, color: INK });
+  };
+  drawInvoiceFooter(page);
+
   const text = (
     s: string,
     x: number,
@@ -614,6 +639,7 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   const ensureRoom = (needed: number) => {
     if (y - needed < MARGIN + 20) {
       page = doc.addPage([A4.w, A4.h]);
+      drawInvoiceFooter(page);
       y = A4.h - 45;
     }
   };
@@ -643,46 +669,59 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
     text("GROUTIX", MARGIN, y - 10, { font: bold, size: 24, color: BRAND });
   }
 
-  // 2. Top-Right Header Column (Left-aligned column at x ≈ 410)
-  const rightColX = 410;
+  // 2. Top-Right Header Column
+  const rightColX = A4.w - MARGIN - 140; // Approx right align
   let ry = y;
-  text(input.businessAddress || "Melbourne, VIC", rightColX, ry, { size: 9, color: INK });
+  
+  // Melbourne Address block
+  const bizLines = (input.businessAddress || "Melbourne").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  for (const bl of bizLines) {
+    text(bl, rightColX, ry, { size: 9, color: INK });
+    ry -= 12;
+  }
+  ry -= 12; // Extra space
+  text(input.businessPhone || "(03) 7023 8094", rightColX, ry, { size: 9, color: INK });
   ry -= 12;
-  text(input.businessPhone || "1300 476 884", rightColX, ry, { size: 9, color: INK });
-  ry -= 12;
-  text(input.businessEmail || "info@groutix.com.au", rightColX, ry, { size: 9, color: INK });
-  ry -= 16;
-  text("TAX INVOICE", rightColX, ry, { font: bold, size: 10.5, color: INK });
+  text(input.businessEmail || "info@groutix.com", rightColX, ry, { size: 9, color: INK });
+  ry -= 18;
+  
+  // TAX INVOICE block
+  text("TAX INVOICE", rightColX, ry, { font: bold, size: 10, color: INK });
   ry -= 12;
   text("ACN: 687 415 005", rightColX, ry, { font: bold, size: 9, color: INK });
-  ry -= 16;
-  text(`Tax Invoice No: ${invoiceNumber}`, rightColX, ry, { font: bold, size: 9.5, color: INK });
-  ry -= 12;
-  text(input.date || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }), rightColX, ry, { size: 9, color: INK });
+  ry -= 18;
+  
+  // Dynamic Invoice No and Date
+  text(`Tax Invoice No: `, rightColX, ry, { font: bold, size: 9, color: INK });
+  page.drawText(invoiceNumber, { x: rightColX + font.widthOfTextAtSize("Tax Invoice No: ", 9), y: ry, size: 9, font, color: INK });
+  ry -= 14;
+  
+  const displayDate = input.date || new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+  text(displayDate, rightColX, ry, { size: 9, color: INK });
 
   // Move below header
-  y = Math.min(y - 58, ry - 18);
+  y = Math.min(y - 70, ry - 30);
 
-  // 3. Billing Address («job.instantpost_billing_address»)
+  // 3. Billing Address (Customer details on bottom left of header)
   if (input.customerName) {
-    text(input.customerName, MARGIN, y, { font: bold, size: 9.5, color: INK });
-    y -= 12;
+    text(input.customerName, MARGIN, y, { size: 10, color: INK });
+    y -= 13;
   }
   if (input.address) {
-    const addrLines = wrapLines(input.address, font, 9, contentW - 160);
+    const addrLines = wrapLines(input.address, font, 10, contentW - 160);
     for (const ln of addrLines) {
       if (ln) {
-        text(ln, MARGIN, y, { size: 9, color: INK });
-        y -= 11.5;
+        text(ln, MARGIN, y, { size: 10, color: INK });
+        y -= 13;
       }
     }
   }
   const contactPieces: string[] = [];
-  if (input.phone) contactPieces.push(`Phone: ${input.phone}`);
-  if (input.email) contactPieces.push(`Email: ${input.email}`);
+  if (input.phone) contactPieces.push(input.phone);
+  if (input.email) contactPieces.push(input.email);
   if (contactPieces.length > 0) {
-    text(contactPieces.join("   *   "), MARGIN, y, { size: 8.5, color: MUTED });
-    y -= 12;
+    text(contactPieces.join("   *   "), MARGIN, y, { size: 9, color: MUTED });
+    y -= 13;
   }
   y -= 10;
 

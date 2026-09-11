@@ -48,9 +48,8 @@ export async function POST(req: NextRequest) {
 
   const incoming = body.warranty || {};
   const existing = lead.warranty || {};
-  // Automatic step: mint a sequential warranty number the first time.
   const warrantyNo =
-    existing.warrantyNo || formatDocNumber("GX-W", await getNextSequence("warranty"));
+    lead.jobNo || existing.warrantyNo || formatDocNumber("GX-W", await getNextSequence("warranty"));
 
   const now = new Date();
   const warranty: WarrantyDoc = {

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
   const sp = req.nextUrl.searchParams;
 
-  const jobNo = sp.get("jobNo") || lead?.warranty?.jobNo || (lead ? `GX-${lead.id.slice(-6).toUpperCase()}` : "GX-WARRANTY");
+  const jobNo = sp.get("jobNo") || lead?.jobNo || lead?.warranty?.jobNo || (lead ? `GX-${lead.id.slice(-6).toUpperCase()}` : "GX-WARRANTY");
   const completionDate = sp.get("completion") || lead?.warranty?.completionDate || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
   
   // Calculate 10-year expiry default if not given

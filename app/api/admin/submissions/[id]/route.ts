@@ -123,14 +123,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       // ── Transition automations (auto-invoice / auto-warranty) ──
       // Best-effort; each helper is internally guarded and idempotent.
       if (body.status === "Job Done") {
-        await autoSendInvoice(id);
+        // Invoice is no longer auto-sent — Finance (Login 3) issues it manually.
         await sendInternalAlert({
-          title: "Job completed — invoice sent",
+          title: "Job completed",
           emoji: "🧾",
           accent: "#001f97",
           lines: [
             `${before.name || "A customer"} — ${before.address || ""}`.trim(),
-            `The invoice has been auto-generated and emailed. Awaiting payment.`,
+            `Job is completed. Please review and send the invoice manually.`,
           ],
           leadId: id,
         });

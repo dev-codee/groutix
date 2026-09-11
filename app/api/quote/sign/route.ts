@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Quote not found." }, { status: 404 });
   }
 
-  const quoteNumber = lead.quoteNumber || lead.jobNo || `JOBNO-${lead.id.slice(-6).toUpperCase()}`;
+  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^JOBNO-/i, "QT-") : (lead.quoteNumber || `JOBNO-${lead.id.slice(-6).toUpperCase()}`);
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(
     items,
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Quotation record not found." }, { status: 404 });
     }
 
-    const quoteNumber = lead.quoteNumber || lead.jobNo || `JOBNO-${lead.id.slice(-6).toUpperCase()}`;
+    const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^JOBNO-/i, "QT-") : (lead.quoteNumber || `JOBNO-${lead.id.slice(-6).toUpperCase()}`);
     const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
     const { subtotal, gst, total } = computeQuoteTotals(
       items,
