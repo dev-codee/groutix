@@ -194,7 +194,7 @@ export interface Lead {
 }
 
 const JOB_NO_START = 1201;
-const JOB_NO_PREFIX = "GQ-";
+const JOB_NO_PREFIX = "JobNo-";
 const NEW_LEADS_CUTOFF_KEY = "gx_new_leads_cutoff_ms";
 
 function getNewLeadsCutoffMs(): number {
@@ -220,13 +220,19 @@ function isLegacyLead(lead: Lead, cutoffMs: number): boolean {
 
 function extractJobNoNumeric(jobNo?: string): number | null {
   if (!jobNo) return null;
-  const match = jobNo.match(/^GQ-(\d+)$/i);
+  const match = jobNo.match(/^(?:GQ|JobNo)-(\d+)$/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
 function generateJobNos(leads: Lead[], cutoffMs: number): Lead[] {
   const byId = new Map<string, Lead>();
-  for (const l of leads) byId.set(l.id, { ...l, jobNo: isLegacyLead(l, cutoffMs) ? undefined : l.jobNo });
+  for (const l of leads) {
+    let jNo = isLegacyLead(l, cutoffMs) ? undefined : l.jobNo;
+    if (jNo && /^GQ-/i.test(jNo)) {
+      jNo = jNo.replace(/^GQ-/i, JOB_NO_PREFIX);
+    }
+    byId.set(l.id, { ...l, jobNo: jNo });
+  }
 
   const newOnly = leads
     .filter((l) => !isLegacyLead(l, cutoffMs))
@@ -243,6 +249,8 @@ function generateJobNos(leads: Lead[], cutoffMs: number): Lead[] {
     const l = byId.get(ref.id)!;
     if (!l.jobNo) {
       l.jobNo = `${JOB_NO_PREFIX}${next++}`;
+    } else if (/^GQ-/i.test(l.jobNo)) {
+      l.jobNo = l.jobNo.replace(/^GQ-/i, JOB_NO_PREFIX);
     }
   }
   return leads.map((l) => byId.get(l.id)!);
@@ -1043,7 +1051,7 @@ export default function CrmDashboardPage() {
         const withJobNos = generateJobNos(normalized, cutoffMs);
         const changes: { id: string; jobNo: string | undefined }[] = [];
         for (let i = 0; i < withJobNos.length; i++) {
-          const before = normalized[i]?.jobNo;
+          const before = rawItems[i]?.jobNo;
           const after = withJobNos[i]?.jobNo;
           if (before !== after) changes.push({ id: withJobNos[i].id, jobNo: after });
         }
@@ -2241,7 +2249,7 @@ export default function CrmDashboardPage() {
     exp.setFullYear(exp.getFullYear() + 10);
     const expiryStr = exp.toISOString().slice(0, 10);
 
-    setWarrantyJobNo(lead.warranty?.jobNo || `GX-${lead.id.slice(-6).toUpperCase()}`);
+    setWarrantyJobNo(lead.jobNo || lead.warranty?.jobNo || `JobNo-${lead.id.slice(-6).toUpperCase()}`);
     setWarrantyCompletion(lead.warranty?.completionDate || today);
     setWarrantyExpiry(lead.warranty?.expiryDate || expiryStr);
     setWarrantyCustomer(lead.warranty?.customerName || lead.name || "");
@@ -3708,12 +3716,21 @@ export default function CrmDashboardPage() {
     let list = scopedLeads;
     const q = globalSearch.toLowerCase().trim();
     if (q) {
-      list = list.filter((l) =>
-        [l.jobNo, l.name, l.phone, l.email, l.service, l.address, l.notes, l.message]
+      // Support searching by job number e.g. "1201", "JobNo-1201", "job 1201", "job-1201", "GQ-1201", "#1201"
+      const numMatch = q.match(/^(?:job(?:no)?[\s#-]*|gq[\s#-]*|#)?(\d+)$/i);
+      const searchNum = numMatch ? numMatch[1] : null;
+
+      list = list.filter((l) => {
+        if (searchNum && l.jobNo) {
+          const lDigits = l.jobNo.replace(/\D/g, "");
+          if (lDigits.includes(searchNum)) return true;
+        }
+        return [l.jobNo, l.name, l.phone, l.email, l.service, l.address, l.notes, l.message]
+          .filter(Boolean)
           .join(" ")
           .toLowerCase()
-          .includes(q)
-      );
+          .includes(q);
+      });
     }
     if (statusFilter) {
       // statusFilter may be a single status (dropdown) or a "|"-joined group
@@ -4101,7 +4118,7 @@ export default function CrmDashboardPage() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search leads, phone, service..."
+                placeholder="Search job #, name, phone, service..."
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
@@ -4835,7 +4852,7 @@ export default function CrmDashboardPage() {
                       <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
-                        placeholder="Search name, phone, email, service..."
+                        placeholder="Search job #, name, phone, email, service..."
                         value={globalSearch}
                         onChange={(e) => setGlobalSearch(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
@@ -5614,10 +5631,22 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "quotes" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-black text-slate-900">Active & Prepared Quotations</h2>
-                <div className="text-xs text-slate-500">
-                  {quoteLeads.length} Quotes in System
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-black text-slate-900">Active & Prepared Quotations</h2>
+                  <div className="text-xs text-slate-500">
+                    {quoteLeads.length} Quotes in System
+                  </div>
+                </div>
+                <div className="relative w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search job #, customer, phone..."
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                  />
                 </div>
               </div>
 
@@ -5858,46 +5887,72 @@ export default function CrmDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Quick Status Filter Dropdown */}
-                  <div className="flex items-center gap-1.5 pb-1 text-xs">
-                    {(() => {
-                      // Full role status set drives the "All Active" count; the dropdown
-                      // itself lists only the curated stages that match the dashboard
-                      // buttons (the micro-stages stay out of the filter to reduce noise).
-                      const boardStatuses = getRoleStatusOptions(role);
-                      const filterOptions =
-                        role === "field" || role === "technician"
-                          ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
-                          : role === "finance"
-                            ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
+                  {/* Filter Toolbar for all roles */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-2 pt-1">
+                    <div className="flex items-center gap-3 flex-wrap flex-1">
+                      <div className="relative flex-1 min-w-[280px]">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Search job #, name, phone, email, service..."
+                          value={globalSearch}
+                          onChange={(e) => setGlobalSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                        />
+                      </div>
+
+                      {/* Quick Status Filter Dropdown */}
+                      {(() => {
+                        // Full role status set drives the "All Active" count; the dropdown
+                        // itself lists only the curated stages that match the dashboard
+                        // buttons (the micro-stages stay out of the filter to reduce noise).
+                        const boardStatuses = getRoleStatusOptions(role);
+                        const filterOptions =
+                          role === "field" || role === "technician"
+                            ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
+                            : role === "finance"
+                              ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
+                              : role === "intake"
+                                ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
+                                : boardStatuses;
+                        const allLabel =
+                          role === "finance"
+                            ? "All Finance Jobs"
                             : role === "intake"
-                              ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
-                              : boardStatuses;
-                      const allLabel =
-                        role === "finance"
-                          ? "All Finance Jobs"
-                          : role === "intake"
-                            ? "All Leads"
-                            : "All Active";
-                      const totalActive = scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
-                      return (
-                        <select
-                          value={filterOptions.includes(statusFilter) ? statusFilter : ""}
-                          onChange={(e) => setStatusFilter(e.target.value)}
-                          className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
+                              ? "All Leads"
+                              : "All Active";
+                        const totalActive = scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
+                        return (
+                          <select
+                            value={filterOptions.includes(statusFilter) ? statusFilter : ""}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
+                          >
+                            <option value="">{allLabel} ({totalActive})</option>
+                            {filterOptions.map((st) => {
+                              const count = scopedLeads.filter((l) => l.status === st).length;
+                              return (
+                                <option key={st} value={st}>
+                                  {st} ({count})
+                                </option>
+                              );
+                            })}
+                          </select>
+                        );
+                      })()}
+
+                      {(statusFilter || globalSearch) && (
+                        <button
+                          onClick={() => {
+                            setStatusFilter("");
+                            setGlobalSearch("");
+                          }}
+                          className="text-xs text-rose-600 hover:text-rose-700 font-bold px-2 py-1 rounded-md hover:bg-rose-50 transition-colors"
                         >
-                          <option value="">{allLabel} ({totalActive})</option>
-                          {filterOptions.map((st) => {
-                            const count = scopedLeads.filter((l) => l.status === st).length;
-                            return (
-                              <option key={st} value={st}>
-                                {st} ({count})
-                              </option>
-                            );
-                          })}
-                        </select>
-                      );
-                    })()}
+                          Clear filter
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -6832,7 +6887,24 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
           {currentView === "customers" && (
             <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
-              <h2 className="text-base font-black text-slate-900">Customer Directory ({scopedLeads.length} Records)</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-black text-slate-900">Customer Directory ({filteredLeads.length} Records)</h2>
+                  <div className="text-xs text-slate-500">
+                    Live client contact and property records
+                  </div>
+                </div>
+                <div className="relative w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search job #, customer, phone, address..."
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
@@ -6846,7 +6918,7 @@ export default function CrmDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {scopedLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
+                    {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/80">
                         <td className="py-3 px-3">
                           <div className="font-black text-[#001f97] text-[11px] tracking-tight mb-0.5">{l.jobNo || "—"}</div>
@@ -6864,7 +6936,7 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
               </div>
-              <Pagination page={page} pageSize={PAGE_SIZE} total={scopedLeads.length} onPage={setPage} />
+              <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
             </div>
           )}
 
@@ -7806,7 +7878,7 @@ export default function CrmDashboardPage() {
                     <div>info@groutix.com.au</div>
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
-                    <div className="pt-1.5 text-slate-900">Quote # GQ-{activeQuoteLead.id.slice(-6).toUpperCase()}</div>
+                    <div className="pt-1.5 text-slate-900">Quote # {activeQuoteLead.jobNo || `JobNo-${activeQuoteLead.id.slice(-6).toUpperCase()}`}</div>
                     <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
