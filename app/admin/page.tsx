@@ -198,7 +198,7 @@ export interface Lead {
 }
 
 const JOB_NO_START = 1201;
-const JOB_NO_PREFIX = "JOBNO-";
+const JOB_NO_PREFIX = "Job No-";
 const NEW_LEADS_CUTOFF_KEY = "gx_new_leads_cutoff_ms";
 const DEFAULT_LEGACY_CUTOFF_MS = 1789102800000; // 2026-09-11T05:00:00Z - Cutoff: only leads created after this get JOBNO-1201+
 
@@ -225,7 +225,7 @@ function isLegacyLead(lead: Lead, cutoffMs: number): boolean {
 
 function extractJobNoNumeric(jobNo?: string): number | null {
   if (!jobNo) return null;
-  const match = jobNo.match(/^(?:GQ|JobNo|JOBNO)-(\d+)$/i);
+  const match = jobNo.match(/^(?:GQ|JobNo|JOBNO|Job No)-(\d+)$/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
@@ -233,8 +233,8 @@ function generateJobNos(leads: Lead[], cutoffMs: number): Lead[] {
   const byId = new Map<string, Lead>();
   for (const l of leads) {
     let jNo = isLegacyLead(l, cutoffMs) ? undefined : l.jobNo;
-    if (jNo && /^(?:GQ|JobNo)-/i.test(jNo)) {
-      jNo = jNo.replace(/^(?:GQ|JobNo)-/i, JOB_NO_PREFIX);
+    if (jNo && /^(?:GQ|JobNo|JOBNO)-/i.test(jNo)) {
+      jNo = jNo.replace(/^(?:GQ|JobNo|JOBNO)-/i, JOB_NO_PREFIX);
     }
     byId.set(l.id, { ...l, jobNo: jNo });
   }
@@ -271,8 +271,8 @@ function generateJobNos(leads: Lead[], cutoffMs: number): Lead[] {
       l.jobNo = `${JOB_NO_PREFIX}${next}`;
       usedNumbers.add(next);
       next++;
-    } else if (/^(?:GQ|JobNo)-/i.test(l.jobNo)) {
-      l.jobNo = l.jobNo.replace(/^(?:GQ|JobNo)-/i, JOB_NO_PREFIX);
+    } else if (/^(?:GQ|JobNo|JOBNO)-/i.test(l.jobNo)) {
+      l.jobNo = l.jobNo.replace(/^(?:GQ|JobNo|JOBNO)-/i, JOB_NO_PREFIX);
     }
   }
 
@@ -2412,7 +2412,7 @@ export default function CrmDashboardPage() {
     exp.setFullYear(exp.getFullYear() + 10);
     const expiryStr = exp.toISOString().slice(0, 10);
 
-    setWarrantyJobNo(lead.jobNo || lead.warranty?.jobNo || `JOBNO-${lead.id.slice(-6).toUpperCase()}`);
+    setWarrantyJobNo(lead.jobNo || lead.warranty?.jobNo || `Job No-${lead.id.slice(-6).toUpperCase()}`);
     setWarrantyCompletion(lead.warranty?.completionDate || today);
     setWarrantyExpiry(lead.warranty?.expiryDate || expiryStr);
     setWarrantyCustomer(lead.warranty?.customerName || lead.name || "");

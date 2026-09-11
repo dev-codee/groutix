@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     price
   );
 
-  const invoiceNumber = lead.jobNo ? lead.jobNo.replace(/^JOBNO-/i, "INV-") : (lead.invoiceNumber || lead.quoteNumber || "INV-DRAFT");
+  const invoiceNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "INV-") : (lead.invoiceNumber || lead.quoteNumber || "INV-DRAFT");
   const jobDescription = description || service;
 
   const base64 = await buildQuotePdfBase64({

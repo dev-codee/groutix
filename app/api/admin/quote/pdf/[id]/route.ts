@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     lead.quoteAmount
   );
 
-  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^JOBNO-/i, "QT-") : (lead.quoteNumber || "DRAFT");
+  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : (lead.quoteNumber || "DRAFT");
   const jobDescription =
     lead.quoteScope ||
     lead.message ||
