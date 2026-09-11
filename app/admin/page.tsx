@@ -49,7 +49,8 @@ import {
   Eye,
   CheckCircle2,
   Smartphone,
-  MapPin
+  MapPin,
+  Wrench
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -2946,93 +2947,167 @@ export default function CrmDashboardPage() {
     }
   }
 
-  // ── Login 1 (Intake / Leads) Custom Horizontal Lead Card ───────────────────
-  // Shows ONLY the items from the user-specified template in a clean horizontal row
+  // ── Dedicated Intake Dashboard Row (Manager-Style 3 Columns) ───────────────
   function renderIntakeLeadRow(l: Lead) {
-    const photosTotal = l.photos?.length || l.photosCount || 0;
     const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-    const statusOptions = getRoleStatusOptions(role, l.status);
+    const statusOptions = getRoleStatusOptions("intake", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
     const followupPrompt = getFollowupPrompt(l);
+
+    const jobNoDisplay = l.jobNo
+      ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
+      : `JobNo-${l.id.slice(0, 4)}`;
+
+    const dateTimeDisplay = (() => {
+      const d = new Date(l.createdAt || l.inspectionAt || l.jobAt || Date.now());
+      if (isNaN(d.getTime())) return "";
+      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    })();
+
+    const serviceDisplay = l.service || "3 Bathrooms | Silicone Replacement";
+    const notesDisplay = l.notes || l.message;
+
+    const isNewDone = true;
+    const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
+    const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
+    const isQuoteSentDone = l.status === "Quote Sent" || l.status === "Won" || l.status === "Job Booked" || l.status === "Completed";
+    const isJobBookedDone = l.status === "Job Booked" || l.status === "Completed";
 
     return (
       <div
         key={l.id}
-        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
+        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-start">
-          {/* SECTION 1: Client Info & Details Box (3 columns) */}
-          <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                  title={l.name || "Unnamed Customer"}
-                >
-                  {l.name || "Unnamed Customer"}
-                </button>
-                {(l.message || l.notes) && (
-                  <div className="text-xs text-slate-500 line-clamp-1">
-                    {l.message || l.notes}
-                  </div>
-                )}
-              </div>
-              {l.createdAt && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
-                  <div className="text-[11px] font-semibold text-slate-600">
-                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </div>
-                </div>
-              )}
+        <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+          {/* COLUMN 1: CLIENT */}
+          <div className="col-span-4 min-w-0 space-y-2.5">
+            {/* Row 1: JobNo | Name | Date Time */}
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate">
+              <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
+              <span className="text-slate-300 font-bold">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLead(l);
+                  setLeadModalOpen(true);
+                }}
+                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                title={l.name || "Unnamed Customer"}
+              >
+                {l.name || "Unnamed Customer"}
+              </button>
+              <span className="text-slate-300 font-bold">|</span>
+              <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
             </div>
 
-            {/* Details Box */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+            {/* Row 2: Phone & Email */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
+                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate">{l.phone || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
+                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={l.email}>{l.email || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Email:</span>
-                <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            </div>
+
+            {/* Row 4: Service */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <Wrench className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+            </div>
+
+            {/* Row 5: Notes */}
+            {notesDisplay ? (
+              <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+                <MessageSquare className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={`Notes: ${notesDisplay}`}>Notes: {notesDisplay}</span>
               </div>
-              {l.address && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
-                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
-                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 font-normal truncate">
+                <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">Notes: None</span>
               </div>
+            )}
+
+            {/* Row 6: 5 Action Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => callCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Call"
+              >
+                <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => emailCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Email"
+              >
+                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Email</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l, "sms")}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="SMS"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">SMS</span>
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
+                title="WhatsApp"
+              >
+                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="truncate">WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l)}
+                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Conversation"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Conversation</span>
+                {hasCustomerUnread && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* SECTION 2: STATUS, ASSIGNED & FOLLOW-UP (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+          {/* COLUMN 2: INSPECTION & QUOTE */}
+          <div className="col-span-5 min-w-0 space-y-2.5">
+            {/* Row 1: STATUS, ASSIGNED, GPS */}
+            <div className="flex items-end gap-1.5">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   STATUS
                 </label>
                 <select
                   value={l.status || "New"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-emerald-400 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -3042,14 +3117,14 @@ export default function CrmDashboardPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   ASSIGNED
                 </label>
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
                     <option key={n} value={n}>
@@ -3058,81 +3133,89 @@ export default function CrmDashboardPage() {
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Follow-up card */}
-            <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
-              <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
-                FOLLOW-UP
-              </div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5 leading-snug">
-                {followupPrompt}
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 3: INTAKE WORKFLOW STAGES (3 columns) */}
-          <div className="xl:col-span-3 space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-              INTAKE WORKFLOW STAGES
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
-                { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
-                { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
-                { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
-                { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
-              ].map((st) => (
-                <button
-                  key={st.label}
-                  type="button"
-                  onClick={() =>
-                    updateLeadField(l.id, {
-                      status: st.status,
-                      ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
-                    })
-                  }
-                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[32px] cursor-pointer ${
-                    st.active
-                      ? `${st.color} text-white shadow-2xs`
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                  }`}
-                  title={`Set status: ${st.label}`}
-                >
-                  {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                  <span className="text-center leading-tight">{st.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SECTION 4: ACTIONS (3 columns) */}
-          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
-            {/* Top row: Phone, Mail, Quote, Inspection */}
-            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => callCustomer(l)}
-                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Call customer"
+                onClick={() => openGpsModal(l)}
+                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
-                <Phone className="w-4 h-4" />
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>GPS</span>
+              </button>
+            </div>
+
+            {/* Row 2 (5 buttons): On the Way, Reached, Start, Inspection Form, Complete */}
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection En Route" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection En Route"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="On the Way"
+              >
+                On the Way
               </button>
 
               <button
                 type="button"
-                onClick={() => emailCustomer(l)}
-                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Email customer"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Arrived" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Arrived"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Reached"
               >
-                <Mail className="w-4 h-4" />
+                Reached
               </button>
 
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection In Progress"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Start"
+              >
+                Start
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openInspectionModal(l)}
+                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 shadow-2xs"
+                title="Inspection Form"
+              >
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Inspection Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Completed"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Complete"
+              >
+                Complete
+              </button>
+            </div>
+
+            {/* Row 3 (4 items): Quote, Sent, Job Booked, Assign Tech */}
+            <div className="grid grid-cols-4 gap-1">
               <button
                 type="button"
                 onClick={() => openQuoteModal(l)}
-                className="px-3 py-1.5 border border-amber-200 bg-[#fef3c7] text-[#b45309] rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0"
                 title="Open Quote Builder"
               >
                 Quote
@@ -3140,90 +3223,134 @@ export default function CrmDashboardPage() {
 
               <button
                 type="button"
-                onClick={() => openInspectionModal(l)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                  l.inspectionReport?.status === "completed"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                    : "border border-cyan-300 bg-[#ecfeff] text-[#0f766e] hover:bg-cyan-100"
+                onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Quote Sent"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
-                title="Inspection Report Form"
+                title="Quote Sent"
               >
-                <ClipboardList className="w-4 h-4" />
-                <span>Inspection</span>
+                Sent
               </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Booked"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Job Booked"
+              >
+                Job Booked
+              </button>
+
+              <select
+                value={l.technician || ""}
+                onChange={(e) => {
+                  const techName = e.target.value;
+                  const tech = assignableTechnicians.find((t) => t.name === techName);
+                  updateLeadField(l.id, { technician: techName, technicianId: tech?.id || "" });
+                }}
+                className="w-full text-[10px] xl:text-[11px] font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-1.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate min-w-0"
+                title="Assign Technician"
+              >
+                <option value="">Assign Tech</option>
+                {assignableTechnicians.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* COLUMN 3: WORKFLOW (UPTO JOB BOOKED) */}
+          <div className="col-span-3 min-w-0 space-y-1.5">
+            {/* FOLLOW-UP banner */}
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2 py-0.5 rounded-lg flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+                {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+              </span>
             </div>
 
-            {/* Bottom row: Photos, Messages, Share, and on right Edit/Delete */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
+            {/* Two sub-columns */}
+            <div className="grid grid-cols-2 gap-1.5 min-w-0">
+              {/* Left sub-column: New, Inspection Completed, Job Booked */}
+              <div className="space-y-1 min-w-0">
                 <button
                   type="button"
-                  onClick={() => openPhotosModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Photos"
+                  onClick={() => updateLeadField(l.id, { status: "New" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isNewDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <Camera className="w-4 h-4" />
-                  {photosTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {photosTotal}
-                    </span>
+                  <span className="truncate">New</span>
+                  {isNewDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isInspectionCompletedDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="truncate">Inspection Completed</span>
+                  {isInspectionCompletedDone ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
                   )}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => openMessagesModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Messages"
+                  onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isJobBookedDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  {hasCustomerUnread && (
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  )}
+                  <span className="truncate">Job Booked</span>
+                  {isJobBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
-
-                {l.address ? (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
-                    title="GPS Location"
-                  >
-                    <Navigation className="w-4 h-4" />
-                    <span className="text-[10px] font-bold">GPS</span>
-                  </a>
-                ) : (
-                  <div
-                    className="p-1.5 text-slate-400 cursor-not-allowed flex items-center gap-1"
-                    title="No address provided"
-                  >
-                    <Navigation className="w-4 h-4 opacity-50" />
-                    <span className="text-[10px] font-bold opacity-50">GPS</span>
-                  </div>
-                )}
               </div>
 
-              <div className="flex items-center gap-1 text-slate-400">
+              {/* Right sub-column: Inspection Booked, Quote Sent */}
+              <div className="space-y-1 min-w-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="p-1.5 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                  title="Edit Lead"
+                  onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isInspectionBookedDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <Edit3 className="w-4 h-4" />
+                  <span className="truncate">Inspection Booked</span>
+                  {isInspectionBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleDeleteLead(l.id)}
-                  className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                  title="Delete Lead"
+                  onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isQuoteSentDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <span className="truncate">Quote Sent</span>
+                  {isQuoteSentDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
               </div>
             </div>
@@ -3233,99 +3360,152 @@ export default function CrmDashboardPage() {
     );
   }
 
-  // ── Login 2 (Field / Scheduling) Custom Horizontal Lead Card ───────────────
-  // Shows ONLY the items from the user-specified template in a clean horizontal row
+  // ── Dedicated Inspection / Field Dashboard Row (Manager-Style 3 Columns) ───
   function renderFieldLeadRow(l: Lead) {
-    const photosTotal = l.photos?.length || l.photosCount || 0;
     const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-    const statusOptions = getRoleStatusOptions(role, l.status);
+    const statusOptions = getRoleStatusOptions("inspection", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
+    const followupPrompt = getFollowupPrompt(l);
 
+    const jobNoDisplay = l.jobNo
+      ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
+      : `JobNo-${l.id.slice(0, 4)}`;
+
+    const dateTimeDisplay = (() => {
+      const d = new Date(l.inspectionAt || l.createdAt || l.jobAt || Date.now());
+      if (isNaN(d.getTime())) return "";
+      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    })();
+
+    const serviceDisplay = l.service && (l.notes || l.message)
+      ? `${l.service} | ${l.notes || l.message}`
+      : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
+
+    const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
+    const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
 
     return (
       <div
         key={l.id}
-        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
+        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-center">
-          {/* SECTION 1: Client Info & Details Box (3 columns) */}
-          <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                  title={l.name || "Unnamed Customer"}
-                >
-                  {l.name || "Unnamed Customer"}
-                </button>
-                {(l.message || l.notes) && (
-                  <div className="text-xs text-slate-500 line-clamp-1">
-                    {l.message || l.notes}
-                  </div>
-                )}
-              </div>
-              {l.createdAt && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
-                  <div className="text-[11px] font-semibold text-slate-600">
-                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </div>
-                </div>
-              )}
+        <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+          {/* COLUMN 1: CLIENT */}
+          <div className="col-span-4 min-w-0 space-y-2.5">
+            {/* Row 1: JobNo | Name | Date Time */}
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate">
+              <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
+              <span className="text-slate-300 font-bold">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLead(l);
+                  setLeadModalOpen(true);
+                }}
+                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                title={l.name || "Unnamed Customer"}
+              >
+                {l.name || "Unnamed Customer"}
+              </button>
+              <span className="text-slate-300 font-bold">|</span>
+              <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
             </div>
 
-            {/* Details Box with Phone, Email, Service, and Inspection */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+            {/* Row 2: Phone & Email */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
+                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate">{l.phone || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
+                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={l.email}>{l.email || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Email:</span>
-                <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
-              </div>
-              {l.address && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
-                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
-                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-slate-200/50">
-                <span className="text-slate-400 font-semibold shrink-0">Inspection:</span>
-                <span className="font-bold text-[#001f97] truncate text-right">
-                  {l.inspectionAt ? fmtDate(l.inspectionAt) : "Not scheduled"}
-                </span>
-              </div>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            </div>
+
+            {/* Row 4: Service / Inquiry */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <Wrench className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+            </div>
+
+            {/* Row 5: 5 Action Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => callCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Call"
+              >
+                <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => emailCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Email"
+              >
+                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Email</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l, "sms")}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="SMS"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">SMS</span>
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
+                title="WhatsApp"
+              >
+                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="truncate">WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l)}
+                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Conversation"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Conversation</span>
+                {hasCustomerUnread && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* SECTION 2: STATUS, ASSIGNED & TECHNICIAN ON SITE (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+          {/* COLUMN 2: INSPECTION (NO QUOTE) */}
+          <div className="col-span-5 min-w-0 space-y-2.5">
+            {/* Row 1: STATUS, ASSIGNED, GPS */}
+            <div className="flex items-end gap-1.5">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   STATUS
                 </label>
                 <select
                   value={l.status || "Inspection Booked"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-emerald-400 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -3335,251 +3515,137 @@ export default function CrmDashboardPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   ASSIGNED
                 </label>
                 <select
-                  value={
-                    inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned)
-                      ? (inspectionStaff.find((s) => s.name === l.assigned || s.username === l.assigned)?.name || l.assigned)
-                      : "Unassigned"
-                  }
+                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
-                  <option value="Unassigned">Unassigned</option>
-                  {inspectionStaff.map((s) => {
-                    const label = s.name?.trim() || s.username;
-                    return (
-                      <option key={s.id} value={label}>
-                        {label}
-                      </option>
-                    );
-                  })}
+                  {assigneeOptions.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
                 </select>
               </div>
-            </div>
 
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                <HardHat className="w-3 h-3 text-slate-500" />
-                <span>TECHNICIAN ON SITE</span>
-              </label>
-              <select
-                value={l.technicianId || ""}
-                onChange={(e) => {
-                  const tech = assignableTechnicians.find((t) => t.id === e.target.value);
-                  updateLeadField(l.id, {
-                    technicianId: e.target.value,
-                    technician: tech?.name || "",
-                  });
-                }}
-                className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
-              >
-                <option value="">Unassigned</option>
-                {assignableTechnicians.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}{t.hasLogin ? " (Portal)" : ""}{!t.active ? " (inactive)" : ""}
-                  </option>
-                ))}
-                {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
-                  <option value={l.technicianId}>{l.technician || "Former technician"}</option>
-                )}
-              </select>
-            </div>
-          </div>
-
-          {/* SECTION 3: INSPECTION LIVE VISIT & REPORT (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            {/* Inspection Live Visit micro-stages */}
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                INSPECTION LIVE VISIT
-              </label>
-              <div className="grid grid-cols-5 gap-1">
-                {[
-                  { label: "On the\nWay", status: "Inspection En Route", color: "bg-orange-500 hover:bg-orange-600" },
-                  { label: "Reached", status: "Inspection Arrived", color: "bg-[#1e3a5f] hover:bg-[#162d4a]" },
-                  { label: "Start", status: "Inspection In Progress", color: "bg-slate-600 hover:bg-slate-700" },
-                  { label: "Inspection\nForm", status: "__open_form__", color: "bg-emerald-600 hover:bg-emerald-700" },
-                  { label: "Complete", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
-                ].map((st) => {
-                  const isFormBtn = st.status === "__open_form__";
-                  const isCurrent = !isFormBtn && l.status === st.status;
-                  const formFilled = l.inspectionReport?.status === "completed";
-                  return (
-                    <button
-                      key={st.label}
-                      type="button"
-                      onClick={() => {
-                        if (isFormBtn) { openInspectionModal(l); return; }
-                        updateLeadField(l.id, { status: st.status });
-                      }}
-                      className={`px-1 py-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 text-center leading-tight min-h-[36px] cursor-pointer ${
-                        isFormBtn
-                          ? formFilled
-                            ? "bg-emerald-600 text-white shadow-sm"
-                            : "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
-                          : isCurrent
-                            ? `${st.color} text-white shadow-sm`
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/80"
-                      }`}
-                      title={isFormBtn ? "Open Inspection Form" : `Set status: ${st.status}`}
-                    >
-                      {isCurrent && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                      <span className="text-center leading-tight whitespace-pre-line">{st.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Share to Booking Office banner */}
-            {l.status === "Inspection Completed" ? (
-              <div className="w-full px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5">
-                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span className="truncate">Shared to Booking Office — awaiting quote</span>
-              </div>
-            ) : (
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                className="w-full px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                title="Share to Booking Office"
+                onClick={() => openGpsModal(l)}
+                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>Share to Booking Office</span>
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>GPS</span>
               </button>
-            )}
-
-            {/* GROUTIX Field Inspection Report */}
-            <div
-              onClick={() => openInspectionModal(l)}
-              className="w-full px-3 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg flex items-center justify-between cursor-pointer transition-colors shadow-2xs"
-              title="Open Groutix Field Inspection Report"
-            >
-              <span className="flex items-center gap-1.5 text-xs font-bold truncate">
-                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">GROUTIX Field Inspection Report</span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded shrink-0 ml-1">
-                {l.inspectionReport?.status === "completed" ? "VIEW FORM" : "FILL / VIEW FORM"}
-              </span>
             </div>
-          </div>
 
-          {/* SECTION 4: ACTIONS (3 columns) */}
-          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
-            {/* Top row: Phone, Mail, Quote, Inspection */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            {/* Row 2 (5 buttons): On the Way, Reached, Start, Inspection Form, Complete */}
+            <div className="grid grid-cols-5 gap-1">
               <button
                 type="button"
-                onClick={() => callCustomer(l)}
-                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Call customer"
+                onClick={() => updateLeadField(l.id, { status: "Inspection En Route" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection En Route"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="On the Way"
               >
-                <Phone className="w-4 h-4" />
+                On the Way
               </button>
 
               <button
                 type="button"
-                onClick={() => emailCustomer(l)}
-                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Email customer"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Arrived" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Arrived"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Reached"
               >
-                <Mail className="w-4 h-4" />
+                Reached
               </button>
 
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection In Progress"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Start"
+              >
+                Start
+              </button>
 
               <button
                 type="button"
                 onClick={() => openInspectionModal(l)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                  l.inspectionReport?.status === "completed"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                    : "border border-cyan-300 bg-[#ecfeff] text-[#0f766e] hover:bg-cyan-100"
-                }`}
-                title="Inspection Report Form"
+                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 shadow-2xs"
+                title="Inspection Form"
               >
-                <ClipboardList className="w-4 h-4" />
-                <span>Inspection</span>
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Inspection Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Completed"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Complete"
+              >
+                Complete
               </button>
             </div>
+          </div>
 
-            {/* Bottom row: Photos, Messages, Share, and on right Edit/Delete */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openPhotosModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Photos"
-                >
-                  <Camera className="w-4 h-4" />
-                  {photosTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {photosTotal}
-                    </span>
-                  )}
-                </button>
+          {/* COLUMN 3: WORKFLOW (UPTO INSPECTION COMPLETED) */}
+          <div className="col-span-3 min-w-0 space-y-1.5">
+            {/* FOLLOW-UP banner */}
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+                {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+              </span>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={() => openMessagesModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Messages"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {hasCustomerUnread && (
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  )}
-                </button>
+            {/* Checklist items */}
+            <div className="space-y-1.5">
+              {[
+                { label: "Inspection Booked", status: "Inspection Booked" },
+                { label: "Inspection Completed", status: "Inspection Completed" },
+              ].map((item) => {
+                const isDone =
+                  item.status === "Inspection Booked"
+                    ? isInspectionBookedDone
+                    : isInspectionCompletedDone;
 
-                {l.address ? (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
-                    title="GPS Location"
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => updateLeadField(l.id, { status: item.status })}
+                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                      isDone
+                        ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
                   >
-                    <Navigation className="w-4 h-4" />
-                    <span className="text-[10px] font-bold">GPS</span>
-                  </a>
-                ) : (
-                  <div
-                    className="p-1.5 text-slate-400 cursor-not-allowed flex items-center gap-1"
-                    title="No address provided"
-                  >
-                    <Navigation className="w-4 h-4 opacity-50" />
-                    <span className="text-[10px] font-bold opacity-50">GPS</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1 text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="p-1.5 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                  title="Edit Lead"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleDeleteLead(l.id)}
-                  className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                  title="Delete Lead"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                    <span className="truncate">{item.label}</span>
+                    <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -6142,18 +6208,16 @@ export default function CrmDashboardPage() {
                 {/* Table / Card Header Bar & Leads List */}
                 <div className="w-full">
                   {role === "intake" ? (
-                    <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
-                      <div className="col-span-3">CLIENT DETAILS</div>
-                      <div className="col-span-3">STATUS &amp; FOLLOW-UP</div>
-                      <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
-                      <div className="col-span-3">ACTIONS</div>
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION &amp; QUOTE</div>
+                      <div className="col-span-3">WORKFLOW (UPTO JOB BOOKED)</div>
                     </div>
                   ) : role === "inspection" || role === "field" ? (
-                    <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
-                      <div className="col-span-3">CLIENT DETAILS</div>
-                      <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
-                      <div className="col-span-3">INSPECTION LIVE VISIT</div>
-                      <div className="col-span-3">ACTIONS</div>
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION (NO QUOTE)</div>
+                      <div className="col-span-3">WORKFLOW (UPTO INSPECTION COMPLETED)</div>
                     </div>
                   ) : role === "technician" ? (
                     <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
@@ -6555,18 +6619,16 @@ export default function CrmDashboardPage() {
                 {/* Table / Card Header Bar & Jobs List */}
                 <div className="w-full">
                   {role === "intake" ? (
-                    <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
-                      <div className="col-span-3">CLIENT DETAILS</div>
-                      <div className="col-span-3">STATUS &amp; FOLLOW-UP</div>
-                      <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
-                      <div className="col-span-3">ACTIONS</div>
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION &amp; QUOTE</div>
+                      <div className="col-span-3">WORKFLOW (UPTO JOB BOOKED)</div>
                     </div>
                   ) : role === "inspection" || role === "field" ? (
-                    <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
-                      <div className="col-span-3">CLIENT DETAILS</div>
-                      <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
-                      <div className="col-span-3">INSPECTION LIVE VISIT</div>
-                      <div className="col-span-3">ACTIONS</div>
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION (NO QUOTE)</div>
+                      <div className="col-span-3">WORKFLOW (UPTO INSPECTION COMPLETED)</div>
                     </div>
                   ) : role === "technician" ? (
                     <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
