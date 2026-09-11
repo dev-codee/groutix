@@ -489,9 +489,7 @@ export async function POST(req: NextRequest) {
 
     // Acknowledge by SMS (strictly 1 credit <= 160 chars GSM-7).
     if (phone) {
-      const smsBody = SHOW_INSPECTION_BOOKING && bookingUrl
-        ? `Groutix: Thanks ${firstName || "there"}! We received your quote request. Book your inspection: ${bookingUrl} or call ${CONTACT_PHONE}.`
-        : `Groutix: Thanks ${firstName || "there"}! We received your quote request and a specialist will be in touch shortly. Call ${CONTACT_PHONE}.`;
+      const smsBody = `Groutix: Thanks ${firstName || "there"}! We received your quote request and book your free inspection from email. Call ${CONTACT_PHONE}.`;
       await sendSms({ to: phone, body: smsBody });
     }
   };
