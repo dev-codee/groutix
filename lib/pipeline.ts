@@ -44,6 +44,7 @@ export const STAGES: Stage[] = [
   { key: "Job Confirmed", label: "Job Confirmed", owner: "technician", group: "job" },
   { key: "Job En Route", label: "Job — On the Way", owner: "technician", group: "job" },
   { key: "Job Arrived", label: "Job — Reached", owner: "technician", group: "job" },
+  { key: "Job Started", label: "Job Started", owner: "technician", group: "job" },
   { key: "Job In Progress", label: "Job In Progress", owner: "technician", group: "job" },
   // ── Finance / completion (Login 4) ── job done hands off here
   { key: "Job Done", label: "Job Done", owner: "finance", group: "finance" },
@@ -115,8 +116,10 @@ export const TECHNICIAN_STATUSES: string[] = [
   "Job Confirmed",
   "Job En Route",
   "Job Arrived",
+  "Job Started",
   "Job In Progress",
   "Job Done",
+  "Completed",
 ];
 
 /** Group of all field visit stages (inspection + job). */

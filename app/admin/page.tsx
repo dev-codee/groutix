@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Navigation,
   ShieldCheck,
+  ShieldAlert,
   Edit3,
   Save,
   Trash2,
@@ -118,6 +119,7 @@ export interface WarrantyDoc {
   authorisedBy?: string;
   dateIssued?: string;
   sentAt?: string;
+  provided?: boolean;
 }
 
 export interface ActivityEntry {
@@ -179,6 +181,7 @@ export interface Lead {
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
   warranty?: WarrantyDoc;
+  warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
   quoteAcceptedAt?: string;
@@ -318,7 +321,8 @@ const INSPECTION_STEPS: VisitStep[] = [
 const JOB_STEPS: VisitStep[] = [
   { label: "On the Way", status: "Job En Route" },
   { label: "Reached", status: "Job Arrived" },
-  { label: "Start", status: "Job In Progress" },
+  { label: "Start", status: "Job Started" },
+  { label: "In Progress", status: "Job In Progress" },
   { label: "Job Done", status: "Job Done" },
 ];
 // Which phase a lead is in, so we know which step set (if any) to show.
@@ -335,6 +339,7 @@ const JOB_PHASE = [
   "Job Confirmed",
   "Job En Route",
   "Job Arrived",
+  "Job Started",
   "Job In Progress",
 ];
 
@@ -477,13 +482,13 @@ function getStepActive(lead: Lead, step: string): boolean {
     case "New":
       return true;
     case "Inspection Booked":
-      return ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Inspection Completed":
-      return ["Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Quote Sent":
-      return ["Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Job Booked":
-      return ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Job Done":
       return ["Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Invoice Sent":
@@ -554,6 +559,7 @@ function getBadgeColor(status: string) {
     case "Inspection In Progress":
     case "Job En Route":
     case "Job Arrived":
+    case "Job Started":
     case "Job In Progress":
       return "bg-amber-50 text-amber-700 border-amber-200";
     // Closed / inactive — de-emphasised.
@@ -1011,6 +1017,7 @@ export default function CrmDashboardPage() {
   const [warrantyAddress, setWarrantyAddress] = useState("");
   const [warrantyAuthorised, setWarrantyAuthorised] = useState("GROUTIX PTY LTD");
   const [warrantyIssued, setWarrantyIssued] = useState("");
+  const [warrantyProvided, setWarrantyProvided] = useState(true);
   const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -2414,6 +2421,8 @@ export default function CrmDashboardPage() {
     exp.setFullYear(exp.getFullYear() + 10);
     const expiryStr = exp.toISOString().slice(0, 10);
 
+    const isProvided = lead.warrantyProvided !== false && lead.warranty?.provided !== false;
+    setWarrantyProvided(isProvided);
     setWarrantyJobNo(lead.jobNo || lead.warranty?.jobNo || `Job No-${lead.id.slice(-6).toUpperCase()}`);
     setWarrantyCompletion(lead.warranty?.completionDate || today);
     setWarrantyExpiry(lead.warranty?.expiryDate || expiryStr);
@@ -2868,6 +2877,7 @@ export default function CrmDashboardPage() {
             address: warrantyAddress,
             authorisedBy: warrantyAuthorised,
             dateIssued: warrantyIssued,
+            provided: true,
           },
         }),
       });
@@ -2983,7 +2993,7 @@ export default function CrmDashboardPage() {
           {/* COLUMN 1: CLIENT */}
           <div className="col-span-4 min-w-0 space-y-2.5">
             {/* Row 1: JobNo | Name | Date Time */}
-            <div className="flex items-center gap-1.5 text-xs font-bold truncate">
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
               <button
@@ -2999,6 +3009,22 @@ export default function CrmDashboardPage() {
               </button>
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Row 2: Phone & Email */}
@@ -3394,7 +3420,7 @@ export default function CrmDashboardPage() {
           {/* COLUMN 1: CLIENT */}
           <div className="col-span-4 min-w-0 space-y-2.5">
             {/* Row 1: JobNo | Name | Date Time */}
-            <div className="flex items-center gap-1.5 text-xs font-bold truncate">
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
               <button
@@ -3410,6 +3436,22 @@ export default function CrmDashboardPage() {
               </button>
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Row 2: Phone & Email */}
@@ -3684,7 +3726,7 @@ export default function CrmDashboardPage() {
           {/* COLUMN 1: CLIENT */}
           <div className="col-span-4 min-w-0 space-y-2.5">
             {/* Row 1: JobNo | Name | Date Time */}
-            <div className="flex items-center gap-1.5 text-xs font-bold truncate">
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
               <button
@@ -3700,6 +3742,22 @@ export default function CrmDashboardPage() {
               </button>
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Row 2: Phone & Email */}
@@ -3795,7 +3853,7 @@ export default function CrmDashboardPage() {
                 <select
                   value={l.status || "Job Booked"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -3806,23 +3864,42 @@ export default function CrmDashboardPage() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
-                  ASSIGNED
-                </label>
-                <select
-                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : l.technician || "Unassigned"}
-                  onChange={(e) => {
-                    const val = e.target.value === "Unassigned" ? "" : e.target.value;
-                    updateLeadField(l.id, { assigned: val, technician: val });
-                  }}
-                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                    ASSIGNED
+                  </label>
+                  {(() => {
+                    const techName = (l.technician || l.assigned || "").trim().toLowerCase();
+                    const techCompletedCount = scopedLeads.filter((x) => {
+                      const isTech = (x.technician || "").trim().toLowerCase() === techName || (x.assigned || "").trim().toLowerCase() === techName;
+                      return isTech && (x.status === "Job Done" || x.status === "Completed");
+                    }).length;
+                    if (techCompletedCount === 0) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isCompletedActive = statusFilter === "Job Done|Completed" || statusFilter === "Job Done" || statusFilter === "Completed";
+                          setStatusFilter(isCompletedActive ? "" : "Job Done|Completed");
+                          setPage(1);
+                        }}
+                        className="text-[9.5px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer flex items-center gap-0.5"
+                        title={`Show all completed jobs by ${l.technician || l.assigned}`}
+                      >
+                        <span>Completed:</span>
+                        <span className="font-black text-emerald-800 bg-emerald-100 px-1 rounded-full">{techCompletedCount}</span>
+                      </button>
+                    );
+                  })()}
+                </div>
+                <div
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 flex items-center shadow-2xs truncate"
+                  title={l.technician || (l.assigned && isTechnicianName(l.assigned) ? l.assigned : l.assigned) || "Unassigned"}
                 >
-                  {assigneeOptions.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                  <span className="truncate">
+                    {l.technician || (l.assigned && isTechnicianName(l.assigned) ? l.assigned : l.assigned) || "Unassigned"}
+                  </span>
+                </div>
               </div>
 
               <button
@@ -3836,21 +3913,22 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Row 2: Inspection Form, Job Booked, In Progress, Job Done */}
-            <div className="grid grid-cols-4 gap-1">
+            {/* Row 2 (First line after GPS): Inspection Form & Job Booked */}
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => openInspectionModal(l)}
-                className="py-2 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0"
+                className="py-1.5 px-2 text-center text-xs font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1.5 shadow-2xs"
                 title="Open Inspection Form"
               >
-                Inspection Form
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span>Inspection Form</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`py-2 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
                   l.status === "Job Booked"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
@@ -3859,11 +3937,53 @@ export default function CrmDashboardPage() {
               >
                 Job Booked
               </button>
+            </div>
+
+            {/* Row 3 (Second line): On the Way, Reached, Start, In Progress, Job Done */}
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job En Route" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job En Route"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="On the Way"
+              >
+                On the Way
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Arrived" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Arrived"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Reached"
+              >
+                Reached
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Started" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Started"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Start"
+              >
+                Start
+              </button>
 
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Job In Progress" })}
-                className={`py-2 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
                   l.status === "In Progress" || l.status === "Job In Progress"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
@@ -3876,8 +3996,8 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-                className={`py-2 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Job Done"
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Done" || l.status === "Completed"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
@@ -3898,16 +4018,19 @@ export default function CrmDashboardPage() {
               </span>
             </div>
 
-            {/* 3 Checklist items */}
+            {/* 4 Checklist items */}
             <div className="space-y-1.5">
               {[
                 { label: "Job Booked", status: "Job Booked" },
+                { label: "Job Started", status: "Job Started" },
                 { label: "Job In Progress", status: "Job In Progress" },
                 { label: "Job Done", status: "Job Done" },
               ].map((item) => {
                 const isDone =
                   item.status === "Job Booked"
                     ? true
+                    : item.status === "Job Started"
+                    ? l.status === "Job Started" || l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
                     : item.status === "Job In Progress"
                     ? l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
                     : l.status === "Job Done" || l.status === "Completed";
@@ -3943,6 +4066,30 @@ export default function CrmDashboardPage() {
     const waUrl = getWhatsAppLink(l.phone);
     const followupPrompt = getFollowupPrompt(l);
 
+    const isJobDone = l.status === "Job Done" || [
+      "Invoice Sent",
+      "Payment Request",
+      "Payment Pending",
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ].includes(l.status);
+    const isInvoiceSent = l.status === "Invoice Sent" || (Boolean(l.invoiceSentAt) && l.status !== "Job Done") || [
+      "Payment Request",
+      "Payment Pending",
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ].includes(l.status);
+    const isPaymentPending = l.status === "Payment Pending";
+    const isPaymentReceived = [
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ].includes(l.status);
+    const isWarrantySent = l.status === "Warranty Sent" || Boolean(l.warranty?.sentAt) || l.status === "Completed";
+    const isCompleted = l.status === "Completed";
+
     const jobNoDisplay = l.jobNo
       ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
       : `JobNo-${l.id.slice(0, 4)}`;
@@ -3966,7 +4113,7 @@ export default function CrmDashboardPage() {
           {/* COLUMN 1: CLIENT */}
           <div className="col-span-4 min-w-0 space-y-2.5">
             {/* Row 1: JobNo | Name | Date Time */}
-            <div className="flex items-center gap-1.5 text-xs font-bold truncate">
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
               <button
@@ -3982,6 +4129,22 @@ export default function CrmDashboardPage() {
               </button>
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Row 2: Phone & Email */}
@@ -4066,8 +4229,8 @@ export default function CrmDashboardPage() {
             </div>
           </div>
 
-          {/* COLUMN 2: INSPECTION, QUOTE & FINANCE (MERGED) */}
-          <div className="col-span-5 min-w-0 space-y-2.5">
+          {/* COLUMN 2: FINANCE ACTIONS (FROM JOB DONE) */}
+          <div className="col-span-5 min-w-0 space-y-2">
             {/* Row 1: STATUS, ASSIGNED, GPS */}
             <div className="flex items-end gap-1.5">
               <div className="flex-1 min-w-0">
@@ -4077,7 +4240,7 @@ export default function CrmDashboardPage() {
                 <select
                   value={l.status || "Job Done"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -4094,7 +4257,7 @@ export default function CrmDashboardPage() {
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
                     <option key={n} value={n}>
@@ -4115,69 +4278,12 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Row 2 (6 buttons): Inspection, Quote, Sent, Job Booked, In Progress, Job Done */}
-            <div className="grid grid-cols-6 gap-1">
-              <button
-                type="button"
-                onClick={() => openInspectionModal(l)}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0"
-                title="Inspection Form"
-              >
-                Inspection
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openQuoteModal(l)}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0"
-                title="Quote"
-              >
-                Quote
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Quote Sent"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
-                }`}
-                title="Quote Sent"
-              >
-                Sent
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Job Booked"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
-                }`}
-                title="Job Booked"
-              >
-                Job Booked
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job In Progress" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "In Progress" || l.status === "Job In Progress"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
-                }`}
-                title="In Progress"
-              >
-                In Progress
-              </button>
-
+            {/* Row 2 (2 buttons): Job Done, Send Invoice */}
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
                   l.status === "Job Done"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
@@ -4186,129 +4292,211 @@ export default function CrmDashboardPage() {
               >
                 Job Done
               </button>
-            </div>
 
-            {/* Row 3 (5 buttons): Invoice, Sent, Pending Payment, Received, Warranty Sent */}
-            <div className="grid grid-cols-5 gap-1">
               <button
                 type="button"
                 onClick={() => openInvoiceModal(l)}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-[#001f97] hover:bg-[#001777] text-white transition-colors cursor-pointer shadow-2xs truncate min-w-0"
-                title="Open Invoice"
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center shadow-2xs ${
+                  l.status === "Invoice Sent"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Send Invoice"
               >
-                Invoice
+                Send Invoice
               </button>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  updateLeadField(l.id, { status: "Invoice Sent", invoiceSentAt: new Date().toISOString() });
-                  openInvoiceModal(l);
-                }}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-[#001f97] hover:bg-[#001777] text-white transition-colors cursor-pointer shadow-2xs truncate min-w-0"
-                title="Invoice Sent"
-              >
-                Sent
-              </button>
-
+            {/* Row 3 (3 buttons): Payment Pending, Payment Received, Warranty Sent */}
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Payment Pending" })}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-[#001f97] hover:bg-[#001777] text-white transition-colors cursor-pointer shadow-2xs truncate min-w-0"
-                title="Pending Payment"
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.status === "Payment Pending"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Payment Pending"
               >
-                Pending Payment
+                Payment Pending
               </button>
 
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-[#001f97] hover:bg-[#001777] text-white transition-colors cursor-pointer shadow-2xs truncate min-w-0"
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.status === "Payment Received"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
                 title="Payment Received"
               >
-                Received
+                Payment Received
               </button>
 
               <button
                 type="button"
                 onClick={() => openWarrantyModal(l)}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-[#001f97] hover:bg-[#001777] text-white transition-colors cursor-pointer shadow-2xs truncate min-w-0"
-                title="10-Year Service Warranty Certificate"
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.warrantyProvided === false || l.warranty?.provided === false
+                    ? "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-2xs"
+                    : l.status === "Warranty Sent"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title={l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided (Click to edit/turn on)" : "10-Year Service Warranty Certificate"}
               >
-                Warranty Sent
+                {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                  <span className="flex items-center gap-1 truncate">
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span className="truncate">No Warranty</span>
+                  </span>
+                ) : (
+                  "Warranty Sent"
+                )}
               </button>
             </div>
           </div>
 
-          {/* COLUMN 3: WORKFLOW (FULL) */}
+          {/* COLUMN 3: WORKFLOW (FINANCE) */}
           <div className="col-span-3 min-w-0 space-y-1.5">
             {/* FOLLOW-UP banner */}
-            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2 py-0.5 rounded-lg flex items-center gap-1.5 min-w-0">
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
               <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
               <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
-                {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+                {followupPrompt || l.followUpNext || (l.status === "Payment Received" ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Payment Received — No Warranty Required" : "Payment Received — Issue Warranty") : l.status === "Payment Pending" ? "Payment Pending — Follow up" : "Invoice Sent — Awaiting payment")}
               </span>
             </div>
 
-            {/* Two sub-columns */}
+            {/* Two sub-columns (3 items each, aligned row-by-row) */}
             <div className="grid grid-cols-2 gap-1.5 min-w-0">
-              {/* Left sub-column: 7 stages */}
-              <div className="space-y-0.5 min-w-0">
-                {[
-                  { label: "New", status: "New" },
-                  { label: "Inspection Booked", status: "Inspection Booked" },
-                  { label: "Inspection Completed", status: "Inspection Completed" },
-                  { label: "Quote Sent", status: "Quote Sent" },
-                  { label: "Job Booked", status: "Job Booked" },
-                  { label: "Payment Pending", status: "Payment Pending" },
-                  { label: "Warranty Sent", status: "Warranty Sent" },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => updateLeadField(l.id, { status: item.status })}
-                    className="w-full px-1.5 py-0.5 rounded bg-[#dcfce7] border border-emerald-300 text-slate-900 hover:bg-emerald-100 text-[10px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0"
-                  >
-                    <span className="truncate">{item.label}</span>
+              {/* Left sub-column: Job Done, Payment Pending, Warranty Sent */}
+              <div className="space-y-1.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Job Done" })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isJobDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Job Done"
+                >
+                  <span className="truncate">Job Done</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Payment Pending" })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isPaymentPending
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Payment Pending"
+                >
+                  <span className="truncate">Payment Pending</span>
+                  {isPaymentPending && (
                     <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
-                  </button>
-                ))}
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                      openWarrantyModal(l);
+                    } else {
+                      updateLeadField(l.id, { status: "Warranty Sent" });
+                      openWarrantyModal(l);
+                    }
+                  }}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    l.warrantyProvided === false || l.warranty?.provided === false
+                      ? "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100"
+                      : isWarrantySent
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title={l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided (Click to edit)" : "Warranty Sent"}
+                >
+                  <span className="truncate">
+                    {l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent"}
+                  </span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0 ml-0.5" />
+                  ) : isWarrantySent ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  ) : null}
+                </button>
               </div>
 
-              {/* Right sub-column: 2 stages + Complete & Save to Achievements */}
-              <div className="flex flex-col justify-between space-y-1 min-w-0">
-                <div className="space-y-0.5 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => updateLeadField(l.id, { status: "Invoice Sent" })}
-                    className="w-full px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 text-[10px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0"
-                  >
-                    <span className="truncate">Invoice Sent</span>
-                    {l.status === "Invoice Sent" && (
-                      <Check className="w-3.5 h-3.5 text-slate-700 stroke-[3] shrink-0 ml-0.5" />
-                    )}
-                  </button>
+              {/* Right sub-column: Invoice Sent, Payment Received, Complete & Save */}
+              <div className="space-y-1.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Invoice Sent", invoiceSentAt: l.invoiceSentAt || new Date().toISOString() })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isInvoiceSent
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Invoice Sent"
+                >
+                  <span className="truncate">Invoice Sent</span>
+                  {isInvoiceSent && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  )}
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
-                    className="w-full px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 text-[10px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0"
-                  >
-                    <span className="truncate">Payment Received</span>
-                    {l.status === "Payment Received" && (
-                      <Check className="w-3.5 h-3.5 text-slate-700 stroke-[3] shrink-0 ml-0.5" />
-                    )}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isPaymentReceived
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Payment Received"
+                >
+                  <span className="truncate">Payment Received</span>
+                  {isPaymentReceived && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  )}
+                </button>
 
                 {/* Complete & Save to Achievements button */}
                 <button
                   type="button"
-                  onClick={() => updateLeadField(l.id, { status: "Completed" })}
-                  className="w-full py-2 px-1.5 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-[10px] font-black flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer mt-auto text-center min-w-0"
-                  title="Complete & Save to Achievements"
+                  onClick={() => {
+                    const updates: Record<string, any> = { status: "Completed" };
+                    if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                      updates.warrantyProvided = false;
+                      updates.warranty = { ...(l.warranty || {}), provided: false };
+                    } else {
+                      updates.warrantyProvided = true;
+                      updates.warranty = { ...(l.warranty || {}), provided: true };
+                    }
+                    updateLeadField(l.id, updates);
+                  }}
+                  className={`w-full py-1.5 px-2 text-white rounded-lg text-[11px] font-black flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer text-center min-w-0 ${
+                    isCompleted
+                      ? "bg-emerald-700 hover:bg-emerald-800 ring-2 ring-emerald-400"
+                      : "bg-[#059669] hover:bg-[#047857]"
+                  }`}
+                  title={
+                    l.warrantyProvided === false || l.warranty?.provided === false
+                      ? "Complete & Save (Warranty Not Provided)"
+                      : "Complete & Save (Warranty Provided)"
+                  }
                 >
-                  <span className="leading-tight truncate">Complete &amp; Save</span>
+                  <span className="leading-tight truncate">
+                    {isCompleted
+                      ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Completed (No Warranty)" : "Completed (Warranty Provided)")
+                      : (l.warrantyProvided === false || l.warranty?.provided === false ? "Complete (No Warranty)" : "Complete & Save")}
+                  </span>
                   <span className="text-xs shrink-0">🏆</span>
                 </button>
               </div>
@@ -4342,9 +4530,22 @@ export default function CrmDashboardPage() {
                   Status
                 </label>
                 {l.status === "Completed" && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
-                    🏆 Completed
-                  </span>
+                  <>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                      🏆 Completed
+                    </span>
+                    {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300 whitespace-nowrap" title="Warranty Not Provided for this completed job">
+                        <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
+                        Warranty Not Provided
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap" title="10-Year Waterproof Warranty Provided">
+                        <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                        Warranty Provided
+                      </span>
+                    )}
+                  </>
                 )}
                 {l.invoiceOpenedAt && (
                   <span
@@ -4866,12 +5067,35 @@ export default function CrmDashboardPage() {
                 )}
 
                 {l.status === "Completed" && (
-                  <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      <span>🏆</span>
-                      <span>Saved in Achievements</span>
-                    </span>
-                    <span className="text-[9px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">Completed Record</span>
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <span>🏆</span>
+                        <span>Saved in Achievements</span>
+                      </span>
+                      <span className="text-[9px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">Completed Record</span>
+                    </div>
+                    <div className={`text-[10px] font-bold px-2 py-1 rounded-lg border flex items-center justify-between ${
+                      l.warrantyProvided === false || l.warranty?.provided === false
+                        ? "bg-rose-50 text-rose-800 border-rose-200"
+                        : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    }`}>
+                      <span className="flex items-center gap-1">
+                        {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                          <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        ) : (
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )}
+                        <span>{l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Provided"}</span>
+                      </span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                        l.warrantyProvided === false || l.warranty?.provided === false
+                          ? "bg-rose-600 text-white"
+                          : "bg-emerald-600 text-white"
+                      }`}>
+                        {l.warrantyProvided === false || l.warranty?.provided === false ? "No Warranty" : "10-Yr Active"}
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -4882,7 +5106,11 @@ export default function CrmDashboardPage() {
                     { label: "Sent", step: "Payment Request", color: "bg-blue-600 hover:bg-blue-700" },
                     { label: "Pending Payment", step: "Payment Pending", color: "bg-amber-600 hover:bg-amber-700" },
                     { label: "Received", step: "Payment Received", color: "bg-green-600 hover:bg-green-700" },
-                    { label: "Warranty Sent", step: "Warranty Sent", color: "bg-slate-700 hover:bg-slate-800" },
+                    {
+                      label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
+                      step: "Warranty Sent",
+                      color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600 hover:bg-rose-700" : "bg-slate-700 hover:bg-slate-800",
+                    },
                     { label: "Completed Jobs", step: "Completed", color: "bg-emerald-600 hover:bg-emerald-700" },
                   ] as const).map((st) => {
                     const isActive = getStepActive(l, st.step);
@@ -4933,7 +5161,10 @@ export default function CrmDashboardPage() {
                 { label: "Invoice Sent", step: "Invoice Sent" },
                 { label: "Payment Pending", step: "Payment Pending" },
                 { label: "Payment Received", step: "Payment Received" },
-                { label: "Warranty Sent", step: "Warranty Sent" }
+                {
+                  label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
+                  step: "Warranty Sent",
+                }
               ].map(({ label, step }) => {
                 const isActive = getStepActive(l, step);
                 return (
@@ -4973,18 +5204,51 @@ export default function CrmDashboardPage() {
 
             {/* Complete & Archive Button */}
             {l.status === "Completed" ? (
-              <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-800 flex items-center justify-center gap-1.5">
-                <span>🏆</span>
-                <span>Completed & Saved To Achievements</span>
+              <div className="space-y-1">
+                <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-800 flex items-center justify-center gap-1.5">
+                  <span>🏆</span>
+                  <span>Completed & Saved To Achievements</span>
+                </div>
+                <div className={`p-1.5 rounded-lg text-center text-[11px] font-black flex items-center justify-center gap-1.5 border ${
+                  l.warrantyProvided === false || l.warranty?.provided === false
+                    ? "bg-rose-50 text-rose-800 border-rose-200"
+                    : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                }`}>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <>
+                      <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>Warranty Not Provided</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Warranty Provided (10-Year)</span>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Completed" })}
+                onClick={() => {
+                  const updates: Record<string, any> = { status: "Completed" };
+                  if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                    updates.warrantyProvided = false;
+                    updates.warranty = { ...(l.warranty || {}), provided: false };
+                  } else {
+                    updates.warrantyProvided = true;
+                    updates.warranty = { ...(l.warranty || {}), provided: true };
+                  }
+                  updateLeadField(l.id, updates);
+                }}
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                 title="Mark this lead as completed and save to Achievements"
               >
-                <span>Complete &amp; Save to Achievements 🏆</span>
+                <span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false
+                    ? "Complete & Save (No Warranty) 🏆"
+                    : "Complete & Save to Achievements 🏆"}
+                </span>
               </button>
             )}
           </div>
@@ -5002,25 +5266,27 @@ export default function CrmDashboardPage() {
       role === "manager" || role === "super_admin"
         ? leads
         : leads.filter((l) => {
-            if (!inRoleQueue(role, l.status)) return false;
             // When logged in as technician or viewing as technician:
             if (role === "technician") {
               const myStaff = staff.find((s) => s.username === username);
               const targetName = (viewAs ? viewAs.name : (myStaff?.name || username || "")).trim().toLowerCase();
               const targetUser = (viewAs ? viewAs.name : username).trim().toLowerCase();
               const targetId = viewAs ? null : myStaff?.id;
-              if (l.technicianId || l.technician) {
-                const assignedId = l.technicianId;
-                const assignedName = (l.technician || "").trim().toLowerCase();
-                const matches =
-                  (targetId && assignedId === targetId) ||
-                  (assignedId && (assignedId.toLowerCase() === targetUser || assignedId.toLowerCase() === targetName)) ||
-                  (assignedName && (assignedName === targetName || assignedName === targetUser));
-                return matches;
+              const matchesTech =
+                (targetId && l.technicianId === targetId) ||
+                (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+                (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||
+                (l.assigned && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
+
+              if (matchesTech) {
+                return TECHNICIAN_STATUSES.includes(l.status) || ["Job Done", "Completed", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent"].includes(l.status);
               }
+
+              if (!inRoleQueue(role, l.status)) return false;
               // Allow technicians to view unassigned leads in their queue
               return true;
             }
+            if (!inRoleQueue(role, l.status)) return false;
             return true;
           });
     if (showLegacyLeads) return roleScoped;
@@ -5740,7 +6006,7 @@ export default function CrmDashboardPage() {
                     {
                       label: "Job Booked",
                       group: "job" as StageGroup,
-                      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
+                      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"],
                     },
                     { label: "Job Done", group: "finance" as StageGroup, statuses: ["Job Done"] },
                     { label: "Payment Pending", group: "finance" as StageGroup, statuses: ["Payment Pending"] },
@@ -5826,6 +6092,19 @@ export default function CrmDashboardPage() {
                                 <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
                                   {l.status}
                                 </span>
+                                {l.status === "Completed" && (
+                                  l.warrantyProvided === false || l.warranty?.provided === false ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                      <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
+                                      Warranty Not Provided
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                                      Warranty Provided
+                                    </span>
+                                  )
+                                )}
                                 <QuoteResponseBadge lead={l} />
                               </div>
                             </td>
@@ -6228,8 +6507,8 @@ export default function CrmDashboardPage() {
                   ) : role === "finance" ? (
                     <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
                       <div className="col-span-4">CLIENT</div>
-                      <div className="col-span-5">INSPECTION, QUOTE &amp; FINANCE (MERGED)</div>
-                      <div className="col-span-3">WORKFLOW (FULL)</div>
+                      <div className="col-span-5">FINANCE (FROM JOB DONE)</div>
+                      <div className="col-span-3">WORKFLOW (FINANCE)</div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
@@ -6424,7 +6703,7 @@ export default function CrmDashboardPage() {
                         : role === "finance"
                           ? [
                             { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
-                            ...single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]),
+                            ...single(["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]),
                           ]
                           : role === "inspection" || role === "field"
                             ? [
@@ -6434,7 +6713,9 @@ export default function CrmDashboardPage() {
                           : role === "technician"
                             ? [
                               { label: "Total Jobs", group: "job", statuses: [], totalCount: true },
-                              ...single(["Job Booked", "Scheduled", "Job Confirmed", "Job Done"]),
+                              { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+                              { label: "In Progress", group: "job", statuses: ["Job En Route", "Job Arrived", "Job Started", "Job In Progress"] },
+                              { label: "Jobs Completed", group: "finance", statuses: ["Job Done", "Completed"] },
                             ]
                             : role === "manager"
                               ? [
@@ -6569,9 +6850,9 @@ export default function CrmDashboardPage() {
                           role === "inspection" || role === "field"
                             ? ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed"]
                             : role === "technician"
-                              ? ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done"]
+                              ? ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Completed"]
                               : role === "finance"
-                                ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
+                                ? ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
                                 : role === "intake"
                                   ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
                                   : boardStatuses;
@@ -6598,6 +6879,41 @@ export default function CrmDashboardPage() {
                               );
                             })}
                           </select>
+                        );
+                      })()}
+
+                      {/* Jobs Completed Quick Filter Button for Technician */}
+                      {role === "technician" && (() => {
+                        const completedCount = scopedLeads.filter((l) => l.status === "Job Done" || l.status === "Completed").length;
+                        const isCompletedActive = statusFilter === "Job Done|Completed" || statusFilter === "Job Done" || statusFilter === "Completed";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isCompletedActive) {
+                                setStatusFilter("");
+                              } else {
+                                setStatusFilter("Job Done|Completed");
+                              }
+                              setPage(1);
+                            }}
+                            className={`text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                              isCompletedActive
+                                ? "bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-400 shadow-sm"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
+                            }`}
+                            title="Show all jobs completed by this technician"
+                          >
+                            <CheckCircle2 className={`w-4 h-4 ${isCompletedActive ? "text-white" : "text-emerald-600"} shrink-0`} />
+                            <span>Jobs Completed</span>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                              isCompletedActive
+                                ? "bg-emerald-800 text-white"
+                                : "bg-emerald-200 text-emerald-900"
+                            }`}>
+                              {completedCount}
+                            </span>
+                          </button>
                         );
                       })()}
 
@@ -6639,8 +6955,8 @@ export default function CrmDashboardPage() {
                   ) : role === "finance" ? (
                     <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
                       <div className="col-span-4">CLIENT</div>
-                      <div className="col-span-5">INSPECTION, QUOTE &amp; FINANCE (MERGED)</div>
-                      <div className="col-span-3">WORKFLOW (FULL)</div>
+                      <div className="col-span-5">FINANCE (FROM JOB DONE)</div>
+                      <div className="col-span-3">WORKFLOW (FINANCE)</div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
@@ -7055,21 +7371,27 @@ export default function CrmDashboardPage() {
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Assigned To</label>
-                  <select
-                    value={
-                      editingLead?.assigned && !isTechnicianName(editingLead.assigned)
-                        ? editingLead.assigned
-                        : assigneeOptions[0] || "Unassigned"
-                    }
-                    onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl"
-                  >
-                    {assigneeOptions.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                  {isTechnician ? (
+                    <div className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 font-semibold text-sm">
+                      {editingLead?.technician || editingLead?.assigned || "Unassigned"}
+                    </div>
+                  ) : (
+                    <select
+                      value={
+                        editingLead?.assigned && !isTechnicianName(editingLead.assigned)
+                          ? editingLead.assigned
+                          : assigneeOptions[0] || "Unassigned"
+                      }
+                      onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl"
+                    >
+                      {assigneeOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -7167,6 +7489,61 @@ export default function CrmDashboardPage() {
                         📋 Copy Job Booking Link
                       </button>
                     )}
+                  </div>
+                </div>
+
+                {/* 10-Year Waterproof Warranty Toggle */}
+                <div className="sm:col-span-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1.5 rounded-lg ${
+                      editingLead?.warrantyProvided !== false ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                    }`}>
+                      {editingLead?.warrantyProvided !== false ? (
+                        <ShieldCheck className="w-4 h-4" />
+                      ) : (
+                        <ShieldAlert className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">
+                        10-Year Waterproof Warranty
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {editingLead?.warrantyProvided !== false
+                          ? "Warranty Provided (Active for this job)"
+                          : "Warranty Not Provided (Disabled for this job)"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold ${editingLead?.warrantyProvided === false ? "text-rose-600 font-black" : "text-slate-400"}`}>
+                      OFF
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editingLead?.warrantyProvided !== false}
+                      onClick={() => setEditingLead({
+                        ...editingLead,
+                        warrantyProvided: editingLead?.warrantyProvided === false ? true : false,
+                        warranty: {
+                          ...(editingLead?.warranty || {}),
+                          provided: editingLead?.warrantyProvided === false ? true : false,
+                        },
+                      })}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        editingLead?.warrantyProvided !== false ? "bg-emerald-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
+                          editingLead?.warrantyProvided !== false ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-[11px] font-bold ${editingLead?.warrantyProvided !== false ? "text-emerald-600 font-black" : "text-slate-400"}`}>
+                      ON
+                    </span>
                   </div>
                 </div>
               </div>
@@ -8915,179 +9292,317 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Warranty Form Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
-                <input
-                  type="text"
-                  value={warrantyJobNo}
-                  onChange={(e) => setWarrantyJobNo(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg font-bold"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Completion Date</label>
-                <input
-                  type="date"
-                  value={warrantyCompletion}
-                  onChange={(e) => {
-                    setWarrantyCompletion(e.target.value);
-                    const d = new Date(e.target.value);
-                    if (!isNaN(d.getTime())) {
-                      d.setFullYear(d.getFullYear() + 10);
-                      setWarrantyExpiry(d.toISOString().slice(0, 10));
-                    }
-                  }}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Warranty Expiry (10 Yrs)</label>
-                <input
-                  type="date"
-                  value={warrantyExpiry}
-                  readOnly
-                  className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-emerald-700"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
-                <input
-                  type="date"
-                  value={warrantyIssued}
-                  onChange={(e) => setWarrantyIssued(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
-                <input
-                  type="text"
-                  value={warrantyCustomer}
-                  onChange={(e) => setWarrantyCustomer(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
-                <input
-                  type="text"
-                  value={warrantyAuthorised}
-                  onChange={(e) => setWarrantyAuthorised(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="font-bold text-slate-700 block mb-1">Property Address</label>
-                <input
-                  type="text"
-                  value={warrantyAddress}
-                  onChange={(e) => setWarrantyAddress(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
+            {/* Warranty ON / OFF Slider Switch */}
+            <div className={`p-4 rounded-xl border transition-all ${
+              warrantyProvided
+                ? "bg-emerald-50/80 border-emerald-300 shadow-2xs"
+                : "bg-rose-50/90 border-rose-300 shadow-2xs"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <div className={`p-2.5 rounded-xl shrink-0 ${
+                    warrantyProvided ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                  }`}>
+                    {warrantyProvided ? (
+                      <ShieldCheck className="w-5 h-5" />
+                    ) : (
+                      <ShieldAlert className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-black text-slate-900">
+                        10-Year Waterproof Warranty:
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide ${
+                        warrantyProvided
+                          ? "bg-emerald-600 text-white"
+                          : "bg-rose-600 text-white"
+                      }`}>
+                        {warrantyProvided ? "Warranty Provided (ON)" : "Warranty Not Provided (OFF)"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-600 mt-0.5">
+                      {warrantyProvided
+                        ? "Warranty is active for this inquiry. Official certificate will be generated and marked 'Warranty Provided'."
+                        : "Warranty is turned OFF. Groutix is NOT providing warranty for this job. Marked as 'Warranty Not Provided'."}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Slider Switch */}
+                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center bg-white/80 px-3 py-1.5 rounded-xl border border-slate-200">
+                  <span className={`text-xs font-bold transition-colors ${!warrantyProvided ? "text-rose-700 font-black" : "text-slate-400"}`}>
+                    OFF
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={warrantyProvided}
+                    onClick={() => {
+                      const nextVal = !warrantyProvided;
+                      setWarrantyProvided(nextVal);
+                      if (activeWarrantyLead) {
+                        updateLeadField(activeWarrantyLead.id, {
+                          warrantyProvided: nextVal,
+                          warranty: {
+                            ...(activeWarrantyLead.warranty || {}),
+                            provided: nextVal,
+                          },
+                        });
+                        setActiveWarrantyLead({
+                          ...activeWarrantyLead,
+                          warrantyProvided: nextVal,
+                          warranty: {
+                            ...(activeWarrantyLead.warranty || {}),
+                            provided: nextVal,
+                          },
+                        });
+                      }
+                    }}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#001f97] focus:ring-offset-2 ${
+                      warrantyProvided ? "bg-emerald-600" : "bg-slate-300"
+                    }`}
+                    title={warrantyProvided ? "Click slider to Turn OFF Warranty" : "Click slider to Turn ON Warranty"}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
+                        warrantyProvided ? "translate-x-8" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-xs font-bold transition-colors ${warrantyProvided ? "text-emerald-700 font-black" : "text-slate-400"}`}>
+                    ON
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Tab Switcher */}
-            <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setWarrantyTab("page1")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    warrantyTab === "page1"
-                      ? "bg-[#071c4d] text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  Page 1: Warranty Certificate
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWarrantyTab("page2")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    warrantyTab === "page2"
-                      ? "bg-[#071c4d] text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  Page 2: Terms &amp; Conditions
-                </button>
-              </div>
-              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-                Official 2-Page Executive Template
-              </span>
-            </div>
+            {/* When Warranty is turned OFF */}
+            {!warrantyProvided ? (
+              <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-xl space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-rose-100 rounded-lg shrink-0 text-rose-700 mt-0.5">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-rose-900">Warranty Coverage Disabled For This Inquiry</h3>
+                    <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                      You have set this query to <strong>Warranty Not Provided</strong>. No 10-year waterproof warranty certificate will be emailed to the customer. When completed, this query will be explicitly stamped with <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-rose-200 text-rose-900 font-black text-[10px]">⚠️ Warranty Not Provided</span> across all reports, client cards, and achievements.
+                    </p>
+                  </div>
+                </div>
 
-            {/* Canvas Preview */}
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
-              <canvas
-                ref={canvasRef}
-                width={1000}
-                height={1414}
-                className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
-              <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
-              <a
-                href="/terms-conditions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#001f97] underline font-bold inline-flex items-center gap-1 hover:text-blue-900"
-              >
-                <span>View Full Terms &amp; Conditions</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="text-[11px] text-slate-500">
-                <span>Both pages are included in the official PDF &amp; customer email.</span>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-rose-200">
+                  <div className="text-xs text-rose-600 font-medium">
+                    To re-enable warranty, click the slider switch above to <strong>ON</strong>.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWarrantyModalOpen(false)}
+                      className="px-4 py-2 border border-slate-300 bg-white rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeWarrantyLead) {
+                          updateLeadField(activeWarrantyLead.id, {
+                            warrantyProvided: false,
+                            warranty: {
+                              ...(activeWarrantyLead.warranty || {}),
+                              provided: false,
+                            },
+                          });
+                        }
+                        setWarrantyModalOpen(false);
+                      }}
+                      className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
+                    >
+                      Save &amp; Confirm (Warranty Not Provided)
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const q = new URLSearchParams({
-                      jobNo: warrantyJobNo,
-                      completion: warrantyCompletion,
-                      expiry: warrantyExpiry,
-                      customer: warrantyCustomer,
-                      address: warrantyAddress,
-                      authorised: warrantyAuthorised,
-                      issued: warrantyIssued,
-                      t: String(Date.now()),
-                    });
-                    window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
-                  title="Print or view official 2-page PDF warranty certificate"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Print / View PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={downloadWarrantyCard}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
-                >
-                  <Download className="w-4 h-4" />
-                  Download PNG
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSendWarranty}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
-                  title="Email the official 2-page warranty certificate to the customer and mark it sent"
-                >
-                  <Send className="w-4 h-4" />
-                  Email to Customer
-                </button>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Warranty Form Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
+                    <input
+                      type="text"
+                      value={warrantyJobNo}
+                      onChange={(e) => setWarrantyJobNo(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Completion Date</label>
+                    <input
+                      type="date"
+                      value={warrantyCompletion}
+                      onChange={(e) => {
+                        setWarrantyCompletion(e.target.value);
+                        const d = new Date(e.target.value);
+                        if (!isNaN(d.getTime())) {
+                          d.setFullYear(d.getFullYear() + 10);
+                          setWarrantyExpiry(d.toISOString().slice(0, 10));
+                        }
+                      }}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Warranty Expiry (10 Yrs)</label>
+                    <input
+                      type="date"
+                      value={warrantyExpiry}
+                      readOnly
+                      className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-emerald-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
+                    <input
+                      type="date"
+                      value={warrantyIssued}
+                      onChange={(e) => setWarrantyIssued(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
+                    <input
+                      type="text"
+                      value={warrantyCustomer}
+                      onChange={(e) => setWarrantyCustomer(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
+                    <input
+                      type="text"
+                      value={warrantyAuthorised}
+                      onChange={(e) => setWarrantyAuthorised(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-slate-700 block mb-1">Property Address</label>
+                    <input
+                      type="text"
+                      value={warrantyAddress}
+                      onChange={(e) => setWarrantyAddress(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                {/* Tab Switcher */}
+                <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWarrantyTab("page1")}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        warrantyTab === "page1"
+                          ? "bg-[#071c4d] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Page 1: Warranty Certificate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWarrantyTab("page2")}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        warrantyTab === "page2"
+                          ? "bg-[#071c4d] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Page 2: Terms &amp; Conditions
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                    Official 2-Page Executive Template
+                  </span>
+                </div>
+
+                {/* Canvas Preview */}
+                <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
+                  <canvas
+                    ref={canvasRef}
+                    width={1000}
+                    height={1414}
+                    className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
+                  <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
+                  <a
+                    href="/terms-conditions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#001f97] underline font-bold inline-flex items-center gap-1 hover:text-blue-900"
+                  >
+                    <span>View Full Terms &amp; Conditions</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] text-slate-500">
+                    <span>Both pages are included in the official PDF &amp; customer email.</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const q = new URLSearchParams({
+                          jobNo: warrantyJobNo,
+                          completion: warrantyCompletion,
+                          expiry: warrantyExpiry,
+                          customer: warrantyCustomer,
+                          address: warrantyAddress,
+                          authorised: warrantyAuthorised,
+                          issued: warrantyIssued,
+                          t: String(Date.now()),
+                        });
+                        window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                      title="Print or view official 2-page PDF warranty certificate"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Print / View PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadWarrantyCard}
+                      className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download PNG
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendWarranty}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
+                      title="Email the official 2-page warranty certificate to the customer and mark it sent"
+                    >
+                      <Send className="w-4 h-4" />
+                      Email to Customer
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -9110,7 +9625,10 @@ export default function CrmDashboardPage() {
           { label: "Invoice Sent", status: "Invoice Sent" },
           { label: "Payment Pending", status: "Payment Pending" },
           { label: "Payment Received", status: "Payment Received" },
-          { label: "Warranty Sent", status: "Warranty Sent" },
+          {
+            label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
+            status: "Warranty Sent",
+          },
           { label: "Completed", status: "Completed" },
         ];
         const currentIdx = STATUS_KEYS.indexOf(l.status);
@@ -9144,10 +9662,21 @@ export default function CrmDashboardPage() {
                   { label: "Current Stage", value: l.status, strong: true },
                   { label: "Service", value: l.service || "Standard Service" },
                   { label: "Quote / Job Value", value: `AUD $${total.toFixed(2)}`, strong: true },
+                  {
+                    label: "Warranty Status",
+                    value: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided ⚠️" : "Warranty Provided 🛡️",
+                    strong: true,
+                    isWarranty: true,
+                    isOff: l.warrantyProvided === false || l.warranty?.provided === false,
+                  },
                 ].map((c) => (
-                  <div key={c.label} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <div key={c.label} className={`rounded-xl border p-3 ${
+                    c.isWarranty
+                      ? (c.isOff ? "border-rose-300 bg-rose-50/70" : "border-emerald-300 bg-emerald-50/70")
+                      : "border-slate-200 bg-slate-50/60"
+                  }`}>
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{c.label}</div>
-                    <div className={`text-slate-900 ${c.strong ? "text-base font-black" : "text-xs font-semibold leading-snug"}`}>
+                    <div className={`${c.isWarranty ? (c.isOff ? "text-rose-700" : "text-emerald-700") : "text-slate-900"} ${c.strong ? "text-base font-black" : "text-xs font-semibold leading-snug"}`}>
                       {c.value}
                     </div>
                   </div>

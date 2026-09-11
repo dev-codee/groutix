@@ -3,8 +3,7 @@ import {
   getSubmission,
   updateSubmission,
   appendActivity,
-  getNextSequence,
-  formatDocNumber,
+  getNextJobNo,
   createTask,
 } from "@/lib/submissions";
 import { verifyBookingToken } from "@/lib/bookingToken";
@@ -13,6 +12,7 @@ import {
   resolveAreaByCoords,
   computeAvailability,
   isSlotOffered,
+  formatSlotRange,
   type AreaInfo,
 } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking } from "@/lib/bookings";
@@ -171,8 +171,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }
 
-  // Atomically lock the slot (unique index on {date,time}).
-  const reference = formatDocNumber("GX-BK", await getNextSequence("booking"));
+  // Use assigned lead number (e.g. "JOBNO-1201") as the booking reference number.
+  let reference = lead.jobNo;
+  if (!reference) {
+    reference = await getNextJobNo();
+    await updateSubmission(id, { jobNo: reference });
+  }
   const lock = await createBooking({
     leadId: id,
     type,
@@ -190,13 +194,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const whenIso = `${date}T${time}`;
-  const whenLabel = new Date(whenIso).toLocaleString("en-AU", {
+  const [y, mNum, dNum] = date.split("-").map(Number);
+  const dateObj = new Date(y, mNum - 1, dNum);
+  const dayName = dateObj.toLocaleDateString("en-AU", {
     weekday: "long",
     day: "2-digit",
     month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
   });
+  const whenLabel = `${dayName} · ${formatSlotRange(time)}`;
   const now = new Date().toISOString();
 
   // Advance the lead + arm the 24h reminder for the fresh appointment.

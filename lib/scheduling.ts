@@ -17,8 +17,20 @@
 export const TULLAMARINE = { lat: -37.7008, lng: 144.8869 };
 export const RADIUS_KM = 15;
 
-// Appointment start times offered each day.
-export const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00"];
+// Appointment start times offered each day (1-hour slots: 9-10, 10-11, 11-12, 12-1, 1-2, 2-3).
+export const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"];
+
+/** Friendly 1-hour window label: "09:00" → "9:00 AM – 10:00 AM" */
+export function formatSlotRange(t: string): string {
+  const [h, m = 0] = t.split(":").map(Number);
+  const endH = h + 1;
+  const startAmpm = h >= 12 ? "PM" : "AM";
+  const endAmpm = endH >= 12 ? "PM" : "AM";
+  const startHr = h % 12 === 0 ? 12 : h % 12;
+  const endHr = endH % 12 === 0 ? 12 : endH % 12;
+  const minStr = m !== 0 ? `:${String(m).padStart(2, "0")}` : ":00";
+  return `${startHr}${minStr} ${startAmpm} – ${endHr}:00 ${endAmpm}`;
+}
 
 // How far ahead we let a customer book (days).
 export const BOOKING_HORIZON_DAYS = 21;

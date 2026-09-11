@@ -71,6 +71,7 @@ export interface WarrantyDoc {
   authorisedBy?: string;
   dateIssued?: string;
   sentAt?: string;
+  provided?: boolean;
 }
 
 // A single entry in a lead's audit trail. `actor` is the staff username, or
@@ -149,6 +150,7 @@ export interface SubmissionDoc {
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
   warranty?: WarrantyDoc;
+  warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
   quoteAcceptedAt?: string; // ISO time the customer accepted the quote online
