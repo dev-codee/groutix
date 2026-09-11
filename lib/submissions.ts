@@ -239,6 +239,30 @@ export function formatDocNumber(prefix: string, seq: number): string {
   return `${prefix}-${yy}-${String(seq).padStart(4, "0")}`;
 }
 
+export const JOB_NO_START = 1201;
+export const JOB_NO_PREFIX = "JOBNO-";
+
+/**
+ * Atomically increment and return the next sequential Job Number (e.g. "JOBNO-1201", "JOBNO-1202").
+ * Sequence starts at 1201 and only increments for new incoming leads.
+ */
+export async function getNextJobNo(): Promise<string> {
+  const db = await getDb();
+  const col = db.collection<{ _id: string; seq: number }>("counters");
+  await col.updateOne(
+    { _id: "jobNo" },
+    { $setOnInsert: { seq: JOB_NO_START - 1 } },
+    { upsert: true }
+  );
+  const res = await col.findOneAndUpdate(
+    { _id: "jobNo" },
+    { $inc: { seq: 1 } },
+    { returnDocument: "after" }
+  );
+  const seq = res?.seq ?? JOB_NO_START;
+  return `${JOB_NO_PREFIX}${seq}`;
+}
+
 /**
  * Persist a submission. Never throws - logs and returns null on failure so the
  * caller (a public form route) can carry on delivering the email.
@@ -249,8 +273,11 @@ export async function recordSubmission(
   if (!isMongoConfigured()) return null;
   try {
     const col = await collection();
+    const isLeadOrQuote = !doc.type || doc.type === "quote" || doc.type === "lead";
+    const jobNo = doc.jobNo || (isLeadOrQuote ? await getNextJobNo() : undefined);
     const res = await col.insertOne({
       ...doc,
+      jobNo,
       status: doc.status ?? "New",
       createdAt: new Date(),
     });
@@ -269,9 +296,11 @@ export async function createLead(
     const col = await collection();
     const now = new Date();
     const assigned = doc.assigned || (await pickAssignee());
+    const jobNo = doc.jobNo || (await getNextJobNo());
     const fullDoc: SubmissionDoc = {
       type: (doc.type as SubmissionType) || "lead",
       status: doc.status || "New",
+      jobNo,
       createdAt: now,
       name: doc.name || "",
       phone: doc.phone || "",
@@ -309,7 +338,7 @@ export async function createLead(
 // ── Auto-assignment (round-robin, least-loaded) ──────────────────────────────
 
 // Stages that no longer need attention, so they don't count toward workload.
-const CLOSED_STATUSES = ["Lost", "Payment Received", "Warranty Sent"];
+const CLOSED_STATUSES = ["Lost", "Payment Received", "Warranty Sent", "Completed"];
 
 /**
  * Pick the active intake staffer with the fewest open leads. Falls back to
@@ -426,6 +455,7 @@ function buildFilter(params: ListParams): Filter<SubmissionDoc> {
   if (params.search) {
     const rx = { $regex: escapeRegex(params.search), $options: "i" };
     filter.$or = [
+      { jobNo: rx },
       { name: rx },
       { customerType: rx },
       { agency: rx },
