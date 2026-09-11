@@ -25,27 +25,27 @@ export const STAGES: Stage[] = [
   { key: "New", label: "New", owner: "intake", group: "lead" },
   { key: "Contacted", label: "Contacted", owner: "intake", group: "lead" },
   { key: "Waiting for Info", label: "Waiting for Info", owner: "intake", group: "lead" },
-  // ── Inspection (Login 2 / Field) ── free inspection happens BEFORE the quote
-  { key: "Inspection Booked", label: "Inspection Booked", owner: "field", group: "booking" },
-  { key: "Inspection En Route", label: "Inspection — On the Way", owner: "field", group: "booking" },
-  { key: "Inspection Arrived", label: "Inspection — Reached", owner: "field", group: "booking" },
-  { key: "Inspection In Progress", label: "Inspection In Progress", owner: "field", group: "booking" },
+  // ── Inspection (Login 2 / Inspection) ── free inspection happens BEFORE the quote
+  { key: "Inspection Booked", label: "Inspection Booked", owner: "inspection", group: "booking" },
+  { key: "Inspection En Route", label: "Inspection — On the Way", owner: "inspection", group: "booking" },
+  { key: "Inspection Arrived", label: "Inspection — Reached", owner: "inspection", group: "booking" },
+  { key: "Inspection In Progress", label: "Inspection In Progress", owner: "inspection", group: "booking" },
   // Completed inspection hands the lead BACK to Intake to build the quote.
   { key: "Inspection Completed", label: "Inspection Completed", owner: "intake", group: "booking" },
   // ── Quote (Login 1 / Intake) ──
   { key: "Quote Pending", label: "Quote Pending", owner: "intake", group: "quote" },
   { key: "Quote Sent", label: "Quote Sent", owner: "intake", group: "quote" },
   { key: "Negotiation", label: "Negotiation", owner: "intake", group: "quote" },
-  // Accepted quote hands off to Field to book the job.
-  { key: "Won", label: "Quote Accepted", owner: "field", group: "booking" },
-  // ── Job (Login 2 / Field) ──
-  { key: "Job Booked", label: "Job Booked", owner: "field", group: "job" },
-  { key: "Scheduled", label: "Scheduled", owner: "field", group: "job" },
-  { key: "Job Confirmed", label: "Job Confirmed", owner: "field", group: "job" },
-  { key: "Job En Route", label: "Job — On the Way", owner: "field", group: "job" },
-  { key: "Job Arrived", label: "Job — Reached", owner: "field", group: "job" },
-  { key: "Job In Progress", label: "Job In Progress", owner: "field", group: "job" },
-  // ── Finance / completion (Login 3) ── job done hands off here
+  // Accepted quote hands off to Technician to book & execute the job.
+  { key: "Won", label: "Quote Accepted", owner: "technician", group: "booking" },
+  // ── Job (Login 3 / Technician) ──
+  { key: "Job Booked", label: "Job Booked", owner: "technician", group: "job" },
+  { key: "Scheduled", label: "Scheduled", owner: "technician", group: "job" },
+  { key: "Job Confirmed", label: "Job Confirmed", owner: "technician", group: "job" },
+  { key: "Job En Route", label: "Job — On the Way", owner: "technician", group: "job" },
+  { key: "Job Arrived", label: "Job — Reached", owner: "technician", group: "job" },
+  { key: "Job In Progress", label: "Job In Progress", owner: "technician", group: "job" },
+  // ── Finance / completion (Login 4) ── job done hands off here
   { key: "Job Done", label: "Job Done", owner: "finance", group: "finance" },
   { key: "Invoice Sent", label: "Invoice Sent", owner: "finance", group: "finance" },
   { key: "Payment Pending", label: "Payment Pending", owner: "finance", group: "finance" },
@@ -82,7 +82,7 @@ export const INTAKE_STATUSES: string[] = [
   "New",
   "Contacted",
   "Waiting for Info",
-  "Inspection Booked", // intake books the inspection, which hands off to field
+  "Inspection Booked", // intake books the inspection, which hands off to inspection
   "Inspection Completed", // handed back to intake to quote
   "Quote Pending",
   "Quote Sent",
@@ -93,17 +93,22 @@ export const INTAKE_STATUSES: string[] = [
 ];
 
 /**
- * 2nd Login (Field / Scheduling): runs the inspection visit and, once the quote
- * is accepted, the job visit. Includes the En Route / Arrived / In Progress
- * micro-stages for both visits.
+ * 2nd Login (Inspection / Field Visit): runs the inspection visit on-site,
+ * completes inspection report, and hands back to intake to quote.
  */
-export const FIELD_STATUSES: string[] = [
+export const INSPECTION_STATUSES: string[] = [
   "Inspection Booked",
   "Inspection En Route",
   "Inspection Arrived",
   "Inspection In Progress",
   "Inspection Completed",
-  "Quote Pending",
+];
+
+/**
+ * 3rd Login (Technician / Job Execution): executes the approved job on-site.
+ * En Route / Arrived / In Progress → Job Done hands off to Finance.
+ */
+export const TECHNICIAN_STATUSES: string[] = [
   "Won",
   "Job Booked",
   "Scheduled",
@@ -114,7 +119,14 @@ export const FIELD_STATUSES: string[] = [
   "Job Done",
 ];
 
-/** 3rd Login (Finance / Completion): Job Done → Invoice → Payment → Warranty → Completed. */
+/** Group of all field visit stages (inspection + job). */
+export const FIELD_STATUSES: string[] = [
+  ...INSPECTION_STATUSES,
+  "Quote Pending",
+  ...TECHNICIAN_STATUSES,
+];
+
+/** 4th Login (Finance / Completion): Job Done → Invoice → Payment → Warranty → Completed. */
 export const FINANCE_STATUSES: string[] = [
   "Job Done",
   "Invoice Sent",
@@ -133,7 +145,8 @@ export const QUOTE_STATUSES = STAGES.filter((s) => s.group === "quote").map((s) 
 export function roleQueue(role: Role): string[] {
   if (role === "manager" || role === "super_admin") return STATUS_KEYS;
   if (role === "intake") return INTAKE_STATUSES;
-  if (role === "field" || role === "technician") return FIELD_STATUSES;
+  if (role === "inspection" || role === "field") return INSPECTION_STATUSES;
+  if (role === "technician") return TECHNICIAN_STATUSES;
   if (role === "finance") return FINANCE_STATUSES;
   return STATUS_KEYS;
 }

@@ -2,19 +2,20 @@
 // components. Keep this file dependency-free (no mongodb, no node:crypto) so it
 // is safe to import from the edge runtime (middleware) and the browser.
 
-export type Role = "intake" | "field" | "technician" | "finance" | "manager" | "super_admin";
+export type Role = "intake" | "inspection" | "field" | "technician" | "finance" | "manager" | "super_admin";
 
-export const ROLES: Role[] = ["intake", "field", "technician", "finance", "manager"];
+export const ROLES: Role[] = ["intake", "inspection", "technician", "finance", "manager"];
 
 export function isRole(value: unknown): value is Role {
-  return typeof value === "string" && (["intake", "field", "technician", "finance", "manager", "super_admin"] as string[]).includes(value);
+  return typeof value === "string" && (["intake", "inspection", "field", "technician", "finance", "manager", "super_admin"] as string[]).includes(value);
 }
 
 /** Human labels for the roles. */
 export const ROLE_LABELS: Record<Role, string> = {
   intake: "Intake / Leads",
-  field: "Field / Scheduling",
-  technician: "Technician / Inspection",
+  inspection: "Inspection",
+  field: "Inspection",
+  technician: "Technician",
   finance: "Finance / Completion",
   manager: "Business Manager (BM)",
   super_admin: "Business Manager (BM)",
@@ -29,8 +30,9 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   // Operational roles share their focused views:
   // primary board ("jobs"), schedule, customer directory, and team directory.
   intake: ["jobs", "customers", "team"],
+  inspection: ["jobs", "schedule", "customers", "team", "technicians"],
   field: ["jobs", "schedule", "customers", "team", "technicians"],
-  technician: ["jobs", "schedule", "customers", "team", "technicians"],
+  technician: ["jobs", "schedule", "customers", "team"],
   finance: ["jobs", "schedule", "customers", "team"],
   manager: [
     "dashboard",
@@ -59,6 +61,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
 /** The tab a role should land on when it opens the dashboard. */
 export const ROLE_DEFAULT_VIEW: Record<Role, string> = {
   intake: "jobs",
+  inspection: "jobs",
   field: "jobs",
   technician: "jobs",
   finance: "jobs",
@@ -73,6 +76,7 @@ export function canView(role: Role, view: string): boolean {
 // ── Sub-pages under /admin (separate routes) each role may open ──────────────
 export const ROLE_PAGES: Record<Role, string[]> = {
   intake: [],
+  inspection: [],
   field: [],
   technician: [],
   finance: [],

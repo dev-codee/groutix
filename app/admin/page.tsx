@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
-import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STATUSES, INTAKE_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
+import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
 import { StatCard, TimelineChart, BarList, Panel } from "@/components/admin/Charts";
 import {
   SERVICE_TEMPLATES,
@@ -338,7 +338,8 @@ const STAGE_GROUP_ACCENT: Record<StageGroup, { dot: string; value: string }> = {
 export function getRoleStatusOptions(role: Role, currentStatus?: string): string[] {
   let base: string[];
   if (role === "intake") base = INTAKE_STATUSES;
-  else if (role === "field" || role === "technician") base = FIELD_STATUSES;
+  else if (role === "inspection" || role === "field") base = INSPECTION_STATUSES;
+  else if (role === "technician") base = TECHNICIAN_STATUSES;
   else if (role === "finance") base = FINANCE_STATUSES;
   else base = STATUS_LIST;
 
@@ -814,9 +815,9 @@ export default function CrmDashboardPage() {
   const [viewAs, setViewAs] = useState<{ role: Role; name: string } | null>(null);
   const role: Role = viewAs ? viewAs.role : realRole;
 
-  // Field / Scheduling (Login 2) + managers can add technicians and dispatch
-  // them to jobs. The API enforces this too; this just gates the UI.
-  const canManageTechs = role === "field" || role === "technician" || role === "manager" || role === "super_admin";
+  // Inspection (Login 2) / Technician (Login 3) + managers can dispatch
+  // technicians to jobs. The API enforces this too; this just gates the UI.
+  const canManageTechs = role === "inspection" || role === "field" || role === "technician" || role === "manager" || role === "super_admin";
   // Per-role visibility for the lead-row sections (managers/super-admins see all).
   // Field tools (live visit, job status, tech dispatch) reuse canManageTechs.
   const showFinanceTools = role === "finance" || role === "manager" || role === "super_admin";
@@ -1315,7 +1316,11 @@ export default function CrmDashboardPage() {
         (s) => s.active && s.role !== "technician" && !isTechnicianName(s.name)
       );
       const owner = status ? stageOwner(status) : null;
-      let pool = owner ? active.filter((s) => s.role === owner) : active;
+      let pool = owner
+        ? active.filter(
+            (s) => s.role === owner || (owner === "inspection" && s.role === "field")
+          )
+        : active;
       if (pool.length === 0) pool = active;
       const names = new Set<string>(pool.map((s) => s.name));
       if (current && current !== "Unassigned" && !isTechnicianName(current)) {
@@ -3380,6 +3385,267 @@ export default function CrmDashboardPage() {
     );
   }
 
+  // ── Login 3 (Technician / Job Execution) Custom Horizontal Lead Card ────────
+  // Dedicated technician dashboard showing job execution micro-stages, checklist,
+  // photos, customer contact, and one-click completion to Finance.
+  function renderTechnicianLeadRow(l: Lead) {
+    const photosTotal = l.photos?.length || l.photosCount || 0;
+    const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+    const statusOptions = getRoleStatusOptions("technician", l.status);
+    const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
+
+    return (
+      <div
+        key={l.id}
+        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-center">
+          {/* SECTION 1: Client Info & Details Box (3 columns) */}
+          <div className="xl:col-span-3 min-w-0 space-y-1.5">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  {l.jobNo || "Job"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block flex-1"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+              </div>
+              {(l.message || l.notes) && (
+                <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                  {l.message || l.notes}
+                </div>
+              )}
+            </div>
+
+            {/* Details Box with Phone, Email, Address, Service, and Job Date */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
+                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
+              </div>
+              {l.address && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
+                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
+                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-slate-200/50">
+                <span className="text-slate-400 font-semibold shrink-0">Job Date:</span>
+                <span className="font-bold text-[#001f97] truncate text-right">
+                  {l.jobAt ? fmtDate(l.jobAt) : l.inspectionAt ? fmtDate(l.inspectionAt) : "Booked"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: JOB STATUS & ASSIGNED (3 columns) */}
+          <div className="xl:col-span-3 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                  JOB STATUS
+                </label>
+                <select
+                  value={l.status || "Job Booked"}
+                  onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                  className="w-full text-xs font-bold text-cyan-700 bg-cyan-50/70 border border-cyan-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-cyan-400 truncate"
+                >
+                  {statusOptions.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                  COORDINATOR
+                </label>
+                <select
+                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
+                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
+                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
+                >
+                  {assigneeOptions.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                <HardHat className="w-3 h-3 text-slate-500" />
+                <span>TECHNICIAN ON SITE</span>
+              </label>
+              <div className="w-full text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 truncate">
+                {l.technician || "Unassigned"}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: JOB LIVE VISIT & COMPLETION (3 columns) */}
+          <div className="xl:col-span-3 space-y-2">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                JOB LIVE VISIT
+              </label>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: "On the\nWay", status: "Job En Route", color: "bg-orange-500 hover:bg-orange-600" },
+                  { label: "Reached", status: "Job Arrived", color: "bg-[#1e3a5f] hover:bg-[#162d4a]" },
+                  { label: "In\nProgress", status: "Job In Progress", color: "bg-blue-600 hover:bg-blue-700" },
+                  { label: "Job\nDone", status: "Job Done", color: "bg-emerald-600 hover:bg-emerald-700" },
+                ].map((st) => {
+                  const isCurrent = l.status === st.status;
+                  return (
+                    <button
+                      key={st.label}
+                      type="button"
+                      onClick={() => updateLeadField(l.id, { status: st.status })}
+                      className={`px-1 py-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 text-center leading-tight min-h-[36px] cursor-pointer ${
+                        isCurrent
+                          ? `${st.color} text-white shadow-sm`
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/80"
+                      }`}
+                      title={`Set status: ${st.status}`}
+                    >
+                      {isCurrent && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
+                      <span className="text-center leading-tight whitespace-pre-line">{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Hand-off banner / Mark Job Done */}
+            {l.status === "Job Done" ? (
+              <div className="w-full px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5">
+                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span className="truncate">Job Completed — Handed to Finance</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Done" })}
+                className="w-full px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                title="Mark Job Completed"
+              >
+                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Mark Job Done &amp; Complete</span>
+              </button>
+            )}
+          </div>
+
+          {/* SECTION 4: ACTIONS (3 columns) */}
+          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
+            {/* Top row: Phone, Mail, WhatsApp, Scope */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => callCustomer(l)}
+                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
+                title="Call customer"
+              >
+                <Phone className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => emailCustomer(l)}
+                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Email customer"
+              >
+                <Mail className="w-4 h-4" />
+              </button>
+
+              {waUrl && (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 border border-emerald-300 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
+                  title="WhatsApp customer"
+                >
+                  <Send className="w-4 h-4" />
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => openQuoteModal(l)}
+                className="px-3 py-1.5 border border-amber-200 bg-amber-50 text-amber-800 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+                title="View Quote / Job Scope"
+              >
+                Scope / Quote
+              </button>
+            </div>
+
+            {/* Bottom row: Photos, Messages, Mark Job Done */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openPhotosModal(l)}
+                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
+                  title="Job Photos"
+                >
+                  <Camera className="w-4 h-4" />
+                  {photosTotal > 0 && (
+                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
+                      {photosTotal}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openMessagesModal(l)}
+                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
+                  title="Messages"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  {hasCustomerUnread && (
+                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  )}
+                </button>
+              </div>
+
+              {l.status !== "Job Done" && (
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Job Done" })}
+                  className="px-2.5 py-1 text-xs font-bold bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                  title="Finish Job"
+                >
+                  <Check className="w-3 h-3 stroke-[2.5]" />
+                  <span>Finish Job</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Login 3 (Finance / Completion) Custom Horizontal Lead Card ──────────────
   // Shows ONLY the items from the user-specified template in a clean horizontal row
   function renderFinanceLeadRow(l: Lead) {
@@ -3846,7 +4112,11 @@ export default function CrmDashboardPage() {
           ? FINANCE_STATUSES.includes(l.status)
           : role === "intake"
             ? INTAKE_STATUSES.includes(l.status)
-            : JOB_STATUSES.includes(l.status)
+            : role === "technician"
+              ? TECHNICIAN_STATUSES.includes(l.status) || Boolean(l.technicianId) || Boolean(l.technician)
+              : role === "inspection" || role === "field"
+                ? INSPECTION_STATUSES.includes(l.status)
+                : JOB_STATUSES.includes(l.status)
       ),
     [filteredLeads, role]
   );
@@ -3999,7 +4269,11 @@ export default function CrmDashboardPage() {
                     ? "Finance & Jobs"
                     : role === "intake"
                       ? "Leads & Bookings"
-                      : "Bookings & Jobs"}
+                      : role === "technician"
+                        ? "Jobs & Work"
+                        : role === "inspection" || role === "field"
+                          ? "Inspections"
+                          : "Bookings & Jobs"}
                 </span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
@@ -4009,7 +4283,11 @@ export default function CrmDashboardPage() {
                     ? scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length
                     : role === "intake"
                       ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
-                      : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
+                      : role === "technician"
+                        ? scopedLeads.filter((l) => TECHNICIAN_STATUSES.includes(l.status)).length
+                        : role === "inspection" || role === "field"
+                          ? scopedLeads.filter((l) => INSPECTION_STATUSES.includes(l.status)).length
+                          : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
                 </span>
               </button>
             )}
@@ -4954,11 +5232,18 @@ export default function CrmDashboardPage() {
                     <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
-                ) : role === "field" || role === "technician" ? (
+                ) : role === "inspection" || role === "field" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
                     <div className="col-span-3">CLIENT DETAILS</div>
                     <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
                     <div className="col-span-3">INSPECTION LIVE VISIT</div>
+                    <div className="col-span-3">ACTIONS</div>
+                  </div>
+                ) : role === "technician" ? (
+                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
+                    <div className="col-span-3">CLIENT DETAILS</div>
+                    <div className="col-span-3">JOB STATUS &amp; ASSIGNED</div>
+                    <div className="col-span-3">JOB LIVE VISIT</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
                 ) : role === "finance" ? (
@@ -4983,8 +5268,11 @@ export default function CrmDashboardPage() {
                     if ((role as string) === "intake") {
                       return renderIntakeLeadRow(l);
                     }
-                    if ((role as string) === "field" || (role as string) === "technician") {
+                    if ((role as string) === "inspection" || (role as string) === "field") {
                       return renderFieldLeadRow(l);
+                    }
+                    if ((role as string) === "technician") {
+                      return renderTechnicianLeadRow(l);
                     }
                     if ((role as string) === "finance") {
                       return renderFinanceLeadRow(l);
@@ -5813,10 +6101,15 @@ export default function CrmDashboardPage() {
                             { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
                             ...single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]),
                           ]
-                          : role === "field" || role === "technician"
+                          : role === "inspection" || role === "field"
                             ? [
-                              { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
-                              ...single(["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]),
+                              { label: "Total Inspections", group: "lead", statuses: [], totalCount: true },
+                              ...single(["Inspection Booked", "Inspection Completed"]),
+                            ]
+                          : role === "technician"
+                            ? [
+                              { label: "Total Jobs", group: "job", statuses: [], totalCount: true },
+                              ...single(["Job Booked", "Scheduled", "Job Confirmed", "Job Done"]),
                             ]
                             : role === "manager"
                               ? [
@@ -5907,14 +6200,22 @@ export default function CrmDashboardPage() {
                           ? "Finance & Job Completion"
                           : role === "intake"
                             ? "Leads & Bookings"
-                            : "Bookings & Jobs"}
+                            : role === "technician"
+                              ? "Technician Jobs & Work"
+                              : role === "inspection" || role === "field"
+                                ? "Inspection Visits"
+                                : "Bookings & Jobs"}
                       </h2>
                       <div className="text-xs text-slate-500">
                         {role === "finance"
                           ? `Showing ${jobLeads.length} completed jobs for invoicing, payment & warranty`
                           : role === "intake"
                             ? `Showing ${jobLeads.length} active leads from New to Job Booked`
-                            : `Showing ${jobLeads.length} bookings & jobs from Inspection Booked to Job Done`}
+                            : role === "technician"
+                              ? `Showing ${jobLeads.length} assigned jobs from Booked to Job Done`
+                              : role === "inspection" || role === "field"
+                                ? `Showing ${jobLeads.length} inspection bookings and visit reports`
+                                : `Showing ${jobLeads.length} bookings & jobs from Inspection Booked to Job Done`}
                       </div>
                     </div>
                   </div>
@@ -5940,13 +6241,15 @@ export default function CrmDashboardPage() {
                         // buttons (the micro-stages stay out of the filter to reduce noise).
                         const boardStatuses = getRoleStatusOptions(role);
                         const filterOptions =
-                          role === "field" || role === "technician"
-                            ? ["Inspection Booked", "Inspection Completed", "Quote Pending", "Job Booked", "Job Done"]
-                            : role === "finance"
-                              ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
-                              : role === "intake"
-                                ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
-                                : boardStatuses;
+                          role === "inspection" || role === "field"
+                            ? ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed"]
+                            : role === "technician"
+                              ? ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done"]
+                              : role === "finance"
+                                ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent"]
+                                : role === "intake"
+                                  ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
+                                  : boardStatuses;
                         const allLabel =
                           role === "finance"
                             ? "All Finance Jobs"
@@ -5996,11 +6299,18 @@ export default function CrmDashboardPage() {
                     <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
-                ) : role === "field" || role === "technician" ? (
+                ) : role === "inspection" || role === "field" ? (
                   <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
                     <div className="col-span-3">CLIENT DETAILS</div>
                     <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
                     <div className="col-span-3">INSPECTION LIVE VISIT</div>
+                    <div className="col-span-3">ACTIONS</div>
+                  </div>
+                ) : role === "technician" ? (
+                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
+                    <div className="col-span-3">CLIENT DETAILS</div>
+                    <div className="col-span-3">JOB STATUS &amp; ASSIGNED</div>
+                    <div className="col-span-3">JOB LIVE VISIT</div>
                     <div className="col-span-3">ACTIONS</div>
                   </div>
                 ) : role === "finance" ? (
@@ -6027,8 +6337,11 @@ export default function CrmDashboardPage() {
                       if ((role as string) === "intake") {
                         return renderIntakeLeadRow(l);
                       }
-                      if ((role as string) === "field" || (role as string) === "technician") {
+                      if ((role as string) === "inspection" || (role as string) === "field") {
                         return renderFieldLeadRow(l);
+                      }
+                      if ((role as string) === "technician") {
+                        return renderTechnicianLeadRow(l);
                       }
                       if ((role as string) === "finance") {
                         return renderFinanceLeadRow(l);
@@ -7096,7 +7409,7 @@ export default function CrmDashboardPage() {
                   <h2 className="text-base font-black text-slate-900">Add a Field Technician</h2>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
-                  Technicians are dispatched to inspections and jobs. To allow a technician to log into the portal, create their account in Staff Accounts with the <b>Technician / Inspection</b> role.
+                  Technicians are dispatched to jobs. To allow a technician to log into the portal, create their account in Staff Accounts with the <b>Technician</b> role.
                 </p>
                 <form onSubmit={handleAddTechnician} className="flex flex-col sm:flex-row gap-3">
                   <input
