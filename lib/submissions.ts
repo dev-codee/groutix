@@ -99,6 +99,7 @@ export interface SubmissionDoc {
   _id?: ObjectId;
   type: SubmissionType;
   status: SubmissionStatus;
+  jobNo?: string;
   createdAt: Date;
   // Contact / lead fields (subset present depends on type).
   customerType?: string;
@@ -152,6 +153,10 @@ export interface SubmissionDoc {
   quoteNumber?: string;
   quoteAcceptedAt?: string; // ISO time the customer accepted the quote online
   quoteDeclinedAt?: string; // ISO time the customer declined the quote online
+  quoteSignature?: string; // Base64 data URL of the customer's signature
+  quoteSignedName?: string; // Name entered/confirmed on signature
+  quoteSignedAt?: string; // ISO time the signature was captured
+  quoteSignedIp?: string; // IP address of the signer
   invoiceNumber?: string;
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
   invoiceOpenedAt?: string; // ISO time the customer first opened the invoice email

@@ -67,6 +67,14 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     taxName: lead.quoteTaxMode === "none" ? "No Tax" : "GST (10%)",
     specialNotes,
     terms: GROUTIX_OFFICIAL_TERMS,
+    customerSignatureImage: lead.quoteSignature,
+    customerSignedAt: lead.quoteSignedAt
+      ? new Date(lead.quoteSignedAt).toLocaleDateString("en-AU", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : undefined,
   });
 
   const bytes = Buffer.from(base64, "base64");

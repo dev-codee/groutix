@@ -37,3 +37,10 @@ export function buildQuoteResponseUrl(id: string, action: "accept" | "decline"):
   const params = new URLSearchParams({ id, action, token });
   return `${siteBaseUrl()}/api/quote/respond?${params.toString()}`;
 }
+
+/** Build the public online review & e-signature URL for a lead. */
+export function buildQuoteSignUrl(id: string): string {
+  const token = signQuoteToken(id);
+  return `${siteBaseUrl()}/quote/${id}?token=${token}`;
+}
+

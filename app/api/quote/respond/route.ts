@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
 import { verifyQuoteToken } from "@/lib/quoteToken";
 import { buildBookingUrl } from "@/lib/bookingToken";
@@ -90,22 +90,7 @@ export async function GET(req: NextRequest) {
   const now = new Date().toISOString();
 
   if (action === "accept") {
-    await updateSubmission(id, {
-      status: "Won",
-      quoteAcceptedAt: now,
-    });
-    await appendActivity(id, {
-      time: now,
-      actor: "customer",
-      action: "Quote accepted",
-      detail: `Accepted online${lead.quoteNumber ? ` (${lead.quoteNumber})` : ""}`,
-    });
-    return page(
-      "Quote accepted 🎉",
-      "Thank you for accepting your Groutix quotation! Pick a day and time for your job below — or we'll call you shortly to arrange it.",
-      "ok",
-      { url: buildBookingUrl(id, "job"), label: "📅 Book my job day & time" }
-    );
+    return NextResponse.redirect(new URL(`/quote/${id}?token=${encodeURIComponent(token || "")}`, req.url));
   }
 
   // decline

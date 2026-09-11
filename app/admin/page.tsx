@@ -180,6 +180,9 @@ export interface Lead {
   quoteNumber?: string;
   quoteAcceptedAt?: string;
   quoteDeclinedAt?: string;
+  quoteSignature?: string;
+  quoteSignedName?: string;
+  quoteSignedAt?: string;
   followUpStage?: number;
   followUpNext?: string;
   invoiceNumber?: string;
@@ -547,6 +550,19 @@ function getBadgeColor(status: string) {
 // declined) their quote from the emailed one-click link, so staff can tell an
 // online response apart from a status a colleague set by hand.
 function QuoteResponseBadge({ lead }: { lead: Lead }) {
+  if (lead.quoteSignature || lead.quoteSignedAt) {
+    return (
+      <a
+        href={`/api/admin/quote/pdf/${lead.id}`}
+        target="_blank"
+        rel="noreferrer"
+        title={`Signed online by ${lead.quoteSignedName || lead.name || "customer"} • ${fmtDate(lead.quoteSignedAt || lead.quoteAcceptedAt)} (Click to view signed PDF)`}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-colors whitespace-nowrap cursor-pointer"
+      >
+        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Signed &amp; Accepted
+      </a>
+    );
+  }
   if (lead.quoteAcceptedAt) {
     return (
       <span
@@ -1274,23 +1290,41 @@ export default function CrmDashboardPage() {
     [activeMessageLead, leads]
   );
 
+  // Check if a given name or account corresponds to a field technician
+  const isTechnicianName = useCallback(
+    (name?: string) => {
+      if (!name) return false;
+      const lower = name.trim().toLowerCase();
+      return (
+        technicians.some((t) => t.name.trim().toLowerCase() === lower) ||
+        staff.some((s) => s.name.trim().toLowerCase() === lower && s.role === "technician")
+      );
+    },
+    [technicians, staff]
+  );
+
   // Build assignee options scoped to the role that owns a lead's current stage,
-  // so e.g. an inspection-stage lead only offers Field techs, a quoting-stage
+  // so e.g. an inspection-stage lead only offers Field staff, a quoting-stage
   // lead only offers Intake staff, etc. Falls back to all active staff when no
   // one holds that role (so the picker is never empty), and always keeps the
-  // lead's current value visible.
+  // lead's current value visible. Technicians are excluded as they are dispatched
+  // separately via the dedicated technician dropdown.
   const assigneeOptionsFor = useCallback(
     (status?: string, current?: string) => {
-      const active = staff.filter((s) => s.active);
+      const active = staff.filter(
+        (s) => s.active && s.role !== "technician" && !isTechnicianName(s.name)
+      );
       const owner = status ? stageOwner(status) : null;
       let pool = owner ? active.filter((s) => s.role === owner) : active;
       if (pool.length === 0) pool = active;
       const names = new Set<string>(pool.map((s) => s.name));
-      if (current) names.add(current);
-      if (names.size === 0) names.add("Unassigned");
-      return Array.from(names);
+      if (current && current !== "Unassigned" && !isTechnicianName(current)) {
+        names.add(current);
+      }
+      const list = Array.from(names).filter((n) => n && n !== "Unassigned");
+      return ["Unassigned", ...list];
     },
-    [staff]
+    [staff, isTechnicianName]
   );
 
   // Options for the "Assigned To" picker in the lead modal (scoped to the
@@ -2860,7 +2894,7 @@ export default function CrmDashboardPage() {
                   ASSIGNED
                 </label>
                 <select
-                  value={l.assigned || "Unassigned"}
+                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
                   className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
                 >
@@ -3118,7 +3152,7 @@ export default function CrmDashboardPage() {
                   ASSIGNED
                 </label>
                 <select
-                  value={l.assigned || "Unassigned"}
+                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
                   className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
                 >
@@ -3470,7 +3504,7 @@ export default function CrmDashboardPage() {
                   ASSIGNED
                 </label>
                 <select
-                  value={l.assigned || "Unassigned"}
+                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
                   className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
                 >
@@ -5207,30 +5241,28 @@ export default function CrmDashboardPage() {
                                 </button>
 
                                 <select
-                                  value={l.assigned || "Unassigned"}
+                                  value={
+                                    l.assigned && !isTechnicianName(l.assigned)
+                                      ? l.assigned
+                                      : "Unassigned"
+                                  }
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    const tech = technicians.find((t) => t.name === val);
                                     updateLeadField(l.id, {
                                       assigned: val === "Unassigned" ? "" : val,
-                                      ...(tech ? { technicianId: tech.id, technician: tech.name } : {}),
                                     });
                                   }}
                                   className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden min-h-[34px] cursor-pointer"
-                                  title="Assign staff or technician"
+                                  title="Assign staff member"
                                 >
                                   <option value="Unassigned">Unassigned</option>
-                                  {Array.from(
-                                    new Set([
-                                      ...rowAssigneeOptions(l.assigned, l.status).filter((n) => n && n !== "Unassigned"),
-                                      ...technicians.filter((t) => t.active).map((t) => t.name),
-                                      ...(l.assigned && l.assigned !== "Unassigned" ? [l.assigned] : []),
-                                    ])
-                                  ).map((name) => (
-                                    <option key={name} value={name}>
-                                      {name}
-                                    </option>
-                                  ))}
+                                  {rowAssigneeOptions(l.assigned, l.status)
+                                    .filter((name) => name && name !== "Unassigned" && !isTechnicianName(name))
+                                    .map((name) => (
+                                      <option key={name} value={name}>
+                                        {name}
+                                      </option>
+                                    ))}
                                 </select>
                               </div>
                             </div>
@@ -6593,8 +6625,8 @@ export default function CrmDashboardPage() {
                               <div className="flex items-center justify-between text-xs pt-0.5">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Staff</span>
                                 <select
-                                  value={l.assigned || "Unassigned"}
-                                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value })}
+                                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
+                                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
                                   className="text-[11px] px-2 py-1 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
                                 >
                                   {rowAssigneeOptions(l.assigned, l.status).map((n) => (
@@ -7231,8 +7263,12 @@ export default function CrmDashboardPage() {
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Assigned To</label>
                   <select
-                    value={editingLead?.assigned || assigneeOptions[0]}
-                    onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value })}
+                    value={
+                      editingLead?.assigned && !isTechnicianName(editingLead.assigned)
+                        ? editingLead.assigned
+                        : assigneeOptions[0] || "Unassigned"
+                    }
+                    onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
                   >
                     {assigneeOptions.map((n) => (

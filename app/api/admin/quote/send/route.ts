@@ -10,7 +10,7 @@ import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
-import { buildQuoteResponseUrl, siteBaseUrl, signQuoteToken } from "@/lib/quoteToken";
+import { buildQuoteResponseUrl, buildQuoteSignUrl, siteBaseUrl, signQuoteToken } from "@/lib/quoteToken";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
 
 export const runtime = "nodejs";
@@ -89,8 +89,8 @@ export async function POST(req: NextRequest) {
           <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:right;font-weight:600;">$${total.toFixed(2)}</td>
         </tr>`;
 
-  // Public, HMAC-signed link so the customer can accept in one click;
-  // the /api/quote/respond route flips the CRM status when they do.
+  // Public, HMAC-signed link to review and digitally sign the quote online
+  const signUrl = buildQuoteSignUrl(body.id);
   const acceptUrl = buildQuoteResponseUrl(body.id, "accept");
 
   const html = `
@@ -152,12 +152,12 @@ export async function POST(req: NextRequest) {
       All works and quotations are subject to the official <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a> (complete 20 clauses included in attached PDF). Full shower epoxy regrouting includes our comprehensive 10-Year Waterproof Warranty.
     </div>
 
-    <!-- One-click accept. Clicking updates the lead status in the CRM. -->
-    <p style="margin:24px 0 12px;font-weight:600;color:#0f172a;">Ready to go ahead?</p>
+    <!-- Review and digitally sign quote online -->
+    <p style="margin:24px 0 12px;font-weight:600;color:#0f172a;">Ready to proceed?</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
       <tr>
         <td style="padding-right:12px;">
-          <a href="${acceptUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✓ Accept Quote</a>
+          <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✍️ Review &amp; Sign Quote</a>
         </td>
         <td>
           <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">📥 Download PDF</a>

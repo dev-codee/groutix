@@ -523,6 +523,16 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
         font,
         color: MUTED,
       });
+      if (input.customerSignatureImage) {
+        ty -= 9;
+        curPage.drawText("Digitally accepted & signed online via Groutix Secure Portal", {
+          x: MARGIN,
+          y: ty,
+          size: 7,
+          font,
+          color: MUTED,
+        });
+      }
     }
   }
 

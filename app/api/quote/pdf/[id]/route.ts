@@ -50,6 +50,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           ? lead.quoteTerms
           : DEFAULT_QUOTE_CONDITIONS,
       terms: GROUTIX_OFFICIAL_TERMS,
+      customerSignatureImage: lead.quoteSignature,
+      customerSignedAt: lead.quoteSignedAt
+        ? new Date(lead.quoteSignedAt).toLocaleDateString("en-AU", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : undefined,
     });
 
     const pdfBuffer = Buffer.from(pdfBase64, "base64");
