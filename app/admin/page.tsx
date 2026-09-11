@@ -815,9 +815,9 @@ export default function CrmDashboardPage() {
   const [viewAs, setViewAs] = useState<{ role: Role; name: string } | null>(null);
   const role: Role = viewAs ? viewAs.role : realRole;
 
-  // Inspection (Login 2) / Technician (Login 3) + managers can dispatch
-  // technicians to jobs. The API enforces this too; this just gates the UI.
-  const canManageTechs = role === "inspection" || role === "field" || role === "technician" || role === "manager" || role === "super_admin";
+  // Inspection, Technician, Intake / Office, and managers can dispatch
+  // technicians to jobs. The API enforces this too; this gates the UI.
+  const canManageTechs = role === "inspection" || role === "field" || role === "technician" || role === "manager" || role === "super_admin" || role === "intake";
   // Per-role visibility for the lead-row sections (managers/super-admins see all).
   // Field tools (live visit, job status, tech dispatch) reuse canManageTechs.
   const showFinanceTools = role === "finance" || role === "manager" || role === "super_admin";
@@ -874,10 +874,9 @@ export default function CrmDashboardPage() {
     { id: string; username: string; name: string; role: string; active: boolean }[]
   >([]);
 
-  // Field-technician roster (name + email) — dispatched to jobs, not login
-  // accounts. Managed from the Technicians view by Field / managers.
+  // Field-technician roster (name + email) and staff technicians.
   const [technicians, setTechnicians] = useState<
-    { id: string; name: string; email: string; active: boolean; createdAt: string }[]
+    { id: string; name: string; email: string; active: boolean; createdAt: string; hasLogin?: boolean; username?: string }[]
   >([]);
   const [techName, setTechName] = useState("");
   const [techEmail, setTechEmail] = useState("");
@@ -1218,8 +1217,8 @@ export default function CrmDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (canManageTechs) loadTechnicians();
-  }, [canManageTechs, loadTechnicians]);
+    loadTechnicians();
+  }, [loadTechnicians]);
 
   // Poll unread team-chat counts so the Team cards badge new messages, and keep
   // an open conversation live-updating while the chat panel is on screen.
@@ -1291,17 +1290,65 @@ export default function CrmDashboardPage() {
     [activeMessageLead, leads]
   );
 
+  // Unified technicians list: combines both the dispatch roster (`technicians`) and
+  // staff accounts created with role === "technician" (`staff`).
+  const assignableTechnicians = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; email?: string; active?: boolean; hasLogin?: boolean; username?: string }
+    >();
+
+    // 1. Add roster technicians (which may already include staff techs from API)
+    for (const t of technicians) {
+      map.set(t.id, {
+        id: t.id,
+        name: t.name,
+        email: t.email,
+        active: t.active !== false,
+        hasLogin: (t as any).hasLogin || false,
+        username: (t as any).username || "",
+      });
+    }
+
+    // 2. Also merge staff accounts with role === "technician"
+    for (const s of staff) {
+      if (s.role === "technician" && s.active !== false) {
+        const displayName = (s.name && s.name.trim()) ? s.name.trim() : s.username;
+        const lowerName = displayName.toLowerCase();
+        const existing = Array.from(map.values()).find(
+          (t) => t.id === s.id || t.name.trim().toLowerCase() === lowerName || (t.username && t.username.toLowerCase() === s.username.toLowerCase())
+        );
+        if (existing) {
+          existing.hasLogin = true;
+          existing.username = s.username;
+          if (!existing.name) existing.name = displayName;
+        } else {
+          map.set(s.id, {
+            id: s.id,
+            name: displayName,
+            email: s.username.includes("@") ? s.username : "",
+            active: true,
+            hasLogin: true,
+            username: s.username,
+          });
+        }
+      }
+    }
+
+    return Array.from(map.values());
+  }, [technicians, staff]);
+
   // Check if a given name or account corresponds to a field technician
   const isTechnicianName = useCallback(
     (name?: string) => {
       if (!name) return false;
       const lower = name.trim().toLowerCase();
       return (
-        technicians.some((t) => t.name.trim().toLowerCase() === lower) ||
-        staff.some((s) => s.name.trim().toLowerCase() === lower && s.role === "technician")
+        assignableTechnicians.some((t) => t.name.trim().toLowerCase() === lower || (t.username && t.username.toLowerCase() === lower)) ||
+        staff.some((s) => s.role === "technician" && (s.name.trim().toLowerCase() === lower || s.username.trim().toLowerCase() === lower))
       );
     },
-    [technicians, staff]
+    [assignableTechnicians, staff]
   );
 
   // Build assignee options scoped to the role that owns a lead's current stage,
@@ -3178,7 +3225,7 @@ export default function CrmDashboardPage() {
               <select
                 value={l.technicianId || ""}
                 onChange={(e) => {
-                  const tech = technicians.find((t) => t.id === e.target.value);
+                  const tech = assignableTechnicians.find((t) => t.id === e.target.value);
                   updateLeadField(l.id, {
                     technicianId: e.target.value,
                     technician: tech?.name || "",
@@ -3187,13 +3234,12 @@ export default function CrmDashboardPage() {
                 className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
               >
                 <option value="">Unassigned</option>
-                {technicians.map((t) => (
+                {assignableTechnicians.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name}
-                    {!t.active ? " (inactive)" : ""}
+                    {t.name}{t.hasLogin ? " (Portal)" : ""}{!t.active ? " (inactive)" : ""}
                   </option>
                 ))}
-                {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
                   <option value={l.technicianId}>{l.technician || "Former technician"}</option>
                 )}
               </select>
@@ -3999,15 +4045,39 @@ export default function CrmDashboardPage() {
   // owns. Managers see the whole book. Legacy leads are hidden by default
   // unless the manager explicitly toggles showLegacyLeads.
   const scopedLeads = useMemo(() => {
-    const roleScoped = role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status));
+    const roleScoped =
+      role === "manager" || role === "super_admin"
+        ? leads
+        : leads.filter((l) => {
+            if (!inRoleQueue(role, l.status)) return false;
+            // When logged in as technician or viewing as technician:
+            if (role === "technician") {
+              const myStaff = staff.find((s) => s.username === username);
+              const targetName = (viewAs ? viewAs.name : (myStaff?.name || username || "")).trim().toLowerCase();
+              const targetUser = (viewAs ? viewAs.name : username).trim().toLowerCase();
+              const targetId = viewAs ? null : myStaff?.id;
+              if (l.technicianId || l.technician) {
+                const assignedId = l.technicianId;
+                const assignedName = (l.technician || "").trim().toLowerCase();
+                const matches =
+                  (targetId && assignedId === targetId) ||
+                  (assignedId && (assignedId.toLowerCase() === targetUser || assignedId.toLowerCase() === targetName)) ||
+                  (assignedName && (assignedName === targetName || assignedName === targetUser));
+                return matches;
+              }
+              // Allow technicians to view unassigned leads in their queue
+              return true;
+            }
+            return true;
+          });
     if (showLegacyLeads) return roleScoped;
     if (newLeadsCutoffMs <= 0) return roleScoped;
     return roleScoped.filter((l) => !isLegacyLead(l, newLeadsCutoffMs));
-  }, [leads, role, showLegacyLeads, newLeadsCutoffMs]);
+  }, [leads, role, showLegacyLeads, newLeadsCutoffMs, staff, username, viewAs]);
 
   const hiddenLegacyCount = useMemo(() => {
     if (newLeadsCutoffMs <= 0) return 0;
-    const pool = role === "manager" ? leads : leads.filter((l) => inRoleQueue(role, l.status));
+    const pool = (role === "manager" || role === "super_admin") ? leads : leads.filter((l) => inRoleQueue(role, l.status));
     return pool.filter((l) => isLegacyLead(l, newLeadsCutoffMs)).length;
   }, [leads, role, newLeadsCutoffMs]);
 
@@ -5675,7 +5745,7 @@ export default function CrmDashboardPage() {
                               <select
                                 value={l.technicianId || ""}
                                 onChange={(e) => {
-                                  const tech = technicians.find((t) => t.id === e.target.value);
+                                  const tech = assignableTechnicians.find((t) => t.id === e.target.value);
                                   updateLeadField(l.id, {
                                     technicianId: e.target.value,
                                     technician: tech?.name || "",
@@ -5685,10 +5755,10 @@ export default function CrmDashboardPage() {
                                 title="Assign technician"
                               >
                                 <option value="">Assign Tech</option>
-                                {technicians.filter((t) => t.active).map((t) => (
-                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                {assignableTechnicians.filter((t) => t.active !== false).map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}{t.hasLogin ? " (Portal)" : ""}</option>
                                 ))}
-                                {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                                {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
                                   <option value={l.technicianId}>{l.technician || "Former tech"}</option>
                                 )}
                               </select>
@@ -6774,7 +6844,7 @@ export default function CrmDashboardPage() {
                                   <select
                                     value={l.technicianId || ""}
                                     onChange={(e) => {
-                                      const tech = technicians.find((t) => t.id === e.target.value);
+                                      const tech = assignableTechnicians.find((t) => t.id === e.target.value);
                                       updateLeadField(l.id, {
                                         technicianId: e.target.value,
                                         technician: tech?.name || "",
@@ -6784,10 +6854,10 @@ export default function CrmDashboardPage() {
                                     title="Assign technician"
                                   >
                                     <option value="">Assign Tech</option>
-                                    {technicians.filter((t) => t.active).map((t) => (
-                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    {assignableTechnicians.filter((t) => t.active !== false).map((t) => (
+                                      <option key={t.id} value={t.id}>{t.name}{t.hasLogin ? " (Portal)" : ""}</option>
                                     ))}
-                                    {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                                    {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
                                       <option value={l.technicianId}>{l.technician || "Former tech"}</option>
                                     )}
                                   </select>
@@ -6875,7 +6945,7 @@ export default function CrmDashboardPage() {
                                     <select
                                       value={l.technicianId || ""}
                                       onChange={(e) => {
-                                        const tech = technicians.find((t) => t.id === e.target.value);
+                                        const tech = assignableTechnicians.find((t) => t.id === e.target.value);
                                         updateLeadField(l.id, {
                                           technicianId: e.target.value,
                                           technician: tech?.name || "",
@@ -6884,13 +6954,13 @@ export default function CrmDashboardPage() {
                                       className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden"
                                     >
                                       <option value="">Unassigned</option>
-                                      {technicians.map((t) => (
+                                      {assignableTechnicians.map((t) => (
                                         <option key={t.id} value={t.id}>
                                           {t.name}
                                           {!t.active ? " (inactive)" : ""}
                                         </option>
                                       ))}
-                                      {l.technicianId && !technicians.some((t) => t.id === l.technicianId) && (
+                                      {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
                                         <option value={l.technicianId}>
                                           {l.technician || "Former technician"}
                                         </option>
@@ -7443,17 +7513,19 @@ export default function CrmDashboardPage() {
                 <h2 className="text-base font-black text-slate-900 mb-4">
                   Technician Roster
                   <span className="ml-2 text-xs font-semibold text-slate-400">
-                    {technicians.length} total
+                    {assignableTechnicians.length} total
                   </span>
                 </h2>
-                {technicians.length === 0 ? (
+                {assignableTechnicians.length === 0 ? (
                   <div className="text-sm text-slate-400 py-8 text-center">
-                    No technicians yet. Add your first one above.
+                    No technicians yet. Add your first one above or in Staff Accounts.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {technicians.map((t) => {
-                      const activeJobs = leads.filter((l) => l.technicianId === t.id).length;
+                    {assignableTechnicians.map((t) => {
+                      const activeJobs = leads.filter(
+                        (l) => l.technicianId === t.id || (l.technician && l.technician.toLowerCase() === t.name.toLowerCase())
+                      ).length;
                       return (
                         <div
                           key={t.id}
@@ -7461,25 +7533,47 @@ export default function CrmDashboardPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="font-black text-slate-900 text-base">{t.name}</div>
-                            {!t.active && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">
-                                inactive
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              {t.hasLogin ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800" title={`Username: ${t.username}`}>
+                                  Portal Login
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                                  Dispatch Roster
+                                </span>
+                              )}
+                              {!t.active && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                                  inactive
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xs text-slate-600 break-all">{t.email}</div>
+                          <div className="text-xs text-slate-600 break-all">
+                            {t.email ? t.email : t.username ? `Username: ${t.username}` : "No email specified"}
+                          </div>
                           <div className="text-xs text-slate-600 pt-2">
                             Active jobs: <b>{activeJobs}</b>
                           </div>
                           <div className="flex flex-wrap gap-2 pt-3 mt-auto">
-                            <button
-                              onClick={() => handleDeleteTechnician(t)}
-                              disabled={deletingTechId === t.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-white text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              {deletingTechId === t.id ? "…" : "Remove"}
-                            </button>
+                            {t.hasLogin ? (
+                              <Link
+                                href={`${basePath}/users`}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-white text-blue-600 text-xs font-bold hover:bg-blue-50 transition-colors"
+                              >
+                                Edit in Staff Accounts
+                              </Link>
+                            ) : (
+                              <button
+                                onClick={() => handleDeleteTechnician(t)}
+                                disabled={deletingTechId === t.id}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-white text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                {deletingTechId === t.id ? "…" : "Remove"}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );

@@ -4,23 +4,24 @@ import { listTechnicians, addTechnician } from "@/lib/technicians";
 
 export const runtime = "nodejs";
 
-// Field techs are dispatched by the Field login (Login 2) and by managers.
-const ALLOWED = ["field", "technician", "manager", "super_admin"];
+// All authenticated staff sessions can list technicians for job assignment dropdowns.
+// Dispatch management is allowed for field, inspection, intake, manager, super_admin, technician.
+const MANAGE_ALLOWED = ["field", "inspection", "intake", "technician", "manager", "super_admin"];
 
-async function requireDispatcher(req: NextRequest) {
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  return session && ALLOWED.includes(session.role) ? session : null;
+async function requireSession(req: NextRequest) {
+  return await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await requireDispatcher(req)))
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await requireSession(req);
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const technicians = await listTechnicians();
   return NextResponse.json({ technicians });
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await requireDispatcher(req)))
+  const session = await requireSession(req);
+  if (!session || !MANAGE_ALLOWED.includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   let body: { name?: string; email?: string };

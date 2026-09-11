@@ -170,25 +170,16 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Lost",
     ].includes(status);
   }
-  if (role === "field" || role === "technician") {
-    // Field / Technician owns the inspection visit and (after acceptance) the job visit,
-    // up to Job Done which hands off to finance.
+  if (role === "inspection" || role === "field") {
+    // Inspection / Field Visit owns the on-site inspection visit up to quote handoff
     return [
-      "Inspection Booked",
-      "Inspection En Route",
-      "Inspection Arrived",
-      "Inspection In Progress",
-      "Inspection Completed",
+      ...INSPECTION_STATUSES,
       "Quote Pending",
-      "Won",
-      "Job Booked",
-      "Scheduled",
-      "Job Confirmed",
-      "Job En Route",
-      "Job Arrived",
-      "Job In Progress",
-      "Job Done",
     ].includes(status);
+  }
+  if (role === "technician") {
+    // Technician owns job execution on-site (Won/Job Booked through Job Done)
+    return TECHNICIAN_STATUSES.includes(status);
   }
   if (role === "finance") {
     // Finance owns lead from Job Done through completion

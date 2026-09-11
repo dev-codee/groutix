@@ -21,6 +21,8 @@ export type TechnicianJSON = {
   email: string;
   active: boolean;
   createdAt: string;
+  hasLogin?: boolean;
+  username?: string;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,7 +47,42 @@ export async function listTechnicians(): Promise<TechnicianJSON[]> {
   try {
     const col = await collection();
     const docs = await col.find({}).sort({ createdAt: -1 }).toArray();
-    return docs.map(toTechnicianJSON);
+    const result: TechnicianJSON[] = docs.map(toTechnicianJSON);
+
+    // Also include staff accounts with role === "technician"
+    const db = await getDb();
+    const staffTechs = await db
+      .collection("admin_users")
+      .find({ role: "technician", active: { $ne: false } })
+      .toArray();
+
+    for (const st of staffTechs) {
+      const displayName = (st.name && st.name.trim()) ? st.name.trim() : st.username;
+      const lowerName = displayName.toLowerCase();
+      const lowerUsername = st.username ? st.username.toLowerCase() : "";
+      const existing = result.find(
+        (r) =>
+          r.id === st._id.toString() ||
+          r.name.trim().toLowerCase() === lowerName ||
+          (lowerUsername.includes("@") && r.email.toLowerCase() === lowerUsername)
+      );
+      if (existing) {
+        existing.hasLogin = true;
+        existing.username = st.username;
+      } else {
+        result.push({
+          id: st._id.toString(),
+          name: displayName,
+          email: lowerUsername.includes("@") ? st.username : "",
+          active: st.active !== false,
+          hasLogin: true,
+          username: st.username,
+          createdAt: (st.createdAt instanceof Date ? st.createdAt : new Date(st.createdAt || Date.now())).toISOString(),
+        });
+      }
+    }
+
+    return result;
   } catch (err) {
     console.error("listTechnicians failed:", err);
     return [];
@@ -79,7 +116,27 @@ export async function getTechnician(id: string): Promise<TechnicianDoc | null> {
   if (!isMongoConfigured() || !ObjectId.isValid(id)) return null;
   try {
     const col = await collection();
-    return await col.findOne({ _id: new ObjectId(id) });
+    const doc = await col.findOne({ _id: new ObjectId(id) });
+    if (doc) return doc;
+
+    // Check staff accounts with technician role
+    const db = await getDb();
+    const staffUser = await db
+      .collection("admin_users")
+      .findOne({ _id: new ObjectId(id), role: "technician" });
+    if (staffUser) {
+      const displayName = (staffUser.name && staffUser.name.trim()) ? staffUser.name.trim() : staffUser.username;
+      const lowerUsername = staffUser.username ? staffUser.username.toLowerCase() : "";
+      return {
+        _id: staffUser._id,
+        name: displayName,
+        email: lowerUsername.includes("@") ? staffUser.username : (staffUser.email || ""),
+        active: staffUser.active !== false,
+        createdAt: staffUser.createdAt || new Date(),
+      };
+    }
+
+    return null;
   } catch (err) {
     console.error("getTechnician failed:", err);
     return null;
