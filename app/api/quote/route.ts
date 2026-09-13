@@ -6,7 +6,8 @@ import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } fro
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
 import { resolveArea, getAvailableDaysSummary, computeAvailability } from "@/lib/scheduling";
-import { listUpcomingBookings } from "@/lib/bookings";
+import { listUpcomingBookings, createBooking } from "@/lib/bookings";
+import { updateSubmission, appendActivity, getNextJobNo } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -170,6 +171,8 @@ export async function POST(req: NextRequest) {
   const areas = get("areas");
   const heard = get("heard");
   const sourcePage = get("sourcePage");
+  const inspectionDate = get("inspectionDate");
+  const inspectionTime = get("inspectionTime");
 
   // Minimal server-side validation mirroring the client.
   if (!firstName || !lastName || !email || !phone) {
@@ -360,6 +363,36 @@ export async function POST(req: NextRequest) {
     userAgent: req.headers.get("user-agent") || undefined,
     emailDelivered: false,
   });
+
+  // 1b) If customer selected an inspection slot, book it immediately
+  if (submissionId && inspectionDate && inspectionTime) {
+    try {
+      const area = resolveArea(address);
+      const jobNo = await getNextJobNo();
+      await updateSubmission(submissionId, { jobNo });
+      const lock = await createBooking({
+        leadId: submissionId,
+        type: "inspection",
+        date: inspectionDate,
+        time: inspectionTime,
+        zone: area.zone || "flexible",
+        suburb: area.suburb || undefined,
+        reference: jobNo,
+      });
+      if (lock.ok) {
+        const inspectionAt = new Date(`${inspectionDate}T${inspectionTime}:00`).toISOString();
+        await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
+        await appendActivity(submissionId, {
+          time: new Date().toISOString(),
+          actor: "customer",
+          action: "Inspection booked via website form",
+          detail: `${inspectionDate} at ${inspectionTime}`,
+        });
+      }
+    } catch (err) {
+      console.error("Auto-booking inspection failed (non-fatal):", err);
+    }
+  }
 
   // 2) Asynchronously process emails and update status
   const processEmails = async () => {

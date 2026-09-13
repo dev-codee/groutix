@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
@@ -110,8 +111,10 @@ export default function HeroQuoteForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [inspectionSectionOpen, setInspectionSectionOpen] = useState(false);
-  // Keep false until inspection booking is enabled server-side
-  const INSPECTION_BOOKING_ENABLED = false;
+  const [inspectionDays, setInspectionDays] = useState<{ date: string; label: string; slots: { time: string; booked: boolean }[] }[]>([]);
+  const [inspectionDaysLoading, setInspectionDaysLoading] = useState(false);
+  const [inspectionDate, setInspectionDate] = useState("");
+  const [inspectionTime, setInspectionTime] = useState("");
 
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -151,6 +154,23 @@ export default function HeroQuoteForm() {
       }
     } catch {
       // ignore
+    }
+  }, []);
+
+  const fetchInspectionAvailability = useCallback(async (address: string) => {
+    if (!address || address.length < 5) return;
+    setInspectionDaysLoading(true);
+    try {
+      const res = await fetch(`/api/inspection-availability?address=${encodeURIComponent(address)}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setInspectionDays(json.days || []);
+      setInspectionDate("");
+      setInspectionTime("");
+    } catch {
+      // ignore
+    } finally {
+      setInspectionDaysLoading(false);
     }
   }, []);
 
@@ -526,6 +546,10 @@ export default function HeroQuoteForm() {
         typeof window !== "undefined" ? window.location.pathname : ""
       );
       if (captchaToken) payload.append("cf-turnstile-response", captchaToken);
+      if (inspectionDate && inspectionTime) {
+        payload.append("inspectionDate", inspectionDate);
+        payload.append("inspectionTime", inspectionTime);
+      }
 
       if (uploadedPhotos.length > 0) {
         payload.append("uploadedPhotos", JSON.stringify(uploadedPhotos));
@@ -792,10 +816,10 @@ export default function HeroQuoteForm() {
                       : ""
                       }`}
                   />
-                  {addressSuggestionsOpen && addressSuggestions.length > 0 && (
+                  {addressSuggestionsOpen && addressSuggestions.length > 0 && typeof document !== "undefined" && createPortal(
                     <ul
                       style={addressDropdownStyle}
-                      className="bg-white border border-neutral-200 rounded-sm shadow-lg max-h-52 overflow-y-auto"
+                      className="bg-white border border-neutral-200 rounded-sm shadow-xl max-h-52 overflow-y-auto"
                     >
                       {addressSuggestions.map((s, i) => (
                         <li
@@ -810,7 +834,8 @@ export default function HeroQuoteForm() {
                           {s}
                         </li>
                       ))}
-                    </ul>
+                    </ul>,
+                    document.body
                   )}
                   {touched.address && errors.address && (
                     <p className="text-[13px] font-semibold text-red-600">
@@ -1234,12 +1259,16 @@ export default function HeroQuoteForm() {
               <div className="border border-neutral-200 rounded-sm overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setInspectionSectionOpen((o) => !o)}
+                  onClick={() => {
+                    const next = !inspectionSectionOpen;
+                    setInspectionSectionOpen(next);
+                    if (next && data.address && data.address.length >= 5) fetchInspectionAvailability(data.address);
+                  }}
                   className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-neutral-50 transition-colors text-left"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-[15px]">📅</span>
-                    <span className="text-[14px] font-semibold text-neutral-800">Book Your Inspection</span>
+                    <span className="text-[14px] font-semibold text-neutral-800">📋 Book Your Free Inspection</span>
                     <span className="text-[11px] text-neutral-400 font-medium">(Optional)</span>
                   </div>
                   <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${inspectionSectionOpen ? "rotate-180" : ""}`} />
@@ -1253,22 +1282,70 @@ export default function HeroQuoteForm() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200">
-                        {INSPECTION_BOOKING_ENABLED ? (
-                          <p className="text-[13px] text-neutral-600">Booking form coming here...</p>
+                      <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
+                        {!data.address || data.address.length < 5 ? (
+                          <p className="text-[13px] text-neutral-500 text-center py-2">
+                            📍 Please enter your address above first to see available times.
+                          </p>
+                        ) : inspectionDaysLoading ? (
+                          <p className="text-[13px] text-neutral-500 text-center py-2">⏳ Loading available times…</p>
+                        ) : inspectionDays.length === 0 ? (
+                          <p className="text-[13px] text-neutral-500 text-center py-2">
+                            No online slots available right now — our team will contact you to arrange a time. 📞
+                          </p>
                         ) : (
-                          <div className="text-center space-y-3">
-                            <p className="text-[13px] text-neutral-600 leading-relaxed">
-                              Online inspection booking is coming soon. After submitting your request, our team will contact you to arrange a convenient inspection time based on your location.
-                            </p>
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full py-2.5 rounded-sm bg-neutral-200 text-neutral-400 text-[14px] font-semibold cursor-not-allowed"
-                            >
-                              📅 Book Inspection — Coming Soon
-                            </button>
-                          </div>
+                          <>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">📆 Select Day</label>
+                              <select
+                                value={inspectionDate}
+                                onChange={(e) => { setInspectionDate(e.target.value); setInspectionTime(""); }}
+                                className={`w-full rounded-sm border px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all ${inspectionDate ? "border-secondary bg-white" : "border-neutral-200 bg-white"}`}
+                              >
+                                <option value="">Choose a day…</option>
+                                {inspectionDays.map((d) => (
+                                  <option key={d.date} value={d.date}>{d.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {inspectionDate && (
+                              <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">🕐 Select Arrival Time</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {(inspectionDays.find(d => d.date === inspectionDate)?.slots || []).map((s) => {
+                                    const [h] = s.time.split(":").map(Number);
+                                    const endH = h + 1;
+                                    const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
+                                    const label = `${fmt(h)} – ${fmt(endH)}`;
+                                    const isSelected = inspectionTime === s.time;
+                                    return (
+                                      <button
+                                        key={s.time}
+                                        type="button"
+                                        disabled={s.booked}
+                                        onClick={() => !s.booked && setInspectionTime(s.time)}
+                                        className={`py-2 px-2 rounded-sm text-[12px] font-semibold border transition-all ${
+                                          s.booked
+                                            ? "bg-neutral-100 text-neutral-300 border-neutral-200 cursor-not-allowed line-through"
+                                            : isSelected
+                                            ? "bg-secondary text-white border-secondary"
+                                            : "bg-white text-neutral-700 border-neutral-200 hover:border-secondary"
+                                        }`}
+                                      >
+                                        {label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <p className="text-[11px] text-neutral-400">⚪ Greyed-out times are already taken.</p>
+                              </div>
+                            )}
+                            {inspectionDate && inspectionTime && (
+                              <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 font-semibold">
+                                ✅ Inspection booked — {inspectionDays.find(d => d.date === inspectionDate)?.label} at {(() => { const [h] = inspectionTime.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`; })()}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </motion.div>
