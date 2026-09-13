@@ -3332,7 +3332,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openGpsModal(l)}
-                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-[#001f97] hover:bg-[#001777] text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -3386,7 +3386,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openInspectionModal(l)}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 shadow-2xs"
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 title="Inspection Form"
               >
                 <ClipboardList className="w-3.5 h-3.5 shrink-0" />
@@ -3760,7 +3760,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openGpsModal(l)}
-                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-[#001f97] hover:bg-[#001777] text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -3814,7 +3814,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openInspectionModal(l)}
-                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 shadow-2xs"
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 title="Inspection Form"
               >
                 <ClipboardList className="w-3.5 h-3.5 shrink-0" />
@@ -4090,7 +4090,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openGpsModal(l)}
-                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-[#001f97] hover:bg-[#001777] text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -4460,7 +4460,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => openGpsModal(l)}
-                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-[#001f97] hover:bg-[#001777] text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
