@@ -108,6 +108,7 @@ export default function HeroQuoteForm() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -288,16 +289,9 @@ export default function HeroQuoteForm() {
     }
   };
 
-  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const newFiles = Array.from(e.target.files);
+  const processFiles = (newFiles: File[]) => {
+    if (newFiles.length === 0) return;
 
-    // Reset input value so selecting the same files again fires onChange
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-
-    // Check if any non-image file was selected
     const nonImage = newFiles.find((f) => !f.type.startsWith("image/"));
     if (nonImage) {
       setPhotoError(
@@ -333,6 +327,33 @@ export default function HeroQuoteForm() {
     }
 
     setPhotos(updatedPhotos);
+  };
+
+  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const newFiles = Array.from(e.target.files);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    processFiles(newFiles);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    processFiles(droppedFiles);
   };
 
   const removePhoto = (i: number) => {
@@ -1112,13 +1133,22 @@ export default function HeroQuoteForm() {
                   the entire area and any areas of concern
                 </p>
 
-                <label className="flex flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-neutral-300 bg-white/60 px-4 py-3 text-center transition-all duration-200 cursor-pointer hover:border-secondary hover:bg-white/90">
-                  <div className="flex items-center gap-2 text-[14px] font-medium text-neutral-700">
-                    <Paperclip className="h-4 w-4 text-neutral-500" />
-                    <span>Click to upload photos</span>
+                <label
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`flex flex-col items-center justify-center gap-1.5 rounded-sm border-2 border-dashed px-4 py-5 text-center transition-all duration-200 cursor-pointer ${
+                    isDragging
+                      ? "border-secondary bg-secondary/5 scale-[1.01]"
+                      : "border-neutral-300 bg-white/60 hover:border-secondary hover:bg-white/90"
+                  }`}
+                >
+                  <div className={`flex items-center gap-2 text-[14px] font-medium transition-colors ${isDragging ? "text-secondary" : "text-neutral-700"}`}>
+                    <Paperclip className={`h-4 w-4 transition-colors ${isDragging ? "text-secondary" : "text-neutral-500"}`} />
+                    <span>{isDragging ? "Drop photos here" : "Click or drag photos here"}</span>
                   </div>
                   <span className="text-[11px] text-neutral-500 font-medium">
-                    Max 100MB upload limit
+                    JPG, PNG, WebP &mdash; max 100MB total
                   </span>
                   <input
                     ref={fileInputRef}
