@@ -1423,7 +1423,7 @@ export default function CrmDashboardPage() {
 
   // Auto-share location for inspector/technician roles while dashboard is open
   useEffect(() => {
-    if (role !== "inspector" && role !== "technician") return;
+    if (role !== "inspection" && role !== "technician") return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
 
     const sendLocation = () => {
@@ -5991,7 +5991,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Location sharing indicator (inspector / technician only) */}
-            {(role === "inspector" || role === "technician") && (
+            {(role === "inspection" || role === "technician") && (
               <div
                 className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${
                   locationTrackingActive
