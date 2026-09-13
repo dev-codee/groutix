@@ -80,9 +80,9 @@ export async function buildWarrantyPdfBase64(input: WarrantyPdfInput): Promise<s
 
   let logoImg: any = null;
   try {
-    const logoPath = path.join(process.cwd(), "public", "logo.png");
+    const logoPath = path.join(process.cwd(), "public", "new_logo.jpeg");
     if (fs.existsSync(logoPath)) {
-      logoImg = await doc.embedPng(fs.readFileSync(logoPath));
+      logoImg = await doc.embedJpg(fs.readFileSync(logoPath));
     }
   } catch {
     // fallback if logo unavailable

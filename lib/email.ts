@@ -215,7 +215,7 @@ function escapeHtml(s: string): string {
  * Wraps raw email HTML in a beautiful, modern branded container for clients.
  */
 export function wrapEmailHtml(contentHtml: string, preheaderText?: string): string {
-  const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/logo.png`;
+  const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/new_logo.jpeg`;
 
   return `<!DOCTYPE html>
 <html lang="en">

@@ -1067,7 +1067,7 @@ export default function CrmDashboardPage() {
   useEffect(() => {
     const img = new Image();
     img.onload = () => setWarrantyLogo(img);
-    img.src = "/logo.png";
+    img.src = "/new_logo.jpeg";
   }, []);
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
@@ -5552,7 +5552,7 @@ export default function CrmDashboardPage() {
       try {
         const n = new Notification("New customer reply", {
           body: `${unreadReplyCount} conversation${unreadReplyCount === 1 ? "" : "s"} with unread customer replies.`,
-          icon: "/logo.png",
+          icon: "/new_logo.jpeg",
           tag: "groutix-reply",
         });
         n.onclick = () => {
@@ -8335,7 +8335,7 @@ export default function CrmDashboardPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <img
-                      src="/logo.png"
+                      src="/new_logo.jpeg"
                       alt="Groutix"
                       className="h-11 w-auto object-contain"
                     />
@@ -10224,7 +10224,7 @@ export default function CrmDashboardPage() {
                 {/* 1. Header: Logo & Right Column */}
                 <div className="flex items-start justify-between gap-4 pb-1">
                   <div>
-                    <img src="/logo.png" alt="Groutix" className="h-10 object-contain" />
+                    <img src="/new_logo.jpeg" alt="Groutix" className="h-10 object-contain" />
                   </div>
                   <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
                     <div>Melbourne, VIC</div>

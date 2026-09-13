@@ -30,7 +30,7 @@ const DEFAULT_CONTACT_PHONE = "7023 8094";
 // the confirmation email/SMS for now. Flip this back to `true` to re-enable the
 // "Book your free inspection" button + available-days list (all logic is kept
 // below, only its rendering is gated by this flag).
-const SHOW_INSPECTION_BOOKING = true;
+const SHOW_INSPECTION_BOOKING = false;
 
 // Anti-spam limits.
 const RATE_LIMIT = 5; // submissions...
@@ -489,7 +489,7 @@ export async function POST(req: NextRequest) {
 
     // Acknowledge by SMS (strictly 1 credit <= 160 chars GSM-7).
     if (phone) {
-      const smsBody = `Groutix: Thanks ${firstName || "there"}! We received your quote request and book your free inspection from email. Call ${CONTACT_PHONE}.`;
+      const smsBody = `Groutix: Thanks ${firstName || "there"}! We received your enquiry and will be in touch shortly. Call ${CONTACT_PHONE}.`;
       await sendSms({ to: phone, body: smsBody });
     }
   };

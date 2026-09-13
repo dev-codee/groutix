@@ -151,9 +151,9 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
 
   let logoImg: any = null;
   try {
-    const logoPath = path.join(process.cwd(), "public", "logo.png");
+    const logoPath = path.join(process.cwd(), "public", "new_logo.jpeg");
     if (fs.existsSync(logoPath)) {
-      logoImg = await doc.embedPng(fs.readFileSync(logoPath));
+      logoImg = await doc.embedJpg(fs.readFileSync(logoPath));
     }
   } catch {
     // fallback if logo unavailable
@@ -647,10 +647,10 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   // 1. Logo (Top-Left)
   let logoDrawn = false;
   try {
-    const logoPath = path.join(process.cwd(), "public", "logo.png");
+    const logoPath = path.join(process.cwd(), "public", "new_logo.jpeg");
     if (fs.existsSync(logoPath)) {
       const logoBytes = fs.readFileSync(logoPath);
-      const logoImg = await doc.embedPng(logoBytes);
+      const logoImg = await doc.embedJpg(logoBytes);
       const drawH = 46;
       const drawW = (logoImg.width / logoImg.height) * drawH;
       page.drawImage(logoImg, {
