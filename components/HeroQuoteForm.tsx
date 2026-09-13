@@ -603,8 +603,7 @@ export default function HeroQuoteForm() {
                 Quote Request Received!
               </h4>
               <p className="max-w-sm text-[15px] text-neutral-600">
-                Thank you. We have received your details and will prepare a
-                custom quote for you shortly.
+                Thank you. We have received your details and will be in touch with you shortly.
               </p>
               <button
                 type="button"

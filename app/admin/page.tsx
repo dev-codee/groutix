@@ -2499,7 +2499,8 @@ export default function CrmDashboardPage() {
     if (!smsText.trim()) return;
 
     if (!activeMessageLead.phone) {
-      alert("This customer does not have a phone number on file.");
+      setEtaToast({ leadId: activeMessageLead.id, msg: "No phone number on file for this customer." });
+      setTimeout(() => setEtaToast(null), 4000);
       return;
     }
 
@@ -2514,7 +2515,8 @@ export default function CrmDashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Failed to send SMS.");
+        setEtaToast({ leadId: activeMessageLead.id, msg: data.error || "Failed to send SMS." });
+        setTimeout(() => setEtaToast(null), 4000);
         return;
       }
 
@@ -2524,10 +2526,12 @@ export default function CrmDashboardPage() {
       setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
       setLeads((prev) => prev.map((l) => (l.id === activeMessageLead.id ? { ...l, messages: updated } : l)));
       setSmsText("");
-      alert(`SMS successfully sent via Texto!${typeof data.creditsRemaining === "number" ? ` (${data.creditsRemaining} credits remaining)` : ""}`);
+      setEtaToast({ leadId: activeMessageLead.id, msg: "SMS sent." });
+      setTimeout(() => setEtaToast(null), 3000);
     } catch (err) {
-      alert("Failed to send SMS. Check console or verify your TEXTO_API_KEY.");
       console.error(err);
+      setEtaToast({ leadId: activeMessageLead.id, msg: "Failed to send SMS. Check server logs." });
+      setTimeout(() => setEtaToast(null), 4000);
     } finally {
       setSendingSms(false);
     }
