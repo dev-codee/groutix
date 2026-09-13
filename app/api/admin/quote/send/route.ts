@@ -107,10 +107,10 @@ export async function POST(req: NextRequest) {
     <table cellpadding="0" cellspacing="0" style="margin:0 auto 12px;">
       <tr>
         <td style="padding-right:12px;">
-          <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✍️ Review &amp; Sign Quote</a>
+          <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">Review &amp; Sign Quote</a>
         </td>
         <td>
-          <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">📥 Download PDF</a>
+          <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">Download PDF</a>
         </td>
       </tr>
     </table>`;

@@ -133,8 +133,8 @@ export default function BookingPage() {
           <div className="py-12 text-center text-slate-400 text-sm">Loading available times…</div>
         ) : confirmed ? (
           <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-4">
-              ✓
+            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <h1 className="text-xl font-black text-slate-900 mb-2">
               Your {type} is booked!
@@ -149,7 +149,7 @@ export default function BookingPage() {
           </div>
         ) : error && !data ? (
           <div className="py-10 text-center">
-            <div className="text-3xl mb-3">⚠️</div>
+            <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3 text-lg font-bold">!</div>
             <p className="text-slate-600 text-sm">{error}</p>
           </div>
         ) : data ? (
@@ -189,7 +189,7 @@ export default function BookingPage() {
                     {data.days.map((d) => (
                       <option key={d.date} value={d.date}>
                         {d.label}
-                        {d.recommended ? "  ★ soonest for your area" : ""}
+                        {d.recommended ? " — Soonest for your area" : ""}
                       </option>
                     ))}
                   </select>

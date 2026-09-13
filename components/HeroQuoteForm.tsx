@@ -1267,8 +1267,7 @@ export default function HeroQuoteForm() {
                   className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-neutral-50 transition-colors text-left"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-[15px]">📅</span>
-                    <span className="text-[14px] font-semibold text-neutral-800">📋 Book Your Free Inspection</span>
+                    <span className="text-[14px] font-semibold text-neutral-800">Book Your Free Inspection</span>
                     <span className="text-[11px] text-neutral-400 font-medium">(Optional)</span>
                   </div>
                   <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${inspectionSectionOpen ? "rotate-180" : ""}`} />
@@ -1285,18 +1284,18 @@ export default function HeroQuoteForm() {
                       <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
                         {!data.address || data.address.length < 5 ? (
                           <p className="text-[13px] text-neutral-500 text-center py-2">
-                            📍 Please enter your address above first to see available times.
+                            Please enter your address above first to see available times.
                           </p>
                         ) : inspectionDaysLoading ? (
-                          <p className="text-[13px] text-neutral-500 text-center py-2">⏳ Loading available times…</p>
+                          <p className="text-[13px] text-neutral-500 text-center py-2">Loading available times…</p>
                         ) : inspectionDays.length === 0 ? (
                           <p className="text-[13px] text-neutral-500 text-center py-2">
-                            No online slots available right now — our team will contact you to arrange a time. 📞
+                            No online slots available right now — our team will contact you to arrange a time.
                           </p>
                         ) : (
                           <>
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">📆 Select Day</label>
+                              <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">Select Day</label>
                               <select
                                 value={inspectionDate}
                                 onChange={(e) => { setInspectionDate(e.target.value); setInspectionTime(""); }}
@@ -1310,7 +1309,7 @@ export default function HeroQuoteForm() {
                             </div>
                             {inspectionDate && (
                               <div className="space-y-1.5">
-                                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">🕐 Select Arrival Time</label>
+                                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">Select Arrival Time</label>
                                 <div className="grid grid-cols-2 gap-2">
                                   {(inspectionDays.find(d => d.date === inspectionDate)?.slots || []).map((s) => {
                                     const [h] = s.time.split(":").map(Number);
@@ -1337,12 +1336,12 @@ export default function HeroQuoteForm() {
                                     );
                                   })}
                                 </div>
-                                <p className="text-[11px] text-neutral-400">⚪ Greyed-out times are already taken.</p>
+                                <p className="text-[11px] text-neutral-400">Greyed-out times are already taken.</p>
                               </div>
                             )}
                             {inspectionDate && inspectionTime && (
                               <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 font-semibold">
-                                ✅ Inspection booked — {inspectionDays.find(d => d.date === inspectionDate)?.label} at {(() => { const [h] = inspectionTime.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`; })()}
+                                Inspection confirmed —{inspectionDays.find(d => d.date === inspectionDate)?.label} at {(() => { const [h] = inspectionTime.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`; })()}
                               </div>
                             )}
                           </>
