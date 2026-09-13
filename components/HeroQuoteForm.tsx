@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
@@ -115,6 +115,40 @@ export default function HeroQuoteForm() {
   const [submitError, setSubmitError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
+
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const [addressDropdownStyle, setAddressDropdownStyle] = useState<React.CSSProperties>({});
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchAddressSuggestions = useCallback(async (query: string) => {
+    if (!query || query.length < 3) {
+      setAddressSuggestions([]);
+      setAddressSuggestionsOpen(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/address-autocomplete?q=${encodeURIComponent(query)}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const preds: string[] = json.predictions || [];
+      setAddressSuggestions(preds);
+      setAddressSuggestionsOpen(preds.length > 0);
+      if (addressInputRef.current) {
+        const rect = addressInputRef.current.getBoundingClientRect();
+        setAddressDropdownStyle({
+          position: "fixed",
+          top: rect.bottom + 2,
+          left: rect.left,
+          width: rect.width,
+          zIndex: 9999,
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const totalPhotoBytes = photos.reduce((acc, f) => acc + f.size, 0);
 
@@ -706,22 +740,54 @@ export default function HeroQuoteForm() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 relative">
                   <input
+                    ref={addressInputRef}
                     name="address"
                     value={data.address}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
+                    onChange={(e) => {
+                      handleChange(e);
+                      if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+                      addressDebounceRef.current = setTimeout(() => fetchAddressSuggestions(e.target.value), 350);
+                    }}
+                    onBlur={(e) => {
+                      handleBlur(e);
+                      setTimeout(() => setAddressSuggestionsOpen(false), 150);
+                    }}
+                    onFocus={() => {
+                      if (addressSuggestions.length > 0) setAddressSuggestionsOpen(true);
+                    }}
                     placeholder={
                       isPropertyManager
                         ? "Rental Property Address *"
                         : "Address *"
                     }
+                    autoComplete="off"
                     className={`${fieldStyle} ${touched.address && errors.address
                       ? "border-red-500 focus:ring-red-500/20"
                       : ""
                       }`}
                   />
+                  {addressSuggestionsOpen && addressSuggestions.length > 0 && (
+                    <ul
+                      style={addressDropdownStyle}
+                      className="bg-white border border-neutral-200 rounded-sm shadow-lg max-h-52 overflow-y-auto"
+                    >
+                      {addressSuggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          onMouseDown={() => {
+                            setData((p) => ({ ...p, address: s }));
+                            setErrors((prev) => ({ ...prev, address: "" }));
+                            setAddressSuggestionsOpen(false);
+                          }}
+                          className="px-3 py-2 text-[14px] text-neutral-800 cursor-pointer hover:bg-neutral-100"
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {touched.address && errors.address && (
                     <p className="text-[13px] font-semibold text-red-600">
                       {errors.address}
