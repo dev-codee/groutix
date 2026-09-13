@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!session || (session.role !== "manager" && session.role !== "super_admin")) {
+  if (!session || session.role !== "manager") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
