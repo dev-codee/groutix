@@ -538,8 +538,8 @@ export function computeAvailability(
     });
   }
 
-  // Surface route-grouped (recommended) days first, otherwise keep date order.
-  out.sort((a, b) => (a.recommended === b.recommended ? 0 : a.recommended ? -1 : 1));
+  // Always sort in ascending chronological order by date.
+  out.sort((a, b) => a.date.localeCompare(b.date));
   return out;
 }
 

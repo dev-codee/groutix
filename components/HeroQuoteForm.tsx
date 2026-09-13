@@ -115,6 +115,7 @@ export default function HeroQuoteForm() {
   const [inspectionDaysLoading, setInspectionDaysLoading] = useState(false);
   const [inspectionDate, setInspectionDate] = useState("");
   const [inspectionTime, setInspectionTime] = useState("");
+  const timeSelectRef = useRef<HTMLSelectElement>(null);
 
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -164,7 +165,8 @@ export default function HeroQuoteForm() {
       const res = await fetch(`/api/inspection-availability?address=${encodeURIComponent(address)}`);
       if (!res.ok) return;
       const json = await res.json();
-      setInspectionDays(json.days || []);
+      const sortedDays = (json.days || []).slice().sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+      setInspectionDays(sortedDays);
       setInspectionDate("");
       setInspectionTime("");
     } catch {
@@ -173,6 +175,17 @@ export default function HeroQuoteForm() {
       setInspectionDaysLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (inspectionDate && !inspectionTime) {
+      try {
+        timeSelectRef.current?.focus();
+        timeSelectRef.current?.showPicker?.();
+      } catch {
+        // ignore
+      }
+    }
+  }, [inspectionDate, inspectionTime]);
 
   const totalPhotoBytes = photos.reduce((acc, f) => acc + f.size, 0);
 
@@ -882,54 +895,94 @@ export default function HeroQuoteForm() {
                             </p>
                           ) : (
                             <>
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">Select Day</label>
-                                <select
-                                  value={inspectionDate}
-                                  onChange={(e) => { setInspectionDate(e.target.value); setInspectionTime(""); }}
-                                  className={`w-full rounded-sm border px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all ${inspectionDate ? "border-secondary bg-white" : "border-neutral-200 bg-white"}`}
-                                >
-                                  <option value="">Choose a day…</option>
-                                  {inspectionDays.map((d) => (
-                                    <option key={d.date} value={d.date}>{d.label}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              {inspectionDate && (
-                                <div className="space-y-1.5">
-                                  <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">Select Arrival Time</label>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {(inspectionDays.find(d => d.date === inspectionDate)?.slots || []).map((s) => {
+                              {!inspectionDate ? (
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">
+                                    Select Day
+                                  </label>
+                                  <select
+                                    value=""
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        setInspectionDate(e.target.value);
+                                        setInspectionTime("");
+                                      }
+                                    }}
+                                    className="w-full rounded-sm border border-neutral-200 bg-white px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer"
+                                  >
+                                    <option value="">Choose a day…</option>
+                                    {inspectionDays.map((d) => (
+                                      <option key={d.date} value={d.date}>
+                                        {d.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">
+                                      Select Arrival Time ({inspectionDays.find((d) => d.date === inspectionDate)?.label})
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setInspectionDate("");
+                                        setInspectionTime("");
+                                      }}
+                                      className="text-[11px] font-semibold text-secondary hover:underline cursor-pointer flex items-center gap-1"
+                                    >
+                                      ← Change Day
+                                    </button>
+                                  </div>
+                                  <select
+                                    ref={timeSelectRef}
+                                    value={inspectionTime}
+                                    onChange={(e) => {
+                                      if (e.target.value === "__CHANGE_DAY__") {
+                                        setInspectionDate("");
+                                        setInspectionTime("");
+                                      } else {
+                                        setInspectionTime(e.target.value);
+                                      }
+                                    }}
+                                    className={`w-full rounded-sm border px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${
+                                      inspectionTime ? "border-green-600 bg-white" : "border-secondary bg-white"
+                                    }`}
+                                  >
+                                    <option value="">
+                                      Choose arrival time for {inspectionDays.find((d) => d.date === inspectionDate)?.label}…
+                                    </option>
+                                    {(inspectionDays.find((d) => d.date === inspectionDate)?.slots || []).map((s) => {
                                       const [h] = s.time.split(":").map(Number);
                                       const endH = h + 1;
                                       const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
                                       const label = `${fmt(h)} – ${fmt(endH)}`;
-                                      const isSelected = inspectionTime === s.time;
                                       return (
-                                        <button
-                                          key={s.time}
-                                          type="button"
-                                          disabled={s.booked}
-                                          onClick={() => !s.booked && setInspectionTime(s.time)}
-                                          className={`py-2 px-2 rounded-sm text-[12px] font-semibold border transition-all ${
-                                            s.booked
-                                              ? "bg-neutral-100 text-neutral-300 border-neutral-200 cursor-not-allowed line-through"
-                                              : isSelected
-                                              ? "bg-secondary text-white border-secondary"
-                                              : "bg-white text-neutral-700 border-neutral-200 hover:border-secondary"
-                                          }`}
-                                        >
-                                          {label}
-                                        </button>
+                                        <option key={s.time} value={s.time} disabled={s.booked}>
+                                          {label} {s.booked ? "(Booked)" : ""}
+                                        </option>
                                       );
                                     })}
-                                  </div>
-                                  <p className="text-[11px] text-neutral-400">Greyed-out times are already taken.</p>
+                                    <option value="__CHANGE_DAY__">← Choose a different day</option>
+                                  </select>
                                 </div>
                               )}
                               {inspectionDate && inspectionTime && (
-                                <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 font-semibold">
-                                  Inspection confirmed —{inspectionDays.find(d => d.date === inspectionDate)?.label} at {(() => { const [h] = inspectionTime.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`; })()}
+                                <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 font-semibold flex items-center justify-between">
+                                  <span>
+                                    ✓ Inspection confirmed — {inspectionDays.find((d) => d.date === inspectionDate)?.label} at {(() => {
+                                      const [h] = inspectionTime.split(":").map(Number);
+                                      return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`;
+                                    })()}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setInspectionTime("")}
+                                    className="text-[11px] text-green-800 underline hover:text-green-900 ml-2 font-normal"
+                                  >
+                                    Change Time
+                                  </button>
                                 </div>
                               )}
                             </>
