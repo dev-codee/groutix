@@ -5522,25 +5522,27 @@ export default function CrmDashboardPage() {
       role === "manager" || role === "super_admin"
         ? leads
         : leads.filter((l) => {
-            // When logged in as technician or viewing as technician:
             if (role === "technician") {
-              const myStaff = staff.find((s) => s.username === username);
-              const targetName = (viewAs ? viewAs.name : (myStaff?.name || username || "")).trim().toLowerCase();
-              const targetUser = (viewAs ? viewAs.name : username).trim().toLowerCase();
-              const targetId = viewAs ? null : myStaff?.id;
-              const matchesTech =
-                (targetId && l.technicianId === targetId) ||
-                (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
-                (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||
-                (l.assigned && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
-
-              if (matchesTech) {
-                return TECHNICIAN_STATUSES.includes(l.status) || ["Job Done", "Completed", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent"].includes(l.status);
-              }
-
               if (!inRoleQueue(role, l.status)) return false;
-              // Allow technicians to view unassigned leads in their queue
-              return true;
+              if (viewAs) return true;
+              const myStaff = staff.find((s) => s.username === username);
+              const myName = (myStaff?.name || username || "").trim().toLowerCase();
+              const myUser = (username || "").trim().toLowerCase();
+              const myId = myStaff?.id;
+              return (
+                (myId && l.technicianId === myId) ||
+                (l.technicianId && (l.technicianId.toLowerCase() === myUser || l.technicianId.toLowerCase() === myName)) ||
+                (l.technician && (l.technician.trim().toLowerCase() === myName || l.technician.trim().toLowerCase() === myUser))
+              );
+            }
+            if (role === "inspection" || role === "field") {
+              if (!inRoleQueue(role, l.status)) return false;
+              if (viewAs) return true;
+              const myStaff = staff.find((s) => s.username === username);
+              const myName = (myStaff?.name || username || "").trim().toLowerCase();
+              const myUser = (username || "").trim().toLowerCase();
+              const assignedTo = (l.assigned || "").trim().toLowerCase();
+              return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === myName || assignedTo === myUser));
             }
             if (!inRoleQueue(role, l.status)) return false;
             return true;
@@ -6042,22 +6044,24 @@ export default function CrmDashboardPage() {
               Sync Inbox
             </button>
 
-            {/* Add Lead Button */}
-            <button
-              onClick={() => {
-                setEditingLead({
-                  status: "New",
-                  assigned: "",
-                  priority: "Medium",
-                  received: new Date().toISOString().slice(0, 16)
-                });
-                setLeadModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] shadow-sm transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Lead
-            </button>
+            {/* Add Lead Button — manager only */}
+            {(role === "manager" || role === "super_admin") && (
+              <button
+                onClick={() => {
+                  setEditingLead({
+                    status: "New",
+                    assigned: "",
+                    priority: "Medium",
+                    received: new Date().toISOString().slice(0, 16)
+                  });
+                  setLeadModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] shadow-sm transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Lead
+              </button>
+            )}
 
             <div
               className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${viewAs
