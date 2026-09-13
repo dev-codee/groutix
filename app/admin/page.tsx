@@ -948,6 +948,19 @@ export default function CrmDashboardPage() {
   // Active Modals state
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Partial<Lead> | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false);
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function fetchAddressSuggestions(input: string) {
+    if (input.length < 3) { setAddressSuggestions([]); return; }
+    try {
+      const res = await fetch(`/api/admin/address-autocomplete?input=${encodeURIComponent(input)}`);
+      const data = await res.json();
+      setAddressSuggestions(data.predictions || []);
+      setAddressSuggestionsOpen(true);
+    } catch { setAddressSuggestions([]); }
+  }
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
@@ -6946,14 +6959,35 @@ export default function CrmDashboardPage() {
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="font-bold text-slate-700 block mb-1">Property Address</label>
                   <input
                     type="text"
                     value={editingLead?.address || ""}
-                    onChange={(e) => setEditingLead({ ...editingLead, address: e.target.value })}
+                    autoComplete="off"
+                    onChange={(e) => {
+                      setEditingLead({ ...editingLead, address: e.target.value });
+                      if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+                      addressDebounceRef.current = setTimeout(() => fetchAddressSuggestions(e.target.value), 300);
+                    }}
+                    onBlur={() => setTimeout(() => setAddressSuggestionsOpen(false), 150)}
+                    onFocus={() => { if (addressSuggestions.length > 0) setAddressSuggestionsOpen(true); }}
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
+                    placeholder="Start typing an address..."
                   />
+                  {addressSuggestionsOpen && addressSuggestions.length > 0 && (
+                    <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto text-sm">
+                      {addressSuggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          onMouseDown={(e) => { e.preventDefault(); setEditingLead({ ...editingLead, address: s }); setAddressSuggestionsOpen(false); setAddressSuggestions([]); }}
+                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 hover:text-[#001f97] text-slate-700 border-b border-slate-100 last:border-0"
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Service / Task Required</label>
@@ -7938,6 +7972,17 @@ export default function CrmDashboardPage() {
                           {imgSrc && (
                             <a
                               href={imgSrc}
+                              download={photo.name || `photo-${i + 1}`}
+                              className="text-slate-400 hover:text-emerald-600 p-1"
+                              title="Download photo"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {imgSrc && (
+                            <a
+                              href={imgSrc}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-slate-400 hover:text-slate-700 p-1"
@@ -7992,6 +8037,14 @@ export default function CrmDashboardPage() {
             <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 text-white">
               <span className="text-xs font-semibold truncate max-w-md">{previewPhoto.name}</span>
               <div className="flex items-center gap-2">
+                <a
+                  href={previewPhoto.url}
+                  download={previewPhoto.name}
+                  className="flex items-center gap-1 text-xs px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-white transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download
+                </a>
                 <a
                   href={previewPhoto.url}
                   target="_blank"
