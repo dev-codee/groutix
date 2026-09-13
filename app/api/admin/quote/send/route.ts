@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     const firstName = (lead.name || "there").trim().split(/\s+/)[0];
     await sendSms({
       to: lead.phone,
-      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) has been emailed. Reply YES to accept or call 0488 852 444 to book.`,
+      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) has been emailed. Reply YES to accept or call 7023 8094 to book.`,
     });
   }
 
