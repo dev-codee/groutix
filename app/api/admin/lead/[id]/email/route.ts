@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity } from "@/lib/submissions";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, cleanEmailText } from "@/lib/email";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { CustomerMessage, SubmissionDoc } from "@/lib/submissions";
@@ -43,14 +43,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Email body or an attachment is required." }, { status: 400 });
   }
 
-  const bodyText = typeof text === "string" ? text : "";
+  const bodyText = cleanEmailText(typeof text === "string" ? text : "");
+  const cleanSubject = cleanEmailText(subject || `Re: Your Groutix Enquiry`);
+  const cleanHtml = html
+    ? cleanEmailText(html)
+    : bodyText
+    ? bodyText.replace(/\n/g, "<br/>")
+    : "(See attached files.)";
 
   try {
     // 1. Send the email via Nodemailer
     await sendEmail({
       toEmail: lead.email,
-      subject: subject || `Re: Your Groutix Enquiry`,
-      html: html || bodyText.replace(/\n/g, "<br/>") || "(See attached files.)",
+      subject: cleanSubject,
+      html: cleanHtml,
       attachments: validAttachments.map((a) => ({
         name: a.name,
         content: a.content,
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       id: `out_${Date.now()}`,
       from: "groutix",
       channel: "email",
-      subject: subject || `Re: Your Groutix Enquiry`,
+      subject: cleanSubject,
       text: bodyText,
       time: new Date().toISOString(),
       ...(validAttachments.length > 0 && {

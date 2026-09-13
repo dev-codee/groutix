@@ -54,7 +54,10 @@ import {
   Wrench,
   Maximize2,
   Minimize2,
-  Settings
+  Settings,
+  GripHorizontal,
+  RotateCcw,
+  ArrowDown
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -1024,6 +1027,11 @@ export default function CrmDashboardPage() {
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
   const [convFullscreen, setConvFullscreen] = useState(false);
+  const [convPos, setConvPos] = useState<{ x: number; y: number } | null>(null);
+  const convModalRef = useRef<HTMLDivElement>(null);
+  const convScrollRef = useRef<HTMLDivElement>(null);
+  const convDraggingRef = useRef<{ startX: number; startY: number; modalLeft: number; modalTop: number } | null>(null);
+  const [isConvScrolledUp, setIsConvScrolledUp] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(EMAIL_TEMPLATES);
   const [manageTemplatesModalOpen, setManageTemplatesModalOpen] = useState(false);
   const [templateFormOpen, setTemplateFormOpen] = useState(false);
@@ -1049,6 +1057,93 @@ export default function CrmDashboardPage() {
   const [messageChannel, setMessageChannel] = useState<"email" | "sms">("email");
   const [smsText, setSmsText] = useState("");
   const [sendingSms, setSendingSms] = useState(false);
+
+  // Auto-scroll customer conversation to bottom (WhatsApp style)
+  const scrollToLatestMessage = useCallback((smooth = true) => {
+    if (convScrollRef.current) {
+      convScrollRef.current.scrollTo({
+        top: convScrollRef.current.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
+    }
+  }, []);
+
+  const handleConvScroll = () => {
+    if (!convScrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = convScrollRef.current;
+    const isUp = scrollHeight - scrollTop - clientHeight > 80;
+    setIsConvScrolledUp(isUp);
+  };
+
+  const handleConvPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || convFullscreen) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, textarea, select")) return;
+
+    const modalEl = convModalRef.current;
+    if (!modalEl) return;
+
+    const rect = modalEl.getBoundingClientRect();
+    convDraggingRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      modalLeft: rect.left,
+      modalTop: rect.top,
+    };
+
+    if (!convPos) {
+      setConvPos({ x: rect.left, y: rect.top });
+    }
+
+    const handlePointerMove = (moveEv: PointerEvent) => {
+      if (!convDraggingRef.current || !convModalRef.current) return;
+      const dx = moveEv.clientX - convDraggingRef.current.startX;
+      const dy = moveEv.clientY - convDraggingRef.current.startY;
+
+      const modalRect = convModalRef.current.getBoundingClientRect();
+      const rawX = convDraggingRef.current.modalLeft + dx;
+      const rawY = convDraggingRef.current.modalTop + dy;
+
+      const maxX = Math.max(10, window.innerWidth - modalRect.width - 10);
+      const maxY = Math.max(10, window.innerHeight - 80);
+      const clampedX = Math.min(Math.max(10, rawX), maxX);
+      const clampedY = Math.min(Math.max(10, rawY), maxY);
+
+      setConvPos({ x: clampedX, y: clampedY });
+    };
+
+    const handlePointerUp = () => {
+      convDraggingRef.current = null;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+  };
+
+  useEffect(() => {
+    if (!messagesModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMessagesModalOpen(false);
+        setConvFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [messagesModalOpen]);
+
+  useEffect(() => {
+    if (messagesModalOpen) {
+      const t = setTimeout(() => {
+        scrollToLatestMessage(false);
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [messagesModalOpen, messageChannel, activeMessageLead?.id, scrollToLatestMessage]);
 
   const [gpsModalOpen, setGpsModalOpen] = useState(false);
   const [activeGpsLead, setActiveGpsLead] = useState<Lead | null>(null);
@@ -1335,6 +1430,23 @@ export default function CrmDashboardPage() {
 
   // Fetch dynamic email templates (persisted in DB or localStorage)
   const fetchTemplates = useCallback(async () => {
+    const sanitizeTpls = (list: any[]) =>
+      list.map((t) => ({
+        ...t,
+        subject: (t.subject || "")
+          .replace(/1300\s*476\s*884/gi, "7023 8094")
+          .replace(/\(03\)\s*7023\s*8094/gi, "7023 8094")
+          .replace(/groutix\.com\.au/gi, "groutix.com"),
+        body: (t.body || "")
+          .replace(
+            /📞\s*(?:1300\s*476\s*884|\(03\)\s*7023\s*8094|7023\s*8094)\s*\|\s*✉️\s*info@groutix\.com(?:\.au)?/gi,
+            "📞 7023 8094\n✉️ info@groutix.com"
+          )
+          .replace(/1300\s*476\s*884/gi, "7023 8094")
+          .replace(/\(03\)\s*7023\s*8094/gi, "7023 8094")
+          .replace(/groutix\.com\.au/gi, "groutix.com"),
+      }));
+
     try {
       if (typeof window !== "undefined") {
         const cached = localStorage.getItem("gx_email_templates");
@@ -1342,7 +1454,9 @@ export default function CrmDashboardPage() {
           try {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              setEmailTemplates(parsed);
+              const cleaned = sanitizeTpls(parsed);
+              setEmailTemplates(cleaned);
+              localStorage.setItem("gx_email_templates", JSON.stringify(cleaned));
             }
           } catch {}
         }
@@ -1351,9 +1465,10 @@ export default function CrmDashboardPage() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.templates) && data.templates.length > 0) {
-          setEmailTemplates(data.templates);
+          const cleaned = sanitizeTpls(data.templates);
+          setEmailTemplates(cleaned);
           if (typeof window !== "undefined") {
-            localStorage.setItem("gx_email_templates", JSON.stringify(data.templates));
+            localStorage.setItem("gx_email_templates", JSON.stringify(cleaned));
           }
         }
       }
@@ -2070,7 +2185,7 @@ export default function CrmDashboardPage() {
       `Items:\n` +
       quoteItems.map((item, i) => `${i + 1}. ${item.service} - $${Number(item.price || 0).toFixed(2)}`).join("\n") +
       `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
-      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n7023 8094`
+      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`
     );
     window.location.href = `mailto:${activeQuoteLead.email}?subject=${subject}&body=${body}`;
   }
@@ -2222,6 +2337,9 @@ export default function CrmDashboardPage() {
     setSmsText(`Hi ${firstName}, regarding your Groutix service: `);
     setReplyAttachments([]);
     setMessagesModalOpen(true);
+    setTimeout(() => {
+      scrollToLatestMessage(false);
+    }, 60);
   }
 
   function getConversation(lead: Lead): CustomerMessage[] {
@@ -2503,6 +2621,9 @@ export default function CrmDashboardPage() {
       setReplyText("");
       setSelectedTemplateId("");
       setReplyAttachments([]);
+      setTimeout(() => {
+        scrollToLatestMessage(true);
+      }, 60);
     } catch (err) {
       alert("Failed to send email reply. Check console for details.");
       console.error(err);
@@ -2545,6 +2666,9 @@ export default function CrmDashboardPage() {
       setSmsText("");
       setEtaToast({ leadId: activeMessageLead.id, msg: "SMS sent." });
       setTimeout(() => setEtaToast(null), 3000);
+      setTimeout(() => {
+        scrollToLatestMessage(true);
+      }, 60);
     } catch (err) {
       console.error(err);
       setEtaToast({ leadId: activeMessageLead.id, msg: "Failed to send SMS. Check server logs." });
@@ -2569,6 +2693,10 @@ export default function CrmDashboardPage() {
     const updated = [...currentMsgs, newMsg];
     await updateLeadField(activeMessageLead.id, { messages: updated });
     setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
+    setLeads((prev) => prev.map((l) => (l.id === activeMessageLead.id ? { ...l, messages: updated } : l)));
+    setTimeout(() => {
+      scrollToLatestMessage(true);
+    }, 60);
   }
 
   // GPS Check-in
@@ -3606,10 +3734,8 @@ export default function CrmDashboardPage() {
 
   // ── Dedicated Inspection / Field Dashboard Row (Manager-Style 3 Columns) ───
   function renderFieldLeadRow(l: Lead) {
-    const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
     const statusOptions = getRoleStatusOptions("inspection", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
-    const waUrl = getWhatsAppLink(l.phone);
     const followupPrompt = getFollowupPrompt(l);
 
     const jobNoDisplay = l.jobNo
@@ -3678,16 +3804,10 @@ export default function CrmDashboardPage() {
               )}
             </div>
 
-            {/* Row 2: Phone & Email */}
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
-                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
-                <span className="truncate">{l.phone || "—"}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
-                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
-                <span className="truncate" title={l.email}>{l.email || "—"}</span>
-              </div>
+            {/* Row 2: Phone */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate min-w-0">
+              <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate">{l.phone || "—"}</span>
             </div>
 
             {/* Row 3: Address */}
@@ -3702,60 +3822,16 @@ export default function CrmDashboardPage() {
               <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
             </div>
 
-            {/* Row 5: 5 Action Buttons */}
-            <div className="grid grid-cols-5 gap-1 pt-1">
+            {/* Row 5: Action Button */}
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => callCustomer(l)}
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
                 title="Call"
               >
                 <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
                 <span className="truncate">Call</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => emailCustomer(l)}
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
-                title="Email"
-              >
-                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
-                <span className="truncate">Email</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openMessagesModal(l, "sms")}
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
-                title="SMS"
-              >
-                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
-                <span className="truncate">SMS</span>
-              </button>
-
-              <a
-                href={waUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
-                title="WhatsApp"
-              >
-                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
-                <span className="truncate">WhatsApp</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={() => openMessagesModal(l)}
-                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
-                title="Conversation"
-              >
-                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
-                <span className="truncate">Conversation</span>
-                {hasCustomerUnread && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                )}
               </button>
             </div>
           </div>
@@ -3927,10 +4003,8 @@ export default function CrmDashboardPage() {
 
   // ── Dedicated Technician Dashboard Row (Manager-Style 3 Columns) ───────────
   function renderTechnicianLeadRow(l: Lead) {
-    const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
     const statusOptions = getRoleStatusOptions("technician", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
-    const waUrl = getWhatsAppLink(l.phone);
     const followupPrompt = getFollowupPrompt(l);
 
     const jobNoDisplay = l.jobNo
@@ -3996,16 +4070,10 @@ export default function CrmDashboardPage() {
               )}
             </div>
 
-            {/* Row 2: Phone & Email */}
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
-                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
-                <span className="truncate">{l.phone || "—"}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
-                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
-                <span className="truncate" title={l.email}>{l.email || "—"}</span>
-              </div>
+            {/* Row 2: Phone */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate min-w-0">
+              <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate">{l.phone || "—"}</span>
             </div>
 
             {/* Row 3: Address */}
@@ -4020,60 +4088,16 @@ export default function CrmDashboardPage() {
               <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
             </div>
 
-            {/* Row 5: 5 Action Buttons */}
-            <div className="grid grid-cols-5 gap-1 pt-1">
+            {/* Row 5: Action Button */}
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => callCustomer(l)}
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
                 title="Call"
               >
                 <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
                 <span className="truncate">Call</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => emailCustomer(l)}
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
-                title="Email"
-              >
-                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
-                <span className="truncate">Email</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openMessagesModal(l, "sms")}
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
-                title="SMS"
-              >
-                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
-                <span className="truncate">SMS</span>
-              </button>
-
-              <a
-                href={waUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
-                title="WhatsApp"
-              >
-                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
-                <span className="truncate">WhatsApp</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={() => openMessagesModal(l)}
-                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
-                title="Conversation"
-              >
-                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
-                <span className="truncate">Conversation</span>
-                {hasCustomerUnread && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                )}
               </button>
             </div>
           </div>
@@ -4809,37 +4833,9 @@ export default function CrmDashboardPage() {
           <div className="space-y-3 min-w-0">
             {/* Status row: on the line above Job No */}
             <div className="flex items-center justify-between gap-2 min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
-                  Status
-                </label>
-                {l.status === "Completed" && (
-                  <>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
-                      🏆 Completed
-                    </span>
-                    {l.warrantyProvided === false || l.warranty?.provided === false ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300 whitespace-nowrap" title="Warranty Not Provided for this completed job">
-                        <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
-                        Warranty Not Provided
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap" title="10-Year Waterproof Warranty Provided">
-                        <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
-                        Warranty Provided
-                      </span>
-                    )}
-                  </>
-                )}
-                {l.invoiceOpenedAt && (
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 whitespace-nowrap"
-                  >
-                    <Eye className="w-2.5 h-2.5 text-emerald-600" />
-                    Opened
-                  </span>
-                )}
-              </div>
+              <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+                Status
+              </label>
 
               <select
                 value={l.status || "New"}
@@ -4861,8 +4857,28 @@ export default function CrmDashboardPage() {
 
             {/* Client info */}
             <div>
-              <div className="font-black text-[#001f97] text-sm xl:text-base whitespace-nowrap tracking-tight mb-1">
-                {l.jobNo || "—"}
+              <div className="flex items-center justify-between gap-1.5 min-w-0 mb-1">
+                <div className="font-black text-[#001f97] text-xs sm:text-sm whitespace-nowrap tracking-tight shrink-0">
+                  {l.jobNo || "—"}
+                </div>
+                {(() => {
+                  const rIso = l.received || l.createdAt;
+                  if (!rIso) return null;
+                  const d = new Date(rIso);
+                  if (isNaN(d.getTime())) return null;
+                  const dateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+                  const timeStr = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
+                  const fullDateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+                  return (
+                    <div
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap"
+                      title={`Received on ${fullDateStr} at ${timeStr}`}
+                    >
+                      <Clock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                      <span>Rec: {dateStr}, {timeStr}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="font-bold text-slate-900 text-sm truncate" title={l.name || "Unnamed Customer"}>
                 {l.name || "Unnamed Customer"}
@@ -4901,23 +4917,8 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
-            {/* Service & Received */}
-            <div className="space-y-1.5 pt-1 border-t border-slate-100">
-              {(() => {
-                const rIso = l.received || l.createdAt;
-                if (!rIso) return null;
-                const d = new Date(rIso);
-                if (isNaN(d.getTime())) return null;
-                const dateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-                const timeStr = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
-                return (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                    <Clock className="w-3 h-3 text-emerald-700 shrink-0" />
-                    <span>Received on {dateStr} at {timeStr}</span>
-                  </div>
-                );
-              })()}
-
+            {/* Service */}
+            <div className="pt-1 border-t border-slate-100">
               <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
                 {l.service || "Standard Work"}
               </div>
@@ -5926,21 +5927,6 @@ export default function CrmDashboardPage() {
                     {totalUnread}
                   </span>
                 )}
-              </button>
-            )}
-
-            {canSee("technicians") && (
-              <button
-                onClick={() => setCurrentView("technicians")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "technicians"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <HardHat className="w-4 h-4" />
-                  Technicians
-                </span>
               </button>
             )}
 
@@ -7075,13 +7061,9 @@ export default function CrmDashboardPage() {
                             ...single(["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]),
                           ]
                           : role === "inspection" || role === "field"
-                            ? [
-                              { label: "Total Inspections", group: "lead", statuses: [], totalCount: true },
-                              ...single(["Inspection Booked", "Inspection Completed"]),
-                            ]
+                            ? single(["Inspection Booked", "Inspection Completed"])
                           : role === "technician"
                             ? [
-                              { label: "Total Jobs", group: "job", statuses: [], totalCount: true },
                               { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
                               { label: "In Progress", group: "job", statuses: ["Job En Route", "Job Arrived", "Job Started", "Job In Progress"] },
                               { label: "Jobs Completed", group: "finance", statuses: ["Job Done", "Completed"] },
@@ -7461,7 +7443,23 @@ export default function CrmDashboardPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {staff.map((s) => {
+                  {[...staff]
+                    .sort((a, b) => {
+                      const roleOrder: Record<string, number> = {
+                        manager: 1,
+                        super_admin: 1,
+                        intake: 2,
+                        inspection: 3,
+                        field: 3,
+                        technician: 4,
+                        finance: 5,
+                      };
+                      const orderA = roleOrder[(a.role || "").toLowerCase()] ?? 99;
+                      const orderB = roleOrder[(b.role || "").toLowerCase()] ?? 99;
+                      if (orderA !== orderB) return orderA - orderB;
+                      return (a.name || a.username).localeCompare(b.name || b.username);
+                    })
+                    .map((s) => {
                     const activeLeads = leads.filter(
                       (l) => l.assigned === s.name
                     ).length;
@@ -7873,61 +7871,6 @@ export default function CrmDashboardPage() {
                         📋 Copy Job Booking Link
                       </button>
                     )}
-                  </div>
-                </div>
-
-                {/* 10-Year Waterproof Warranty Toggle */}
-                <div className="sm:col-span-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-1.5 rounded-lg ${
-                      editingLead?.warrantyProvided !== false ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                    }`}>
-                      {editingLead?.warrantyProvided !== false ? (
-                        <ShieldCheck className="w-4 h-4" />
-                      ) : (
-                        <ShieldAlert className="w-4 h-4" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-800">
-                        10-Year Waterproof Warranty
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {editingLead?.warrantyProvided !== false
-                          ? "Warranty Provided (Active for this job)"
-                          : "Warranty Not Provided (Disabled for this job)"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[11px] font-bold ${editingLead?.warrantyProvided === false ? "text-rose-600 font-black" : "text-slate-400"}`}>
-                      OFF
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editingLead?.warrantyProvided !== false}
-                      onClick={() => setEditingLead({
-                        ...editingLead,
-                        warrantyProvided: editingLead?.warrantyProvided === false ? true : false,
-                        warranty: {
-                          ...(editingLead?.warranty || {}),
-                          provided: editingLead?.warrantyProvided === false ? true : false,
-                        },
-                      })}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                        editingLead?.warrantyProvided !== false ? "bg-emerald-600" : "bg-slate-300"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
-                          editingLead?.warrantyProvided !== false ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                    <span className={`text-[11px] font-bold ${editingLead?.warrantyProvided !== false ? "text-emerald-600 font-black" : "text-slate-400"}`}>
-                      ON
-                    </span>
                   </div>
                 </div>
               </div>
@@ -8898,24 +8841,80 @@ export default function CrmDashboardPage() {
           MODAL: CUSTOMER CONVERSATION (MESSAGES)
          ========================================================================= */}
       {messagesModalOpen && activeMessageLead && (
-        <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center ${convFullscreen ? "p-0" : "p-4"}`}>
+        <div
+          className={`fixed inset-0 z-50 pointer-events-none bg-slate-900/25 backdrop-blur-[0.5px] ${
+            convFullscreen ? "p-0" : !convPos ? "flex items-center justify-center p-4" : ""
+          }`}
+        >
           <div
-            className={`bg-white flex flex-col gap-4 transition-all duration-200 ${
+            ref={convModalRef}
+            className={`bg-white pointer-events-auto flex flex-col gap-4 shadow-2xl border border-slate-200 transition-[border-radius,box-shadow] duration-150 ${
               convFullscreen
                 ? "w-full h-full rounded-none shadow-none p-6"
-                : "rounded-2xl shadow-2xl w-full max-w-5xl p-6 resize overflow-auto"
+                : "rounded-2xl w-full max-w-5xl p-6 resize overflow-auto"
             }`}
-            style={convFullscreen ? {} : { height: "90vh", minHeight: "500px", minWidth: "400px" }}
+            style={
+              convFullscreen
+                ? { position: "fixed", inset: 0, width: "100vw", height: "100vh", margin: 0 }
+                : convPos
+                ? {
+                    position: "fixed",
+                    left: `${convPos.x}px`,
+                    top: `${convPos.y}px`,
+                    margin: 0,
+                    height: "90vh",
+                    minHeight: "500px",
+                    minWidth: "400px",
+                    maxWidth: "min(96vw, 1024px)",
+                  }
+                : { height: "90vh", minHeight: "500px", minWidth: "400px", maxWidth: "min(96vw, 1024px)" }
+            }
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">Customer Conversation</h2>
-                <div className="text-xs text-slate-500">
-                  {activeMessageLeadLive?.name} • {activeMessageLeadLive?.phone || "No phone"} • {activeMessageLeadLive?.email || "No email"}
+            {/* Header: Draggable handle */}
+            <div
+              onPointerDown={handleConvPointerDown}
+              onDoubleClick={() => setConvPos(null)}
+              className={`flex items-center justify-between border-b border-slate-100 pb-3 shrink-0 select-none ${
+                convFullscreen
+                  ? ""
+                  : "cursor-grab active:cursor-grabbing hover:bg-slate-50/70 -m-2 p-2 rounded-xl transition-colors"
+              }`}
+              title={convFullscreen ? undefined : "Drag to move window anywhere on screen • Double-click to center"}
+            >
+              <div className="flex items-center gap-2.5">
+                {!convFullscreen && (
+                  <div className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Drag to move">
+                    <GripHorizontal className="w-4 h-4" />
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <span>Customer Conversation</span>
+                    {!convFullscreen && (
+                      <span className="text-[10px] font-medium text-slate-400 hidden sm:inline">
+                        (Movable window)
+                      </span>
+                    )}
+                  </h2>
+                  <div className="text-xs text-slate-500">
+                    {activeMessageLeadLive?.name} • {activeMessageLeadLive?.phone || "No phone"} • {activeMessageLeadLive?.email || "No email"}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {convPos && !convFullscreen && (
+                  <button
+                    type="button"
+                    onClick={() => setConvPos(null)}
+                    title="Center window on screen"
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-xs font-semibold transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px]">Center</span>
+                  </button>
+                )}
                 <button
+                  type="button"
                   onClick={() => setConvFullscreen((f) => !f)}
                   title={convFullscreen ? "Exit fullscreen" : "Fullscreen"}
                   className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
@@ -8923,7 +8922,9 @@ export default function CrmDashboardPage() {
                   {convFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setMessagesModalOpen(false); setConvFullscreen(false); }}
+                  title="Close conversation (Esc)"
                   className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -8931,82 +8932,102 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
-            {/* Conversation Messages Box — filtered by active tab */}
-            <div className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3" style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}>
-              {getConversation(activeMessageLeadLive || activeMessageLead)
-                .filter((msg) =>
-                  messageChannel === "sms"
-                    ? msg.channel === "sms"
-                    : msg.channel !== "sms"
-                )
-                .map((msg) => {
-                const isCustomer = msg.from === "customer";
-                return (
-                  <div
-                    key={msg.id}
-                    className={`p-3 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1 ${isCustomer
-                        ? "mr-auto bg-white border border-slate-200 text-slate-800"
-                        : "ml-auto bg-[#001f97] text-white"
-                      }`}
-                  >
+            {/* Conversation Messages Box — filtered by active tab with WhatsApp-style scroll */}
+            <div className="relative flex flex-col shrink-0" style={{ minHeight: "240px" }}>
+              <div
+                ref={convScrollRef}
+                onScroll={handleConvScroll}
+                className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
+                style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}
+              >
+                {getConversation(activeMessageLeadLive || activeMessageLead)
+                  .filter((msg) =>
+                    messageChannel === "sms"
+                      ? msg.channel === "sms"
+                      : msg.channel !== "sms"
+                  )
+                  .map((msg) => {
+                  const isCustomer = msg.from === "customer";
+                  return (
                     <div
-                      className={`flex items-center justify-between gap-4 text-[10px] font-bold ${isCustomer ? "text-slate-400" : "text-blue-200"
+                      key={msg.id}
+                      className={`p-3 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1 ${isCustomer
+                          ? "mr-auto bg-white border border-slate-200 text-slate-800"
+                          : "ml-auto bg-[#001f97] text-white"
                         }`}
                     >
-                      <span>{isCustomer ? "Customer" : "Groutix Team"} ({msg.channel || "note"})</span>
-                      <span>{fmtDate(msg.time)}</span>
-                    </div>
-                    {msg.subject && <div className="font-bold">{msg.subject}</div>}
-                    {(() => {
-                      const isCustomerEmail = isCustomer && !msg.initial;
-                      const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
-                      const hasQuoted = isCustomerEmail && cleanText !== msg.text;
-                      return (
-                        <div className="space-y-1">
-                          <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
-                          {hasQuoted && (
-                            <details className="mt-1 text-[10px] text-slate-400">
-                              <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
-                                ••• Show quoted email history
-                              </summary>
-                              <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
-                                {msg.text}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {msg.attachments.map((att, i) => {
-                          const href = att.secureUrl || att.url;
-                          const chipClass = `inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
-                            }`;
-                          return href ? (
-                            <a
-                              key={i}
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`${chipClass} underline hover:opacity-80`}
-                              title={`Open ${att.name}`}
-                            >
-                              <Paperclip className="w-2.5 h-2.5" />
-                              {att.name}
-                            </a>
-                          ) : (
-                            <span key={i} className={chipClass}>
-                              <Paperclip className="w-2.5 h-2.5" />
-                              {att.name}
-                            </span>
-                          );
-                        })}
+                      <div
+                        className={`flex items-center justify-between gap-4 text-[10px] font-bold ${isCustomer ? "text-slate-400" : "text-blue-200"
+                          }`}
+                      >
+                        <span>{isCustomer ? "Customer" : "Groutix Team"} ({msg.channel || "note"})</span>
+                        <span>{fmtDate(msg.time)}</span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      {msg.subject && <div className="font-bold">{msg.subject}</div>}
+                      {(() => {
+                        const isCustomerEmail = isCustomer && !msg.initial;
+                        const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
+                        const hasQuoted = isCustomerEmail && cleanText !== msg.text;
+                        return (
+                          <div className="space-y-1">
+                            <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
+                            {hasQuoted && (
+                              <details className="mt-1 text-[10px] text-slate-400">
+                                <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
+                                  ••• Show quoted email history
+                                </summary>
+                                <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
+                                  {msg.text}
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {msg.attachments.map((att, i) => {
+                            const href = att.secureUrl || att.url;
+                            const chipClass = `inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
+                              }`;
+                            return href ? (
+                              <a
+                                key={i}
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`${chipClass} underline hover:opacity-80`}
+                                title={`Open ${att.name}`}
+                              >
+                                <Paperclip className="w-2.5 h-2.5" />
+                                {att.name}
+                              </a>
+                            ) : (
+                              <span key={i} className={chipClass}>
+                                <Paperclip className="w-2.5 h-2.5" />
+                                {att.name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* WhatsApp-style floating "Latest messages" jump button */}
+              {isConvScrolledUp && (
+                <button
+                  type="button"
+                  onClick={() => scrollToLatestMessage(true)}
+                  className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-[#001f97] text-white text-xs font-bold rounded-full shadow-lg hover:bg-[#001777] transition-all animate-bounce cursor-pointer z-20"
+                  title="Jump to latest conversation"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  <span>Latest messages</span>
+                </button>
+              )}
             </div>
 
             {/* Reply Composer */}
@@ -9159,7 +9180,7 @@ export default function CrmDashboardPage() {
                       if (data.inspectionUrl) {
                         const firstName = (lead.name || "there").trim().split(/\s+/)[0];
                         setReplySubject(`Book Your Free Groutix Inspection — ${lead.name || "Customer"}`);
-                        setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on (03) 7023 8094.\n\nKind regards,\nGroutix Team`);
+                        setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
                       }
                     } catch { /* silently fail */ }
                   }}
@@ -9179,7 +9200,7 @@ export default function CrmDashboardPage() {
                       if (data.jobUrl) {
                         const firstName = (lead.name || "there").trim().split(/\s+/)[0];
                         setReplySubject(`Confirm Your Job Booking — ${lead.name || "Customer"}`);
-                        setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on (03) 7023 8094.\n\nKind regards,\nGroutix Team`);
+                        setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
                       }
                     } catch { /* silently fail */ }
                   }}

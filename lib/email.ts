@@ -53,6 +53,51 @@ function getTransporter(): nodemailer.Transporter {
 }
 
 /**
+ * Sanitizes any outgoing email subject, text, or HTML to enforce correct branding:
+ * Phone: 7023 8094
+ * Email: info@groutix.com (on second line)
+ * Website: www.groutix.com (strictly .com, on third line)
+ */
+export function cleanEmailText(content: string): string {
+  if (!content || typeof content !== "string") return content;
+  let text = content;
+
+  // 1. Pipe-separated combos into multi-line signature
+  text = text.replace(
+    /📞\s*(?:1300\s*476\s*884|\(03\)\s*7023\s*8094|7023\s*8094)\s*(?:&nbsp;|\s)*\|(?:&nbsp;|\s)*✉️\s*info@groutix\.com(?:\.au)?/gi,
+    () => {
+      if (text.includes("<body") || text.includes("<p") || text.includes("<div") || text.includes("<br")) {
+        return "📞 7023 8094<br/>✉️ info@groutix.com";
+      }
+      return "📞 7023 8094\n✉️ info@groutix.com";
+    }
+  );
+
+  text = text.replace(
+    /(?:1300\s*476\s*884|\(03\)\s*7023\s*8094|7023\s*8094)\s*(?:&nbsp;|\s)*\|(?:&nbsp;|\s)*info@groutix\.com(?:\.au)?/gi,
+    () => {
+      if (text.includes("<body") || text.includes("<p") || text.includes("<div") || text.includes("<br")) {
+        return "7023 8094<br/>info@groutix.com";
+      }
+      return "7023 8094\ninfo@groutix.com";
+    }
+  );
+
+  // 2. Normalize old phone numbers to 7023 8094
+  text = text.replace(/1300\s*476\s*884/gi, "7023 8094");
+  text = text.replace(/\(03\)\s*7023\s*8094/gi, "7023 8094");
+  text = text.replace(/1300476884/gi, "70238094");
+  text = text.replace(/tel:1300476884/gi, "tel:70238094");
+  text = text.replace(/tel:\(03\)70238094/gi, "tel:70238094");
+
+  // 3. Remove .au -> www.groutix.com
+  text = text.replace(/groutix\.com\.au/gi, "groutix.com");
+  text = text.replace(/Groutix\.com\.au/gi, "groutix.com");
+
+  return text;
+}
+
+/**
  * Send an email via Google Workspace / SMTP with retry logic.  it is connect to workspace.
  */
 export async function sendEmail(args: SendEmailArgs): Promise<void> {
@@ -61,12 +106,15 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const fromAddress = args.fromEmail || defaultFrom;
   const fromName = args.fromName || "Groutix";
 
+  const cleanedSubject = cleanEmailText(args.subject);
+  const cleanedHtml = cleanEmailText(args.html);
+
   const mailOptions: nodemailer.SendMailOptions = {
     from: `"${fromName}" <${fromAddress}>`,
     to: args.toEmail,
     replyTo: args.replyTo || fromAddress,
-    subject: args.subject,
-    html: args.html,
+    subject: cleanedSubject,
+    html: cleanedHtml,
     attachments: args.attachments?.map((att) => ({
       filename: att.name,
       content: Buffer.from(att.content, "base64"),
@@ -275,15 +323,11 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
                 You are receiving this email because you contacted Groutix.<br/>
                 If you have any questions, simply reply to this email.
               </p>
-              <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center">
-                    <a href="https://www.groutix.com" style="color:#001f97;text-decoration:none;font-size:13px;font-weight:500;">www.groutix.com</a>
-                    <span style="color:#cbd5e1;margin:0 8px;">|</span>
-                    <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-size:13px;font-weight:500;">7023 8094</a>
-                  </td>
-                </tr>
-              </table>
+              <div style="font-size:13px;line-height:1.9;color:#001f97;font-weight:500;">
+                <div>📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;">7023 8094</a></div>
+                <div>✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;">info@groutix.com</a></div>
+                <div>🌐 <a href="https://www.groutix.com" target="_blank" style="color:#001f97;text-decoration:none;">www.groutix.com</a></div>
+              </div>
             </td>
           </tr>
 

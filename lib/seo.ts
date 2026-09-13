@@ -5,7 +5,7 @@
 // and structured data | derives from it.
 
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.Groutix.com.au"
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"
 ).replace(/\/$/, "");
 
 // Default social-share image (swap for a branded 1200×630 image when you have one).
