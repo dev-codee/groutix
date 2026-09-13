@@ -31,7 +31,7 @@ const DEFAULT_CONTACT_PHONE = "7023 8094";
 // the confirmation email/SMS for now. Flip this back to `true` to re-enable the
 // "Book your free inspection" button + available-days list (all logic is kept
 // below, only its rendering is gated by this flag).
-const SHOW_INSPECTION_BOOKING = false;
+const SHOW_INSPECTION_BOOKING = true;
 
 // Anti-spam limits.
 const RATE_LIMIT = 5; // submissions...
@@ -481,11 +481,12 @@ export async function POST(req: NextRequest) {
       <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
         We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
       </p>
+
+      ${SHOW_INSPECTION_BOOKING ? inspectionBookingHtml : ""}
+
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
         If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
       </p>
-
-      ${SHOW_INSPECTION_BOOKING ? inspectionBookingHtml : ""}
 
       ${
         message
