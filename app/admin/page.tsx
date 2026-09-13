@@ -945,6 +945,7 @@ export default function CrmDashboardPage() {
   // On-The-Way / GPS notification state
   const [onTheWayLoading, setOnTheWayLoading] = useState<string | null>(null);
   const [etaToast, setEtaToast] = useState<{ leadId: string; msg: string } | null>(null);
+  const [notifyPrompt, setNotifyPrompt] = useState<{ lead: Lead; eventType: "en_route" | "arrived" } | null>(null);
   const [staffLocations, setStaffLocations] = useState<any[]>([]);
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const locationWatchRef = useRef<number | null>(null);
@@ -1363,7 +1364,14 @@ export default function CrmDashboardPage() {
           : "Job Arrived";
     await updateLeadField(lead.id, { status: newStatus });
 
-    // 2. Get GPS location
+    // 2. Ask staff whether to notify the customer
+    setNotifyPrompt({ lead, eventType });
+  }
+
+  async function executeOnTheWayNotification(lead: Lead, eventType: "en_route" | "arrived") {
+    setNotifyPrompt(null);
+
+    // Get GPS location and send notification
     if (!navigator.geolocation) {
       setEtaToast({ leadId: lead.id, msg: "Location not available — notification sent without ETA." });
       fetch("/api/admin/on-the-way", {
@@ -1393,7 +1401,6 @@ export default function CrmDashboardPage() {
                 ? `Customer notified! ETA: ~${data.eta || "unknown"}`
                 : `Customer notified of your arrival!`,
           });
-          // Also update staff location in background
           fetch("/api/admin/staff/location", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1412,7 +1419,6 @@ export default function CrmDashboardPage() {
           leadId: lead.id,
           msg: "Location denied — customer still notified without ETA.",
         });
-        // Still send notification without coords
         fetch("/api/admin/on-the-way", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -10462,6 +10468,38 @@ export default function CrmDashboardPage() {
               >
                 {chatSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notify customer prompt for On the Way / Reached */}
+      {notifyPrompt && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full mx-4">
+            <h3 className="text-base font-black text-slate-900 mb-1">
+              {notifyPrompt.eventType === "en_route" ? "Notify customer you're on the way?" : "Notify customer you've arrived?"}
+            </h3>
+            <p className="text-xs text-slate-500 mb-5">
+              {notifyPrompt.eventType === "en_route"
+                ? `An SMS with your ETA will be sent to ${notifyPrompt.lead.name || "the customer"}.`
+                : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => executeOnTheWayNotification(notifyPrompt.lead, notifyPrompt.eventType)}
+                className="flex-1 py-2.5 rounded-xl bg-[#001f97] text-white font-bold text-sm hover:bg-[#001777] transition-colors"
+              >
+                Yes, notify
+              </button>
+              <button
+                type="button"
+                onClick={() => setNotifyPrompt(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors"
+              >
+                Skip
               </button>
             </div>
           </div>
