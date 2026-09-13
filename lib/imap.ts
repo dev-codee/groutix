@@ -19,7 +19,7 @@ export async function syncUnreadEmails() {
   
   // Wrap the entire process in a 25-second timeout so cron-job.org doesn't timeout (max 30s)
   return Promise.race([
-    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0, step }), 25000)),
+    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0, step }), 55000)),
     (async () => {
       // imap.gmail.com is standard for Google Workspace
       const client = new ImapFlow({
@@ -51,8 +51,8 @@ export async function syncUnreadEmails() {
           const searchResult = await client.search({ seen: false, smaller: 5000000 });
           
           step = "slicing";
-          // Limit to the 3 most recent unread emails to ensure it completes within 25s
-          const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-3) : [];
+          // Fetch up to 20 most recent unread emails to avoid missing customer replies
+          const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-20) : [];
           console.log(`[IMAP] Found ${Array.isArray(searchResult) ? searchResult.length : 0} unread (under 5MB), fetching latest ${uidsToFetch.length}...`);
           
           if (uidsToFetch.length > 0) {
@@ -95,11 +95,11 @@ export async function syncUnreadEmails() {
                 // Find if this email matches any active lead in the CRM
                 const db = await getDb();
                 const col = db.collection<SubmissionDoc>("submissions");
-                
-                // Match by exact email
-                const lead = await col.findOne({ 
-                  email: fromEmail,
-                  status: { $nin: ["Lost"] } 
+
+                // Case-insensitive email match so "John@gmail.com" matches "john@gmail.com"
+                const lead = await col.findOne({
+                  email: { $regex: `^${fromEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+                  status: { $nin: ["Lost"] }
                 }, { sort: { createdAt: -1 } });
 
                 if (lead) {

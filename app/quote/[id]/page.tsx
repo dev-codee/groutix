@@ -287,7 +287,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
           <p className="text-sm text-slate-600">{error || "Unable to find this quote."}</p>
           <div className="pt-2">
             <a
-              href="tel:1300476884"
+              href="tel:70238094"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#001f97] text-white text-xs font-bold hover:bg-[#001777] transition-colors"
             >
               <Phone className="w-3.5 h-3.5" /> Call 7023 8094
@@ -312,7 +312,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
           <div className="text-right">
             <div className="text-xs font-bold text-slate-500">Need Help?</div>
             <a
-              href="tel:1300476884"
+              href="tel:70238094"
               className="text-sm font-black text-[#001f97] hover:underline flex items-center gap-1.5 justify-end"
             >
               <Phone className="w-3.5 h-3.5" /> 7023 8094
