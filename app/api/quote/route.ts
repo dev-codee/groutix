@@ -483,7 +483,7 @@ export async function POST(req: NextRequest) {
         We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
       </p>
 
-      ${SHOW_INSPECTION_BOOKING ? inspectionBookingHtml : ""}
+      ${SHOW_INSPECTION_BOOKING && !(inspectionDate && inspectionTime) ? inspectionBookingHtml : ""}
 
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
         If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.

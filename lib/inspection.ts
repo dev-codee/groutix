@@ -127,6 +127,7 @@ export interface InspectionReportDoc {
   otherDetails?: string;
   estimatedTime?: string;
   quoteBuildFromReport?: CheckValue;
+  warrantyEligible?: CheckValue;
   inspectorNotes?: string;
   inspectorSignature?: string;
   customerAcknowledgement?: string;

@@ -304,10 +304,8 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
         {/* Brand Header */}
         <header className="flex items-center justify-between bg-white rounded-2xl p-5 px-6 shadow-xs border border-slate-200">
           <div>
-            <div className="text-2xl font-black text-[#001f97] tracking-tight">GROUTIX</div>
-            <p className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">
-              Stay Sealed. Stay Smiling.
-            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/new_logo.jpeg" alt="Groutix" className="h-12 w-auto object-contain" />
           </div>
           <div className="text-right">
             <div className="text-xs font-bold text-slate-500">Need Help?</div>
@@ -377,7 +375,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               <div className="flex flex-wrap items-start justify-between gap-4 pb-6 border-b border-slate-100">
                 <div>
                   <span className="inline-block text-[11px] font-black uppercase tracking-wider text-[#001f97] bg-[#001f97]/10 px-2.5 py-0.5 rounded-full mb-1">
-                    Official Quotation
+                    Quotation
                   </span>
                   <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                     {quote.quoteNumber}

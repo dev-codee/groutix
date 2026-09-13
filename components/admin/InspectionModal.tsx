@@ -51,6 +51,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
     return {
       findings: {},
       quoteBuildFromReport: "YES",
+      warrantyEligible: "YES",
       ...lead.inspectionReport,
     };
   });
@@ -85,6 +86,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
       otherDetails: existing.otherDetails || "",
       estimatedTime: existing.estimatedTime || "",
       quoteBuildFromReport: existing.quoteBuildFromReport || "YES",
+      warrantyEligible: existing.warrantyEligible ?? "YES",
       inspectorNotes: existing.inspectorNotes || "",
       inspectorSignature: existing.inspectorSignature || (existing.inspectorName || currentUsername || ""),
       customerAcknowledgement: existing.customerAcknowledgement || "",
@@ -591,6 +593,34 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                     }`}
                   >
                     ■ NO
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 text-xs">Warranty:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setReport({ ...report, warrantyEligible: "YES" })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
+                      report.warrantyEligible === "YES"
+                        ? "bg-emerald-600 text-white border-emerald-700"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    ■ ON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReport({ ...report, warrantyEligible: "NO" })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
+                      report.warrantyEligible === "NO"
+                        ? "bg-slate-800 text-white border-slate-800"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    ■ OFF
                   </button>
                 </div>
               </div>
