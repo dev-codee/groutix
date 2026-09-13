@@ -130,7 +130,7 @@ export default function HeroQuoteForm() {
       return;
     }
     try {
-      const res = await fetch(`/api/admin/address-autocomplete?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/admin/address-autocomplete?input=${encodeURIComponent(query)}`);
       if (!res.ok) return;
       const json = await res.json();
       const preds: string[] = json.predictions || [];
