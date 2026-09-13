@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
     id?: string;
     service?: string;
     description?: string;
+    extraWork?: string;
+    extraCharge?: number;
     price?: number;
     gst?: number;
     status?: string;
@@ -60,6 +62,9 @@ export async function POST(req: NextRequest) {
   const gst = total - subtotal;
   const service = body.service || lead.service || "Regrouting & waterproof resealing";
   const description = body.description || "";
+  const extraWork = body.extraWork || "";
+  const extraCharge = Number(body.extraCharge || 0);
+  const baseTotal = total - extraCharge;
   const status = body.status === "Paid" ? "Paid" : "Unpaid";
   const bankName = body.bankName || "ANZ";
   const accountName = body.accountName || "Groutix Pty Ltd";
@@ -94,8 +99,15 @@ export async function POST(req: NextRequest) {
               <div style="font-weight:600;">${esc(service)}</div>
               ${description ? `<div style="color:#64748b;font-size:13px;margin-top:4px;white-space:pre-wrap;">${esc(description)}</div>` : ""}
             </td>
-            <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">$${total.toFixed(2)}</td>
+            <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">$${baseTotal.toFixed(2)}</td>
           </tr>
+          ${extraWork && extraCharge > 0 ? `<tr>
+            <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;">
+              <div style="font-weight:600;">Additional Work</div>
+              <div style="color:#64748b;font-size:13px;margin-top:4px;white-space:pre-wrap;">${esc(extraWork)}</div>
+            </td>
+            <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">$${extraCharge.toFixed(2)}</td>
+          </tr>` : ""}
         </tbody>
         <tfoot>
           <tr>
@@ -148,7 +160,10 @@ export async function POST(req: NextRequest) {
       phone: lead.phone,
       email: lead.email,
       jobDescription: lead.issue || lead.message || service,
-      items: [{ service, description, price: total, qty: 1 }],
+      items: [
+        { service, description, price: baseTotal, qty: 1 },
+        ...(extraWork && extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : []),
+      ],
       subtotal,
       gst,
       total,

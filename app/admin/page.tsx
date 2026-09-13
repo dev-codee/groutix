@@ -202,6 +202,8 @@ export interface Lead {
   inspectionReminderSent?: boolean;
   jobReminderSent?: boolean;
   inspectionReport?: InspectionReportDoc;
+  jobTotalDays?: number;
+  jobDaysDone?: number;
 }
 
 const JOB_NO_START = 1201;
@@ -945,6 +947,8 @@ export default function CrmDashboardPage() {
   const [onTheWayLoading, setOnTheWayLoading] = useState<string | null>(null);
   const [etaToast, setEtaToast] = useState<{ leadId: string; msg: string } | null>(null);
   const [notifyPrompt, setNotifyPrompt] = useState<{ lead: Lead; eventType: "en_route" | "arrived" } | null>(null);
+  const [startJobPrompt, setStartJobPrompt] = useState<{ lead: Lead } | null>(null);
+  const [startJobDays, setStartJobDays] = useState(1);
   const [staffLocations, setStaffLocations] = useState<any[]>([]);
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const locationWatchRef = useRef<number | null>(null);
@@ -1076,6 +1080,8 @@ export default function CrmDashboardPage() {
   const [jobCardLead, setJobCardLead] = useState<Lead | null>(null);
   const [invoiceService, setInvoiceService] = useState("");
   const [invoiceDescription, setInvoiceDescription] = useState("");
+  const [invoiceExtraWork, setInvoiceExtraWork] = useState("");
+  const [invoiceExtraCharge, setInvoiceExtraCharge] = useState<number>(0);
   const [invoicePrice, setInvoicePrice] = useState<number>(0);
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
@@ -3075,6 +3081,8 @@ export default function CrmDashboardPage() {
       "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints"
     );
     setInvoicePrice(lead.quoteAmount || 850);
+    setInvoiceExtraWork("");
+    setInvoiceExtraCharge(0);
     setInvoiceGst(10);
     // Default to Unpaid; only pre-mark Paid if payment was already recorded.
     setInvoiceStatus(lead.status === "Payment Received" ? "Paid" : "Unpaid");
@@ -3105,7 +3113,9 @@ export default function CrmDashboardPage() {
           id: activeInvoiceLead.id,
           service: invoiceService,
           description: invoiceDescription,
-          price: invoicePrice,
+          extraWork: invoiceExtraWork,
+          extraCharge: invoiceExtraCharge,
+          price: invoicePrice + invoiceExtraCharge,
           gst: invoiceGst,
           status: invoiceStatus,
           bankName: invoiceBankName,
@@ -4167,7 +4177,7 @@ export default function CrmDashboardPage() {
 
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Started" })}
+                onClick={() => { setStartJobDays(1); setStartJobPrompt({ lead: l }); }}
                 className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
                   l.status === "Job Started"
                     ? "bg-[#001f97] text-white shadow-2xs"
@@ -4191,6 +4201,43 @@ export default function CrmDashboardPage() {
                 Job Done
               </button>
             </div>
+
+            {/* Multi-day job progress bar */}
+            {l.jobTotalDays && l.jobTotalDays > 1 && l.status === "Job Started" && (
+              <div className="mt-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-bold text-blue-800">
+                  <span>Day {l.jobDaysDone || 1} of {l.jobTotalDays}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const done = (l.jobDaysDone || 1) + 1;
+                      if (done > l.jobTotalDays!) {
+                        updateLeadField(l.id, { status: "Job Done", jobDaysDone: l.jobTotalDays });
+                      } else {
+                        updateLeadField(l.id, { jobDaysDone: done });
+                      }
+                    }}
+                    className="px-2 py-0.5 bg-[#001f97] text-white rounded-lg text-[9px] font-black hover:bg-[#001777] transition-colors cursor-pointer"
+                  >
+                    {(l.jobDaysDone || 1) >= l.jobTotalDays ? "Complete Job" : "Complete Day"}
+                  </button>
+                </div>
+                <div className="w-full bg-blue-100 rounded-full h-2">
+                  <div
+                    className="bg-[#001f97] h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, ((l.jobDaysDone || 1) / l.jobTotalDays) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: l.jobTotalDays }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 h-1.5 rounded-full ${i < (l.jobDaysDone || 1) ? "bg-[#001f97]" : "bg-blue-100"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* COLUMN 3: WORKFLOW (JOB BOOKED TO JOB DONE) */}
@@ -4716,10 +4763,10 @@ export default function CrmDashboardPage() {
       >
         <div className="grid grid-cols-4 gap-6 items-start">
           {/* COLUMN 0: CLIENT (includes Service & Photos) */}
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             {/* Status row: on the line above Job No */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                 <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
                   Status
                 </label>
@@ -4936,7 +4983,7 @@ export default function CrmDashboardPage() {
           </div>
 
           {/* COLUMN 2: INSPECTION & QUOTE */}
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 min-w-0">
             {/* ── 1. Inspection Booked & Assigned Dropdown ── */}
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -5229,7 +5276,7 @@ export default function CrmDashboardPage() {
           </div>
 
           {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 min-w-0">
             {/* ── FINANCE SUMMARY ── */}
             <div className="p-2 space-y-1.5">
               {/* Invoice & Payment status badges */}
@@ -9027,6 +9074,51 @@ export default function CrmDashboardPage() {
               ) : (
                 <>
 
+              {/* Quick Action: Send Inspection Booking Link */}
+              <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-100 rounded-xl">
+                <span className="text-[11px] font-bold text-slate-600 shrink-0">Quick Send:</span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const lead = activeMessageLeadLive || activeMessageLead;
+                    if (!lead?.id) return;
+                    try {
+                      const res = await fetch(`/api/admin/booking-link/${lead.id}`);
+                      const data = await res.json();
+                      if (data.inspectionUrl) {
+                        const firstName = (lead.name || "there").trim().split(/\s+/)[0];
+                        setReplySubject(`Book Your Free Groutix Inspection — ${lead.name || "Customer"}`);
+                        setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on (03) 7023 8094.\n\nKind regards,\nGroutix Team`);
+                      }
+                    } catch { /* silently fail */ }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#001f97] text-white text-[11px] font-bold rounded-lg hover:bg-[#001777] transition cursor-pointer"
+                >
+                  <CalendarDays className="w-3 h-3" />
+                  <span>Inspection Booking</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const lead = activeMessageLeadLive || activeMessageLead;
+                    if (!lead?.id) return;
+                    try {
+                      const res = await fetch(`/api/admin/booking-link/${lead.id}`);
+                      const data = await res.json();
+                      if (data.jobUrl) {
+                        const firstName = (lead.name || "there").trim().split(/\s+/)[0];
+                        setReplySubject(`Confirm Your Job Booking — ${lead.name || "Customer"}`);
+                        setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on (03) 7023 8094.\n\nKind regards,\nGroutix Team`);
+                      }
+                    } catch { /* silently fail */ }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-[11px] font-bold rounded-lg hover:bg-violet-700 transition cursor-pointer"
+                >
+                  <Wrench className="w-3 h-3" />
+                  <span>Job Booking</span>
+                </button>
+              </div>
+
               {/* Template Picker Dropdown */}
               <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
@@ -10068,6 +10160,33 @@ export default function CrmDashboardPage() {
                     className="w-full p-2 border border-slate-200 rounded-lg"
                   />
                 </div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                  <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Optional)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Additional silicone replacement in second bathroom"
+                    value={invoiceExtraWork}
+                    onChange={(e) => setInvoiceExtraWork(e.target.value)}
+                    className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="font-bold text-slate-600 text-xs whitespace-nowrap">Extra Charge ($):</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      placeholder="0"
+                      value={invoiceExtraCharge || ""}
+                      onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
+                      className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
+                    />
+                    {invoiceExtraCharge > 0 && (
+                      <span className="text-xs text-amber-700 font-semibold">
+                        New total: ${(invoicePrice + invoiceExtraCharge).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Total (incl GST)</label>
@@ -10442,6 +10561,58 @@ export default function CrmDashboardPage() {
               >
                 {chatSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Job — days prompt */}
+      {startJobPrompt && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full mx-4 space-y-4">
+            <div>
+              <h3 className="text-base font-black text-slate-900">Start Job</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{startJobPrompt.lead.name || "Customer"} · {startJobPrompt.lead.address || ""}</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">How many days will this job take?</label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStartJobDays((d) => Math.max(1, d - 1))}
+                  className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                >−</button>
+                <span className="text-2xl font-black text-[#001f97] w-8 text-center">{startJobDays}</span>
+                <button
+                  type="button"
+                  onClick={() => setStartJobDays((d) => Math.min(14, d + 1))}
+                  className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                >+</button>
+                <span className="text-xs text-slate-400 font-semibold">{startJobDays === 1 ? "Single day" : `${startJobDays} days`}</span>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  updateLeadField(startJobPrompt.lead.id, {
+                    status: "Job Started",
+                    jobTotalDays: startJobDays,
+                    jobDaysDone: 1,
+                  });
+                  setStartJobPrompt(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#001f97] text-white font-bold text-sm hover:bg-[#001777] transition-colors cursor-pointer"
+              >
+                Start Job
+              </button>
+              <button
+                type="button"
+                onClick={() => setStartJobPrompt(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>

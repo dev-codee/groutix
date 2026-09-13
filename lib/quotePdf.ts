@@ -241,20 +241,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       color: INK,
     });
 
-    // 2. Dynamic Special Notes
-    const noteText = input.specialNotes?.trim();
-    if (noteText) {
-      const cleaned = cleanPdfText(noteText);
-      const sz = 8;
-      const w = font.widthOfTextAtSize(cleaned, sz);
-      targetPage.drawText(cleaned, {
-        x: (A4.w - w) / 2,
-        y: 40,
-        size: sz,
-        font,
-        color: INK,
-      });
-    }
   };
 
   // ── PAGE 1: Quotation / Scope Details & Itemized Table ──
@@ -279,15 +265,14 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   };
 
   // 1. Customer Details / Billing Address («job.instantpost_billing_address»)
-  const billingX = MARGIN + 80;
   if (input.customerName) {
-    page1.drawText(cleanPdfText(input.customerName), { x: billingX, y, size: 10, font, color: INK });
+    page1.drawText(cleanPdfText(input.customerName), { x: MARGIN, y, size: 10, font, color: INK });
     y -= 13;
   }
   if (input.address) {
-    const addrLines = wrapLines(input.address, font, 10, 300);
+    const addrLines = wrapLines(input.address, font, 10, contentW / 2);
     for (const ln of addrLines) {
-      page1.drawText(cleanPdfText(ln), { x: billingX, y, size: 10, font, color: INK });
+      page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 10, font, color: INK });
       y -= 13;
     }
   }
@@ -295,7 +280,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   if (input.phone) contactParts.push(input.phone);
   if (input.email) contactParts.push(input.email);
   if (contactParts.length > 0) {
-    page1.drawText(cleanPdfText(contactParts.join("   *   ")), { x: billingX, y, size: 9, font, color: MUTED });
+    page1.drawText(cleanPdfText(contactParts.join("   *   ")), { x: MARGIN, y, size: 9, font, color: MUTED });
     y -= 13;
   }
   y -= 10;
