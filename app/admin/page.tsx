@@ -148,6 +148,7 @@ export interface Lead {
   city?: string;
   state?: string;
   assigned?: string;
+  inspectorId?: string;
   technician?: string;
   technicianId?: string;
   priority?: string;
@@ -3348,7 +3349,11 @@ export default function CrmDashboardPage() {
                 </label>
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
-                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
+                  onChange={(e) => {
+                    const name = e.target.value === "Unassigned" ? "" : e.target.value;
+                    const inspectorStaff = staff.find((s) => s.name === name);
+                    updateLeadField(l.id, { assigned: name, inspectorId: inspectorStaff?.id || "" });
+                  }}
                   className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
@@ -3782,7 +3787,11 @@ export default function CrmDashboardPage() {
                 </label>
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
-                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
+                  onChange={(e) => {
+                    const name = e.target.value === "Unassigned" ? "" : e.target.value;
+                    const inspectorStaff = staff.find((s) => s.name === name);
+                    updateLeadField(l.id, { assigned: name, inspectorId: inspectorStaff?.id || "" });
+                  }}
                   className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
@@ -5563,8 +5572,12 @@ export default function CrmDashboardPage() {
               if (!inRoleQueue(role, l.status)) return false;
               if (viewAs) return true;
               const myStaff = staff.find((s) => s.username === username);
-              const myName = (myStaff?.name || username || "").trim().toLowerCase();
+              const myId = myStaff?.id;
+              const myName = (myStaff?.name || "").trim().toLowerCase();
               const myUser = (username || "").trim().toLowerCase();
+              // ID-based match (set by current assignment UI)
+              if (myId && l.inspectorId) return l.inspectorId === myId;
+              // Name-based fallback for leads assigned before inspectorId was introduced
               const assignedTo = (l.assigned || "").trim().toLowerCase();
               return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === myName || assignedTo === myUser));
             }

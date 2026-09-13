@@ -1,21 +1,21 @@
-import React from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { getSiteSettings, getLogoPublicUrl } from "@/lib/settings";
 
-export default async function Logo({
+export default function Logo({
   light = false,
   className = "",
 }: {
   light?: boolean;
   className?: string;
 }) {
-  let logoSrc = "/new_logo.jpeg";
-  try {
-    const settings = await getSiteSettings();
-    logoSrc = getLogoPublicUrl(settings);
-  } catch {
-    // fallback
-  }
+  const [logoSrc, setLogoSrc] = useState("/new_logo.jpeg");
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => { if (d.logoUrl) setLogoSrc(d.logoUrl); })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className={`flex items-center select-none ${className}`}>
