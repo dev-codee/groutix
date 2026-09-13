@@ -7,9 +7,6 @@ import { sendReplyNotification } from "@/lib/email";
 
 export const runtime = "nodejs";
 
-// Verify the x-Texto-Signature HMAC-SHA256 header Texto attaches when
-// "Sign requests" is enabled. Uses timing-safe comparison to prevent
-// timing attacks.
 function verifySignature(rawBody: Buffer, signature: string, secret: string): boolean {
   try {
     const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
@@ -23,9 +20,9 @@ function verifySignature(rawBody: Buffer, signature: string, secret: string): bo
 }
 
 function extractFields(body: Record<string, any>): { from: string; text: string; msgId: string } {
-  const from = body.from || body.mobile || body.sender || body.msisdn || "";
-  const text = body.message || body.text || body.body || body.content || "";
-  const msgId = body.message_id || body.id || body.messageId || `sms_in_${Date.now()}`;
+  const from = body.from || body.mobile || body.sender || body.msisdn || body.originator || body.source_number || "";
+  const text = body.message || body.text || body.body || body.content || body.msg || "";
+  const msgId = body.message_id || body.id || body.messageId || body.msg_id || `sms_in_${Date.now()}`;
   return { from: String(from), text: String(text), msgId: String(msgId) };
 }
 
@@ -34,34 +31,69 @@ export async function POST(req: NextRequest) {
 
   // Read raw body as buffer first (needed for signature verification)
   const rawBody = Buffer.from(await req.arrayBuffer());
+  const bodyStr = rawBody.toString("utf8");
+
+  console.log("[SMS Webhook] Received POST");
+  console.log("[SMS Webhook] Headers:", Object.fromEntries(req.headers.entries()));
+  console.log("[SMS Webhook] Body:", bodyStr.slice(0, 500));
 
   // Verify signature if a secret is configured
   if (secret) {
-    const sig = req.headers.get("x-texto-signature") || "";
-    if (!sig || !verifySignature(rawBody, sig, secret)) {
-      console.warn("[SMS Webhook] Invalid or missing signature — request rejected.");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const sig = req.headers.get("x-texto-signature") || req.headers.get("x-signature") || "";
+    if (!sig) {
+      console.warn("[SMS Webhook] No signature header found — rejecting.");
+      return NextResponse.json({ error: "Unauthorized: missing signature" }, { status: 401 });
     }
+    if (!verifySignature(rawBody, sig, secret)) {
+      console.warn("[SMS Webhook] Signature mismatch.");
+      console.warn("[SMS Webhook] Received sig:", sig);
+      console.warn("[SMS Webhook] Expected:", createHmac("sha256", secret).update(rawBody).digest("hex"));
+      return NextResponse.json({ error: "Unauthorized: signature mismatch" }, { status: 401 });
+    }
+    console.log("[SMS Webhook] Signature verified OK");
   }
 
-  // Parse body
+  // Parse body — try JSON first, then form-urlencoded
   let raw: Record<string, any> = {};
   try {
     const ct = req.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
-      raw = JSON.parse(rawBody.toString("utf8"));
+      raw = JSON.parse(bodyStr);
+    } else if (ct.includes("application/x-www-form-urlencoded") || ct.includes("multipart/form-data")) {
+      for (const pair of bodyStr.split("&")) {
+        const idx = pair.indexOf("=");
+        if (idx === -1) continue;
+        const k = decodeURIComponent(pair.slice(0, idx));
+        const v = decodeURIComponent(pair.slice(idx + 1));
+        if (k) raw[k] = v;
+      }
     } else {
-      for (const pair of rawBody.toString("utf8").split("&")) {
-        const [k, v] = pair.split("=");
-        if (k) raw[decodeURIComponent(k)] = decodeURIComponent(v || "");
+      // Try JSON regardless of content-type
+      try {
+        raw = JSON.parse(bodyStr);
+      } catch {
+        for (const pair of bodyStr.split("&")) {
+          const idx = pair.indexOf("=");
+          if (idx === -1) continue;
+          const k = decodeURIComponent(pair.slice(0, idx));
+          const v = decodeURIComponent(pair.slice(idx + 1));
+          if (k) raw[k] = v;
+        }
       }
     }
   } catch {
+    console.error("[SMS Webhook] Failed to parse body");
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
+  console.log("[SMS Webhook] Parsed body:", JSON.stringify(raw).slice(0, 500));
+
   const { from, text, msgId } = extractFields(raw);
+
+  console.log("[SMS Webhook] from:", from, "| text:", text, "| msgId:", msgId);
+
   if (!from || !text) {
+    console.warn("[SMS Webhook] Missing from or text — skipping");
     return NextResponse.json({ ok: true, skipped: "missing_from_or_text" });
   }
 
@@ -70,23 +102,27 @@ export async function POST(req: NextRequest) {
     ? "0" + normalisedFrom.slice(3)
     : normalisedFrom;
 
+  console.log("[SMS Webhook] Searching for phone:", normalisedFrom, "or", localFrom, "or", from);
+
   try {
     const db = await getDb();
     const col = db.collection<SubmissionDoc>("submissions");
 
-    // Match lead by phone — try all common formats
     const lead = await col.findOne({
       $or: [{ phone: normalisedFrom }, { phone: localFrom }, { phone: from }],
       status: { $nin: ["Lost"] },
     }, { sort: { createdAt: -1 } });
 
     if (!lead) {
-      console.log(`[SMS Webhook] No lead matched phone: ${from}`);
+      console.log(`[SMS Webhook] No lead matched phone: ${from} / ${normalisedFrom} / ${localFrom}`);
       return NextResponse.json({ ok: true, matched: false });
     }
 
+    console.log("[SMS Webhook] Matched lead:", lead._id.toString(), lead.name);
+
     // Deduplicate
     if (lead.messages?.some((m) => m.id === msgId)) {
+      console.log("[SMS Webhook] Duplicate message, skipping");
       return NextResponse.json({ ok: true, duplicate: true });
     }
 
@@ -116,6 +152,7 @@ export async function POST(req: NextRequest) {
       leadId: lead._id.toString(),
     });
 
+    console.log("[SMS Webhook] Message saved successfully for lead:", lead._id.toString());
     return NextResponse.json({ ok: true, matched: true });
   } catch (err) {
     console.error("[SMS Webhook] Error:", err);
