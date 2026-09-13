@@ -211,7 +211,7 @@ export async function autoSendWarranty(leadId: string): Promise<void> {
           <tr><td style="padding:12px;background:#f8fafc;font-weight:600;">Warranty Expiry</td><td style="padding:12px;">${esc(expiry)} <span style="color:#64748b;font-size:13px;">(10 Years)</span></td></tr>
         </table>
       </div>
-      <p style="margin:16px 0 0;color:#166534;font-size:13px;">Issued under Clause 12 of the <a href="https://groutix.com.au/terms-conditions" style="color:#001f97;font-weight:700;">Groutix Terms &amp; Conditions</a>. Please retain this certificate and your tax invoice.</p>`;
+      <p style="margin:16px 0 0;color:#166534;font-size:13px;">Issued under Clause 12 of the <a href="https://groutix.com/terms-conditions" style="color:#001f97;font-weight:700;">Groutix Terms &amp; Conditions</a>. Please retain this certificate and your tax invoice.</p>`;
 
     if (isEmailConfigured()) {
       await sendEmail({

@@ -654,7 +654,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   <span className="text-xs text-slate-700 leading-relaxed">
                     I have reviewed the quotation details above and agree to the{" "}
                     <a
-                      href="https://groutix.com.au/terms-conditions"
+                      href="https://groutix.com/terms-conditions"
                       target="_blank"
                       rel="noreferrer"
                       className="text-[#001f97] font-bold underline"

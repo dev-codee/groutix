@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
 
     <!-- Terms & Conditions Reference -->
     <div style="margin:20px 0;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
-      All works and quotations are subject to the official <a href="https://groutix.com.au/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a> (complete 20 clauses included in attached PDF). Full shower epoxy regrouting includes our comprehensive 10-Year Waterproof Warranty.
+      All works and quotations are subject to the official <a href="https://groutix.com/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a> (complete 20 clauses included in attached PDF). Full shower epoxy regrouting includes our comprehensive 10-Year Waterproof Warranty.
     </div>
 
     <!-- Review and digitally sign quote online -->

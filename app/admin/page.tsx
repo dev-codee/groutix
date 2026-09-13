@@ -8126,7 +8126,7 @@ export default function CrmDashboardPage() {
                     <div>1/14 St Andrews St</div>
                     <div>Brighton VIC 3186</div>
                     <div>7023 8094</div>
-                    <div>info@groutix.com.au</div>
+                    <div>info@groutix.com</div>
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
                     <div className="pt-1.5 text-slate-900">Quote # {activeQuoteLead.jobNo || `JOBNO-${activeQuoteLead.id.slice(-6).toUpperCase()}`}</div>
@@ -8573,7 +8573,7 @@ export default function CrmDashboardPage() {
                 return (
                   <div
                     key={msg.id}
-                    className={`p-3 rounded-2xl max-w-[85%] text-xs shadow-xs space-y-1 ${isCustomer
+                    className={`p-3 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1 ${isCustomer
                         ? "mr-auto bg-white border border-slate-200 text-slate-800"
                         : "ml-auto bg-[#001f97] text-white"
                       }`}
@@ -9989,7 +9989,7 @@ export default function CrmDashboardPage() {
                   <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
                     <div>Melbourne, VIC</div>
                     <div>7023 8094</div>
-                    <div>info@groutix.com.au</div>
+                    <div>info@groutix.com</div>
                     <div className="pt-1.5 font-black text-xs text-slate-900">TAX INVOICE</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
                     <div className="pt-1.5 font-bold text-slate-900">Tax Invoice No: INV-{activeInvoiceLead.id.slice(-6).toUpperCase()}</div>
