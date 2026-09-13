@@ -209,7 +209,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       drawR(line, font, 9, INK);
       ry -= 12;
     }
-    drawR(input.businessPhone || "(03) 7023 8094", font, 9, INK);
+    drawR(input.businessPhone || "7023 8094", font, 9, INK);
     ry -= 12;
     drawR(input.businessEmail || "info@groutix.com", font, 9, INK);
     ry -= 18;
@@ -677,7 +677,7 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
     drawR(bl, font, 9, INK);
     ry -= 12;
   }
-  drawR(input.businessPhone || "(03) 7023 8094", font, 9, INK);
+  drawR(input.businessPhone || "7023 8094", font, 9, INK);
   ry -= 12;
   drawR(input.businessEmail || "info@groutix.com", font, 9, INK);
   ry -= 18;

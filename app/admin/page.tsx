@@ -8417,7 +8417,7 @@ export default function CrmDashboardPage() {
                   <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
                     <div>Melbourne</div>
                     <div>VIC</div>
-                    <div>(03) 7023 8094</div>
+                    <div>7023 8094</div>
                     <div>info@groutix.com</div>
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
@@ -10395,7 +10395,7 @@ export default function CrmDashboardPage() {
                   <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
                     <div>Melbourne</div>
                     <div>VIC</div>
-                    <div>(03) 7023 8094</div>
+                    <div>7023 8094</div>
                     <div>info@groutix.com</div>
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>

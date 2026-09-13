@@ -463,7 +463,7 @@ export default function TermsConditionsPage() {
                 For questions regarding these Terms and Conditions, please contact Groutix Pty Ltd:
               </p>
               <p className="text-slate-700 mt-1">
-                Phone: <a href="tel:0370238094" className="text-blue-700 underline">(03) 7023 8094</a>
+                Phone: <a href="tel:70238094" className="text-blue-700 underline">7023 8094</a>
                 {" • "}
                 Email: <a href="mailto:info@groutix.com" className="text-blue-700 underline">info@groutix.com</a>
               </p>
