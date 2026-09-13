@@ -959,15 +959,22 @@ export default function CrmDashboardPage() {
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false);
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
+  const [addressDropdownStyle, setAddressDropdownStyle] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
 
   async function fetchAddressSuggestions(input: string) {
-    if (input.length < 3) { setAddressSuggestions([]); return; }
+    if (input.length < 3) { setAddressSuggestions([]); setAddressSuggestionsOpen(false); return; }
+    if (addressInputRef.current) {
+      const rect = addressInputRef.current.getBoundingClientRect();
+      setAddressDropdownStyle({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+    }
     try {
       const res = await fetch(`/api/admin/address-autocomplete?input=${encodeURIComponent(input)}`);
       const data = await res.json();
-      setAddressSuggestions(data.predictions || []);
-      setAddressSuggestionsOpen(true);
-    } catch { setAddressSuggestions([]); }
+      const preds = data.predictions || [];
+      setAddressSuggestions(preds);
+      setAddressSuggestionsOpen(preds.length > 0);
+    } catch { setAddressSuggestions([]); setAddressSuggestionsOpen(false); }
   }
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
@@ -1897,7 +1904,7 @@ export default function CrmDashboardPage() {
       `Items:\n` +
       quoteItems.map((item, i) => `${i + 1}. ${item.service} - $${Number(item.price || 0).toFixed(2)}`).join("\n") +
       `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
-      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n1300 476 884`
+      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n7023 8094`
     );
     window.location.href = `mailto:${activeQuoteLead.email}?subject=${subject}&body=${body}`;
   }
@@ -7349,35 +7356,29 @@ export default function CrmDashboardPage() {
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
                   />
                 </div>
-                <div className="relative">
+                <div>
                   <label className="font-bold text-slate-700 block mb-1">Property Address</label>
                   <input
+                    ref={addressInputRef}
                     type="text"
                     value={editingLead?.address || ""}
                     autoComplete="off"
                     onChange={(e) => {
                       setEditingLead({ ...editingLead, address: e.target.value });
                       if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
-                      addressDebounceRef.current = setTimeout(() => fetchAddressSuggestions(e.target.value), 300);
+                      addressDebounceRef.current = setTimeout(() => fetchAddressSuggestions(e.target.value), 350);
                     }}
-                    onBlur={() => setTimeout(() => setAddressSuggestionsOpen(false), 150)}
-                    onFocus={() => { if (addressSuggestions.length > 0) setAddressSuggestionsOpen(true); }}
+                    onBlur={() => setTimeout(() => setAddressSuggestionsOpen(false), 200)}
+                    onFocus={() => {
+                      if (addressSuggestions.length > 0 && addressInputRef.current) {
+                        const rect = addressInputRef.current.getBoundingClientRect();
+                        setAddressDropdownStyle({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+                        setAddressSuggestionsOpen(true);
+                      }
+                    }}
                     className="w-full p-2.5 border border-slate-200 rounded-xl"
                     placeholder="Start typing an address..."
                   />
-                  {addressSuggestionsOpen && addressSuggestions.length > 0 && (
-                    <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto text-sm">
-                      {addressSuggestions.map((s, i) => (
-                        <li
-                          key={i}
-                          onMouseDown={(e) => { e.preventDefault(); setEditingLead({ ...editingLead, address: s }); setAddressSuggestionsOpen(false); setAddressSuggestions([]); }}
-                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 hover:text-[#001f97] text-slate-700 border-b border-slate-100 last:border-0"
-                        >
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Service / Task Required</label>
@@ -8124,7 +8125,7 @@ export default function CrmDashboardPage() {
                   <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
                     <div>1/14 St Andrews St</div>
                     <div>Brighton VIC 3186</div>
-                    <div>1300 476 884</div>
+                    <div>7023 8094</div>
                     <div>info@groutix.com.au</div>
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
@@ -8305,6 +8306,24 @@ export default function CrmDashboardPage() {
         </div>
       )}
 
+      {/* Address autocomplete dropdown — rendered outside any overflow container */}
+      {addressSuggestionsOpen && addressSuggestions.length > 0 && (
+        <ul
+          className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto text-sm"
+          style={{ top: addressDropdownStyle.top + 4, left: addressDropdownStyle.left, width: addressDropdownStyle.width }}
+        >
+          {addressSuggestions.map((s, i) => (
+            <li
+              key={i}
+              onMouseDown={(e) => { e.preventDefault(); setEditingLead((prev) => prev ? { ...prev, address: s } : prev); setAddressSuggestionsOpen(false); setAddressSuggestions([]); }}
+              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 hover:text-[#001f97] text-slate-700 border-b border-slate-100 last:border-0"
+            >
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* =========================================================================
           MODAL: CUSTOMER PHOTOS
          ========================================================================= */}
@@ -8422,8 +8441,8 @@ export default function CrmDashboardPage() {
                         <div className="flex items-center gap-1">
                           {imgSrc && (
                             <a
-                              href={imgSrc}
-                              download={photo.name || `photo-${i + 1}`}
+                              href={`/api/admin/download-photo?url=${encodeURIComponent(imgSrc)}&name=${encodeURIComponent(photo.name || `photo-${i + 1}`)}`}
+                              download
                               className="text-slate-400 hover:text-emerald-600 p-1"
                               title="Download photo"
                               onClick={(e) => e.stopPropagation()}
@@ -8489,8 +8508,8 @@ export default function CrmDashboardPage() {
               <span className="text-xs font-semibold truncate max-w-md">{previewPhoto.name}</span>
               <div className="flex items-center gap-2">
                 <a
-                  href={previewPhoto.url}
-                  download={previewPhoto.name}
+                  href={`/api/admin/download-photo?url=${encodeURIComponent(previewPhoto.url)}&name=${encodeURIComponent(previewPhoto.name)}`}
+                  download
                   className="flex items-center gap-1 text-xs px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-white transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -9969,7 +9988,7 @@ export default function CrmDashboardPage() {
                   </div>
                   <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
                     <div>Melbourne, VIC</div>
-                    <div>1300 476 884</div>
+                    <div>7023 8094</div>
                     <div>info@groutix.com.au</div>
                     <div className="pt-1.5 font-black text-xs text-slate-900">TAX INVOICE</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>

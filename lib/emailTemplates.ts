@@ -47,8 +47,9 @@ Looking forward to hearing from you.
 
 Warm regards,
 Groutix Customer Care
-📞 1300 476 884 | ✉️ info@groutix.com
-🌐 www.groutix.com.au`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "request_photos",
@@ -71,7 +72,9 @@ Once received, our technical team will review the photos and send through your t
 
 Thank you,
 Groutix Estimations Team
-📞 1300 476 884`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "inspection_confirmed",
@@ -92,10 +95,13 @@ During the inspection, our specialist will:
 • Check for moisture ingress or underlying dampness
 • Provide a clear explanation of options and a transparent quotation on the spot
 
-If you need to reschedule or have any questions beforehand, please reply to this email or call us on 1300 476 884.
+If you need to reschedule or have any questions beforehand, please reply to this email or call us on 7023 8094.
 
 Kind regards,
-Groutix Team`,
+Groutix Team
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "quote_followup",
@@ -120,7 +126,9 @@ Looking forward to assisting you!
 
 Warm regards,
 Groutix Estimations Team
-📞 1300 476 884 | ✉️ info@groutix.com`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "booking_confirmed",
@@ -146,7 +154,9 @@ If you have any questions before our arrival, please don't hesitate to reach out
 
 Kind regards,
 Groutix Operations
-📞 1300 476 884`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "job_complete_care",
@@ -169,7 +179,9 @@ Thank you again for your business!
 
 Best regards,
 Groutix Team
-🌐 www.groutix.com.au`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "review_request",
@@ -192,7 +204,10 @@ If there was anything at all that didn't meet your 5-star expectations, please r
 Thank you again for trusting Groutix!
 
 Warm regards,
-The Groutix Team`,
+The Groutix Team
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "invoice_reminder",
@@ -215,13 +230,15 @@ Payment Options:
   BSB: 063-000 | Account: 1234 5678
   Reference: {invoice_number} or {customer_name}
 
-• Credit Card: Please call us on 1300 476 884 to pay securely over the phone.
+• Credit Card: Please call us on 7023 8094 to pay securely over the phone.
 
 If you have already processed this payment, please disregard this reminder with our sincere thanks.
 
 Kind regards,
 Groutix Accounts
-✉️ accounts@groutix.com | 📞 1300 476 884`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
   {
     id: "blank_custom",
@@ -235,8 +252,9 @@ Groutix Accounts
 
 Kind regards,
 Groutix Team
-📞 1300 476 884 | ✉️ info@groutix.com
-🌐 www.groutix.com.au`,
+📞 7023 8094
+✉️ info@groutix.com
+🌐 www.groutix.com`,
   },
 ];
 

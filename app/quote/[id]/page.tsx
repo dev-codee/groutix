@@ -290,7 +290,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               href="tel:1300476884"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#001f97] text-white text-xs font-bold hover:bg-[#001777] transition-colors"
             >
-              <Phone className="w-3.5 h-3.5" /> Call 1300 476 884
+              <Phone className="w-3.5 h-3.5" /> Call 7023 8094
             </a>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               href="tel:1300476884"
               className="text-sm font-black text-[#001f97] hover:underline flex items-center gap-1.5 justify-end"
             >
-              <Phone className="w-3.5 h-3.5" /> 1300 476 884
+              <Phone className="w-3.5 h-3.5" /> 7023 8094
             </a>
           </div>
         </header>
@@ -696,7 +696,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
         {/* Footer */}
         <footer className="text-center text-xs text-slate-400 pt-6 pb-12 space-y-1">
           <div>Groutix Australia Pty Ltd • Melbourne, Victoria</div>
-          <div>1300 476 884 • info@groutix.com • www.groutix.com</div>
+          <div>7023 8094 • info@groutix.com • www.groutix.com</div>
         </footer>
       </div>
     </div>

@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
             <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book My Job Day &amp; Time</a>
           </div>
 
-          <p style="font-size:13px;color:#64748b;margin-top:32px;">If you have any questions or need to speak with our team, call us on <strong>1300 476 884</strong> or reply to this email.</p>
+          <p style="font-size:13px;color:#64748b;margin-top:32px;">If you have any questions or need to speak with our team, call us on <strong>7023 8094</strong> or reply to this email.</p>
           <div style="font-weight:800;color:#001f97;margin-top:16px;">GROUTIX • Stay Sealed. Stay Smiling.</div>
         </div>
       `;
