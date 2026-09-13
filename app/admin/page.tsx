@@ -5483,9 +5483,9 @@ export default function CrmDashboardPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
+    <div className="flex h-screen overflow-hidden bg-[#f5f7fb] text-[#14213d]">
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0">
+      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
         <div>
           {/* Brand */}
           <div className="flex items-center gap-3 pb-6 border-b border-[#e4e9f1]">
@@ -5698,7 +5698,7 @@ export default function CrmDashboardPage() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* Top Header Bar */}
         <header className="h-20 bg-white border-b border-[#e4e9f1] px-6 flex items-center justify-between gap-4 sticky top-0 z-10 shadow-xs">
           <div>
@@ -8530,9 +8530,9 @@ export default function CrmDashboardPage() {
           MODAL: CUSTOMER CONVERSATION (MESSAGES)
          ========================================================================= */}
       {messagesModalOpen && activeMessageLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col p-6 gap-4 resize overflow-auto" style={{ height: "85vh", minHeight: "500px", minWidth: "340px" }}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div>
                 <h2 className="text-lg font-black text-slate-900">Customer Conversation</h2>
                 <div className="text-xs text-slate-500">
@@ -8548,7 +8548,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Conversation Messages Box */}
-            <div className="h-72 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
               {getConversation(activeMessageLeadLive || activeMessageLead).map((msg) => {
                 const isCustomer = msg.from === "customer";
                 return (
@@ -8620,7 +8620,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Reply Composer */}
-            <div className="space-y-3 pt-2 border-t border-slate-200">
+            <div className="space-y-3 pt-2 border-t border-slate-200 shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-xl border border-slate-200">
                   <button

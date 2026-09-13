@@ -35,9 +35,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f5f7fb] text-[#14213d]">
+    <div className="flex h-screen overflow-hidden bg-[#f5f7fb] text-[#14213d]">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0">
+      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
         <div>
           {/* Brand */}
           <div className="flex items-center gap-3 pb-6 border-b border-[#e4e9f1]">
@@ -91,7 +91,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 h-screen overflow-y-auto">
         <div className="mx-auto max-w-6xl px-6 py-6">{children}</div>
       </main>
     </div>
