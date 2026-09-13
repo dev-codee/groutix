@@ -30,10 +30,14 @@ type Availability = {
 };
 
 function timeLabel(t: string): string {
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hr = h % 12 === 0 ? 12 : h % 12;
-  return `${hr}:${String(m).padStart(2, "0")} ${ampm}`;
+  const [h, m = 0] = t.split(":").map(Number);
+  const endH = h + 1;
+  const startAmpm = h >= 12 ? "PM" : "AM";
+  const endAmpm = endH >= 12 ? "PM" : "AM";
+  const startHr = h % 12 === 0 ? 12 : h % 12;
+  const endHr = endH % 12 === 0 ? 12 : endH % 12;
+  const minStr = m !== 0 ? `:${String(m).padStart(2, "0")}` : ":00";
+  return `${startHr}${minStr} ${startAmpm} – ${endHr}:00 ${endAmpm}`;
 }
 
 export default function BookingPage() {
@@ -50,16 +54,12 @@ export default function BookingPage() {
   const [selectedTime, setSelectedTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState<{ reference: string; whenLabel: string } | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locateError, setLocateError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const coordQs = coords ? `&lat=${coords.lat}&lng=${coords.lng}` : "";
-      const res = await fetch(`/api/book/${id}?type=${type}&token=${encodeURIComponent(token)}${coordQs}`, {
+      const res = await fetch(`/api/book/${id}?type=${type}&token=${encodeURIComponent(token)}`, {
         cache: "no-store",
       });
       const json = await res.json();
@@ -73,36 +73,11 @@ export default function BookingPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, type, token, coords]);
+  }, [id, type, token]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  function useMyLocation() {
-    if (!navigator.geolocation) {
-      setLocateError("Location isn't supported on this device. We'll use your address instead.");
-      return;
-    }
-    setLocating(true);
-    setLocateError("");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setSelectedDate("");
-        setSelectedTime("");
-        setCoords({
-          lat: Math.round(pos.coords.latitude * 1e6) / 1e6,
-          lng: Math.round(pos.coords.longitude * 1e6) / 1e6,
-        });
-        setLocating(false);
-      },
-      () => {
-        setLocateError("We couldn't access your location. We'll use your address instead.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 12000 }
-    );
-  }
 
   const selectedDay = data?.days.find((d) => d.date === selectedDate) || null;
 
@@ -119,7 +94,6 @@ export default function BookingPage() {
           type,
           date: selectedDate,
           time: selectedTime,
-          ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         }),
       });
       const json = await res.json();
@@ -185,28 +159,6 @@ export default function BookingPage() {
               <p className="text-sm text-slate-500 mt-1">
                 Hi {data.customer.name || "there"}, choose a day and time that suits you.
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#001f97] bg-[#001f97]/10 px-2.5 py-1 rounded-full">
-                  📍 {data.area.label}
-                  {data.area.distanceKm != null ? ` · ${data.area.distanceKm} km from Tullamarine` : ""}
-                </span>
-                <button
-                  type="button"
-                  onClick={useMyLocation}
-                  disabled={locating}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
-                >
-                  {locating ? "Locating…" : data.area.located ? "↻ Update my location" : "📍 Use my current location"}
-                </button>
-              </div>
-              {data.area.located && (
-                <p className="mt-1.5 text-[11px] text-emerald-600 font-medium">
-                  ✓ Days below are matched to your exact location.
-                </p>
-              )}
-              {locateError && (
-                <p className="mt-1.5 text-[11px] text-amber-600">{locateError}</p>
-              )}
             </div>
 
             {data.current && (
@@ -248,7 +200,7 @@ export default function BookingPage() {
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
                       Select time
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {selectedDay.slots.map((s) => {
                         const isSelected = selectedTime === s.time;
                         return (
@@ -257,7 +209,7 @@ export default function BookingPage() {
                             type="button"
                             disabled={s.booked}
                             onClick={() => !s.booked && setSelectedTime(s.time)}
-                            className={`py-2.5 rounded-xl text-sm font-bold border transition-colors relative ${
+                            className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold border transition-colors relative ${
                               s.booked
                                 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through decoration-slate-400"
                                 : isSelected
@@ -266,9 +218,9 @@ export default function BookingPage() {
                             }`}
                             title={s.booked ? "Already booked by another customer" : undefined}
                           >
-                            {timeLabel(s.time)}
+                            <span>{timeLabel(s.time)}</span>
                             {s.booked && (
-                              <span className="block text-[9px] font-semibold not-italic no-underline text-rose-400 leading-none mt-0.5">
+                              <span className="block text-[9px] font-semibold not-italic no-underline text-rose-400 leading-none mt-1">
                                 Booked
                               </span>
                             )}

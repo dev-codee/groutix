@@ -25,6 +25,7 @@ import {
 
 interface LeadLike {
   id: string;
+  jobNo?: string;
   name?: string;
   phone?: string;
   email?: string;
@@ -67,12 +68,18 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
       ? lead.inspectionAt.slice(0, 10)
       : new Date().toISOString().slice(0, 10);
 
+    const resolvedJobNo =
+      lead.jobNo ||
+      (existing.leadJobNo && !existing.leadJobNo.startsWith("GX-") ? existing.leadJobNo : "") ||
+      (existing.leadJobNo ? existing.leadJobNo.replace(/^GX-/i, "JOBNO-") : "") ||
+      `JOBNO-${lead.id.slice(-6).toUpperCase()}`;
+
     setReport({
       customerName: existing.customerName || lead.name || "",
       inspectionDate: existing.inspectionDate || defaultDate,
       inspectorName: existing.inspectorName || lead.assigned || currentUsername || "Field Inspector",
       propertyAddress: existing.propertyAddress || [lead.address, lead.city, lead.state].filter(Boolean).join(", "),
-      leadJobNo: existing.leadJobNo || `GX-${lead.id.slice(-6).toUpperCase()}`,
+      leadJobNo: resolvedJobNo,
       room: existing.room || "Main Bathroom",
       findings: existing.findings || {},
       otherDetails: existing.otherDetails || "",
@@ -194,35 +201,32 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
         className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[96vh] flex flex-col overflow-hidden border border-slate-200"
       >
         {/* Header Bar (Hidden on print) */}
-        <div className="no-print bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#001f97] text-white flex items-center justify-center font-black text-sm shadow-inner">
+        <div className="no-print bg-slate-900 text-white px-4 py-2 flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 shrink-0 rounded-md bg-[#001f97] text-white flex items-center justify-center font-black text-xs shadow-inner">
               GX
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold tracking-tight">GROUTIX — INSPECTION REPORT</h2>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    report.status === "completed"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                      : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                  }`}
-                >
-                  {report.status === "completed" ? "Completed" : "Draft"}
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h2 className="text-xs sm:text-sm font-bold tracking-tight text-white shrink-0">
+                GROUTIX — INSPECTION REPORT
+              </h2>
+              {(report.leadJobNo || lead.jobNo) && (
+                <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-mono text-xs sm:text-sm font-black shadow-sm tracking-wide border border-amber-300">
+                  {report.leadJobNo || lead.jobNo}
                 </span>
-              </div>
-              <p className="text-xs text-slate-400">
+              )}
+              <span className="text-slate-500 text-xs hidden sm:inline">•</span>
+              <p className="text-[11px] text-slate-400 truncate">
                 Compact Field Inspection Form • Record findings to drive quotation item selection
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Print Inspection Report"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -231,26 +235,34 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Paper Report Printable Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/50">
-          <div className="text-center pb-3 mb-3 border-b border-slate-200">
-            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">
-              GROUTIX — INSPECTION REPORT
-            </h1>
-            <p className="text-[11px] text-slate-500 tracking-wide font-medium">
-              Compact Field Inspection Form • Record YES / NO findings and use confirmed findings to support quotation item selection.
+        {/* Form Metadata Section */}
+        <div className="px-4 py-2 sm:px-5 sm:py-2.5 border-b border-slate-200 bg-slate-50/50">
+          {/* Print-only title (hidden on screen) */}
+          <div className="hidden print:block pb-2 mb-2 border-b border-slate-300">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase">
+                GROUTIX — INSPECTION REPORT
+              </h1>
+              {(report.leadJobNo || lead.jobNo) && (
+                <span className="font-mono text-sm font-black border border-slate-900 px-2 py-0.5 rounded">
+                  {report.leadJobNo || lead.jobNo}
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-500 tracking-wide font-medium">
+              Compact Field Inspection Form • Record findings to drive quotation item selection
             </p>
           </div>
 
           {/* Form Top Metadata Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
                 Customer:
@@ -260,7 +272,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                 value={report.customerName || ""}
                 onChange={(e) => setReport({ ...report, customerName: e.target.value })}
                 placeholder="Customer Name"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
 
@@ -272,7 +284,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                 type="date"
                 value={report.inspectionDate || ""}
                 onChange={(e) => setReport({ ...report, inspectionDate: e.target.value })}
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
 
@@ -285,7 +297,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                 value={report.inspectorName || ""}
                 onChange={(e) => setReport({ ...report, inspectorName: e.target.value })}
                 placeholder="Technician / Inspector Name"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
 
@@ -298,59 +310,45 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                 value={report.propertyAddress || ""}
                 onChange={(e) => setReport({ ...report, propertyAddress: e.target.value })}
                 placeholder="Property Address"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-                  Lead / Job No:
-                </label>
-                <input
-                  type="text"
-                  value={report.leadJobNo || ""}
-                  onChange={(e) => setReport({ ...report, leadJobNo: e.target.value })}
-                  placeholder="Job No"
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-mono text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-                  Room:
-                </label>
-                <input
-                  type="text"
-                  value={report.room || ""}
-                  onChange={(e) => setReport({ ...report, room: e.target.value })}
-                  placeholder="e.g. Ensuite, Main"
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                Room:
+              </label>
+              <input
+                type="text"
+                value={report.room || ""}
+                onChange={(e) => setReport({ ...report, room: e.target.value })}
+                placeholder="e.g. Ensuite, Main"
+                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+              />
             </div>
           </div>
 
           {/* Quick Helper toolbar (Hidden on print) */}
-          <div className="no-print mt-3 pt-2.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 text-slate-600 font-medium">
+          <div className="no-print mt-1.5 pt-1.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-1.5 text-xs">
+            <div className="flex items-center gap-1.5 text-slate-600 font-medium">
               <span className="text-[11px] text-slate-500">Quick fill:</span>
               <button
                 type="button"
                 onClick={() => handleBatchSet("NO")}
-                className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] font-semibold transition-colors cursor-pointer"
               >
                 Set Unanswered to NO
               </button>
               <button
                 type="button"
                 onClick={() => setReport((prev) => ({ ...prev, findings: {} }))}
-                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[11px] transition-colors cursor-pointer"
+                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] transition-colors cursor-pointer"
               >
                 Clear All
               </button>
             </div>
 
-            <div className="flex items-center gap-3 text-xs font-bold">
+            <div className="flex items-center gap-2 text-[11px] font-bold">
               <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                 YES: {summary.yesCount}
               </span>
@@ -365,17 +363,17 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
         </div>
 
         {/* Scrollable Checklist Sections Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-start">
             {/* Column 1: Sections 1-4 (Property/Room, Area/Work Coverage, Water/Leakage, Grout Condition) */}
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {INSPECTION_SECTIONS.slice(0, 4).map((section) => (
                 <div
                   key={section.key}
-                  className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-xs"
+                  className="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-xs"
                 >
                   {/* Section Header */}
-                  <div className="bg-slate-900 text-white px-3 py-2 flex items-center justify-between text-xs font-black tracking-wider uppercase">
+                  <div className="bg-slate-900 text-white px-2.5 py-1.5 flex items-center justify-between text-[11px] font-black tracking-wider uppercase">
                     <span>{section.title}</span>
                     <span className="text-[10px] text-slate-400 font-medium lowercase">
                       {section.items.length} items
@@ -389,7 +387,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                       return (
                         <div
                           key={item.id}
-                          className={`px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-colors ${
+                          className={`px-2.5 py-1 flex items-center justify-between gap-2 text-xs transition-colors ${
                             value === "YES"
                               ? "bg-emerald-50/50"
                               : value === "NO"
@@ -397,7 +395,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                               : "hover:bg-slate-50/70"
                           }`}
                         >
-                          <span className="font-medium text-slate-800 leading-tight">
+                          <span className="font-medium text-slate-800 leading-tight text-[11px] sm:text-xs">
                             {item.label}
                           </span>
 
@@ -406,13 +404,13 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                             <button
                               type="button"
                               onClick={() => handleFindingChange(item.id, "YES")}
-                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
                                 value === "YES"
                                   ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
                               }`}
                             >
-                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                              <span className="w-2 h-2 flex items-center justify-center text-[9px]">
                                 {value === "YES" ? "■" : "□"}
                               </span>
                               <span>YES</span>
@@ -422,13 +420,13 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                             <button
                               type="button"
                               onClick={() => handleFindingChange(item.id, "NO")}
-                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
                                 value === "NO"
                                   ? "bg-slate-800 border-slate-900 text-white shadow-xs"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
                               }`}
                             >
-                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                              <span className="w-2 h-2 flex items-center justify-center text-[9px]">
                                 {value === "NO" ? "■" : "□"}
                               </span>
                               <span>NO</span>
@@ -443,14 +441,14 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
             </div>
 
             {/* Column 2: Sections 5-8 (Tiles/Surface, Silicone/Sealing, Treatment/Additional Work, Junctions/Movement) */}
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {INSPECTION_SECTIONS.slice(4).map((section) => (
                 <div
                   key={section.key}
-                  className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-xs"
+                  className="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-xs"
                 >
                   {/* Section Header */}
-                  <div className="bg-slate-900 text-white px-3 py-2 flex items-center justify-between text-xs font-black tracking-wider uppercase">
+                  <div className="bg-slate-900 text-white px-2.5 py-1.5 flex items-center justify-between text-[11px] font-black tracking-wider uppercase">
                     <span>{section.title}</span>
                     <span className="text-[10px] text-slate-400 font-medium lowercase">
                       {section.items.length} items
@@ -464,7 +462,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                       return (
                         <div
                           key={item.id}
-                          className={`px-3 py-1.5 flex items-center justify-between gap-2 text-xs transition-colors ${
+                          className={`px-2.5 py-1 flex items-center justify-between gap-2 text-xs transition-colors ${
                             value === "YES"
                               ? "bg-emerald-50/50"
                               : value === "NO"
@@ -472,7 +470,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                               : "hover:bg-slate-50/70"
                           }`}
                         >
-                          <span className="font-medium text-slate-800 leading-tight">
+                          <span className="font-medium text-slate-800 leading-tight text-[11px] sm:text-xs">
                             {item.label}
                           </span>
 
@@ -481,13 +479,13 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                             <button
                               type="button"
                               onClick={() => handleFindingChange(item.id, "YES")}
-                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
                                 value === "YES"
                                   ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
                               }`}
                             >
-                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                              <span className="w-2 h-2 flex items-center justify-center text-[9px]">
                                 {value === "YES" ? "■" : "□"}
                               </span>
                               <span>YES</span>
@@ -497,13 +495,13 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                             <button
                               type="button"
                               onClick={() => handleFindingChange(item.id, "NO")}
-                              className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
                                 value === "NO"
                                   ? "bg-slate-800 border-slate-900 text-white shadow-xs"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
                               }`}
                             >
-                              <span className="w-2.5 h-2.5 flex items-center justify-center text-[10px]">
+                              <span className="w-2 h-2 flex items-center justify-center text-[9px]">
                                 {value === "NO" ? "■" : "□"}
                               </span>
                               <span>NO</span>
@@ -519,26 +517,26 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
           </div>
 
           {/* Observations / Other Details + Estimated Time */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2 border border-slate-300 rounded-xl p-3.5 bg-white shadow-xs">
-              <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="sm:col-span-2 border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
+              <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wider mb-1">
                 OTHER DETAILS / OBSERVATIONS:
               </label>
               <textarea
-                rows={3}
+                rows={2}
                 value={report.otherDetails || ""}
                 onChange={(e) => setReport({ ...report, otherDetails: e.target.value })}
                 placeholder="Record any specific site observations, water leak source, crack locations, substrate notes..."
-                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
 
             {/* Estimated Time */}
-            <div className="border border-[#001f97]/30 rounded-xl p-3.5 bg-[#001f97]/[0.03] shadow-xs flex flex-col">
-              <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
+            <div className="border border-[#001f97]/30 rounded-lg p-2.5 bg-[#001f97]/[0.03] shadow-xs flex flex-col">
+              <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wider mb-1">
                 Estimated Time:
               </label>
-              <p className="text-[10px] text-slate-500 mb-2 leading-snug">
+              <p className="text-[10px] text-slate-500 mb-1.5 leading-snug">
                 Hours, days, or full estimate (e.g. &quot;4–6 hrs&quot;, &quot;1.5 days&quot;)
               </p>
               <input
@@ -546,36 +544,36 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                 value={report.estimatedTime || ""}
                 onChange={(e) => setReport({ ...report, estimatedTime: e.target.value })}
                 placeholder="e.g. 4–6 hours, 1.5 days"
-                className="mt-auto w-full px-3 py-2 text-xs bg-white border border-[#001f97]/40 rounded-lg font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="mt-auto w-full px-2.5 py-1.5 text-xs bg-white border border-[#001f97]/40 rounded font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
           </div>
 
           {/* Inspection Summary Bar */}
-          <div className="border-2 border-slate-900 rounded-xl p-3.5 bg-slate-50/70 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs mb-3">
-              <div className="flex items-center gap-3 font-bold">
-                <span className="uppercase tracking-wider text-slate-900 font-black">
+          <div className="border border-slate-900 rounded-lg p-2.5 bg-slate-50/70 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs mb-2">
+              <div className="flex items-center gap-2.5 font-bold">
+                <span className="uppercase tracking-wider text-slate-900 font-black text-[11px]">
                   INSPECTION SUMMARY:
                 </span>
-                <span className="text-emerald-700 bg-white px-2 py-1 rounded border border-emerald-200">
+                <span className="text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 text-xs">
                   YES findings: <span className="font-black text-sm">{summary.yesCount}</span>
                 </span>
-                <span className="text-slate-700 bg-white px-2 py-1 rounded border border-slate-200">
+                <span className="text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 text-xs">
                   NO: <span className="font-black text-sm">{summary.noCount}</span>
                 </span>
-                <span className="text-amber-700 bg-white px-2 py-1 rounded border border-amber-200">
+                <span className="text-amber-700 bg-white px-2 py-0.5 rounded border border-amber-200 text-xs">
                   Unanswered: <span className="font-black text-sm">{summary.unansweredCount}</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900">Quote build from report:</span>
+                <span className="font-bold text-slate-900 text-xs">Quote build from report:</span>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setReport({ ...report, quoteBuildFromReport: "YES" })}
-                    className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border ${
+                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
                       report.quoteBuildFromReport === "YES"
                         ? "bg-[#001f97] text-white border-[#001f97]"
                         : "bg-white text-slate-700 border-slate-300"
@@ -586,7 +584,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                   <button
                     type="button"
                     onClick={() => setReport({ ...report, quoteBuildFromReport: "NO" })}
-                    className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border ${
+                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
                       report.quoteBuildFromReport === "NO"
                         ? "bg-slate-800 text-white border-slate-800"
                         : "bg-white text-slate-700 border-slate-300"
@@ -599,8 +597,8 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
             </div>
 
             {/* Inspector Notes / Recommendation */}
-            <div className="mb-3">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <div className="mb-2">
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">
                 Inspector Notes / Recommendation:
               </label>
               <input
@@ -608,14 +606,14 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                 value={report.inspectorNotes || ""}
                 onChange={(e) => setReport({ ...report, inspectorNotes: e.target.value })}
                 placeholder="Recommended solution, e.g., Epoxy Grout Upgrade + Perimeter Sealing"
-                className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className="w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
               />
             </div>
 
             {/* Signatures & Acknowledgement */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200">
               <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                   Inspector Signature / Confirmed By:
                 </label>
                 <input
@@ -623,12 +621,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                   value={report.inspectorSignature || ""}
                   onChange={(e) => setReport({ ...report, inspectorSignature: e.target.value })}
                   placeholder="Technician Signature / Name"
-                  className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md font-semibold text-slate-900 italic focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                  className="w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded font-semibold text-slate-900 italic focus:ring-1 focus:ring-[#001f97] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">
                   Customer Acknowledgement:
                 </label>
                 <input
@@ -636,7 +634,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
                   value={report.customerAcknowledgement || ""}
                   onChange={(e) => setReport({ ...report, customerAcknowledgement: e.target.value })}
                   placeholder="Customer Name / Acknowledgement"
-                  className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                  className="w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
                 />
               </div>
             </div>
@@ -649,7 +647,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
         </div>
 
         {/* Modal Bottom Action Footer (Hidden on print) */}
-        <div className="no-print p-3 sm:px-5 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="no-print px-4 py-2 sm:px-5 sm:py-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {saveSuccess && (
               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 animate-fade-in">

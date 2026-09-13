@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     customerName: incoming.customerName || existing.customerName || lead.name,
     address: incoming.address || existing.address || lead.address,
     sentAt: now.toISOString(),
+    provided: true,
   };
 
   // Generate the official 2-page executive Warranty PDF
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not send the warranty email." }, { status: 502 });
   }
 
-  await updateSubmission(body.id, { warranty, status: "Warranty Sent" });
+  await updateSubmission(body.id, { warranty, warrantyProvided: true, status: "Warranty Sent" });
   await appendActivity(body.id, {
     time: now.toISOString(),
     actor,

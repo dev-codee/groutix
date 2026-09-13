@@ -70,7 +70,7 @@ export async function listUpcomingBookings(): Promise<BookingDoc[]> {
           { jobAt: { $gte: todayStr } },
         ],
       })
-      .project({ _id: 1, inspectionAt: 1, jobAt: 1, address: 1, city: 1, name: 1 })
+      .project({ _id: 1, inspectionAt: 1, jobAt: 1, address: 1, city: 1, name: 1, jobNo: 1 })
       .toArray();
 
     for (const s of activeSubs) {
@@ -88,7 +88,7 @@ export async function listUpcomingBookings(): Promise<BookingDoc[]> {
                 date: d,
                 time: t,
                 zone: "flexible",
-                reference: `GX-SUB-${idStr.slice(-6)}`,
+                reference: (s as any).jobNo || `GX-SUB-${idStr.slice(-6)}`,
                 createdAt: new Date(),
               });
             }

@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Navigation,
   ShieldCheck,
+  ShieldAlert,
   Edit3,
   Save,
   Trash2,
@@ -48,7 +49,9 @@ import {
   HardHat,
   Eye,
   CheckCircle2,
-  Smartphone
+  Smartphone,
+  MapPin,
+  Wrench
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -116,6 +119,7 @@ export interface WarrantyDoc {
   authorisedBy?: string;
   dateIssued?: string;
   sentAt?: string;
+  provided?: boolean;
 }
 
 export interface ActivityEntry {
@@ -177,6 +181,7 @@ export interface Lead {
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
   warranty?: WarrantyDoc;
+  warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
   quoteAcceptedAt?: string;
@@ -316,7 +321,8 @@ const INSPECTION_STEPS: VisitStep[] = [
 const JOB_STEPS: VisitStep[] = [
   { label: "On the Way", status: "Job En Route" },
   { label: "Reached", status: "Job Arrived" },
-  { label: "Start", status: "Job In Progress" },
+  { label: "Start", status: "Job Started" },
+  { label: "In Progress", status: "Job In Progress" },
   { label: "Job Done", status: "Job Done" },
 ];
 // Which phase a lead is in, so we know which step set (if any) to show.
@@ -333,6 +339,7 @@ const JOB_PHASE = [
   "Job Confirmed",
   "Job En Route",
   "Job Arrived",
+  "Job Started",
   "Job In Progress",
 ];
 
@@ -475,13 +482,13 @@ function getStepActive(lead: Lead, step: string): boolean {
     case "New":
       return true;
     case "Inspection Booked":
-      return ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Inspection Completed":
-      return ["Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Inspection Completed", "Quote Pending", "Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Quote Sent":
-      return ["Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Quote Sent", "Negotiation", "Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Job Booked":
-      return ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
+      return ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Job Done":
       return ["Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(s);
     case "Invoice Sent":
@@ -552,6 +559,7 @@ function getBadgeColor(status: string) {
     case "Inspection In Progress":
     case "Job En Route":
     case "Job Arrived":
+    case "Job Started":
     case "Job In Progress":
       return "bg-amber-50 text-amber-700 border-amber-200";
     // Closed / inactive — de-emphasised.
@@ -1022,6 +1030,7 @@ export default function CrmDashboardPage() {
   const [warrantyAddress, setWarrantyAddress] = useState("");
   const [warrantyAuthorised, setWarrantyAuthorised] = useState("GROUTIX PTY LTD");
   const [warrantyIssued, setWarrantyIssued] = useState("");
+  const [warrantyProvided, setWarrantyProvided] = useState(true);
   const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -2425,6 +2434,8 @@ export default function CrmDashboardPage() {
     exp.setFullYear(exp.getFullYear() + 10);
     const expiryStr = exp.toISOString().slice(0, 10);
 
+    const isProvided = lead.warrantyProvided !== false && lead.warranty?.provided !== false;
+    setWarrantyProvided(isProvided);
     setWarrantyJobNo(lead.jobNo || lead.warranty?.jobNo || `Job No-${lead.id.slice(-6).toUpperCase()}`);
     setWarrantyCompletion(lead.warranty?.completionDate || today);
     setWarrantyExpiry(lead.warranty?.expiryDate || expiryStr);
@@ -2879,6 +2890,7 @@ export default function CrmDashboardPage() {
             address: warrantyAddress,
             authorisedBy: warrantyAuthorised,
             dateIssued: warrantyIssued,
+            provided: true,
           },
         }),
       });
@@ -2958,93 +2970,183 @@ export default function CrmDashboardPage() {
     }
   }
 
-  // ── Login 1 (Intake / Leads) Custom Horizontal Lead Card ───────────────────
-  // Shows ONLY the items from the user-specified template in a clean horizontal row
+  // ── Dedicated Intake Dashboard Row (Manager-Style 3 Columns) ───────────────
   function renderIntakeLeadRow(l: Lead) {
-    const photosTotal = l.photos?.length || l.photosCount || 0;
     const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-    const statusOptions = getRoleStatusOptions(role, l.status);
+    const statusOptions = getRoleStatusOptions("intake", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
     const followupPrompt = getFollowupPrompt(l);
+
+    const jobNoDisplay = l.jobNo
+      ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
+      : `JobNo-${l.id.slice(0, 4)}`;
+
+    const dateTimeDisplay = (() => {
+      const d = new Date(l.createdAt || l.inspectionAt || l.jobAt || Date.now());
+      if (isNaN(d.getTime())) return "";
+      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    })();
+
+    const serviceDisplay = l.service || "3 Bathrooms | Silicone Replacement";
+    const notesDisplay = l.notes || l.message;
+
+    const isNewDone = true;
+    const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
+    const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
+    const isQuoteSentDone = l.status === "Quote Sent" || l.status === "Won" || l.status === "Job Booked" || l.status === "Completed";
+    const isJobBookedDone = l.status === "Job Booked" || l.status === "Completed";
 
     return (
       <div
         key={l.id}
-        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
+        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-start">
-          {/* SECTION 1: Client Info & Details Box (3 columns) */}
-          <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                  title={l.name || "Unnamed Customer"}
-                >
-                  {l.name || "Unnamed Customer"}
-                </button>
-                {(l.message || l.notes) && (
-                  <div className="text-xs text-slate-500 line-clamp-1">
-                    {l.message || l.notes}
-                  </div>
-                )}
-              </div>
-              {l.createdAt && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
-                  <div className="text-[11px] font-semibold text-slate-600">
-                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </div>
-                </div>
+        <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+          {/* COLUMN 1: CLIENT */}
+          <div className="col-span-4 min-w-0 space-y-2.5">
+            {/* Row 1: JobNo | Name | Date Time */}
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
+              <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
+              <span className="text-slate-300 font-bold">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLead(l);
+                  setLeadModalOpen(true);
+                }}
+                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                title={l.name || "Unnamed Customer"}
+              >
+                {l.name || "Unnamed Customer"}
+              </button>
+              <span className="text-slate-300 font-bold">|</span>
+              <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Details Box */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+            {/* Row 2: Phone & Email */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
+                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate">{l.phone || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
+                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={l.email}>{l.email || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Email:</span>
-                <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            </div>
+
+            {/* Row 4: Service */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <Wrench className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+            </div>
+
+            {/* Row 5: Notes */}
+            {notesDisplay ? (
+              <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+                <MessageSquare className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={`Notes: ${notesDisplay}`}>Notes: {notesDisplay}</span>
               </div>
-              {l.address && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
-                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
-                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 font-normal truncate">
+                <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">Notes: None</span>
               </div>
+            )}
+
+            {/* Row 6: 5 Action Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => callCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Call"
+              >
+                <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => emailCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Email"
+              >
+                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Email</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l, "sms")}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="SMS"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">SMS</span>
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
+                title="WhatsApp"
+              >
+                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="truncate">WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l)}
+                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Conversation"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Conversation</span>
+                {hasCustomerUnread && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* SECTION 2: STATUS, ASSIGNED & FOLLOW-UP (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+          {/* COLUMN 2: INSPECTION & QUOTE */}
+          <div className="col-span-5 min-w-0 space-y-2.5">
+            {/* Row 1: STATUS, ASSIGNED, GPS */}
+            <div className="flex items-end gap-1.5">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   STATUS
                 </label>
                 <select
                   value={l.status || "New"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-emerald-400 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -3054,14 +3156,14 @@ export default function CrmDashboardPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   ASSIGNED
                 </label>
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
                     <option key={n} value={n}>
@@ -3070,81 +3172,89 @@ export default function CrmDashboardPage() {
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Follow-up card */}
-            <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
-              <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">
-                FOLLOW-UP
-              </div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5 leading-snug">
-                {followupPrompt}
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 3: INTAKE WORKFLOW STAGES (3 columns) */}
-          <div className="xl:col-span-3 space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-              INTAKE WORKFLOW STAGES
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { label: "New", status: "New", active: l.status === "New", color: "bg-blue-600 hover:bg-blue-700" },
-                { label: "Contacted", status: "Contacted", active: l.status === "Contacted", color: "bg-purple-600 hover:bg-purple-700" },
-                { label: "Inspections", status: "Inspection Booked", active: l.status.startsWith("Inspection"), color: "bg-teal-600 hover:bg-teal-700" },
-                { label: "Quotes", status: "Quote Sent", active: l.status.startsWith("Quote") || l.status === "Won" || l.status === "Negotiation", color: "bg-amber-600 hover:bg-amber-700" },
-                { label: "Job Booked", status: "Job Booked", active: l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed", color: "bg-emerald-600 hover:bg-emerald-700" },
-              ].map((st) => (
-                <button
-                  key={st.label}
-                  type="button"
-                  onClick={() =>
-                    updateLeadField(l.id, {
-                      status: st.status,
-                      ...(st.status === "Contacted" && !l.contacted ? { contacted: new Date().toISOString() } : {}),
-                    })
-                  }
-                  className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[32px] cursor-pointer ${
-                    st.active
-                      ? `${st.color} text-white shadow-2xs`
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                  }`}
-                  title={`Set status: ${st.label}`}
-                >
-                  {st.active && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                  <span className="text-center leading-tight">{st.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SECTION 4: ACTIONS (3 columns) */}
-          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
-            {/* Top row: Phone, Mail, Quote, Inspection */}
-            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => callCustomer(l)}
-                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Call customer"
+                onClick={() => openGpsModal(l)}
+                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
               >
-                <Phone className="w-4 h-4" />
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>GPS</span>
+              </button>
+            </div>
+
+            {/* Row 2 (5 buttons): On the Way, Reached, Start, Inspection Form, Complete */}
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection En Route" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection En Route"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="On the Way"
+              >
+                On the Way
               </button>
 
               <button
                 type="button"
-                onClick={() => emailCustomer(l)}
-                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Email customer"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Arrived" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Arrived"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Reached"
               >
-                <Mail className="w-4 h-4" />
+                Reached
               </button>
 
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection In Progress"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Start"
+              >
+                Start
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openInspectionModal(l)}
+                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 shadow-2xs"
+                title="Inspection Form"
+              >
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Inspection Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Completed"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Complete"
+              >
+                Complete
+              </button>
+            </div>
+
+            {/* Row 3 (4 items): Quote, Sent, Job Booked, Assign Tech */}
+            <div className="grid grid-cols-4 gap-1">
               <button
                 type="button"
                 onClick={() => openQuoteModal(l)}
-                className="px-3 py-1.5 border border-amber-200 bg-[#fef3c7] text-[#b45309] rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0"
                 title="Open Quote Builder"
               >
                 Quote
@@ -3152,90 +3262,134 @@ export default function CrmDashboardPage() {
 
               <button
                 type="button"
-                onClick={() => openInspectionModal(l)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                  l.inspectionReport?.status === "completed"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                    : "border border-cyan-300 bg-[#ecfeff] text-[#0f766e] hover:bg-cyan-100"
+                onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Quote Sent"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
-                title="Inspection Report Form"
+                title="Quote Sent"
               >
-                <ClipboardList className="w-4 h-4" />
-                <span>Inspection</span>
+                Sent
               </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Booked"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Job Booked"
+              >
+                Job Booked
+              </button>
+
+              <select
+                value={l.technician || ""}
+                onChange={(e) => {
+                  const techName = e.target.value;
+                  const tech = assignableTechnicians.find((t) => t.name === techName);
+                  updateLeadField(l.id, { technician: techName, technicianId: tech?.id || "" });
+                }}
+                className="w-full text-[10px] xl:text-[11px] font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-1.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate min-w-0"
+                title="Assign Technician"
+              >
+                <option value="">Assign Tech</option>
+                {assignableTechnicians.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* COLUMN 3: WORKFLOW (UPTO JOB BOOKED) */}
+          <div className="col-span-3 min-w-0 space-y-1.5">
+            {/* FOLLOW-UP banner */}
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2 py-0.5 rounded-lg flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+                {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+              </span>
             </div>
 
-            {/* Bottom row: Photos, Messages, Share, and on right Edit/Delete */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
+            {/* Two sub-columns */}
+            <div className="grid grid-cols-2 gap-1.5 min-w-0">
+              {/* Left sub-column: New, Inspection Completed, Job Booked */}
+              <div className="space-y-1 min-w-0">
                 <button
                   type="button"
-                  onClick={() => openPhotosModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Photos"
+                  onClick={() => updateLeadField(l.id, { status: "New" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isNewDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <Camera className="w-4 h-4" />
-                  {photosTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {photosTotal}
-                    </span>
+                  <span className="truncate">New</span>
+                  {isNewDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isInspectionCompletedDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="truncate">Inspection Completed</span>
+                  {isInspectionCompletedDone ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
                   )}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => openMessagesModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Messages"
+                  onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isJobBookedDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  {hasCustomerUnread && (
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  )}
+                  <span className="truncate">Job Booked</span>
+                  {isJobBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
-
-                {l.address ? (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
-                    title="GPS Location"
-                  >
-                    <Navigation className="w-4 h-4" />
-                    <span className="text-[10px] font-bold">GPS</span>
-                  </a>
-                ) : (
-                  <div
-                    className="p-1.5 text-slate-400 cursor-not-allowed flex items-center gap-1"
-                    title="No address provided"
-                  >
-                    <Navigation className="w-4 h-4 opacity-50" />
-                    <span className="text-[10px] font-bold opacity-50">GPS</span>
-                  </div>
-                )}
               </div>
 
-              <div className="flex items-center gap-1 text-slate-400">
+              {/* Right sub-column: Inspection Booked, Quote Sent */}
+              <div className="space-y-1 min-w-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="p-1.5 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                  title="Edit Lead"
+                  onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isInspectionBookedDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <Edit3 className="w-4 h-4" />
+                  <span className="truncate">Inspection Booked</span>
+                  {isInspectionBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleDeleteLead(l.id)}
-                  className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                  title="Delete Lead"
+                  onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
+                  className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+                    isQuoteSentDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <span className="truncate">Quote Sent</span>
+                  {isQuoteSentDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
               </div>
             </div>
@@ -3245,455 +3399,168 @@ export default function CrmDashboardPage() {
     );
   }
 
-  // ── Login 2 (Field / Scheduling) Custom Horizontal Lead Card ───────────────
-  // Shows ONLY the items from the user-specified template in a clean horizontal row
+  // ── Dedicated Inspection / Field Dashboard Row (Manager-Style 3 Columns) ───
   function renderFieldLeadRow(l: Lead) {
-    const photosTotal = l.photos?.length || l.photosCount || 0;
     const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-    const statusOptions = getRoleStatusOptions(role, l.status);
+    const statusOptions = getRoleStatusOptions("inspection", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
+    const followupPrompt = getFollowupPrompt(l);
 
+    const jobNoDisplay = l.jobNo
+      ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
+      : `JobNo-${l.id.slice(0, 4)}`;
+
+    const dateTimeDisplay = (() => {
+      const d = new Date(l.inspectionAt || l.createdAt || l.jobAt || Date.now());
+      if (isNaN(d.getTime())) return "";
+      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    })();
+
+    const serviceDisplay = l.service && (l.notes || l.message)
+      ? `${l.service} | ${l.notes || l.message}`
+      : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
+
+    const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
+    const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
 
     return (
       <div
         key={l.id}
-        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
+        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-center">
-          {/* SECTION 1: Client Info & Details Box (3 columns) */}
-          <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                  title={l.name || "Unnamed Customer"}
-                >
-                  {l.name || "Unnamed Customer"}
-                </button>
-                {(l.message || l.notes) && (
-                  <div className="text-xs text-slate-500 line-clamp-1">
-                    {l.message || l.notes}
-                  </div>
-                )}
-              </div>
-              {l.createdAt && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
-                  <div className="text-[11px] font-semibold text-slate-600">
-                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Details Box with Phone, Email, Service, and Inspection */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Email:</span>
-                <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
-              </div>
-              {l.address && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
-                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
-                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-slate-200/50">
-                <span className="text-slate-400 font-semibold shrink-0">Inspection:</span>
-                <span className="font-bold text-[#001f97] truncate text-right">
-                  {l.inspectionAt ? fmtDate(l.inspectionAt) : "Not scheduled"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 2: STATUS, ASSIGNED & TECHNICIAN ON SITE (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                  STATUS
-                </label>
-                <select
-                  value={l.status || "Inspection Booked"}
-                  onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-emerald-400 truncate"
-                >
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                  ASSIGNED
-                </label>
-                <select
-                  value={
-                    inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned)
-                      ? (inspectionStaff.find((s) => s.name === l.assigned || s.username === l.assigned)?.name || l.assigned)
-                      : "Unassigned"
-                  }
-                  onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
-                >
-                  <option value="Unassigned">Unassigned</option>
-                  {inspectionStaff.map((s) => {
-                    const label = s.name?.trim() || s.username;
-                    return (
-                      <option key={s.id} value={label}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                <HardHat className="w-3 h-3 text-slate-500" />
-                <span>TECHNICIAN ON SITE</span>
-              </label>
-              <select
-                value={l.technicianId || ""}
-                onChange={(e) => {
-                  const tech = assignableTechnicians.find((t) => t.id === e.target.value);
-                  updateLeadField(l.id, {
-                    technicianId: e.target.value,
-                    technician: tech?.name || "",
-                  });
-                }}
-                className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
-              >
-                <option value="">Unassigned</option>
-                {assignableTechnicians.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}{t.hasLogin ? " (Portal)" : ""}{!t.active ? " (inactive)" : ""}
-                  </option>
-                ))}
-                {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
-                  <option value={l.technicianId}>{l.technician || "Former technician"}</option>
-                )}
-              </select>
-            </div>
-          </div>
-
-          {/* SECTION 3: INSPECTION LIVE VISIT & REPORT (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            {/* Inspection Live Visit micro-stages */}
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                INSPECTION LIVE VISIT
-              </label>
-              <div className="grid grid-cols-5 gap-1">
-                {[
-                  { label: "On the\nWay", status: "Inspection En Route", color: "bg-orange-500 hover:bg-orange-600" },
-                  { label: "Reached", status: "Inspection Arrived", color: "bg-[#1e3a5f] hover:bg-[#162d4a]" },
-                  { label: "Start", status: "Inspection In Progress", color: "bg-slate-600 hover:bg-slate-700" },
-                  { label: "Inspection\nForm", status: "__open_form__", color: "bg-emerald-600 hover:bg-emerald-700" },
-                  { label: "Complete", status: "Inspection Completed", color: "bg-teal-600 hover:bg-teal-700" },
-                ].map((st) => {
-                  const isFormBtn = st.status === "__open_form__";
-                  const isCurrent = !isFormBtn && l.status === st.status;
-                  const formFilled = l.inspectionReport?.status === "completed";
-                  return (
-                    <button
-                      key={st.label}
-                      type="button"
-                      onClick={() => {
-                        if (isFormBtn) { openInspectionModal(l); return; }
-                        updateLeadField(l.id, { status: st.status });
-                      }}
-                      className={`px-1 py-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 text-center leading-tight min-h-[36px] cursor-pointer ${
-                        isFormBtn
-                          ? formFilled
-                            ? "bg-emerald-600 text-white shadow-sm"
-                            : "bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100"
-                          : isCurrent
-                            ? `${st.color} text-white shadow-sm`
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/80"
-                      }`}
-                      title={isFormBtn ? "Open Inspection Form" : `Set status: ${st.status}`}
-                    >
-                      {isCurrent && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                      <span className="text-center leading-tight whitespace-pre-line">{st.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Share to Booking Office banner */}
-            {l.status === "Inspection Completed" ? (
-              <div className="w-full px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5">
-                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span className="truncate">Shared to Booking Office — awaiting quote</span>
-              </div>
-            ) : (
+        <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+          {/* COLUMN 1: CLIENT */}
+          <div className="col-span-4 min-w-0 space-y-2.5">
+            {/* Row 1: JobNo | Name | Date Time */}
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
+              <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
+              <span className="text-slate-300 font-bold">|</span>
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                className="w-full px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                title="Share to Booking Office"
+                onClick={() => {
+                  setEditingLead(l);
+                  setLeadModalOpen(true);
+                }}
+                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                title={l.name || "Unnamed Customer"}
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>Share to Booking Office</span>
+                {l.name || "Unnamed Customer"}
               </button>
-            )}
-
-            {/* GROUTIX Field Inspection Report */}
-            <div
-              onClick={() => openInspectionModal(l)}
-              className="w-full px-3 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg flex items-center justify-between cursor-pointer transition-colors shadow-2xs"
-              title="Open Groutix Field Inspection Report"
-            >
-              <span className="flex items-center gap-1.5 text-xs font-bold truncate">
-                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">GROUTIX Field Inspection Report</span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded shrink-0 ml-1">
-                {l.inspectionReport?.status === "completed" ? "VIEW FORM" : "FILL / VIEW FORM"}
-              </span>
+              <span className="text-slate-300 font-bold">|</span>
+              <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
+              )}
             </div>
-          </div>
 
-          {/* SECTION 4: ACTIONS (3 columns) */}
-          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
-            {/* Top row: Phone, Mail, Quote, Inspection */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            {/* Row 2: Phone & Email */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
+                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate">{l.phone || "—"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
+                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={l.email}>{l.email || "—"}</span>
+              </div>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            </div>
+
+            {/* Row 4: Service / Inquiry */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <Wrench className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+            </div>
+
+            {/* Row 5: 5 Action Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
               <button
                 type="button"
                 onClick={() => callCustomer(l)}
-                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Call customer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Call"
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Call</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => emailCustomer(l)}
-                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Email customer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Email"
               >
-                <Mail className="w-4 h-4" />
+                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Email</span>
               </button>
-
 
               <button
                 type="button"
-                onClick={() => openInspectionModal(l)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                  l.inspectionReport?.status === "completed"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                    : "border border-cyan-300 bg-[#ecfeff] text-[#0f766e] hover:bg-cyan-100"
-                }`}
-                title="Inspection Report Form"
+                onClick={() => openMessagesModal(l, "sms")}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="SMS"
               >
-                <ClipboardList className="w-4 h-4" />
-                <span>Inspection</span>
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">SMS</span>
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
+                title="WhatsApp"
+              >
+                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="truncate">WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l)}
+                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Conversation"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Conversation</span>
+                {hasCustomerUnread && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
               </button>
             </div>
-
-            {/* Bottom row: Photos, Messages, Share, and on right Edit/Delete */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openPhotosModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Photos"
-                >
-                  <Camera className="w-4 h-4" />
-                  {photosTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {photosTotal}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openMessagesModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Messages"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {hasCustomerUnread && (
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  )}
-                </button>
-
-                {l.address ? (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer flex items-center gap-1"
-                    title="GPS Location"
-                  >
-                    <Navigation className="w-4 h-4" />
-                    <span className="text-[10px] font-bold">GPS</span>
-                  </a>
-                ) : (
-                  <div
-                    className="p-1.5 text-slate-400 cursor-not-allowed flex items-center gap-1"
-                    title="No address provided"
-                  >
-                    <Navigation className="w-4 h-4 opacity-50" />
-                    <span className="text-[10px] font-bold opacity-50">GPS</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1 text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="p-1.5 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                  title="Edit Lead"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleDeleteLead(l.id)}
-                  className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                  title="Delete Lead"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Login 3 (Technician / Job Execution) Custom Horizontal Lead Card ────────
-  // Dedicated technician dashboard showing job execution micro-stages, checklist,
-  // photos, customer contact, and one-click completion to Finance.
-  function renderTechnicianLeadRow(l: Lead) {
-    const photosTotal = l.photos?.length || l.photosCount || 0;
-    const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-    const statusOptions = getRoleStatusOptions("technician", l.status);
-    const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
-    const waUrl = getWhatsAppLink(l.phone);
-
-    return (
-      <div
-        key={l.id}
-        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-center">
-          {/* SECTION 1: Client Info & Details Box (3 columns) */}
-          <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    {l.jobNo || "Job"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingLead(l);
-                      setLeadModalOpen(true);
-                    }}
-                    className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block flex-1"
-                    title={l.name || "Unnamed Customer"}
-                  >
-                    {l.name || "Unnamed Customer"}
-                  </button>
-                </div>
-                {(l.message || l.notes) && (
-                  <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
-                    {l.message || l.notes}
-                  </div>
-                )}
-              </div>
-              {l.createdAt && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
-                  <div className="text-[11px] font-semibold text-slate-600">
-                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Details Box with Phone, Email, Address, Service, and Job Date */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
-              </div>
-              {l.address && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
-                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
-                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Standard Work"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-slate-200/50">
-                <span className="text-slate-400 font-semibold shrink-0">Job Date:</span>
-                <span className="font-bold text-[#001f97] truncate text-right">
-                  {l.jobAt ? fmtDate(l.jobAt) : l.inspectionAt ? fmtDate(l.inspectionAt) : "Booked"}
-                </span>
-              </div>
-            </div>
           </div>
 
-          {/* SECTION 2: JOB STATUS & ASSIGNED (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                  JOB STATUS
+          {/* COLUMN 2: INSPECTION (NO QUOTE) */}
+          <div className="col-span-5 min-w-0 space-y-2.5">
+            {/* Row 1: STATUS, ASSIGNED, GPS */}
+            <div className="flex items-end gap-1.5">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
+                  STATUS
                 </label>
                 <select
-                  value={l.status || "Job Booked"}
+                  value={l.status || "Inspection Booked"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-cyan-700 bg-cyan-50/70 border border-cyan-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-cyan-400 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -3703,14 +3570,14 @@ export default function CrmDashboardPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                  COORDINATOR
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
+                  ASSIGNED
                 </label>
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
                     <option key={n} value={n}>
@@ -3719,158 +3586,121 @@ export default function CrmDashboardPage() {
                   ))}
                 </select>
               </div>
+
+              <button
+                type="button"
+                onClick={() => openGpsModal(l)}
+                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>GPS</span>
+              </button>
             </div>
 
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                <HardHat className="w-3 h-3 text-slate-500" />
-                <span>TECHNICIAN ON SITE</span>
-              </label>
-              <div className="w-full text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 truncate">
-                {l.technician || "Unassigned"}
-              </div>
+            {/* Row 2 (5 buttons): On the Way, Reached, Start, Inspection Form, Complete */}
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection En Route" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection En Route"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="On the Way"
+              >
+                On the Way
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Arrived" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Arrived"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Reached"
+              >
+                Reached
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection In Progress"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Start"
+              >
+                Start
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openInspectionModal(l)}
+                className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 shadow-2xs"
+                title="Inspection Form"
+              >
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Inspection Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Inspection Completed"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Complete"
+              >
+                Complete
+              </button>
             </div>
           </div>
 
-          {/* SECTION 3: JOB LIVE VISIT & COMPLETION (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                JOB LIVE VISIT
-              </label>
-              <div className="grid grid-cols-4 gap-1">
-                {[
-                  { label: "On the\nWay", status: "Job En Route", color: "bg-orange-500 hover:bg-orange-600" },
-                  { label: "Reached", status: "Job Arrived", color: "bg-[#1e3a5f] hover:bg-[#162d4a]" },
-                  { label: "In\nProgress", status: "Job In Progress", color: "bg-blue-600 hover:bg-blue-700" },
-                  { label: "Job\nDone", status: "Job Done", color: "bg-emerald-600 hover:bg-emerald-700" },
-                ].map((st) => {
-                  const isCurrent = l.status === st.status;
-                  return (
-                    <button
-                      key={st.label}
-                      type="button"
-                      onClick={() => updateLeadField(l.id, { status: st.status })}
-                      className={`px-1 py-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 text-center leading-tight min-h-[36px] cursor-pointer ${
-                        isCurrent
-                          ? `${st.color} text-white shadow-sm`
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/80"
-                      }`}
-                      title={`Set status: ${st.status}`}
-                    >
-                      {isCurrent && <Check className="w-2.5 h-2.5 stroke-[2.5] shrink-0" />}
-                      <span className="text-center leading-tight whitespace-pre-line">{st.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+          {/* COLUMN 3: WORKFLOW (UPTO INSPECTION COMPLETED) */}
+          <div className="col-span-3 min-w-0 space-y-1.5">
+            {/* FOLLOW-UP banner */}
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+                {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+              </span>
             </div>
 
-            {/* Hand-off banner / Mark Job Done */}
-            {l.status === "Job Done" ? (
-              <div className="w-full px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5">
-                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span className="truncate">Job Completed — Handed to Finance</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-                className="w-full px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                title="Mark Job Completed"
-              >
-                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Mark Job Done &amp; Complete</span>
-              </button>
-            )}
-          </div>
+            {/* Checklist items */}
+            <div className="space-y-1.5">
+              {[
+                { label: "Inspection Booked", status: "Inspection Booked" },
+                { label: "Inspection Completed", status: "Inspection Completed" },
+              ].map((item) => {
+                const isDone =
+                  item.status === "Inspection Booked"
+                    ? isInspectionBookedDone
+                    : isInspectionCompletedDone;
 
-          {/* SECTION 4: ACTIONS (3 columns) */}
-          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
-            {/* Top row: Phone, Mail, WhatsApp, Scope */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => callCustomer(l)}
-                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Call customer"
-              >
-                <Phone className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => emailCustomer(l)}
-                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Email customer"
-              >
-                <Mail className="w-4 h-4" />
-              </button>
-
-              {waUrl && (
-                <a
-                  href={waUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1.5 border border-emerald-300 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
-                  title="WhatsApp customer"
-                >
-                  <Send className="w-4 h-4" />
-                </a>
-              )}
-
-              <button
-                type="button"
-                onClick={() => openQuoteModal(l)}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 bg-indigo-50 text-indigo-800 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
-                title="View Scope of Work & Job Specifications"
-              >
-                <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Scope of Work</span>
-              </button>
-            </div>
-
-            {/* Bottom row: Photos, Messages, Mark Job Done */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openPhotosModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Job Photos"
-                >
-                  <Camera className="w-4 h-4" />
-                  {photosTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {photosTotal}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openMessagesModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Messages"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {hasCustomerUnread && (
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  )}
-                </button>
-              </div>
-
-              {l.status !== "Job Done" && (
-                <button
-                  type="button"
-                  onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-                  className="px-2.5 py-1 text-xs font-bold bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
-                  title="Finish Job"
-                >
-                  <Check className="w-3 h-3 stroke-[2.5]" />
-                  <span>Finish Job</span>
-                </button>
-              )}
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => updateLeadField(l.id, { status: item.status })}
+                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                      isDone
+                        ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -3878,145 +3708,552 @@ export default function CrmDashboardPage() {
     );
   }
 
-  // ── Login 3 (Finance / Completion) Custom Horizontal Lead Card ──────────────
-  // Shows ONLY the items from the user-specified template in a clean horizontal row
-  function renderFinanceLeadRow(l: Lead) {
-    const photosTotal = l.photos?.length || l.photosCount || 0;
+  // ── Dedicated Technician Dashboard Row (Manager-Style 3 Columns) ───────────
+  function renderTechnicianLeadRow(l: Lead) {
     const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-    const statusOptions = getRoleStatusOptions(role, l.status);
+    const statusOptions = getRoleStatusOptions("technician", l.status);
     const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
+    const followupPrompt = getFollowupPrompt(l);
 
-    const financeStages = [
-      { label: "Job Done", status: "Job Done", color: "bg-[#0284c7] hover:bg-[#0369a1]" },
-      { label: "Payment Pending", status: "Payment Pending", color: "bg-amber-600 hover:bg-amber-700" },
-      { label: "Payment Received", status: "Payment Received", color: "bg-emerald-600 hover:bg-emerald-700" },
-      { label: "Warranty Sent", status: "Warranty Sent", color: "bg-indigo-600 hover:bg-indigo-700" },
-      { label: "Completed", status: "Completed", color: "bg-emerald-700 hover:bg-emerald-800" },
-    ];
+    const jobNoDisplay = l.jobNo
+      ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
+      : `JobNo-${l.id.slice(0, 4)}`;
 
-    const leadRows = ([
-      ["Address", l.address],
-      ["Phone", l.phone],
-      ["Email", l.email],
-      ["Service", l.service],
-      ["Leaking", l.leaking],
-      ["Damaged tiles", l.damagedTiles],
-      ["Notes", l.notes || l.message],
-    ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
+    const dateTimeDisplay = (() => {
+      const d = new Date(l.jobAt || l.inspectionAt || l.createdAt || Date.now());
+      if (isNaN(d.getTime())) return "";
+      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    })();
 
-    const photoCount = l.photosCount ?? l.photos?.length ?? 0;
-    const inspectionRows = ([
-      ["Inspection date", l.inspectionAt ? fmtDate(l.inspectionAt) : undefined],
-      [
-        "Inspection report",
-        l.inspectionReport?.status === "completed" ? "Completed" : l.inspectionReport ? "Draft" : undefined,
-      ],
-      ["Photos", photoCount > 0 ? String(photoCount) : undefined],
-    ] as [string, string | undefined][]).filter((r) => r[1]) as [string, string][];
-
-    const quoteTotal = getLeadQuoteTotal(l);
-    const quoteRows = ([
-      [isTechnician ? "Scope / Job Ref" : "Quote #", l.jobNo || l.quoteNumber],
-      [!isTechnician && quoteTotal > 0 ? "Quote value" : "", !isTechnician && quoteTotal > 0 ? `AUD $${quoteTotal.toFixed(2)}` : undefined],
-      ["Scope", l.quoteScope || l.service],
-      [isTechnician ? "Scope updated" : "Quote sent", l.quoteUpdated ? fmtDate(l.quoteUpdated) : undefined],
-      [
-        "Quote response",
-        !isTechnician && l.quoteAcceptedAt ? `Accepted ${fmtDate(l.quoteAcceptedAt)}` : !isTechnician && l.quoteDeclinedAt ? `Declined ${fmtDate(l.quoteDeclinedAt)}` : undefined,
-      ],
-    ] as [string, string | undefined][]).filter((r) => r[0] && r[1]) as [string, string][];
-
-    const sections: [string, [string, string][]][] = [
-      ["Lead", leadRows],
-      ["Inspection", inspectionRows],
-      [isTechnician ? "Scope of Work" : "Quote", quoteRows],
-    ];
-    const hasAny = sections.some(([, rows]) => rows.length > 0);
-    const isOpen = !!openDetails[l.id];
+    const serviceDisplay = l.service && (l.notes || l.message)
+      ? `${l.service} | ${l.notes || l.message}`
+      : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
 
     return (
       <div
         key={l.id}
-        className="py-4 px-4 hover:bg-slate-50/80 transition-colors rounded-xl border border-slate-200/80 bg-white mb-3 shadow-2xs"
+        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-start">
-          {/* SECTION 1: Client Info & Details Box (3 columns) */}
-          <div className="xl:col-span-3 min-w-0 space-y-1.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
-                  }}
-                  className="font-black text-slate-900 text-base hover:text-[#001f97] hover:underline text-left transition-colors cursor-pointer truncate block w-full"
-                  title={l.name || "Unnamed Customer"}
-                >
-                  {l.name || "Unnamed Customer"}
-                </button>
-                {(l.address || l.notes || l.message) && (
-                  <div className="text-xs text-slate-500 line-clamp-1">
-                    {l.address || l.notes || l.message}
-                  </div>
-                )}
-                {l.status === "Completed" && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
-                    🏆 Completed
-                  </span>
-                )}
-              </div>
-              {l.createdAt && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Received</div>
-                  <div className="text-[11px] font-semibold text-slate-600">
-                    {new Date(l.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {new Date(l.createdAt).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </div>
-                </div>
+        <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+          {/* COLUMN 1: CLIENT */}
+          <div className="col-span-4 min-w-0 space-y-2.5">
+            {/* Row 1: JobNo | Name | Date Time */}
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
+              <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
+              <span className="text-slate-300 font-bold">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLead(l);
+                  setLeadModalOpen(true);
+                }}
+                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                title={l.name || "Unnamed Customer"}
+              >
+                {l.name || "Unnamed Customer"}
+              </button>
+              <span className="text-slate-300 font-bold">|</span>
+              <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Details Box with Phone, Email, Service */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 text-xs space-y-1 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Job No:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.jobNo || "—"}</span>
+            {/* Row 2: Phone & Email */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
+                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate">{l.phone || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Phone:</span>
-                <span className="font-bold text-slate-900 truncate text-right">{l.phone || "—"}</span>
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
+                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={l.email}>{l.email || "—"}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Email:</span>
-                <span className="font-medium text-slate-700 truncate text-right" title={l.email}>{l.email || "—"}</span>
-              </div>
-              {l.address && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-400 font-semibold shrink-0">Address:</span>
-                  <span className="font-medium text-slate-700 truncate text-right" title={l.address}>{l.address}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-400 font-semibold shrink-0">Service:</span>
-                <span className="font-semibold text-slate-900 truncate text-right" title={l.service}>{l.service || "Other"}</span>
-              </div>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            </div>
+
+            {/* Row 4: Service / Inquiry */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MessageSquare className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+            </div>
+
+            {/* Row 5: 5 Action Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => callCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Call"
+              >
+                <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => emailCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Email"
+              >
+                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Email</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l, "sms")}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="SMS"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">SMS</span>
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
+                title="WhatsApp"
+              >
+                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="truncate">WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l)}
+                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Conversation"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Conversation</span>
+                {hasCustomerUnread && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* SECTION 2: STATUS, ASSIGNED, REPORT & ACCORDION (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+          {/* COLUMN 2: JOB (NO QUOTE) */}
+          <div className="col-span-5 min-w-0 space-y-2.5">
+            {/* Row 1: STATUS, ASSIGNED, GPS */}
+            <div className="flex items-end gap-1.5">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
+                  STATUS
+                </label>
+                <select
+                  value={l.status || "Job Booked"}
+                  onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                >
+                  {statusOptions.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                    ASSIGNED
+                  </label>
+                  {(() => {
+                    const techName = (l.technician || l.assigned || "").trim().toLowerCase();
+                    const techCompletedCount = scopedLeads.filter((x) => {
+                      const isTech = (x.technician || "").trim().toLowerCase() === techName || (x.assigned || "").trim().toLowerCase() === techName;
+                      return isTech && (x.status === "Job Done" || x.status === "Completed");
+                    }).length;
+                    if (techCompletedCount === 0) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isCompletedActive = statusFilter === "Job Done|Completed" || statusFilter === "Job Done" || statusFilter === "Completed";
+                          setStatusFilter(isCompletedActive ? "" : "Job Done|Completed");
+                          setPage(1);
+                        }}
+                        className="text-[9.5px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer flex items-center gap-0.5"
+                        title={`Show all completed jobs by ${l.technician || l.assigned}`}
+                      >
+                        <span>Completed:</span>
+                        <span className="font-black text-emerald-800 bg-emerald-100 px-1 rounded-full">{techCompletedCount}</span>
+                      </button>
+                    );
+                  })()}
+                </div>
+                <div
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 flex items-center shadow-2xs truncate"
+                  title={l.technician || (l.assigned && isTechnicianName(l.assigned) ? l.assigned : l.assigned) || "Unassigned"}
+                >
+                  <span className="truncate">
+                    {l.technician || (l.assigned && isTechnicianName(l.assigned) ? l.assigned : l.assigned) || "Unassigned"}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openGpsModal(l)}
+                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>GPS</span>
+              </button>
+            </div>
+
+            {/* Row 2 (First line after GPS): Inspection Form & Job Booked */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => openInspectionModal(l)}
+                className="py-1.5 px-2 text-center text-xs font-bold rounded-lg border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100 transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1.5 shadow-2xs"
+                title="Open Inspection Form"
+              >
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span>Inspection Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Booked"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Job Booked"
+              >
+                Job Booked
+              </button>
+            </div>
+
+            {/* Row 3 (Second line): On the Way, Reached, Start, In Progress, Job Done */}
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job En Route" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job En Route"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="On the Way"
+              >
+                On the Way
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Arrived" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Arrived"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Reached"
+              >
+                Reached
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Started" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Started"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Start"
+              >
+                Start
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job In Progress" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "In Progress" || l.status === "Job In Progress"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="In Progress"
+              >
+                In Progress
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Job Done" })}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                  l.status === "Job Done" || l.status === "Completed"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Job Done"
+              >
+                Job Done
+              </button>
+            </div>
+          </div>
+
+          {/* COLUMN 3: WORKFLOW (JOB BOOKED TO JOB DONE) */}
+          <div className="col-span-3 min-w-0 space-y-1.5">
+            {/* FOLLOW-UP banner */}
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+                {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+              </span>
+            </div>
+
+            {/* 4 Checklist items */}
+            <div className="space-y-1.5">
+              {[
+                { label: "Job Booked", status: "Job Booked" },
+                { label: "Job Started", status: "Job Started" },
+                { label: "Job In Progress", status: "Job In Progress" },
+                { label: "Job Done", status: "Job Done" },
+              ].map((item) => {
+                const isDone =
+                  item.status === "Job Booked"
+                    ? true
+                    : item.status === "Job Started"
+                    ? l.status === "Job Started" || l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
+                    : item.status === "Job In Progress"
+                    ? l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
+                    : l.status === "Job Done" || l.status === "Completed";
+
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => updateLeadField(l.id, { status: item.status })}
+                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                      isDone
+                        ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Dedicated Finance Dashboard Row (Manager-Style 3 Columns) ─────────────
+  function renderFinanceLeadRow(l: Lead) {
+    const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+    const statusOptions = getRoleStatusOptions(role, l.status);
+    const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
+    const waUrl = getWhatsAppLink(l.phone);
+    const followupPrompt = getFollowupPrompt(l);
+
+    const isJobDone = l.status === "Job Done" || [
+      "Invoice Sent",
+      "Payment Request",
+      "Payment Pending",
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ].includes(l.status);
+    const isInvoiceSent = l.status === "Invoice Sent" || (Boolean(l.invoiceSentAt) && l.status !== "Job Done") || [
+      "Payment Request",
+      "Payment Pending",
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ].includes(l.status);
+    const isPaymentPending = l.status === "Payment Pending";
+    const isPaymentReceived = [
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ].includes(l.status);
+    const isWarrantySent = l.status === "Warranty Sent" || Boolean(l.warranty?.sentAt) || l.status === "Completed";
+    const isCompleted = l.status === "Completed";
+
+    const jobNoDisplay = l.jobNo
+      ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
+      : `JobNo-${l.id.slice(0, 4)}`;
+
+    const dateTimeDisplay = (() => {
+      const d = new Date(l.jobAt || l.inspectionAt || l.createdAt || Date.now());
+      if (isNaN(d.getTime())) return "";
+      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    })();
+
+    const serviceDisplay = l.notes || l.message
+      ? `Notes: ${l.notes || l.message}${l.service ? ` | ${l.service}` : ""}`
+      : l.service ? `Notes: ${l.service}` : "Notes: Leaking | Silicone Replacement";
+
+    return (
+      <div
+        key={l.id}
+        className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
+      >
+        <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+          {/* COLUMN 1: CLIENT */}
+          <div className="col-span-4 min-w-0 space-y-2.5">
+            {/* Row 1: JobNo | Name | Date Time */}
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
+              <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
+              <span className="text-slate-300 font-bold">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLead(l);
+                  setLeadModalOpen(true);
+                }}
+                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                title={l.name || "Unnamed Customer"}
+              >
+                {l.name || "Unnamed Customer"}
+              </button>
+              <span className="text-slate-300 font-bold">|</span>
+              <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+              {l.status === "Completed" && (
+                <>
+                  <span className="text-slate-300 font-bold">|</span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs" title="Warranty Not Provided for this completed query">
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      Warranty Not Provided
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs" title="10-Year Waterproof Warranty Provided">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Warranty Provided
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Row 2: Phone & Email */}
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
+                <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate">{l.phone || "—"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
+                <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+                <span className="truncate" title={l.email}>{l.email || "—"}</span>
+              </div>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            </div>
+
+            {/* Row 4: Service / Notes */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
+              <MessageSquare className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+              <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+            </div>
+
+            {/* Row 5: 5 Action Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => callCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Call"
+              >
+                <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => emailCustomer(l)}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Email"
+              >
+                <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Email</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l, "sms")}
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="SMS"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">SMS</span>
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors min-w-0"
+                title="WhatsApp"
+              >
+                <Send className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="truncate">WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => openMessagesModal(l)}
+                className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-[#e8f0fe] hover:bg-blue-100 text-[#001f97] border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="Conversation"
+              >
+                <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+                <span className="truncate">Conversation</span>
+                {hasCustomerUnread && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* COLUMN 2: FINANCE ACTIONS (FROM JOB DONE) */}
+          <div className="col-span-5 min-w-0 space-y-2">
+            {/* Row 1: STATUS, ASSIGNED, GPS */}
+            <div className="flex items-end gap-1.5">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   STATUS
                 </label>
                 <select
                   value={l.status || "Job Done"}
                   onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                  className="w-full text-xs font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-emerald-400 truncate"
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {statusOptions.map((s) => (
                     <option key={s} value={s}>
@@ -4026,14 +4263,14 @@ export default function CrmDashboardPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+              <div className="flex-1 min-w-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   ASSIGNED
                 </label>
                 <select
                   value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
                   onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                  className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-slate-300 truncate"
+                  className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
                 >
                   {assigneeOptions.map((n) => (
                     <option key={n} value={n}>
@@ -4042,215 +4279,238 @@ export default function CrmDashboardPage() {
                   ))}
                 </select>
               </div>
+
+              <button
+                type="button"
+                onClick={() => openGpsModal(l)}
+                className="px-2.5 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px]"
+                title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>GPS</span>
+              </button>
             </div>
 
-            {/* Inspection Report Banner */}
-            <div
-              onClick={() => openInspectionModal(l)}
-              className="w-full px-3 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg flex items-center justify-between cursor-pointer transition-colors shadow-2xs"
-              title="Open Groutix Field Inspection Report"
-            >
-              <span className="flex items-center gap-1.5 text-xs font-bold truncate">
-                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">GROUTIX Field Inspection Report</span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded shrink-0 ml-1">
-                {l.inspectionReport?.status === "completed" ? "VIEW FORM" : "FILL / VIEW FORM"}
-              </span>
-            </div>
-
-            {/* Previous Details Accordion */}
-            <div>
+            {/* Row 2 (2 buttons): Job Done, Send Invoice */}
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
-                onClick={() => setOpenDetails((prev) => ({ ...prev, [l.id]: !prev[l.id] }))}
-                className="w-full px-3 py-1.5 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-slate-700 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border border-slate-200/60"
-              >
-                <span className="flex items-center gap-1.5 truncate">
-                  <ClipboardList className="w-3.5 h-3.5 shrink-0 text-slate-500" />
-                  <span className="truncate">Previous Details — Lead → Quote</span>
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-              </button>
-              {isOpen && (
-                <div className="mt-1.5 text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-2 max-h-56 overflow-y-auto">
-                  {!hasAny && <div className="text-slate-400 italic">No earlier details recorded.</div>}
-                  {sections.map(([title, rows]) =>
-                    rows.length === 0 ? null : (
-                      <div key={title} className="space-y-1">
-                        <div className="text-[9px] font-black uppercase tracking-wider text-[#001f97]/70">{title}</div>
-                        {rows.map(([k, v]) => (
-                          <div key={k} className="flex items-start justify-between gap-2">
-                            <span className="text-slate-400 shrink-0">{k}:</span>
-                            <span className="font-semibold text-slate-700 text-right break-words">{v}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* SECTION 3: FINANCE & COMPLETION STAGES (3 columns) */}
-          <div className="xl:col-span-3 space-y-2">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                FINANCE &amp; COMPLETION STAGES
-              </label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {financeStages.map((st, idx) => {
-                  const isCurrent = l.status === st.status;
-                  const isLast = idx === financeStages.length - 1;
-                  return (
-                    <button
-                      key={st.label}
-                      type="button"
-                      onClick={() => updateLeadField(l.id, { status: st.status })}
-                      className={`px-2 py-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[36px] cursor-pointer ${
-                        isLast ? "col-span-2" : ""
-                      } ${
-                        isCurrent
-                          ? `${st.color} text-white shadow-2xs`
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                      }`}
-                      title={`Set status: ${st.label}`}
-                    >
-                      {isCurrent && <Check className="w-3 h-3 stroke-[2.5] shrink-0" />}
-                      {st.status === "Completed" && <span className="text-xs">🏆</span>}
-                      <span className="text-center leading-tight">{st.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 4: ACTIONS (3 columns) */}
-          <div className="xl:col-span-3 flex flex-col justify-between h-full space-y-2.5 xl:pl-2">
-            {/* Top row: Phone, Mail, Quote, Inspection, Invoice */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => callCustomer(l)}
-                className="p-1.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                title="Call customer"
-              >
-                <Phone className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => emailCustomer(l)}
-                className="p-1.5 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Email customer"
-              >
-                <Mail className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openQuoteModal(l)}
-                className="px-2.5 py-1.5 border border-amber-200 bg-[#fef3c7] text-[#b45309] rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
-                title="Open Quote Builder"
-              >
-                Quote
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openInspectionModal(l)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                  l.inspectionReport?.status === "completed"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                    : "border border-cyan-300 bg-[#ecfeff] text-[#0f766e] hover:bg-cyan-100"
+                onClick={() => updateLeadField(l.id, { status: "Job Done" })}
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.status === "Job Done"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
-                title="Inspection Report Form"
+                title="Job Done"
               >
-                <ClipboardList className="w-4 h-4" />
-                <span>Inspection</span>
+                Job Done
               </button>
 
               <button
                 type="button"
                 onClick={() => openInvoiceModal(l)}
-                className="px-3 py-1.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-lg text-xs font-black transition-colors shadow-2xs cursor-pointer"
-                title="Invoice Details & Send"
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center shadow-2xs ${
+                  l.status === "Invoice Sent"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Send Invoice"
               >
-                Invoice
+                Send Invoice
               </button>
             </div>
 
-            {/* Bottom row: 10-Yr Warranty, Photos, Messages, Share, Edit, Trash */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Row 3 (3 buttons): Payment Pending, Payment Received, Warranty Sent */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Payment Pending" })}
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.status === "Payment Pending"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Payment Pending"
+              >
+                Payment Pending
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.status === "Payment Received"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title="Payment Received"
+              >
+                Payment Received
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openWarrantyModal(l)}
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+                  l.warrantyProvided === false || l.warranty?.provided === false
+                    ? "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-2xs"
+                    : l.status === "Warranty Sent"
+                    ? "bg-[#001f97] text-white shadow-2xs"
+                    : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
+                }`}
+                title={l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided (Click to edit/turn on)" : "10-Year Service Warranty Certificate"}
+              >
+                {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                  <span className="flex items-center gap-1 truncate">
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span className="truncate">No Warranty</span>
+                  </span>
+                ) : (
+                  "Warranty Sent"
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* COLUMN 3: WORKFLOW (FINANCE) */}
+          <div className="col-span-3 min-w-0 space-y-1.5">
+            {/* FOLLOW-UP banner */}
+            <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+                {followupPrompt || l.followUpNext || (l.status === "Payment Received" ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Payment Received — No Warranty Required" : "Payment Received — Issue Warranty") : l.status === "Payment Pending" ? "Payment Pending — Follow up" : "Invoice Sent — Awaiting payment")}
+              </span>
+            </div>
+
+            {/* Two sub-columns (3 items each, aligned row-by-row) */}
+            <div className="grid grid-cols-2 gap-1.5 min-w-0">
+              {/* Left sub-column: Job Done, Payment Pending, Warranty Sent */}
+              <div className="space-y-1.5 min-w-0">
                 <button
                   type="button"
-                  onClick={() => openWarrantyModal(l)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer border border-emerald-300 bg-[#ecfdf5] text-emerald-800 hover:bg-emerald-100"
-                  title="10-Year Service Warranty Certificate"
+                  onClick={() => updateLeadField(l.id, { status: "Job Done" })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isJobDone
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Job Done"
                 >
-                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>10-Yr Warranty</span>
+                  <span className="truncate">Job Done</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => openPhotosModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Photos"
+                  onClick={() => updateLeadField(l.id, { status: "Payment Pending" })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isPaymentPending
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Payment Pending"
                 >
-                  <Camera className="w-4 h-4" />
-                  {photosTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {photosTotal}
-                    </span>
+                  <span className="truncate">Payment Pending</span>
+                  {isPaymentPending && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => openMessagesModal(l)}
-                  className="relative p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Messages"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {hasCustomerUnread && (
-                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openInvoiceModal(l)}
-                  className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 cursor-pointer"
-                  title="Send Invoice"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1 text-slate-400">
                 <button
                   type="button"
                   onClick={() => {
-                    setEditingLead(l);
-                    setLeadModalOpen(true);
+                    if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                      openWarrantyModal(l);
+                    } else {
+                      updateLeadField(l.id, { status: "Warranty Sent" });
+                      openWarrantyModal(l);
+                    }
                   }}
-                  className="p-1.5 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                  title="Edit Lead"
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    l.warrantyProvided === false || l.warranty?.provided === false
+                      ? "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100"
+                      : isWarrantySent
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title={l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided (Click to edit)" : "Warranty Sent"}
                 >
-                  <Edit3 className="w-4 h-4" />
+                  <span className="truncate">
+                    {l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent"}
+                  </span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0 ml-0.5" />
+                  ) : isWarrantySent ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  ) : null}
+                </button>
+              </div>
+
+              {/* Right sub-column: Invoice Sent, Payment Received, Complete & Save */}
+              <div className="space-y-1.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Invoice Sent", invoiceSentAt: l.invoiceSentAt || new Date().toISOString() })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isInvoiceSent
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Invoice Sent"
+                >
+                  <span className="truncate">Invoice Sent</span>
+                  {isInvoiceSent && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  )}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleDeleteLead(l.id)}
-                  className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                  title="Delete Lead"
+                  onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                    isPaymentReceived
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                  title="Payment Received"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <span className="truncate">Payment Received</span>
+                  {isPaymentReceived && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                  )}
+                </button>
+
+                {/* Complete & Save to Achievements button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updates: Record<string, any> = { status: "Completed" };
+                    if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                      updates.warrantyProvided = false;
+                      updates.warranty = { ...(l.warranty || {}), provided: false };
+                    } else {
+                      updates.warrantyProvided = true;
+                      updates.warranty = { ...(l.warranty || {}), provided: true };
+                    }
+                    updateLeadField(l.id, updates);
+                  }}
+                  className={`w-full py-1.5 px-2 text-white rounded-lg text-[11px] font-black flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer text-center min-w-0 ${
+                    isCompleted
+                      ? "bg-emerald-700 hover:bg-emerald-800 ring-2 ring-emerald-400"
+                      : "bg-[#059669] hover:bg-[#047857]"
+                  }`}
+                  title={
+                    l.warrantyProvided === false || l.warranty?.provided === false
+                      ? "Complete & Save (Warranty Not Provided)"
+                      : "Complete & Save (Warranty Provided)"
+                  }
+                >
+                  <span className="leading-tight truncate">
+                    {isCompleted
+                      ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Completed (No Warranty)" : "Completed (Warranty Provided)")
+                      : (l.warrantyProvided === false || l.warranty?.provided === false ? "Complete (No Warranty)" : "Complete & Save")}
+                  </span>
+                  <span className="text-xs shrink-0">🏆</span>
                 </button>
               </div>
             </div>
@@ -4273,104 +4533,123 @@ export default function CrmDashboardPage() {
         key={l.id}
         className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+        <div className="grid grid-cols-4 gap-6 items-start">
           {/* COLUMN 0: CLIENT (includes Service & Photos) */}
           <div className="space-y-3">
-            <div className="flex items-start justify-between gap-2.5">
-              {/* Left: Client info */}
-              <div className="flex-1 min-w-0">
-                <div className="xl:hidden text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
-                  Job No
-                </div>
-                <div className="font-black text-[#001f97] text-sm xl:text-base whitespace-nowrap tracking-tight mb-1">
-                  {l.jobNo || "—"}
-                </div>
-                <div className="font-bold text-slate-900 text-sm truncate" title={l.name || "Unnamed Customer"}>
-                  {l.name || "Unnamed Customer"}
-                </div>
-
-                <div className="space-y-1 text-xs text-slate-600 mt-1">
-                  {l.email ? (
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate" title={l.email}>{l.email}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-slate-400">
-                      <Mail className="w-3.5 h-3.5 shrink-0" />
-                      <span>No email</span>
-                    </div>
-                  )}
-
-                  {l.phone ? (
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{l.phone}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-slate-400">
-                      <Phone className="w-3.5 h-3.5 shrink-0" />
-                      <span>No phone</span>
-                    </div>
-                  )}
-
-                  {l.address && (
-                    <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
-                      {l.address}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Manual Status Dropdown & Badges */}
-              <div className="w-[145px] shrink-0 space-y-1.5">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">
-                    Status
-                  </label>
-                  <select
-                    value={l.status || "New"}
-                    onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                    className={`w-full text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#001f97] ${
-                      l.status === "Completed"
-                        ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 hover:border-emerald-400"
-                        : "bg-white border-slate-200 text-slate-800 hover:border-[#001f97]"
-                    }`}
-                    title="Change status manually"
-                  >
-                    {(role === "intake" ? getRoleStatusOptions(role, l.status) : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)).map((s) => (
-                      <option key={s} value={s}>
-                        {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {l.status === "Completed" && (
+            {/* Status row: on the line above Job No */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+                  Status
+                </label>
+                {l.status === "Completed" && (
+                  <>
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
                       🏆 Completed
                     </span>
-                  )}
-                  {l.invoiceOpenedAt && (
-                    <span
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 whitespace-nowrap"
-                    >
-                      <Eye className="w-2.5 h-2.5 text-emerald-600" />
-                      Opened
-                    </span>
-                  )}
-                </div>
+                    {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300 whitespace-nowrap" title="Warranty Not Provided for this completed job">
+                        <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
+                        Warranty Not Provided
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap" title="10-Year Waterproof Warranty Provided">
+                        <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                        Warranty Provided
+                      </span>
+                    )}
+                  </>
+                )}
+                {l.invoiceOpenedAt && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 whitespace-nowrap"
+                  >
+                    <Eye className="w-2.5 h-2.5 text-emerald-600" />
+                    Opened
+                  </span>
+                )}
+              </div>
+
+              <select
+                value={l.status || "New"}
+                onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                className={`text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#001f97] ${
+                  l.status === "Completed"
+                    ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 hover:border-emerald-400"
+                    : "bg-white border-slate-200 text-slate-800 hover:border-[#001f97]"
+                }`}
+                title="Change status manually"
+              >
+                {(role === "intake" ? getRoleStatusOptions(role, l.status) : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)).map((s) => (
+                  <option key={s} value={s}>
+                    {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Client info */}
+            <div>
+              <div className="font-black text-[#001f97] text-sm xl:text-base whitespace-nowrap tracking-tight mb-1">
+                {l.jobNo || "—"}
+              </div>
+              <div className="font-bold text-slate-900 text-sm truncate" title={l.name || "Unnamed Customer"}>
+                {l.name || "Unnamed Customer"}
+              </div>
+
+              <div className="space-y-1 text-xs text-slate-600 mt-1">
+                {l.email ? (
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate" title={l.email}>{l.email}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span>No email</span>
+                  </div>
+                )}
+
+                {l.phone ? (
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{l.phone}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Phone className="w-3.5 h-3.5 shrink-0" />
+                    <span>No phone</span>
+                  </div>
+                )}
+
+                {l.address && (
+                  <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
+                    {l.address}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Service & Received */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100">
+              {(() => {
+                const rIso = l.received || l.createdAt;
+                if (!rIso) return null;
+                const d = new Date(rIso);
+                if (isNaN(d.getTime())) return null;
+                const dateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+                const timeStr = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
+                return (
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                    <Clock className="w-3 h-3 text-emerald-700 shrink-0" />
+                    <span>Received on {dateStr} at {timeStr}</span>
+                  </div>
+                );
+              })()}
+
               <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
                 {l.service || "Standard Work"}
               </div>
-
-              <div />
             </div>
 
             {/* Photos / Camera Button */}
@@ -4801,12 +5080,35 @@ export default function CrmDashboardPage() {
                 )}
 
                 {l.status === "Completed" && (
-                  <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      <span>🏆</span>
-                      <span>Saved in Achievements</span>
-                    </span>
-                    <span className="text-[9px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">Completed Record</span>
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <span>🏆</span>
+                        <span>Saved in Achievements</span>
+                      </span>
+                      <span className="text-[9px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">Completed Record</span>
+                    </div>
+                    <div className={`text-[10px] font-bold px-2 py-1 rounded-lg border flex items-center justify-between ${
+                      l.warrantyProvided === false || l.warranty?.provided === false
+                        ? "bg-rose-50 text-rose-800 border-rose-200"
+                        : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    }`}>
+                      <span className="flex items-center gap-1">
+                        {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                          <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        ) : (
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )}
+                        <span>{l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Provided"}</span>
+                      </span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                        l.warrantyProvided === false || l.warranty?.provided === false
+                          ? "bg-rose-600 text-white"
+                          : "bg-emerald-600 text-white"
+                      }`}>
+                        {l.warrantyProvided === false || l.warranty?.provided === false ? "No Warranty" : "10-Yr Active"}
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -4817,7 +5119,11 @@ export default function CrmDashboardPage() {
                     { label: "Sent", step: "Payment Request", color: "bg-blue-600 hover:bg-blue-700" },
                     { label: "Pending Payment", step: "Payment Pending", color: "bg-amber-600 hover:bg-amber-700" },
                     { label: "Received", step: "Payment Received", color: "bg-green-600 hover:bg-green-700" },
-                    { label: "Warranty Sent", step: "Warranty Sent", color: "bg-slate-700 hover:bg-slate-800" },
+                    {
+                      label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
+                      step: "Warranty Sent",
+                      color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600 hover:bg-rose-700" : "bg-slate-700 hover:bg-slate-800",
+                    },
                     { label: "Completed Jobs", step: "Completed", color: "bg-emerald-600 hover:bg-emerald-700" },
                   ] as const).map((st) => {
                     const isActive = getStepActive(l, st.step);
@@ -4868,7 +5174,10 @@ export default function CrmDashboardPage() {
                 { label: "Invoice Sent", step: "Invoice Sent" },
                 { label: "Payment Pending", step: "Payment Pending" },
                 { label: "Payment Received", step: "Payment Received" },
-                { label: "Warranty Sent", step: "Warranty Sent" }
+                {
+                  label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
+                  step: "Warranty Sent",
+                }
               ].map(({ label, step }) => {
                 const isActive = getStepActive(l, step);
                 return (
@@ -4908,18 +5217,51 @@ export default function CrmDashboardPage() {
 
             {/* Complete & Archive Button */}
             {l.status === "Completed" ? (
-              <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-800 flex items-center justify-center gap-1.5">
-                <span>🏆</span>
-                <span>Completed & Saved To Achievements</span>
+              <div className="space-y-1">
+                <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-800 flex items-center justify-center gap-1.5">
+                  <span>🏆</span>
+                  <span>Completed & Saved To Achievements</span>
+                </div>
+                <div className={`p-1.5 rounded-lg text-center text-[11px] font-black flex items-center justify-center gap-1.5 border ${
+                  l.warrantyProvided === false || l.warranty?.provided === false
+                    ? "bg-rose-50 text-rose-800 border-rose-200"
+                    : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                }`}>
+                  {l.warrantyProvided === false || l.warranty?.provided === false ? (
+                    <>
+                      <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>Warranty Not Provided</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Warranty Provided (10-Year)</span>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Completed" })}
+                onClick={() => {
+                  const updates: Record<string, any> = { status: "Completed" };
+                  if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                    updates.warrantyProvided = false;
+                    updates.warranty = { ...(l.warranty || {}), provided: false };
+                  } else {
+                    updates.warrantyProvided = true;
+                    updates.warranty = { ...(l.warranty || {}), provided: true };
+                  }
+                  updateLeadField(l.id, updates);
+                }}
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                 title="Mark this lead as completed and save to Achievements"
               >
-                <span>Complete &amp; Save to Achievements 🏆</span>
+                <span>
+                  {l.warrantyProvided === false || l.warranty?.provided === false
+                    ? "Complete & Save (No Warranty) 🏆"
+                    : "Complete & Save to Achievements 🏆"}
+                </span>
               </button>
             )}
           </div>
@@ -4937,25 +5279,27 @@ export default function CrmDashboardPage() {
       role === "manager" || role === "super_admin"
         ? leads
         : leads.filter((l) => {
-            if (!inRoleQueue(role, l.status)) return false;
             // When logged in as technician or viewing as technician:
             if (role === "technician") {
               const myStaff = staff.find((s) => s.username === username);
               const targetName = (viewAs ? viewAs.name : (myStaff?.name || username || "")).trim().toLowerCase();
               const targetUser = (viewAs ? viewAs.name : username).trim().toLowerCase();
               const targetId = viewAs ? null : myStaff?.id;
-              if (l.technicianId || l.technician) {
-                const assignedId = l.technicianId;
-                const assignedName = (l.technician || "").trim().toLowerCase();
-                const matches =
-                  (targetId && assignedId === targetId) ||
-                  (assignedId && (assignedId.toLowerCase() === targetUser || assignedId.toLowerCase() === targetName)) ||
-                  (assignedName && (assignedName === targetName || assignedName === targetUser));
-                return matches;
+              const matchesTech =
+                (targetId && l.technicianId === targetId) ||
+                (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+                (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||
+                (l.assigned && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
+
+              if (matchesTech) {
+                return TECHNICIAN_STATUSES.includes(l.status) || ["Job Done", "Completed", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent"].includes(l.status);
               }
+
+              if (!inRoleQueue(role, l.status)) return false;
               // Allow technicians to view unassigned leads in their queue
               return true;
             }
+            if (!inRoleQueue(role, l.status)) return false;
             return true;
           });
     if (showLegacyLeads) return roleScoped;
@@ -5675,7 +6019,7 @@ export default function CrmDashboardPage() {
                     {
                       label: "Job Booked",
                       group: "job" as StageGroup,
-                      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
+                      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"],
                     },
                     { label: "Job Done", group: "finance" as StageGroup, statuses: ["Job Done"] },
                     { label: "Payment Pending", group: "finance" as StageGroup, statuses: ["Payment Pending"] },
@@ -5761,6 +6105,19 @@ export default function CrmDashboardPage() {
                                 <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
                                   {l.status}
                                 </span>
+                                {l.status === "Completed" && (
+                                  l.warrantyProvided === false || l.warranty?.provided === false ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                      <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
+                                      Warranty Not Provided
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                                      Warranty Provided
+                                    </span>
+                                  )
+                                )}
                                 <QuoteResponseBadge lead={l} />
                               </div>
                             </td>
@@ -6140,67 +6497,65 @@ export default function CrmDashboardPage() {
                   </div>
                 </div>
 
-                {/* Table / Card Header Bar */}
-                {role === "intake" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">STATUS &amp; FOLLOW-UP</div>
-                    <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : role === "inspection" || role === "field" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
-                    <div className="col-span-3">INSPECTION LIVE VISIT</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : role === "technician" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">JOB STATUS &amp; ASSIGNED</div>
-                    <div className="col-span-3">JOB LIVE VISIT</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : role === "finance" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">STATUS &amp; REPORTS</div>
-                    <div className="col-span-3">FINANCE &amp; COMPLETION STAGES</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : (
-                  <div className="hidden xl:grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl">
-                    <div>CLIENT</div>
-                    <div>INSPECTION &amp; QUOTE</div>
-                    <div>FINANCE</div>
-                    <div>WORKFLOW</div>
-                  </div>
-                )}
-
-                {/* Leads List */}
-                <div className="divide-y divide-slate-200/80">
-                  {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
-                    if ((role as string) === "intake") {
-                      return renderIntakeLeadRow(l);
-                    }
-                    if ((role as string) === "inspection" || (role as string) === "field") {
-                      return renderFieldLeadRow(l);
-                    }
-                    if ((role as string) === "technician") {
-                      return renderTechnicianLeadRow(l);
-                    }
-                    if ((role as string) === "finance") {
-                      return renderFinanceLeadRow(l);
-                    }
-                    return renderStandardLeadCard(l);
-                  })}
-
-                  {filteredLeads.length === 0 && (
-                    <div className="py-16 text-center text-slate-400">
-                      No leads matching the current filters.
+                {/* Table / Card Header Bar & Leads List */}
+                <div className="w-full">
+                  {role === "intake" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION &amp; QUOTE</div>
+                      <div className="col-span-3">WORKFLOW (UPTO JOB BOOKED)</div>
+                    </div>
+                  ) : role === "inspection" || role === "field" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION (NO QUOTE)</div>
+                      <div className="col-span-3">WORKFLOW (UPTO INSPECTION COMPLETED)</div>
+                    </div>
+                  ) : role === "technician" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">JOB (NO QUOTE)</div>
+                      <div className="col-span-3">WORKFLOW (JOB BOOKED TO JOB DONE)</div>
+                    </div>
+                  ) : role === "finance" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">FINANCE (FROM JOB DONE)</div>
+                      <div className="col-span-3">WORKFLOW (FINANCE)</div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div>CLIENT</div>
+                      <div>INSPECTION &amp; QUOTE</div>
+                      <div>FINANCE</div>
+                      <div>WORKFLOW</div>
                     </div>
                   )}
+
+                  {/* Leads List */}
+                  <div className="divide-y divide-slate-200/80 w-full">
+                    {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
+                      if ((role as string) === "intake") {
+                        return renderIntakeLeadRow(l);
+                      }
+                      if ((role as string) === "inspection" || (role as string) === "field") {
+                        return renderFieldLeadRow(l);
+                      }
+                      if ((role as string) === "technician") {
+                        return renderTechnicianLeadRow(l);
+                      }
+                      if ((role as string) === "finance") {
+                        return renderFinanceLeadRow(l);
+                      }
+                      return renderStandardLeadCard(l);
+                    })}
+
+                    {filteredLeads.length === 0 && (
+                      <div className="py-16 text-center text-slate-400">
+                        No leads matching the current filters.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLeads.length} onPage={setPage} />
@@ -6361,7 +6716,7 @@ export default function CrmDashboardPage() {
                         : role === "finance"
                           ? [
                             { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
-                            ...single(["Job Done", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]),
+                            ...single(["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]),
                           ]
                           : role === "inspection" || role === "field"
                             ? [
@@ -6371,7 +6726,9 @@ export default function CrmDashboardPage() {
                           : role === "technician"
                             ? [
                               { label: "Total Jobs", group: "job", statuses: [], totalCount: true },
-                              ...single(["Job Booked", "Scheduled", "Job Confirmed", "Job Done"]),
+                              { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+                              { label: "In Progress", group: "job", statuses: ["Job En Route", "Job Arrived", "Job Started", "Job In Progress"] },
+                              { label: "Jobs Completed", group: "finance", statuses: ["Job Done", "Completed"] },
                             ]
                             : role === "manager"
                               ? [
@@ -6506,9 +6863,9 @@ export default function CrmDashboardPage() {
                           role === "inspection" || role === "field"
                             ? ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed"]
                             : role === "technician"
-                              ? ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress", "Job Done"]
+                              ? ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Completed"]
                               : role === "finance"
-                                ? ["Job Done", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
+                                ? ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
                                 : role === "intake"
                                   ? ["New", "Contacted", "Inspection Booked", "Quote Pending", "Job Booked"]
                                   : boardStatuses;
@@ -6538,6 +6895,41 @@ export default function CrmDashboardPage() {
                         );
                       })()}
 
+                      {/* Jobs Completed Quick Filter Button for Technician */}
+                      {role === "technician" && (() => {
+                        const completedCount = scopedLeads.filter((l) => l.status === "Job Done" || l.status === "Completed").length;
+                        const isCompletedActive = statusFilter === "Job Done|Completed" || statusFilter === "Job Done" || statusFilter === "Completed";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isCompletedActive) {
+                                setStatusFilter("");
+                              } else {
+                                setStatusFilter("Job Done|Completed");
+                              }
+                              setPage(1);
+                            }}
+                            className={`text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                              isCompletedActive
+                                ? "bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-400 shadow-sm"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
+                            }`}
+                            title="Show all jobs completed by this technician"
+                          >
+                            <CheckCircle2 className={`w-4 h-4 ${isCompletedActive ? "text-white" : "text-emerald-600"} shrink-0`} />
+                            <span>Jobs Completed</span>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                              isCompletedActive
+                                ? "bg-emerald-800 text-white"
+                                : "bg-emerald-200 text-emerald-900"
+                            }`}>
+                              {completedCount}
+                            </span>
+                          </button>
+                        );
+                      })()}
+
                       {(statusFilter || globalSearch) && (
                         <button
                           onClick={() => {
@@ -6553,69 +6945,67 @@ export default function CrmDashboardPage() {
                   </div>
                 </div>
 
-                {/* Table / Card Header Bar */}
-                {role === "intake" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">STATUS &amp; FOLLOW-UP</div>
-                    <div className="col-span-3">INTAKE WORKFLOW STAGES</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : role === "inspection" || role === "field" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">INSPECTION &amp; ASSIGNED</div>
-                    <div className="col-span-3">INSPECTION LIVE VISIT</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : role === "technician" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">JOB STATUS &amp; ASSIGNED</div>
-                    <div className="col-span-3">JOB LIVE VISIT</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : role === "finance" ? (
-                  <div className="hidden xl:grid grid-cols-12 gap-4 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3">
-                    <div className="col-span-3">CLIENT DETAILS</div>
-                    <div className="col-span-3">STATUS &amp; REPORTS</div>
-                    <div className="col-span-3">FINANCE &amp; COMPLETION STAGES</div>
-                    <div className="col-span-3">ACTIONS</div>
-                  </div>
-                ) : (
-                  <div className="hidden xl:grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl">
-                    <div>CLIENT</div>
-                    <div>INSPECTION &amp; QUOTE</div>
-                    <div>FINANCE</div>
-                    <div>WORKFLOW</div>
-                  </div>
-                )}
-
-                {/* Jobs / Bookings List */}
-                <div className="divide-y divide-slate-200/80">
-                  {jobLeads
-                    .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-                    .map((l) => {
-                      if ((role as string) === "intake") {
-                        return renderIntakeLeadRow(l);
-                      }
-                      if ((role as string) === "inspection" || (role as string) === "field") {
-                        return renderFieldLeadRow(l);
-                      }
-                      if ((role as string) === "technician") {
-                        return renderTechnicianLeadRow(l);
-                      }
-                      if ((role as string) === "finance") {
-                        return renderFinanceLeadRow(l);
-                      }
-                      return renderStandardLeadCard(l);
-                    })}
-
-                  {jobLeads.length === 0 && (
-                    <div className="py-16 text-center text-slate-400 text-sm">
-                      No bookings or jobs matching this filter.
+                {/* Table / Card Header Bar & Jobs List */}
+                <div className="w-full">
+                  {role === "intake" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION &amp; QUOTE</div>
+                      <div className="col-span-3">WORKFLOW (UPTO JOB BOOKED)</div>
+                    </div>
+                  ) : role === "inspection" || role === "field" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">INSPECTION (NO QUOTE)</div>
+                      <div className="col-span-3">WORKFLOW (UPTO INSPECTION COMPLETED)</div>
+                    </div>
+                  ) : role === "technician" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">JOB (NO QUOTE)</div>
+                      <div className="col-span-3">WORKFLOW (JOB BOOKED TO JOB DONE)</div>
+                    </div>
+                  ) : role === "finance" ? (
+                    <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div className="col-span-4">CLIENT</div>
+                      <div className="col-span-5">FINANCE (FROM JOB DONE)</div>
+                      <div className="col-span-3">WORKFLOW (FINANCE)</div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+                      <div>CLIENT</div>
+                      <div>INSPECTION &amp; QUOTE</div>
+                      <div>FINANCE</div>
+                      <div>WORKFLOW</div>
                     </div>
                   )}
+
+                  {/* Jobs / Bookings List */}
+                  <div className="divide-y divide-slate-200/80 w-full">
+                    {jobLeads
+                      .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                      .map((l) => {
+                        if ((role as string) === "intake") {
+                          return renderIntakeLeadRow(l);
+                        }
+                        if ((role as string) === "inspection" || (role as string) === "field") {
+                          return renderFieldLeadRow(l);
+                        }
+                        if ((role as string) === "technician") {
+                          return renderTechnicianLeadRow(l);
+                        }
+                        if ((role as string) === "finance") {
+                          return renderFinanceLeadRow(l);
+                        }
+                        return renderStandardLeadCard(l);
+                      })}
+
+                    {jobLeads.length === 0 && (
+                      <div className="py-16 text-center text-slate-400 text-sm">
+                        No bookings or jobs matching this filter.
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <Pagination page={page} pageSize={PAGE_SIZE} total={jobLeads.length} onPage={setPage} />
               </div>
@@ -7015,21 +7405,27 @@ export default function CrmDashboardPage() {
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Assigned To</label>
-                  <select
-                    value={
-                      editingLead?.assigned && !isTechnicianName(editingLead.assigned)
-                        ? editingLead.assigned
-                        : assigneeOptions[0] || "Unassigned"
-                    }
-                    onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl"
-                  >
-                    {assigneeOptions.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                  {isTechnician ? (
+                    <div className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 font-semibold text-sm">
+                      {editingLead?.technician || editingLead?.assigned || "Unassigned"}
+                    </div>
+                  ) : (
+                    <select
+                      value={
+                        editingLead?.assigned && !isTechnicianName(editingLead.assigned)
+                          ? editingLead.assigned
+                          : assigneeOptions[0] || "Unassigned"
+                      }
+                      onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl"
+                    >
+                      {assigneeOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -7127,6 +7523,61 @@ export default function CrmDashboardPage() {
                         📋 Copy Job Booking Link
                       </button>
                     )}
+                  </div>
+                </div>
+
+                {/* 10-Year Waterproof Warranty Toggle */}
+                <div className="sm:col-span-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1.5 rounded-lg ${
+                      editingLead?.warrantyProvided !== false ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                    }`}>
+                      {editingLead?.warrantyProvided !== false ? (
+                        <ShieldCheck className="w-4 h-4" />
+                      ) : (
+                        <ShieldAlert className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">
+                        10-Year Waterproof Warranty
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {editingLead?.warrantyProvided !== false
+                          ? "Warranty Provided (Active for this job)"
+                          : "Warranty Not Provided (Disabled for this job)"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold ${editingLead?.warrantyProvided === false ? "text-rose-600 font-black" : "text-slate-400"}`}>
+                      OFF
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editingLead?.warrantyProvided !== false}
+                      onClick={() => setEditingLead({
+                        ...editingLead,
+                        warrantyProvided: editingLead?.warrantyProvided === false ? true : false,
+                        warranty: {
+                          ...(editingLead?.warranty || {}),
+                          provided: editingLead?.warrantyProvided === false ? true : false,
+                        },
+                      })}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        editingLead?.warrantyProvided !== false ? "bg-emerald-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
+                          editingLead?.warrantyProvided !== false ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-[11px] font-bold ${editingLead?.warrantyProvided !== false ? "text-emerald-600 font-black" : "text-slate-400"}`}>
+                      ON
+                    </span>
                   </div>
                 </div>
               </div>
@@ -8894,179 +9345,317 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Warranty Form Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
-                <input
-                  type="text"
-                  value={warrantyJobNo}
-                  onChange={(e) => setWarrantyJobNo(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg font-bold"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Completion Date</label>
-                <input
-                  type="date"
-                  value={warrantyCompletion}
-                  onChange={(e) => {
-                    setWarrantyCompletion(e.target.value);
-                    const d = new Date(e.target.value);
-                    if (!isNaN(d.getTime())) {
-                      d.setFullYear(d.getFullYear() + 10);
-                      setWarrantyExpiry(d.toISOString().slice(0, 10));
-                    }
-                  }}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Warranty Expiry (10 Yrs)</label>
-                <input
-                  type="date"
-                  value={warrantyExpiry}
-                  readOnly
-                  className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-emerald-700"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
-                <input
-                  type="date"
-                  value={warrantyIssued}
-                  onChange={(e) => setWarrantyIssued(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
-                <input
-                  type="text"
-                  value={warrantyCustomer}
-                  onChange={(e) => setWarrantyCustomer(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
-                <input
-                  type="text"
-                  value={warrantyAuthorised}
-                  onChange={(e) => setWarrantyAuthorised(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="font-bold text-slate-700 block mb-1">Property Address</label>
-                <input
-                  type="text"
-                  value={warrantyAddress}
-                  onChange={(e) => setWarrantyAddress(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-lg"
-                />
+            {/* Warranty ON / OFF Slider Switch */}
+            <div className={`p-4 rounded-xl border transition-all ${
+              warrantyProvided
+                ? "bg-emerald-50/80 border-emerald-300 shadow-2xs"
+                : "bg-rose-50/90 border-rose-300 shadow-2xs"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <div className={`p-2.5 rounded-xl shrink-0 ${
+                    warrantyProvided ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                  }`}>
+                    {warrantyProvided ? (
+                      <ShieldCheck className="w-5 h-5" />
+                    ) : (
+                      <ShieldAlert className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-black text-slate-900">
+                        10-Year Waterproof Warranty:
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide ${
+                        warrantyProvided
+                          ? "bg-emerald-600 text-white"
+                          : "bg-rose-600 text-white"
+                      }`}>
+                        {warrantyProvided ? "Warranty Provided (ON)" : "Warranty Not Provided (OFF)"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-600 mt-0.5">
+                      {warrantyProvided
+                        ? "Warranty is active for this inquiry. Official certificate will be generated and marked 'Warranty Provided'."
+                        : "Warranty is turned OFF. Groutix is NOT providing warranty for this job. Marked as 'Warranty Not Provided'."}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Slider Switch */}
+                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center bg-white/80 px-3 py-1.5 rounded-xl border border-slate-200">
+                  <span className={`text-xs font-bold transition-colors ${!warrantyProvided ? "text-rose-700 font-black" : "text-slate-400"}`}>
+                    OFF
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={warrantyProvided}
+                    onClick={() => {
+                      const nextVal = !warrantyProvided;
+                      setWarrantyProvided(nextVal);
+                      if (activeWarrantyLead) {
+                        updateLeadField(activeWarrantyLead.id, {
+                          warrantyProvided: nextVal,
+                          warranty: {
+                            ...(activeWarrantyLead.warranty || {}),
+                            provided: nextVal,
+                          },
+                        });
+                        setActiveWarrantyLead({
+                          ...activeWarrantyLead,
+                          warrantyProvided: nextVal,
+                          warranty: {
+                            ...(activeWarrantyLead.warranty || {}),
+                            provided: nextVal,
+                          },
+                        });
+                      }
+                    }}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#001f97] focus:ring-offset-2 ${
+                      warrantyProvided ? "bg-emerald-600" : "bg-slate-300"
+                    }`}
+                    title={warrantyProvided ? "Click slider to Turn OFF Warranty" : "Click slider to Turn ON Warranty"}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
+                        warrantyProvided ? "translate-x-8" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-xs font-bold transition-colors ${warrantyProvided ? "text-emerald-700 font-black" : "text-slate-400"}`}>
+                    ON
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Tab Switcher */}
-            <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setWarrantyTab("page1")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    warrantyTab === "page1"
-                      ? "bg-[#071c4d] text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  Page 1: Warranty Certificate
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWarrantyTab("page2")}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    warrantyTab === "page2"
-                      ? "bg-[#071c4d] text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  Page 2: Terms &amp; Conditions
-                </button>
-              </div>
-              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-                Official 2-Page Executive Template
-              </span>
-            </div>
+            {/* When Warranty is turned OFF */}
+            {!warrantyProvided ? (
+              <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-xl space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-rose-100 rounded-lg shrink-0 text-rose-700 mt-0.5">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-rose-900">Warranty Coverage Disabled For This Inquiry</h3>
+                    <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                      You have set this query to <strong>Warranty Not Provided</strong>. No 10-year waterproof warranty certificate will be emailed to the customer. When completed, this query will be explicitly stamped with <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-rose-200 text-rose-900 font-black text-[10px]">⚠️ Warranty Not Provided</span> across all reports, client cards, and achievements.
+                    </p>
+                  </div>
+                </div>
 
-            {/* Canvas Preview */}
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
-              <canvas
-                ref={canvasRef}
-                width={1000}
-                height={1414}
-                className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
-              <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
-              <a
-                href="/terms-conditions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#001f97] underline font-bold inline-flex items-center gap-1 hover:text-blue-900"
-              >
-                <span>View Full Terms &amp; Conditions</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div className="text-[11px] text-slate-500">
-                <span>Both pages are included in the official PDF &amp; customer email.</span>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-rose-200">
+                  <div className="text-xs text-rose-600 font-medium">
+                    To re-enable warranty, click the slider switch above to <strong>ON</strong>.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWarrantyModalOpen(false)}
+                      className="px-4 py-2 border border-slate-300 bg-white rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeWarrantyLead) {
+                          updateLeadField(activeWarrantyLead.id, {
+                            warrantyProvided: false,
+                            warranty: {
+                              ...(activeWarrantyLead.warranty || {}),
+                              provided: false,
+                            },
+                          });
+                        }
+                        setWarrantyModalOpen(false);
+                      }}
+                      className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
+                    >
+                      Save &amp; Confirm (Warranty Not Provided)
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const q = new URLSearchParams({
-                      jobNo: warrantyJobNo,
-                      completion: warrantyCompletion,
-                      expiry: warrantyExpiry,
-                      customer: warrantyCustomer,
-                      address: warrantyAddress,
-                      authorised: warrantyAuthorised,
-                      issued: warrantyIssued,
-                      t: String(Date.now()),
-                    });
-                    window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
-                  title="Print or view official 2-page PDF warranty certificate"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Print / View PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={downloadWarrantyCard}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
-                >
-                  <Download className="w-4 h-4" />
-                  Download PNG
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSendWarranty}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
-                  title="Email the official 2-page warranty certificate to the customer and mark it sent"
-                >
-                  <Send className="w-4 h-4" />
-                  Email to Customer
-                </button>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Warranty Form Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
+                    <input
+                      type="text"
+                      value={warrantyJobNo}
+                      onChange={(e) => setWarrantyJobNo(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Completion Date</label>
+                    <input
+                      type="date"
+                      value={warrantyCompletion}
+                      onChange={(e) => {
+                        setWarrantyCompletion(e.target.value);
+                        const d = new Date(e.target.value);
+                        if (!isNaN(d.getTime())) {
+                          d.setFullYear(d.getFullYear() + 10);
+                          setWarrantyExpiry(d.toISOString().slice(0, 10));
+                        }
+                      }}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Warranty Expiry (10 Yrs)</label>
+                    <input
+                      type="date"
+                      value={warrantyExpiry}
+                      readOnly
+                      className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-emerald-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
+                    <input
+                      type="date"
+                      value={warrantyIssued}
+                      onChange={(e) => setWarrantyIssued(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
+                    <input
+                      type="text"
+                      value={warrantyCustomer}
+                      onChange={(e) => setWarrantyCustomer(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
+                    <input
+                      type="text"
+                      value={warrantyAuthorised}
+                      onChange={(e) => setWarrantyAuthorised(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-slate-700 block mb-1">Property Address</label>
+                    <input
+                      type="text"
+                      value={warrantyAddress}
+                      onChange={(e) => setWarrantyAddress(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                {/* Tab Switcher */}
+                <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWarrantyTab("page1")}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        warrantyTab === "page1"
+                          ? "bg-[#071c4d] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Page 1: Warranty Certificate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWarrantyTab("page2")}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        warrantyTab === "page2"
+                          ? "bg-[#071c4d] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Page 2: Terms &amp; Conditions
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                    Official 2-Page Executive Template
+                  </span>
+                </div>
+
+                {/* Canvas Preview */}
+                <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
+                  <canvas
+                    ref={canvasRef}
+                    width={1000}
+                    height={1414}
+                    className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
+                  <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
+                  <a
+                    href="/terms-conditions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#001f97] underline font-bold inline-flex items-center gap-1 hover:text-blue-900"
+                  >
+                    <span>View Full Terms &amp; Conditions</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] text-slate-500">
+                    <span>Both pages are included in the official PDF &amp; customer email.</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const q = new URLSearchParams({
+                          jobNo: warrantyJobNo,
+                          completion: warrantyCompletion,
+                          expiry: warrantyExpiry,
+                          customer: warrantyCustomer,
+                          address: warrantyAddress,
+                          authorised: warrantyAuthorised,
+                          issued: warrantyIssued,
+                          t: String(Date.now()),
+                        });
+                        window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                      title="Print or view official 2-page PDF warranty certificate"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Print / View PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadWarrantyCard}
+                      className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download PNG
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendWarranty}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
+                      title="Email the official 2-page warranty certificate to the customer and mark it sent"
+                    >
+                      <Send className="w-4 h-4" />
+                      Email to Customer
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -9089,7 +9678,10 @@ export default function CrmDashboardPage() {
           { label: "Invoice Sent", status: "Invoice Sent" },
           { label: "Payment Pending", status: "Payment Pending" },
           { label: "Payment Received", status: "Payment Received" },
-          { label: "Warranty Sent", status: "Warranty Sent" },
+          {
+            label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
+            status: "Warranty Sent",
+          },
           { label: "Completed", status: "Completed" },
         ];
         const currentIdx = STATUS_KEYS.indexOf(l.status);
@@ -9123,10 +9715,21 @@ export default function CrmDashboardPage() {
                   { label: "Current Stage", value: l.status, strong: true },
                   { label: "Service", value: l.service || "Standard Service" },
                   { label: "Quote / Job Value", value: `AUD $${total.toFixed(2)}`, strong: true },
+                  {
+                    label: "Warranty Status",
+                    value: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided ⚠️" : "Warranty Provided 🛡️",
+                    strong: true,
+                    isWarranty: true,
+                    isOff: l.warrantyProvided === false || l.warranty?.provided === false,
+                  },
                 ].map((c) => (
-                  <div key={c.label} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <div key={c.label} className={`rounded-xl border p-3 ${
+                    c.isWarranty
+                      ? (c.isOff ? "border-rose-300 bg-rose-50/70" : "border-emerald-300 bg-emerald-50/70")
+                      : "border-slate-200 bg-slate-50/60"
+                  }`}>
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{c.label}</div>
-                    <div className={`text-slate-900 ${c.strong ? "text-base font-black" : "text-xs font-semibold leading-snug"}`}>
+                    <div className={`${c.isWarranty ? (c.isOff ? "text-rose-700" : "text-emerald-700") : "text-slate-900"} ${c.strong ? "text-base font-black" : "text-xs font-semibold leading-snug"}`}>
                       {c.value}
                     </div>
                   </div>
