@@ -51,7 +51,9 @@ import {
   CheckCircle2,
   Smartphone,
   MapPin,
-  Wrench
+  Wrench,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -1015,6 +1017,7 @@ export default function CrmDashboardPage() {
 
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
+  const [convFullscreen, setConvFullscreen] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(EMAIL_TEMPLATES);
   const [manageTemplatesModalOpen, setManageTemplatesModalOpen] = useState(false);
   const [templateFormOpen, setTemplateFormOpen] = useState(false);
@@ -8764,8 +8767,15 @@ export default function CrmDashboardPage() {
           MODAL: CUSTOMER CONVERSATION (MESSAGES)
          ========================================================================= */}
       {messagesModalOpen && activeMessageLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col p-6 gap-4 resize overflow-auto" style={{ height: "85vh", minHeight: "500px", minWidth: "340px" }}>
+        <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center ${convFullscreen ? "p-0" : "p-4"}`}>
+          <div
+            className={`bg-white flex flex-col gap-4 transition-all duration-200 ${
+              convFullscreen
+                ? "w-full h-full rounded-none shadow-none p-6"
+                : "rounded-2xl shadow-2xl w-full max-w-5xl p-6 resize overflow-auto"
+            }`}
+            style={convFullscreen ? {} : { height: "90vh", minHeight: "500px", minWidth: "400px" }}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div>
                 <h2 className="text-lg font-black text-slate-900">Customer Conversation</h2>
@@ -8773,12 +8783,21 @@ export default function CrmDashboardPage() {
                   {activeMessageLeadLive?.name} • {activeMessageLeadLive?.phone || "No phone"} • {activeMessageLeadLive?.email || "No email"}
                 </div>
               </div>
-              <button
-                onClick={() => setMessagesModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setConvFullscreen((f) => !f)}
+                  title={convFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                >
+                  {convFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => { setMessagesModalOpen(false); setConvFullscreen(false); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Conversation Messages Box — filtered by active tab */}
