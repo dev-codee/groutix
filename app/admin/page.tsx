@@ -3189,17 +3189,23 @@ export default function CrmDashboardPage() {
             <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
+              {role === "inspection" || role === "field" || role === "technician" ? (
+                <span className="text-slate-900 truncate font-bold min-w-0" title={l.name || "Unnamed Customer"}>
+                  {l.name || "Unnamed Customer"}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+              )}
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
               {l.status === "Completed" && (
@@ -3630,17 +3636,23 @@ export default function CrmDashboardPage() {
             <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
+              {role === "inspection" || role === "field" || role === "technician" ? (
+                <span className="text-slate-900 truncate font-bold min-w-0" title={l.name || "Unnamed Customer"}>
+                  {l.name || "Unnamed Customer"}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+              )}
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
               {l.status === "Completed" && (
@@ -3938,17 +3950,23 @@ export default function CrmDashboardPage() {
             <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
+              {role === "inspection" || role === "field" || role === "technician" ? (
+                <span className="text-slate-900 truncate font-bold min-w-0" title={l.name || "Unnamed Customer"}>
+                  {l.name || "Unnamed Customer"}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+              )}
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
               {l.status === "Completed" && (
@@ -4367,17 +4385,23 @@ export default function CrmDashboardPage() {
             <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
               <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
               <span className="text-slate-300 font-bold">|</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(l);
-                  setLeadModalOpen(true);
-                }}
-                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
-                title={l.name || "Unnamed Customer"}
-              >
-                {l.name || "Unnamed Customer"}
-              </button>
+              {role === "inspection" || role === "field" || role === "technician" ? (
+                <span className="text-slate-900 truncate font-bold min-w-0" title={l.name || "Unnamed Customer"}>
+                  {l.name || "Unnamed Customer"}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(l);
+                    setLeadModalOpen(true);
+                  }}
+                  className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                  title={l.name || "Unnamed Customer"}
+                >
+                  {l.name || "Unnamed Customer"}
+                </button>
+              )}
               <span className="text-slate-300 font-bold">|</span>
               <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
               {l.status === "Completed" && (
