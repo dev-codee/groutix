@@ -467,7 +467,7 @@ export async function POST(req: NextRequest) {
                  <tr>
                    <td>
                      <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;text-align:center;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
-                       📅 BOOK YOUR FREE INSPECTION
+                       Book Your Free Inspection
                      </a>
                    </td>
                  </tr>

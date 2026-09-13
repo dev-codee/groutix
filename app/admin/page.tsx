@@ -4107,8 +4107,8 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Row 3 (Second line): On the Way, Reached, Start, In Progress, Job Done */}
-            <div className="grid grid-cols-5 gap-1">
+            {/* Row 3 (Second line): On the Way, Reached, Start, Job Done */}
+            <div className="grid grid-cols-4 gap-1">
               <button
                 type="button"
                 onClick={() => handleOnTheWay(l, "en_route")}
@@ -4148,19 +4148,6 @@ export default function CrmDashboardPage() {
                 title="Start"
               >
                 Start
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job In Progress" })}
-                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "In Progress" || l.status === "Job In Progress"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="In Progress"
-              >
-                In Progress
               </button>
 
               <button
