@@ -30,9 +30,9 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   // Operational roles share their focused views:
   // primary board ("jobs"), schedule, customer directory, and team directory.
   intake: ["jobs", "customers", "team"],
-  inspection: ["jobs", "schedule", "customers", "team", "technicians"],
-  field: ["jobs", "schedule", "customers", "team", "technicians"],
-  technician: ["jobs", "schedule", "customers", "team"],
+  inspection: ["jobs", "team"],
+  field: ["jobs", "team"],
+  technician: ["jobs", "team"],
   finance: ["jobs", "schedule", "customers", "team"],
   manager: [
     "dashboard",

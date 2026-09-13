@@ -6006,23 +6006,25 @@ export default function CrmDashboardPage() {
             </button>
 
 
-            {/* Unread customer replies bell — visible on every view/role. */}
-            <button
-              onClick={openInbox}
-              title={
-                unreadReplyCount > 0
-                  ? `${unreadReplyCount} conversation(s) with unread replies`
-                  : "No unread customer replies"
-              }
-              className="relative p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              <Bell className={`w-4 h-4 ${unreadReplyCount > 0 ? "text-[#001f97]" : ""}`} />
-              {unreadReplyCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
-                  {unreadReplyCount}
-                </span>
-              )}
-            </button>
+            {/* Unread customer replies bell — hidden for inspection & technician */}
+            {role !== "inspection" && role !== "field" && role !== "technician" && (
+              <button
+                onClick={openInbox}
+                title={
+                  unreadReplyCount > 0
+                    ? `${unreadReplyCount} conversation(s) with unread replies`
+                    : "No unread customer replies"
+                }
+                className="relative p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <Bell className={`w-4 h-4 ${unreadReplyCount > 0 ? "text-[#001f97]" : ""}`} />
+                {unreadReplyCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {unreadReplyCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Refresh Button */}
             <button
@@ -6033,16 +6035,18 @@ export default function CrmDashboardPage() {
               <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin text-[#001f97]" : ""}`} />
             </button>
 
-            {/* Sync Emails Button */}
-            <button
-              onClick={handleSyncEmails}
-              disabled={syncingEmails}
-              title="Sync Inbox"
-              className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              <Mail className={`w-4 h-4 ${syncingEmails ? "animate-pulse" : ""}`} />
-              Sync Inbox
-            </button>
+            {/* Sync Emails Button — hidden for inspection & technician */}
+            {role !== "inspection" && role !== "field" && role !== "technician" && (
+              <button
+                onClick={handleSyncEmails}
+                disabled={syncingEmails}
+                title="Sync Inbox"
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                <Mail className={`w-4 h-4 ${syncingEmails ? "animate-pulse" : ""}`} />
+                Sync Inbox
+              </button>
+            )}
 
             {/* Add Lead Button — manager only */}
             {(role === "manager" || role === "super_admin") && (
