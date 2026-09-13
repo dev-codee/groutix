@@ -198,7 +198,7 @@ export default function BookingPage() {
                 {selectedDay && (
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                      Select time
+                      Select Arrival Time
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {selectedDay.slots.map((s) => {

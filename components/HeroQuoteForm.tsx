@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users } from "lucide-react";
+import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { formatBytes, MAX_TOTAL_BYTES, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT } from "@/lib/imageCompression";
@@ -109,6 +109,9 @@ export default function HeroQuoteForm() {
   const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [inspectionSectionOpen, setInspectionSectionOpen] = useState(false);
+  // Keep false until inspection booking is enabled server-side
+  const INSPECTION_BOOKING_ENABLED = false;
 
   const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -130,7 +133,7 @@ export default function HeroQuoteForm() {
       return;
     }
     try {
-      const res = await fetch(`/api/admin/address-autocomplete?input=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/address-autocomplete?input=${encodeURIComponent(query)}`);
       if (!res.ok) return;
       const json = await res.json();
       const preds: string[] = json.predictions || [];
@@ -1221,6 +1224,52 @@ export default function HeroQuoteForm() {
                         <span className={totalPhotoBytes > MAX_TOTAL_BYTES ? "font-bold text-red-600" : ""}>
                           Total: {formatBytes(totalPhotoBytes)} / {formatBytes(MAX_TOTAL_BYTES)}
                         </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Optional: Book Inspection */}
+              <div className="border border-neutral-200 rounded-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setInspectionSectionOpen((o) => !o)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-neutral-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[15px]">📅</span>
+                    <span className="text-[14px] font-semibold text-neutral-800">Book Your Inspection</span>
+                    <span className="text-[11px] text-neutral-400 font-medium">(Optional)</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${inspectionSectionOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {inspectionSectionOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200">
+                        {INSPECTION_BOOKING_ENABLED ? (
+                          <p className="text-[13px] text-neutral-600">Booking form coming here...</p>
+                        ) : (
+                          <div className="text-center space-y-3">
+                            <p className="text-[13px] text-neutral-600 leading-relaxed">
+                              Online inspection booking is coming soon. After submitting your request, our team will contact you to arrange a convenient inspection time based on your location.
+                            </p>
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full py-2.5 rounded-sm bg-neutral-200 text-neutral-400 text-[14px] font-semibold cursor-not-allowed"
+                            >
+                              📅 Book Inspection — Coming Soon
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}

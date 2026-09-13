@@ -427,25 +427,18 @@ export async function POST(req: NextRequest) {
     // true (currently disabled — see the flag near the top of this file).
     const inspectionBookingHtml = `
       <div style="margin:24px 0;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
-        <h3 style="margin:0 0 8px;color:#001f97;font-size:17px;font-weight:700;">Book your free Inspection;</h3>
-        <p style="margin:0 0 14px;font-size:14px;color:#334155;">
-          <strong>Available Days:</strong> ${esc(daysSummary)}
-        </p>
+        <h3 style="margin:0 0 14px;color:#001f97;font-size:17px;font-weight:700;">Book your free Inspection</h3>
         ${
           bookingUrl
-            ? `<table cellpadding="0" cellspacing="0" style="margin:12px 0 14px;">
+            ? `<table cellpadding="0" cellspacing="0">
                  <tr>
                    <td>
                      <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;text-align:center;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
-                       📅 BOOK YOUR FREE INSPECTION CLICK HERE
+                       📅 BOOK YOUR FREE INSPECTION
                      </a>
                    </td>
                  </tr>
-               </table>
-               <div style="font-size:12px;color:#64748b;font-weight:700;letter-spacing:0.5px;">
-                 AVAILABLE DAYS WITH TIME
-               </div>
-               ${availableDaysHtml}`
+               </table>`
             : ""
         }
       </div>`;
