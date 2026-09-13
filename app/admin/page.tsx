@@ -929,6 +929,13 @@ export default function CrmDashboardPage() {
   const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // On-The-Way / GPS notification state
+  const [onTheWayLoading, setOnTheWayLoading] = useState<string | null>(null);
+  const [etaToast, setEtaToast] = useState<{ leadId: string; msg: string } | null>(null);
+  const [staffLocations, setStaffLocations] = useState<any[]>([]);
+  const [locationTrackingActive, setLocationTrackingActive] = useState(false);
+  const locationWatchRef = useRef<number | null>(null);
+
   // Core Data
   const [leads, setLeads] = useState<Lead[]>([]);
   const [tasks, setTasks] = useState<CrmTask[]>([]);
@@ -1327,6 +1334,129 @@ export default function CrmDashboardPage() {
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
+
+  // ── On-The-Way / GPS handlers ─────────────────────────────────────────────
+
+  async function handleOnTheWay(lead: Lead, eventType: "en_route" | "arrived") {
+    // 1. Update status immediately (optimistic)
+    const newStatus =
+      eventType === "en_route"
+        ? lead.status?.startsWith("Inspection")
+          ? "Inspection En Route"
+          : "Job En Route"
+        : lead.status?.startsWith("Inspection")
+          ? "Inspection Arrived"
+          : "Job Arrived";
+    await updateLeadField(lead.id, { status: newStatus });
+
+    // 2. Get GPS location
+    if (!navigator.geolocation) {
+      setEtaToast({ leadId: lead.id, msg: "Location not available — notification sent without ETA." });
+      fetch("/api/admin/on-the-way", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id, lat: null, lng: null, eventType }),
+      }).catch(() => {});
+      setTimeout(() => setEtaToast(null), 5000);
+      return;
+    }
+
+    setOnTheWayLoading(lead.id);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        try {
+          const res = await fetch("/api/admin/on-the-way", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
+          });
+          const data = await res.json();
+          setEtaToast({
+            leadId: lead.id,
+            msg:
+              eventType === "en_route"
+                ? `Customer notified! ETA: ~${data.eta || "unknown"}`
+                : `Customer notified of your arrival!`,
+          });
+          // Also update staff location in background
+          fetch("/api/admin/staff/location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat, lng, leadId: lead.id }),
+          }).catch(() => {});
+        } catch {
+          setEtaToast({ leadId: lead.id, msg: "Notification sent (no ETA)." });
+        } finally {
+          setOnTheWayLoading(null);
+          setTimeout(() => setEtaToast(null), 6000);
+        }
+      },
+      () => {
+        setOnTheWayLoading(null);
+        setEtaToast({
+          leadId: lead.id,
+          msg: "Location denied — customer still notified without ETA.",
+        });
+        // Still send notification without coords
+        fetch("/api/admin/on-the-way", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId: lead.id, lat: null, lng: null, eventType }),
+        }).catch(() => {});
+        setTimeout(() => setEtaToast(null), 5000);
+      },
+      { timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
+  // Auto-share location for inspector/technician roles while dashboard is open
+  useEffect(() => {
+    if (role !== "inspector" && role !== "technician") return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+    const sendLocation = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          fetch("/api/admin/staff/location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            }),
+          }).catch(() => {});
+          setLocationTrackingActive(true);
+        },
+        () => setLocationTrackingActive(false),
+        { timeout: 8000, maximumAge: 30000 }
+      );
+    };
+
+    sendLocation();
+    const id = setInterval(sendLocation, 60000);
+    return () => clearInterval(id);
+  }, [role]);
+
+  // Load staff locations every 30s (managers/super_admin only)
+  const loadStaffLocations = useCallback(async () => {
+    if (role !== "manager" && role !== "super_admin") return;
+    try {
+      const res = await fetch("/api/admin/staff/location", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setStaffLocations(data.locations || []);
+      }
+    } catch {
+      // non-fatal
+    }
+  }, [role]);
+
+  useEffect(() => {
+    loadStaffLocations();
+    const id = setInterval(loadStaffLocations, 30000);
+    return () => clearInterval(id);
+  }, [loadStaffLocations]);
 
   // Total unread team-chat messages across all senders — badges the Team nav.
   const totalUnread = useMemo(
@@ -3195,21 +3325,23 @@ export default function CrmDashboardPage() {
             <div className="grid grid-cols-5 gap-1">
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection En Route" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                onClick={() => handleOnTheWay(l, "en_route")}
+                disabled={onTheWayLoading === l.id}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
                   l.status === "Inspection En Route"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
                 title="On the Way"
               >
-                On the Way
+                {onTheWayLoading === l.id ? "..." : "On the Way"}
               </button>
 
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Arrived" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                onClick={() => handleOnTheWay(l, "arrived")}
+                disabled={onTheWayLoading === l.id}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
                   l.status === "Inspection Arrived"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
@@ -3609,21 +3741,23 @@ export default function CrmDashboardPage() {
             <div className="grid grid-cols-5 gap-1">
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection En Route" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                onClick={() => handleOnTheWay(l, "en_route")}
+                disabled={onTheWayLoading === l.id}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
                   l.status === "Inspection En Route"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
                 title="On the Way"
               >
-                On the Way
+                {onTheWayLoading === l.id ? "..." : "On the Way"}
               </button>
 
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Arrived" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                onClick={() => handleOnTheWay(l, "arrived")}
+                disabled={onTheWayLoading === l.id}
+                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
                   l.status === "Inspection Arrived"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
@@ -3963,21 +4097,23 @@ export default function CrmDashboardPage() {
             <div className="grid grid-cols-5 gap-1">
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job En Route" })}
-                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                onClick={() => handleOnTheWay(l, "en_route")}
+                disabled={onTheWayLoading === l.id}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
                   l.status === "Job En Route"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
                 }`}
                 title="On the Way"
               >
-                On the Way
+                {onTheWayLoading === l.id ? "..." : "On the Way"}
               </button>
 
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Arrived" })}
-                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                onClick={() => handleOnTheWay(l, "arrived")}
+                disabled={onTheWayLoading === l.id}
+                className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
                   l.status === "Job Arrived"
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-blue-200 bg-[#dbeafe]/70 text-[#001f97] hover:bg-blue-100"
@@ -5826,6 +5962,24 @@ export default function CrmDashboardPage() {
                   ? `${username} • ${roleLabel}`
                   : roleLabel}
             </div>
+
+            {/* Location sharing indicator (inspector / technician only) */}
+            {(role === "inspector" || role === "technician") && (
+              <div
+                className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${
+                  locationTrackingActive
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-400"
+                }`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    locationTrackingActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                  }`}
+                />
+                {locationTrackingActive ? "Location sharing active" : "Location sharing off"}
+              </div>
+            )}
           </div>
         </header>
 
@@ -6242,6 +6396,40 @@ export default function CrmDashboardPage() {
 
                 </div>
               </div>
+
+              {/* Live Staff Locations — managers / super_admin only */}
+              {staffLocations.length > 0 && (role === "manager" || role === "super_admin") && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4">
+                  <h3 className="text-sm font-black text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    Live Staff Locations ({staffLocations.length} active)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {staffLocations.map((loc) => (
+                      <a
+                        key={loc.username}
+                        href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-[#001f97] hover:bg-blue-50 transition-all group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-[#001f97] text-white flex items-center justify-center font-black text-sm shrink-0">
+                          {(loc.displayName || loc.username || "?")[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-800 text-xs">{loc.displayName || loc.username}</div>
+                          {loc.leadName && (
+                            <div className="text-[11px] text-slate-500 truncate">On job: {loc.leadName}</div>
+                          )}
+                          <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                            {Math.round((Date.now() - new Date(loc.updatedAt).getTime()) / 60000)} min ago · View on Maps →
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -8566,9 +8754,15 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Conversation Messages Box */}
+            {/* Conversation Messages Box — filtered by active tab */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-              {getConversation(activeMessageLeadLive || activeMessageLead).map((msg) => {
+              {getConversation(activeMessageLeadLive || activeMessageLead)
+                .filter((msg) =>
+                  messageChannel === "sms"
+                    ? msg.channel === "sms"
+                    : msg.channel !== "sms"
+                )
+                .map((msg) => {
                 const isCustomer = msg.from === "customer";
                 return (
                   <div
@@ -10249,6 +10443,19 @@ export default function CrmDashboardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ETA / notification toast */}
+      {etaToast && (
+        <div className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold flex items-center gap-3 animate-in slide-in-from-bottom-4">
+          <span>{etaToast.msg}</span>
+          <button
+            onClick={() => setEtaToast(null)}
+            className="text-slate-400 hover:text-white ml-2"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
