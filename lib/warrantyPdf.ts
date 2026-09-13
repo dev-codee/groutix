@@ -5,6 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { getSiteSettings, getLogoFilePath, isLogoPng } from "./settings";
 
 export interface WarrantyPdfInput {
   jobNo: string;
@@ -80,9 +81,13 @@ export async function buildWarrantyPdfBase64(input: WarrantyPdfInput): Promise<s
 
   let logoImg: any = null;
   try {
-    const logoPath = path.join(process.cwd(), "public", "new_logo.jpeg");
+    const logoSettings = await getSiteSettings();
+    const logoPath = getLogoFilePath(logoSettings);
     if (fs.existsSync(logoPath)) {
-      logoImg = await doc.embedJpg(fs.readFileSync(logoPath));
+      const logoBytes = fs.readFileSync(logoPath);
+      logoImg = isLogoPng(logoSettings)
+        ? await doc.embedPng(logoBytes)
+        : await doc.embedJpg(logoBytes);
     }
   } catch {
     // fallback if logo unavailable

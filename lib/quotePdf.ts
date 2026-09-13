@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { GROUTIX_QUOTE_TERMS } from "./serviceTemplates";
+import { getSiteSettings, getLogoFilePath, isLogoPng } from "./settings";
 
 export interface QuotePdfItem {
   service?: string;
@@ -151,9 +152,13 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
 
   let logoImg: any = null;
   try {
-    const logoPath = path.join(process.cwd(), "public", "new_logo.jpeg");
+    const logoSettings = await getSiteSettings();
+    const logoPath = getLogoFilePath(logoSettings);
     if (fs.existsSync(logoPath)) {
-      logoImg = await doc.embedJpg(fs.readFileSync(logoPath));
+      const logoBytes = fs.readFileSync(logoPath);
+      logoImg = isLogoPng(logoSettings)
+        ? await doc.embedPng(logoBytes)
+        : await doc.embedJpg(logoBytes);
     }
   } catch {
     // fallback if logo unavailable
@@ -632,10 +637,11 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   // 1. Logo (Top-Left)
   let logoDrawn = false;
   try {
-    const logoPath = path.join(process.cwd(), "public", "new_logo.jpeg");
+    const logoSettings2 = await getSiteSettings();
+    const logoPath = getLogoFilePath(logoSettings2);
     if (fs.existsSync(logoPath)) {
       const logoBytes = fs.readFileSync(logoPath);
-      const logoImg = await doc.embedJpg(logoBytes);
+      const logoImg = isLogoPng(logoSettings2) ? await doc.embedPng(logoBytes) : await doc.embedJpg(logoBytes);
       const drawH = 46;
       const drawW = (logoImg.width / logoImg.height) * drawH;
       page.drawImage(logoImg, {

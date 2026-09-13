@@ -3,7 +3,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import type { SupportMessage } from "@/lib/supportKnowledge";
-import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 
 export const runtime = "nodejs";
 // Room for the send retry sequence before the platform tears the instance down.
@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
       <h3 style="margin:0 0 16px;color:#0f172a;font-size:18px;">Chat Transcript</h3>
       ${transcriptHtml(transcript)}`;
 
+  const logoUrl = await getEmailLogoUrl();
   try {
     await sendEmail({
       toEmail: TO_EMAIL,
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: email,
       subject: `New Support Request: ${name}`,
-      html: wrapEmailHtml(internalHtml, `New support request received from ${name}.`),
+      html: wrapEmailHtml(internalHtml, `New support request received from ${name}.`, logoUrl),
     });
   } catch (error) {
     console.error("Support ticket email error:", error);
@@ -202,7 +203,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: TO_EMAIL,
       subject: "We've received your support request | Groutix",
-      html: wrapEmailHtml(customerHtml, "Your support request has been sent to the Groutix team."),
+      html: wrapEmailHtml(customerHtml, "Your support request has been sent to the Groutix team.", logoUrl),
     });
   } catch (error) {
     console.error("Support confirmation email error:", error);

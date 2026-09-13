@@ -1,17 +1,26 @@
 import React from "react";
 import Image from "next/image";
+import { getSiteSettings, getLogoPublicUrl } from "@/lib/settings";
 
-export default function Logo({
+export default async function Logo({
   light = false,
   className = "",
 }: {
   light?: boolean;
   className?: string;
 }) {
+  let logoSrc = "/new_logo.jpeg";
+  try {
+    const settings = await getSiteSettings();
+    logoSrc = getLogoPublicUrl(settings);
+  } catch {
+    // fallback
+  }
+
   return (
     <div className={`flex items-center select-none ${className}`}>
       <Image
-        src="/new_logo.jpeg"
+        src={logoSrc}
         alt="Groutix Logo"
         width={260}
         height={80}
@@ -22,5 +31,3 @@ export default function Logo({
     </div>
   );
 }
-
-

@@ -16,7 +16,7 @@ import {
   type AreaInfo,
 } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking } from "@/lib/bookings";
-import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 
 export const runtime = "nodejs";
@@ -229,6 +229,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   );
 
   // Confirmation to the customer (email + SMS, both best-effort).
+  const logoUrl = await getEmailLogoUrl();
   const title = type === "inspection" ? "Your Inspection is Booked" : "Your Job is Booked";
   const html = wrapEmailHtml(
     `
@@ -243,7 +244,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       </div>
       <p style="margin:16px 0 0;color:#64748b;font-size:13px;">We'll send you a reminder the day before. Need to change it? Reply to this email or call us.</p>
     `,
-    `${title} — ${whenLabel}`
+    `${title} — ${whenLabel}`,
+    logoUrl
   );
   if (isEmailConfigured() && lead.email) {
     try {

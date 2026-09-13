@@ -11,7 +11,7 @@ import {
   formatDocNumber,
   type WarrantyDoc,
 } from "@/lib/submissions";
-import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 
@@ -121,13 +121,14 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
     }
 
     if (isEmailConfigured()) {
+      const logoUrl = await getEmailLogoUrl();
       await sendEmail({
         toEmail: lead.email,
         fromName: FROM_NAME,
         fromEmail: FROM_EMAIL,
         replyTo: REPLY_TO,
         subject: `Your Groutix Tax Invoice ${invoiceNumber} — AUD $${total.toFixed(2)}`,
-        html: wrapEmailHtml(html, `Your Groutix invoice ${invoiceNumber} is ready.`),
+        html: wrapEmailHtml(html, `Your Groutix invoice ${invoiceNumber} is ready.`, logoUrl),
         attachments: attachments.length ? attachments : undefined,
       });
     }
@@ -214,13 +215,14 @@ export async function autoSendWarranty(leadId: string): Promise<void> {
       <p style="margin:16px 0 0;color:#166534;font-size:13px;">Issued under Clause 12 of the <a href="https://groutix.com/terms-conditions" style="color:#001f97;font-weight:700;">Groutix Terms &amp; Conditions</a>. Please retain this certificate and your tax invoice.</p>`;
 
     if (isEmailConfigured()) {
+      const logoUrl = await getEmailLogoUrl();
       await sendEmail({
         toEmail: lead.email,
         fromName: FROM_NAME,
         fromEmail: FROM_EMAIL,
         replyTo: REPLY_TO,
         subject: `Your Groutix 10-Year Warranty ${warrantyNo}`,
-        html: wrapEmailHtml(html, `Your Groutix 10-year warranty (${warrantyNo}) is ready.`),
+        html: wrapEmailHtml(html, `Your Groutix 10-year warranty (${warrantyNo}) is ready.`, logoUrl),
       });
     }
 

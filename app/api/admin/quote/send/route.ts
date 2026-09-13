@@ -7,7 +7,7 @@ import {
   formatDocNumber,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { buildQuoteResponseUrl, buildQuoteSignUrl, siteBaseUrl, signQuoteToken } from "@/lib/quoteToken";
@@ -151,6 +151,7 @@ export async function POST(req: NextRequest) {
     console.error("quote PDF generation failed (sending without attachment):", err);
   }
 
+  const logoUrl = await getEmailLogoUrl();
   try {
     await sendEmail({
       toEmail: lead.email,
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix Quotation ${quoteNumber} — AUD $${total.toFixed(2)}`,
-      html: wrapEmailHtml(html, `Your Groutix quotation ${quoteNumber} is ready.`),
+      html: wrapEmailHtml(html, `Your Groutix quotation ${quoteNumber} is ready.`, logoUrl),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered, pickAssignee } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
-import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
 import { resolveArea, getAvailableDaysSummary, computeAvailability } from "@/lib/scheduling";
@@ -397,6 +397,7 @@ export async function POST(req: NextRequest) {
   // 2) Asynchronously process emails and update status
   const processEmails = async () => {
     let internalSent = false;
+    const logoUrl = await getEmailLogoUrl();
     try {
       await sendEmail({
         toEmail: TO_EMAIL,
@@ -404,7 +405,7 @@ export async function POST(req: NextRequest) {
         fromEmail: FROM_EMAIL,
         replyTo: email || undefined,
         subject: `New Quote Request: ${fullName || "Website"}`,
-        html: wrapEmailHtml(internalHtml),
+        html: wrapEmailHtml(internalHtml, undefined, logoUrl),
         attachments: attachments.length ? attachments : undefined,
       });
       internalSent = true;
@@ -508,7 +509,7 @@ export async function POST(req: NextRequest) {
         fromEmail: FROM_EMAIL,
         replyTo: TO_EMAIL,
         subject: "We've received your request | Groutix",
-        html: wrapEmailHtml(customerHtml, "We've received your quote request and a Groutix specialist will be in touch shortly."),
+        html: wrapEmailHtml(customerHtml, "We've received your quote request and a Groutix specialist will be in touch shortly.", logoUrl),
       });
     } catch (err) {
       logSendError("customer confirmation", err);

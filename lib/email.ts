@@ -212,10 +212,26 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Wraps raw email HTML in a beautiful, modern branded container for clients.
+ * Returns the current logo URL (with cache-busting) for use in emails.
+ * Falls back to the default if DB is unavailable.
  */
-export function wrapEmailHtml(contentHtml: string, preheaderText?: string): string {
-  const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/new_logo.jpeg`;
+export async function getEmailLogoUrl(): Promise<string> {
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com";
+  try {
+    const { getSiteSettings, getLogoPublicUrl } = await import("./settings");
+    const settings = await getSiteSettings();
+    return `${base}${getLogoPublicUrl(settings)}`;
+  } catch {
+    return `${base}/new_logo.jpeg`;
+  }
+}
+
+/**
+ * Wraps raw email HTML in a beautiful, modern branded container for clients.
+ * Pass logoUrl from getEmailLogoUrl() for dynamic logo support; omit to use default.
+ */
+export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoUrl?: string): string {
+  const resolvedLogoUrl = logoUrl || `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/new_logo.jpeg`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -239,7 +255,7 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string): stri
           <tr>
             <td align="center" style="padding:40px 32px 32px;background-color:#ffffff;border-bottom:2px solid #f1f5f9;">
               <a href="https://www.groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
-                <img src="${logoUrl}" alt="Groutix" width="200" style="display:block;max-width:100%;height:auto;border:0;">
+                <img src="${resolvedLogoUrl}" alt="Groutix" width="200" style="display:block;max-width:100%;height:auto;border:0;">
               </a>
             </td>
           </tr>

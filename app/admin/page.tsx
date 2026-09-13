@@ -53,7 +53,8 @@ import {
   MapPin,
   Wrench,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Settings
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -1065,14 +1066,23 @@ export default function CrmDashboardPage() {
   const [warrantyProvided, setWarrantyProvided] = useState(true);
   const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [siteLogoUrl, setSiteLogoUrl] = useState("/new_logo.jpeg");
+  const [logoSettingsOpen, setLogoSettingsOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
-  // Preload the Groutix logo image once so the warranty card renders the real
-  // brand mark (not "GROUTIX" text) and is present when exporting to PNG.
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => { if (d.logoUrl) setSiteLogoUrl(d.logoUrl); })
+      .catch(() => {});
+  }, []);
+
+  // Preload the Groutix logo image so the warranty card renders the brand mark.
   useEffect(() => {
     const img = new Image();
     img.onload = () => setWarrantyLogo(img);
-    img.src = "/new_logo.jpeg";
-  }, []);
+    img.src = siteLogoUrl;
+  }, [siteLogoUrl]);
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [activeInvoiceLead, setActiveInvoiceLead] = useState<Lead | null>(null);
@@ -5612,7 +5622,7 @@ export default function CrmDashboardPage() {
       try {
         const n = new Notification("New customer reply", {
           body: `${unreadReplyCount} conversation${unreadReplyCount === 1 ? "" : "s"} with unread customer replies.`,
-          icon: "/new_logo.jpeg",
+          icon: siteLogoUrl,
           tag: "groutix-reply",
         });
         n.onclick = () => {
@@ -5923,6 +5933,13 @@ export default function CrmDashboardPage() {
                   <FileText className="w-4 h-4" />
                   Site Content Editor
                 </Link>
+                <button
+                  onClick={() => setLogoSettingsOpen(true)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 text-left"
+                >
+                  <Settings className="w-4 h-4" />
+                  Logo Settings
+                </button>
               </div>
             )}
           </nav>
@@ -8395,7 +8412,7 @@ export default function CrmDashboardPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <img
-                      src="/new_logo.jpeg"
+                      src={siteLogoUrl}
                       alt="Groutix"
                       className="h-11 w-auto object-contain"
                     />
@@ -10298,7 +10315,7 @@ export default function CrmDashboardPage() {
                 {/* 1. Header: Logo & Right Column */}
                 <div className="flex items-start justify-between gap-4 pb-1">
                   <div>
-                    <img src="/new_logo.jpeg" alt="Groutix" className="h-10 object-contain" />
+                    <img src={siteLogoUrl} alt="Groutix" className="h-10 object-contain" />
                   </div>
                   <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
                     <div>Melbourne</div>
@@ -10647,6 +10664,59 @@ export default function CrmDashboardPage() {
                 Skip
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logo Settings Modal */}
+      {logoSettingsOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-900">Logo Settings</h3>
+              <button onClick={() => setLogoSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center min-h-[80px]">
+              <img src={siteLogoUrl} alt="Current logo" className="h-14 w-auto max-w-full object-contain" />
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">Upload a new JPEG or PNG to replace the logo across the website, emails, and PDFs. Changes take effect immediately.</p>
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload New Logo</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#001f97] file:text-white hover:file:bg-[#001777] cursor-pointer"
+                disabled={logoUploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setLogoUploading(true);
+                  const fd = new FormData();
+                  fd.append("logo", file);
+                  fetch("/api/admin/settings/logo", { method: "POST", body: fd })
+                    .then((r) => r.json())
+                    .then((d) => {
+                      if (d.ok) setSiteLogoUrl(`/${d.logoFile}?v=${d.logoVersion}`);
+                    })
+                    .catch(console.error)
+                    .finally(() => setLogoUploading(false));
+                }}
+              />
+              {logoUploading && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Uploading logo…
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setLogoSettingsOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

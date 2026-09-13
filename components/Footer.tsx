@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Phone, Mail, Clock } from "lucide-react";
 import { useContact } from "@/components/SiteContentProvider";
@@ -24,6 +24,13 @@ const SocialIcons = {
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { phone, tel, email, mailto } = useContact();
+  const [logoSrc, setLogoSrc] = useState("/new_logo.jpeg");
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => { if (d.logoUrl) setLogoSrc(d.logoUrl); })
+      .catch(() => {});
+  }, []);
 
   return (
     <motion.footer
@@ -46,7 +53,7 @@ export default function Footer() {
           >
             <Link href="/" className="flex items-center group">
               <Image
-                src="/new_logo.jpeg"
+                src={logoSrc}
                 alt="Groutix Logo"
                 width={260}
                 height={80}

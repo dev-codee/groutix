@@ -8,7 +8,7 @@ import {
   type WarrantyDoc,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildWarrantyPdfBase64 } from "@/lib/warrantyPdf";
 
 export const runtime = "nodejs";
@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
     </div>
     <p style="margin:20px 0 0;">Your warranty card is attached. Keep it safe for your records.</p>`;
 
+  const logoUrl = await getEmailLogoUrl();
   try {
     await sendEmail({
       toEmail: lead.email,
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix 10-Year Warranty ${warrantyNo}`,
-      html: wrapEmailHtml(html, `Your Groutix 10-year warranty (${warrantyNo}) is ready.`),
+      html: wrapEmailHtml(html, `Your Groutix 10-year warranty (${warrantyNo}) is ready.`, logoUrl),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {

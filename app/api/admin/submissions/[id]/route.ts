@@ -9,7 +9,7 @@ import {
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { autoSendInvoice } from "@/lib/automations";
-import { sendInternalAlert, sendEmail, wrapEmailHtml, isEmailConfigured } from "@/lib/email";
+import { sendInternalAlert, sendEmail, wrapEmailHtml, getEmailLogoUrl, isEmailConfigured } from "@/lib/email";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
 import { getTechnician } from "@/lib/technicians";
@@ -47,6 +47,7 @@ async function notifyTechnicianAssigned(
     );
   }
 
+  const logoUrl = await getEmailLogoUrl();
   await sendEmail({
     toEmail: tech.email,
     subject: `New Groutix assignment${lead.address ? ` — ${lead.address}` : ""}`,
@@ -55,7 +56,8 @@ async function notifyTechnicianAssigned(
        <p>Hi ${tech.name}, you've been dispatched to the following:</p>
        ${rows.join("\n")}
        <p style="margin-top:16px;color:#64748b">Please review the details and be on site on time.</p>`,
-      "You've been assigned a new Groutix job"
+      "You've been assigned a new Groutix job",
+      logoUrl
     ),
   });
 }

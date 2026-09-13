@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { sendEmail, isEmailConfigured, wrapEmailHtml, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 import { invoiceTrackingPixel } from "@/lib/automations";
 
@@ -183,6 +183,7 @@ export async function POST(req: NextRequest) {
     console.error("invoice PDF generation failed (sending without attachment):", err);
   }
 
+  const logoUrl = await getEmailLogoUrl();
   try {
     await sendEmail({
       toEmail: lead.email,
@@ -190,7 +191,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix Tax Invoice ${invoiceNumber} — AUD $${total.toFixed(2)}`,
-      html: wrapEmailHtml(html, `Your Groutix invoice ${invoiceNumber} is ready.`),
+      html: wrapEmailHtml(html, `Your Groutix invoice ${invoiceNumber} is ready.`, logoUrl),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {

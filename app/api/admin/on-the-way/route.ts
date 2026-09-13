@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity } from "@/lib/submissions";
 import { sendSms } from "@/lib/sms";
-import { sendEmail, wrapEmailHtml } from "@/lib/email";
+import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
@@ -166,12 +166,14 @@ export async function POST(req: NextRequest) {
       `;
 
   if (lead.email) {
-    sendEmail({
-      fromName: "Groutix",
-      toEmail: lead.email,
-      subject: emailSubject,
-      html: wrapEmailHtml(emailContentHtml, emailSubject),
-    }).catch(() => {});
+    getEmailLogoUrl().then((logoUrl) =>
+      sendEmail({
+        fromName: "Groutix",
+        toEmail: lead.email!,
+        subject: emailSubject,
+        html: wrapEmailHtml(emailContentHtml, emailSubject, logoUrl),
+      })
+    ).catch(() => {});
   }
 
   // ── Activity log ─────────────────────────────────────────────────────────
