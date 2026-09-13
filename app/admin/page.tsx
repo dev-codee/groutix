@@ -8350,9 +8350,9 @@ export default function CrmDashboardPage() {
                     />
                   </div>
                   <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
-                    <div>1/14 St Andrews St</div>
-                    <div>Brighton VIC 3186</div>
-                    <div>7023 8094</div>
+                    <div>Melbourne</div>
+                    <div>VIC</div>
+                    <div>(03) 7023 8094</div>
                     <div>info@groutix.com</div>
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
@@ -10178,12 +10178,13 @@ export default function CrmDashboardPage() {
                     <img src="/new_logo.jpeg" alt="Groutix" className="h-10 object-contain" />
                   </div>
                   <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
-                    <div>Melbourne, VIC</div>
-                    <div>7023 8094</div>
+                    <div>Melbourne</div>
+                    <div>VIC</div>
+                    <div>(03) 7023 8094</div>
                     <div>info@groutix.com</div>
-                    <div className="pt-1.5 font-black text-xs text-slate-900">TAX INVOICE</div>
+                    <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
-                    <div className="pt-1.5 font-bold text-slate-900">Tax Invoice No: INV-{activeInvoiceLead.id.slice(-6).toUpperCase()}</div>
+                    <div className="pt-1.5 text-slate-900">Invoice # {activeInvoiceLead.invoiceNumber || `INV-${activeInvoiceLead.id.slice(-6).toUpperCase()}`}</div>
                     <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
