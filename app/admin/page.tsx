@@ -3431,18 +3431,25 @@ export default function CrmDashboardPage() {
                 Sent
               </button>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Job Booked"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="Job Booked"
-              >
-                Job Booked
-              </button>
+              <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                  className={`w-full py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                    l.status === "Job Booked"
+                      ? "bg-[#001f97] text-white shadow-2xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  title="Job Booked"
+                >
+                  Job Booked
+                </button>
+                {l.jobAt && (
+                  <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </div>
+                )}
+              </div>
 
               <select
                 value={l.technician || ""}
@@ -3520,6 +3527,11 @@ export default function CrmDashboardPage() {
                   <span className="truncate">Job Booked</span>
                   {isJobBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
                 </button>
+                {l.jobAt && (
+                  <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </div>
+                )}
               </div>
 
               {/* Right sub-column: Inspection Booked, Quote Sent */}
@@ -4098,18 +4110,25 @@ export default function CrmDashboardPage() {
                 <span>Inspection Form</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Job Booked"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="Job Booked"
-              >
-                Job Booked
-              </button>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                  className={`w-full py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                    l.status === "Job Booked"
+                      ? "bg-[#001f97] text-white shadow-2xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  title="Job Booked"
+                >
+                  Job Booked
+                </button>
+                {l.jobAt && (
+                  <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Row 3 (Second line): On the Way, Reached, Start, Job Done */}
@@ -4182,15 +4201,27 @@ export default function CrmDashboardPage() {
 
             {/* 3 Checklist items */}
             <div className="space-y-1.5">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
+                  className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+                >
+                  <span className="truncate">Job Booked</span>
+                  <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                </button>
+                {l.jobAt && (
+                  <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </div>
+                )}
+              </div>
               {[
-                { label: "Job Booked", status: "Job Booked" },
                 { label: "Job Started", status: "Job Started" },
                 { label: "Job Done", status: "Job Done" },
               ].map((item) => {
                 const isDone =
-                  item.status === "Job Booked"
-                    ? true
-                    : item.status === "Job Started"
+                  item.status === "Job Started"
                     ? l.status === "Job Started" || l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
                     : l.status === "Job Done" || l.status === "Completed";
 
@@ -8779,7 +8810,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Conversation Messages Box — filtered by active tab */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <div className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3" style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}>
               {getConversation(activeMessageLeadLive || activeMessageLead)
                 .filter((msg) =>
                   messageChannel === "sms"
@@ -8857,7 +8888,7 @@ export default function CrmDashboardPage() {
             </div>
 
             {/* Reply Composer */}
-            <div className="space-y-3 pt-2 border-t border-slate-200 shrink-0">
+            <div className="space-y-3 pt-2 border-t border-slate-200 flex-1 min-h-0 overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-xl border border-slate-200">
                   <button
@@ -8966,11 +8997,11 @@ export default function CrmDashboardPage() {
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600">SMS Text Message:</label>
                     <textarea
-                      rows={8}
+                      rows={5}
                       placeholder="Type your SMS message to send via Texto API..."
                       value={smsText}
                       onChange={(e) => setSmsText(e.target.value)}
-                      className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[100px]"
+                      className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[80px]"
                     />
                   </div>
 
@@ -9077,11 +9108,11 @@ export default function CrmDashboardPage() {
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
                 <textarea
-                  rows={10}
+                  rows={6}
                   placeholder="Type your email message or pick a template from the dropdown above..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans resize-y min-h-[120px]"
+                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans resize-y min-h-[100px]"
                 />
               </div>
 
