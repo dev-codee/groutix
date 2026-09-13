@@ -335,7 +335,6 @@ const JOB_STEPS: VisitStep[] = [
   { label: "On the Way", status: "Job En Route" },
   { label: "Reached", status: "Job Arrived" },
   { label: "Start", status: "Job Started" },
-  { label: "In Progress", status: "Job In Progress" },
   { label: "Job Done", status: "Job Done" },
 ];
 // Which phase a lead is in, so we know which step set (if any) to show.
@@ -4181,12 +4180,11 @@ export default function CrmDashboardPage() {
               </span>
             </div>
 
-            {/* 4 Checklist items */}
+            {/* 3 Checklist items */}
             <div className="space-y-1.5">
               {[
                 { label: "Job Booked", status: "Job Booked" },
                 { label: "Job Started", status: "Job Started" },
-                { label: "Job In Progress", status: "Job In Progress" },
                 { label: "Job Done", status: "Job Done" },
               ].map((item) => {
                 const isDone =
@@ -4194,8 +4192,6 @@ export default function CrmDashboardPage() {
                     ? true
                     : item.status === "Job Started"
                     ? l.status === "Job Started" || l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
-                    : item.status === "Job In Progress"
-                    ? l.status === "Job In Progress" || l.status === "In Progress" || l.status === "Job Done" || l.status === "Completed"
                     : l.status === "Job Done" || l.status === "Completed";
 
                 return (
@@ -8970,11 +8966,11 @@ export default function CrmDashboardPage() {
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600">SMS Text Message:</label>
                     <textarea
-                      rows={5}
+                      rows={8}
                       placeholder="Type your SMS message to send via Texto API..."
                       value={smsText}
                       onChange={(e) => setSmsText(e.target.value)}
-                      className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans"
+                      className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[100px]"
                     />
                   </div>
 
@@ -9077,73 +9073,15 @@ export default function CrmDashboardPage() {
                 />
               </div>
 
-              {/* Quick-Insert Variables */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">
-                  Insert Tag:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleInsertVariable("firstName")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                >
-                  + First Name
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsertVariable("name")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                >
-                  + Full Name
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsertVariable("service")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                >
-                  + Service
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsertVariable("address")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                >
-                  + Address
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsertVariable("phone")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                >
-                  + Phone
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsertVariable("technician")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                >
-                  + Specialist
-                </button>
-                {Boolean(activeMessageLeadLive?.quoteAmount || activeMessageLead?.quoteAmount) && (
-                  <button
-                    type="button"
-                    onClick={() => handleInsertVariable("quoteAmount")}
-                    className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                  >
-                    + Quote Total
-                  </button>
-                )}
-              </div>
-
               {/* Email Body */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
                 <textarea
-                  rows={6}
+                  rows={10}
                   placeholder="Type your email message or pick a template from the dropdown above..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans"
+                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans resize-y min-h-[120px]"
                 />
               </div>
 
