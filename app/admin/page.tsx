@@ -5557,29 +5557,32 @@ export default function CrmDashboardPage() {
         : leads.filter((l) => {
             if (role === "technician") {
               if (!inRoleQueue(role, l.status)) return false;
-              if (viewAs) return true;
-              const myStaff = staff.find((s) => s.username === username);
-              const myName = (myStaff?.name || username || "").trim().toLowerCase();
-              const myUser = (username || "").trim().toLowerCase();
-              const myId = myStaff?.id;
+              const targetName = viewAs
+                ? viewAs.name.trim().toLowerCase()
+                : (staff.find((s) => s.username === username)?.name || username || "").trim().toLowerCase();
+              const targetUser = viewAs ? viewAs.name.trim().toLowerCase() : (username || "").trim().toLowerCase();
+              const targetId = viewAs
+                ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)?.id
+                : staff.find((s) => s.username === username)?.id;
               return (
-                (myId && l.technicianId === myId) ||
-                (l.technicianId && (l.technicianId.toLowerCase() === myUser || l.technicianId.toLowerCase() === myName)) ||
-                (l.technician && (l.technician.trim().toLowerCase() === myName || l.technician.trim().toLowerCase() === myUser))
+                (targetId && l.technicianId === targetId) ||
+                (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+                (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser))
               );
             }
             if (role === "inspection" || role === "field") {
               if (!inRoleQueue(role, l.status)) return false;
-              if (viewAs) return true;
-              const myStaff = staff.find((s) => s.username === username);
-              const myId = myStaff?.id;
-              const myName = (myStaff?.name || "").trim().toLowerCase();
-              const myUser = (username || "").trim().toLowerCase();
+              const targetStaff = viewAs
+                ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
+                : staff.find((s) => s.username === username);
+              const targetId = targetStaff?.id;
+              const targetName = (targetStaff?.name || (viewAs ? viewAs.name : username) || "").trim().toLowerCase();
+              const targetUser = (viewAs ? viewAs.name : username || "").trim().toLowerCase();
               // ID-based match (set by current assignment UI)
-              if (myId && l.inspectorId) return l.inspectorId === myId;
+              if (targetId && l.inspectorId) return l.inspectorId === targetId;
               // Name-based fallback for leads assigned before inspectorId was introduced
               const assignedTo = (l.assigned || "").trim().toLowerCase();
-              return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === myName || assignedTo === myUser));
+              return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === targetName || assignedTo === targetUser));
             }
             if (!inRoleQueue(role, l.status)) return false;
             return true;
