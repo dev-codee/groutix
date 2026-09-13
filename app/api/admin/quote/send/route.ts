@@ -94,67 +94,17 @@ export async function POST(req: NextRequest) {
   const acceptUrl = buildQuoteResponseUrl(body.id, "accept");
 
   const html = `
-    <h2 style="margin:0 0 4px;color:#001f97;font-size:24px;">Your Groutix Quotation</h2>
-    <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Quote ${esc(quoteNumber)}</p>
-    <p style="margin:0 0 16px;">Hi ${esc(
-      lead.name || "there"
-    )}, thank you for your enquiry. Please find your quotation details below.</p>
+    <p style="margin:0 0 24px;font-size:15px;color:#334155;">Hi ${esc(lead.name?.split(" ")[0] || "there")},</p>
 
-    ${
-      lead.address
-        ? `<div style="margin:16px 0 20px;padding:12px 14px;background:#f8fafc;border-radius:8px;font-size:13px;color:#475569;border:1px solid #e2e8f0;">
-            <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">Site / Billing Address:</div>
-            <div>${esc(lead.address)}</div>
-            ${lead.phone ? `<div>Phone: ${esc(lead.phone)}</div>` : ""}
-          </div>`
-        : ""
-    }
+    <p style="margin:0 0 32px;font-size:15px;color:#334155;">Please find your Groutix quotation <strong>${esc(quoteNumber)}</strong> attached to this email.</p>
 
-    ${
-      jobDescription
-        ? `<div style="margin:20px 0;padding:12px 16px;background:#f8fafc;border-left:4px solid #001f97;border-radius:4px;">
-            <div style="font-weight:700;color:#001f97;font-size:12px;letter-spacing:0.04em;margin-bottom:6px;">JOB DESCRIPTION:</div>
-            <div style="color:#334155;font-size:13.5px;line-height:1.6;white-space:pre-line;">${esc(jobDescription)}</div>
-          </div>`
-        : ""
-    }
-    
-    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:24px 0;">
-      <table style="border-collapse:collapse;width:100%;font-size:14px;text-align:left;">
-        <thead>
-          <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
-            <th style="padding:10px 12px;color:#0f172a;font-weight:700;">DESCRIPTION</th>
-            <th style="padding:10px 12px;color:#0f172a;font-weight:700;text-align:center;">QTY</th>
-            <th style="padding:10px 12px;color:#0f172a;font-weight:700;text-align:right;">UNIT PRICE</th>
-            <th style="padding:10px 12px;color:#0f172a;font-weight:700;text-align:right;">TOTAL PRICE</th>
-          </tr>
-        </thead>
-        <tbody>${itemRows}</tbody>
-        <tfoot>
-          <tr>
-            <td colspan="3" style="padding:10px 12px;font-weight:600;color:#475569;text-align:right;border-top:1px solid #e2e8f0;">SUBTOTAL:</td>
-            <td style="padding:10px 12px;font-weight:600;color:#1e293b;text-align:right;border-top:1px solid #e2e8f0;">$${subtotal.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td colspan="3" style="padding:8px 12px;font-weight:600;color:#475569;text-align:right;">GST (10%):</td>
-            <td style="padding:8px 12px;font-weight:600;color:#1e293b;text-align:right;">$${gst.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td colspan="3" style="padding:12px;font-weight:700;color:#001f97;text-align:right;border-top:2px solid #001f97;font-size:15px;">TOTAL:</td>
-            <td style="padding:12px;font-weight:700;color:#001f97;text-align:right;border-top:2px solid #001f97;font-size:15px;">$${total.toFixed(2)}</td>
-          </tr>
-        </tfoot>
-      </table>
+    <!-- Tagline -->
+    <div style="margin:0 0 32px;padding:24px;background:#001f97;border-radius:12px;text-align:center;">
+      <p style="margin:0;font-size:22px;font-weight:900;color:#ffffff;line-height:1.3;">Don&apos;t Let It Cost You More.<br/>Get It Sorted Now!</p>
     </div>
 
-    <!-- Terms & Conditions Reference -->
-    <div style="margin:20px 0;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;line-height:1.5;">
-      All works and quotations are subject to the official <a href="https://groutix.com/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a> (complete 20 clauses included in attached PDF). Full shower epoxy regrouting includes our comprehensive 10-Year Waterproof Warranty.
-    </div>
-
-    <!-- Review and digitally sign quote online -->
-    <p style="margin:24px 0 12px;font-weight:600;color:#0f172a;">Ready to proceed?</p>
-    <table cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+    <!-- Review and sign button -->
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto 12px;">
       <tr>
         <td style="padding-right:12px;">
           <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">✍️ Review &amp; Sign Quote</a>
@@ -163,8 +113,7 @@ export async function POST(req: NextRequest) {
           <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">📥 Download PDF</a>
         </td>
       </tr>
-    </table>
-    <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;">Or simply reply to this email or call us to proceed with your booking.</p>`;
+    </table>`;
 
   // Automatic step: generate a branded PDF quotation and attach it.
   const attachments: EmailAttachment[] = [];
