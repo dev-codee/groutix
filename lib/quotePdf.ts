@@ -669,35 +669,36 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
     text("GROUTIX", MARGIN, y - 10, { font: bold, size: 24, color: BRAND });
   }
 
-  // 2. Top-Right Header Column
-  const rightColX = A4.w - MARGIN - 140; // Approx right align
+  // 2. Top-Right Header Column — right-aligned, matching quote PDF style
+  const invoiceRightX = A4.w - MARGIN;
   let ry = y;
-  
-  // Melbourne Address block
-  const bizLines = (input.businessAddress || "Melbourne").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+  const drawR = (str: string, f: PDFFont, sz: number, clr: ReturnType<typeof rgb>) => {
+    const cleaned = cleanPdfText(str);
+    const w = f.widthOfTextAtSize(cleaned, sz);
+    page.drawText(cleaned, { x: invoiceRightX - w, y: ry, size: sz, font: f, color: clr });
+  };
+
+  const bizLines = input.businessAddress
+    ? input.businessAddress.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+    : ["Melbourne", "VIC"];
   for (const bl of bizLines) {
-    text(bl, rightColX, ry, { size: 9, color: INK });
+    drawR(bl, font, 9, INK);
     ry -= 12;
   }
-  ry -= 12; // Extra space
-  text(input.businessPhone || "(03) 7023 8094", rightColX, ry, { size: 9, color: INK });
+  drawR(input.businessPhone || "(03) 7023 8094", font, 9, INK);
   ry -= 12;
-  text(input.businessEmail || "info@groutix.com", rightColX, ry, { size: 9, color: INK });
+  drawR(input.businessEmail || "info@groutix.com", font, 9, INK);
   ry -= 18;
-  
-  // TAX INVOICE block
-  text("TAX INVOICE", rightColX, ry, { font: bold, size: 10, color: INK });
-  ry -= 12;
-  text("ACN: 687 415 005", rightColX, ry, { font: bold, size: 9, color: INK });
-  ry -= 18;
-  
-  // Dynamic Invoice No and Date
-  text(`Tax Invoice No: `, rightColX, ry, { font: bold, size: 9, color: INK });
-  page.drawText(invoiceNumber, { x: rightColX + font.widthOfTextAtSize("Tax Invoice No: ", 9), y: ry, size: 9, font, color: INK });
+
+  drawR("Tax Invoice", bold, 12, GOLD);
   ry -= 14;
-  
+  drawR("ACN: 687 415 005", bold, 9, INK);
+  ry -= 20;
+  drawR(`Invoice # ${invoiceNumber}`, font, 9, INK);
+  ry -= 14;
   const displayDate = input.date || new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
-  text(displayDate, rightColX, ry, { size: 9, color: INK });
+  drawR(displayDate, font, 9, INK);
 
   // Move below header
   y = Math.min(y - 70, ry - 30);
