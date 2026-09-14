@@ -94,6 +94,7 @@ export interface SubmissionPhoto {
   height?: number;
   size?: number;
   added?: string;
+  uploadedBy?: string;
 }
 
 export interface SubmissionDoc {

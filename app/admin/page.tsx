@@ -3822,16 +3822,30 @@ export default function CrmDashboardPage() {
               <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
             </div>
 
-            {/* Row 5: Action Button */}
-            <div className="pt-1">
+            {/* Row 5: Action Buttons */}
+            <div className="pt-1 flex gap-1.5">
               <button
                 type="button"
                 onClick={() => callCustomer(l)}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
                 title="Call"
               >
                 <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
                 <span className="truncate">Call</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openPhotosModal(l)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+                title="View & upload job photos"
+              >
+                <Camera className="w-3 h-3 text-slate-600 shrink-0" />
+                <span className="truncate">Photos</span>
+                {Array.isArray(l.photos) && l.photos.length > 0 && (
+                  <span className="min-w-[16px] h-4 px-1 rounded-full bg-blue-100 text-[#001f97] text-[10px] font-black flex items-center justify-center shrink-0">
+                    {l.photos.length}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -4205,6 +4219,32 @@ export default function CrmDashboardPage() {
                 )}
               </div>
             </div>
+
+            {/* Scope of Work (quote items without price) */}
+            {(() => {
+              const items = Array.isArray(l.quoteItems) && l.quoteItems.length > 0 ? l.quoteItems : null;
+              const fallback = l.quoteScope || l.service || null;
+              if (!items && !fallback) return null;
+              return (
+                <div className="border border-[#001f97]/20 rounded-lg bg-[#001f97]/[0.03] px-2.5 py-2 space-y-1">
+                  <p className="text-[10px] font-black text-[#001f97] uppercase tracking-wider">Scope of Work</p>
+                  {items ? (
+                    <ul className="space-y-0.5">
+                      {items.map((it, i) => (
+                        <li key={i} className="text-[11px] text-slate-700 leading-snug">
+                          <span className="font-semibold">{it.service || it.description || `Item ${i + 1}`}</span>
+                          {it.scope && it.scope !== it.service && (
+                            <span className="text-slate-500"> — {it.scope}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-slate-700 leading-snug">{fallback}</p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Row 3 (Second line): On the Way, Reached, Start, Job Done */}
             <div className="grid grid-cols-4 gap-1">
@@ -4614,6 +4654,27 @@ export default function CrmDashboardPage() {
                 Send Invoice
               </button>
             </div>
+
+            {/* Invoice Opened badge */}
+            {l.invoiceSentAt && (
+              l.invoiceOpenedAt ? (
+                <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-[10px] font-bold text-emerald-800">
+                  <span className="flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-emerald-600 shrink-0" />
+                    Customer Opened Invoice
+                  </span>
+                  <span className="text-[9.5px] font-black text-emerald-700">{fmtDate(l.invoiceOpenedAt)}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] font-medium text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-slate-400 shrink-0 opacity-50" />
+                    Invoice Not Opened Yet
+                  </span>
+                  <span className="text-[9px] text-amber-600 font-semibold">Pending</span>
+                </div>
+              )
+            )}
 
             {/* Row 3 (3 buttons): Payment Pending, Payment Received, Warranty Sent */}
             <div className="grid grid-cols-3 gap-1.5">
@@ -5317,6 +5378,32 @@ export default function CrmDashboardPage() {
                 </div>
               );
             })()}
+
+            {/* Multi-day job progress bar */}
+            {l.jobTotalDays && l.jobTotalDays > 1 && (l.status === "Job Started" || l.status === "Job In Progress") && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-bold text-blue-800">
+                  <span>Day {l.jobDaysDone || 1} of {l.jobTotalDays} — {l.technician || "Technician"}</span>
+                  <span className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
+                    {Math.round(((l.jobDaysDone || 1) / l.jobTotalDays) * 100)}%
+                  </span>
+                </div>
+                <div className="w-full bg-blue-100 rounded-full h-2">
+                  <div
+                    className="bg-[#001f97] h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, ((l.jobDaysDone || 1) / l.jobTotalDays) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: l.jobTotalDays }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 h-1.5 rounded-full ${i < (l.jobDaysDone || 1) ? "bg-[#001f97]" : "bg-blue-100"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* COLUMN 3: FOLLOW-UP & CONVERSATION */}
@@ -8254,12 +8341,16 @@ export default function CrmDashboardPage() {
                                 onSelectTemplate={(t) => {
                                   const updated = [...quoteItems];
                                   if (t) {
+                                    const normalizedScope = (t.scope || "")
+                                      .split("\n")
+                                      .map((line) => line.replace(/^o\s+/, "• "))
+                                      .join("\n");
                                     updated[idx] = {
                                       ...updated[idx],
                                       templateNo: t.no,
                                       code: t.code,
                                       service: t.service,
-                                      scope: t.scope,
+                                      scope: normalizedScope,
                                       price: Number(t.price) || updated[idx].price || 0
                                     };
                                   } else {
@@ -8288,15 +8379,18 @@ export default function CrmDashboardPage() {
                                 placeholder="Service title..."
                               />
                               <textarea
-                                rows={3}
+                                rows={Math.max(4, (item.scope || "").split("\n").length + 1)}
                                 value={item.scope || ""}
                                 onChange={(e) => {
                                   const updated = [...quoteItems];
-                                  updated[idx].scope = e.target.value;
+                                  updated[idx].scope = e.target.value
+                                    .split("\n")
+                                    .map((line) => line.replace(/^o\s+/, "• "))
+                                    .join("\n");
                                   setQuoteItems(updated);
                                 }}
                                 className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed text-slate-600"
-                                placeholder="Detailed scope of works..."
+                                placeholder="Detailed scope of works (one bullet per line)..."
                               />
                             </td>
 
@@ -8322,7 +8416,7 @@ export default function CrmDashboardPage() {
                                   type="number"
                                   min="0"
                                   step="0.01"
-                                  value={item.price ?? ""}
+                                  value={item.price || ""}
                                   onChange={(e) => {
                                     const updated = [...quoteItems];
                                     updated[idx].price = parseFloat(e.target.value) || 0;
@@ -8466,9 +8560,17 @@ export default function CrmDashboardPage() {
                           {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
                           <div className="font-bold text-slate-900 text-xs">{item.service}</div>
                           {item.scope && !isRedundantScope(item.service, item.scope) && (
-                            <div className="text-[10px] text-slate-600 whitespace-pre-wrap mt-1 leading-relaxed">
-                              {item.scope}
-                            </div>
+                            <ul className="mt-1 space-y-0.5">
+                              {item.scope.split("\n").filter(l => l.trim()).map((line, li) => {
+                                const clean = line.replace(/^[•o]\s*/, "").trim();
+                                return (
+                                  <li key={li} className="flex items-start gap-1 text-[10px] text-slate-600 leading-snug">
+                                    <span className="shrink-0 text-[#001f97] font-bold mt-px">•</span>
+                                    <span>{clean}</span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
                           )}
                         </td>
                         <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
@@ -8726,7 +8828,12 @@ export default function CrmDashboardPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1">
+                      {photo.uploadedBy && (
+                        <div className="text-[10px] text-slate-400 font-medium truncate">
+                          by {photo.uploadedBy}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-0.5">
                         <span className="truncate max-w-[130px] font-medium" title={photo.name}>
                           {photo.name}
                         </span>
@@ -10284,7 +10391,8 @@ export default function CrmDashboardPage() {
                     <label className="font-bold text-slate-700 block mb-1">Total (incl GST)</label>
                     <input
                       type="number"
-                      value={invoicePrice}
+                      value={invoicePrice || ""}
+                      placeholder="0.00"
                       onChange={(e) => setInvoicePrice(parseFloat(e.target.value) || 0)}
                       className="w-full p-2 border border-slate-200 rounded-lg font-bold"
                     />
@@ -10418,35 +10526,81 @@ export default function CrmDashboardPage() {
                 {/* 3. WORK COMPLETED */}
                 <div className="space-y-0.5">
                   <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">WORK COMPLETED</div>
-                  <div className="text-[11px] text-slate-700 whitespace-pre-wrap">
-                    {invoiceDescription || invoiceService || "Full shower epoxy regrouting, deep clean, and perimeter silicone reseal."}
-                  </div>
+                  {(() => {
+                    const workText = invoiceDescription || invoiceService || "Full shower epoxy regrouting, deep clean, and perimeter silicone reseal.";
+                    const lines = workText.split("\n").filter((l) => l.trim());
+                    if (lines.length <= 1) {
+                      return <div className="text-[11px] text-slate-700">{workText}</div>;
+                    }
+                    return (
+                      <ul className="space-y-0.5">
+                        {lines.map((line, i) => (
+                          <li key={i} className="flex items-start gap-1 text-[11px] text-slate-700 leading-snug">
+                            <span className="text-[#e5a910] font-bold shrink-0 mt-px">•</span>
+                            <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
                 </div>
 
                 {/* 4. Table */}
-                <div>
-                  <div className="grid grid-cols-12 text-[10px] font-bold text-[#e5a910] uppercase pb-1 border-b border-slate-200">
-                    <div className="col-span-6">DESCRIPTION</div>
-                    <div className="col-span-2 text-right">QUANTITY</div>
-                    <div className="col-span-2 text-right">PRICE</div>
-                    <div className="col-span-2 text-right">TOTAL</div>
-                  </div>
-                  <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200">
-                    <div className="col-span-6 font-medium">{invoiceService || "Shower Cubicle Regrouting"}</div>
-                    <div className="col-span-2 text-right">1</div>
-                    <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
-                    <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
-                  </div>
-                </div>
+                {(() => {
+                  const effectiveTotal = (invoicePrice || 0) + (invoiceExtraCharge || 0);
+                  const subtotal = effectiveTotal / 1.1;
+                  const gst = effectiveTotal - subtotal;
+                  return (
+                    <>
+                      <div>
+                        <div className="grid grid-cols-12 text-[10px] font-bold text-[#e5a910] uppercase pb-1 border-b border-slate-200">
+                          <div className="col-span-6">DESCRIPTION</div>
+                          <div className="col-span-2 text-right">QUANTITY</div>
+                          <div className="col-span-2 text-right">PRICE</div>
+                          <div className="col-span-2 text-right">TOTAL</div>
+                        </div>
+                        <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
+                          <div className="col-span-6">
+                            <div className="font-semibold">{invoiceService || "Shower Cubicle Regrouting"}</div>
+                            {invoiceDescription && (
+                              <ul className="mt-1 space-y-0.5">
+                                {invoiceDescription.split("\n").filter((l) => l.trim()).map((line, li) => (
+                                  <li key={li} className="flex items-start gap-1 text-[10px] text-slate-500 leading-snug">
+                                    <span className="text-[#001f97] font-bold shrink-0 mt-px">•</span>
+                                    <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <div className="col-span-2 text-right">1</div>
+                          <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
+                          <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
+                        </div>
+                        {invoiceExtraWork && invoiceExtraCharge > 0 && (
+                          <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
+                            <div className="col-span-6">
+                              <div className="font-semibold text-amber-700">Additional Work</div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">{invoiceExtraWork}</div>
+                            </div>
+                            <div className="col-span-2 text-right">1</div>
+                            <div className="col-span-2 text-right">${invoiceExtraCharge.toFixed(2)}</div>
+                            <div className="col-span-2 text-right font-bold">${invoiceExtraCharge.toFixed(2)}</div>
+                          </div>
+                        )}
+                      </div>
 
-                {/* 5. Financial Summary */}
-                <div className="text-right text-[11px] space-y-1 text-slate-800">
-                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${((invoicePrice / 1.1) || 0).toFixed(2)}</span></div>
-                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${(invoicePrice - (invoicePrice / 1.1) || 0).toFixed(2)}</span></div>
-                  <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${invoicePrice.toFixed(2)}</span></div>
-                  <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? invoicePrice.toFixed(2) : "0.00"}</span></div>
-                  <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : invoicePrice.toFixed(2)}</span></div>
-                </div>
+                      {/* 5. Financial Summary */}
+                      <div className="text-right text-[11px] space-y-1 text-slate-800">
+                        <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${subtotal.toFixed(2)}</span></div>
+                        <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${gst.toFixed(2)}</span></div>
+                        <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${effectiveTotal.toFixed(2)}</span></div>
+                        <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? effectiveTotal.toFixed(2) : "0.00"}</span></div>
+                        <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : effectiveTotal.toFixed(2)}</span></div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* 6. HOW TO PAY: */}
                 <div className="space-y-1 pt-1">

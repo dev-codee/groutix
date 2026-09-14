@@ -335,20 +335,29 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     ? input.items
     : [{ service: "Regrouting & waterproof resealing", price: input.total, qty: 1 }];
 
+  const normText = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+
+  const isRedundant = (label: string, candidate: string): boolean => {
+    if (!candidate || candidate === label) return true;
+    const nl = normText(label);
+    const nc = normText(candidate);
+    return !nc || nl.includes(nc) || nc.includes(nl);
+  };
+
   let zebra = false;
   for (const it of items) {
     const label = it.service || it.description || "Regrouting & waterproof resealing";
     const descMaxWidth = isScopeDoc ? colQtyRight - colDescX - 35 : colQtyRight - colDescX - 15;
     const descLines = wrapLines(label, bold, 9, descMaxWidth).filter(Boolean);
 
-    const extraScope =
-      it.scope && it.scope !== label
-        ? it.scope
-        : it.description && it.description !== label
-        ? it.description
-        : "";
-    const scopeLines = extraScope
-      ? wrapLines(extraScope, font, 7.5, descMaxWidth).filter(Boolean)
+    const rawScope = !isRedundant(label, it.scope || "")
+      ? it.scope!
+      : !isRedundant(label, it.description || "")
+      ? it.description!
+      : "";
+    const scopeLines = rawScope
+      ? wrapLines(rawScope, font, 7.5, descMaxWidth).filter(Boolean)
       : [];
 
     const qty = Number(it.qty || 1);
@@ -763,10 +772,24 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   });
   y -= 14;
 
+  const normText2 = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+
+  const isRedundant2 = (label: string, candidate: string): boolean => {
+    if (!candidate || candidate === label) return true;
+    const nl = normText2(label);
+    const nc = normText2(candidate);
+    return !nc || nl.includes(nc) || nc.includes(nl);
+  };
+
   for (const it of items) {
     const label = it.service || it.description || "Regrouting & waterproof resealing";
     const itemDescLines = wrapLines(label, font, 9, colQtyRight - colDescX - 20).filter(Boolean);
-    const extraScope = it.scope && it.scope !== label ? it.scope : "";
+    const extraScope = !isRedundant2(label, it.scope || "")
+      ? it.scope!
+      : !isRedundant2(label, it.description || "")
+      ? it.description!
+      : "";
     const scopeLines = extraScope ? wrapLines(extraScope, font, 7.5, colQtyRight - colDescX - 20).filter(Boolean) : [];
 
     const qty = Number(it.qty || 1);
