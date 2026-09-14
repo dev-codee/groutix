@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           height: cldRes.height,
           size: cldRes.bytes,
           added: nowIso,
-          uploadedBy: session.username || session.name || "staff",
+          uploadedBy: session.username || "staff",
         });
       } catch (uploadErr) {
         console.error("Cloudinary upload failed (falling back to dataUrl):", uploadErr);
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           contentType: mime,
           dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
           added: nowIso,
-          uploadedBy: session.username || session.name || "staff",
+          uploadedBy: session.username || "staff",
         });
       }
     } else {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         contentType: mime,
         dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
         added: nowIso,
-        uploadedBy: session.username || session.name || "staff",
+        uploadedBy: session.username || "staff",
       });
     }
   }

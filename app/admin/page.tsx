@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
@@ -184,6 +184,7 @@ export interface Lead {
     height?: number;
     size?: number;
     added?: string;
+    uploadedBy?: string;
   }[];
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
@@ -5855,6 +5856,336 @@ export default function CrmDashboardPage() {
     setLeadModalOpen(true);
   }, []);
 
+  function renderManagerDashboard() {
+    const _now = new Date();
+    const _todayStr = _now.toDateString();
+    const _tomDate = new Date(_now);
+    _tomDate.setDate(_tomDate.getDate() + 1);
+    const _tomStr = _tomDate.toDateString();
+
+    const fmtTime = (iso?: string) => {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
+    };
+    const fmtScheduleDate = (d: Date) =>
+      d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    const getSuburb = (addr?: string) => {
+      if (!addr) return "";
+      const parts = addr.split(",").map((s) => s.trim()).filter(Boolean);
+      if (parts.length >= 3) return parts[parts.length - 3];
+      if (parts.length === 2) return parts[0];
+      return "";
+    };
+    const getScheduleBadge = (status: string) => {
+      if (/en.route/i.test(status)) return { label: "On the Way", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" };
+      if (/arrived/i.test(status)) return { label: "Arrived", cls: "bg-sky-100 text-sky-800 border-sky-200" };
+      if (/in.progress|started/i.test(status)) return { label: "In Progress", cls: "bg-amber-100 text-amber-800 border-amber-200" };
+      if (/completed|done/i.test(status)) return { label: "Completed", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+      return { label: "Scheduled", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+    };
+    const isInspLead = (l: Lead) => Boolean(l.inspectionAt) || /inspection/i.test(l.status || "");
+
+    const todayLeads = scopedLeads
+      .filter((l) => { const d = l.inspectionAt || l.jobAt; return d && new Date(d).toDateString() === _todayStr; })
+      .sort((a, b) => new Date(a.inspectionAt || a.jobAt || 0).getTime() - new Date(b.inspectionAt || b.jobAt || 0).getTime());
+    const tomorrowLeads = scopedLeads
+      .filter((l) => { const d = l.inspectionAt || l.jobAt; return d && new Date(d).toDateString() === _tomStr; })
+      .sort((a, b) => new Date(a.inspectionAt || a.jobAt || 0).getTime() - new Date(b.inspectionAt || b.jobAt || 0).getTime());
+
+    const inspCount = ["Inspection Booked","Inspection En Route","Inspection Arrived","Inspection In Progress","Inspection Completed"].reduce((a, s) => a + (counts[s] || 0), 0);
+    const quoteCount = ["Quote Pending","Quote Sent","Negotiation","Won"].reduce((a, s) => a + (counts[s] || 0), 0);
+    const jobBookedCount = ["Job Booked","Scheduled","Job Confirmed"].reduce((a, s) => a + (counts[s] || 0), 0);
+    const jobInProgCount = ["Job En Route","Job Arrived","Job Started","Job In Progress"].reduce((a, s) => a + (counts[s] || 0), 0);
+
+    const techSummary = assignableTechnicians.filter((t) => t.active !== false).map((t) => {
+      const tLeads = scopedLeads.filter((l) => l.technicianId === t.id || l.technician === t.name);
+      const todayJobs = tLeads.filter((l) => { const d = l.jobAt; return d && new Date(d).toDateString() === _todayStr; }).length;
+      const hasEnRoute = tLeads.some((l) => /en.route/i.test(l.status || ""));
+      const hasWorking = tLeads.some((l) => /arrived|in.progress|started/i.test(l.status || ""));
+      const statusLabel = hasEnRoute ? "On Route" : hasWorking ? "Working" : "At Office";
+      const statusDot = hasEnRoute ? "bg-emerald-500" : hasWorking ? "bg-amber-500" : "bg-slate-300";
+      return { ...t, todayJobs, statusLabel, statusDot };
+    });
+
+    const todayInsp = todayLeads.filter((l) => isInspLead(l));
+    const inspOnWay = todayInsp.filter((l) => /en.route/i.test(l.status || "")).length;
+    const inspScheduled = todayInsp.filter((l) => /booked|scheduled|confirmed/i.test(l.status || "")).length;
+    const inspCompleted = todayInsp.filter((l) => /completed/i.test(l.status || "")).length;
+
+    const renderScheduleTable = (leads: Lead[], title: string, date: Date) => (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden h-full flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-[#001f97]" />
+            <h2 className="text-sm font-black text-slate-900">{title}</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500 hidden xl:inline">{fmtScheduleDate(date)}</span>
+            <span className="px-2 py-0.5 rounded-full bg-[#001f97]/10 text-[#001f97] text-[11px] font-black">{leads.length} Jobs</span>
+          </div>
+        </div>
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-left text-[11px]">
+            <thead className="sticky top-0 bg-slate-50 z-10">
+              <tr className="text-slate-400 font-bold uppercase text-[10px] border-b border-slate-100">
+                <th className="py-2 px-2 whitespace-nowrap">Time</th>
+                <th className="py-2 px-2">Job No</th>
+                <th className="py-2 px-2">Customer</th>
+                <th className="py-2 px-2">Type</th>
+                <th className="py-2 px-2">Assigned</th>
+                <th className="py-2 px-2">Status</th>
+                <th className="py-2 px-1 w-4"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {leads.length === 0 && (
+                <tr><td colSpan={7} className="py-8 text-center text-slate-400 text-xs">No jobs scheduled</td></tr>
+              )}
+              {leads.map((l) => {
+                const timeStr = fmtTime(l.inspectionAt || l.jobAt);
+                const isInsp = isInspLead(l);
+                const badge = getScheduleBadge(l.status);
+                const suburb = getSuburb(l.address);
+                return (
+                  <tr key={l.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => openLeadsFiltered([l.status])}>
+                    <td className="py-2.5 px-2 font-black text-[#001f97] whitespace-nowrap text-[11px]">{timeStr}</td>
+                    <td className="py-2.5 px-2 font-bold text-slate-600 whitespace-nowrap">#{(l.jobNo || l.id.slice(0,4)).replace(/^(?:JobNo-|JOB-?)/i,"")}</td>
+                    <td className="py-2.5 px-2">
+                      <div className="font-semibold text-slate-900 whitespace-nowrap">{l.name || "—"}</div>
+                      {suburb && <div className="text-slate-400 text-[10px]">{suburb}</div>}
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <span className={`flex items-center gap-1 text-[10px] font-bold whitespace-nowrap ${isInsp ? "text-blue-700" : "text-rose-600"}`}>
+                        {isInsp ? <Search className="w-3 h-3 shrink-0" /> : <Wrench className="w-3 h-3 shrink-0" />}
+                        {isInsp ? "Inspection" : "Job"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-600 font-medium whitespace-nowrap">{l.assigned || l.technician || "—"}</td>
+                    <td className="py-2.5 px-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${badge.cls}`}>{badge.label}</span>
+                    </td>
+                    <td className="py-2.5 px-1"><ChevronRight className="w-3.5 h-3.5 text-slate-300" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="space-y-4">
+        {/* 1. Hero Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#001f97] to-[#0a34c4] text-white px-6 py-4 shadow-sm">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Groutix Operations</div>
+              <h2 className="text-xl font-black mt-0.5">Today at a glance</h2>
+              <p className="text-xs text-white/70 mt-0.5">Run the whole business from one screen.</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-white/70 font-semibold hidden sm:inline">
+                {_now.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+              </span>
+              <button type="button" onClick={() => setCurrentView("jobs")} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-colors cursor-pointer">
+                <Briefcase className="w-3.5 h-3.5" /> Open Dispatch
+              </button>
+              <button type="button" onClick={openInbox} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-colors cursor-pointer">
+                <Mail className="w-3.5 h-3.5" /> Open Inbox
+                {unreadReplyCount > 0 && (
+                  <span className="min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">{unreadReplyCount}</span>
+                )}
+              </button>
+              <button type="button" onClick={startNewLead} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white text-[#001f97] text-xs font-black hover:bg-white/90 transition-colors cursor-pointer shadow-xs">
+                <Plus className="w-3.5 h-3.5" /> New Lead
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Stats Bar */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs px-4 py-3">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {([
+              { label: "Total Leads", count: scopedLeads.length, icon: <Users className="w-3.5 h-3.5" />, cls: "text-[#001f97] bg-blue-50 border-blue-100", statuses: [] as string[] },
+              { label: "New Leads", count: (counts["New"]||0)+(counts["Contacted"]||0), icon: <Plus className="w-3.5 h-3.5" />, cls: "text-emerald-700 bg-emerald-50 border-emerald-100", statuses: ["New","Contacted"] },
+              { label: "Inspection", count: inspCount, icon: <Search className="w-3.5 h-3.5" />, cls: "text-violet-700 bg-violet-50 border-violet-100", statuses: ["Inspection Booked","Inspection En Route","Inspection Arrived","Inspection In Progress","Inspection Completed"] },
+              { label: "Quotes", count: quoteCount, icon: <FileText className="w-3.5 h-3.5" />, cls: "text-amber-700 bg-amber-50 border-amber-100", statuses: ["Quote Pending","Quote Sent","Negotiation","Won"] },
+              { label: "Job Booked", count: jobBookedCount, icon: <CalendarDays className="w-3.5 h-3.5" />, cls: "text-blue-700 bg-blue-50 border-blue-100", statuses: ["Job Booked","Scheduled","Job Confirmed"] },
+              { label: "Job In Progress", count: jobInProgCount, icon: <Settings className="w-3.5 h-3.5" />, cls: "text-orange-700 bg-orange-50 border-orange-100", statuses: ["Job En Route","Job Arrived","Job Started","Job In Progress"] },
+              { label: "Job Done", count: counts["Job Done"]||0, icon: <CheckCircle2 className="w-3.5 h-3.5" />, cls: "text-teal-700 bg-teal-50 border-teal-100", statuses: ["Job Done"] },
+              { label: "Payment Pending", count: (counts["Invoice Sent"]||0)+(counts["Payment Pending"]||0), icon: <ArrowRight className="w-3.5 h-3.5" />, cls: "text-rose-700 bg-rose-50 border-rose-100", statuses: ["Invoice Sent","Payment Pending"] },
+              { label: "Warranty Sent", count: counts["Warranty Sent"]||0, icon: <ShieldCheck className="w-3.5 h-3.5" />, cls: "text-indigo-700 bg-indigo-50 border-indigo-100", statuses: ["Warranty Sent"] },
+            ]).map((stat) => (
+              <button key={stat.label} type="button" onClick={() => openLeadsFiltered(stat.statuses)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer hover:shadow-sm whitespace-nowrap flex-shrink-0 ${stat.cls}`}>
+                {stat.icon}
+                <span className="hidden sm:inline">{stat.label}</span>
+                <span className="text-base font-black leading-none">{stat.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Main Grid: Today Schedule | Next Day Schedule | Sidebar */}
+        <div className="grid grid-cols-12 gap-4" style={{ minHeight: "380px" }}>
+          {/* Today's Schedule */}
+          <div className="col-span-12 lg:col-span-5">
+            {renderScheduleTable(todayLeads, "Today's Schedule", _now)}
+          </div>
+
+          {/* Next Day Schedule */}
+          <div className="col-span-12 lg:col-span-5">
+            {renderScheduleTable(tomorrowLeads, "Next Day Schedule", _tomDate)}
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="col-span-12 lg:col-span-2 space-y-4">
+            {/* Technician Status */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                <Wrench className="w-3.5 h-3.5 text-[#001f97]" />
+                <h3 className="text-xs font-black text-slate-900">Technician Status</h3>
+              </div>
+              <div className="space-y-2.5">
+                {techSummary.length === 0 && <div className="text-[10px] text-slate-400 italic">No technicians assigned</div>}
+                {techSummary.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-[#001f97] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                      {(t.name || "?")[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-black text-slate-900 truncate">{t.name}</div>
+                      <div className="flex items-center gap-1">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.statusDot}`} />
+                        <span className="text-[10px] text-slate-500 truncate">{t.statusLabel}</span>
+                      </div>
+                    </div>
+                    <div className="text-[10px] font-black text-slate-600 shrink-0">{t.todayJobs}j</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Inspection Status Today */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                <Search className="w-3.5 h-3.5 text-[#001f97]" />
+                <h3 className="text-xs font-black text-slate-900">Inspection Status</h3>
+              </div>
+              <div className="space-y-1.5">
+                {[
+                  { label: "Total", count: todayInsp.length, dot: "bg-[#001f97]" },
+                  { label: "On the Way", count: inspOnWay, dot: "bg-emerald-500" },
+                  { label: "Scheduled", count: inspScheduled, dot: "bg-blue-400" },
+                  { label: "Completed", count: inspCompleted, dot: "bg-slate-300" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${item.dot}`} />
+                      <span className="text-[10px] text-slate-600">{item.label}</span>
+                    </div>
+                    <span className="text-[11px] font-black text-slate-800">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Staff Locations if available */}
+            {staffLocations.length > 0 && (role === "manager" || role === "super_admin") && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3">
+                <h3 className="text-xs font-black text-slate-900 mb-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  Live ({staffLocations.length})
+                </h3>
+                <div className="space-y-1.5">
+                  {staffLocations.slice(0, 3).map((loc) => (
+                    <a key={loc.username} href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 hover:text-[#001f97] transition-colors">
+                      <div className="w-5 h-5 rounded-full bg-[#001f97] text-white flex items-center justify-center text-[9px] font-black shrink-0">
+                        {(loc.displayName || loc.username || "?")[0].toUpperCase()}
+                      </div>
+                      <span className="text-[10px] text-slate-600 truncate">{loc.displayName || loc.username}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 4. Recent Customer Leads */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#001f97]" />
+              <h2 className="text-sm font-black text-slate-900">Recent Customer Leads</h2>
+            </div>
+            <button type="button" onClick={() => setCurrentView("leads")} className="text-xs font-bold text-[#001f97] hover:underline cursor-pointer">
+              View All ({leads.length}) →
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px] bg-slate-50">
+                  <th className="py-2.5 px-3">JOB NO</th>
+                  <th className="py-2.5 px-3">CUSTOMER</th>
+                  <th className="py-2.5 px-3">SERVICE / TASK</th>
+                  <th className="py-2.5 px-3">STAGE</th>
+                  <th className="py-2.5 px-3">ASSIGNED</th>
+                  <th className="py-2.5 px-3">FOLLOW-UP</th>
+                  <th className="py-2.5 px-3 text-right">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredLeads.slice(0, 10).map((l) => (
+                  <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-3 font-black text-[#001f97] text-[11px] whitespace-nowrap">#{(l.jobNo || l.id.slice(0, 4)).replace(/^(?:JobNo-|JOB-?)/i, "")}</td>
+                    <td className="py-3 px-3">
+                      <div className="font-bold text-slate-900">{l.name || "Unnamed"}</div>
+                      <div className="text-[10px] text-slate-400">{l.phone || l.email || ""}</div>
+                    </td>
+                    <td className="py-3 px-3 max-w-[180px]">
+                      <div className="line-clamp-2 text-slate-700 font-medium" title={l.service}>{l.service || "General enquiry"}</div>
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${getBadgeColor(l.status)}`}>{l.status}</span>
+                        <QuoteResponseBadge lead={l} />
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-slate-600 font-medium">{l.assigned || "—"}</td>
+                    <td className="py-3 px-3 text-slate-500">{l.follow ? fmtDate(l.follow) : "—"}</td>
+                    <td className="py-3 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1 flex-nowrap">
+                        <button type="button" onClick={() => openQuoteModal(l)} className="px-2 py-1 bg-[#001f97]/10 text-[#001f97] hover:bg-[#001f97]/20 rounded-lg text-[11px] font-bold transition-colors cursor-pointer" title="Quote">Quote</button>
+                        <button type="button" onClick={() => openPhotosModal(l)} className="p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md cursor-pointer" title="Photos"><Camera className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => openMessagesModal(l)} className="relative p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md cursor-pointer" title="Conversation">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          {l.messages?.some((m) => m.from === "customer" && m.read === false) && <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white" />}
+                        </button>
+                        <button type="button" onClick={() => openInspectionModal(l)} className={`p-1 rounded-md cursor-pointer ${l.inspectionReport?.status === "completed" ? "text-emerald-600 hover:bg-emerald-50" : "text-slate-500 hover:text-[#001f97] hover:bg-slate-100"}`} title="Inspection Form"><ClipboardList className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => { setEditingLead(l); setLeadModalOpen(true); }} className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md cursor-pointer" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => handleDeleteLead(l.id)} className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredLeads.length === 0 && (
+                  <tr><td colSpan={7} className="py-12 text-center text-slate-400">{loading ? "Loading leads…" : "No customer leads yet."}</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#f5f7fb] text-[#14213d]">
       {/* Sidebar Navigation */}
@@ -6337,335 +6668,7 @@ export default function CrmDashboardPage() {
           {/* =========================================================================
               VIEW: CRM DASHBOARD
              ========================================================================= */}
-          {currentView === "dashboard" && (
-            <div className="space-y-6">
-              {/* Today at a glance — hero shortcut bar to run the whole business
-                  from one screen. */}
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#001f97] to-[#0a34c4] text-white p-6 shadow-sm">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-                  <div>
-                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-white/60">
-                      Groutix Operations
-                    </div>
-                    <h2 className="text-2xl font-black mt-1">Today at a glance</h2>
-                    <p className="text-sm text-white/70 mt-1">
-                      Run the whole business from one screen.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <button
-                      onClick={() => setCurrentView("jobs")}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-bold transition-colors backdrop-blur-sm"
-                    >
-                      <Briefcase className="w-4 h-4" />
-                      Open Dispatch
-                    </button>
-                    <button
-                      onClick={openInbox}
-                      className="relative flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-bold transition-colors backdrop-blur-sm"
-                    >
-                      <Mail className="w-4 h-4" />
-                      Open Inbox
-                      {unreadReplyCount > 0 && (
-                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
-                          {unreadReplyCount}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={startNewLead}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#001f97] text-sm font-black hover:bg-white/90 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      New Lead
-                    </button>
-
-                  </div>
-                </div>
-              </div>
-
-              {/* Full pipeline breakdown — one clickable box per lead status so
-                  every stage is visible and filters the leads table on click.
-                  Sourced from the shared STAGES list so it can never drift from
-                  the real pipeline. */}
-              <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-black text-slate-900">Pipeline by Stage</h2>
-                  <span className="text-[11px] text-slate-400">Click any stage to filter the leads table</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                  {([
-                    { label: "Total Leads", group: "lead" as StageGroup, statuses: [] as string[], totalCount: true },
-                    { label: "New leads", group: "lead" as StageGroup, statuses: ["New"] },
-                    { label: "Contacted", group: "lead" as StageGroup, statuses: ["Contacted", "Waiting for Info"] },
-                    {
-                      label: "Inspection",
-                      group: "booking" as StageGroup,
-                      statuses: [
-                        "Inspection Booked",
-                        "Inspection En Route",
-                        "Inspection Arrived",
-                        "Inspection In Progress",
-                        "Inspection Completed",
-                      ],
-                    },
-                    { label: "Quotes", group: "quote" as StageGroup, statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"] },
-                    { label: "Pending Quote", group: "quote" as StageGroup, statuses: ["Quote Pending"] },
-                    {
-                      label: "Job Booked",
-                      group: "job" as StageGroup,
-                      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"],
-                    },
-                    { label: "Job Done", group: "finance" as StageGroup, statuses: ["Job Done"] },
-                    { label: "Payment Pending", group: "finance" as StageGroup, statuses: ["Payment Pending"] },
-                    { label: "Payment Received", group: "finance" as StageGroup, statuses: ["Invoice Sent", "Payment Pending", "Payment Received"] },
-                    { label: "Warranty Sent", group: "finance" as StageGroup, statuses: ["Warranty Sent"] },
-                    { label: "Achievements", group: "closed" as StageGroup, statuses: ["Completed"] },
-                  ] as { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean }[]).map((grp) => {
-                    const accent = STAGE_GROUP_ACCENT[grp.group];
-                    const value = grp.totalCount
-                      ? scopedLeads.length
-                      : grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
-                    const filterKey = grp.statuses.join("|");
-                    const active = grp.totalCount
-                      ? statusFilter === ""
-                      : statusFilter === filterKey;
-                    return (
-                      <button
-                        key={grp.label}
-                        type="button"
-                        onClick={() => grp.totalCount ? openLeadsFiltered([]) : openLeadsFiltered(grp.statuses)}
-                        className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${active
-                            ? "border-[#001f97] bg-[#001f97]/5"
-                            : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
-                          }`}
-                        title={grp.totalCount ? "Show all leads (clear stage filter)" : `Show ${grp.label} leads`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className={`w-2 h-2 rounded-full ${grp.totalCount ? "bg-[#001f97]" : accent.dot}`} />
-                          <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
-                            {grp.label}
-                          </span>
-                        </div>
-                        <div className={`text-2xl font-black ${value ? (grp.totalCount ? "text-[#001f97]" : accent.value) : "text-slate-300"}`}>
-                          {value}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Main Grid: Recent Leads & Today's Attention */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left 2 Cols: Lead Table */}
-                <div className="lg:col-span-2 bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-black text-slate-900">Recent Customer Leads</h2>
-                    <button
-                      onClick={() => setCurrentView("leads")}
-                      className="text-xs font-bold text-[#001f97] hover:underline"
-                    >
-                      View All ({leads.length}) →
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                          <th className="py-2.5 px-3">Customer</th>
-                          <th className="py-2.5 px-3">Service / Task</th>
-                          <th className="py-2.5 px-3">Stage</th>
-                          <th className="py-2.5 px-3">Assigned</th>
-                          <th className="py-2.5 px-3">Follow-Up</th>
-                          <th className="py-2.5 px-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredLeads.slice(0, 10).map((l) => (
-                          <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-3 px-3">
-                              <div className="font-black text-[#001f97] text-[11px] tracking-tight mb-0.5">{l.jobNo || "—"}</div>
-                              <div className="font-bold text-slate-900">{l.name || "Unnamed"}</div>
-                              <div className="text-[11px] text-slate-400">{l.phone || l.email || "No contact"}</div>
-                            </td>
-                            <td className="py-3 px-3 max-w-[200px]">
-                              <div className="line-clamp-2 text-slate-700 font-medium" title={l.service}>
-                                {l.service || "General enquiry"}
-                              </div>
-                            </td>
-                            <td className="py-3 px-3">
-                              <div className="flex flex-col items-start gap-1">
-                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] border ${getBadgeColor(l.status)}`}>
-                                  {l.status}
-                                </span>
-                                {l.status === "Completed" && (
-                                  l.warrantyProvided === false || l.warranty?.provided === false ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300">
-                                      <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
-                                      Warranty Not Provided
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                      <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
-                                      Warranty Provided
-                                    </span>
-                                  )
-                                )}
-                                <QuoteResponseBadge lead={l} />
-                              </div>
-                            </td>
-                            <td className="py-3 px-3 text-slate-600 font-medium">{l.assigned || "Unassigned"}</td>
-                            <td className="py-3 px-3 text-slate-500">{l.follow ? fmtDate(l.follow) : "—"}</td>
-                            <td className="py-3 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1 flex-nowrap">
-                                <button
-                                  onClick={() => openQuoteModal(l)}
-                                  className="px-2 py-1 bg-[#001f97]/10 text-[#001f97] hover:bg-[#001f97]/20 rounded-lg text-[11px] font-bold transition-colors"
-                                  title="Open Quote Builder"
-                                >
-                                  Quote
-                                </button>
-                                <button
-                                  onClick={() => openPhotosModal(l)}
-                                  className="p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md"
-                                  title="Photos"
-                                >
-                                  <Camera className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => openMessagesModal(l)}
-                                  className="relative p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md"
-                                  title="Conversation"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                  {l.messages?.some(m => m.from === "customer" && m.read === false) && (
-                                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white" />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => openGpsModal(l)}
-                                  className="p-1 text-slate-500 hover:text-[#001f97] hover:bg-slate-100 rounded-md"
-                                  title="GPS"
-                                >
-                                  <Navigation className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => openInspectionModal(l)}
-                                  className={`p-1 rounded-md transition-colors ${l.inspectionReport?.status === "completed"
-                                      ? "text-emerald-600 hover:bg-emerald-50"
-                                      : "text-slate-500 hover:text-[#001f97] hover:bg-slate-100"
-                                    }`}
-                                  title="Inspection Report Form"
-                                >
-                                  <ClipboardList className="w-3.5 h-3.5" />
-                                </button>
-                                {l.status === "Payment Received" && (
-                                  <button
-                                    onClick={() => openWarrantyModal(l)}
-                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md"
-                                    title="10-Year Warranty Card"
-                                  >
-                                    <ShieldCheck className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    setEditingLead(l);
-                                    setLeadModalOpen(true);
-                                  }}
-                                  className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md"
-                                  title="Edit"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteLead(l.id)}
-                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {filteredLeads.length === 0 && (
-                          <tr>
-                            <td colSpan={7} className="py-12 text-center text-slate-400">
-                              {loading ? "Loading leads from database…" : "No customer leads in the database yet."}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Right Col: Attention & Task Panel */}
-                <div className="space-y-6">
-                  {/* Attention Card */}
-                  <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs">
-                    <h2 className="text-base font-black text-slate-900 mb-3">Today's Attention</h2>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-800 text-xs font-bold">
-                        <span>New Uncontacted Leads</span>
-                        <span className="px-2 py-0.5 bg-rose-200/70 rounded-md font-black">{counts["New"] || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-xs font-bold">
-                        <span>Quotes Pending Approval</span>
-                        <span className="px-2 py-0.5 bg-amber-200/70 rounded-md font-black">{counts["Quote Pending"] || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50 border border-purple-100 text-purple-800 text-xs font-bold">
-                        <span>Waiting For Customer Info</span>
-                        <span className="px-2 py-0.5 bg-purple-200/70 rounded-md font-black">{counts["Waiting for Info"] || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-800 text-xs font-bold">
-                        <span>Active Negotiations</span>
-                        <span className="px-2 py-0.5 bg-blue-200/70 rounded-md font-black">{counts["Negotiation"] || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Live Staff Locations — managers / super_admin only */}
-              {staffLocations.length > 0 && (role === "manager" || role === "super_admin") && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4">
-                  <h3 className="text-sm font-black text-slate-800 mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    Live Staff Locations ({staffLocations.length} active)
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {staffLocations.map((loc) => (
-                      <a
-                        key={loc.username}
-                        href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-[#001f97] hover:bg-blue-50 transition-all group"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-[#001f97] text-white flex items-center justify-center font-black text-sm shrink-0">
-                          {(loc.displayName || loc.username || "?")[0].toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-slate-800 text-xs">{loc.displayName || loc.username}</div>
-                          {loc.leadName && (
-                            <div className="text-[11px] text-slate-500 truncate">On job: {loc.leadName}</div>
-                          )}
-                          <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
-                            {Math.round((Date.now() - new Date(loc.updatedAt).getTime()) / 60000)} min ago · View on Maps →
-                          </div>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {currentView === "dashboard" && renderManagerDashboard()}
 
           {/* =========================================================================
               VIEW: LEADS (Modern 4-Column Card Layout)
