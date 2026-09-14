@@ -33,7 +33,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   inspection: ["jobs"],
   field: ["jobs"],
   technician: ["jobs"],
-  finance: ["jobs", "schedule", "customers", "team"],
+  finance: ["jobs", "customers"],
   manager: [
     "dashboard",
     "analytics",
