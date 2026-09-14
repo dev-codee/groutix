@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
@@ -78,6 +78,7 @@ import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
 import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
+import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 
 export interface QuoteItem {
   templateNo?: string | number;
@@ -4221,31 +4222,12 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
-            {/* Scope of Work (quote items without price) */}
-            {(() => {
-              const items = Array.isArray(l.quoteItems) && l.quoteItems.length > 0 ? l.quoteItems : null;
-              const fallback = l.quoteScope || l.service || null;
-              if (!items && !fallback) return null;
-              return (
-                <div className="border border-[#001f97]/20 rounded-lg bg-[#001f97]/[0.03] px-2.5 py-2 space-y-1">
-                  <p className="text-[10px] font-black text-[#001f97] uppercase tracking-wider">Scope of Work</p>
-                  {items ? (
-                    <ul className="space-y-0.5">
-                      {items.map((it, i) => (
-                        <li key={i} className="text-[11px] text-slate-700 leading-snug">
-                          <span className="font-semibold">{it.service || it.description || `Item ${i + 1}`}</span>
-                          {it.scope && it.scope !== it.service && (
-                            <span className="text-slate-500"> — {it.scope}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-[11px] text-slate-700 leading-snug">{fallback}</p>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Scope of Work — collapsible, bulleted, editable */}
+            <ScopeOfWorkPanel
+              lead={l}
+              onSave={(id, scope) => updateLeadField(id, { quoteScope: scope })}
+            />
+
 
             {/* Row 3 (Second line): On the Way, Reached, Start, Job Done */}
             <div className="grid grid-cols-4 gap-1">
