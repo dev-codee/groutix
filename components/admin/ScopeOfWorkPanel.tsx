@@ -6,7 +6,7 @@ import type { Lead, QuoteItem } from "@/components/admin/types";
 
 interface Props {
   lead: Lead;
-  onSave: (id: string, scope: string) => Promise<void>;
+  onSave: (id: string, scope: string) => Promise<unknown> | unknown;
 }
 
 export function ScopeOfWorkPanel({ lead: l, onSave }: Props) {
