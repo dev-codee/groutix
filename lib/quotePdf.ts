@@ -290,18 +290,28 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   }
   y -= 10;
 
-  // 2. JOB DESCRIPTION («job.work_done_description»)
-  const jobDesc = (input.jobDescription || "").trim();
-  if (jobDesc) {
+  // 2. JOB DESCRIPTION — heading only; full scope detail is shown per-row in the table below.
+  // Prefer item service titles so we never repeat the bullet list that appears in the table.
+  const jobDescHeadings: string[] = input.items.length > 0
+    ? input.items.map((it) => (it.service || it.description || "").trim()).filter(Boolean)
+    : (input.jobDescription || "")
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l && !/^[•*\-o]\s/.test(l))
+        .slice(0, 3);
+
+  if (jobDescHeadings.length > 0) {
     page1.drawText("JOB DESCRIPTION:", { x: MARGIN, y, size: 9.5, font: bold, color: INK });
     y -= 13;
-    const descLines = wrapLines(jobDesc, font, 8.5, contentW);
-    for (const ln of descLines) {
-      if (ln === "") {
-        y -= 4;
-      } else {
-        page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 8.5, font, color: INK });
-        y -= 11;
+    for (const heading of jobDescHeadings) {
+      const descLines = wrapLines(heading, font, 8.5, contentW);
+      for (const ln of descLines) {
+        if (ln === "") {
+          y -= 4;
+        } else {
+          page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 8.5, font, color: INK });
+          y -= 11;
+        }
       }
     }
     y -= 14;
