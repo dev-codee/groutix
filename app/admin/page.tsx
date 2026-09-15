@@ -3885,21 +3885,9 @@ export default function CrmDashboardPage() {
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                   ASSIGNED
                 </label>
-                <select
-                  value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
-                  onChange={(e) => {
-                    const name = e.target.value === "Unassigned" ? "" : e.target.value;
-                    const inspectorStaff = staff.find((s) => s.name === name);
-                    updateLeadField(l.id, { assigned: name, inspectorId: inspectorStaff?.id || "" });
-                  }}
-                  className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
-                >
-                  {assigneeOptions.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 truncate h-[34px] flex items-center select-none">
+                  {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : null) || "Unassigned"}
+                </div>
               </div>
 
               <button
