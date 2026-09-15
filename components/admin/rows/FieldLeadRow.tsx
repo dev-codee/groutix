@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt } from "@/lib/adminHelpers";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function FieldLeadRow({ l }: { l: Lead }) {
@@ -35,9 +36,9 @@ export function FieldLeadRow({ l }: { l: Lead }) {
     : `JobNo-${l.id.slice(0, 4)}`;
 
   const dateTimeDisplay = (() => {
-    const d = new Date(l.inspectionAt || l.createdAt || l.jobAt || Date.now());
-    if (isNaN(d.getTime())) return "";
-    return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    const v = l.inspectionAt || l.createdAt || l.jobAt;
+    if (!v) return "";
+    return `${formatApptDate(v)} ${formatApptTime(v)}`;
   })();
 
   const serviceDisplay = l.service && (l.notes || l.message)

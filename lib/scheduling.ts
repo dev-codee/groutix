@@ -32,6 +32,94 @@ export function formatSlotRange(t: string): string {
   return `${startHr}${minStr} ${startAmpm} – ${endHr}:00 ${endAmpm}`;
 }
 
+/**
+ * Format an appointment timestamp for display.
+ *
+ * Appointment fields (`inspectionAt`, `jobAt`, customer bookings) are stored as
+ * NAIVE local Melbourne wall-clock strings, e.g. "2026-10-05T09:00" — there is no
+ * timezone designator and the HH:mm is exactly the time the customer/staff picked.
+ *
+ * The old display code did `new Date(str).toLocaleString(..., { timeZone })`, which
+ * reinterprets the string in the VIEWER's timezone and then re-renders it in
+ * another zone — so a 9:00 AM slot showed a shifted hour on any machine not set to
+ * Melbourne time (and shifted again across the AU DST boundary). We format the
+ * stored wall-clock directly instead, with zero timezone conversion.
+ *
+ * Values that genuinely carry a timezone (ending in "Z" or a "+hh:mm" offset, e.g.
+ * `createdAt = new Date().toISOString()`) are still converted to Melbourne time,
+ * which is correct for those absolute instants.
+ */
+const NAIVE_DT_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/;
+const HAS_TZ_RE = /(Z|[+-]\d{2}:?\d{2})$/;
+
+export function formatAppt(
+  value: string | null | undefined,
+  opts: Intl.DateTimeFormatOptions
+): string {
+  if (!value) return "";
+  const str = String(value).trim();
+  const m = NAIVE_DT_RE.exec(str);
+  if (m && !HAS_TZ_RE.test(str)) {
+    // Naive Melbourne wall-clock: render the literal components with no shift by
+    // placing them into UTC and reading them back out in UTC.
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+    return d.toLocaleString("en-AU", { ...opts, timeZone: "UTC" });
+  }
+  const d = new Date(str);
+  if (Number.isNaN(d.getTime())) return str;
+  return d.toLocaleString("en-AU", { timeZone: "Australia/Melbourne", ...opts });
+}
+
+/** Appointment date, e.g. "5 Oct 2026" (pass extra opts to tweak). */
+export function formatApptDate(
+  value: string | null | undefined,
+  opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
+): string {
+  return formatAppt(value, opts);
+}
+
+/** Appointment time, e.g. "9:00 AM". */
+export function formatApptTime(value: string | null | undefined): string {
+  return formatAppt(value, { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
+// Melbourne's UTC offset (ms) at a given absolute instant — DST-aware (AEST/AEDT).
+function melbourneOffsetMs(utcMs: number): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Australia/Melbourne",
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(utcMs));
+  const map: Record<string, number> = {};
+  for (const p of parts) if (p.type !== "literal") map[p.type] = Number(p.value);
+  const asUtc = Date.UTC(map.year, map.month - 1, map.day, map.hour, map.minute, map.second);
+  return asUtc - utcMs;
+}
+
+/**
+ * Convert a stored appointment value to a real UTC instant (ms since epoch), for
+ * timing math (e.g. "how long until the appointment?"). Naive wall-clock strings
+ * ("YYYY-MM-DDTHH:mm", no offset) are interpreted as Melbourne local time so the
+ * instant is correct no matter what timezone the server runs in. Values that
+ * already carry a timezone are parsed as-is.
+ */
+export function apptInstantMs(value: string | null | undefined): number {
+  if (!value) return NaN;
+  const str = String(value).trim();
+  const m = NAIVE_DT_RE.exec(str);
+  if (!m || HAS_TZ_RE.test(str)) return new Date(str).getTime();
+  // Treat the wall-clock as UTC first, then subtract Melbourne's offset at that
+  // instant. Bookings are daytime (well clear of the 2–3am DST switch), so a
+  // single correction pass is exact here.
+  const guess = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  return guess - melbourneOffsetMs(guess);
+}
+
 // How far ahead we let a customer book (days).
 export const BOOKING_HORIZON_DAYS = 21;
 

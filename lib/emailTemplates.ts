@@ -1,3 +1,5 @@
+import { formatAppt } from "./scheduling";
+
 export interface EmailTemplate {
   id: string;
   category: string;
@@ -261,18 +263,17 @@ Groutix Team
 function formatDateTime(isoOrStr?: string): string {
   if (!isoOrStr) return "Scheduled Date & Time";
   try {
-    const d = new Date(isoOrStr);
-    if (isNaN(d.getTime())) return isoOrStr;
-    return d.toLocaleDateString("en-AU", {
-      timeZone: "Australia/Sydney",
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
+    return (
+      formatAppt(isoOrStr, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }) || isoOrStr
+    );
   } catch {
     return isoOrStr;
   }

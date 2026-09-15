@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink } from "@/lib/adminHelpers";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function IntakeLeadRow({ l }: { l: Lead }) {
@@ -40,9 +41,9 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
     : `JobNo-${l.id.slice(0, 4)}`;
 
   const dateTimeDisplay = (() => {
-    const d = new Date(l.createdAt || l.inspectionAt || l.jobAt || Date.now());
-    if (isNaN(d.getTime())) return "";
-    return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    const v = l.createdAt || l.inspectionAt || l.jobAt;
+    if (!v) return "";
+    return `${formatApptDate(v)} ${formatApptTime(v)}`;
   })();
 
   const serviceDisplay = l.service || "3 Bathrooms | Silicone Replacement";
@@ -348,7 +349,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
                 </div>
               )}
             </div>
@@ -425,7 +426,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
                 </div>
               )}
             </div>

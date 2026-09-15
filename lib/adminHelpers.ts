@@ -5,6 +5,7 @@ import type { Lead } from "@/components/admin/types";
 import type { Role } from "./roles";
 import type { StageGroup } from "./pipeline";
 import { STATUS_KEYS, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FINANCE_STATUSES } from "./pipeline";
+import { formatAppt } from "./scheduling";
 
 // ── Job number constants ──────────────────────────────────────────────────────
 export const JOB_NO_START = 1201;
@@ -178,47 +179,38 @@ export function esc(s?: string) {
 
 export function fmtDate(iso?: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-AU", {
-    timeZone: "Australia/Sydney",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return (
+    formatAppt(iso, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) || "—"
+  );
 }
 
 export function fmtDateOnly(iso?: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-AU", {
-    timeZone: "Australia/Sydney",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return (
+    formatAppt(iso, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }) || "—"
+  );
 }
 
 export function fmtDateBadge(iso?: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const day = d.getDate();
-  const month = d.toLocaleString("en-AU", { timeZone: "Australia/Sydney", month: "short" }).toUpperCase();
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
+  return (
+    formatAppt(iso, { day: "numeric", month: "short", year: "numeric" }).toUpperCase() || "—"
+  );
 }
 
 export function fmtTimeBadge(iso?: string) {
   if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d
-    .toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })
-    .toUpperCase();
+  return formatAppt(iso, { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
 }
 
 export function getLeadQuoteTotal(l: Lead): number {

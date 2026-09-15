@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listReminderCandidates, updateSubmission, appendActivity } from "@/lib/submissions";
 import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
+import { apptInstantMs, formatAppt } from "@/lib/scheduling";
 
 // Appointment reminders for booked inspections and jobs. Sends two reminders per
 // appointment: one ~24 hours before and another ~1 hour before. Guarded by the
@@ -29,9 +30,8 @@ function esc(v: string) {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function fmt(dt: Date): string {
-  return dt.toLocaleString("en-AU", {
-    timeZone: "Australia/Sydney",
+function fmt(at: string): string {
+  return formatAppt(at, {
     weekday: "long",
     day: "2-digit",
     month: "short",
@@ -84,7 +84,7 @@ async function runSweep(req: NextRequest) {
 
     for (const a of appts) {
       if (!a.at) continue;
-      const when = new Date(a.at).getTime();
+      const when = apptInstantMs(a.at);
       if (Number.isNaN(when)) continue;
       const delta = when - now;
       if (delta < 0) continue; // appointment already passed
@@ -103,7 +103,7 @@ async function runSweep(req: NextRequest) {
         // Due when the time-until-appointment falls inside this tier's window.
         if (delta <= tier.floor || delta > tier.within) continue;
 
-        const whenLabel = fmt(new Date(when));
+        const whenLabel = fmt(a.at);
         if (isEmailConfigured() && lead.email) {
           try {
             await sendEmail({

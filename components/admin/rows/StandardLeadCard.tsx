@@ -11,6 +11,7 @@ import {
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, STATUS_LIST, fmtDate, getStepActive,
 } from "@/lib/adminHelpers";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function StandardLeadCard({ l }: { l: Lead }) {
@@ -244,7 +245,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               </button>
               {l.inspectionAt && (
                 <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
-                  📅 {new Date(l.inspectionAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.inspectionAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTime(l.inspectionAt)}
                 </div>
               )}
             </div>

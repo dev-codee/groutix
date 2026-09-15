@@ -78,6 +78,7 @@ import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
 import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
+import { formatAppt, formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 
 export interface QuoteItem {
@@ -413,46 +414,32 @@ function esc(s?: string) {
 
 function fmtDate(iso?: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-AU", {
-    timeZone: "Australia/Sydney",
+  return formatAppt(iso, {
     day: "2-digit",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit"
-  });
+  }) || "—";
 }
 
 function fmtDateOnly(iso?: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-AU", {
-    timeZone: "Australia/Sydney",
+  return formatAppt(iso, {
     day: "2-digit",
     month: "short",
     year: "numeric"
-  });
+  }) || "—";
 }
 
 function fmtDateBadge(iso?: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const day = d.getDate();
-  const month = d.toLocaleString("en-AU", { timeZone: "Australia/Sydney", month: "short" }).toUpperCase();
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
+  return formatAppt(iso, { day: "numeric", month: "short", year: "numeric" }).toUpperCase() || "—";
 }
 
 function fmtTimeBadge(iso?: string) {
   if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("en-AU", {
-    timeZone: "Australia/Sydney",
+  return formatAppt(iso, {
     hour: "numeric",
     minute: "2-digit",
     hour12: true
@@ -3631,7 +3618,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                    {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -3714,7 +3701,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                    {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -4236,7 +4223,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                    {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTime(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -4367,7 +4354,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                    {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTime(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -5117,7 +5104,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.inspectionAt && (
                   <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
-                    📅 {new Date(l.inspectionAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.inspectionAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
+                    📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTime(l.inspectionAt)}
                   </div>
                 )}
               </div>
@@ -5881,9 +5868,7 @@ export default function CrmDashboardPage() {
 
     const fmtTime = (iso?: string) => {
       if (!iso) return "—";
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return "—";
-      return d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
+      return (formatApptTime(iso) || "—").toUpperCase();
     };
     const fmtScheduleDate = (d: Date) =>
       d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", year: "numeric" });
