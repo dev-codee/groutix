@@ -37,7 +37,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
   const dateTimeDisplay = (() => {
     const d = new Date(l.inspectionAt || l.createdAt || l.jobAt || Date.now());
     if (isNaN(d.getTime())) return "";
-    return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
   })();
 
   const serviceDisplay = l.service && (l.notes || l.message)

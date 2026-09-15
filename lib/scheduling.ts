@@ -530,8 +530,8 @@ export function computeAvailability(
 
     out.push({
       date: dateStr,
-      label: d.toLocaleDateString("en-AU", { weekday: "long", day: "2-digit", month: "short" }),
-      weekday: d.toLocaleDateString("en-AU", { weekday: "long" }),
+      label: d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "long", day: "2-digit", month: "short" }),
+      weekday: d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "long" }),
       times,
       slots,
       recommended: sameZoneDates.has(dateStr),

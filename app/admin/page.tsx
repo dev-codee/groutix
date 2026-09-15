@@ -416,6 +416,7 @@ function fmtDate(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString("en-AU", {
+    timeZone: "Australia/Sydney",
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -429,6 +430,7 @@ function fmtDateOnly(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-AU", {
+    timeZone: "Australia/Sydney",
     day: "2-digit",
     month: "short",
     year: "numeric"
@@ -440,7 +442,7 @@ function fmtDateBadge(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   const day = d.getDate();
-  const month = d.toLocaleString("en-AU", { month: "short" }).toUpperCase();
+  const month = d.toLocaleString("en-AU", { timeZone: "Australia/Sydney", month: "short" }).toUpperCase();
   const year = d.getFullYear();
   return `${day} ${month} ${year}`;
 }
@@ -450,6 +452,7 @@ function fmtTimeBadge(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return d.toLocaleTimeString("en-AU", {
+    timeZone: "Australia/Sydney",
     hour: "numeric",
     minute: "2-digit",
     hour12: true
@@ -748,7 +751,7 @@ function ScheduleView({ onOpenLead }: { onOpenLead: (id: string) => void }) {
 
   function fmtDate(dateStr: string) {
     const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("en-AU", { weekday: "long", day: "2-digit", month: "short", year: "numeric" });
+    return d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "long", day: "2-digit", month: "short", year: "numeric" });
   }
 
   function fmtTime(t: string) {

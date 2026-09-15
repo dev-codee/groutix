@@ -13,21 +13,21 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const sp = req.nextUrl.searchParams;
 
   const jobNo = sp.get("jobNo") || lead?.jobNo || lead?.warranty?.jobNo || (lead ? `GX-${lead.id.slice(-6).toUpperCase()}` : "GX-WARRANTY");
-  const completionDate = sp.get("completion") || lead?.warranty?.completionDate || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+  const completionDate = sp.get("completion") || lead?.warranty?.completionDate || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
   
   // Calculate 10-year expiry default if not given
   let defaultExpiry = lead?.warranty?.expiryDate;
   if (!defaultExpiry) {
     const d = new Date();
     d.setFullYear(d.getFullYear() + 10);
-    defaultExpiry = d.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+    defaultExpiry = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
   }
   const expiryDate = sp.get("expiry") || defaultExpiry;
 
   const customerName = sp.get("customer") || lead?.warranty?.customerName || lead?.name || "Customer";
   const address = sp.get("address") || lead?.warranty?.address || lead?.address || "";
   const authorisedBy = sp.get("authorised") || lead?.warranty?.authorisedBy || "GROUTIX PTY LTD";
-  const dateIssued = sp.get("issued") || lead?.warranty?.dateIssued || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+  const dateIssued = sp.get("issued") || lead?.warranty?.dateIssued || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
 
   const base64 = await buildWarrantyPdfBase64({
     jobNo,

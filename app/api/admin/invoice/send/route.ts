@@ -151,6 +151,7 @@ export async function POST(req: NextRequest) {
       statusLabel: status,
       quoteNumber: invoiceNumber,
       date: new Date().toLocaleDateString("en-AU", {
+        timeZone: "Australia/Sydney",
         day: "2-digit",
         month: "short",
         year: "numeric",

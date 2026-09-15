@@ -31,6 +31,7 @@ function esc(v: string) {
 
 function fmt(dt: Date): string {
   return dt.toLocaleString("en-AU", {
+    timeZone: "Australia/Sydney",
     weekday: "long",
     day: "2-digit",
     month: "short",

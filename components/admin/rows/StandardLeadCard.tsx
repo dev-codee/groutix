@@ -75,9 +75,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 if (!rIso) return null;
                 const d = new Date(rIso);
                 if (isNaN(d.getTime())) return null;
-                const dateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
-                const timeStr = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
-                const fullDateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+                const dateStr = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" });
+                const timeStr = d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true });
+                const fullDateStr = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" });
                 return (
                   <div
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap"
@@ -244,7 +244,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               </button>
               {l.inspectionAt && (
                 <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
-                  📅 {new Date(l.inspectionAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.inspectionAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  📅 {new Date(l.inspectionAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.inspectionAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                 </div>
               )}
             </div>

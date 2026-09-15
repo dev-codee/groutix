@@ -100,7 +100,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
         docType: "invoice",
         statusLabel: "Unpaid",
         quoteNumber: invoiceNumber,
-        date: new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
+        date: new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" }),
         customerName: lead.name,
         address: lead.address,
         phone: lead.phone,
@@ -183,10 +183,10 @@ export async function autoSendWarranty(leadId: string): Promise<void> {
     const existing = lead.warranty || {};
     const warrantyNo = existing.warrantyNo || formatDocNumber("GX-W", await getNextSequence("warranty"));
     const now = new Date();
-    const completion = now.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+    const completion = now.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
     const expiryDate = new Date(now);
     expiryDate.setFullYear(expiryDate.getFullYear() + 10);
-    const expiry = expiryDate.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+    const expiry = expiryDate.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
 
     const warranty: WarrantyDoc = {
       ...existing,

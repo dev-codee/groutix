@@ -181,6 +181,7 @@ export function fmtDate(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString("en-AU", {
+    timeZone: "Australia/Sydney",
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -194,6 +195,7 @@ export function fmtDateOnly(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-AU", {
+    timeZone: "Australia/Sydney",
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -205,7 +207,7 @@ export function fmtDateBadge(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   const day = d.getDate();
-  const month = d.toLocaleString("en-AU", { month: "short" }).toUpperCase();
+  const month = d.toLocaleString("en-AU", { timeZone: "Australia/Sydney", month: "short" }).toUpperCase();
   const year = d.getFullYear();
   return `${day} ${month} ${year}`;
 }
@@ -215,7 +217,7 @@ export function fmtTimeBadge(iso?: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return d
-    .toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })
     .toUpperCase();
 }
 

@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const pdfBase64 = await buildQuotePdfBase64({
       quoteNumber,
-      date: new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
+      date: new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" }),
       customerName: lead.name,
       address: lead.address,
       phone: lead.phone,
@@ -53,6 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       customerSignatureImage: lead.quoteSignature,
       customerSignedAt: lead.quoteSignedAt
         ? new Date(lead.quoteSignedAt).toLocaleDateString("en-AU", {
+            timeZone: "Australia/Sydney",
             day: "2-digit",
             month: "short",
             year: "numeric",

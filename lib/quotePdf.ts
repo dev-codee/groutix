@@ -228,7 +228,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       drawR(`${input.docType === "invoice" ? "Invoice" : "Quote"} # ${input.quoteNumber}`, font, 9, INK);
     }
     ry -= 14;
-    const displayDate = input.date || new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+    const displayDate = input.date || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "long", year: "numeric" });
     drawR(displayDate, font, 9, INK);
   };
 
@@ -707,7 +707,7 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   ry -= 20;
   drawR(`Invoice # ${invoiceNumber}`, font, 9, INK);
   ry -= 14;
-  const displayDate = input.date || new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+  const displayDate = input.date || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "long", year: "numeric" });
   drawR(displayDate, font, 9, INK);
 
   // Move below header

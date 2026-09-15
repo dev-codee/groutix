@@ -43,6 +43,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     statusLabel: overrideStatus,
     quoteNumber: invoiceNumber,
     date: new Date().toLocaleDateString("en-AU", {
+      timeZone: "Australia/Sydney",
       day: "2-digit",
       month: "short",
       year: "numeric",

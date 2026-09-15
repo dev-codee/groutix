@@ -56,6 +56,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     quoteNumber,
     docType,
     date: new Date().toLocaleDateString("en-AU", {
+      timeZone: "Australia/Sydney",
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     customerSignatureImage: lead.quoteSignature,
     customerSignedAt: lead.quoteSignedAt
       ? new Date(lead.quoteSignedAt).toLocaleDateString("en-AU", {
+          timeZone: "Australia/Sydney",
           day: "2-digit",
           month: "short",
           year: "numeric",

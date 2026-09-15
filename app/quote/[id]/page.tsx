@@ -206,7 +206,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
     // Verification watermark text underneath
     ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     ctx.fillStyle = "#64748b";
-    const dateStr = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+    const dateStr = new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" });
     ctx.fillText(`Digitally verified • ${jobRef} • ${dateStr}`, canvas.width / 2, 140);
 
     return canvas.toDataURL("image/png");
@@ -601,7 +601,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                     </div>
                     <div className="border-t border-slate-200/80 pt-2 flex items-center justify-between text-[10px] text-slate-400">
                       <span>Digitally signed for {quote.quoteNumber}</span>
-                      <span>{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                      <span>{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</span>
                     </div>
                   </div>
                 </div>

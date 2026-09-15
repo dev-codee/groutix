@@ -43,7 +43,7 @@ async function notifyTechnicianAssigned(
   if (when) {
     const dt = new Date(when);
     rows.push(
-      `<p><b>${whenLabel} time:</b> ${Number.isNaN(dt.getTime()) ? when : dt.toLocaleString("en-AU")}</p>`
+      `<p><b>${whenLabel} time:</b> ${Number.isNaN(dt.getTime()) ? when : dt.toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}</p>`
     );
   }
 

@@ -197,6 +197,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const [y, mNum, dNum] = date.split("-").map(Number);
   const dateObj = new Date(y, mNum - 1, dNum);
   const dayName = dateObj.toLocaleDateString("en-AU", {
+    timeZone: "Australia/Sydney",
     weekday: "long",
     day: "2-digit",
     month: "long",

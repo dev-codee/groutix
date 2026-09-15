@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
     const pdfBase64 = await buildQuotePdfBase64({
       quoteNumber,
       date: new Date().toLocaleDateString("en-AU", {
+        timeZone: "Australia/Sydney",
         day: "2-digit",
         month: "short",
         year: "numeric",

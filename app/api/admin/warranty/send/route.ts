@@ -67,12 +67,12 @@ export async function POST(req: NextRequest) {
   try {
     const pdfBase64 = await buildWarrantyPdfBase64({
       jobNo: warranty.jobNo || warrantyNo,
-      completionDate: warranty.completionDate || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
+      completionDate: warranty.completionDate || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" }),
       expiryDate: warranty.expiryDate || "",
       customerName: warranty.customerName || lead.name || "Customer",
       address: warranty.address || lead.address || "",
       authorisedBy: warranty.authorisedBy || "GROUTIX PTY LTD",
-      dateIssued: warranty.dateIssued || new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
+      dateIssued: warranty.dateIssued || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" }),
       phone: "70238094",
       email: "info@groutix.com",
       website: "www.groutix.com",

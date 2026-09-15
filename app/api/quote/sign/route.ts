@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
       signedPdfBase64 = await buildQuotePdfBase64({
         quoteNumber,
         date: new Date().toLocaleDateString("en-AU", {
+          timeZone: "Australia/Sydney",
           day: "2-digit",
           month: "short",
           year: "numeric",
@@ -157,6 +158,7 @@ export async function POST(req: NextRequest) {
         terms: GROUTIX_OFFICIAL_TERMS,
         customerSignatureImage: signatureDataUrl,
         customerSignedAt: new Date().toLocaleDateString("en-AU", {
+          timeZone: "Australia/Sydney",
           day: "2-digit",
           month: "short",
           year: "numeric",
@@ -190,7 +192,7 @@ export async function POST(req: NextRequest) {
             <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">Quote Summary:</div>
             <div><strong>Job Ref:</strong> ${quoteNumber}</div>
             <div><strong>Amount:</strong> $${total.toFixed(2)} AUD (incl. GST)</div>
-            <div><strong>Signed on:</strong> ${new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
+            <div><strong>Signed on:</strong> ${new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
           </div>
 
           <p style="font-weight:600;">Next Step: Select your preferred day and time for the job.</p>
@@ -225,7 +227,7 @@ export async function POST(req: NextRequest) {
           <div><strong>Email:</strong> ${lead.email || "—"}</div>
           <div><strong>Address:</strong> ${lead.address || "—"}</div>
           <div><strong>Total Value:</strong> $${total.toFixed(2)} AUD</div>
-          <div><strong>Signed At:</strong> ${new Date().toLocaleString("en-AU")}</div>
+          <div><strong>Signed At:</strong> ${new Date().toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}</div>
           <div><strong>Signer IP:</strong> ${clientIp}</div>
         </div>
 

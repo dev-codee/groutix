@@ -264,6 +264,7 @@ function formatDateTime(isoOrStr?: string): string {
     const d = new Date(isoOrStr);
     if (isNaN(d.getTime())) return isoOrStr;
     return d.toLocaleDateString("en-AU", {
+      timeZone: "Australia/Sydney",
       weekday: "short",
       day: "numeric",
       month: "short",

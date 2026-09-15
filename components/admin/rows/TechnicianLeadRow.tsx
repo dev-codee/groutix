@@ -42,7 +42,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
   const dateTimeDisplay = (() => {
     const d = new Date(l.jobAt || l.inspectionAt || l.createdAt || Date.now());
     if (isNaN(d.getTime())) return "";
-    return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
   })();
 
   const serviceDisplay = l.service && (l.notes || l.message)
@@ -202,7 +202,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                 </div>
               )}
             </div>
@@ -305,7 +305,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                 </div>
               )}
             </div>
