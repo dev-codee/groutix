@@ -3303,7 +3303,7 @@ export default function CrmDashboardPage() {
 
     const dateTimeDisplay = (() => {
       if (l.inspectionAt) return `${formatApptDate(l.inspectionAt)} ${formatApptTimeRange(l.inspectionAt)}`;
-      if (l.jobAt) return `${formatApptDate(l.jobAt)} ${formatApptTime(l.jobAt)}`;
+      if (l.jobAt) return `${formatApptDate(l.jobAt)} ${formatApptTimeRange(l.jobAt)}`;
       const v = l.createdAt;
       if (!v) return "";
       return `${formatApptDate(v)} ${formatApptTime(v)}`;
@@ -3621,7 +3621,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                    {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
+                    {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -3704,7 +3704,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                    {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
+                    {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -4248,7 +4248,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                    {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTime(l.jobAt)}
+                    {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -4379,7 +4379,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                    {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTime(l.jobAt)}
+                    {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
                   </div>
                 )}
               </div>
@@ -5895,10 +5895,6 @@ export default function CrmDashboardPage() {
     const _todayStr = _dayKey(_now.toISOString());
     const _tomStr = _dayKey(_tomDate.toISOString());
 
-    const fmtTime = (iso?: string) => {
-      if (!iso) return "—";
-      return (formatApptTime(iso) || "—").toUpperCase();
-    };
     const fmtScheduleDate = (d: Date) =>
       d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", year: "numeric" });
     const getSuburb = (addr?: string) => {
@@ -5978,7 +5974,7 @@ export default function CrmDashboardPage() {
                 const isInsp = isInspLead(l);
                 const timeStr = isInsp
                   ? (formatApptTimeRange(l.inspectionAt || l.jobAt) || "—").toUpperCase()
-                  : fmtTime(l.jobAt || l.inspectionAt);
+                  : (formatApptTimeRange(l.jobAt || l.inspectionAt) || "—").toUpperCase();
                 const badge = getScheduleBadge(l.status);
                 const suburb = getSuburb(l.address);
                 return (
@@ -6052,7 +6048,12 @@ export default function CrmDashboardPage() {
               { label: "Job Done", count: counts["Job Done"]||0, icon: <CheckCircle2 className="w-3.5 h-3.5" />, cls: "text-teal-700 bg-teal-50 border-teal-100", statuses: ["Job Done"] },
               { label: "Payment Pending", count: (counts["Invoice Sent"]||0)+(counts["Payment Pending"]||0), icon: <ArrowRight className="w-3.5 h-3.5" />, cls: "text-rose-700 bg-rose-50 border-rose-100", statuses: ["Invoice Sent","Payment Pending"] },
               { label: "Warranty Sent", count: counts["Warranty Sent"]||0, icon: <ShieldCheck className="w-3.5 h-3.5" />, cls: "text-indigo-700 bg-indigo-50 border-indigo-100", statuses: ["Warranty Sent"] },
-            ]).map((stat) => (
+            ]).filter((stat) =>
+              // Hide the "Total Leads" pill for finance, inspection and
+              // technician roles — they only work a scoped slice of the pipeline.
+              !(stat.label === "Total Leads" &&
+                (role === "finance" || role === "inspection" || role === "field" || role === "technician"))
+            ).map((stat) => (
               <button key={stat.label} type="button" onClick={() => openLeadsFiltered(stat.statuses)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer hover:shadow-sm whitespace-nowrap flex-shrink-0 ${stat.cls}`}>
                 {stat.icon}

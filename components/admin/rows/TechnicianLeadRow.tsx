@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime, formatApptTimeRange } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
 
@@ -203,7 +203,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTime(l.jobAt)}
+                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
                 </div>
               )}
             </div>
@@ -306,7 +306,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTime(l.jobAt)}
+                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
                 </div>
               )}
             </div>
