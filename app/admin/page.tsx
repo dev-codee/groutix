@@ -7589,9 +7589,15 @@ export default function CrmDashboardPage() {
                       return (a.name || a.username).localeCompare(b.name || b.username);
                     })
                     .map((s) => {
-                    const activeLeads = leads.filter(
-                      (l) => l.assigned === s.name || l.technician === s.name || (s.id && l.technicianId === s.id)
-                    ).length;
+                    const activeLeads = leads.filter((l) => {
+                      const isAssigned = l.assigned === s.name || l.technician === s.name || (s.id && l.technicianId === s.id);
+                      if (!isAssigned) return false;
+                      if (s.role === "technician") return TECHNICIAN_STATUSES.includes(l.status);
+                      if (s.role === "intake") return INTAKE_STATUSES.includes(l.status);
+                      if (s.role === "inspection" || s.role === "field") return INSPECTION_STATUSES.includes(l.status);
+                      if (s.role === "finance") return FINANCE_STATUSES.includes(l.status);
+                      return !["Completed", "Lost", "Cancelled"].includes(l.status);
+                    }).length;
                     const isSelf =
                       s.username.toLowerCase() === (username || "").toLowerCase();
                     const unreadCount = unread[s.username.toLowerCase()] || 0;
