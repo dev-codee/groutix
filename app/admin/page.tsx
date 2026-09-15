@@ -10744,12 +10744,18 @@ export default function CrmDashboardPage() {
           }}
           lead={activeInspectionLead}
           currentUsername={username || undefined}
+          technicians={assignableTechnicians}
           onSave={async (report, markCompleted) => {
             const updates: Partial<Lead> = {
               inspectionReport: report,
             };
             if (markCompleted) {
               updates.status = "Inspection Completed";
+            }
+            if (report.suggestedTechnician) {
+              const tech = assignableTechnicians.find((t) => t.name === report.suggestedTechnician);
+              updates.technician = report.suggestedTechnician;
+              updates.technicianId = tech?.id || "";
             }
             const ok = await updateLeadField(activeInspectionLead.id, updates);
             if (ok) {

@@ -131,6 +131,7 @@ export interface InspectionReportDoc {
   inspectorNotes?: string;
   inspectorSignature?: string;
   customerAcknowledgement?: string;
+  suggestedTechnician?: string;
 
   // Metadata
   status?: "draft" | "completed";

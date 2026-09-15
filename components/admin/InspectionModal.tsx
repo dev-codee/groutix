@@ -43,10 +43,11 @@ interface Props {
   onClose: () => void;
   lead: LeadLike;
   currentUsername?: string;
+  technicians?: { id: string; name: string }[];
   onSave: (report: InspectionReportDoc, markCompleted?: boolean) => Promise<boolean>;
 }
 
-export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave }: Props) {
+export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], onSave }: Props) {
   const [report, setReport] = useState<InspectionReportDoc>(() => {
     return {
       findings: {},
@@ -669,6 +670,36 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, onSave
               </div>
             </div>
           </div>
+
+          {/* Suggest Technician */}
+          {technicians.length > 0 && (
+            <div className="border border-[#001f97]/30 rounded-lg p-2.5 bg-[#001f97]/[0.03] shadow-xs">
+              <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#001f97]" />
+                Suggest Technician for Job:
+              </label>
+              <p className="text-[10px] text-slate-500 mb-1.5 leading-snug">
+                Recommend which technician should carry out the job based on your on-site assessment.
+              </p>
+              <select
+                value={report.suggestedTechnician || ""}
+                onChange={(e) => setReport({ ...report, suggestedTechnician: e.target.value })}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#001f97]/40 rounded font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none cursor-pointer"
+              >
+                <option value="">— No suggestion —</option>
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              {report.suggestedTechnician && (
+                <p className="mt-1 text-[10px] font-semibold text-[#001f97]">
+                  ✓ Suggesting: {report.suggestedTechnician}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Reference Disclaimer Footer Note */}
           <p className="text-[10px] text-slate-500 leading-tight italic px-1">
