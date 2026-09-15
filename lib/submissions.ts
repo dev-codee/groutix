@@ -9,6 +9,22 @@ import { ObjectId, type Collection, type Filter } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
 import { getActiveUsersByRole } from "@/lib/users";
 import type { InspectionReportDoc } from "@/lib/inspection";
+import { normalizeApptString } from "@/lib/scheduling";
+
+/**
+ * Force `inspectionAt` / `jobAt` in a submission patch to the canonical naive
+ * Melbourne wall-clock before it ever reaches the database. Every write to a
+ * submission goes through here, so no future caller can persist a timezone-shifted
+ * appointment (e.g. via `new Date(...).toISOString()`). See normalizeApptString.
+ */
+function normalizeApptFields<T extends { inspectionAt?: unknown; jobAt?: unknown }>(patch: T): T {
+  for (const key of ["inspectionAt", "jobAt"] as const) {
+    if (typeof patch[key] === "string") {
+      (patch as Record<string, unknown>)[key] = normalizeApptString(patch[key] as string);
+    }
+  }
+  return patch;
+}
 
 export type SubmissionType = "quote" | "support_ticket" | "lead";
 export type SubmissionStatus = string;
@@ -278,12 +294,12 @@ export async function recordSubmission(
     const col = await collection();
     const isLeadOrQuote = !doc.type || doc.type === "quote" || doc.type === "lead";
     const jobNo = doc.jobNo || (isLeadOrQuote ? await getNextJobNo() : undefined);
-    const res = await col.insertOne({
+    const res = await col.insertOne(normalizeApptFields({
       ...doc,
       jobNo,
       status: doc.status ?? "New",
       createdAt: new Date(),
-    });
+    }));
     return res.insertedId.toString();
   } catch (err) {
     console.error("recordSubmission failed (non-fatal):", err);
@@ -569,6 +585,7 @@ export async function updateSubmission(
   if (!ObjectId.isValid(id)) return false;
   const col = await collection();
   const { _id, ...safeUpdates } = updates;
+  normalizeApptFields(safeUpdates);
   const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: safeUpdates });
   return res.matchedCount > 0;
 }

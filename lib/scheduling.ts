@@ -120,6 +120,26 @@ export function apptInstantMs(value: string | null | undefined): number {
   return guess - melbourneOffsetMs(guess);
 }
 
+/**
+ * Canonicalise an appointment value for STORAGE → naive Melbourne wall-clock
+ * "YYYY-MM-DDTHH:mm". This is the single write-side guard: appointment times are
+ * always naive wall-clock (see formatAppt), so we drop any seconds / milliseconds
+ * / "Z" / "+hh:mm" offset a caller might accidentally include. In particular it
+ * neutralises the classic `new Date("...T12:00").toISOString()` mistake, which on
+ * a UTC server would otherwise persist "12:00:00.000Z" and shift the appointment
+ * by the Melbourne offset on display.
+ *
+ * Returns undefined for empty input (so clearing a field still works), and passes
+ * through anything that isn't a recognisable date-time untouched.
+ */
+export function normalizeApptString(value: string | null | undefined): string | undefined {
+  if (value == null) return undefined;
+  const s = String(value).trim();
+  if (!s) return undefined;
+  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})/.exec(s);
+  return m ? `${m[1]}T${m[2]}:${m[3]}` : s;
+}
+
 // How far ahead we let a customer book (days).
 export const BOOKING_HORIZON_DAYS = 21;
 
