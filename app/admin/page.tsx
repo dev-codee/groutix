@@ -3302,7 +3302,9 @@ export default function CrmDashboardPage() {
       : `JobNo-${l.id.slice(0, 4)}`;
 
     const dateTimeDisplay = (() => {
-      const v = l.createdAt || l.inspectionAt || l.jobAt;
+      if (l.inspectionAt) return `${formatApptDate(l.inspectionAt)} ${formatApptTimeRange(l.inspectionAt)}`;
+      if (l.jobAt) return `${formatApptDate(l.jobAt)} ${formatApptTime(l.jobAt)}`;
+      const v = l.createdAt;
       if (!v) return "";
       return `${formatApptDate(v)} ${formatApptTime(v)}`;
     })();
