@@ -127,6 +127,7 @@ export interface Lead {
   inspectionAt?: string;
   jobAt?: string;
   inspectionReminderSent?: boolean;
+  inspectionRescheduled?: boolean;
   jobReminderSent?: boolean;
   inspectionReport?: import("@/lib/inspection").InspectionReportDoc;
   jobTotalDays?: number;

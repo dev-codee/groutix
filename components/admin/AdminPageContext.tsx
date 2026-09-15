@@ -12,7 +12,7 @@ export interface AdminPageCtxType {
 
   // Core data shared by row components
   staff: StaffMember[];
-  assignableTechnicians: StaffMember[];
+  assignableTechnicians: { id: string; name: string; active?: boolean; username?: string; role?: string }[];
   inspectionStaff: StaffMember[];
   scopedLeads: Lead[];
   counts: Record<string, number>;
@@ -24,8 +24,8 @@ export interface AdminPageCtxType {
   unreadReplyCount: number;
 
   // Lead CRUD
-  updateLeadField: (id: string, updates: Partial<Lead>) => Promise<void>;
-  handleDeleteLead: (id: string) => Promise<void>;
+  updateLeadField: (id: string, updates: Partial<Lead>) => Promise<void | boolean>;
+  handleDeleteLead: (id: string) => Promise<void | boolean>;
   setEditingLead: React.Dispatch<React.SetStateAction<Partial<Lead> | null>>;
   setLeadModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setStartJobPrompt: React.Dispatch<React.SetStateAction<{ lead: Lead } | null>>;
@@ -54,10 +54,26 @@ export interface AdminPageCtxType {
   isTechnicianName: (name?: string) => boolean;
 
   // Navigation (used by manager dashboard)
-  setCurrentView: (view: string) => void;
+  setCurrentView: (view: any) => void;
   openLeadsFiltered: (statuses: string[]) => void;
   openInbox: () => void;
   startNewLead: () => void;
+
+  // Manager dashboard extras
+  staffLocations: any[];
+  leads: Lead[];
+  loading: boolean;
+  filteredLeads: Lead[];
+
+  // Shared pagination + filter state (used by view components)
+  page: number;
+  globalSearch: string;
+  setGlobalSearch: React.Dispatch<React.SetStateAction<string>>;
+  quoteLeads: Lead[];
+  jobLeads: Lead[];
+  onlyUnread: boolean;
+  setOnlyUnread: React.Dispatch<React.SetStateAction<boolean>>;
+  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const AdminPageContext = createContext<AdminPageCtxType | null>(null);
