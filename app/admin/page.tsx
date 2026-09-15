@@ -7590,7 +7590,7 @@ export default function CrmDashboardPage() {
                     })
                     .map((s) => {
                     const activeLeads = leads.filter(
-                      (l) => l.assigned === s.name
+                      (l) => l.assigned === s.name || l.technician === s.name || (s.id && l.technicianId === s.id)
                     ).length;
                     const isSelf =
                       s.username.toLowerCase() === (username || "").toLowerCase();
