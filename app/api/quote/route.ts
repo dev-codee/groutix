@@ -380,7 +380,11 @@ export async function POST(req: NextRequest) {
         reference: jobNo,
       });
       if (lock.ok) {
-        const inspectionAt = new Date(`${inspectionDate}T${inspectionTime}:00`).toISOString();
+        // Store the NAIVE Melbourne wall-clock the customer picked (e.g.
+        // "2026-09-16T12:00"), matching the /api/book flow. Never run it through
+        // new Date().toISOString() — on a UTC server that reinterprets the local
+        // time as UTC and shifts the appointment by the Melbourne offset.
+        const inspectionAt = `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}`;
         await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
         await appendActivity(submissionId, {
           time: new Date().toISOString(),
