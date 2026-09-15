@@ -78,7 +78,7 @@ import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
 import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
-import { formatAppt, formatApptDate, formatApptTime } from "@/lib/scheduling";
+import { formatAppt, formatApptDate, formatApptTime, apptInstantMs } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 
 export interface QuoteItem {
@@ -5860,10 +5860,14 @@ export default function CrmDashboardPage() {
 
   function renderManagerDashboard() {
     const _now = new Date();
-    const _todayStr = _now.toDateString();
     const _tomDate = new Date(_now);
     _tomDate.setDate(_tomDate.getDate() + 1);
-    const _tomStr = _tomDate.toDateString();
+    // Group by AUSTRALIAN calendar day (not the viewer's local day) so "Today"
+    // and "Tomorrow" stay correct on any machine. Appointment values are naive
+    // Melbourne wall-clock, and formatApptDate normalises everything to AU time.
+    const _dayKey = (v?: string) => formatApptDate(v, { year: "numeric", month: "2-digit", day: "2-digit" });
+    const _todayStr = _dayKey(_now.toISOString());
+    const _tomStr = _dayKey(_tomDate.toISOString());
 
     const fmtTime = (iso?: string) => {
       if (!iso) return "—";
@@ -5887,12 +5891,13 @@ export default function CrmDashboardPage() {
     };
     const isInspLead = (l: Lead) => Boolean(l.inspectionAt) || /inspection/i.test(l.status || "");
 
+    const _apptMs = (l: Lead) => apptInstantMs(l.inspectionAt || l.jobAt) || 0;
     const todayLeads = scopedLeads
-      .filter((l) => { const d = l.inspectionAt || l.jobAt; return d && new Date(d).toDateString() === _todayStr; })
-      .sort((a, b) => new Date(a.inspectionAt || a.jobAt || 0).getTime() - new Date(b.inspectionAt || b.jobAt || 0).getTime());
+      .filter((l) => { const d = l.inspectionAt || l.jobAt; return d && _dayKey(d) === _todayStr; })
+      .sort((a, b) => _apptMs(a) - _apptMs(b));
     const tomorrowLeads = scopedLeads
-      .filter((l) => { const d = l.inspectionAt || l.jobAt; return d && new Date(d).toDateString() === _tomStr; })
-      .sort((a, b) => new Date(a.inspectionAt || a.jobAt || 0).getTime() - new Date(b.inspectionAt || b.jobAt || 0).getTime());
+      .filter((l) => { const d = l.inspectionAt || l.jobAt; return d && _dayKey(d) === _tomStr; })
+      .sort((a, b) => _apptMs(a) - _apptMs(b));
 
     const inspCount = ["Inspection Booked","Inspection En Route","Inspection Arrived","Inspection In Progress","Inspection Completed"].reduce((a, s) => a + (counts[s] || 0), 0);
     const quoteCount = ["Quote Pending","Quote Sent","Negotiation","Won"].reduce((a, s) => a + (counts[s] || 0), 0);
@@ -5901,7 +5906,7 @@ export default function CrmDashboardPage() {
 
     const techSummary = assignableTechnicians.filter((t) => t.active !== false).map((t) => {
       const tLeads = scopedLeads.filter((l) => l.technicianId === t.id || l.technician === t.name);
-      const todayJobs = tLeads.filter((l) => { const d = l.jobAt; return d && new Date(d).toDateString() === _todayStr; }).length;
+      const todayJobs = tLeads.filter((l) => { const d = l.jobAt; return d && _dayKey(d) === _todayStr; }).length;
       const hasEnRoute = tLeads.some((l) => /en.route/i.test(l.status || ""));
       const hasWorking = tLeads.some((l) => /arrived|in.progress|started/i.test(l.status || ""));
       const statusLabel = hasEnRoute ? "On Route" : hasWorking ? "Working" : "At Office";
