@@ -5183,8 +5183,15 @@ export default function CrmDashboardPage() {
                         <button
                           key={step.status}
                           type="button"
-                          onClick={() => updateLeadField(l.id, { status: step.status })}
-                          className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                          onClick={() =>
+                            step.label === "On the Way"
+                              ? handleOnTheWay(l, "en_route")
+                              : step.label === "Reached"
+                                ? handleOnTheWay(l, "arrived")
+                                : updateLeadField(l.id, { status: step.status })
+                          }
+                          disabled={step.label === "On the Way" || step.label === "Reached" ? onTheWayLoading === l.id : false}
+                          className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
                             done
                               ? "bg-amber-500 text-white"
                               : isNext
@@ -5193,7 +5200,7 @@ export default function CrmDashboardPage() {
                           }`}
                           title={`Set status: ${step.status}`}
                         >
-                          {step.label}
+                          {(step.label === "On the Way" || step.label === "Reached") && onTheWayLoading === l.id ? "..." : step.label}
                         </button>
                       );
                     })}
@@ -5334,8 +5341,15 @@ export default function CrmDashboardPage() {
                         <button
                           key={step.status}
                           type="button"
-                          onClick={() => updateLeadField(l.id, { status: step.status })}
-                          className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                          onClick={() =>
+                            step.label === "On the Way"
+                              ? handleOnTheWay(l, "en_route")
+                              : step.label === "Reached"
+                                ? handleOnTheWay(l, "arrived")
+                                : updateLeadField(l.id, { status: step.status })
+                          }
+                          disabled={step.label === "On the Way" || step.label === "Reached" ? onTheWayLoading === l.id : false}
+                          className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
                             done
                               ? "bg-amber-500 text-white"
                               : isNext
@@ -5344,7 +5358,7 @@ export default function CrmDashboardPage() {
                           }`}
                           title={`Set status: ${step.status}`}
                         >
-                          {step.label}
+                          {(step.label === "On the Way" || step.label === "Reached") && onTheWayLoading === l.id ? "..." : step.label}
                         </button>
                       );
                     })}
