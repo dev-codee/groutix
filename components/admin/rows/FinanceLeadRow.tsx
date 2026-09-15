@@ -191,13 +191,9 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">ASSIGNED</label>
-              <select
-                value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
-                onChange={(e) => updateLeadField(l.id, { assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
-                className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
-              >
-                {assigneeOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <div className="w-full h-[34px] text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 truncate flex items-center">
+                {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned")}
+              </div>
             </div>
 
             <button

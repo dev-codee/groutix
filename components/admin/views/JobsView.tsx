@@ -70,17 +70,14 @@ export function JobsView() {
           { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
         ]
       : role === "finance"
-      ? [
-          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
-          ...single([
-            "Job Done",
-            "Invoice Sent",
-            "Payment Pending",
-            "Payment Received",
-            "Warranty Sent",
-            "Completed",
-          ]),
-        ]
+      ? single([
+          "Job Done",
+          "Invoice Sent",
+          "Payment Pending",
+          "Payment Received",
+          "Warranty Sent",
+          "Completed",
+        ])
       : role === "inspection" || role === "field"
       ? single(["Inspection Booked", "Inspection Completed"])
       : role === "technician"

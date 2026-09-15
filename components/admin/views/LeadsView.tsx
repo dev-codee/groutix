@@ -103,10 +103,7 @@ export function LeadsView() {
       ? intakeGroups
       : role === "manager"
       ? managerGroups
-      : [
-          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
-          ...STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] })),
-        ];
+      : STAGES.map((s) => ({ label: s.label, group: s.group, statuses: [s.key] }));
 
   return (
     <div className="space-y-6">
