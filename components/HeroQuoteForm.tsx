@@ -109,6 +109,7 @@ export default function HeroQuoteForm() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [inspectionSectionOpen, setInspectionSectionOpen] = useState(false);
   const [inspectionDays, setInspectionDays] = useState<{ date: string; label: string; slots: { time: string; booked: boolean }[] }[]>([]);
@@ -404,12 +405,18 @@ export default function HeroQuoteForm() {
     });
   };
 
+  const scrollToFirstError = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
 
     if (photos.length === 0) {
       setSubmitError("Please attach at least one photo.");
+      scrollToFirstError("section-photos");
       return;
     }
 
@@ -492,6 +499,20 @@ export default function HeroQuoteForm() {
       hasLeakingError ||
       hasInspectionError
     ) {
+      const firstErrorId =
+        newErrors.firstName ? "field-firstName" :
+        newErrors.lastName ? "field-lastName" :
+        newErrors.email ? "field-email" :
+        newErrors.phone ? "field-phone" :
+        newErrors.address ? "field-address" :
+        hasTenantError ? "section-tenants" :
+        hasAreaError ? "section-areas" :
+        hasServiceError ? "section-services" :
+        hasDamagedTileError ? "section-damagedTiles" :
+        hasLeakingError ? "section-leaking" :
+        hasInspectionError ? "section-inspection" :
+        null;
+      if (firstErrorId) scrollToFirstError(firstErrorId);
       return;
     }
 
@@ -595,6 +616,7 @@ export default function HeroQuoteForm() {
         throw new Error(body.error || "Something went wrong. Please try again.");
       }
       setSubmitted(true);
+      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : "Something went wrong. Please try again."
@@ -607,7 +629,7 @@ export default function HeroQuoteForm() {
   };
 
   return (
-    <div className="relative w-full">
+    <div ref={containerRef} className="relative w-full">
       <div className="relative overflow-hidden rounded-md border border-white/40 bg-gradient-to-r from-white/85 via-white/75 to-white/55 shadow-[0_24px_90px_rgba(0,0,0,0.35)] backdrop-blur-xl">
         {/* glass sheen */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/70" />
@@ -715,7 +737,7 @@ export default function HeroQuoteForm() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
+                  <div id="field-firstName" className="space-y-1">
                     <input
                       name="firstName"
                       value={data.firstName}
@@ -737,7 +759,7 @@ export default function HeroQuoteForm() {
                       </p>
                     )}
                   </div>
-                  <div className="space-y-1">
+                  <div id="field-lastName" className="space-y-1">
                     <input
                       name="lastName"
                       value={data.lastName}
@@ -774,7 +796,7 @@ export default function HeroQuoteForm() {
                 )}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
+                  <div id="field-email" className="space-y-1">
                     <input
                       type="email"
                       name="email"
@@ -797,7 +819,7 @@ export default function HeroQuoteForm() {
                       </p>
                     )}
                   </div>
-                  <div className="space-y-1">
+                  <div id="field-phone" className="space-y-1">
                     <input
                       type="tel"
                       name="phone"
@@ -822,7 +844,7 @@ export default function HeroQuoteForm() {
                   </div>
                 </div>
 
-                <div className="space-y-1 relative">
+                <div id="field-address" className="space-y-1 relative">
                   <input
                     ref={addressInputRef}
                     name="address"
@@ -879,7 +901,7 @@ export default function HeroQuoteForm() {
                 </div>
 
                 {/* Optional: Book Inspection */}
-                <div className={`border rounded-sm overflow-hidden ${inspectionError ? "border-red-400" : "border-neutral-200"}`}>
+                <div id="section-inspection" className={`border rounded-sm overflow-hidden ${inspectionError ? "border-red-400" : "border-neutral-200"}`}>
                   <button
                     type="button"
                     onClick={() => {
@@ -1030,6 +1052,7 @@ export default function HeroQuoteForm() {
                 <AnimatePresence>
                   {isPropertyManager && (
                     <motion.div
+                      id="section-tenants"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
@@ -1163,7 +1186,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 2. What area/s are you looking to have serviced? */}
-              <div className="space-y-2">
+              <div id="section-areas" className="space-y-2">
                 <p className="text-[15px] font-bold text-neutral-900">
                   2. What area/s are you looking to have serviced? *
                 </p>
@@ -1192,7 +1215,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 3. What service do you require? */}
-              <div className="space-y-2">
+              <div id="section-services" className="space-y-2">
                 <p className="text-[15px] font-bold text-neutral-900">
                   3. What service do you require? *
                 </p>
@@ -1221,7 +1244,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 4. Are you aware of any damaged tiles? */}
-              <div className="space-y-2">
+              <div id="section-damagedTiles" className="space-y-2">
                 <p className="text-[15px] font-bold text-neutral-900">
                   4. Are you aware of any damaged tiles? *
                 </p>
@@ -1250,7 +1273,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 5. Is the area currently leaking? */}
-              <div className="space-y-2">
+              <div id="section-leaking" className="space-y-2">
                 <p className="text-[15px] font-bold text-neutral-900">
                   5. Is the area currently leaking? *
                 </p>
@@ -1294,7 +1317,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 7. Attach photos of the area */}
-              <div className="space-y-2">
+              <div id="section-photos" className="space-y-2">
                 <div className="flex items-center gap-2">
                   <p className="text-[15px] font-bold text-neutral-900">
                     7. Attach photos of the area *

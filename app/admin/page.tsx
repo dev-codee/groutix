@@ -209,6 +209,7 @@ export interface Lead {
   jobAt?: string;
   inspectionReminderSent?: boolean;
   jobReminderSent?: boolean;
+  inspectionRescheduled?: boolean;
   inspectionReport?: InspectionReportDoc;
   jobTotalDays?: number;
   jobDaysDone?: number;
@@ -5102,7 +5103,8 @@ export default function CrmDashboardPage() {
                   <span className="text-center leading-tight">Inspection Booked</span>
                 </button>
                 {l.inspectionAt && (
-                  <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
+                  <div className={`mt-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-center ${l.inspectionRescheduled ? "bg-amber-50 border border-amber-200 text-amber-700" : "bg-blue-50 border border-blue-100 text-blue-700"}`}>
+                    {l.inspectionRescheduled && <span className="mr-1 font-bold">Rescheduled</span>}
                     📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTime(l.inspectionAt)}
                   </div>
                 )}
@@ -7896,7 +7898,12 @@ export default function CrmDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Inspection Date &amp; Time</label>
+                  <label className="font-bold text-slate-700 block mb-1 flex items-center gap-2">
+                    Inspection Date &amp; Time
+                    {editingLead?.inspectionRescheduled && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Rescheduled</span>
+                    )}
+                  </label>
                   <input
                     type="datetime-local"
                     value={editingLead?.inspectionAt ? editingLead.inspectionAt.slice(0, 16) : ""}

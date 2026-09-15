@@ -191,6 +191,7 @@ export interface SubmissionDoc {
   jobReminderSent?: boolean; // 24h-before reminder
   inspectionReminder1hSent?: boolean; // 1h-before reminder
   jobReminder1hSent?: boolean; // 1h-before reminder
+  inspectionRescheduled?: boolean; // true once the inspection has been moved from its original time
   inspectionReport?: InspectionReportDoc;
   // Request metadata.
   ip?: string;

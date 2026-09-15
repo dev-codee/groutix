@@ -10,6 +10,7 @@ import {
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { autoSendInvoice } from "@/lib/automations";
 import { sendInternalAlert, sendEmail, wrapEmailHtml, getEmailLogoUrl, isEmailConfigured } from "@/lib/email";
+import { sendSms, isSmsConfigured, prepareSinglePartSms } from "@/lib/sms";
 import { formatAppt } from "@/lib/scheduling";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
@@ -194,6 +195,55 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             suburb: area.suburb || undefined,
             reference: `GX-ADM-${id.slice(-6)}`,
           });
+
+          // Reschedule: notify customer when an existing booking is moved.
+          if (before.inspectionAt) {
+            await updateSubmission(id, { inspectionRescheduled: true });
+            await appendActivity(id, {
+              time: now,
+              actor,
+              action: "Inspection rescheduled",
+              detail: `${formatAppt(before.inspectionAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || before.inspectionAt} → ${formatAppt(body.inspectionAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body.inspectionAt}`,
+            });
+
+            const newDateLabel = formatAppt(body.inspectionAt, {
+              weekday: "long", day: "2-digit", month: "short",
+              year: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+            }) || body.inspectionAt;
+            const firstName = before.name?.trim().split(/\s+/)[0] || "there";
+            const propertyAddress = before.address || "your property";
+
+            if (isEmailConfigured() && before.email) {
+              const logoUrl = await getEmailLogoUrl();
+              await sendEmail({
+                toEmail: before.email,
+                subject: "Your Groutix Inspection Has Been Rescheduled",
+                html: wrapEmailHtml(
+                  `<h2 style="margin:0 0 12px">Inspection Rescheduled</h2>
+                   <p>Hi ${firstName},</p>
+                   <p>Your on-site inspection at <strong>${propertyAddress}</strong> has been rescheduled to:</p>
+                   <p style="font-size:16px;font-weight:bold;color:#001f97;margin:12px 0">&#128197; ${newDateLabel}</p>
+                   <p>If you have any questions or need to reschedule again, please reply to this email or call us on <strong>7023 8094</strong>.</p>
+                   <p>Kind regards,<br>Groutix Team</p>`,
+                  "Your Groutix inspection has been rescheduled",
+                  logoUrl
+                ),
+              }).catch((err) => console.error("Reschedule email failed (non-fatal):", err));
+            }
+
+            if (isSmsConfigured() && before.phone) {
+              const shortLabel = formatAppt(body.inspectionAt, {
+                weekday: "short", day: "numeric", month: "short",
+                hour: "numeric", minute: "2-digit", hour12: true,
+              }) || body.inspectionAt;
+              const smsBody = prepareSinglePartSms(
+                `Your Groutix inspection has been rescheduled to ${shortLabel}. Call 7023 8094 for questions.`
+              );
+              await sendSms({ to: before.phone, body: smsBody, campaign: "inspection_reschedule" }).catch(
+                (err) => console.error("Reschedule SMS failed (non-fatal):", err)
+              );
+            }
+          }
         } else if (!body.inspectionAt) {
           await deleteBooking(id, "inspection");
         }
