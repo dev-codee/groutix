@@ -3913,72 +3913,102 @@ export default function CrmDashboardPage() {
               </button>
             </div>
 
-            {/* Row 2 (5 buttons): On the Way, Reached, Start, Inspection Form, Complete */}
-            <div className="grid grid-cols-5 gap-1">
-              <button
-                type="button"
-                onClick={() => handleOnTheWay(l, "en_route")}
-                disabled={onTheWayLoading === l.id}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
-                  l.status === "Inspection En Route"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="On the Way"
-              >
-                {onTheWayLoading === l.id ? "..." : "On the Way"}
-              </button>
+            {/* Row 2: Job-Booked view OR inspection action buttons */}
+            {["Job Booked", "Scheduled", "Job Confirmed"].includes(l.status) ? (
+              <div className="space-y-1.5">
+                <div className="px-2.5 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-emerald-700 text-center">
+                  ✓ Job Booked — assign a technician below
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
+                    TECHNICIAN
+                  </label>
+                  <select
+                    value={l.technician || ""}
+                    onChange={(e) => {
+                      const techName = e.target.value;
+                      const tech = assignableTechnicians.find((t) => t.name === techName);
+                      updateLeadField(l.id, { technician: techName, technicianId: tech?.id || "" });
+                    }}
+                    className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                    title="Assign Technician"
+                  >
+                    <option value="">Assign Technician…</option>
+                    {assignableTechnicians.map((t) => (
+                      <option key={t.id} value={t.name}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-5 gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleOnTheWay(l, "en_route")}
+                  disabled={onTheWayLoading === l.id}
+                  className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
+                    l.status === "Inspection En Route"
+                      ? "bg-[#001f97] text-white shadow-2xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  title="On the Way"
+                >
+                  {onTheWayLoading === l.id ? "..." : "On the Way"}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleOnTheWay(l, "arrived")}
-                disabled={onTheWayLoading === l.id}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
-                  l.status === "Inspection Arrived"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="Reached"
-              >
-                Reached
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleOnTheWay(l, "arrived")}
+                  disabled={onTheWayLoading === l.id}
+                  className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
+                    l.status === "Inspection Arrived"
+                      ? "bg-[#001f97] text-white shadow-2xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  title="Reached"
+                >
+                  Reached
+                </button>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Inspection In Progress"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="Start"
-              >
-                Start
-              </button>
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
+                  className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                    l.status === "Inspection In Progress"
+                      ? "bg-[#001f97] text-white shadow-2xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  title="Start"
+                >
+                  Start
+                </button>
 
-              <button
-                type="button"
-                onClick={() => openInspectionModal(l)}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-                title="Inspection Form"
-              >
-                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Inspection Form</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => openInspectionModal(l)}
+                  className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                  title="Inspection Form"
+                >
+                  <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Inspection Form</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Inspection Completed"
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-                title="Complete"
-              >
-                Complete
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
+                  className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                    l.status === "Inspection Completed"
+                      ? "bg-[#001f97] text-white shadow-2xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  title="Complete"
+                >
+                  Complete
+                </button>
+              </div>
+            )}
           </div>
 
           {/* COLUMN 3: WORKFLOW (UPTO INSPECTION COMPLETED) */}
@@ -3996,11 +4026,15 @@ export default function CrmDashboardPage() {
               {[
                 { label: "Inspection Booked", status: "Inspection Booked" },
                 { label: "Inspection Completed", status: "Inspection Completed" },
+                { label: "Job Booked", status: "Job Booked" },
               ].map((item) => {
+                const isJobBooked = ["Job Booked", "Scheduled", "Job Confirmed"].includes(l.status);
                 const isDone =
                   item.status === "Inspection Booked"
                     ? isInspectionBookedDone
-                    : isInspectionCompletedDone;
+                    : item.status === "Inspection Completed"
+                    ? isInspectionCompletedDone
+                    : isJobBooked;
 
                 return (
                   <button
@@ -5795,7 +5829,7 @@ export default function CrmDashboardPage() {
             : role === "technician"
               ? TECHNICIAN_STATUSES.includes(l.status) || Boolean(l.technicianId) || Boolean(l.technician)
               : role === "inspection" || role === "field"
-                ? INSPECTION_STATUSES.includes(l.status)
+                ? INSPECTION_STATUSES.includes(l.status) || ["Job Booked", "Scheduled", "Job Confirmed"].includes(l.status)
                 : JOB_STATUSES.includes(l.status)
       ),
     [filteredLeads, role]
