@@ -963,6 +963,23 @@ export default function CrmDashboardPage() {
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const locationWatchRef = useRef<number | null>(null);
 
+  // Live AUS clock — updates every second
+  const [liveAusTime, setLiveAusTime] = useState(() =>
+    new Date().toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
+  );
+  const [liveAusDate, setLiveAusDate] = useState(() =>
+    new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short" })
+  );
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setLiveAusTime(now.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }));
+      setLiveAusDate(now.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short" }));
+    };
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // Core Data
   const [leads, setLeads] = useState<Lead[]>([]);
   const [tasks, setTasks] = useState<CrmTask[]>([]);
@@ -3299,7 +3316,7 @@ export default function CrmDashboardPage() {
     const dateTimeDisplay = (() => {
       const d = new Date(l.createdAt || l.inspectionAt || l.jobAt || Date.now());
       if (isNaN(d.getTime())) return "";
-      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+      return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
     })();
 
     const serviceDisplay = l.service || "3 Bathrooms | Silicone Replacement";
@@ -3614,7 +3631,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                   </div>
                 )}
               </div>
@@ -3697,7 +3714,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" })} {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                   </div>
                 )}
               </div>
@@ -3750,7 +3767,7 @@ export default function CrmDashboardPage() {
     const dateTimeDisplay = (() => {
       const d = new Date(l.inspectionAt || l.createdAt || l.jobAt || Date.now());
       if (isNaN(d.getTime())) return "";
-      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+      return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
     })();
 
     const serviceDisplay = l.service && (l.notes || l.message)
@@ -4033,7 +4050,7 @@ export default function CrmDashboardPage() {
     const dateTimeDisplay = (() => {
       const d = new Date(l.jobAt || l.inspectionAt || l.createdAt || Date.now());
       if (isNaN(d.getTime())) return "";
-      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+      return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
     })();
 
     const serviceDisplay = l.service && (l.notes || l.message)
@@ -4219,7 +4236,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                   </div>
                 )}
               </div>
@@ -4350,7 +4367,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.jobAt && (
                   <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                    {new Date(l.jobAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    {new Date(l.jobAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.jobAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                   </div>
                 )}
               </div>
@@ -4425,7 +4442,7 @@ export default function CrmDashboardPage() {
     const dateTimeDisplay = (() => {
       const d = new Date(l.jobAt || l.inspectionAt || l.createdAt || Date.now());
       if (isNaN(d.getTime())) return "";
-      return `${d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+      return `${d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} ${d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: true })}`;
     })();
 
     const serviceDisplay = l.notes || l.message
@@ -4913,9 +4930,9 @@ export default function CrmDashboardPage() {
                   if (!rIso) return null;
                   const d = new Date(rIso);
                   if (isNaN(d.getTime())) return null;
-                  const dateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
-                  const timeStr = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true });
-                  const fullDateStr = d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+                  const dateStr = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" });
+                  const timeStr = d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true });
+                  const fullDateStr = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" });
                   return (
                     <div
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap"
@@ -5100,7 +5117,7 @@ export default function CrmDashboardPage() {
                 </button>
                 {l.inspectionAt && (
                   <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
-                    📅 {new Date(l.inspectionAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.inspectionAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    📅 {new Date(l.inspectionAt).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })} &nbsp;•&nbsp; {new Date(l.inspectionAt).toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true })}
                   </div>
                 )}
               </div>
@@ -5866,10 +5883,10 @@ export default function CrmDashboardPage() {
       if (!iso) return "—";
       const d = new Date(iso);
       if (isNaN(d.getTime())) return "—";
-      return d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
+      return d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
     };
     const fmtScheduleDate = (d: Date) =>
-      d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+      d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", year: "numeric" });
     const getSuburb = (addr?: string) => {
       if (!addr) return "";
       const parts = addr.split(",").map((s) => s.trim()).filter(Boolean);
@@ -5987,7 +6004,7 @@ export default function CrmDashboardPage() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-white/70 font-semibold hidden sm:inline">
-                {_now.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                {_now.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", year: "numeric" })}
               </span>
               <button type="button" onClick={() => setCurrentView("jobs")} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-colors cursor-pointer">
                 <Briefcase className="w-3.5 h-3.5" /> Open Dispatch
@@ -6422,6 +6439,12 @@ export default function CrmDashboardPage() {
                               ? "Field Technicians"
                               : "Team Members"}
             </h1>
+          </div>
+
+          {/* Live AUS Time */}
+          <div className="hidden md:flex flex-col items-center px-3 py-1 rounded-xl bg-[#001f97]/5 border border-[#001f97]/10 min-w-[100px]">
+            <span className="text-[13px] font-black text-[#001f97] tabular-nums tracking-tight leading-tight">{liveAusTime}</span>
+            <span className="text-[10px] font-semibold text-slate-400 leading-tight">{liveAusDate} · AEST</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -8518,7 +8541,7 @@ export default function CrmDashboardPage() {
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
                     <div className="pt-1.5 text-slate-900">Quote # {activeQuoteLead.jobNo || `JOBNO-${activeQuoteLead.id.slice(-6).toUpperCase()}`}</div>
-                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
 
@@ -10510,7 +10533,7 @@ export default function CrmDashboardPage() {
                     <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
                     <div className="font-bold text-slate-900">ACN: 687 415 005</div>
                     <div className="pt-1.5 text-slate-900">Invoice # {activeInvoiceLead.invoiceNumber || `INV-${activeInvoiceLead.id.slice(-6).toUpperCase()}`}</div>
-                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
                   </div>
                 </div>
 
@@ -10775,6 +10798,7 @@ export default function CrmDashboardPage() {
                             }`}
                         >
                           {new Date(m.createdAt).toLocaleString("en-AU", {
+                            timeZone: "Australia/Sydney",
                             day: "2-digit",
                             month: "short",
                             hour: "2-digit",
