@@ -83,6 +83,23 @@ export function formatApptTime(value: string | null | undefined): string {
   return formatAppt(value, { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
+/** 1-hour appointment window, e.g. "9:00 AM – 10:00 AM". */
+export function formatApptTimeRange(
+  value: string | null | undefined,
+  durationHours: number = 1
+): string {
+  if (!value) return "";
+  const start = formatApptTime(value);
+  if (!start) return "";
+  const m = NAIVE_DT_RE.exec(String(value).trim());
+  if (!m) return start;
+  const endH = (+m[4] + durationHours) % 24;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const endValue = `${m[1]}-${m[2]}-${m[3]}T${pad(endH)}:${m[5]}`;
+  const end = formatApptTime(endValue);
+  return end ? `${start} – ${end}` : start;
+}
+
 // Melbourne's UTC offset (ms) at a given absolute instant — DST-aware (AEST/AEDT).
 function melbourneOffsetMs(utcMs: number): number {
   const parts = new Intl.DateTimeFormat("en-US", {

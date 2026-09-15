@@ -78,7 +78,7 @@ import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
 import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
-import { formatAppt, formatApptDate, formatApptTime, apptInstantMs } from "@/lib/scheduling";
+import { formatAppt, formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 
 export interface QuoteItem {
@@ -5105,7 +5105,7 @@ export default function CrmDashboardPage() {
                 {l.inspectionAt && (
                   <div className={`mt-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-center ${l.inspectionRescheduled ? "bg-amber-50 border border-amber-200 text-amber-700" : "bg-blue-50 border border-blue-100 text-blue-700"}`}>
                     {l.inspectionRescheduled && <span className="mr-1 font-bold">Rescheduled</span>}
-                    📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTime(l.inspectionAt)}
+                    📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt)}
                   </div>
                 )}
               </div>
@@ -5951,8 +5951,10 @@ export default function CrmDashboardPage() {
                 <tr><td colSpan={7} className="py-8 text-center text-slate-400 text-xs">No jobs scheduled</td></tr>
               )}
               {leads.map((l) => {
-                const timeStr = fmtTime(l.inspectionAt || l.jobAt);
                 const isInsp = isInspLead(l);
+                const timeStr = isInsp
+                  ? (formatApptTimeRange(l.inspectionAt || l.jobAt) || "—").toUpperCase()
+                  : fmtTime(l.jobAt || l.inspectionAt);
                 const badge = getScheduleBadge(l.status);
                 const suburb = getSuburb(l.address);
                 return (
