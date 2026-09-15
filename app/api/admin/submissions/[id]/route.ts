@@ -10,6 +10,7 @@ import {
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { autoSendInvoice } from "@/lib/automations";
 import { sendInternalAlert, sendEmail, wrapEmailHtml, getEmailLogoUrl, isEmailConfigured } from "@/lib/email";
+import { formatAppt } from "@/lib/scheduling";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
 import { getTechnician } from "@/lib/technicians";
@@ -41,10 +42,7 @@ async function notifyTechnicianAssigned(
   if (lead.phone) rows.push(`<p><b>Phone:</b> ${lead.phone}</p>`);
   if (lead.service) rows.push(`<p><b>Service:</b> ${lead.service}</p>`);
   if (when) {
-    const dt = new Date(when);
-    rows.push(
-      `<p><b>${whenLabel} time:</b> ${Number.isNaN(dt.getTime()) ? when : dt.toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}</p>`
-    );
+    rows.push(`<p><b>${whenLabel} time:</b> ${formatAppt(when, { weekday: "long", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || when}</p>`);
   }
 
   const logoUrl = await getEmailLogoUrl();

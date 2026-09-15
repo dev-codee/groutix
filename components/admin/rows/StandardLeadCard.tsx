@@ -74,11 +74,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               {(() => {
                 const rIso = l.received || l.createdAt;
                 if (!rIso) return null;
-                const d = new Date(rIso);
-                if (isNaN(d.getTime())) return null;
-                const dateStr = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short" });
-                const timeStr = d.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true });
-                const fullDateStr = d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "numeric", month: "short", year: "numeric" });
+                const dateStr = formatApptDate(rIso, { day: "numeric", month: "short" });
+                if (!dateStr) return null;
+                const timeStr = formatApptTime(rIso);
+                const fullDateStr = formatApptDate(rIso);
                 return (
                   <div
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap"
