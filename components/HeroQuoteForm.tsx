@@ -115,6 +115,7 @@ export default function HeroQuoteForm() {
   const [inspectionDaysLoading, setInspectionDaysLoading] = useState(false);
   const [inspectionDate, setInspectionDate] = useState("");
   const [inspectionTime, setInspectionTime] = useState("");
+  const [inspectionError, setInspectionError] = useState("");
   const timeSelectRef = useRef<HTMLSelectElement>(null);
 
   const [showInfo, setShowInfo] = useState(false);
@@ -466,13 +467,30 @@ export default function HeroQuoteForm() {
     setDamagedTileError(hasDamagedTileError);
     setLeakingError(hasLeakingError);
 
+    // Inspection booking validation: if the section is open, both date AND time are required
+    let hasInspectionError = false;
+    if (inspectionSectionOpen) {
+      if (!inspectionDate) {
+        setInspectionError("Please select a date for your free inspection.");
+        hasInspectionError = true;
+      } else if (!inspectionTime) {
+        setInspectionError("Please select an arrival time for your free inspection.");
+        hasInspectionError = true;
+      } else {
+        setInspectionError("");
+      }
+    } else {
+      setInspectionError("");
+    }
+
     if (
       Object.keys(newErrors).length !== 0 ||
       hasTenantError ||
       hasAreaError ||
       hasServiceError ||
       hasDamagedTileError ||
-      hasLeakingError
+      hasLeakingError ||
+      hasInspectionError
     ) {
       return;
     }
@@ -639,6 +657,10 @@ export default function HeroQuoteForm() {
                     address: "",
                     message: "",
                   });
+                  setInspectionDate("");
+                  setInspectionTime("");
+                  setInspectionSectionOpen(false);
+                  setInspectionError("");
                 }}
                 className="mt-3 rounded-sm bg-primary hover:bg-primary-hover px-6 py-2.5 text-[16px] font-bold text-white transition-all duration-200 active:scale-95"
               >
@@ -857,12 +879,13 @@ export default function HeroQuoteForm() {
                 </div>
 
                 {/* Optional: Book Inspection */}
-                <div className="border border-neutral-200 rounded-sm overflow-hidden">
+                <div className={`border rounded-sm overflow-hidden ${inspectionError ? "border-red-400" : "border-neutral-200"}`}>
                   <button
                     type="button"
                     onClick={() => {
                       const next = !inspectionSectionOpen;
                       setInspectionSectionOpen(next);
+                      if (!next) setInspectionError("");
                       if (next && data.address && data.address.length >= 5) fetchInspectionAvailability(data.address);
                     }}
                     className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-neutral-50 transition-colors text-left"
@@ -906,9 +929,10 @@ export default function HeroQuoteForm() {
                                       if (e.target.value) {
                                         setInspectionDate(e.target.value);
                                         setInspectionTime("");
+                                        setInspectionError("");
                                       }
                                     }}
-                                    className="w-full rounded-sm border border-neutral-200 bg-white px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer"
+                                    className={`w-full rounded-sm border bg-white px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${inspectionError && !inspectionDate ? "border-red-400 focus:ring-red-500/20" : "border-neutral-200"}`}
                                   >
                                     <option value="">Choose a day…</option>
                                     {inspectionDays.map((d) => (
@@ -944,10 +968,11 @@ export default function HeroQuoteForm() {
                                         setInspectionTime("");
                                       } else {
                                         setInspectionTime(e.target.value);
+                                        if (e.target.value) setInspectionError("");
                                       }
                                     }}
                                     className={`w-full rounded-sm border px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${
-                                      inspectionTime ? "border-green-600 bg-white" : "border-secondary bg-white"
+                                      inspectionTime ? "border-green-600 bg-white" : inspectionError ? "border-red-400 bg-white" : "border-secondary bg-white"
                                     }`}
                                   >
                                     <option value="">
@@ -968,12 +993,20 @@ export default function HeroQuoteForm() {
                                   </select>
                                 </div>
                               )}
+                              {inspectionError && (
+                                <p className="text-[12px] font-semibold text-red-600 flex items-center gap-1">
+                                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                  {inspectionError}
+                                </p>
+                              )}
                               {inspectionDate && inspectionTime && (
                                 <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 font-semibold flex items-center justify-between">
                                   <span>
                                     ✓ Inspection confirmed — {inspectionDays.find((d) => d.date === inspectionDate)?.label} at {(() => {
                                       const [h] = inspectionTime.split(":").map(Number);
-                                      return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`;
+                                      const endH = h + 1;
+                                      const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
+                                      return `${fmt(h)} – ${fmt(endH)}`;
                                     })()}
                                   </span>
                                   <button
