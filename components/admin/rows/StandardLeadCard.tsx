@@ -558,7 +558,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <span>Quote Accepted — {fmtDate(l.quoteAcceptedAt)}</span>
               </div>
             )}
-            {l.status === "Completed" && (
+            {l.status === "Completed" && role !== "manager" && (
               <div className="space-y-1">
                 <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
                   <span className="flex items-center gap-1">
