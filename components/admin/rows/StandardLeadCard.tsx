@@ -31,6 +31,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     setLeadModalOpen,
     inspectionStaff,
     assignableTechnicians,
+    handleOnTheWay,
+    onTheWayLoading,
   } = useAdminPageCtx();
 
   const total = getLeadQuoteTotal(l);
@@ -308,17 +310,25 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                         </div>
                       );
                     }
+                    // "On the Way" and "Reached" fire the notify-customer popup
+                    const isOnTheWayStep = step.label === "On the Way" || step.label === "Reached";
+                    const eventType = step.label === "On the Way" ? "en_route" : "arrived";
                     return (
                       <button
                         key={step.status}
                         type="button"
-                        onClick={() => updateLeadField(l.id, { status: step.status })}
-                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                        disabled={isOnTheWayStep && onTheWayLoading === l.id}
+                        onClick={() =>
+                          isOnTheWayStep
+                            ? handleOnTheWay(l, eventType)
+                            : updateLeadField(l.id, { status: step.status })
+                        }
+                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
                           done ? "bg-amber-500 text-white" : isNext ? "bg-[#001f97] text-white hover:bg-[#001777]" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                         }`}
                         title={`Set status: ${step.status}`}
                       >
-                        {step.label}
+                        {isOnTheWayStep && onTheWayLoading === l.id ? "..." : step.label}
                       </button>
                     );
                   })}
