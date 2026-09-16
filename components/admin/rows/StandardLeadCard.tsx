@@ -600,16 +600,22 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               const isActive = getStepActive(l, st.step);
               return (
                 <div key={st.step} className="space-y-1">
-                  <div
-                    className={`px-2 py-2 rounded-lg text-xs font-bold cursor-default select-none text-center ${
+                  <button
+                    type="button"
+                    onClick={() =>
+                      st.step === "Invoice Sent"
+                        ? openInvoiceModal(l)
+                        : updateLeadField(l.id, { status: st.step })
+                    }
+                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors text-center ${
                       isActive
                         ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
-                        : "border border-slate-200 bg-slate-100 text-slate-600"
+                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                     title={st.label}
                   >
                     {st.label}
-                  </div>
+                  </button>
                   {/* Invoice amount label under Pending Payment */}
                   {st.step === "Payment Pending" && isActive && invoiceTotalFmt && (
                     <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#001f97]/8 border border-[#001f97]/20">
@@ -706,28 +712,46 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               )}
             </div>
 
-            {/* Warranty Sent & Completed — read-only indicators */}
-            {([
+            {/* Warranty Sent & Completed — clickable buttons */}
+            {[
               {
                 label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
-                step: "Warranty Sent",
+                step: "Warranty Sent" as const,
                 color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600" : "bg-slate-700",
+                onClick: () => openWarrantyModal(l),
               },
-              { label: "Completed Jobs", step: "Completed", color: "bg-emerald-600" },
-            ] as const).map((st) => {
+              {
+                label: "Completed Jobs",
+                step: "Completed" as const,
+                color: "bg-emerald-600",
+                onClick: () => {
+                  const updates: Record<string, unknown> = { status: "Completed" };
+                  if (l.warrantyProvided === false || l.warranty?.provided === false) {
+                    updates.warrantyProvided = false;
+                    updates.warranty = { ...(l.warranty || {}), provided: false };
+                  } else {
+                    updates.warrantyProvided = true;
+                    updates.warranty = { ...(l.warranty || {}), provided: true };
+                  }
+                  updateLeadField(l.id, updates as Partial<Lead>);
+                },
+              },
+            ].map((st) => {
               const isActive = getStepActive(l, st.step);
               return (
-                <div
+                <button
                   key={st.step}
-                  className={`px-2 py-2 rounded-lg text-xs font-bold cursor-default select-none text-center ${
+                  type="button"
+                  onClick={st.onClick}
+                  className={`w-full px-2 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors text-center ${
                     isActive
                       ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
-                      : "border border-slate-200 bg-slate-100 text-slate-600"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                   title={st.label}
                 >
                   {st.label}
-                </div>
+                </button>
               );
             })}
           </div>
