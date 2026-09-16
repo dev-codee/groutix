@@ -573,23 +573,17 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             ] as const).map((st) => {
               const isActive = getStepActive(l, st.step);
               return (
-                <button
+                <div
                   key={st.step}
-                  type="button"
-                  onClick={() => {
-                    if (st.step === "Invoice Sent") openInvoiceModal(l);
-                    else if (st.step === "Warranty Sent") openWarrantyModal(l);
-                    else updateLeadField(l.id, { status: st.step });
-                  }}
-                  className={`px-2 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer text-center ${
+                  className={`px-2 py-2 rounded-lg text-xs font-bold cursor-default select-none text-center ${
                     isActive
-                      ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
-                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      ? st.color.replace(/ hover:\S+/g, "") + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-600"
                   }`}
                   title={st.label}
                 >
                   {st.label}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -619,19 +613,14 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             ].map(({ label, step }) => {
               const isActive = getStepActive(l, step);
               return (
-                <button
+                <div
                   key={step}
-                  onClick={() => {
-                    if (step === "Invoice Sent") openInvoiceModal(l);
-                    else if (step === "Warranty Sent") openWarrantyModal(l);
-                    else updateLeadField(l.id, { status: step });
-                  }}
-                  className={`w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between border transition-all cursor-pointer ${
+                  className={`w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between border cursor-default select-none ${
                     isActive
                       ? "bg-[#ccfbf1]/80 text-[#0f766e] border-teal-200/80 shadow-2xs"
-                      : "bg-[#f8fafc] text-slate-600 border-slate-200/70 hover:bg-slate-100 hover:border-slate-300"
+                      : "bg-[#f8fafc] text-slate-600 border-slate-200/70"
                   }`}
-                  title={`Click to manage ${label}`}
+                  title={label}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="truncate">{label}</span>
@@ -647,7 +636,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   ) : (
                     <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

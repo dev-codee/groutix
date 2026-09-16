@@ -382,26 +382,22 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
           <div className="grid grid-cols-2 gap-1.5 min-w-0">
             <div className="space-y-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "New" })}
-                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+              <div
+                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between cursor-default select-none min-w-0 border ${
                   isNewDone
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">New</span>
                 {isNewDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+              <div
+                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between cursor-default select-none min-w-0 border ${
                   isInspectionCompletedDone
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">Inspection Completed</span>
@@ -410,20 +406,18 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 ) : (
                   <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
                 )}
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+              <div
+                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between cursor-default select-none min-w-0 border ${
                   isJobBookedDone
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">Job Booked</span>
                 {isJobBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
               {l.jobAt && (
                 <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
                   {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
@@ -432,31 +426,27 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             </div>
 
             <div className="space-y-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
-                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+              <div
+                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between cursor-default select-none min-w-0 border ${
                   isInspectionBookedDone
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">Inspection Booked</span>
                 {isInspectionBookedDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
-                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer min-w-0 border ${
+              <div
+                className={`w-full px-1.5 py-1.5 rounded text-[10px] xl:text-[11px] font-bold flex items-center justify-between cursor-default select-none min-w-0 border ${
                   isQuoteSentDone
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">Quote Sent</span>
                 {isQuoteSentDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
             </div>
           </div>
         </div>

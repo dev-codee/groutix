@@ -132,6 +132,8 @@ export interface Lead {
   inspectionReport?: import("@/lib/inspection").InspectionReportDoc;
   jobTotalDays?: number;
   jobDaysDone?: number;
+  paymentType?: "full" | "half" | "partial"; // full or partial payment received
+  amountPaid?: number;                        // actual amount received (for partial)
 }
 
 export interface CrmTask {

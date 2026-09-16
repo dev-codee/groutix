@@ -234,19 +234,17 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               { label: "Inspection Booked", isDone: isInspectionBookedDone },
               { label: "Inspection Completed", isDone: isInspectionCompletedDone },
             ].map((item) => (
-              <button
+              <div
                 key={item.label}
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: item.label })}
-                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${
                   item.isDone
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">{item.label}</span>
                 <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
-              </button>
+              </div>
             ))}
           </div>
         </div>

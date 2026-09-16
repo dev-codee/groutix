@@ -296,14 +296,12 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
           <div className="space-y-1.5">
             <div>
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
+              <div
+                className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between cursor-default select-none border min-w-0 bg-[#dcfce7] border-emerald-300 text-slate-900"
               >
                 <span className="truncate">Job Booked</span>
                 <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
-              </button>
+              </div>
               {l.jobAt && (
                 <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
                   {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
@@ -314,15 +312,13 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               { label: "Job Started", status: "Job Started", isDone: ["Job Started","Job In Progress","In Progress","Job Done","Completed"].includes(l.status) },
               { label: "Job Done", status: "Job Done", isDone: l.status === "Job Done" || l.status === "Completed" },
             ].map((item) => (
-              <button
+              <div
                 key={item.label}
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: item.status })}
-                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${item.isDone ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+                className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${item.isDone ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
                 <span className="truncate">{item.label}</span>
                 <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
-              </button>
+              </div>
             ))}
           </div>
         </div>

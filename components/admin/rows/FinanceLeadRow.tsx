@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import {
   Phone, Mail, MapPin, MessageSquare, Send,
-  ShieldAlert, ShieldCheck, Check, Eye,
+  ShieldAlert, ShieldCheck, Check, Eye, DollarSign, X,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate } from "@/lib/adminHelpers";
@@ -41,6 +42,26 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const jobNoDisplay = l.jobNo
     ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
     : `JobNo-${l.id.slice(0, 4)}`;
+
+  // ── Payment dialog state ──────────────────────────────────────────────────
+  type PaymentStep = "idle" | "ask_type" | "ask_amount";
+  const [payStep, setPayStep] = useState<PaymentStep>("idle");
+  const [partialAmt, setPartialAmt] = useState<string>("");
+
+  const invoiceTotal = l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null;
+  const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
+  const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
+
+  function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
+    const updates: Partial<Lead> = {
+      status: "Payment Received",
+      paymentType: type,
+      amountPaid: type === "full" ? (invoiceTotal ?? undefined) : customAmt,
+    };
+    updateLeadField(l.id, updates);
+    setPayStep("idle");
+    setPartialAmt("");
+  }
 
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt || l.createdAt;
@@ -251,13 +272,95 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             >
               Payment Pending
             </button>
-            <button
-              type="button"
-              onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
-              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${l.status === "Payment Received" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-            >
-              Payment Received
-            </button>
+            {/* Payment Received — smart button with Full/Partial dialog */}
+            <div className="space-y-1">
+              {payStep === "idle" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isPaymentReceived) return; // already received, no-op
+                    setPayStep("ask_type");
+                  }}
+                  className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
+                    isPaymentReceived
+                      ? "bg-[#001f97] text-white shadow-2xs cursor-default"
+                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                  }`}
+                >
+                  {isPaymentReceived && l.paymentType === "partial"
+                    ? `Part Paid${l.amountPaid ? ` — AUD $${Number(l.amountPaid).toFixed(2)}` : ""}`
+                    : "Payment Received"}
+                </button>
+              )}
+
+              {payStep === "ask_type" && (
+                <div className="rounded-xl border border-[#001f97]/30 bg-blue-50 p-2.5 space-y-2 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-[#001f97] uppercase tracking-wider">Payment received?</span>
+                    <button type="button" onClick={() => setPayStep("idle")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {invoiceTotalFmt && (
+                    <div className="text-[10px] font-semibold text-slate-600 text-center">
+                      Invoice Total: <span className="font-black text-[#001f97]">{invoiceTotalFmt}</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentReceived("full")}
+                      className="py-1.5 px-2 rounded-lg text-[11px] font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer text-center"
+                    >
+                      ✅ Full
+                      {invoiceTotalFmt && <div className="text-[9px] font-semibold opacity-80">{invoiceTotalFmt}</div>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPayStep("ask_amount")}
+                      className="py-1.5 px-2 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-600 text-white transition-colors cursor-pointer text-center"
+                    >
+                      ⚡ Partial
+                      {halfAmt && <div className="text-[9px] font-semibold opacity-80">e.g. AUD ${halfAmt.toFixed(2)}</div>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {payStep === "ask_amount" && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 space-y-2 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Amount received (AUD)</span>
+                    <button type="button" onClick={() => setPayStep("ask_type")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder={halfAmt ? halfAmt.toFixed(2) : "0.00"}
+                    value={partialAmt}
+                    onChange={(e) => setPartialAmt(e.target.value)}
+                    className="w-full text-xs font-bold border border-amber-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && partialAmt) {
+                        handlePaymentReceived("partial", parseFloat(partialAmt));
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!partialAmt || isNaN(parseFloat(partialAmt))}
+                    onClick={() => handlePaymentReceived("partial", parseFloat(partialAmt))}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+                  >
+                    Confirm Partial Payment
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => openWarrantyModal(l)}
@@ -290,40 +393,34 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
           <div className="grid grid-cols-2 gap-1.5 min-w-0">
             <div className="space-y-1.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${isJobDone ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+              <div
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isJobDone ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
                 <span className="truncate">Job Done</span>
                 <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Payment Pending" })}
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${isPaymentPending ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+              <div
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isPaymentPending ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
                 <span className="truncate">Payment Pending</span>
                 {isPaymentPending && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
+              {/* Invoice amount label — visible when Payment Pending is active */}
+              {isPaymentPending && invoiceTotalFmt && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#001f97]/8 border border-[#001f97]/20 min-w-0">
+                  <DollarSign className="w-3 h-3 text-[#001f97] shrink-0" />
+                  <span className="text-[10px] font-black text-[#001f97] truncate">{invoiceTotalFmt}</span>
+                </div>
+              )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (l.warrantyProvided === false || l.warranty?.provided === false) {
-                    openWarrantyModal(l);
-                  } else {
-                    updateLeadField(l.id, { status: "Warranty Sent" });
-                    openWarrantyModal(l);
-                  }
-                }}
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${
+              <div
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${
                   l.warrantyProvided === false || l.warranty?.provided === false
-                    ? "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100"
+                    ? "bg-rose-50 border-rose-300 text-rose-700"
                     : isWarrantySent
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
                 }`}
               >
                 <span className="truncate">
@@ -334,27 +431,27 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 ) : isWarrantySent ? (
                   <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
                 ) : null}
-              </button>
+              </div>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Invoice Sent", invoiceSentAt: l.invoiceSentAt || new Date().toISOString() })}
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${isInvoiceSent ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+              <div
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isInvoiceSent ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
                 <span className="truncate">Invoice Sent</span>
                 {isInvoiceSent && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Payment Received" })}
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer border min-w-0 ${isPaymentReceived ? "bg-[#dcfce7] border-emerald-300 text-slate-900 hover:bg-emerald-100" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+              <div
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isPaymentReceived ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
-                <span className="truncate">Payment Received</span>
+                <span className="truncate">
+                  {isPaymentReceived && l.paymentType === "partial"
+                    ? `Part Paid${l.amountPaid ? ` — $${Number(l.amountPaid).toFixed(2)}` : ""}`
+                    : "Payment Received"}
+                </span>
                 {isPaymentReceived && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
-              </button>
+              </div>
 
               <button
                 type="button"
