@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function FinanceLeadRow({ l }: { l: Lead }) {
@@ -66,7 +66,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt || l.createdAt;
     if (!v) return "";
-    return `${formatApptDate(v)} ${formatApptTime(v)}`;
+    return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
   })();
 
   const serviceDisplay = l.notes || l.message

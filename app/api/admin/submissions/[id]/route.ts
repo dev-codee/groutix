@@ -5,7 +5,6 @@ import {
   getSubmission,
   updateSubmission,
   appendActivity,
-  pickAssigneeForRole,
 } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { autoSendInvoice } from "@/lib/automations";
@@ -101,25 +100,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         detail: `${before.status} → ${body.status}`,
       });
 
-      // Automatic handoff between role queues. Only reassign when the caller
-      // didn't set an assignee themselves, so a manual override always wins.
-      if (typeof body.assigned !== "string") {
-        let handoffRole: "intake" | "finance" | null = null;
-        if (body.status === "Inspection Completed") handoffRole = "intake"; // back to intake to quote
-        else if (body.status === "Job Done") handoffRole = "finance"; // to finance to invoice
-        if (handoffRole) {
-          const assignee = await pickAssigneeForRole(handoffRole);
-          if (assignee && assignee !== "Unassigned" && assignee !== before.assigned) {
-            await updateSubmission(id, { assigned: assignee });
-            await appendActivity(id, {
-              time: now,
-              actor: "system",
-              action: handoffRole === "intake" ? "Handed to Intake for quoting" : "Handed to Finance for invoicing",
-              detail: assignee,
-            });
-          }
-        }
-      }
 
       // ── Transition automations (auto-invoice / auto-warranty) ──
       // Best-effort; each helper is internally guarded and idempotent.

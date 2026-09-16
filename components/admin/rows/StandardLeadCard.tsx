@@ -12,7 +12,7 @@ import {
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, STATUS_LIST, fmtDate, getStepActive,
 } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function StandardLeadCard({ l }: { l: Lead }) {
@@ -101,7 +101,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 if (!rIso) return null;
                 const dateStr = formatApptDate(rIso, { day: "numeric", month: "short" });
                 if (!dateStr) return null;
-                const timeStr = formatApptTime(rIso);
+                const timeStr = formatApptTimeRange(rIso);
                 const fullDateStr = formatApptDate(rIso);
                 return (
                   <div
@@ -269,7 +269,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               </button>
               {l.inspectionAt && (
                 <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
-                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTime(l.inspectionAt)}
+                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt)}
                 </div>
               )}
             </div>

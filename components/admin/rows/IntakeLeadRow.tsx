@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function IntakeLeadRow({ l }: { l: Lead }) {
@@ -43,17 +43,35 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
   const dateTimeDisplay = (() => {
     const v = l.createdAt || l.inspectionAt || l.jobAt;
     if (!v) return "";
-    return `${formatApptDate(v)} ${formatApptTime(v)}`;
+    return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
   })();
 
   const serviceDisplay = l.service || "3 Bathrooms | Silicone Replacement";
   const notesDisplay = l.notes || l.message;
 
+  const STATUS_ORDER = [
+    "New", "Inspection Booked", "Inspection En Route", "Inspection Arrived",
+    "Inspection In Progress", "Inspection Completed", "Quote Sent", "Won",
+    "Job Booked", "Completed",
+  ];
+  const statusIdx = STATUS_ORDER.indexOf(l.status || "New");
+  const atOrPast = (s: string) => statusIdx >= STATUS_ORDER.indexOf(s);
+
   const isNewDone = true;
-  const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
-  const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
-  const isQuoteSentDone = l.status === "Quote Sent" || l.status === "Won" || l.status === "Job Booked" || l.status === "Completed";
-  const isJobBookedDone = l.status === "Job Booked" || l.status === "Completed";
+  const isInspectionBookedDone = Boolean(l.inspectionAt) || atOrPast("Inspection En Route");
+  const isInspectionCompletedDone = l.inspectionReport?.status === "completed" || atOrPast("Inspection Completed");
+  const isQuoteSentDone = atOrPast("Quote Sent");
+  const isJobBookedDone = atOrPast("Job Booked");
+
+  // Action button "done" states
+  const isOnTheWayDone = atOrPast("Inspection En Route");
+  const isReachedDone = atOrPast("Inspection Arrived");
+  const isStartDone = atOrPast("Inspection In Progress");
+  const isInspectionFormDone = isInspectionCompletedDone;
+  const isCompleteDone = atOrPast("Inspection Completed");
+  const isQuoteCreatedDone = Boolean(l.quoteAmount || l.quoteItems?.length);
+  const isSentDone = atOrPast("Quote Sent");
+  const isJobBookedBtnDone = atOrPast("Job Booked");
 
   return (
     <div
@@ -225,19 +243,9 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                 ASSIGNED
               </label>
-              <select
-                value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
-                onChange={(e) => {
-                  const name = e.target.value === "Unassigned" ? "" : e.target.value;
-                  const inspectorStaff = staff.find((s) => s.name === name);
-                  updateLeadField(l.id, { assigned: name, inspectorId: inspectorStaff?.id || "" });
-                }}
-                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
-              >
-                {assigneeOptions.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              <div className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate select-none">
+                {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : null) || "Unassigned"}
+              </div>
             </div>
 
             <button
@@ -258,7 +266,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               onClick={() => handleOnTheWay(l, "en_route")}
               disabled={onTheWayLoading === l.id}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
-                l.status === "Inspection En Route"
+                isOnTheWayDone
                   ? "bg-[#001f97] text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
@@ -271,7 +279,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               onClick={() => handleOnTheWay(l, "arrived")}
               disabled={onTheWayLoading === l.id}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
-                l.status === "Inspection Arrived"
+                isReachedDone
                   ? "bg-[#001f97] text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
@@ -283,7 +291,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               type="button"
               onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                l.status === "Inspection In Progress"
+                isStartDone
                   ? "bg-[#001f97] text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
@@ -294,7 +302,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openInspectionModal(l)}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${isInspectionFormDone ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
             >
               <ClipboardList className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">Inspection Form</span>
@@ -304,7 +312,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               type="button"
               onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                l.status === "Inspection Completed"
+                isCompleteDone
                   ? "bg-[#001f97] text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
@@ -318,7 +326,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openQuoteModal(l)}
-              className="py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer truncate min-w-0"
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${isQuoteCreatedDone ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
             >
               Quote
             </button>
@@ -327,7 +335,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               type="button"
               onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                l.status === "Quote Sent"
+                isSentDone
                   ? "bg-[#001f97] text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
@@ -340,7 +348,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
                 className={`w-full py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
-                  l.status === "Job Booked"
+                  isJobBookedBtnDone
                     ? "bg-[#001f97] text-white shadow-2xs"
                     : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
@@ -349,7 +357,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt)}
                 </div>
               )}
             </div>
@@ -420,7 +428,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </div>
               {l.jobAt && (
                 <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTime(l.jobAt)}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt)}
                 </div>
               )}
             </div>

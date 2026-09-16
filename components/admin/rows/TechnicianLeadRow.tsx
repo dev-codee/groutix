@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTime, formatApptTimeRange } from "@/lib/scheduling";
+import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
 
@@ -43,7 +43,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt || l.createdAt;
     if (!v) return "";
-    return `${formatApptDate(v)} ${formatApptTime(v)}`;
+    return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
   })();
 
   const serviceDisplay = l.service && (l.notes || l.message)
