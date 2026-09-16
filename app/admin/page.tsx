@@ -5623,6 +5623,14 @@ export default function CrmDashboardPage() {
               updates.technician = report.suggestedTechnician;
               updates.technicianId = tech?.id || "";
             }
+            // Propagate inspector's warranty selection to the finance-stage fields
+            if (report.warrantyEligible === "NO") {
+              updates.warrantyProvided = false;
+              updates.warranty = { ...(activeInspectionLead.warranty || {}), provided: false };
+            } else if (report.warrantyEligible === "YES") {
+              updates.warrantyProvided = true;
+              updates.warranty = { ...(activeInspectionLead.warranty || {}), provided: true };
+            }
             const ok = await updateLeadField(activeInspectionLead.id, updates);
             if (ok) {
               setActiveInspectionLead((prev) => (prev ? { ...prev, ...updates } : null));
