@@ -126,6 +126,8 @@ export default function HeroQuoteForm() {
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
 
+  const [flashErrorId, setFlashErrorId] = useState<string | null>(null);
+
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
@@ -407,7 +409,14 @@ export default function HeroQuoteForm() {
 
   const scrollToFirstError = (id: string) => {
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashErrorId(null);
+    // Re-trigger on next tick so removing+re-adding the class restarts the animation
+    requestAnimationFrame(() => {
+      setFlashErrorId(id);
+      setTimeout(() => setFlashErrorId(null), 2000);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -737,7 +746,7 @@ export default function HeroQuoteForm() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div id="field-firstName" className="space-y-1">
+                  <div id="field-firstName" className={`space-y-1 rounded-sm transition-all ${flashErrorId === "field-firstName" ? "form-error-flash" : ""}`}>
                     <input
                       name="firstName"
                       value={data.firstName}
@@ -759,7 +768,7 @@ export default function HeroQuoteForm() {
                       </p>
                     )}
                   </div>
-                  <div id="field-lastName" className="space-y-1">
+                  <div id="field-lastName" className={`space-y-1 rounded-sm transition-all ${flashErrorId === "field-lastName" ? "form-error-flash" : ""}`}>
                     <input
                       name="lastName"
                       value={data.lastName}
@@ -796,7 +805,7 @@ export default function HeroQuoteForm() {
                 )}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div id="field-email" className="space-y-1">
+                  <div id="field-email" className={`space-y-1 rounded-sm transition-all ${flashErrorId === "field-email" ? "form-error-flash" : ""}`}>
                     <input
                       type="email"
                       name="email"
@@ -819,7 +828,7 @@ export default function HeroQuoteForm() {
                       </p>
                     )}
                   </div>
-                  <div id="field-phone" className="space-y-1">
+                  <div id="field-phone" className={`space-y-1 rounded-sm transition-all ${flashErrorId === "field-phone" ? "form-error-flash" : ""}`}>
                     <input
                       type="tel"
                       name="phone"
@@ -844,7 +853,7 @@ export default function HeroQuoteForm() {
                   </div>
                 </div>
 
-                <div id="field-address" className="space-y-1 relative">
+                <div id="field-address" className={`space-y-1 relative rounded-sm transition-all ${flashErrorId === "field-address" ? "form-error-flash" : ""}`}>
                   <input
                     ref={addressInputRef}
                     name="address"
@@ -1186,7 +1195,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 2. What area/s are you looking to have serviced? */}
-              <div id="section-areas" className="space-y-2">
+              <div id="section-areas" className={`space-y-2 rounded-sm transition-all ${flashErrorId === "section-areas" ? "form-error-flash" : ""}`}>
                 <p className="text-[15px] font-bold text-neutral-900">
                   2. What area/s are you looking to have serviced? *
                 </p>
@@ -1215,7 +1224,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 3. What service do you require? */}
-              <div id="section-services" className="space-y-2">
+              <div id="section-services" className={`space-y-2 rounded-sm transition-all ${flashErrorId === "section-services" ? "form-error-flash" : ""}`}>
                 <p className="text-[15px] font-bold text-neutral-900">
                   3. What service do you require? *
                 </p>
@@ -1244,7 +1253,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 4. Are you aware of any damaged tiles? */}
-              <div id="section-damagedTiles" className="space-y-2">
+              <div id="section-damagedTiles" className={`space-y-2 rounded-sm transition-all ${flashErrorId === "section-damagedTiles" ? "form-error-flash" : ""}`}>
                 <p className="text-[15px] font-bold text-neutral-900">
                   4. Are you aware of any damaged tiles? *
                 </p>
@@ -1273,7 +1282,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 5. Is the area currently leaking? */}
-              <div id="section-leaking" className="space-y-2">
+              <div id="section-leaking" className={`space-y-2 rounded-sm transition-all ${flashErrorId === "section-leaking" ? "form-error-flash" : ""}`}>
                 <p className="text-[15px] font-bold text-neutral-900">
                   5. Is the area currently leaking? *
                 </p>
@@ -1317,7 +1326,7 @@ export default function HeroQuoteForm() {
               </div>
 
               {/* 7. Attach photos of the area */}
-              <div id="section-photos" className="space-y-2">
+              <div id="section-photos" className={`space-y-2 rounded-sm transition-all ${flashErrorId === "section-photos" ? "form-error-flash" : ""}`}>
                 <div className="flex items-center gap-2">
                   <p className="text-[15px] font-bold text-neutral-900">
                     7. Attach photos of the area *

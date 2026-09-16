@@ -47,6 +47,29 @@ body {
 }
 
 /* ============================================================
+   Form validation: flash-error animation applied to the first
+   invalid field after a failed submit attempt.
+   ============================================================ */
+@keyframes form-error-flash {
+  0%   { box-shadow: 0 0 0 0px rgba(239,68,68,0); transform: translateX(0); }
+  10%  { transform: translateX(-4px); }
+  20%  { transform: translateX(4px); box-shadow: 0 0 0 4px rgba(239,68,68,0.35); }
+  30%  { transform: translateX(-3px); }
+  40%  { transform: translateX(3px); }
+  50%  { transform: translateX(0);   box-shadow: 0 0 0 6px rgba(239,68,68,0.25); }
+  70%  { box-shadow: 0 0 0 4px rgba(239,68,68,0.15); }
+  100% { box-shadow: 0 0 0 0px rgba(239,68,68,0);    transform: translateX(0); }
+}
+
+.form-error-flash {
+  animation: form-error-flash 0.6s ease-out forwards,
+             form-error-flash 0.6s ease-out 0.7s forwards;
+  border-color: rgb(239 68 68) !important;
+  outline: 2px solid rgb(239 68 68);
+  outline-offset: 2px;
+}
+
+/* ============================================================
    Admin dashboard skin — clean, minimal, flat, sharp edges.
    Scoped to .admin-ui so the public marketing site is untouched.
    These are visual-only overrides (border-radius / shadow / blur),
