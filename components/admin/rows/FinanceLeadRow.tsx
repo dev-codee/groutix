@@ -363,13 +363,17 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             </div>
             <button
               type="button"
-              onClick={() => openWarrantyModal(l)}
-              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${
+              disabled={isWarrantySent || l.warrantyProvided === false || l.warranty?.provided === false}
+              onClick={() => {
+                if (isWarrantySent || l.warrantyProvided === false || l.warranty?.provided === false) return;
+                openWarrantyModal(l);
+              }}
+              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${
                 l.warrantyProvided === false || l.warranty?.provided === false
-                  ? "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-2xs"
-                  : l.status === "Warranty Sent"
-                  ? "bg-[#001f97] text-white shadow-2xs"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "border border-rose-300 bg-rose-50 text-rose-700 shadow-2xs cursor-default"
+                  : isWarrantySent
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
               }`}
             >
               {l.warrantyProvided === false || l.warranty?.provided === false ? (
