@@ -4,12 +4,8 @@ import Link from "next/link";
 import { ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import type { StaffMember } from "@/components/admin/types";
-import {
-  TECHNICIAN_STATUSES,
-  INTAKE_STATUSES,
-  INSPECTION_STATUSES,
-  FINANCE_STATUSES,
-} from "@/lib/pipeline";
+import { inRoleQueue } from "@/lib/pipeline";
+import type { Role } from "@/lib/roles";
 
 interface Props {
   isManager: boolean;
@@ -65,18 +61,24 @@ export function TeamView({
               return (a.name || a.username).localeCompare(b.name || b.username);
             })
             .map((s) => {
+              const role = s.role as Role;
+              const sNameLower = (s.name || s.username).trim().toLowerCase();
               const activeLeads = leads.filter((l) => {
-                const isAssigned =
-                  l.assigned === s.name ||
-                  l.technician === s.name ||
-                  (s.id && l.technicianId === s.id);
-                if (!isAssigned) return false;
-                if (s.role === "technician") return TECHNICIAN_STATUSES.includes(l.status);
-                if (s.role === "intake") return INTAKE_STATUSES.includes(l.status);
-                if (s.role === "inspection" || s.role === "field")
-                  return INSPECTION_STATUSES.includes(l.status);
-                if (s.role === "finance") return FINANCE_STATUSES.includes(l.status);
-                return !["Completed", "Lost", "Cancelled"].includes(l.status);
+                if (!inRoleQueue(role, l.status)) return false;
+                if (role === "technician") {
+                  return (
+                    (s.id && l.technicianId === s.id) ||
+                    (l.technician && l.technician.trim().toLowerCase() === sNameLower)
+                  );
+                }
+                if (role === "inspection" || role === "field") {
+                  if (s.id && l.inspectorId) return l.inspectorId === s.id;
+                  const assignedTo = (l.assigned || "").trim().toLowerCase();
+                  return Boolean(assignedTo && assignedTo !== "unassigned" && assignedTo === sNameLower);
+                }
+                // intake, finance: assigned by name
+                const assignedTo = (l.assigned || "").trim().toLowerCase();
+                return Boolean(assignedTo && assignedTo !== "unassigned" && assignedTo === sNameLower);
               }).length;
               const isSelf = s.username.toLowerCase() === (username || "").toLowerCase();
               const unreadCount = unread[s.username.toLowerCase()] || 0;

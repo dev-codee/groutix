@@ -14,7 +14,6 @@ export function FieldLeadRow({ l }: { l: Lead }) {
   const {
     role,
     onTheWayLoading,
-    rowAssigneeOptions,
     isTechnicianName,
     updateLeadField,
     callCustomer,
@@ -28,7 +27,6 @@ export function FieldLeadRow({ l }: { l: Lead }) {
   } = ctx;
 
   const statusOptions = getRoleStatusOptions("inspection", l.status);
-  const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
   const followupPrompt = getFollowupPrompt(l);
 
   const jobNoDisplay = l.jobNo
@@ -151,17 +149,9 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">ASSIGNED</label>
-              <select
-                value={l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned"}
-                onChange={(e) => {
-                  const name = e.target.value === "Unassigned" ? "" : e.target.value;
-                  const inspectorStaff = staff.find((s) => s.name === name);
-                  updateLeadField(l.id, { assigned: name, inspectorId: inspectorStaff?.id || "" });
-                }}
-                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
-              >
-                {assigneeOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <div className="w-full text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate cursor-default select-none">
+                {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : null) || "Unassigned"}
+              </div>
             </div>
 
             <button
