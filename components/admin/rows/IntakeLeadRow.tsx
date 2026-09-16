@@ -14,7 +14,6 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
   const {
     role,
     onTheWayLoading,
-    rowAssigneeOptions,
     isTechnicianName,
     updateLeadField,
     callCustomer,
@@ -32,7 +31,6 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
   const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
   const statusOptions = getRoleStatusOptions("intake", l.status);
-  const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
   const waUrl = getWhatsAppLink(l.phone);
   const followupPrompt = getFollowupPrompt(l);
 
@@ -362,20 +360,9 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               )}
             </div>
 
-            <select
-              value={l.technician || ""}
-              onChange={(e) => {
-                const techName = e.target.value;
-                const tech = assignableTechnicians.find((t) => t.name === techName);
-                updateLeadField(l.id, { technician: techName, technicianId: tech?.id || "" });
-              }}
-              className="w-full text-[10px] xl:text-[11px] font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-1.5 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate min-w-0"
-            >
-              <option value="">Assign Tech</option>
-              {assignableTechnicians.map((t) => (
-                <option key={t.id} value={t.name}>{t.name}</option>
-              ))}
-            </select>
+            <div className="w-full text-[10px] xl:text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1.5 shadow-2xs truncate min-w-0 cursor-default select-none">
+              {l.technician || "No Tech Assigned"}
+            </div>
           </div>
         </div>
 
