@@ -46,6 +46,21 @@ export function FieldLeadRow({ l }: { l: Lead }) {
   const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
   const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
 
+  const inspectionStepIdx = (() => {
+    const s = l.status;
+    if (!s || s === "Inspection Booked") return 0;
+    if (s === "Inspection En Route") return 1;
+    if (s === "Inspection Arrived") return 2;
+    if (s === "Inspection In Progress") return 3;
+    if (s === "Inspection Completed" || l.inspectionReport?.status === "completed" || s.startsWith("Quote") || s.startsWith("Job") || s === "Completed") return 4;
+    return 0;
+  })();
+
+  const isOnTheWayDone = inspectionStepIdx >= 1;
+  const isReachedDone = inspectionStepIdx >= 2;
+  const isStartDone = inspectionStepIdx >= 3;
+  const isCompleteDone = inspectionStepIdx >= 4;
+
   return (
     <div
       key={l.id}
@@ -167,26 +182,51 @@ export function FieldLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-5 gap-1">
             <button
               type="button"
-              onClick={() => handleOnTheWay(l, "en_route")}
-              disabled={onTheWayLoading === l.id}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${l.status === "Inspection En Route" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isOnTheWayDone || onTheWayLoading === l.id}
+              onClick={() => {
+                if (isOnTheWayDone) return;
+                handleOnTheWay(l, "en_route");
+              }}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isOnTheWayDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+              }`}
+              title={isOnTheWayDone ? "On the Way (Completed)" : "Mark On the Way"}
             >
               {onTheWayLoading === l.id ? "..." : "On the Way"}
             </button>
 
             <button
               type="button"
-              onClick={() => handleOnTheWay(l, "arrived")}
-              disabled={onTheWayLoading === l.id}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${l.status === "Inspection Arrived" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isReachedDone || onTheWayLoading === l.id}
+              onClick={() => {
+                if (isReachedDone) return;
+                handleOnTheWay(l, "arrived");
+              }}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isReachedDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+              }`}
+              title={isReachedDone ? "Reached (Completed)" : "Mark Reached"}
             >
               Reached
             </button>
 
             <button
               type="button"
-              onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${l.status === "Inspection In Progress" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isStartDone}
+              onClick={() => {
+                if (isStartDone) return;
+                updateLeadField(l.id, { status: "Inspection In Progress" });
+              }}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isStartDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              }`}
+              title={isStartDone ? "Inspection Started (Completed)" : "Start Inspection"}
             >
               Start
             </button>
@@ -195,6 +235,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               type="button"
               onClick={() => openInspectionModal(l)}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              title="Inspection Form"
             >
               <ClipboardList className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">Inspection Form</span>
@@ -202,8 +243,17 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${l.status === "Inspection Completed" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isCompleteDone}
+              onClick={() => {
+                if (isCompleteDone) return;
+                updateLeadField(l.id, { status: "Inspection Completed" });
+              }}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isCompleteDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              }`}
+              title={isCompleteDone ? "Inspection Completed" : "Mark Complete"}
             >
               Complete
             </button>

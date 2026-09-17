@@ -51,6 +51,20 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     ? `${l.service} | ${l.notes || l.message}`
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
 
+  const techStepIdx = (() => {
+    const s = l.status;
+    if (s === "Job En Route") return 1;
+    if (s === "Job Arrived") return 2;
+    if (s === "Job Started" || s === "Job In Progress" || s === "In Progress") return 3;
+    if (s === "Job Done" || s === "Completed" || s === "Invoice Sent" || s === "Payment Pending" || s === "Payment Received" || s === "Warranty Sent") return 4;
+    return 0;
+  })();
+
+  const isOnTheWayDone = techStepIdx >= 1;
+  const isReachedDone = techStepIdx >= 2;
+  const isStartDone = techStepIdx >= 3;
+  const isJobDoneDone = techStepIdx >= 4;
+
   return (
     <div
       key={l.id}
@@ -219,34 +233,69 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
-              onClick={() => handleOnTheWay(l, "en_route")}
-              disabled={onTheWayLoading === l.id}
-              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${l.status === "Job En Route" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isOnTheWayDone || onTheWayLoading === l.id}
+              onClick={() => {
+                if (isOnTheWayDone) return;
+                handleOnTheWay(l, "en_route");
+              }}
+              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isOnTheWayDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+              }`}
+              title={isOnTheWayDone ? "On the Way (Completed)" : "Mark On the Way"}
             >
               {onTheWayLoading === l.id ? "..." : "On the Way"}
             </button>
 
             <button
               type="button"
-              onClick={() => handleOnTheWay(l, "arrived")}
-              disabled={onTheWayLoading === l.id}
-              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${l.status === "Job Arrived" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isReachedDone || onTheWayLoading === l.id}
+              onClick={() => {
+                if (isReachedDone) return;
+                handleOnTheWay(l, "arrived");
+              }}
+              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isReachedDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+              }`}
+              title={isReachedDone ? "Reached (Completed)" : "Mark Reached"}
             >
               Reached
             </button>
 
             <button
               type="button"
-              onClick={() => { setStartJobDays(1); setStartJobPrompt({ lead: l }); }}
-              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${l.status === "Job Started" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isStartDone}
+              onClick={() => {
+                if (isStartDone) return;
+                setStartJobDays(1);
+                setStartJobPrompt({ lead: l });
+              }}
+              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isStartDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              }`}
+              title={isStartDone ? "Job Started (Completed)" : "Start Job"}
             >
               Start
             </button>
 
             <button
               type="button"
-              onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${l.status === "Job Done" || l.status === "Completed" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isJobDoneDone}
+              onClick={() => {
+                if (isJobDoneDone) return;
+                updateLeadField(l.id, { status: "Job Done" });
+              }}
+              className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
+                isJobDoneDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              }`}
+              title={isJobDoneDone ? "Job Done (Completed)" : "Mark Job Done"}
             >
               Job Done
             </button>

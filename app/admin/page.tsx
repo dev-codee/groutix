@@ -776,13 +776,42 @@ export default function CrmDashboardPage() {
   // ── On-The-Way / GPS handlers ─────────────────────────────────────────────
 
   async function handleOnTheWay(lead: Lead, eventType: "en_route" | "arrived") {
+    const isInspection = Boolean(lead.status?.startsWith("Inspection"));
+    if (isInspection) {
+      const order: Record<string, number> = {
+        "Inspection Booked": 0,
+        "Inspection En Route": 1,
+        "Inspection Arrived": 2,
+        "Inspection In Progress": 3,
+        "Inspection Completed": 4,
+      };
+      const cur = order[lead.status] ?? 0;
+      const target = eventType === "en_route" ? 1 : 2;
+      if (cur >= target) return;
+    } else {
+      const order: Record<string, number> = {
+        "Job Booked": 0,
+        "Scheduled": 0,
+        "Job Confirmed": 0,
+        "Job En Route": 1,
+        "Job Arrived": 2,
+        "Job Started": 3,
+        "Job In Progress": 3,
+        "Job Done": 4,
+        "Completed": 4,
+      };
+      const cur = order[lead.status] ?? 0;
+      const target = eventType === "en_route" ? 1 : 2;
+      if (cur >= target) return;
+    }
+
     // 1. Update status immediately (optimistic)
     const newStatus =
       eventType === "en_route"
-        ? lead.status?.startsWith("Inspection")
+        ? isInspection
           ? "Inspection En Route"
           : "Job En Route"
-        : lead.status?.startsWith("Inspection")
+        : isInspection
           ? "Inspection Arrived"
           : "Job Arrived";
     await updateLeadField(lead.id, { status: newStatus });
