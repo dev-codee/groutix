@@ -379,11 +379,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                               if (done) return;
                               updateLeadField(l.id, { status: step.status });
                             }}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                            className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               done
-                                ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                                ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                                 : isNext
-                                ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                                ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
                                 : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                             }`}
                             title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
@@ -420,7 +420,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             updateLeadField(l.id, { status: step.status });
                           }
                         }}
-                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                        className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                           isOnTheWayStep && onTheWayLoading === l.id ? "opacity-60 cursor-wait " : ""
                         }${
                           done
@@ -473,7 +473,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   onClick={() => openQuoteModal(l)}
                   className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer text-center truncate ${
                     isQuoteSent
-                      ? "bg-[#001f97] text-white shadow-2xs hover:bg-[#001777]"
+                      ? "bg-amber-500 text-white shadow-2xs hover:bg-amber-600"
                       : "text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
                   }`}
                   title="Open quote builder"
@@ -570,11 +570,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                               if (done) return;
                               updateLeadField(l.id, { status: step.status });
                             }}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                            className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               done
-                                ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                                ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                                 : isNext
-                                ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                                ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
                                 : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                             }`}
                             title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
@@ -589,7 +589,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                               if (currentIdx >= 3) return;
                               updateLeadField(l.id, { status: "Job Done" });
                             }}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                            className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               currentIdx >= 3
                                 ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
                                 : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
@@ -612,7 +612,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           if (done) return;
                           updateLeadField(l.id, { status: step.status });
                         }}
-                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                        className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                           done
                             ? isYellowStep
                               ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
