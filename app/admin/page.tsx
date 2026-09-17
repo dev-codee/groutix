@@ -946,6 +946,14 @@ export default function CrmDashboardPage() {
           (t) => t.id === s.id || t.name.trim().toLowerCase() === lowerName || (t.username && t.username.toLowerCase() === s.username.toLowerCase())
         );
         if (existing) {
+          // Prefer the staff account id (MongoDB _id) so the login filter
+          // (staff.find(s => s.username === username)?.id) matches technicianId.
+          const oldKey = Array.from(map.entries()).find(([, v]) => v === existing)?.[0];
+          if (oldKey && oldKey !== s.id) {
+            map.delete(oldKey);
+            map.set(s.id, existing);
+          }
+          existing.id = s.id;
           existing.hasLogin = true;
           existing.username = s.username;
           if (!existing.name) existing.name = displayName;
