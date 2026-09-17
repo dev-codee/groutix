@@ -287,43 +287,38 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
           {/* Row 2: On the Way, Reached, Start, Inspection Form, Complete */}
           <div className="grid grid-cols-5 gap-1">
-            <button
-              type="button"
-              onClick={() => handleOnTheWay(l, "en_route")}
-              disabled={onTheWayLoading === l.id}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
+            <div
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isOnTheWayDone
                   ? "bg-[#001f97] text-white shadow-2xs"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
+              title="On the Way"
             >
-              {onTheWayLoading === l.id ? "..." : "On the Way"}
-            </button>
+              On the Way
+            </div>
 
-            <button
-              type="button"
-              onClick={() => handleOnTheWay(l, "arrived")}
-              disabled={onTheWayLoading === l.id}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 disabled:opacity-60 disabled:cursor-wait ${
+            <div
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isReachedDone
                   ? "bg-[#001f97] text-white shadow-2xs"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
+              title="Reached"
             >
               Reached
-            </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => updateLeadField(l.id, { status: "Inspection In Progress" })}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+            <div
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isStartDone
                   ? "bg-[#001f97] text-white shadow-2xs"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
+              title="Start"
             >
               Start
-            </button>
+            </div>
 
             <button
               type="button"
@@ -334,17 +329,16 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               <span className="truncate">Inspection Form</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+            <div
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isCompleteDone
                   ? "bg-[#001f97] text-white shadow-2xs"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
+              title="Complete"
             >
               Complete
-            </button>
+            </div>
           </div>
 
           {/* Row 3: Quote, Sent, Job Booked, Assign Tech */}

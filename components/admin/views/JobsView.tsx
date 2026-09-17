@@ -118,6 +118,7 @@ export function JobsView() {
             statuses: ["Job Done", "Completed", "Inspection Completed"],
             customCount: scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length,
           },
+          { label: "All Assigned", group: "lead", statuses: [], totalCount: true },
         ]
       : role === "manager"
       ? [
@@ -181,18 +182,21 @@ export function JobsView() {
           "Inspection Completed",
         ]
       : role === "technician"
-      ? [
-          "Job Booked",
-          "Inspection Booked",
-          "Scheduled",
-          "Job Confirmed",
-          "Job En Route",
-          "Job Arrived",
-          "Job Started",
-          "Job In Progress",
-          "Job Done",
-          "Completed",
-        ]
+      ? Array.from(
+          new Set([
+            "Job Booked",
+            "Inspection Booked",
+            "Scheduled",
+            "Job Confirmed",
+            "Job En Route",
+            "Job Arrived",
+            "Job Started",
+            "Job In Progress",
+            "Job Done",
+            "Completed",
+            ...scopedLeads.map((l) => l.status).filter(Boolean),
+          ])
+        )
       : role === "finance"
       ? ["Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"]
       : role === "intake"
@@ -200,8 +204,17 @@ export function JobsView() {
       : boardStatuses;
 
   const allLabel =
-    role === "finance" ? "All Finance Jobs" : role === "intake" ? "All Leads" : "All Active";
-  const totalActive = scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
+    role === "technician"
+      ? "All Assigned Jobs"
+      : role === "finance"
+      ? "All Finance Jobs"
+      : role === "intake"
+      ? "All Leads"
+      : "All Active";
+  const totalActive =
+    role === "technician"
+      ? scopedLeads.length
+      : scopedLeads.filter((l) => boardStatuses.includes(l.status)).length;
 
   const completedCount = scopedLeads.filter(
     (l) => l.status === "Job Done" || l.status === "Completed"
@@ -248,6 +261,8 @@ export function JobsView() {
         <div className={`grid gap-3 ${
           groups.length === 3
             ? "grid-cols-1 sm:grid-cols-3"
+            : groups.length === 4
+            ? "grid-cols-2 sm:grid-cols-4"
             : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
         }`}>
           {groups.map((grp) => {

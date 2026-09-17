@@ -2614,7 +2614,7 @@ export default function CrmDashboardPage() {
                 Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
 
               if (!isAssigned) return false;
-              return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
+              return true;
             }
             if (role === "inspection" || role === "field") {
               const targetStaff = viewAs
@@ -2637,7 +2637,7 @@ export default function CrmDashboardPage() {
           });
     if (showLegacyLeads) return roleScoped;
     if (newLeadsCutoffMs <= 0) return roleScoped;
-    return roleScoped.filter((l) => !isLegacyLead(l, newLeadsCutoffMs));
+    return roleScoped.filter((l) => (role === "technician" ? true : !isLegacyLead(l, newLeadsCutoffMs)));
   }, [leads, role, showLegacyLeads, newLeadsCutoffMs, staff, username, viewAs]);
 
   const hiddenLegacyCount = useMemo(() => {
@@ -2751,10 +2751,11 @@ export default function CrmDashboardPage() {
         if (role === "technician") {
           // If a status filter is specifically applied (e.g. from pill/filter), allow it
           if (statusFilter) {
-            return TECHNICIAN_STATUSES.includes(l.status) || isFlowCompleted(role, l.status, l);
+            const wanted = statusFilter.split("|");
+            return wanted.includes(l.status);
           }
-          // Default: only active in-progress jobs show on the technician dashboard
-          return isFlowInProgress(role, l.status, l);
+          // Default: all assigned leads show in technician dashboard
+          return true;
         }
         if (role === "inspection" || role === "field") {
           if (statusFilter) {
