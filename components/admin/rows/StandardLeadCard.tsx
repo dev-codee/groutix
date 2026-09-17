@@ -382,9 +382,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               done
                                 ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
-                                : isNext
-                                ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
-                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+                                : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
                             title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                           >
@@ -395,7 +393,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             type="button"
                             onClick={() => openInspectionModal(l)}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors cursor-pointer text-center leading-tight truncate ${
-                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                             title={l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "Inspection form completed" : "Open Inspection form"}
                           >
@@ -427,11 +425,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             ? isOnTheWayStep
                               ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                               : "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
-                            : isNext
-                            ? isOnTheWayStep
-                              ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
-                              : "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
-                            : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+                            : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
                         title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                       >
@@ -573,9 +567,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               done
                                 ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
-                                : isNext
-                                ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
-                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+                                : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
                             title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                           >
@@ -592,7 +584,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               currentIdx >= 3
                                 ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
-                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+                                : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
                             title={currentIdx >= 3 ? "Job Done (Completed)" : "Set: Job Done"}
                           >
@@ -617,11 +609,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             ? isYellowStep
                               ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                               : "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
-                            : isNext
-                            ? isYellowStep
-                              ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
-                              : "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
-                            : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+                            : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
                         title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                       >
