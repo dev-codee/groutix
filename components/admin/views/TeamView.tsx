@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import type { StaffMember } from "@/components/admin/types";
-import { inRoleQueue, isFlowInProgress } from "@/lib/pipeline";
+import { inRoleQueue, isFlowInProgress, isFlowCompleted } from "@/lib/pipeline";
 import type { Role } from "@/lib/roles";
 
 interface Props {
@@ -26,7 +26,7 @@ export function TeamView({
   deletingStaffId,
   unread,
 }: Props) {
-  const { staff, leads, username } = useAdminPageCtx();
+  const { staff, leads, username, isTechnicianName } = useAdminPageCtx();
 
   return (
     <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
@@ -68,11 +68,19 @@ export function TeamView({
 
               const isAssigned = (l: (typeof leads)[number]) => {
                 if (role === "technician") {
-                  return (
-                    (sId && l.technicianId === sId) ||
-                    (l.technician && (l.technician.trim().toLowerCase() === sNameLower || l.technician.trim().toLowerCase() === sUserLower)) ||
-                    (sId && l.inspectorId === sId) ||
-                    (l.assigned && (l.assigned.trim().toLowerCase() === sNameLower || l.assigned.trim().toLowerCase() === sUserLower))
+                  const hasTechField = Boolean(l.technicianId || l.technician || l.technicianUsername);
+                  if (hasTechField) {
+                    return Boolean(
+                      (sId && l.technicianId === sId) ||
+                      (l.technician && (l.technician.trim().toLowerCase() === sNameLower || l.technician.trim().toLowerCase() === sUserLower)) ||
+                      (l.technicianUsername && l.technicianUsername.toLowerCase() === sUserLower)
+                    );
+                  }
+                  return Boolean(
+                    l.assigned &&
+                    l.assigned.trim().toLowerCase() !== "unassigned" &&
+                    isTechnicianName(l.assigned) &&
+                    (l.assigned.trim().toLowerCase() === sNameLower || l.assigned.trim().toLowerCase() === sUserLower)
                   );
                 }
                 if (role === "inspection" || role === "field") {
@@ -84,8 +92,16 @@ export function TeamView({
                 return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower));
               };
 
-              // Only leads currently in progress
-              const inProgressLeads = leads.filter((l) => isAssigned(l) && isFlowInProgress(role, l.status, l)).length;
+              // Only leads currently in progress (strictly exclude completed/job done/lost leads)
+              const inProgressLeads = leads.filter(
+                (l) =>
+                  isAssigned(l) &&
+                  !isFlowCompleted(role, l.status, l) &&
+                  l.status !== "Job Done" &&
+                  l.status !== "Completed" &&
+                  l.status !== "Lost" &&
+                  isFlowInProgress(role, l.status, l)
+              ).length;
 
               const isSelf = s.username.toLowerCase() === (username || "").toLowerCase();
               const unreadCount = unread[s.username.toLowerCase()] || 0;
