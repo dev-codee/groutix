@@ -50,7 +50,6 @@ export function JobsView() {
   const groups: Grp[] =
     role === "intake"
       ? [
-          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
           { label: "New leads", group: "lead", statuses: ["New"] },
           { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
           {
@@ -71,6 +70,7 @@ export function JobsView() {
           },
           { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
           { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
         ]
       : role === "finance"
       ? single([
