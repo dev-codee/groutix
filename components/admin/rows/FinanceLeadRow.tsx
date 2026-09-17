@@ -75,10 +75,12 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   }
 
   function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
+    const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
+    const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
-      status: "Payment Received",
-      paymentType: type,
-      amountPaid: type === "full" ? (invoiceTotal ?? undefined) : customAmt,
+      status: isFull ? "Payment Received" : "Payment Pending",
+      paymentType: isFull ? "full" : "partial",
+      amountPaid: finalAmt,
     };
     updateLeadField(l.id, updates);
     setPayStep("idle");
@@ -328,42 +330,55 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           )}
 
           <div className="grid grid-cols-3 gap-1.5">
-            <button
-              type="button"
-              disabled={isPaymentPendingDone}
-              onClick={() => {
-                if (isPaymentPendingDone) return;
-                updateLeadField(l.id, { status: "Payment Pending" });
-              }}
-              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${
-                isPaymentPendingDone
-                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-              }`}
-            >
-              Payment Pending
-            </button>
+            <div className="space-y-1">
+              <button
+                type="button"
+                disabled={isPaymentPendingDone}
+                onClick={() => {
+                  if (isPaymentPendingDone) return;
+                  updateLeadField(l.id, { status: "Payment Pending" });
+                }}
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
+                  isPaymentPendingDone
+                    ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                }`}
+              >
+                Payment Pending
+              </button>
+              {invoiceTotalFmt && (
+                <div
+                  className="px-1.5 py-0.5 rounded-md bg-[#001f97]/8 border border-[#001f97]/20 text-center text-[10px] font-bold text-[#001f97] shadow-2xs flex items-center justify-center gap-1 min-w-0"
+                  title={`Total Amount: ${invoiceTotalFmt}`}
+                >
+                  <DollarSign className="w-3 h-3 text-[#001f97] shrink-0" />
+                  <span className="text-slate-600 font-semibold text-[9px]">Total:</span>
+                  <span className="font-black text-[#001f97] truncate">{invoiceTotalFmt}</span>
+                </div>
+              )}
+            </div>
             {/* Payment Received — smart button with Full/Partial dialog */}
             <div className="space-y-1">
               {payStep === "idle" && (
                 <div className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (isPaymentReceived) return; // already received, no-op
-                      setPayStep("ask_type");
-                    }}
-                    className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
-                      isPaymentReceived
-                        ? "bg-[#001f97] text-white shadow-2xs cursor-default"
-                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                    onClick={() => setPayStep("ask_type")}
+                    className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full cursor-pointer ${
+                      l.paymentType === "partial"
+                        ? "bg-amber-500 hover:bg-amber-600 text-white shadow-2xs"
+                        : l.paymentType === "full" || isPaymentReceived
+                        ? "bg-[#001f97] hover:bg-[#001777] text-white shadow-2xs"
+                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    {isPaymentReceived && l.paymentType === "partial"
-                      ? `Part Paid${l.amountPaid ? ` — AUD $${Number(l.amountPaid).toFixed(2)}` : ""}`
+                    {l.paymentType === "partial"
+                      ? `Part Paid${amountPaid ? ` — AUD $${amountPaid.toFixed(2)}` : ""}`
+                      : l.paymentType === "full" || isPaymentReceived
+                      ? "Payment Received (Full)"
                       : "Payment Received"}
                   </button>
-                  {isPaymentReceived && l.paymentType === "partial" && remainingAmt !== null && (
+                  {l.paymentType === "partial" && remainingAmt !== null && (
                     <div
                       className="px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-center text-[10px] font-bold text-rose-700 shadow-2xs flex items-center justify-center gap-1 min-w-0"
                       title={`Invoice: ${invoiceTotalFmt || ""} | Paid: AUD $${(amountPaid || 0).toFixed(2)} | Remaining: AUD $${remainingAmt.toFixed(2)}`}
@@ -378,7 +393,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               {payStep === "ask_type" && (
                 <div className="rounded-xl border border-[#001f97]/30 bg-blue-50 p-2.5 space-y-2 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-[#001f97] uppercase tracking-wider">Payment received?</span>
+                    <span className="text-[10px] font-black text-[#001f97] uppercase tracking-wider">Payment Received?</span>
                     <button type="button" onClick={() => setPayStep("idle")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -386,6 +401,14 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   {invoiceTotalFmt && (
                     <div className="text-[10px] font-semibold text-slate-600 text-center">
                       Invoice Total: <span className="font-black text-[#001f97]">{invoiceTotalFmt}</span>
+                      {amountPaid !== null && amountPaid > 0 && (
+                        <div className="text-[9.5px] text-amber-800 mt-0.5">
+                          Paid so far: <b>AUD ${amountPaid.toFixed(2)}</b>
+                          {remainingAmt !== null && (
+                            <span> | Remaining: <b className="text-rose-700">AUD ${remainingAmt.toFixed(2)}</b></span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-1.5">
@@ -394,16 +417,20 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                       onClick={() => handlePaymentReceived("full")}
                       className="py-1.5 px-2 rounded-lg text-[11px] font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer text-center"
                     >
-                      ✅ Full
-                      {invoiceTotalFmt && <div className="text-[9px] font-semibold opacity-80">{invoiceTotalFmt}</div>}
+                      ✅ {amountPaid && amountPaid > 0 && remainingAmt !== null && remainingAmt > 0 ? "Pay Remaining" : "Full"}
+                      <div className="text-[9px] font-semibold opacity-80">
+                        {remainingAmt !== null && remainingAmt > 0 ? `AUD $${remainingAmt.toFixed(2)}` : invoiceTotalFmt || "Full"}
+                      </div>
                     </button>
                     <button
                       type="button"
                       onClick={() => setPayStep("ask_amount")}
                       className="py-1.5 px-2 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-600 text-white transition-colors cursor-pointer text-center"
                     >
-                      ⚡ Partial
-                      {halfAmt && <div className="text-[9px] font-semibold opacity-80">e.g. AUD ${halfAmt.toFixed(2)}</div>}
+                      ⚡ {amountPaid && amountPaid > 0 ? "+ Add Further" : "Partial"}
+                      <div className="text-[9px] font-semibold opacity-80">
+                        {amountPaid && amountPaid > 0 && remainingAmt ? `e.g. $${(remainingAmt / 2).toFixed(2)}` : halfAmt ? `e.g. $${halfAmt.toFixed(2)}` : "Custom"}
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -412,33 +439,71 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               {payStep === "ask_amount" && (
                 <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 space-y-2 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Amount received (AUD)</span>
+                    <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">
+                      {amountPaid && amountPaid > 0 ? "Add Payment Amount (AUD)" : "Amount Received (AUD)"}
+                    </span>
                     <button type="button" onClick={() => setPayStep("ask_type")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                  {amountPaid !== null && amountPaid > 0 && (
+                    <div className="text-[10px] font-medium text-slate-600 bg-white/80 p-1.5 rounded border border-amber-200">
+                      Already paid: <b className="text-emerald-700">AUD ${amountPaid.toFixed(2)}</b>
+                      {remainingAmt !== null && (
+                        <span> • Remaining: <b className="text-rose-700">AUD ${remainingAmt.toFixed(2)}</b></span>
+                      )}
+                    </div>
+                  )}
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    placeholder={halfAmt ? halfAmt.toFixed(2) : "0.00"}
+                    placeholder={amountPaid && remainingAmt ? remainingAmt.toFixed(2) : halfAmt ? halfAmt.toFixed(2) : "0.00"}
                     value={partialAmt}
                     onChange={(e) => setPartialAmt(e.target.value)}
                     className="w-full text-xs font-bold border border-amber-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && partialAmt) {
-                        handlePaymentReceived("partial", parseFloat(partialAmt));
+                      if (e.key === "Enter" && partialAmt && !isNaN(parseFloat(partialAmt))) {
+                        const entered = parseFloat(partialAmt);
+                        const newTotal = (amountPaid || 0) + entered;
+                        handlePaymentReceived("partial", newTotal);
                       }
                     }}
                   />
+                  {partialAmt && !isNaN(parseFloat(partialAmt)) && (
+                    <div className="text-[10.5px] font-bold text-slate-700 bg-amber-100/60 p-1.5 rounded border border-amber-200/80">
+                      {amountPaid && amountPaid > 0 ? (
+                        <>
+                          New Total Paid: <span className="text-emerald-700 font-black">AUD ${((amountPaid || 0) + parseFloat(partialAmt)).toFixed(2)}</span>
+                          {invoiceTotal && (
+                            <span className="text-slate-500 font-semibold block text-[9.5px]">
+                              Remaining: AUD ${Math.max(0, invoiceTotal - ((amountPaid || 0) + parseFloat(partialAmt))).toFixed(2)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        invoiceTotal && (
+                          <span className="text-slate-500 font-semibold block text-[9.5px]">
+                            Remaining: AUD ${Math.max(0, invoiceTotal - parseFloat(partialAmt)).toFixed(2)}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  )}
                   <button
                     type="button"
                     disabled={!partialAmt || isNaN(parseFloat(partialAmt))}
-                    onClick={() => handlePaymentReceived("partial", parseFloat(partialAmt))}
-                    className="w-full py-1.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+                    onClick={() => {
+                      const entered = parseFloat(partialAmt);
+                      const newTotal = (amountPaid || 0) + entered;
+                      handlePaymentReceived("partial", newTotal);
+                    }}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors cursor-pointer shadow-xs"
                   >
-                    Confirm Partial Payment
+                    {amountPaid && amountPaid > 0
+                      ? `Confirm Add AUD $${parseFloat(partialAmt || "0").toFixed(2)}`
+                      : `Confirm Partial Payment (AUD $${parseFloat(partialAmt || "0").toFixed(2)})`}
                   </button>
                 </div>
               )}
@@ -492,10 +557,13 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 <span className="truncate">Payment Pending</span>
                 {isPaymentPending && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
               </div>
-              {/* Invoice amount label — visible when Payment Pending is active */}
-              {isPaymentPending && invoiceTotalFmt && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#001f97]/8 border border-[#001f97]/20 min-w-0">
-                  <DollarSign className="w-3 h-3 text-[#001f97] shrink-0" />
+              {/* Total amount label — ALWAYS visible, never hides */}
+              {invoiceTotalFmt && (
+                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-[#001f97]/8 border border-[#001f97]/20 min-w-0">
+                  <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-600">
+                    <DollarSign className="w-3 h-3 text-[#001f97] shrink-0" />
+                    Total:
+                  </span>
                   <span className="text-[10px] font-black text-[#001f97] truncate">{invoiceTotalFmt}</span>
                 </div>
               )}
@@ -529,16 +597,26 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               </div>
 
               <div
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isPaymentReceived ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${
+                  isPaymentReceived
+                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                    : l.paymentType === "partial"
+                    ? "bg-amber-50 border-amber-300 text-amber-950"
+                    : "bg-slate-50 border-slate-200 text-slate-600"
+                }`}
               >
                 <span className="truncate">
-                  {isPaymentReceived && l.paymentType === "partial"
+                  {l.paymentType === "partial"
                     ? `Part Paid${l.amountPaid ? ` — $${Number(l.amountPaid).toFixed(2)}` : ""}`
                     : "Payment Received"}
                 </span>
-                {isPaymentReceived && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
+                {isPaymentReceived ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
+                ) : l.paymentType === "partial" ? (
+                  <span className="text-[10px] font-bold text-amber-700 shrink-0 ml-0.5">⚡</span>
+                ) : null}
               </div>
-              {isPaymentReceived && l.paymentType === "partial" && remainingAmt !== null && (
+              {l.paymentType === "partial" && remainingAmt !== null && (
                 <div className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[10px] font-bold text-rose-700 flex items-center justify-between min-w-0">
                   <span className="text-slate-600 font-semibold text-[9.5px]">Remaining:</span>
                   <span className="font-black text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>
