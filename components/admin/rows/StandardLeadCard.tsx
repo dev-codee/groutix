@@ -677,19 +677,27 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               { label: "Pending Payment", step: "Payment Pending", color: "bg-amber-600" },
             ] as const).map((st) => {
               const isActive = getStepActive(l, st.step);
+              const isPast =
+                (st.step === "Invoice Sent" && ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status)) ||
+                (st.step === "Payment Request" && ["Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status)) ||
+                (st.step === "Payment Pending" && ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status));
               return (
                 <div key={st.step} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() =>
-                      st.step === "Invoice Sent"
-                        ? openInvoiceModal(l)
-                        : updateLeadField(l.id, { status: st.step })
-                    }
-                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors text-center ${
+                    disabled={isPast && st.step !== "Invoice Sent"}
+                    onClick={() => {
+                      if (st.step === "Invoice Sent") {
+                        openInvoiceModal(l);
+                      } else {
+                        if (isPast) return;
+                        updateLeadField(l.id, { status: st.step });
+                      }
+                    }}
+                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center ${
                       isActive
-                        ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
-                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs " + (isPast && st.step !== "Invoice Sent" ? "cursor-default select-none" : "cursor-pointer")
+                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                     }`}
                     title={st.label}
                   >

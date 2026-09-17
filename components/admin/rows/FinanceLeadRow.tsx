@@ -35,6 +35,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const isJobDone = l.status === "Job Done" || ["Invoice Sent","Payment Request","Payment Pending","Payment Received","Warranty Sent","Completed"].includes(l.status);
   const isInvoiceSent = l.status === "Invoice Sent" || (Boolean(l.invoiceSentAt) && l.status !== "Job Done") || ["Payment Request","Payment Pending","Payment Received","Warranty Sent","Completed"].includes(l.status);
   const isPaymentPending = l.status === "Payment Pending";
+  const isPaymentPendingDone = ["Payment Pending","Payment Request","Payment Received","Warranty Sent","Completed"].includes(l.status);
   const isPaymentReceived = ["Payment Received","Warranty Sent","Completed"].includes(l.status);
   const isWarrantySent = l.status === "Warranty Sent" || Boolean(l.warranty?.sentAt) || l.status === "Completed";
   const isCompleted = l.status === "Completed";
@@ -233,17 +234,29 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
-              onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${l.status === "Job Done" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isJobDone}
+              onClick={() => {
+                if (isJobDone) return;
+                updateLeadField(l.id, { status: "Job Done" });
+              }}
+              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${
+                isJobDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              }`}
             >
               Job Done
             </button>
             <button
               type="button"
               onClick={() => openInvoiceModal(l)}
-              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center shadow-2xs ${l.status === "Invoice Sent" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center shadow-2xs ${
+                isInvoiceSent
+                  ? "bg-[#001f97] text-white shadow-2xs hover:bg-[#001777]"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
             >
-              Send Invoice
+              {isInvoiceSent ? "Invoice Sent" : "Send Invoice"}
             </button>
           </div>
 
@@ -270,8 +283,16 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              onClick={() => updateLeadField(l.id, { status: "Payment Pending" })}
-              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center ${l.status === "Payment Pending" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              disabled={isPaymentPendingDone}
+              onClick={() => {
+                if (isPaymentPendingDone) return;
+                updateLeadField(l.id, { status: "Payment Pending" });
+              }}
+              className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${
+                isPaymentPendingDone
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              }`}
             >
               Payment Pending
             </button>
@@ -479,7 +500,9 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
               <button
                 type="button"
+                disabled={isCompleted}
                 onClick={() => {
+                  if (isCompleted) return;
                   const updates: Record<string, unknown> = { status: "Completed" };
                   if (l.warrantyProvided === false || l.warranty?.provided === false) {
                     updates.warrantyProvided = false;
@@ -490,7 +513,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   }
                   updateLeadField(l.id, updates as Partial<Lead>);
                 }}
-                className={`w-full py-1.5 px-2 text-white rounded-lg text-[11px] font-black flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer text-center min-w-0 ${isCompleted ? "bg-emerald-700 hover:bg-emerald-800 ring-2 ring-emerald-400" : "bg-[#059669] hover:bg-[#047857]"}`}
+                className={`w-full py-1.5 px-2 text-white rounded-lg text-[11px] font-black flex items-center justify-center gap-1 shadow-sm transition-colors text-center min-w-0 ${isCompleted ? "bg-emerald-700 ring-2 ring-emerald-400 cursor-default select-none" : "bg-[#059669] hover:bg-[#047857] cursor-pointer"}`}
               >
                 <span className="leading-tight truncate">
                   {isCompleted
