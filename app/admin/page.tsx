@@ -2606,6 +2606,7 @@ export default function CrmDashboardPage() {
               });
 
               const isAssigned =
+                Boolean(l.technicianUsername && targetUser && l.technicianUsername.toLowerCase() === targetUser) ||
                 Boolean(l.technicianId && targetAllIds.has(l.technicianId)) ||
                 Boolean(l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
                 Boolean(l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||

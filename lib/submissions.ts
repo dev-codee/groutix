@@ -146,6 +146,7 @@ export interface SubmissionDoc {
   // technicians collection so we can notify them by email.
   technician?: string;
   technicianId?: string;
+  technicianUsername?: string;
   priority?: string;
   received?: string;
   contacted?: string;

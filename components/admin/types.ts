@@ -75,6 +75,7 @@ export interface Lead {
   inspectorId?: string;
   technician?: string;
   technicianId?: string;
+  technicianUsername?: string;
   priority?: string;
   received?: string;
   contacted?: string;
