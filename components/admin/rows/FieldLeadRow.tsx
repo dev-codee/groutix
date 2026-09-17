@@ -200,7 +200,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isOnTheWayDone
-                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
               }`}
               title={isOnTheWayDone ? "On the Way (Completed)" : "Mark On the Way"}
@@ -217,7 +217,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isReachedDone
-                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
               }`}
               title={isReachedDone ? "Reached (Completed)" : "Mark Reached"}

@@ -288,7 +288,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <div
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isOnTheWayDone
-                  ? "bg-[#001f97] text-white shadow-2xs"
+                  ? "bg-amber-500 text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
               title="On the Way"
@@ -299,7 +299,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <div
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isReachedDone
-                  ? "bg-[#001f97] text-white shadow-2xs"
+                  ? "bg-amber-500 text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
               title="Reached"

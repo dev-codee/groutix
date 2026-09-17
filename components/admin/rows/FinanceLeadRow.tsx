@@ -340,7 +340,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 }}
                 className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
                   isPaymentPendingDone
-                    ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                    ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                     : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                 }`}
               >

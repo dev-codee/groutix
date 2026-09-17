@@ -394,12 +394,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             key="inspection-form-inline"
                             type="button"
                             onClick={() => openInspectionModal(l)}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer truncate ${
-                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-[#001f97] text-white shadow-2xs" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors cursor-pointer text-center leading-tight truncate ${
+                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                             }`}
                             title={l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "Inspection form completed" : "Open Inspection form"}
                           >
-                            Insp. Form
+                            Inspection Form
                           </button>
                         </div>
                       );
@@ -424,9 +424,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           isOnTheWayStep && onTheWayLoading === l.id ? "opacity-60 cursor-wait " : ""
                         }${
                           done
-                            ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                            ? isOnTheWayStep
+                              ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
+                              : "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
                             : isNext
-                            ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                            ? isOnTheWayStep
+                              ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
+                              : "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
                             : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                         }`}
                         title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
@@ -598,6 +602,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       );
                     }
                     if (isJobDone) return null;
+                    const isYellowStep = step.label === "On the Way" || step.label === "Reached";
                     return (
                       <button
                         key={step.status}
@@ -609,9 +614,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                         }}
                         className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
                           done
-                            ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                            ? isYellowStep
+                              ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
+                              : "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
                             : isNext
-                            ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                            ? isYellowStep
+                              ? "bg-amber-400 text-slate-900 hover:bg-amber-500 cursor-pointer"
+                              : "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
                             : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                         }`}
                         title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
@@ -758,7 +767,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                     }}
                     className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center shadow-2xs ${
                       isPaymentPendingDone
-                        ? "bg-[#001f97] text-white cursor-default select-none"
+                        ? "bg-amber-500 text-white cursor-default select-none shadow-2xs"
                         : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
                     }`}
                     title="Pending Payment"
