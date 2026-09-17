@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import type { StaffMember } from "@/components/admin/types";
-import { inRoleQueue, isFlowInProgress, isFlowCompleted } from "@/lib/pipeline";
+import { inRoleQueue, isFlowInProgress } from "@/lib/pipeline";
 import type { Role } from "@/lib/roles";
 
 interface Props {
@@ -87,9 +87,6 @@ export function TeamView({
               // Only leads currently in progress
               const inProgressLeads = leads.filter((l) => isAssigned(l) && isFlowInProgress(role, l.status, l)).length;
 
-              // Total leads completed by this staff member
-              const completedLeads = leads.filter((l) => isAssigned(l) && isFlowCompleted(role, l.status, l)).length;
-
               const isSelf = s.username.toLowerCase() === (username || "").toLowerCase();
               const unreadCount = unread[s.username.toLowerCase()] || 0;
 
@@ -114,17 +111,8 @@ export function TeamView({
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#001f97]">
                     {s.role}
                   </div>
-                  <div className="text-xs text-slate-600 pt-2 space-y-1.5 border-t border-slate-200/60 mt-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Assigned leads:</span>
-                      <b className="text-slate-900 font-bold">{inProgressLeads}</b>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Completed:</span>
-                      <span className="font-black text-emerald-800 bg-emerald-100/90 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[10.5px]">
-                        {completedLeads}
-                      </span>
-                    </div>
+                  <div className="text-xs text-slate-600 pt-2">
+                    Assigned leads: <b>{inProgressLeads}</b>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-3 mt-auto">
