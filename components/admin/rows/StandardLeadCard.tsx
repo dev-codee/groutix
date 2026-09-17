@@ -428,8 +428,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             </select>
           </div>
 
-          {/* Job booked time range (manager only) */}
-          {role === "manager" && l.jobAt && (
+          {/* Job booked time range */}
+          {l.jobAt && (
             <div className="mt-1 px-2 py-1 bg-violet-50 border border-violet-100 rounded-lg text-[10px] font-semibold text-violet-700 text-center">
               📅 {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
             </div>

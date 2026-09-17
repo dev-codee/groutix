@@ -113,7 +113,6 @@ export function JobsView() {
         ]
       : role === "manager"
       ? [
-          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
           { label: "New leads", group: "lead", statuses: ["New"] },
           { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
           {
@@ -154,12 +153,13 @@ export function JobsView() {
           },
           { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
           { label: "Achievements", group: "closed", statuses: ["Completed"] },
+          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
         ]
       : [
-          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
           ...STAGES.filter(
             (s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)
           ).map((s) => ({ label: s.label, group: s.group, statuses: [s.key] })),
+          { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
         ];
 
   const boardStatuses = getRoleStatusOptions(role);

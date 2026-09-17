@@ -91,7 +91,10 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
       inspectorNotes: existing.inspectorNotes || "",
       inspectorSignature: existing.inspectorSignature || (existing.inspectorName || currentUsername || ""),
       customerAcknowledgement: existing.customerAcknowledgement || "",
+      suggestedTechnician: existing.suggestedTechnician || (lead as any).technician || "",
       status: existing.status || "draft",
+      completedAt: existing.completedAt,
+      updatedAt: existing.updatedAt,
     });
     setSaveSuccess(false);
     setErrorMsg("");
