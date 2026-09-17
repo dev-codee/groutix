@@ -190,3 +190,106 @@ export function inRoleQueue(role: Role, status: string): boolean {
   }
   return stageOwner(status) === role;
 }
+
+/** In-progress job statuses for technicians. */
+export const TECHNICIAN_IN_PROGRESS_STATUSES: string[] = [
+  "Won",
+  "Job Booked",
+  "Scheduled",
+  "Job Confirmed",
+  "Job En Route",
+  "Job Arrived",
+  "Job Started",
+  "Job In Progress",
+];
+
+/** In-progress inspection statuses. */
+export const INSPECTION_IN_PROGRESS_STATUSES: string[] = [
+  "Inspection Booked",
+  "Inspection En Route",
+  "Inspection Arrived",
+  "Inspection In Progress",
+];
+
+/** Completed job statuses for technicians. */
+export const TECHNICIAN_COMPLETED_STATUSES: string[] = [
+  "Job Done",
+  "Invoice Sent",
+  "Payment Pending",
+  "Payment Received",
+  "Warranty Sent",
+  "Completed",
+];
+
+/** Check if a lead's flow has been completed for a given role. */
+export function isFlowCompleted(
+  role: Role,
+  status: string,
+  lead?: { inspectionReport?: { status?: string } | null; inspectionAt?: string | null; jobAt?: string | null }
+): boolean {
+  if (role === "technician") {
+    if (TECHNICIAN_COMPLETED_STATUSES.includes(status)) return true;
+    if (status === "Inspection Completed" || lead?.inspectionReport?.status === "completed") return true;
+    return false;
+  }
+  if (role === "inspection" || role === "field") {
+    if (status === "Inspection Completed" || lead?.inspectionReport?.status === "completed") return true;
+    const pastInspectionStatuses = [
+      "Quote Pending",
+      "Quote Sent",
+      "Negotiation",
+      "Won",
+      "Job Booked",
+      "Scheduled",
+      "Job Confirmed",
+      "Job En Route",
+      "Job Arrived",
+      "Job Started",
+      "Job In Progress",
+      "Job Done",
+      "Invoice Sent",
+      "Payment Pending",
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ];
+    return pastInspectionStatuses.includes(status);
+  }
+  if (role === "finance") {
+    return status === "Completed";
+  }
+  if (role === "intake") {
+    return status === "Completed" || status === "Lost";
+  }
+  return (
+    status === "Completed" ||
+    status === "Job Done" ||
+    status === "Inspection Completed" ||
+    lead?.inspectionReport?.status === "completed"
+  );
+}
+
+/** Check if a lead's flow is currently in progress (active) for a given role. */
+export function isFlowInProgress(
+  role: Role,
+  status: string,
+  lead?: { inspectionReport?: { status?: string } | null; inspectionAt?: string | null; jobAt?: string | null }
+): boolean {
+  if (isFlowCompleted(role, status, lead)) return false;
+  if (role === "technician") {
+    return (
+      TECHNICIAN_IN_PROGRESS_STATUSES.includes(status) ||
+      INSPECTION_IN_PROGRESS_STATUSES.includes(status)
+    );
+  }
+  if (role === "inspection" || role === "field") {
+    return INSPECTION_IN_PROGRESS_STATUSES.includes(status);
+  }
+  if (role === "intake") {
+    return INTAKE_STATUSES.includes(status) && status !== "Completed" && status !== "Lost";
+  }
+  if (role === "finance") {
+    return FINANCE_STATUSES.includes(status) && status !== "Completed";
+  }
+  return !["Completed", "Job Done", "Inspection Completed", "Lost"].includes(status);
+}

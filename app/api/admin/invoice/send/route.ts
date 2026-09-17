@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
-import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 import { invoiceTrackingPixel } from "@/lib/automations";
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email service is not configured." }, { status: 500 });
   }
 
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   const actor = session?.username || "staff";
 
   let body: {

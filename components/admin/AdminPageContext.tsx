@@ -71,6 +71,7 @@ export interface AdminPageCtxType {
   setGlobalSearch: React.Dispatch<React.SetStateAction<string>>;
   quoteLeads: Lead[];
   jobLeads: Lead[];
+  completedLeads: Lead[];
   onlyUnread: boolean;
   setOnlyUnread: React.Dispatch<React.SetStateAction<boolean>>;
   setPriorityFilter: React.Dispatch<React.SetStateAction<string>>;

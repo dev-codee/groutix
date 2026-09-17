@@ -127,3 +127,15 @@ export function sessionCookieOptions(maxAgeSeconds = SESSION_TTL_MS / 1000) {
     maxAge: maxAgeSeconds,
   };
 }
+
+export async function verifyRequestSession(req: {
+  cookies: { get(name: string): { value: string } | undefined };
+  headers: { get(name: string): string | null };
+}): Promise<{ username: string; role: Role } | null> {
+  const authHeader = req.headers.get("authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
+  const cookieToken = req.cookies.get(SESSION_COOKIE)?.value;
+  return verifySession(bearerToken || cookieToken);
+}

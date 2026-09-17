@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity } from "@/lib/submissions";
 import { sendSms } from "@/lib/sms";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
-import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
@@ -71,7 +71,7 @@ async function calculateEta(
 }
 
 export async function POST(req: NextRequest) {
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

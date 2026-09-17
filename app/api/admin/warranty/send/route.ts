@@ -7,7 +7,7 @@ import {
   formatDocNumber,
   type WarrantyDoc,
 } from "@/lib/submissions";
-import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildWarrantyPdfBase64 } from "@/lib/warrantyPdf";
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email service is not configured." }, { status: 500 });
   }
 
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   const actor = session?.username || "staff";
 
   let body: { id?: string; warranty?: WarrantyDoc; imageDataUrl?: string };

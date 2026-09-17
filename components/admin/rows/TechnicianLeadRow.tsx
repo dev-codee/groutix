@@ -30,6 +30,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     statusFilter,
     setStatusFilter,
     setPage,
+    setCurrentView,
     scopedLeads,
   } = ctx;
 
@@ -151,11 +152,11 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const isActive = statusFilter === "Job Done|Completed" || statusFilter === "Job Done" || statusFilter === "Completed";
-                        setStatusFilter(isActive ? "" : "Job Done|Completed");
+                        setCurrentView("completed");
                         setPage(1);
                       }}
                       className="text-[9.5px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer flex items-center gap-0.5"
+                      title="Open completed records"
                     >
                       <span>Completed:</span>
                       <span className="font-black text-emerald-800 bg-emerald-100 px-1 rounded-full">{techCompletedCount}</span>

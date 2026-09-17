@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isMongoConfigured } from "@/lib/mongodb";
 import { getSubmission, updateSubmission, appendActivity, type SubmissionPhoto } from "@/lib/submissions";
-import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
 import {
   isCloudinaryConfigured,
   uploadBufferToCloudinary,
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
   }
 
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
@@ -126,7 +126,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
   }
 
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }

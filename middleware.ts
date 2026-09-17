@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getAdminBasePath, verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { getAdminBasePath, verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { canAccessApi } from "@/lib/roles";
 
 // Guards the admin panel and its API.
@@ -17,7 +17,7 @@ export async function middleware(req: NextRequest) {
   // ── Admin API (fixed at /api/admin regardless of the public base path) ──
   if (pathname.startsWith("/api/admin")) {
     if (pathname === "/api/admin/login") return NextResponse.next();
-    const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+    const session = await verifyRequestSession(req);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!canAccessApi(session.role, pathname)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

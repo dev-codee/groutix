@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import type { StaffMember } from "@/components/admin/types";
-import { inRoleQueue } from "@/lib/pipeline";
+import { inRoleQueue, isFlowInProgress, isFlowCompleted } from "@/lib/pipeline";
 import type { Role } from "@/lib/roles";
 
 interface Props {
@@ -63,23 +63,33 @@ export function TeamView({
             .map((s) => {
               const role = s.role as Role;
               const sNameLower = (s.name || s.username).trim().toLowerCase();
-              const activeLeads = leads.filter((l) => {
-                if (!inRoleQueue(role, l.status)) return false;
+              const sUserLower = (s.username || "").trim().toLowerCase();
+              const sId = s.id;
+
+              const isAssigned = (l: (typeof leads)[number]) => {
                 if (role === "technician") {
                   return (
-                    (s.id && l.technicianId === s.id) ||
-                    (l.technician && l.technician.trim().toLowerCase() === sNameLower)
+                    (sId && l.technicianId === sId) ||
+                    (l.technician && (l.technician.trim().toLowerCase() === sNameLower || l.technician.trim().toLowerCase() === sUserLower)) ||
+                    (sId && l.inspectorId === sId) ||
+                    (l.assigned && (l.assigned.trim().toLowerCase() === sNameLower || l.assigned.trim().toLowerCase() === sUserLower))
                   );
                 }
                 if (role === "inspection" || role === "field") {
-                  if (s.id && l.inspectorId) return l.inspectorId === s.id;
+                  if (sId && l.inspectorId) return l.inspectorId === sId;
                   const assignedTo = (l.assigned || "").trim().toLowerCase();
-                  return Boolean(assignedTo && assignedTo !== "unassigned" && assignedTo === sNameLower);
+                  return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower));
                 }
-                // intake, finance: assigned by name
                 const assignedTo = (l.assigned || "").trim().toLowerCase();
-                return Boolean(assignedTo && assignedTo !== "unassigned" && assignedTo === sNameLower);
-              }).length;
+                return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower));
+              };
+
+              // Only leads currently in progress
+              const inProgressLeads = leads.filter((l) => isAssigned(l) && isFlowInProgress(role, l.status, l)).length;
+
+              // Total leads completed by this staff member
+              const completedLeads = leads.filter((l) => isAssigned(l) && isFlowCompleted(role, l.status, l)).length;
+
               const isSelf = s.username.toLowerCase() === (username || "").toLowerCase();
               const unreadCount = unread[s.username.toLowerCase()] || 0;
 
@@ -104,8 +114,17 @@ export function TeamView({
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#001f97]">
                     {s.role}
                   </div>
-                  <div className="text-xs text-slate-600 pt-2">
-                    Assigned leads: <b>{activeLeads}</b>
+                  <div className="text-xs text-slate-600 pt-2 space-y-1.5 border-t border-slate-200/60 mt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">Assigned leads:</span>
+                      <b className="text-slate-900 font-bold">{inProgressLeads}</b>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Completed:</span>
+                      <span className="font-black text-emerald-800 bg-emerald-100/90 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[10.5px]">
+                        {completedLeads}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-3 mt-auto">

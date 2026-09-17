@@ -28,18 +28,19 @@ export const ROLE_LABELS: Record<Role, string> = {
 // lib/pipeline.ts so a role's tabs always match the leads it can act on.
 export const ROLE_VIEWS: Record<Role, string[]> = {
   // Operational roles share their focused views:
-  // primary board ("jobs"), schedule, customer directory, and team directory.
-  intake: ["jobs"],
-  inspection: ["jobs"],
-  field: ["jobs"],
-  technician: ["jobs"],
-  finance: ["jobs", "customers"],
+  // primary board ("jobs"), completed records archive ("completed"), etc.
+  intake: ["jobs", "completed"],
+  inspection: ["jobs", "completed"],
+  field: ["jobs", "completed"],
+  technician: ["jobs", "completed"],
+  finance: ["jobs", "customers", "completed"],
   manager: [
     "dashboard",
     "analytics",
     "leads",
     "quotes",
     "jobs",
+    "completed",
     "schedule",
     "customers",
     "team",
@@ -51,6 +52,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "leads",
     "quotes",
     "jobs",
+    "completed",
     "schedule",
     "customers",
     "team",

@@ -29,12 +29,14 @@ export function JobsView() {
     scopedLeads,
     counts,
     jobLeads,
+    completedLeads,
     page,
     setPage,
     globalSearch,
     setGlobalSearch,
     statusFilter,
     setStatusFilter,
+    setCurrentView,
   } = useAdminPageCtx();
 
   const single = (keys: string[]) =>
@@ -79,16 +81,20 @@ export function JobsView() {
           "Completed",
         ])
       : role === "inspection" || role === "field"
-      ? single(["Inspection Booked", "Inspection Completed"])
+      ? [
+          { label: "Active Inspections", group: "booking", statuses: ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress"] },
+          { label: "Booked", group: "booking", statuses: ["Inspection Booked"] },
+          { label: "In Progress", group: "booking", statuses: ["Inspection En Route", "Inspection Arrived", "Inspection In Progress"] },
+        ]
       : role === "technician"
       ? [
-          { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+          { label: "Active Jobs", group: "job", statuses: ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"] },
+          { label: "Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
           {
             label: "In Progress",
             group: "job",
             statuses: ["Job En Route", "Job Arrived", "Job Started", "Job In Progress"],
           },
-          { label: "Jobs Completed", group: "finance", statuses: ["Job Done", "Completed"] },
         ]
       : role === "manager"
       ? [
@@ -322,33 +328,21 @@ export function JobsView() {
                 })}
               </select>
 
-              {role === "technician" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatusFilter(isCompletedActive ? "" : "Job Done|Completed");
-                    setPage(1);
-                  }}
-                  className={`text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
-                    isCompletedActive
-                      ? "bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-400 shadow-sm"
-                      : "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
-                  }`}
-                  title="Show all jobs completed by this technician"
-                >
-                  <CheckCircle2
-                    className={`w-4 h-4 ${isCompletedActive ? "text-white" : "text-emerald-600"} shrink-0`}
-                  />
-                  <span>Jobs Completed</span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
-                      isCompletedActive ? "bg-emerald-800 text-white" : "bg-emerald-200 text-emerald-900"
-                    }`}
-                  >
-                    {completedCount}
-                  </span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentView("completed");
+                  setPage(1);
+                }}
+                className="text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
+                title="View all completed records"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Completed Records</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 text-emerald-900">
+                  {completedLeads.length}
+                </span>
+              </button>
 
               {(statusFilter || globalSearch) && (
                 <button

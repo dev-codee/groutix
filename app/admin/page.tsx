@@ -61,7 +61,7 @@ import {
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
-import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES } from "@/lib/pipeline";
+import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
 import {
   SERVICE_TEMPLATES,
   DEFAULT_QUOTE_CONDITIONS,
@@ -104,6 +104,7 @@ import { JobsView } from "@/components/admin/views/JobsView";
 import { CustomersView } from "@/components/admin/views/CustomersView";
 import { TeamView } from "@/components/admin/views/TeamView";
 import { TechniciansView } from "@/components/admin/views/TechniciansView";
+import { CompletedView } from "@/components/admin/views/CompletedView";
 import type { Stats } from "@/components/admin/views/AnalyticsView";
 import { GpsModal } from "@/components/admin/modals/GpsModal";
 import { PhotoLightbox } from "@/components/admin/modals/PhotoLightbox";
@@ -122,6 +123,7 @@ type DashboardView =
   | "leads"
   | "quotes"
   | "jobs"
+  | "completed"
   | "schedule"
   | "customers"
   | "team"
@@ -2580,7 +2582,6 @@ export default function CrmDashboardPage() {
         ? leads
         : leads.filter((l) => {
             if (role === "technician") {
-              if (!inRoleQueue(role, l.status)) return false;
               const targetName = viewAs
                 ? viewAs.name.trim().toLowerCase()
                 : (staff.find((s) => s.username === username)?.name || username || "").trim().toLowerCase();
@@ -2588,27 +2589,34 @@ export default function CrmDashboardPage() {
               const targetId = viewAs
                 ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)?.id
                 : staff.find((s) => s.username === username)?.id;
-              return (
-                (targetId && l.technicianId === targetId) ||
-                (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
-                (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser))
-              );
+
+              const isAssigned =
+                Boolean(targetId && l.technicianId === targetId) ||
+                Boolean(l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+                Boolean(l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||
+                Boolean(targetId && l.inspectorId === targetId) ||
+                Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
+
+              if (!isAssigned) return false;
+              return inRoleQueue(role, l.status) || isFlowCompleted(role, l.status, l);
             }
             if (role === "inspection" || role === "field") {
-              if (!inRoleQueue(role, l.status)) return false;
               const targetStaff = viewAs
                 ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
                 : staff.find((s) => s.username === username);
               const targetId = targetStaff?.id;
               const targetName = (targetStaff?.name || (viewAs ? viewAs.name : username) || "").trim().toLowerCase();
               const targetUser = (viewAs ? viewAs.name : username || "").trim().toLowerCase();
-              // ID-based match (set by current assignment UI)
-              if (targetId && l.inspectorId) return l.inspectorId === targetId;
-              // Name-based fallback for leads assigned before inspectorId was introduced
-              const assignedTo = (l.assigned || "").trim().toLowerCase();
-              return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === targetName || assignedTo === targetUser));
+
+              const isAssigned =
+                Boolean(targetId && l.inspectorId === targetId) ||
+                Boolean(targetId && l.technicianId === targetId) ||
+                Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
+
+              if (!isAssigned) return false;
+              return inRoleQueue(role, l.status) || isFlowCompleted(role, l.status, l);
             }
-            if (!inRoleQueue(role, l.status)) return false;
+            if (!inRoleQueue(role, l.status) && !isFlowCompleted(role, l.status, l)) return false;
             return true;
           });
     if (showLegacyLeads) return roleScoped;
@@ -2718,17 +2726,40 @@ export default function CrmDashboardPage() {
   );
   const jobLeads = useMemo(
     () =>
-      filteredLeads.filter((l) =>
-        role === "finance"
-          ? FINANCE_STATUSES.includes(l.status)
-          : role === "intake"
-            ? INTAKE_STATUSES.includes(l.status)
-            : role === "technician"
-              ? TECHNICIAN_STATUSES.includes(l.status) || Boolean(l.technicianId) || Boolean(l.technician)
-              : role === "inspection" || role === "field"
-                ? INSPECTION_STATUSES.includes(l.status) || ["Job Booked", "Scheduled", "Job Confirmed"].includes(l.status)
-                : JOB_STATUSES.includes(l.status)
-      ),
+      filteredLeads.filter((l) => {
+        if (role === "technician") {
+          // If a status filter is specifically applied (e.g. from pill/filter), allow it
+          if (statusFilter) {
+            return TECHNICIAN_STATUSES.includes(l.status) || isFlowCompleted(role, l.status, l);
+          }
+          // Default: only active in-progress jobs show on the technician dashboard
+          return isFlowInProgress(role, l.status, l);
+        }
+        if (role === "inspection" || role === "field") {
+          if (statusFilter) {
+            return INSPECTION_STATUSES.includes(l.status) || isFlowCompleted(role, l.status, l);
+          }
+          // Default: only active in-progress inspections show on the inspection dashboard
+          return isFlowInProgress(role, l.status, l);
+        }
+        if (role === "finance") {
+          if (statusFilter) return FINANCE_STATUSES.includes(l.status);
+          return isFlowInProgress(role, l.status, l);
+        }
+        if (role === "intake") return INTAKE_STATUSES.includes(l.status);
+        return JOB_STATUSES.includes(l.status);
+      }),
+    [filteredLeads, role, statusFilter]
+  );
+
+  const completedLeads = useMemo(
+    () =>
+      filteredLeads.filter((l) => {
+        if (role === "technician" || role === "inspection" || role === "field") {
+          return isFlowCompleted(role, l.status, l);
+        }
+        return isFlowCompleted(role, l.status, l) || l.status === "Job Done" || l.status === "Completed" || l.status === "Inspection Completed";
+      }),
     [filteredLeads, role]
   );
 
@@ -2742,12 +2773,14 @@ export default function CrmDashboardPage() {
           ? quoteLeads.length
           : currentView === "jobs"
             ? jobLeads.length
-            : currentView === "customers"
-              ? scopedLeads.length
-              : 0;
+            : currentView === "completed"
+              ? completedLeads.length
+              : currentView === "customers"
+                ? scopedLeads.length
+                : 0;
     const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     if (page > maxPage) setPage(maxPage);
-  }, [currentView, page, filteredLeads.length, quoteLeads.length, jobLeads.length, scopedLeads.length]);
+  }, [currentView, page, filteredLeads.length, quoteLeads.length, jobLeads.length, completedLeads.length, scopedLeads.length]);
 
   // Clicking a dashboard KPI card drops the user into the full leads table with
   // that stage (or group of stages) pre-filtered. Groups are passed as several
@@ -2817,7 +2850,7 @@ export default function CrmDashboardPage() {
     // Manager dashboard extras
     staffLocations, leads, loading, filteredLeads,
     // Shared view state
-    page, globalSearch, setGlobalSearch, quoteLeads, jobLeads,
+    page, globalSearch, setGlobalSearch, quoteLeads, jobLeads, completedLeads,
     onlyUnread, setOnlyUnread, setPriorityFilter,
   };
 
@@ -2927,10 +2960,31 @@ export default function CrmDashboardPage() {
                     : role === "intake"
                       ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
                       : role === "technician"
-                        ? scopedLeads.filter((l) => TECHNICIAN_STATUSES.includes(l.status)).length
+                        ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
                         : role === "inspection" || role === "field"
-                          ? scopedLeads.filter((l) => INSPECTION_STATUSES.includes(l.status)).length
-                          : scopedLeads.filter((l) => JOB_STATUSES.includes(l.status)).length}
+                          ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
+                          : scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length}
+                </span>
+              </button>
+            )}
+
+            {canSee("completed") && (
+              <button
+                onClick={() => setCurrentView("completed")}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "completed"
+                    ? "bg-[#001f97] text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Completed
+                </span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "completed" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                >
+                  {scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length}
                 </span>
               </button>
             )}
@@ -3052,13 +3106,15 @@ export default function CrmDashboardPage() {
                       ? "Quotations"
                       : currentView === "jobs"
                         ? "Jobs & Bookings"
-                        : currentView === "customers"
-                          ? "Customer Directory"
-                          : currentView === "schedule"
-                            ? "Schedule & Calendar"
-                            : currentView === "technicians"
-                              ? "Field Technicians"
-                              : "Team Members"}
+                        : currentView === "completed"
+                          ? "Completed Records Archive"
+                          : currentView === "customers"
+                            ? "Customer Directory"
+                            : currentView === "schedule"
+                              ? "Schedule & Calendar"
+                              : currentView === "technicians"
+                                ? "Field Technicians"
+                                : "Team Members"}
             </h1>
           </div>
 
@@ -3261,6 +3317,11 @@ export default function CrmDashboardPage() {
               VIEW: JOBS / BOOKINGS
              ========================================================================= */}
           {currentView === "jobs" && <JobsView />}
+
+          {/* =========================================================================
+              VIEW: COMPLETED RECORDS ARCHIVE
+             ========================================================================= */}
+          {currentView === "completed" && <CompletedView />}
 
           {/* =========================================================================
               VIEW: CUSTOMERS
