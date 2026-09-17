@@ -26,6 +26,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
     setEditingLead,
     setLeadModalOpen,
     staff,
+    inspectionStaff,
     assignableTechnicians,
   } = ctx;
 
@@ -241,9 +242,34 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
                 ASSIGNED
               </label>
-              <div className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate select-none">
-                {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : null) || "Unassigned"}
-              </div>
+              <select
+                value={
+                  inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned)
+                    ? (inspectionStaff.find((s) => s.name === l.assigned || s.username === l.assigned)?.name || l.assigned)
+                    : (l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned")
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  updateLeadField(l.id, { assigned: val === "Unassigned" ? "" : val });
+                }}
+                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                title="Assign inspector"
+              >
+                <option value="Unassigned">Unassigned</option>
+                {inspectionStaff.map((s) => {
+                  const label = s.name?.trim() || s.username;
+                  return (
+                    <option key={s.id} value={label}>
+                      {label}
+                    </option>
+                  );
+                })}
+                {l.assigned &&
+                  !isTechnicianName(l.assigned) &&
+                  !inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned) && (
+                    <option value={l.assigned}>{l.assigned}</option>
+                  )}
+              </select>
             </div>
 
             <button
@@ -360,9 +386,27 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               )}
             </div>
 
-            <div className="w-full text-[10px] xl:text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1.5 shadow-2xs truncate min-w-0 cursor-default select-none">
-              {l.technician || "No Tech Assigned"}
-            </div>
+            <select
+              value={
+                assignableTechnicians.find(
+                  (t) => t.id === l.technicianId || (l.technician && t.name.toLowerCase() === l.technician.toLowerCase())
+                )?.id || ""
+              }
+              onChange={(e) => {
+                const tech = assignableTechnicians.find((t) => t.id === e.target.value);
+                updateLeadField(l.id, { technicianId: e.target.value, technician: tech?.name || "" });
+              }}
+              className="w-full text-[10px] xl:text-[11px] font-bold text-slate-700 bg-white border border-slate-300 rounded-lg px-1 py-1.5 shadow-2xs truncate min-w-0 cursor-pointer focus:outline-hidden hover:border-[#001f97]"
+              title="Assign technician"
+            >
+              <option value="">Assign Tech</option>
+              {assignableTechnicians.filter((t) => t.active !== false).map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+              {l.technicianId && !assignableTechnicians.some((t) => t.id === l.technicianId) && (
+                <option value={l.technicianId}>{l.technician || "Former tech"}</option>
+              )}
+            </select>
           </div>
         </div>
 
