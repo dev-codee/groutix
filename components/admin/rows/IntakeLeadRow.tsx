@@ -394,7 +394,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               }
               onChange={(e) => {
                 const tech = assignableTechnicians.find((t) => t.id === e.target.value);
-                updateLeadField(l.id, { technicianId: e.target.value, technician: tech?.name || "" });
+                updateLeadField(l.id, { technicianId: e.target.value, technician: tech?.name || "", assigned: tech?.name || "" });
               }}
               className="w-full text-[10px] xl:text-[11px] font-bold text-slate-700 bg-white border border-slate-300 rounded-lg px-1 py-1.5 shadow-2xs truncate min-w-0 cursor-pointer focus:outline-hidden hover:border-[#001f97]"
               title="Assign technician"

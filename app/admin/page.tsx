@@ -2590,16 +2590,23 @@ export default function CrmDashboardPage() {
         ? leads
         : leads.filter((l) => {
             if (role === "technician") {
+              const targetStaffRecord = viewAs
+                ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
+                : staff.find((s) => s.username === username);
               const targetName = viewAs
                 ? viewAs.name.trim().toLowerCase()
-                : (staff.find((s) => s.username === username)?.name || username || "").trim().toLowerCase();
+                : (targetStaffRecord?.name || username || "").trim().toLowerCase();
               const targetUser = viewAs ? viewAs.name.trim().toLowerCase() : (username || "").trim().toLowerCase();
-              const targetId = viewAs
-                ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)?.id
-                : staff.find((s) => s.username === username)?.id;
+              const targetId = targetStaffRecord?.id;
+              // Collect all known IDs for this tech (staff id + any roster entries sharing the same name/username)
+              const targetAllIds = new Set<string>(targetId ? [targetId] : []);
+              assignableTechnicians.forEach((t) => {
+                if (t.username && (t.username.toLowerCase() === targetUser || t.username.toLowerCase() === targetName)) targetAllIds.add(t.id);
+                if (t.name.trim().toLowerCase() === targetName || t.name.trim().toLowerCase() === targetUser) targetAllIds.add(t.id);
+              });
 
               const isAssigned =
-                Boolean(targetId && l.technicianId === targetId) ||
+                Boolean(l.technicianId && targetAllIds.has(l.technicianId)) ||
                 Boolean(l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
                 Boolean(l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||
                 Boolean(targetId && l.inspectorId === targetId) ||

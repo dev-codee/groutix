@@ -413,7 +413,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               }
               onChange={(e) => {
                 const tech = assignableTechnicians.find((t) => t.id === e.target.value);
-                updateLeadField(l.id, { technicianId: e.target.value, technician: tech?.name || "" });
+                updateLeadField(l.id, { technicianId: e.target.value, technician: tech?.name || "", assigned: tech?.name || "" });
               }}
               className="w-full text-[10px] px-1 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden cursor-pointer truncate"
               title="Assign technician"
