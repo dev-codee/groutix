@@ -118,7 +118,6 @@ export function JobsView() {
             statuses: ["Job Done", "Completed", "Inspection Completed"],
             customCount: scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length,
           },
-          { label: "All Assigned", group: "lead", statuses: [], totalCount: true },
         ]
       : role === "manager"
       ? [
