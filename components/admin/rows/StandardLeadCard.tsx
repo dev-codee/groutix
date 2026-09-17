@@ -32,6 +32,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     setLeadModalOpen,
     inspectionStaff,
     assignableTechnicians,
+    isTechnicianName,
     handleOnTheWay,
     onTheWayLoading,
   } = useAdminPageCtx();
@@ -277,7 +278,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               value={
                 inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned)
                   ? (inspectionStaff.find((s) => s.name === l.assigned || s.username === l.assigned)?.name || l.assigned)
-                  : "Unassigned"
+                  : inspectionStaff.some((s) => s.name === l.inspectionReport?.inspectorName || s.username === l.inspectionReport?.inspectorName)
+                  ? (inspectionStaff.find((s) => s.name === l.inspectionReport?.inspectorName || s.username === l.inspectionReport?.inspectorName)?.name || l.inspectionReport?.inspectorName || "Unassigned")
+                  : (l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned")
               }
               onChange={(e) => {
                 const val = e.target.value;
@@ -413,7 +416,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               }
               onChange={(e) => {
                 const tech = assignableTechnicians.find((t) => t.id === e.target.value);
-                updateLeadField(l.id, { technicianId: e.target.value, technician: tech?.name || "", technicianUsername: tech?.username || "", assigned: tech?.name || "" });
+                updateLeadField(l.id, {
+                  technicianId: e.target.value,
+                  technician: tech?.name || "",
+                  technicianUsername: tech?.username || "",
+                });
               }}
               className="w-full text-[10px] px-1 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden cursor-pointer truncate"
               title="Assign technician"
