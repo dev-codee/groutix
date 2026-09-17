@@ -44,10 +44,11 @@ interface Props {
   lead: LeadLike;
   currentUsername?: string;
   technicians?: { id: string; name: string }[];
+  readOnly?: boolean;
   onSave: (report: InspectionReportDoc, markCompleted?: boolean) => Promise<boolean>;
 }
 
-export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], onSave }: Props) {
+export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], readOnly = false, onSave }: Props) {
   const [report, setReport] = useState<InspectionReportDoc>(() => {
     return {
       findings: {},
@@ -108,6 +109,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   if (!isOpen) return null;
 
   const handleFindingChange = (itemId: string, val: CheckValue) => {
+    if (readOnly) return;
     setReport((prev) => {
       const current = prev.findings?.[itemId];
       // Toggle off if clicking the same value
@@ -123,6 +125,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   };
 
   const handleBatchSet = (val: CheckValue) => {
+    if (readOnly) return;
     setReport((prev) => {
       const newFindings = { ...prev.findings };
       for (const section of INSPECTION_SECTIONS) {
@@ -137,6 +140,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   };
 
   const handleSave = async (markCompleted: boolean = false) => {
+    if (readOnly) return;
     setSaving(true);
     setErrorMsg("");
     setSaveSuccess(false);
@@ -216,6 +220,11 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               <h2 className="text-xs sm:text-sm font-bold tracking-tight text-white shrink-0">
                 GROUTIX — INSPECTION REPORT
               </h2>
+              {readOnly && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-mono text-[10px] sm:text-xs font-black shadow-sm tracking-wide border border-amber-300">
+                  READ-ONLY (TECHNICIAN)
+                </span>
+              )}
               {(report.leadJobNo || lead.jobNo) && (
                 <span className="px-2.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-mono text-xs sm:text-sm font-black shadow-sm tracking-wide border border-amber-300">
                   {report.leadJobNo || lead.jobNo}
@@ -275,10 +284,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <input
                 type="text"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.customerName || ""}
                 onChange={(e) => setReport({ ...report, customerName: e.target.value })}
                 placeholder="Customer Name"
-                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2 py-1 bg-white border border-slate-300 rounded font-semibold text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
 
@@ -288,9 +299,11 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <input
                 type="date"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.inspectionDate || ""}
                 onChange={(e) => setReport({ ...report, inspectionDate: e.target.value })}
-                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
 
@@ -300,10 +313,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <input
                 type="text"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.inspectorName || ""}
                 onChange={(e) => setReport({ ...report, inspectorName: e.target.value })}
                 placeholder="Technician / Inspector Name"
-                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
 
@@ -313,10 +328,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <input
                 type="text"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.propertyAddress || ""}
                 onChange={(e) => setReport({ ...report, propertyAddress: e.target.value })}
                 placeholder="Property Address"
-                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
 
@@ -326,33 +343,43 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <input
                 type="text"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.room || ""}
                 onChange={(e) => setReport({ ...report, room: e.target.value })}
                 placeholder="e.g. Ensuite, Main"
-                className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2 py-1 bg-white border border-slate-300 rounded font-medium text-slate-900 text-xs focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
           </div>
 
           {/* Quick Helper toolbar (Hidden on print) */}
           <div className="no-print mt-1.5 pt-1.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-1.5 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-600 font-medium">
-              <span className="text-[11px] text-slate-500">Quick fill:</span>
-              <button
-                type="button"
-                onClick={() => handleBatchSet("NO")}
-                className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] font-semibold transition-colors cursor-pointer"
-              >
-                Set Unanswered to NO
-              </button>
-              <button
-                type="button"
-                onClick={() => setReport((prev) => ({ ...prev, findings: {} }))}
-                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] transition-colors cursor-pointer"
-              >
-                Clear All
-              </button>
-            </div>
+            {readOnly ? (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
+                  🔒 Read-Only Inspection Report (Technician Mode)
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+                <span className="text-[11px] text-slate-500">Quick fill:</span>
+                <button
+                  type="button"
+                  onClick={() => handleBatchSet("NO")}
+                  className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] font-semibold transition-colors cursor-pointer"
+                >
+                  Set Unanswered to NO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReport((prev) => ({ ...prev, findings: {} }))}
+                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center gap-2 text-[11px] font-bold">
               <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -409,10 +436,15 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                             {/* YES Button */}
                             <button
                               type="button"
-                              onClick={() => handleFindingChange(item.id, "YES")}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              disabled={readOnly}
+                              onClick={() => !readOnly && handleFindingChange(item.id, "YES")}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all flex items-center gap-1 border ${
+                                readOnly ? "cursor-default select-none" : "cursor-pointer"
+                              } ${
                                 value === "YES"
                                   ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
+                                  : readOnly
+                                  ? "bg-slate-50 border-slate-200 text-slate-400"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
                               }`}
                             >
@@ -425,10 +457,15 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                             {/* NO Button */}
                             <button
                               type="button"
-                              onClick={() => handleFindingChange(item.id, "NO")}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              disabled={readOnly}
+                              onClick={() => !readOnly && handleFindingChange(item.id, "NO")}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all flex items-center gap-1 border ${
+                                readOnly ? "cursor-default select-none" : "cursor-pointer"
+                              } ${
                                 value === "NO"
                                   ? "bg-slate-800 border-slate-900 text-white shadow-xs"
+                                  : readOnly
+                                  ? "bg-slate-50 border-slate-200 text-slate-400"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
                               }`}
                             >
@@ -484,10 +521,15 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                             {/* YES Button */}
                             <button
                               type="button"
-                              onClick={() => handleFindingChange(item.id, "YES")}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              disabled={readOnly}
+                              onClick={() => !readOnly && handleFindingChange(item.id, "YES")}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all flex items-center gap-1 border ${
+                                readOnly ? "cursor-default select-none" : "cursor-pointer"
+                              } ${
                                 value === "YES"
                                   ? "bg-emerald-600 border-emerald-700 text-white shadow-xs"
+                                  : readOnly
+                                  ? "bg-slate-50 border-slate-200 text-slate-400"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
                               }`}
                             >
@@ -500,10 +542,15 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                             {/* NO Button */}
                             <button
                               type="button"
-                              onClick={() => handleFindingChange(item.id, "NO")}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              disabled={readOnly}
+                              onClick={() => !readOnly && handleFindingChange(item.id, "NO")}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black tracking-wide uppercase transition-all flex items-center gap-1 border ${
+                                readOnly ? "cursor-default select-none" : "cursor-pointer"
+                              } ${
                                 value === "NO"
                                   ? "bg-slate-800 border-slate-900 text-white shadow-xs"
+                                  : readOnly
+                                  ? "bg-slate-50 border-slate-200 text-slate-400"
                                   : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800 hover:border-slate-400"
                               }`}
                             >
@@ -530,10 +577,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <textarea
                 rows={2}
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.otherDetails || ""}
                 onChange={(e) => setReport({ ...report, otherDetails: e.target.value })}
                 placeholder="Record any specific site observations, water leak source, crack locations, substrate notes..."
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
 
@@ -547,10 +596,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </p>
               <input
                 type="text"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.estimatedTime || ""}
                 onChange={(e) => setReport({ ...report, estimatedTime: e.target.value })}
                 placeholder="e.g. 4–6 hours, 1.5 days"
-                className="mt-auto w-full px-2.5 py-1.5 text-xs bg-white border border-[#001f97]/40 rounded font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`mt-auto w-full px-2.5 py-1.5 text-xs bg-white border border-[#001f97]/40 rounded font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
           </div>
@@ -578,8 +629,9 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setReport({ ...report, quoteBuildFromReport: "YES" })}
-                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
+                    disabled={readOnly}
+                    onClick={() => !readOnly && setReport({ ...report, quoteBuildFromReport: "YES" })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold border ${readOnly ? "cursor-default select-none" : "cursor-pointer"} ${
                       report.quoteBuildFromReport === "YES"
                         ? "bg-[#001f97] text-white border-[#001f97]"
                         : "bg-white text-slate-700 border-slate-300"
@@ -589,8 +641,9 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                   </button>
                   <button
                     type="button"
-                    onClick={() => setReport({ ...report, quoteBuildFromReport: "NO" })}
-                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
+                    disabled={readOnly}
+                    onClick={() => !readOnly && setReport({ ...report, quoteBuildFromReport: "NO" })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold border ${readOnly ? "cursor-default select-none" : "cursor-pointer"} ${
                       report.quoteBuildFromReport === "NO"
                         ? "bg-slate-800 text-white border-slate-800"
                         : "bg-white text-slate-700 border-slate-300"
@@ -606,8 +659,9 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setReport({ ...report, warrantyEligible: "YES" })}
-                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
+                    disabled={readOnly}
+                    onClick={() => !readOnly && setReport({ ...report, warrantyEligible: "YES" })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold border ${readOnly ? "cursor-default select-none" : "cursor-pointer"} ${
                       report.warrantyEligible === "YES"
                         ? "bg-emerald-600 text-white border-emerald-700"
                         : "bg-white text-slate-700 border-slate-300"
@@ -617,8 +671,9 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                   </button>
                   <button
                     type="button"
-                    onClick={() => setReport({ ...report, warrantyEligible: "NO" })}
-                    className={`px-2 py-0.5 rounded text-xs font-bold cursor-pointer border ${
+                    disabled={readOnly}
+                    onClick={() => !readOnly && setReport({ ...report, warrantyEligible: "NO" })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold border ${readOnly ? "cursor-default select-none" : "cursor-pointer"} ${
                       report.warrantyEligible === "NO"
                         ? "bg-slate-800 text-white border-slate-800"
                         : "bg-white text-slate-700 border-slate-300"
@@ -637,10 +692,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               </label>
               <input
                 type="text"
+                disabled={readOnly}
+                readOnly={readOnly}
                 value={report.inspectorNotes || ""}
                 onChange={(e) => setReport({ ...report, inspectorNotes: e.target.value })}
                 placeholder="Recommended solution, e.g., Epoxy Grout Upgrade + Perimeter Sealing"
-                className="w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                className={`w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
               />
             </div>
 
@@ -652,10 +709,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 </label>
                 <input
                   type="text"
+                  disabled={readOnly}
+                  readOnly={readOnly}
                   value={report.inspectorSignature || ""}
                   onChange={(e) => setReport({ ...report, inspectorSignature: e.target.value })}
                   placeholder="Technician Signature / Name"
-                  className="w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded font-semibold text-slate-900 italic focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                  className={`w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded font-semibold text-slate-900 italic focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
                 />
               </div>
 
@@ -665,10 +724,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 </label>
                 <input
                   type="text"
+                  disabled={readOnly}
+                  readOnly={readOnly}
                   value={report.customerAcknowledgement || ""}
                   onChange={(e) => setReport({ ...report, customerAcknowledgement: e.target.value })}
                   placeholder="Customer Name / Acknowledgement"
-                  className="w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none"
+                  className={`w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded font-medium text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : ""}`}
                 />
               </div>
             </div>
@@ -685,9 +746,10 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 Recommend which technician should carry out the job based on your on-site assessment.
               </p>
               <select
+                disabled={readOnly}
                 value={report.suggestedTechnician || ""}
                 onChange={(e) => setReport({ ...report, suggestedTechnician: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#001f97]/40 rounded font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none cursor-pointer"
+                className={`w-full px-2.5 py-1.5 text-xs bg-white border border-[#001f97]/40 rounded font-semibold text-slate-900 focus:ring-1 focus:ring-[#001f97] focus:outline-none ${readOnly ? "bg-slate-100 text-slate-700 cursor-not-allowed" : "cursor-pointer"}`}
               >
                 <option value="">— No suggestion —</option>
                 {technicians.map((t) => (
@@ -726,40 +788,52 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/70 rounded-lg transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
+            {readOnly ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-1.5 text-xs font-bold bg-[#001f97] hover:bg-[#001777] text-white rounded-lg transition-colors cursor-pointer shadow-xs"
+              >
+                Close
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={saving}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/70 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
 
-            {/* Save Draft */}
-            <button
-              type="button"
-              onClick={() => handleSave(false)}
-              disabled={saving}
-              className="px-4 py-1.5 text-xs font-bold bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>Save Record</span>
-            </button>
+                {/* Save Draft */}
+                <button
+                  type="button"
+                  onClick={() => handleSave(false)}
+                  disabled={saving}
+                  className="px-4 py-1.5 text-xs font-bold bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>Save Record</span>
+                </button>
 
-            {/* Save & Complete Inspection */}
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              disabled={saving}
-              className="px-4 py-1.5 text-xs font-bold bg-[#001f97] hover:bg-[#001777] text-white rounded-lg transition-all flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <FileCheck className="w-3.5 h-3.5" />
-              )}
-              <span>Complete &amp; Hand Off to Intake</span>
-            </button>
+                {/* Save & Complete Inspection */}
+                <button
+                  type="button"
+                  onClick={() => handleSave(true)}
+                  disabled={saving}
+                  className="px-4 py-1.5 text-xs font-bold bg-[#001f97] hover:bg-[#001777] text-white rounded-lg transition-all flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <FileCheck className="w-3.5 h-3.5" />
+                  )}
+                  <span>Complete &amp; Hand Off to Intake</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

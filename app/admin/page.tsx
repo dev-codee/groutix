@@ -5731,6 +5731,7 @@ export default function CrmDashboardPage() {
           lead={activeInspectionLead}
           currentUsername={username || undefined}
           technicians={assignableTechnicians}
+          readOnly={isTechnician}
           onSave={async (report, markCompleted) => {
             const updates: Partial<Lead> = {
               inspectionReport: report,

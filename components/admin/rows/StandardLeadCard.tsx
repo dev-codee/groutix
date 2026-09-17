@@ -58,6 +58,23 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(l.status);
   const isPaymentPending = l.status === "Payment Pending";
 
+  const hasRemainingDues = (() => {
+    if (l.paymentType === "full") return false;
+    if (remainingAmt !== null && remainingAmt <= 0) return false;
+    if (l.paymentType === "partial") return true;
+    if (remainingAmt !== null && remainingAmt > 0) return true;
+    if (!isPaymentReceived) return true;
+    return false;
+  })();
+
+  function confirmCompleteIfDues(): boolean {
+    if (!hasRemainingDues) return true;
+    const msg = remainingAmt && remainingAmt > 0
+      ? `Are you sure you want to complete this lead without the remaining payment of AUD $${remainingAmt.toFixed(2)}?`
+      : "Are you sure you want to complete this lead without receiving full payment?";
+    return window.confirm(msg);
+  }
+
   function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
     const updates: Partial<Lead> = {
       status: "Payment Received",
@@ -79,7 +96,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Status</label>
             <select
               value={l.status || "New"}
-              onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                if (newStatus === "Completed" && !confirmCompleteIfDues()) return;
+                updateLeadField(l.id, { status: newStatus });
+              }}
               className={`text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#001f97] ${
                 l.status === "Completed"
                   ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 hover:border-emerald-400"
@@ -823,6 +844,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 step: "Completed" as const,
                 color: "bg-emerald-600",
                 onClick: () => {
+                  if (!confirmCompleteIfDues()) return;
                   const updates: Record<string, unknown> = { status: "Completed" };
                   if (l.warrantyProvided === false || l.warranty?.provided === false) {
                     updates.warrantyProvided = false;
@@ -935,6 +957,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => {
+                if (!confirmCompleteIfDues()) return;
                 const updates: Record<string, any> = { status: "Completed" };
                 if (l.warrantyProvided === false || l.warranty?.provided === false) {
                   updates.warrantyProvided = false;
