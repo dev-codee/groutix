@@ -110,6 +110,7 @@ export const INSPECTION_STATUSES: string[] = [
  * En Route / Arrived / In Progress → Job Done hands off to Finance.
  */
 export const TECHNICIAN_STATUSES: string[] = [
+  ...INSPECTION_STATUSES,
   "Won",
   "Job Booked",
   "Scheduled",
@@ -228,8 +229,12 @@ export function isFlowCompleted(
   lead?: { inspectionReport?: { status?: string } | null; inspectionAt?: string | null; jobAt?: string | null }
 ): boolean {
   if (role === "technician") {
+    // If the lead is in any active in-progress status, it is definitely not completed
+    if (TECHNICIAN_IN_PROGRESS_STATUSES.includes(status) || INSPECTION_IN_PROGRESS_STATUSES.includes(status)) {
+      return false;
+    }
     if (TECHNICIAN_COMPLETED_STATUSES.includes(status)) return true;
-    if (status === "Inspection Completed" || lead?.inspectionReport?.status === "completed") return true;
+    if (status === "Inspection Completed" && !lead?.jobAt) return true;
     return false;
   }
   if (role === "inspection" || role === "field") {

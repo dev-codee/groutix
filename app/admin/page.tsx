@@ -2614,7 +2614,7 @@ export default function CrmDashboardPage() {
                 Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
 
               if (!isAssigned) return false;
-              return inRoleQueue(role, l.status) || isFlowCompleted(role, l.status, l);
+              return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
             }
             if (role === "inspection" || role === "field") {
               const targetStaff = viewAs
@@ -2630,9 +2630,9 @@ export default function CrmDashboardPage() {
                 Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
 
               if (!isAssigned) return false;
-              return inRoleQueue(role, l.status) || isFlowCompleted(role, l.status, l);
+              return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
             }
-            if (!inRoleQueue(role, l.status) && !isFlowCompleted(role, l.status, l)) return false;
+            if (!inRoleQueue(role, l.status) && !isFlowInProgress(role, l.status, l) && !isFlowCompleted(role, l.status, l)) return false;
             return true;
           });
     if (showLegacyLeads) return roleScoped;

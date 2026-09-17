@@ -98,16 +98,24 @@ export function JobsView() {
         ]
       : role === "technician"
       ? [
-          { label: "Booked", group: "job", statuses: ["Won", "Job Booked", "Scheduled", "Job Confirmed"] },
+          { label: "Booked", group: "job", statuses: ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Inspection Booked"] },
           {
             label: "In Progress",
             group: "job",
-            statuses: ["Job En Route", "Job Arrived", "Job Started", "Job In Progress"],
+            statuses: [
+              "Job En Route",
+              "Job Arrived",
+              "Job Started",
+              "Job In Progress",
+              "Inspection En Route",
+              "Inspection Arrived",
+              "Inspection In Progress",
+            ],
           },
           {
             label: "Completed",
             group: "finance",
-            statuses: ["Job Done", "Completed"],
+            statuses: ["Job Done", "Completed", "Inspection Completed"],
             customCount: scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length,
           },
         ]
@@ -175,6 +183,7 @@ export function JobsView() {
       : role === "technician"
       ? [
           "Job Booked",
+          "Inspection Booked",
           "Scheduled",
           "Job Confirmed",
           "Job En Route",
