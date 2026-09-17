@@ -2655,7 +2655,12 @@ export default function CrmDashboardPage() {
       // statusFilter may be a single status (dropdown) or a "|"-joined group
       // of statuses (KPI cards like Inspections / Won that cover several stages).
       const wanted = statusFilter.split("|");
-      list = list.filter((l) => wanted.includes(l.status));
+      list = list.filter((l) => {
+        if (wanted.includes("Inspection Completed") && (role === "inspection" || role === "field")) {
+          return isFlowCompleted(role, l.status, l);
+        }
+        return wanted.includes(l.status);
+      });
     }
     if (priorityFilter) {
       list = list.filter((l) => l.priority === priorityFilter);

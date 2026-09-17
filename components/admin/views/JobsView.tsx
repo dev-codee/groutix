@@ -16,12 +16,13 @@ import {
   INTAKE_STATUSES,
   TECHNICIAN_STATUSES,
   INSPECTION_STATUSES,
+  isFlowCompleted,
 } from "@/lib/pipeline";
 import type { StageGroup } from "@/lib/pipeline";
 
 const PAGE_SIZE = 20;
 
-type Grp = { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean };
+type Grp = { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean; customCount?: number };
 
 export function JobsView() {
   const {
@@ -82,18 +83,32 @@ export function JobsView() {
         ])
       : role === "inspection" || role === "field"
       ? [
-          { label: "Active Inspections", group: "booking", statuses: ["Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress"] },
           { label: "Booked", group: "booking", statuses: ["Inspection Booked"] },
-          { label: "In Progress", group: "booking", statuses: ["Inspection En Route", "Inspection Arrived", "Inspection In Progress"] },
+          {
+            label: "In Progress",
+            group: "job",
+            statuses: ["Inspection En Route", "Inspection Arrived", "Inspection In Progress"],
+          },
+          {
+            label: "Completed",
+            group: "finance",
+            statuses: ["Inspection Completed"],
+            customCount: scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length,
+          },
         ]
       : role === "technician"
       ? [
-          { label: "Active Jobs", group: "job", statuses: ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"] },
-          { label: "Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+          { label: "Booked", group: "job", statuses: ["Won", "Job Booked", "Scheduled", "Job Confirmed"] },
           {
             label: "In Progress",
             group: "job",
             statuses: ["Job En Route", "Job Arrived", "Job Started", "Job In Progress"],
+          },
+          {
+            label: "Completed",
+            group: "finance",
+            statuses: ["Job Done", "Completed"],
+            customCount: scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length,
           },
         ]
       : role === "manager"
@@ -194,7 +209,11 @@ export function JobsView() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-black text-slate-900">
-              {role === "finance" ? "Finance Pipeline by Stage" : "Jobs Pipeline by Stage"}
+              {role === "finance"
+                ? "Finance Pipeline by Stage"
+                : role === "inspection" || role === "field"
+                ? "Inspection Pipeline by Stage"
+                : "Jobs Pipeline by Stage"}
             </h2>
             {statusFilter && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#001f97]/10 text-[#001f97]">
@@ -217,13 +236,19 @@ export function JobsView() {
             </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div className={`grid gap-3 ${
+          groups.length === 3
+            ? "grid-cols-1 sm:grid-cols-3"
+            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+        }`}>
           {groups.map((grp) => {
             const accent = STAGE_GROUP_ACCENT[grp.group] || {
               dot: "bg-cyan-500",
               value: "text-cyan-600",
             };
-            const value = grp.totalCount
+            const value = grp.customCount !== undefined
+              ? grp.customCount
+              : grp.totalCount
               ? scopedLeads.length
               : grp.statuses.reduce((a, k) => a + (counts[k] || 0), 0);
             const joined = grp.statuses.join("|");
