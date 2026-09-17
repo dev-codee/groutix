@@ -152,6 +152,8 @@ export interface SubmissionDoc {
   contacted?: string;
   follow?: string;
   notes?: string;
+  technicianNotes?: string;
+  scopeNotes?: string;
   // Quote / Invoice / Workflow fields
   quoteItems?: QuoteItem[];
   quoteItemCode?: string;

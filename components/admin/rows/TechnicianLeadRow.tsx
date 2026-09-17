@@ -235,7 +235,8 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
           <ScopeOfWorkPanel
             lead={l}
-            onSave={(id, scope) => updateLeadField(id, { quoteScope: scope })}
+            readOnly={true}
+            onSaveNotes={(id, notes) => updateLeadField(id, { technicianNotes: notes, scopeNotes: notes })}
           />
 
 
