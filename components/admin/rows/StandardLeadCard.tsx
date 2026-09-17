@@ -705,7 +705,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <span>🏆</span>
-                    <span>Saved in Achievements</span>
+                    <span>Completed 🏆</span>
                   </span>
                   <span className="text-[9px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">Completed Record</span>
                 </div>
@@ -1042,7 +1042,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             <div className="space-y-1">
               <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs font-black text-emerald-800 flex items-center justify-center gap-1.5">
                 <span>🏆</span>
-                <span>Completed &amp; Saved To Achievements</span>
+                <span>Completed 🏆</span>
               </div>
               <div className={`p-1.5 rounded-lg text-center text-[11px] font-black flex items-center justify-center gap-1.5 border ${
                 l.warrantyProvided === false || l.warranty?.provided === false
@@ -1078,12 +1078,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 updateLeadField(l.id, updates);
               }}
               className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-              title="Mark this lead as completed and save to Achievements"
+              title="Mark this lead as completed"
             >
               <span>
                 {l.warrantyProvided === false || l.warranty?.provided === false
                   ? "Complete & Save (No Warranty) 🏆"
-                  : "Complete & Save to Achievements 🏆"}
+                  : "Complete & Save 🏆"}
               </span>
             </button>
           )}

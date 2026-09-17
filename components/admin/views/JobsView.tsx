@@ -160,7 +160,7 @@ export function JobsView() {
             statuses: ["Invoice Sent", "Payment Pending", "Payment Received"],
           },
           { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
-          { label: "Achievements", group: "closed", statuses: ["Completed"] },
+          { label: "Completed 🏆", group: "closed", statuses: ["Completed"] },
           { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
         ]
       : [
