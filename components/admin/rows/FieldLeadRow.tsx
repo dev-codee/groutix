@@ -52,7 +52,18 @@ export function FieldLeadRow({ l }: { l: Lead }) {
     if (s === "Inspection En Route") return 1;
     if (s === "Inspection Arrived") return 2;
     if (s === "Inspection In Progress") return 3;
-    if (s === "Inspection Completed" || l.inspectionReport?.status === "completed" || s.startsWith("Quote") || s.startsWith("Job") || s === "Completed") return 4;
+    if (
+      s === "Inspection Completed" ||
+      l.inspectionReport?.status === "completed" ||
+      s.startsWith("Quote") ||
+      s === "Won" ||
+      s.startsWith("Job") ||
+      s === "Scheduled" ||
+      s.startsWith("Invoice") ||
+      s.startsWith("Payment") ||
+      s.startsWith("Warranty") ||
+      s === "Completed"
+    ) return 4;
     return 0;
   })();
 
@@ -234,7 +245,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openInspectionModal(l)}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || l.status === "Inspection Completed" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 flex items-center justify-center gap-1 ${l.inspectionReport?.status === "completed" || isCompleteDone ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
               title="Inspection Form"
             >
               <ClipboardList className="w-3.5 h-3.5 shrink-0" />

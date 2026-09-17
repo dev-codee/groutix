@@ -7,6 +7,7 @@ import {
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
+import { STATUS_KEYS } from "@/lib/pipeline";
 import type { Lead } from "@/components/admin/types";
 
 export function IntakeLeadRow({ l }: { l: Lead }) {
@@ -30,31 +31,28 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
     assignableTechnicians,
   } = ctx;
 
-  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
   const statusOptions = getRoleStatusOptions("intake", l.status);
-  const waUrl = getWhatsAppLink(l.phone);
   const followupPrompt = getFollowupPrompt(l);
+  const waUrl = getWhatsAppLink(l.phone);
+  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
 
   const jobNoDisplay = l.jobNo
     ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
     : `JobNo-${l.id.slice(0, 4)}`;
 
   const dateTimeDisplay = (() => {
-    const v = l.createdAt || l.inspectionAt || l.jobAt;
+    const v = l.inspectionAt || l.createdAt || l.jobAt;
     if (!v) return "";
     return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
   })();
 
-  const serviceDisplay = l.service || "3 Bathrooms | Silicone Replacement";
+  const serviceDisplay = l.service && (l.notes || l.message)
+    ? `${l.service} | ${l.notes || l.message}`
+    : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
   const notesDisplay = l.notes || l.message;
 
-  const STATUS_ORDER = [
-    "New", "Inspection Booked", "Inspection En Route", "Inspection Arrived",
-    "Inspection In Progress", "Inspection Completed", "Quote Sent", "Won",
-    "Job Booked", "Completed",
-  ];
-  const statusIdx = STATUS_ORDER.indexOf(l.status || "New");
-  const atOrPast = (s: string) => statusIdx >= STATUS_ORDER.indexOf(s);
+  const sIdx = STATUS_KEYS.indexOf(l.status || "New");
+  const atOrPast = (s: string) => sIdx >= 0 && sIdx >= STATUS_KEYS.indexOf(s);
 
   const isNewDone = true;
   const isInspectionBookedDone = Boolean(l.inspectionAt) || atOrPast("Inspection En Route");
@@ -353,11 +351,15 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              onClick={() => updateLeadField(l.id, { status: "Quote Sent" })}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+              disabled={isSentDone}
+              onClick={() => {
+                if (isSentDone) return;
+                updateLeadField(l.id, { status: "Quote Sent" });
+              }}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isSentDone
-                  ? "bg-[#001f97] text-white shadow-2xs"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
               }`}
             >
               Sent
@@ -366,11 +368,15 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <div className="min-w-0">
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`w-full py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${
+                disabled={isJobBookedBtnDone}
+                onClick={() => {
+                  if (isJobBookedBtnDone) return;
+                  updateLeadField(l.id, { status: "Job Booked" });
+                }}
+                className={`w-full py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                   isJobBookedBtnDone
-                    ? "bg-[#001f97] text-white shadow-2xs"
-                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                 }`}
               >
                 Job Booked

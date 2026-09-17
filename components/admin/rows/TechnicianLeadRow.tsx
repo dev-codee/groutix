@@ -60,6 +60,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     return 0;
   })();
 
+  const isJobBookedDone = Boolean(l.jobAt) || l.status === "Job Booked" || techStepIdx >= 1;
   const isOnTheWayDone = techStepIdx >= 1;
   const isReachedDone = techStepIdx >= 2;
   const isStartDone = techStepIdx >= 3;
@@ -211,8 +212,16 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
             <div>
               <button
                 type="button"
-                onClick={() => updateLeadField(l.id, { status: "Job Booked" })}
-                className={`w-full py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${l.status === "Job Booked" ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                disabled={isJobBookedDone}
+                onClick={() => {
+                  if (isJobBookedDone) return;
+                  updateLeadField(l.id, { status: "Job Booked" });
+                }}
+                className={`w-full py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
+                  isJobBookedDone
+                    ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                }`}
               >
                 Job Booked
               </button>

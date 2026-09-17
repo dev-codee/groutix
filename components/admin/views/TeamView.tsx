@@ -88,16 +88,31 @@ export function TeamView({
                   const assignedTo = (l.assigned || "").trim().toLowerCase();
                   return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower));
                 }
+                if (role === "finance") {
+                  const assignedTo = (l.assigned || "").trim().toLowerCase();
+                  if (assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower)) return true;
+                  const otherFinance = staff.filter((o) => o.role === "finance" && o.id !== sId);
+                  const isOther = otherFinance.some((o) => (o.name && assignedTo === o.name.trim().toLowerCase()) || (o.username && assignedTo === o.username.trim().toLowerCase()));
+                  if (!isOther) return inRoleQueue("finance", l.status);
+                  return false;
+                }
+                if (role === "intake") {
+                  const assignedTo = (l.assigned || "").trim().toLowerCase();
+                  if (assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower)) return true;
+                  const otherIntake = staff.filter((o) => o.role === "intake" && o.id !== sId);
+                  const isOther = otherIntake.some((o) => (o.name && assignedTo === o.name.trim().toLowerCase()) || (o.username && assignedTo === o.username.trim().toLowerCase()));
+                  if (!isOther) return inRoleQueue("intake", l.status);
+                  return false;
+                }
                 const assignedTo = (l.assigned || "").trim().toLowerCase();
                 return Boolean(assignedTo && assignedTo !== "unassigned" && (assignedTo === sNameLower || assignedTo === sUserLower));
               };
 
-              // Only leads currently in progress (strictly exclude completed/job done/lost leads)
+              // Only leads currently in progress for this role
               const inProgressLeads = leads.filter(
                 (l) =>
                   isAssigned(l) &&
                   !isFlowCompleted(role, l.status, l) &&
-                  l.status !== "Job Done" &&
                   l.status !== "Completed" &&
                   l.status !== "Lost" &&
                   isFlowInProgress(role, l.status, l)

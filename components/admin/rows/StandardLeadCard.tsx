@@ -299,26 +299,42 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           {/* Inspection Live Visit */}
           {(() => {
-            const steps = visitStepsFor(l.status) || INSPECTION_STEPS;
-            const currentIdx = steps.findIndex((s) => s.status === l.status);
+            const steps = INSPECTION_STEPS;
+            const s = l.status;
+            const sIdx = STATUS_LIST.indexOf(s || "");
+            const currentIdx = (() => {
+              if (sIdx >= 7 || l.inspectionReport?.status === "completed" || (s && (s.startsWith("Quote") || s === "Won" || s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed"))) return 3;
+              if (s === "Inspection In Progress") return 2;
+              if (s === "Inspection Arrived") return 1;
+              if (s === "Inspection En Route") return 0;
+              return -1;
+            })();
             return (
               <div className="pt-0.5">
                 <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">Inspection live visit</label>
                 <div className="grid grid-cols-5 gap-1">
                   {steps.map((step, idx) => {
                     const done = currentIdx >= 0 && idx <= currentIdx;
-                    const isNext = idx === currentIdx + 1;
+                    const isNext = currentIdx === -1 ? idx === 0 : idx === currentIdx + 1;
                     if (step.label === "Start") {
                       return (
                         <div key={step.status + "-group"} className="contents">
                           <button
                             key={step.status}
                             type="button"
-                            onClick={() => updateLeadField(l.id, { status: step.status })}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                              done ? "bg-amber-500 text-white" : isNext ? "bg-[#001f97] text-white hover:bg-[#001777]" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            disabled={done}
+                            onClick={() => {
+                              if (done) return;
+                              updateLeadField(l.id, { status: step.status });
+                            }}
+                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                              done
+                                ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                                : isNext
+                                ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                             }`}
-                            title={`Set status: ${step.status}`}
+                            title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                           >
                             {step.label}
                           </button>
@@ -327,9 +343,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             type="button"
                             onClick={() => openInspectionModal(l)}
                             className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                              l.inspectionReport?.status === "completed" ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-emerald-500 text-white shadow-2xs" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                             }`}
-                            title={l.inspectionReport?.status === "completed" ? "Inspection form completed" : "Open Inspection form"}
+                            title={l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "Inspection form completed" : "Open Inspection form"}
                           >
                             Inspection form
                           </button>
@@ -343,16 +359,23 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       <button
                         key={step.status}
                         type="button"
-                        disabled={isOnTheWayStep && onTheWayLoading === l.id}
-                        onClick={() =>
-                          isOnTheWayStep
-                            ? handleOnTheWay(l, eventType)
-                            : updateLeadField(l.id, { status: step.status })
-                        }
-                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
-                          done ? "bg-amber-500 text-white" : isNext ? "bg-[#001f97] text-white hover:bg-[#001777]" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        disabled={done || (isOnTheWayStep && onTheWayLoading === l.id)}
+                        onClick={() => {
+                          if (done) return;
+                          if (isOnTheWayStep) {
+                            handleOnTheWay(l, eventType);
+                          } else {
+                            updateLeadField(l.id, { status: step.status });
+                          }
+                        }}
+                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-60 disabled:cursor-wait ${
+                          done
+                            ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                            : isNext
+                            ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                         }`}
-                        title={`Set status: ${step.status}`}
+                        title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                       >
                         {isOnTheWayStep && onTheWayLoading === l.id ? "..." : step.label}
                       </button>
@@ -393,21 +416,34 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               Quote
             </button>
             {([
-              { label: "Sent", status: "Quote Sent", color: "bg-blue-600 hover:bg-blue-700" },
-              { label: "Job Booked", status: "Job Booked", color: "bg-violet-600 hover:bg-violet-700" },
-            ] as const).map((st) => (
-              <button
-                key={st.status}
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: st.status })}
-                className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                  l.status === st.status ? st.color + " text-white ring-2 ring-offset-1 ring-current" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                }`}
-                title={`Set: ${st.status}`}
-              >
-                {st.label}
-              </button>
-            ))}
+              { label: "Sent", status: "Quote Sent" },
+              { label: "Job Booked", status: "Job Booked" },
+            ] as const).map((st) => {
+              const s = l.status;
+              const sIdx = STATUS_LIST.indexOf(s || "");
+              const isDone = st.status === "Quote Sent"
+                ? (sIdx >= 9 || Boolean(s && (s === "Won" || s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")))
+                : (sIdx >= 12 || Boolean(l.jobAt) || Boolean(s && (s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")));
+              return (
+                <button
+                  key={st.status}
+                  type="button"
+                  disabled={isDone}
+                  onClick={() => {
+                    if (isDone) return;
+                    updateLeadField(l.id, { status: st.status });
+                  }}
+                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                    isDone
+                      ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
+                  }`}
+                  title={isDone ? `${st.label} (Completed)` : `Set: ${st.status}`}
+                >
+                  {st.label}
+                </button>
+              );
+            })}
             <select
               value={
                 assignableTechnicians.find(
@@ -445,14 +481,22 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Job Status */}
           {(() => {
             const steps = JOB_STEPS;
-            const currentIdx = steps.findIndex((s) => s.status === l.status);
+            const s = l.status;
+            const sIdx = STATUS_LIST.indexOf(s || "");
+            const currentIdx = (() => {
+              if (sIdx >= 19 || (s && (s === "Job Done" || s === "Completed" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty")))) return 3;
+              if (s === "Job Started" || s === "Job In Progress") return 2;
+              if (s === "Job Arrived") return 1;
+              if (s === "Job En Route") return 0;
+              return -1;
+            })();
             return (
               <div className="pt-0.5">
                 <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">Job Status</label>
                 <div className="grid grid-cols-5 gap-1">
                   {steps.map((step, idx) => {
                     const done = currentIdx >= 0 && idx <= currentIdx;
-                    const isNext = idx === currentIdx + 1;
+                    const isNext = currentIdx === -1 ? idx === 0 : idx === currentIdx + 1;
                     const isJobDone = step.status === "Job Done";
                     if (step.label === "Start") {
                       return (
@@ -460,26 +504,36 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           <button
                             key={step.status}
                             type="button"
-                            onClick={() => updateLeadField(l.id, { status: step.status })}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                              done ? "bg-amber-500 text-white" : isNext ? "bg-[#001f97] text-white hover:bg-[#001777]" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            disabled={done}
+                            onClick={() => {
+                              if (done) return;
+                              updateLeadField(l.id, { status: step.status });
+                            }}
+                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                              done
+                                ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                                : isNext
+                                ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                             }`}
-                            title={`Set status: ${step.status}`}
+                            title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                           >
                             {step.label}
                           </button>
                           <button
                             key="job-done-inline"
                             type="button"
-                            onClick={() => updateLeadField(l.id, { status: "Job Done" })}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                              l.status === "Job Done"
-                                ? "bg-sky-600 text-white ring-2 ring-offset-1 ring-current"
-                                : ["Job Done", "Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status)
-                                  ? "bg-sky-600 text-white"
-                                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            disabled={currentIdx >= 3}
+                            onClick={() => {
+                              if (currentIdx >= 3) return;
+                              updateLeadField(l.id, { status: "Job Done" });
+                            }}
+                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                              currentIdx >= 3
+                                ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                                : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                             }`}
-                            title="Set: Job Done"
+                            title={currentIdx >= 3 ? "Job Done (Completed)" : "Set: Job Done"}
                           >
                             Job Done
                           </button>
@@ -491,11 +545,19 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       <button
                         key={step.status}
                         type="button"
-                        onClick={() => updateLeadField(l.id, { status: step.status })}
-                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                          done ? "bg-amber-500 text-white" : isNext ? "bg-[#001f97] text-white hover:bg-[#001777]" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        disabled={done}
+                        onClick={() => {
+                          if (done) return;
+                          updateLeadField(l.id, { status: step.status });
+                        }}
+                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                          done
+                            ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                            : isNext
+                            ? "bg-[#001f97]/80 text-white hover:bg-[#001777] cursor-pointer"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                         }`}
-                        title={`Set status: ${step.status}`}
+                        title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
                       >
                         {step.label}
                       </button>
