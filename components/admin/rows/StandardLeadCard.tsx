@@ -49,9 +49,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const [payStep, setPayStep] = useState<PaymentStep>("idle");
   const [partialAmt, setPartialAmt] = useState<string>("");
 
-  const invoiceTotal = l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null;
+  const totalQuote = getLeadQuoteTotal(l);
+  const invoiceTotal = totalQuote && totalQuote > 0 ? totalQuote : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null);
   const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
+  const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
+  const remainingAmt = invoiceTotal && amountPaid !== null ? Math.max(0, invoiceTotal - amountPaid) : null;
   const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(l.status);
   const isPaymentPending = l.status === "Payment Pending";
 
@@ -706,19 +709,30 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             {/* Payment Received — smart Full / Partial dialog */}
             <div className="space-y-1">
               {payStep === "idle" && (
-                <button
-                  type="button"
-                  onClick={() => { if (!isPaymentReceived) setPayStep("ask_type"); }}
-                  className={`w-full px-2 py-2 rounded-lg text-xs font-bold text-center transition-colors ${
-                    isPaymentReceived
-                      ? "bg-green-600 text-white ring-2 ring-offset-1 ring-current shadow-xs cursor-default"
-                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-                  }`}
-                >
-                  {isPaymentReceived && l.paymentType === "partial"
-                    ? `Part Paid${l.amountPaid ? ` — AUD $${Number(l.amountPaid).toFixed(2)}` : ""}`
-                    : "Received"}
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => { if (!isPaymentReceived) setPayStep("ask_type"); }}
+                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold text-center transition-colors ${
+                      isPaymentReceived
+                        ? "bg-[#001f97] text-white shadow-2xs cursor-default"
+                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                    }`}
+                  >
+                    {isPaymentReceived && l.paymentType === "partial"
+                      ? `Part Paid${l.amountPaid ? ` — AUD $${Number(l.amountPaid).toFixed(2)}` : ""}`
+                      : "Received"}
+                  </button>
+                  {isPaymentReceived && l.paymentType === "partial" && remainingAmt !== null && (
+                    <div
+                      className="mt-1 px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-center text-[10px] font-bold text-rose-700 shadow-2xs flex items-center justify-center gap-1 min-w-0"
+                      title={`Invoice: ${invoiceTotalFmt || ""} | Paid: AUD $${(amountPaid || 0).toFixed(2)} | Remaining: AUD $${remainingAmt.toFixed(2)}`}
+                    >
+                      <span className="text-slate-600 font-semibold text-[9.5px]">Remaining:</span>
+                      <span className="font-black text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
               )}
 
               {payStep === "ask_type" && (

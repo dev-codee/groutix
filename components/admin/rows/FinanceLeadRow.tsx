@@ -6,7 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Check, Eye, DollarSign, X,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate } from "@/lib/adminHelpers";
+import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
@@ -48,9 +48,12 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const [payStep, setPayStep] = useState<PaymentStep>("idle");
   const [partialAmt, setPartialAmt] = useState<string>("");
 
-  const invoiceTotal = l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null;
+  const quoteTotal = getLeadQuoteTotal(l);
+  const invoiceTotal = quoteTotal && quoteTotal > 0 ? quoteTotal : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null);
   const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
+  const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
+  const remainingAmt = invoiceTotal && amountPaid !== null ? Math.max(0, invoiceTotal - amountPaid) : null;
 
   function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
     const updates: Partial<Lead> = {
@@ -275,22 +278,33 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             {/* Payment Received — smart button with Full/Partial dialog */}
             <div className="space-y-1">
               {payStep === "idle" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isPaymentReceived) return; // already received, no-op
-                    setPayStep("ask_type");
-                  }}
-                  className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
-                    isPaymentReceived
-                      ? "bg-[#001f97] text-white shadow-2xs cursor-default"
-                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-                  }`}
-                >
-                  {isPaymentReceived && l.paymentType === "partial"
-                    ? `Part Paid${l.amountPaid ? ` — AUD $${Number(l.amountPaid).toFixed(2)}` : ""}`
-                    : "Payment Received"}
-                </button>
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isPaymentReceived) return; // already received, no-op
+                      setPayStep("ask_type");
+                    }}
+                    className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
+                      isPaymentReceived
+                        ? "bg-[#001f97] text-white shadow-2xs cursor-default"
+                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                    }`}
+                  >
+                    {isPaymentReceived && l.paymentType === "partial"
+                      ? `Part Paid${l.amountPaid ? ` — AUD $${Number(l.amountPaid).toFixed(2)}` : ""}`
+                      : "Payment Received"}
+                  </button>
+                  {isPaymentReceived && l.paymentType === "partial" && remainingAmt !== null && (
+                    <div
+                      className="px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-center text-[10px] font-bold text-rose-700 shadow-2xs flex items-center justify-center gap-1 min-w-0"
+                      title={`Invoice: ${invoiceTotalFmt || ""} | Paid: AUD $${(amountPaid || 0).toFixed(2)} | Remaining: AUD $${remainingAmt.toFixed(2)}`}
+                    >
+                      <span className="text-slate-600 font-semibold text-[9.5px]">Remaining:</span>
+                      <span className="font-black text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
               )}
 
               {payStep === "ask_type" && (
@@ -456,6 +470,12 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 </span>
                 {isPaymentReceived && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
               </div>
+              {isPaymentReceived && l.paymentType === "partial" && remainingAmt !== null && (
+                <div className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[10px] font-bold text-rose-700 flex items-center justify-between min-w-0">
+                  <span className="text-slate-600 font-semibold text-[9.5px]">Remaining:</span>
+                  <span className="font-black text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>
+                </div>
+              )}
 
               <button
                 type="button"
