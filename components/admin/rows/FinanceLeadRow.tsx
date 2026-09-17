@@ -3,8 +3,9 @@
 import { useState } from "react";
 import {
   Phone, Mail, MapPin, MessageSquare, Send,
-  ShieldAlert, ShieldCheck, Check, Eye, DollarSign, X,
+  ShieldAlert, ShieldCheck, Check, Eye, DollarSign, X, StickyNote,
 } from "lucide-react";
+import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
@@ -159,6 +160,31 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             <MessageSquare className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
+
+          {(l.technicianNotes || l.scopeNotes) && (
+            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 text-xs shadow-2xs">
+              <StickyNote className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1 mb-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
+                    Technician Extra Notes
+                  </span>
+                  <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                    On-Site
+                  </span>
+                </div>
+                <p className="text-[11px] font-semibold text-slate-800 leading-snug whitespace-pre-wrap break-words">
+                  {l.technicianNotes || l.scopeNotes}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <ScopeOfWorkPanel
+            lead={l}
+            readOnly={true}
+            onSaveNotes={(id, notes) => updateLeadField(id, { technicianNotes: notes, scopeNotes: notes })}
+          />
 
           <div className="grid grid-cols-5 gap-1 pt-1">
             <button

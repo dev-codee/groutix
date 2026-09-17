@@ -2549,7 +2549,7 @@ export default function CrmDashboardPage() {
       "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints"
     );
     setInvoicePrice(lead.quoteAmount || 850);
-    setInvoiceExtraWork("");
+    setInvoiceExtraWork(lead.technicianNotes || lead.scopeNotes || "");
     setInvoiceExtraCharge(0);
     setInvoiceGst(10);
     // Default to Unpaid; only pre-mark Paid if payment was already recorded.
@@ -5391,7 +5391,14 @@ export default function CrmDashboardPage() {
                   />
                 </div>
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
-                  <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Optional)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Optional)</label>
+                    {(activeInvoiceLead.technicianNotes || activeInvoiceLead.scopeNotes) && (
+                      <span className="text-[9.5px] font-black text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                        From Technician Notes
+                      </span>
+                    )}
+                  </div>
                   <textarea
                     rows={2}
                     placeholder="e.g. Additional silicone replacement in second bathroom"
