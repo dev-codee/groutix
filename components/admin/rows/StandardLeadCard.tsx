@@ -321,7 +321,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <span>Inspection Booked</span>
               </button>
               {l.inspectionAt && (
-                <div className="mt-1 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-semibold text-blue-700 text-center">
+                <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
                   📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt)}
                 </div>
               )}
@@ -394,12 +394,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             key="inspection-form-inline"
                             type="button"
                             onClick={() => openInspectionModal(l)}
-                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-emerald-500 text-white shadow-2xs" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer truncate ${
+                              l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "bg-[#001f97] text-white shadow-2xs" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                             }`}
                             title={l.inspectionReport?.status === "completed" || currentIdx >= 3 ? "Inspection form completed" : "Open Inspection form"}
                           >
-                            Inspection form
+                            Insp. Form
                           </button>
                         </div>
                       );
@@ -420,7 +420,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             updateLeadField(l.id, { status: step.status });
                           }
                         }}
-                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-60 disabled:cursor-wait ${
+                        className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                          isOnTheWayStep && onTheWayLoading === l.id ? "opacity-60 cursor-wait " : ""
+                        }${
                           done
                             ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
                             : isNext
@@ -449,7 +451,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                className="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                 title="Send this lead back to the Booking Office (Login 1) with all inspection info so they can send the quote"
               >
                 <Send className="w-4 h-4" />
@@ -459,43 +461,46 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           </div>
 
           {/* Quote quick status */}
-          <div className="grid grid-cols-4 gap-1.5 items-center">
-            <button
-              onClick={() => openQuoteModal(l)}
-              className="px-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Open quote builder"
-            >
-              Quote
-            </button>
-            {([
-              { label: "Sent", status: "Quote Sent" },
-              { label: "Job Booked", status: "Job Booked" },
-            ] as const).map((st) => {
-              const s = l.status;
-              const sIdx = STATUS_LIST.indexOf(s || "");
-              const isDone = st.status === "Quote Sent"
-                ? (sIdx >= 9 || Boolean(s && (s === "Won" || s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")))
-                : (sIdx >= 12 || Boolean(l.jobAt) || Boolean(s && (s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")));
+          <div className="grid grid-cols-3 gap-1.5 items-center">
+            {(() => {
+              const isQuoteSent = Boolean(l.quoteNumber) || l.status === "Quote Sent" || ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
               return (
                 <button
-                  key={st.status}
+                  onClick={() => openQuoteModal(l)}
+                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer text-center truncate ${
+                    isQuoteSent
+                      ? "bg-[#001f97] text-white shadow-2xs hover:bg-[#001777]"
+                      : "text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
+                  }`}
+                  title="Open quote builder"
+                >
+                  Quote
+                </button>
+              );
+            })()}
+            {(() => {
+              const s = l.status;
+              const sIdx = STATUS_LIST.indexOf(s || "");
+              const isJobBookedDone = (sIdx >= 12 || Boolean(l.jobAt) || Boolean(s && (s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")));
+              return (
+                <button
                   type="button"
-                  disabled={isDone}
+                  disabled={isJobBookedDone}
                   onClick={() => {
-                    if (isDone) return;
-                    updateLeadField(l.id, { status: st.status });
+                    if (isJobBookedDone) return;
+                    updateLeadField(l.id, { status: "Job Booked" });
                   }}
-                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                    isDone
+                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors truncate ${
+                    isJobBookedDone
                       ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
                       : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                   }`}
-                  title={isDone ? `${st.label} (Completed)` : `Set: ${st.status}`}
+                  title={isJobBookedDone ? "Job Booked (Completed)" : "Set: Job Booked"}
                 >
-                  {st.label}
+                  Job Booked
                 </button>
               );
-            })}
+            })()}
             <select
               value={
                 assignableTechnicians.find(
@@ -525,7 +530,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           {/* Job booked time range */}
           {l.jobAt && (
-            <div className="mt-1 px-2 py-1 bg-violet-50 border border-violet-100 rounded-lg text-[10px] font-semibold text-violet-700 text-center">
+            <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
               📅 {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
             </div>
           )}
@@ -658,7 +663,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         <div className="space-y-2.5 min-w-0">
           <div className="p-2 space-y-1.5">
             {l.invoiceSentAt && (
-              <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-1">
+              <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50/80 text-[#001f97] border border-blue-200/80 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 shrink-0" />
                 <span>Invoice Sent — {fmtDate(l.invoiceSentAt)}</span>
               </div>
@@ -720,41 +725,49 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           {/* Finance quick actions */}
           <div className="grid grid-cols-1 gap-2">
-            {([
-              { label: "Invoice", step: "Invoice Sent", color: "bg-sky-600" },
-              { label: "Sent", step: "Payment Request", color: "bg-blue-600" },
-              { label: "Pending Payment", step: "Payment Pending", color: "bg-amber-600" },
-            ] as const).map((st) => {
-              const isActive = getStepActive(l, st.step);
-              const isPast =
-                (st.step === "Invoice Sent" && ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status)) ||
-                (st.step === "Payment Request" && ["Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status)) ||
-                (st.step === "Payment Pending" && ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status));
+            {/* Invoice Sent Button */}
+            {(() => {
+              const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
               return (
-                <div key={st.step} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => openInvoiceModal(l)}
+                  className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center cursor-pointer shadow-2xs ${
+                    isInvoiceSent
+                      ? "bg-[#001f97] text-white hover:bg-[#001777]"
+                      : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-[#001f97]"
+                  }`}
+                  title="Invoice Sent"
+                >
+                  Invoice Sent
+                </button>
+              );
+            })()}
+
+            {/* Pending Payment Button */}
+            {(() => {
+              const isPaymentPendingDone = ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
+              return (
+                <div className="space-y-1">
                   <button
                     type="button"
-                    disabled={isPast && st.step !== "Invoice Sent"}
+                    disabled={isPaymentPendingDone}
                     onClick={() => {
-                      if (st.step === "Invoice Sent") {
-                        openInvoiceModal(l);
-                      } else {
-                        if (isPast) return;
-                        updateLeadField(l.id, { status: st.step });
-                      }
+                      if (isPaymentPendingDone) return;
+                      updateLeadField(l.id, { status: "Payment Pending" });
                     }}
-                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center ${
-                      isActive
-                        ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs " + (isPast && st.step !== "Invoice Sent" ? "cursor-default select-none" : "cursor-pointer")
-                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center shadow-2xs ${
+                      isPaymentPendingDone
+                        ? "bg-[#001f97] text-white cursor-default select-none"
+                        : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
                     }`}
-                    title={st.label}
+                    title="Pending Payment"
                   >
-                    {st.label}
+                    Pending Payment
                   </button>
-                  {/* Total amount label under Pending Payment — ALWAYS visible, never hides */}
-                  {st.step === "Payment Pending" && invoiceTotalFmt && (
-                    <div className="flex items-center justify-between gap-1 px-2 py-1 rounded-lg bg-[#001f97]/8 border border-[#001f97]/20">
+                  {/* Total amount label under Pending Payment — ALWAYS visible */}
+                  {invoiceTotalFmt && (
+                    <div className="flex items-center justify-between gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 shadow-2xs">
                       <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-600">
                         <DollarSign className="w-3 h-3 text-[#001f97] shrink-0" />
                         Total:
@@ -764,7 +777,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   )}
                 </div>
               );
-            })}
+            })()}
 
             {/* Payment Received — smart Full / Partial dialog */}
             <div className="space-y-1">
@@ -923,13 +936,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               {
                 label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
                 step: "Warranty Sent" as const,
-                color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600" : "bg-slate-700",
+                color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600 text-white" : "bg-[#001f97] text-white",
                 onClick: () => openWarrantyModal(l),
               },
               {
                 label: "Completed Jobs",
                 step: "Completed" as const,
-                color: "bg-emerald-600",
+                color: "bg-emerald-600 text-white font-black",
                 onClick: () => {
                   if (!confirmCompleteIfDues()) return;
                   const updates: Record<string, unknown> = { status: "Completed" };
@@ -950,10 +963,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   key={st.step}
                   type="button"
                   onClick={st.onClick}
-                  className={`w-full px-2 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors text-center ${
+                  className={`w-full px-2 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors text-center shadow-2xs ${
                     isActive
-                      ? st.color + " text-white ring-2 ring-offset-1 ring-current shadow-xs"
-                      : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      ? st.color + " ring-1 ring-offset-1 ring-current shadow-xs"
+                      : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-slate-300"
                   }`}
                   title={st.label}
                 >
