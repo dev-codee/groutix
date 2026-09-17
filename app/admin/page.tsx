@@ -2605,13 +2605,21 @@ export default function CrmDashboardPage() {
                 if (t.name.trim().toLowerCase() === targetName || t.name.trim().toLowerCase() === targetUser) targetAllIds.add(t.id);
               });
 
-              const isAssigned =
-                Boolean(l.technicianUsername && targetUser && l.technicianUsername.toLowerCase() === targetUser) ||
-                Boolean(l.technicianId && targetAllIds.has(l.technicianId)) ||
-                Boolean(l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
-                Boolean(l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser)) ||
-                Boolean(targetId && l.inspectorId === targetId) ||
-                Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
+              const hasTechField = Boolean(l.technicianId || l.technician || l.technicianUsername);
+
+              const isAssigned = hasTechField
+                ? Boolean(
+                    (l.technicianUsername && targetUser && l.technicianUsername.toLowerCase() === targetUser) ||
+                    (l.technicianId && targetAllIds.has(l.technicianId)) ||
+                    (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+                    (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser))
+                  )
+                : Boolean(
+                    l.assigned &&
+                    l.assigned.trim().toLowerCase() !== "unassigned" &&
+                    isTechnicianName(l.assigned) &&
+                    (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser)
+                  );
 
               if (!isAssigned) return false;
               return true;
