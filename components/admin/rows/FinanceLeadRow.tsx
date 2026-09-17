@@ -56,6 +56,23 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
   const remainingAmt = invoiceTotal && amountPaid !== null ? Math.max(0, invoiceTotal - amountPaid) : null;
 
+  const hasRemainingDues = (() => {
+    if (l.paymentType === "full") return false;
+    if (remainingAmt !== null && remainingAmt <= 0) return false;
+    if (l.paymentType === "partial") return true;
+    if (remainingAmt !== null && remainingAmt > 0) return true;
+    if (!isPaymentReceived) return true;
+    return false;
+  })();
+
+  function confirmCompleteIfDues(): boolean {
+    if (!hasRemainingDues) return true;
+    const msg = remainingAmt && remainingAmt > 0
+      ? `Are you sure you want to complete this lead without the remaining payment of AUD $${remainingAmt.toFixed(2)}?`
+      : "Are you sure you want to complete this lead without receiving full payment?";
+    return window.confirm(msg);
+  }
+
   function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
     const updates: Partial<Lead> = {
       status: "Payment Received",
@@ -205,7 +222,11 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
               <select
                 value={l.status || "Job Done"}
-                onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  if (newStatus === "Completed" && !confirmCompleteIfDues()) return;
+                  updateLeadField(l.id, { status: newStatus });
+                }}
                 className="w-full h-[34px] text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
               >
                 {statusOptions.map((s) => (
@@ -503,6 +524,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 disabled={isCompleted}
                 onClick={() => {
                   if (isCompleted) return;
+                  if (!confirmCompleteIfDues()) return;
                   const updates: Record<string, unknown> = { status: "Completed" };
                   if (l.warrantyProvided === false || l.warranty?.provided === false) {
                     updates.warrantyProvided = false;
