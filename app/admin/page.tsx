@@ -2956,7 +2956,7 @@ export default function CrmDashboardPage() {
                     }`}
                 >
                   {role === "finance"
-                    ? scopedLeads.filter((l) => FINANCE_STATUSES.includes(l.status)).length
+                    ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
                     : role === "intake"
                       ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
                       : role === "technician"
