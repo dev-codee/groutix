@@ -82,6 +82,44 @@ function getSlotKeyFromTime(timeStr?: string): string {
   return `${displayH}:${slotMin} ${period}`;
 }
 
+function formatScheduleWindow(timeStr?: string, durationMinutes: number = 60) {
+  if (!timeStr) return { start: "9:00 AM", end: "10:00 AM", range: "9:00 AM – 10:00 AM", durationLabel: "1h" };
+  const [hStr, mStr] = timeStr.split(":");
+  let h = parseInt(hStr, 10);
+  let m = parseInt(mStr || "0", 10);
+  if (isNaN(h)) h = 9;
+  if (isNaN(m)) m = 0;
+
+  const startTotalMins = h * 60 + m;
+  const endTotalMins = startTotalMins + durationMinutes;
+
+  const startH = Math.floor(startTotalMins / 60);
+  const startM = startTotalMins % 60;
+  const endH = Math.floor(endTotalMins / 60);
+  const endM = endTotalMins % 60;
+
+  const formatPart = (hour: number, min: number) => {
+    const period = hour >= 12 && hour < 24 ? "PM" : "AM";
+    const displayH = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayH}:${String(min).padStart(2, "0")} ${period}`;
+  };
+
+  const startFormatted = formatPart(startH, startM);
+  const endFormatted = formatPart(endH, endM);
+
+  const hours = Math.floor(durationMinutes / 60);
+  const mins = durationMinutes % 60;
+  const durationLabel = hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
+
+  return {
+    start: startFormatted,
+    end: endFormatted,
+    range: `${startFormatted} – ${endFormatted}`,
+    durationLabel,
+    totalMinutes: durationMinutes,
+  };
+}
+
 // Helper to get initials for staff avatar
 function getInitials(name: string, role?: string): { text: string; badge: string } {
   const clean = (name || "Field Staff").trim();
@@ -311,11 +349,19 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return dayAppts.map((item, idx) => {
       const area = resolveArea(item.lead.address || item.lead.city);
       const isInsp = item.type === "inspection";
-      const timeStr = `${formatApptTime(`${targetDate}T${item.time}`)}`;
+      const prevAppt = idx > 0 ? dayAppts[idx - 1] : null;
+      const prevSuburb = prevAppt
+        ? resolveArea(prevAppt.lead.address || prevAppt.lead.city).suburb
+        : "Tullamarine";
+      const travel = calculateTravel(prevSuburb, area.suburb);
+      const durationMins = isInsp ? (40 + travel.durationMinutes * 2) : 120;
+      const windowInfo = formatScheduleWindow(item.time, durationMins);
+
       return {
         no: idx + 1,
         leadId: item.lead.id,
-        time: timeStr,
+        time: windowInfo.range,
+        durationLabel: windowInfo.durationLabel,
         name: item.lead.name || "Customer",
         suburb: area.suburb || item.lead.city || "Melbourne",
         type: isInsp ? "Inspection" : "Job",
@@ -516,10 +562,6 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             Job
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            Travel
-          </span>
-          <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
             On Hold
           </span>
@@ -618,16 +660,15 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                                 resolveArea(prevAppt.lead.address || prevAppt.lead.city).suburb,
                                 area.suburb
                               )
-                            : null;
+                            : calculateTravel("Tullamarine", area.suburb);
+
+                          // Inspection will take approx 40 min + traveling time one way * 2 (not shown separately)
+                          const oneWayTravelMins = travelFromPrev.durationMinutes;
+                          const totalDurationMins = isInspection ? (40 + (oneWayTravelMins * 2)) : 120;
+                          const scheduleWindow = formatScheduleWindow(item.time, totalDurationMins);
 
                           return (
                             <div key={`${item.lead.id}-${item.time}`} className="space-y-1">
-                              {travelFromPrev && (
-                                <div className="px-2 py-0.5 rounded-md bg-slate-100/90 border border-slate-200 text-[9px] text-slate-600 font-semibold flex items-center gap-1 shadow-2xs">
-                                  <span>🚘 Travel ({travelFromPrev.durationMinutes} min)</span>
-                                </div>
-                              )}
-
                               <div
                                 onClick={() => onOpenLead(item.lead.id)}
                                 className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-[1.01] ${
@@ -635,12 +676,24 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                                     ? "bg-blue-50 hover:bg-blue-100/80 border-blue-200 text-blue-950"
                                     : "bg-emerald-50 hover:bg-emerald-100/80 border-emerald-200 text-emerald-950"
                                 }`}
-                                title={`Click to open Lead #${item.lead.jobNo || item.lead.id}`}
+                                title={`Click to open Lead #${item.lead.jobNo || item.lead.id} (${scheduleWindow.range})`}
                               >
-                                <div className="text-[10px] font-bold opacity-80">
-                                  {formatApptTime(`${day.dateStr}T${item.time}`)}
+                                <div className="flex items-center justify-between text-[10px] font-bold">
+                                  <span className="flex items-center gap-1 font-extrabold text-blue-950">
+                                    <Clock className="w-3 h-3 text-blue-600 shrink-0" />
+                                    {scheduleWindow.range}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] px-1.5 py-0.2 rounded-md font-black ${
+                                      isInspection
+                                        ? "bg-blue-100/80 text-blue-800"
+                                        : "bg-emerald-100/80 text-emerald-800"
+                                    }`}
+                                  >
+                                    {scheduleWindow.durationLabel}
+                                  </span>
                                 </div>
-                                <div className="font-extrabold text-xs truncate">
+                                <div className="font-extrabold text-xs truncate mt-0.5">
                                   #{item.lead.jobNo || item.lead.id.slice(-4)} {item.lead.name || "Customer"}
                                 </div>
                                 <div className="text-[11px] text-slate-600 font-medium truncate">
@@ -684,13 +737,22 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 }
                 const inspCount = dayAppts.filter((a) => a.type === "inspection").length;
                 const jobCount = dayAppts.filter((a) => a.type === "job").length;
-                const totalHours = (inspCount * 1.0 + jobCount * 2.0).toFixed(1);
+                let totalMins = 0;
                 let totalKm = 0;
                 for (let i = 0; i < dayAppts.length; i++) {
-                  const curSuburb = resolveArea(dayAppts[i].lead.address || dayAppts[i].lead.city).suburb;
+                  const cur = dayAppts[i];
+                  const curSuburb = resolveArea(cur.lead.address || cur.lead.city).suburb;
                   const prevSuburb = i > 0 ? resolveArea(dayAppts[i - 1].lead.address || dayAppts[i - 1].lead.city).suburb : "Tullamarine";
-                  totalKm += calculateDistanceBetweenSuburbs(prevSuburb, curSuburb);
+                  const travel = calculateTravel(prevSuburb, curSuburb);
+                  totalKm += travel.distanceKm;
+
+                  if (cur.type === "inspection") {
+                    totalMins += 40 + (travel.durationMinutes * 2);
+                  } else {
+                    totalMins += 120;
+                  }
                 }
+                const totalHours = (totalMins / 60).toFixed(1);
                 return (
                   <div key={day.dateStr} className="p-1">
                     <div className="text-slate-800">
