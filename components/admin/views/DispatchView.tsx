@@ -53,7 +53,7 @@ const CORRIDOR_OPTIONS = [
   { value: "mon_lower1", label: "Monday: Brunswick → St Kilda → Brighton" },
   { value: "tue_lower2", label: "Tuesday: Richmond → Hawthorn → Kew" },
   { value: "wed_lower3", label: "Wednesday: Ringwood → Croydon → Lilydale" },
-  { value: "thu_northeast", label: "Thursday: Bundoora → Greensborough" },
+  { value: "thu_bundoora", label: "Thursday: Bundoora → Greensborough" },
   { value: "fri_north", label: "Friday: Craigieburn → Mickleham" },
   { value: "sat_melton", label: "Saturday: Melton → Sunbury → Caroline Springs" },
 ];

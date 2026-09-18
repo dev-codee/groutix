@@ -17,8 +17,14 @@
 export const TULLAMARINE = { lat: -37.7008, lng: 144.8869 };
 export const RADIUS_KM = 15;
 
-// Appointment start times offered each day (1-hour slots: 9-10, 10-11, 11-12, 12-1, 1-2, 2-3).
-export const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"];
+// Standard appointment start times (Mon–Thu & Sat: 9:00 AM – 5:00 PM)
+export const STANDARD_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
+
+// Friday-specific start times (strictly 10:00 AM – 3:00 PM: 10:00, 11:00, 12:00, 13:00, 14:00)
+export const FRIDAY_TIME_SLOTS = ["10:00", "11:00", "12:00", "13:00", "14:00"];
+
+// All available appointment start times offered across any open business day
+export const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
 
 /** Friendly 1-hour window label: "09:00" → "9:00 AM – 10:00 AM" */
 export function formatSlotRange(t: string): string {
@@ -226,7 +232,7 @@ const ZONE_WEEKDAY: Record<OuterZone, number> = {
 };
 
 // Melbourne suburbs mapped to their centroid coordinates and assigned outer zone.
-const SUBURBS: { name: string; lat: number; lng: number; outerZone: OuterZone }[] = [
+export const SUBURBS: { name: string; lat: number; lng: number; outerZone: OuterZone }[] = [
   // ── Inner / North-West (15km circle + close-in) ──
   { name: "tullamarine", lat: -37.7008, lng: 144.8869, outerZone: "fri_north" },
   { name: "melbourne airport", lat: -37.6690, lng: 144.8410, outerZone: "fri_north" },
@@ -680,9 +686,12 @@ export function computeAvailability(
     if (!weekdays.has(wd)) continue;
 
     const locked = bookedByDate.get(dateStr) || new Set<string>();
+    // Friday timing: strictly 10:00 AM – 3:00 PM; Other days: 9:00 AM – 5:00 PM
+    const daySlots = wd === 5 ? FRIDAY_TIME_SLOTS : STANDARD_TIME_SLOTS;
+
     // Keep every slot, flagging the ones already taken so the customer can see
     // them as "Booked" rather than them silently disappearing.
-    const slots: TimeSlot[] = TIME_SLOTS.map((t) => ({ time: t, booked: locked.has(t) }));
+    const slots: TimeSlot[] = daySlots.map((t) => ({ time: t, booked: locked.has(t) }));
     const times = slots.filter((s) => !s.booked).map((s) => s.time);
 
     out.push({
@@ -709,7 +718,6 @@ export function ymd(d: Date): string {
 
 /** Is a chosen date/time actually offered for this area (defensive server check)? */
 export function isSlotOffered(area: AreaInfo, date: string, time: string): boolean {
-  if (!TIME_SLOTS.includes(time)) return false;
   if (MIN_BOOKING_DATE && date < MIN_BOOKING_DATE) return false;
   const d = new Date(date + "T00:00:00");
   if (Number.isNaN(d.getTime())) return false;
@@ -717,6 +725,10 @@ export function isSlotOffered(area: AreaInfo, date: string, time: string): boole
   // Do not take Sunday bookings for inspections or jobs
   if (wd === 0) return false;
   if (!allowedWeekdays(area).has(wd)) return false;
+
+  // Friday is strictly 10:00 AM – 3:00 PM; Other days are 9:00 AM – 5:00 PM
+  const allowedSlots = wd === 5 ? FRIDAY_TIME_SLOTS : STANDARD_TIME_SLOTS;
+  if (!allowedSlots.includes(time)) return false;
 
   // Must be in the future within the horizon.
   const today = new Date();

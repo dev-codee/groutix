@@ -79,7 +79,7 @@ export const STANDARD_DISPATCH_STAFF = [
 export function getSuburbCoords(suburbName?: string | null): { lat: number; lng: number } | null {
   if (!suburbName) return null;
   const lower = suburbName.toLowerCase().trim();
-  const found = SUBURBS.find((s) => s.name.toLowerCase() === lower);
+  const found = SUBURBS.find((s: (typeof SUBURBS)[number]) => s.name.toLowerCase() === lower);
   return found ? { lat: found.lat, lng: found.lng } : null;
 }
 
@@ -254,7 +254,7 @@ export function suggestBestDispatchSlots(params: {
       if (area.zone === "mon_lower1" && dayOfWeek === 1) corridorMatch = true;
       if (area.zone === "tue_lower2" && dayOfWeek === 2) corridorMatch = true;
       if (area.zone === "wed_lower3" && dayOfWeek === 3) corridorMatch = true;
-      if (area.zone === "thu_northeast" && dayOfWeek === 4) corridorMatch = true;
+      if (area.zone === "thu_bundoora" && dayOfWeek === 4) corridorMatch = true;
       if (area.zone === "fri_north" && dayOfWeek === 5) corridorMatch = true;
       if ((area.zone === "sat_melton" || area.zone === "sun_stalbans") && dayOfWeek === 6) corridorMatch = true;
 
