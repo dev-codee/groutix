@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import {
   CalendarDays, Search, Wrench, Briefcase, Mail, Plus,
   FileText, Settings, CheckCircle2, ArrowRight, ShieldCheck,
@@ -635,6 +635,7 @@ export function ManagerDashboard() {
       list.push({
         dateObj: d,
         dateKey: _dayKey(d.toISOString()),
+        dayOfWeek: d.getDay(),
         dayName: d.toLocaleDateString("en-AU", { weekday: "short" }),
         fullDate: d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }),
       });
@@ -664,42 +665,100 @@ export function ManagerDashboard() {
     return [];
   }, [assignableTechnicians, staff]);
 
-  // Compute 9 hourly slot states (8am-4pm) per technician per day from real booked leads
-  const hoursList = [8, 9, 10, 11, 12, 1, 2, 3, 4];
+  // Compute clean status per technician per day from real booked leads
+  const getTechDayStatus = useCallback(
+    (techName: string, dateKey: string, dayOfWeek: number) => {
+      if (dayOfWeek === 0) {
+        return {
+          status: "off" as const,
+          label: "Day Off",
+          subLabel: "Sunday Closed",
+          count: 0,
+          morningBooked: false,
+          middayBooked: false,
+          afternoonBooked: false,
+          leads: [] as Lead[],
+        };
+      }
 
-  const getTechSlotType = (techName: string, dateKey: string, hourNum: number) => {
-    // Lunch break at 12pm by default
-    if (hourNum === 12) return "K"; // Break
-
-    const lowerTech = techName.toLowerCase();
-    const techLeads = scopedLeads.filter(
-      (l) => {
+      const lowerTech = techName.toLowerCase();
+      const techLeads = scopedLeads.filter((l) => {
+        if (l.status === "Lost" || l.status === "Cancelled") return false;
         const a = (l.technician || "").toLowerCase();
         const b = (l.assigned || "").toLowerCase();
         const c = (l.technicianId || "").toLowerCase();
-        return a === lowerTech || b === lowerTech || c === lowerTech || a.includes(lowerTech) || b.includes(lowerTech);
-      }
-    );
-
-    const dayLeads = techLeads.filter((l) => {
-      const d = l.inspectionAt || l.jobAt;
-      return d && _dayKey(d) === dateKey;
-    });
-
-    if (dayLeads.length > 2) return "L"; // Limited / heavy schedule
-    if (dayLeads.length > 0) {
-      const hasHourAppt = dayLeads.some((l) => {
-        const d = l.inspectionAt || l.jobAt;
-        if (!d) return false;
-        const h = new Date(d).getHours();
-        const converted = h > 12 ? h - 12 : h;
-        return converted === hourNum;
+        const d = (l.inspectorId || "").toLowerCase();
+        return (
+          a === lowerTech ||
+          b === lowerTech ||
+          c === lowerTech ||
+          d === lowerTech ||
+          a.includes(lowerTech) ||
+          b.includes(lowerTech)
+        );
       });
-      return hasHourAppt ? "B" : "A"; // Booked or Available
-    }
 
-    return "A"; // Available
-  };
+      const dayLeads = techLeads.filter((l) => {
+        const d = l.inspectionAt || l.jobAt;
+        return d && _dayKey(d) === dateKey;
+      });
+
+      // Analyze time segments
+      let morningBooked = false;
+      let middayBooked = false;
+      let afternoonBooked = false;
+
+      dayLeads.forEach((l) => {
+        const d = l.inspectionAt || l.jobAt;
+        if (!d) return;
+        const hour = new Date(d).getHours();
+        if (hour < 11) morningBooked = true;
+        else if (hour < 14) middayBooked = true;
+        else afternoonBooked = true;
+      });
+
+      if (dayLeads.length === 0) {
+        return {
+          status: "available" as const,
+          label: "Available",
+          subLabel: "Free all day",
+          count: 0,
+          morningBooked: false,
+          middayBooked: false,
+          afternoonBooked: false,
+          leads: [] as Lead[],
+        };
+      }
+
+      if (dayLeads.length === 1) {
+        const first = dayLeads[0];
+        const time = formatApptTime(first.inspectionAt || first.jobAt) || "Booked";
+        const suburb = getSuburb(first.address) || first.city || "";
+        return {
+          status: "booked" as const,
+          label: "1 Booking",
+          subLabel: `${time}${suburb ? ` · ${suburb}` : ""}`,
+          count: 1,
+          morningBooked,
+          middayBooked,
+          afternoonBooked,
+          leads: dayLeads,
+        };
+      }
+
+      return {
+        status: "busy" as const,
+        label: `${dayLeads.length} Bookings`,
+        subLabel: "Heavy schedule",
+        count: dayLeads.length,
+        morningBooked,
+        middayBooked,
+        afternoonBooked,
+        leads: dayLeads,
+      };
+    },
+    [scopedLeads]
+  );
 
   const statusCards = [
     {
@@ -893,14 +952,6 @@ export function ManagerDashboard() {
     },
   ];
 
-  const getSlotBg = (type: string) => {
-    switch (type) {
-      case "B": return "bg-[#FB7185]"; // Booked (pink)
-      case "K": return "bg-[#94A3B8]"; // Break (grey)
-      case "L": return "bg-[#FBBF24]"; // Limited (yellow)
-      default: return "bg-[#10B981]";  // Available (green)
-    }
-  };
 
   return (
     <div className="-mt-2 sm:-mt-4 space-y-4">
@@ -1329,28 +1380,33 @@ export function ManagerDashboard() {
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-4">
         {/* Header with Title, Legend & Date Navigator */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <h2 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
-            Available Slots (Next 7 Days)
-          </h2>
+          <div>
+            <h2 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Available Slots (Next 7 Days)
+            </h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Field technician work availability and booking status at a glance.
+            </p>
+          </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-600">
             {/* Legend */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#10B981]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span>Available</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#FB7185]" />
-                <span>Booked</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                <span>1 Booking</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#94A3B8]" />
-                <span>Break</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span>Busy / Multiple</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-[#FBBF24]" />
-                <span>Limited</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                <span>Day Off</span>
               </div>
             </div>
 
@@ -1384,17 +1440,14 @@ export function ManagerDashboard() {
           <table className="w-full text-left text-xs border-collapse min-w-[840px]">
             <thead>
               <tr className="border-b border-slate-100 text-slate-500 font-bold">
-                <th className="py-2 px-3 min-w-[180px]">Technician</th>
-                <th className="py-2 px-3 min-w-[100px]">Role</th>
+                <th className="py-2.5 px-3 min-w-[170px]">Technician</th>
+                <th className="py-2.5 px-3 min-w-[120px]">Role</th>
                 {rosterDays.map((d, idx) => (
-                  <th key={idx} className="py-2 px-2 text-center border-l border-slate-100">
-                    <div className="font-extrabold text-blue-700">{d.dayName}</div>
-                    <div className="text-[10px] text-slate-500">{d.fullDate}</div>
-                    <div className="flex items-center justify-between gap-0.5 text-[8px] font-semibold text-slate-400 mt-1">
-                      {hoursList.map((h) => (
-                        <span key={h} className="flex-1 text-center">{h}</span>
-                      ))}
+                  <th key={idx} className="py-2.5 px-2 text-center border-l border-slate-100 bg-slate-50/40">
+                    <div className={`font-extrabold text-xs ${d.dayOfWeek === 0 ? "text-rose-600" : "text-blue-950"}`}>
+                      {d.dayName}
                     </div>
+                    <div className="text-[10px] text-slate-500 font-semibold">{d.fullDate}</div>
                   </th>
                 ))}
               </tr>
@@ -1411,7 +1464,7 @@ export function ManagerDashboard() {
                 <tr key={tech.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                         {tech.avatar}
                       </div>
                       <div>
@@ -1424,25 +1477,92 @@ export function ManagerDashboard() {
                   </td>
 
                   {/* 7 Days Slots */}
-                  {rosterDays.map((day, dIdx) => (
-                    <td key={dIdx} className="py-3 px-2 border-l border-slate-100">
-                      <div className="flex items-center justify-between gap-0.5">
-                        {hoursList.map((h, sIdx) => {
-                          const slotType = getTechSlotType(tech.name, day.dateKey, h);
-                          const slotBg = getSlotBg(slotType);
-                          const slotLabel = slotType === "A" ? "Available" : slotType === "B" ? "Booked" : slotType === "K" ? "Break" : "Limited";
-                          return (
-                            <div
-                              key={sIdx}
-                              onClick={() => setCurrentView("dispatch")}
-                              className={`h-5 flex-1 rounded-xs ${slotBg} transition-all hover:scale-110 shadow-2xs cursor-pointer`}
-                              title={`${tech.name} - ${day.dayName} ${day.fullDate} @ ${h}:00 (${slotLabel}) - Click to view dispatch`}
+                  {rosterDays.map((day, dIdx) => {
+                    const dayStatus = getTechDayStatus(tech.name, day.dateKey, day.dayOfWeek);
+
+                    return (
+                      <td key={dIdx} className="p-2 border-l border-slate-100 align-middle">
+                        <div
+                          onClick={() => setCurrentView("dispatch")}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] flex flex-col items-center justify-center min-h-[54px] text-center ${
+                            dayStatus.status === "available"
+                              ? "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/70 text-emerald-950"
+                              : dayStatus.status === "booked"
+                              ? "bg-blue-50/70 border-blue-200/80 hover:bg-blue-100/70 text-blue-950"
+                              : dayStatus.status === "busy"
+                              ? "bg-rose-50/70 border-rose-200/80 hover:bg-rose-100/70 text-rose-950"
+                              : "bg-slate-50/80 border-slate-200/70 text-slate-400"
+                          }`}
+                          title={
+                            dayStatus.leads.length > 0
+                              ? `${tech.name} on ${day.dayName} ${day.fullDate}:\n` +
+                                dayStatus.leads
+                                  .map(
+                                    (l: Lead) =>
+                                      `• ${formatApptTime(l.inspectionAt || l.jobAt)} - ${l.name || "Customer"} (${
+                                        l.address || "Melbourne"
+                                      })`
+                                  )
+                                  .join("\n") +
+                                "\nClick to open in Dispatch"
+                              : `${tech.name} - ${day.dayName} ${day.fullDate} (${dayStatus.label}) - Click to open Dispatch`
+                          }
+                        >
+                          <div className="flex items-center gap-1.5 font-bold text-xs">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                dayStatus.status === "available"
+                                  ? "bg-emerald-500"
+                                  : dayStatus.status === "booked"
+                                  ? "bg-blue-600"
+                                  : dayStatus.status === "busy"
+                                  ? "bg-rose-500"
+                                  : "bg-slate-300"
+                              }`}
                             />
-                          );
-                        })}
-                      </div>
-                    </td>
-                  ))}
+                            <span className="truncate">{dayStatus.label}</span>
+                          </div>
+                          <div className="text-[10px] opacity-80 font-medium truncate mt-0.5 max-w-[115px]">
+                            {dayStatus.subLabel}
+                          </div>
+
+                          {/* 3-segment visual time indicator: Morning, Midday, Afternoon */}
+                          <div className="flex items-center gap-1 w-full mt-1.5 px-1">
+                            <div
+                              className={`h-1 flex-1 rounded-full ${
+                                dayStatus.status === "off"
+                                  ? "bg-slate-200"
+                                  : dayStatus.morningBooked
+                                  ? "bg-blue-600"
+                                  : "bg-emerald-400/80"
+                              }`}
+                              title="Morning (8:00 AM - 11:30 AM)"
+                            />
+                            <div
+                              className={`h-1 flex-1 rounded-full ${
+                                dayStatus.status === "off"
+                                  ? "bg-slate-200"
+                                  : dayStatus.middayBooked
+                                  ? "bg-blue-600"
+                                  : "bg-emerald-400/80"
+                              }`}
+                              title="Midday (11:30 AM - 2:00 PM)"
+                            />
+                            <div
+                              className={`h-1 flex-1 rounded-full ${
+                                dayStatus.status === "off"
+                                  ? "bg-slate-200"
+                                  : dayStatus.afternoonBooked
+                                  ? "bg-blue-600"
+                                  : "bg-emerald-400/80"
+                              }`}
+                              title="Afternoon (2:00 PM - 5:00 PM)"
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

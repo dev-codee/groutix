@@ -495,10 +495,6 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             Job
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            Break
-          </span>
-          <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
             Travel
           </span>
@@ -634,11 +630,6 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               </div>
                             )}
 
-                            {item.time === "12:00" && (
-                              <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-1.5">
-                                ☕ Break
-                              </div>
-                            )}
 
                             <div
                               onClick={() => onOpenLead(item.lead.id)}
