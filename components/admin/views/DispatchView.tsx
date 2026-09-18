@@ -149,10 +149,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return map;
   }, [scopedLeads]);
 
-  // Generate 7 days for the active week (Mon -> Sun) with dynamic staff identification
+  // Generate 7 days for the active week (Mon -> Sun)
   const weekDays = useMemo(() => {
     const start = new Date(currentWeekStart + "T00:00:00");
-    const fieldStaff = assignableTechnicians.filter((t) => t.active !== false);
 
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
@@ -161,19 +160,6 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ...
       const rule = DISPATCH_WORKING_HOURS[dayOfWeek];
 
-      const dayAppts = scheduledByDate.get(iso) || [];
-      const scheduledTech = dayAppts[0]?.tech;
-      const fallbackStaff = fieldStaff[i % Math.max(1, fieldStaff.length)]?.name || fieldStaff[0]?.name || "Field Team";
-      const staffName = scheduledTech && scheduledTech !== "Inspector Assigned" && scheduledTech !== "Tech Assigned"
-        ? scheduledTech
-        : fallbackStaff;
-
-      const staffRole = /inspect/i.test(staffName)
-        ? "Inspector (Field Visit)"
-        : /tech/i.test(staffName)
-        ? "Technician (Jobs Only)"
-        : "Inspector + Technician";
-
       return {
         dateStr: iso,
         dayOfWeek,
@@ -181,11 +167,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         formattedDate: d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }),
         isOpen: rule?.isOpen ?? true,
         hoursLabel: rule?.label ?? "Closed (OFF)",
-        staffName,
-        staffRole,
       };
     });
-  }, [currentWeekStart, assignableTechnicians, scheduledByDate]);
+  }, [currentWeekStart]);
 
   // Week Navigator controls
   const handlePrevWeek = () => {
@@ -269,12 +253,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     if (techFilter !== "all") {
       return `Today's Route (${techFilter})`;
     }
-    const staffWithStops = todayRouteStops[0]?.staff;
-    if (staffWithStops && staffWithStops !== "Inspector Assigned" && staffWithStops !== "Tech Assigned") {
-      return `Today's Route (${staffWithStops})`;
-    }
-    return `Today's Route (${todayRouteStops.length} Stop${todayRouteStops.length === 1 ? "" : "s"})`;
-  }, [techFilter, todayRouteStops]);
+    return "Today's Route";
+  }, [techFilter]);
 
   // Dynamic Route Map Embed URL from real stop suburbs
   const mapEmbedUrl = useMemo(() => {
@@ -484,9 +464,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
               </div>
 
               {/* Columns 1-7: Day & Staff Cards */}
-              {weekDays.map((day, dIdx) => {
-                const avatar = getInitials(day.staffName, day.staffRole);
+              {weekDays.map((day) => {
                 const isSunday = day.dayOfWeek === 0;
+                const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
 
                 return (
                   <div
@@ -504,21 +484,29 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                       <div className="text-[9px] text-slate-500 font-medium">({day.hoursLabel})</div>
                     </div>
 
-                    {/* Assigned Staff Avatar Pill */}
+                    {/* Filtered Staff or Booking Count Badge */}
                     {!isSunday ? (
-                      <div className="w-full bg-slate-50 border border-slate-200/90 rounded-xl p-1.5 flex items-center gap-1.5 text-left">
-                        <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                          {avatar.text}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-extrabold text-blue-950 truncate leading-tight">
-                            {day.staffName}
+                      techFilter !== "all" ? (
+                        <div className="w-full bg-blue-50/80 border border-blue-200/90 rounded-xl p-1.5 flex items-center gap-1.5 text-left">
+                          <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                            {getInitials(techFilter).text}
                           </div>
-                          <div className="text-[8px] text-slate-500 truncate leading-tight font-medium">
-                            {avatar.badge}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-extrabold text-blue-950 truncate leading-tight">
+                              {techFilter}
+                            </div>
+                            <div className="text-[8px] text-blue-600 truncate leading-tight font-medium">
+                              Field Schedule
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-1 px-2 text-center">
+                          <div className="text-[10px] font-bold text-slate-700">
+                            {dayAppts.length} Booking{dayAppts.length === 1 ? "" : "s"}
+                          </div>
+                        </div>
+                      )
                     ) : (
                       <div className="text-center py-1 text-xs font-bold text-rose-600 uppercase tracking-wider">
                         OFF
