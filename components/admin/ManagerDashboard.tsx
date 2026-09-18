@@ -368,6 +368,117 @@ export function ManagerDashboard() {
   const inspectorCount = useMemo(() => activeStaffRosterList.filter((s) => s.isInspector).length, [activeStaffRosterList]);
   const technicianCount = useMemo(() => activeStaffRosterList.filter((s) => !s.isInspector).length, [activeStaffRosterList]);
 
+const ROSTER_SLOT_HOURS = [
+  { hour: 8, label: "8", time: "8:00 AM" },
+  { hour: 9, label: "9", time: "9:00 AM" },
+  { hour: 10, label: "10", time: "10:00 AM" },
+  { hour: 11, label: "11", time: "11:00 AM" },
+  { hour: 12, label: "12", time: "12:00 PM" },
+  { hour: 13, label: "1", time: "1:00 PM" },
+  { hour: 14, label: "2", time: "2:00 PM" },
+  { hour: 15, label: "3", time: "3:00 PM" },
+  { hour: 16, label: "4", time: "4:00 PM" },
+];
+
+  // Detailed hourly slot status for compact 8-4 visual schedule matching Image 2
+  const getStaffSlotHourStatus = useCallback(
+    (
+      member: { id: string; name: string; username?: string; isInspector: boolean },
+      dateKey: string,
+      dayOfWeek: number,
+      hour: number
+    ): { status: "available" | "booked" | "break" | "limited"; detail: string } => {
+      // 1. Sunday
+      if (dayOfWeek === 0) {
+        return { status: "break", detail: "Sunday Closed" };
+      }
+
+      // 2. Outside normal hours
+      // Mon-Thu & Sat: 9:00 AM – 5:00 PM (Hour 8 is 8-9 AM before opening)
+      // Friday: 10:00 AM – 3:00 PM (Hours 8, 9, 15, 16 are outside)
+      if (dayOfWeek === 5) {
+        if (hour < 10 || hour >= 15) {
+          return { status: "break", detail: "Outside Friday Working Hours (10 AM – 3 PM)" };
+        }
+      } else {
+        if (hour < 9 || hour > 16) {
+          return { status: "break", detail: "Outside Working Hours" };
+        }
+      }
+
+      const lowerName = member.name.toLowerCase().trim();
+      const lowerUser = (member.username || "").toLowerCase().trim();
+      const sId = member.id;
+
+      const memberLeads = scopedLeads.filter((l) => {
+        if (l.status === "Lost" || l.status === "Cancelled") return false;
+
+        if (member.isInspector) {
+          if (sId && l.inspectorId && (l.inspectorId === sId || l.inspectorId.toLowerCase() === lowerName || l.inspectorId.toLowerCase() === lowerUser)) return true;
+          if (l.inspectionReport?.inspectorName) {
+            const rep = l.inspectionReport.inspectorName.toLowerCase().trim();
+            if (rep && !/^(?:inspector|field inspector)$/i.test(rep) && (rep === lowerName || rep === lowerUser)) return true;
+          }
+          if (l.assigned) {
+            const ass = l.assigned.toLowerCase().trim();
+            if (ass !== "unassigned" && (ass === lowerName || ass === lowerUser)) return true;
+          }
+          return false;
+        } else {
+          const tech = (l.technician || "").toLowerCase().trim();
+          const techId = (l.technicianId || "").toLowerCase().trim();
+          const techUser = (l.technicianUsername || "").toLowerCase().trim();
+          const assigned = (l.assigned || "").toLowerCase().trim();
+
+          if (tech && tech !== "unassigned" && (tech === lowerName || tech === lowerUser)) return true;
+          if (techId && (techId === sId || techId === lowerName || techId === lowerUser)) return true;
+          if (techUser && techUser === lowerUser) return true;
+          if (assigned && assigned !== "unassigned" && isTechnicianName(l.assigned) && (assigned === lowerName || assigned === lowerUser)) return true;
+          return false;
+        }
+      });
+
+      const dayLeads = memberLeads.filter((l) => {
+        const d = member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt);
+        return d && _dayKey(d) === dateKey;
+      });
+
+      // Check if this hour is booked
+      for (const lead of dayLeads) {
+        const d = member.isInspector ? (lead.inspectionAt || lead.jobAt) : (lead.jobAt || lead.inspectionAt);
+        if (!d) continue;
+        const apptDate = new Date(d);
+        const apptH = apptDate.getHours();
+        const durationHours = member.isInspector ? 1 : 2;
+
+        if (hour >= apptH && hour < apptH + durationHours) {
+          const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
+          const typeStr = member.isInspector ? "Inspection" : "Job";
+          return {
+            status: "booked",
+            detail: `Booked: ${jobNoStr} ${lead.name || "Customer"} (${typeStr})`,
+          };
+        }
+
+        // Buffer / transition window (hour immediately before or after booking)
+        if (hour === apptH - 1 || hour === apptH + durationHours) {
+          return {
+            status: "limited",
+            detail: "Limited: Travel / Prep Buffer",
+          };
+        }
+      }
+
+      // 3. Lunch break at 12:00 PM if not booked
+      if (hour === 12) {
+        return { status: "break", detail: "Lunch Break (12:00 PM – 12:30 PM)" };
+      }
+
+      return { status: "available", detail: "Available (Free for Booking)" };
+    },
+    [scopedLeads, isTechnicianName]
+  );
+
   // Compute clean status per staff member (technician or inspector) per day from real booked leads
   const getStaffDayStatus = useCallback(
     (
@@ -1385,27 +1496,23 @@ export function ManagerDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
-            {/* Legend */}
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            {/* Legend (matching Image 2) */}
+            <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-[2px] bg-[#4ade80]" />
                 <span>Available</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
-                <span>Inspection</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-[2px] bg-[#fb7185]" />
+                <span>Booked</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                <span>Job</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-[2px] bg-[#cbd5e1]" />
+                <span>Break</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span>Busy</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                <span>Day Off</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-[2px] bg-[#facc15]" />
+                <span>Limited</span>
               </div>
             </div>
 
@@ -1434,15 +1541,15 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        {/* Dynamic Available Slots Table Grid */}
+        {/* Dynamic Available Slots Table Grid (Matching Image 2 Compact Hourly Design) */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse min-w-[840px]">
+          <table className="w-full text-left text-xs border-collapse min-w-[760px]">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-500 font-bold">
-                <th className="py-2.5 px-3 min-w-[170px]">Team Member</th>
-                <th className="py-2.5 px-3 min-w-[130px]">Role</th>
+              <tr className="border-b border-slate-200 text-slate-600 font-bold bg-slate-50/50">
+                <th className="py-2.5 px-3 min-w-[150px] text-xs font-extrabold text-blue-950">Technician</th>
+                <th className="py-2.5 px-2 min-w-[120px] text-xs font-extrabold text-blue-950">Role</th>
                 {rosterDays.map((d, idx) => (
-                  <th key={idx} className="py-2.5 px-2 text-center border-l border-slate-100 bg-slate-50/40">
+                  <th key={idx} className="py-2 px-1.5 text-center border-l border-slate-200/80 bg-slate-50/80">
                     <div className="font-extrabold text-xs text-blue-950">
                       {d.dayName}
                     </div>
@@ -1460,135 +1567,73 @@ export function ManagerDashboard() {
                 </tr>
               )}
               {filteredRosterList.map((member) => (
-                <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2.5">
+                <tr key={member.id} className="hover:bg-slate-50/40 transition-colors">
+                  {/* Column 1: Technician Avatar & Name */}
+                  <td className="py-2 px-3">
+                    <div className="flex items-center gap-2">
                       <div
-                        className={`w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs ${
+                        className={`w-7 h-7 rounded-full text-white flex items-center justify-center font-extrabold text-xs shrink-0 shadow-2xs ${
                           member.isInspector ? "bg-indigo-600" : "bg-slate-900"
                         }`}
                       >
                         {member.avatar}
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-900 text-xs">{member.name}</div>
-                        {member.username && member.username !== member.name && (
-                          <div className="text-[10px] text-slate-400 font-normal">@{member.username}</div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 text-xs truncate">{member.name}</div>
+                        {member.username && member.username !== member.name ? (
+                          <div className="text-[10px] text-slate-400 font-normal truncate">@{member.username}</div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 font-normal truncate">{member.role.split(" ")[0]}</div>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 px-3 align-middle">
+
+                  {/* Column 2: Role */}
+                  <td className="py-2 px-2 align-middle">
                     {member.isInspector ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
                         <Eye className="w-3 h-3 text-indigo-500" />
                         Inspector
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
                         <Wrench className="w-3 h-3 text-slate-500" />
                         Technician
                       </span>
                     )}
                   </td>
 
-                  {/* 7 Days Slots */}
-                  {rosterDays.map((day, dIdx) => {
-                    const dayStatus = getStaffDayStatus(member, day.dateKey, day.dayOfWeek);
-
-                    return (
-                      <td key={dIdx} className="p-2 border-l border-slate-100 align-middle">
-                        <div
-                          onClick={() => setCurrentView("dispatch")}
-                          className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] flex flex-col items-center justify-center min-h-[54px] text-center ${
-                            dayStatus.status === "available"
-                              ? "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/70 text-emerald-950"
-                              : dayStatus.status === "booked"
-                              ? member.isInspector
-                                ? "bg-indigo-50/70 border-indigo-200/80 hover:bg-indigo-100/70 text-indigo-950"
-                                : "bg-blue-50/70 border-blue-200/80 hover:bg-blue-100/70 text-blue-950"
-                              : dayStatus.status === "busy"
-                              ? "bg-rose-50/70 border-rose-200/80 hover:bg-rose-100/70 text-rose-950"
-                              : "bg-slate-50/80 border-slate-200/70 text-slate-400"
-                          }`}
-                          title={
-                            dayStatus.leads.length > 0
-                              ? `${member.name} on ${day.dayName} ${day.fullDate}:\n` +
-                                dayStatus.leads
-                                  .map(
-                                    (l: Lead) =>
-                                      `• ${formatApptTime(member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt))} - ${
-                                        l.name || "Customer"
-                                      } (${l.address || "Melbourne"}) [${member.isInspector ? "Inspection" : "Job"}]`
-                                  )
-                                  .join("\n") +
-                                "\nClick to open in Dispatch"
-                              : `${member.name} - ${day.dayName} ${day.fullDate} (${dayStatus.label}) - Click to open Dispatch`
-                          }
-                        >
-                          <div className="flex items-center gap-1.5 font-bold text-xs">
-                            <span
-                              className={`w-2 h-2 rounded-full shrink-0 ${
-                                dayStatus.status === "available"
-                                  ? "bg-emerald-500"
-                                  : dayStatus.status === "booked"
-                                  ? member.isInspector
-                                    ? "bg-indigo-600"
-                                    : "bg-blue-600"
-                                  : dayStatus.status === "busy"
-                                  ? "bg-rose-500"
-                                  : "bg-slate-300"
-                              }`}
-                            />
-                            <span className="truncate">{dayStatus.label}</span>
-                          </div>
-                          <div className="text-[10px] opacity-80 font-medium truncate mt-0.5 max-w-[115px]">
-                            {dayStatus.subLabel}
-                          </div>
-
-                          {/* 3-segment visual time indicator: Morning, Midday, Afternoon */}
-                          <div className="flex items-center gap-1 w-full mt-1.5 px-1">
-                            <div
-                              className={`h-1 flex-1 rounded-full ${
-                                dayStatus.status === "off"
-                                  ? "bg-slate-200"
-                                  : dayStatus.morningBooked
-                                  ? member.isInspector
-                                    ? "bg-indigo-600"
-                                    : "bg-blue-600"
-                                  : "bg-emerald-400/80"
-                              }`}
-                              title="Morning (8:00 AM - 11:30 AM)"
-                            />
-                            <div
-                              className={`h-1 flex-1 rounded-full ${
-                                dayStatus.status === "off"
-                                  ? "bg-slate-200"
-                                  : dayStatus.middayBooked
-                                  ? member.isInspector
-                                    ? "bg-indigo-600"
-                                    : "bg-blue-600"
-                                  : "bg-emerald-400/80"
-                              }`}
-                              title="Midday (11:30 AM - 2:00 PM)"
-                            />
-                            <div
-                              className={`h-1 flex-1 rounded-full ${
-                                dayStatus.status === "off"
-                                  ? "bg-slate-200"
-                                  : dayStatus.afternoonBooked
-                                  ? member.isInspector
-                                    ? "bg-indigo-600"
-                                    : "bg-blue-600"
-                                  : "bg-emerald-400/80"
-                              }`}
-                              title="Afternoon (2:00 PM - 5:00 PM)"
-                            />
-                          </div>
-                        </div>
-                      </td>
-                    );
-                  })}
+                  {/* Day Slots: 8 9 10 11 12 1 2 3 4 compact bars matching Image 2 */}
+                  {rosterDays.map((day, dIdx) => (
+                    <td key={dIdx} className="py-2 px-1 border-l border-slate-100 align-middle text-center">
+                      <div className="inline-flex items-center justify-center gap-0.5 p-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">
+                        {ROSTER_SLOT_HOURS.map((slot) => {
+                          const slotInfo = getStaffSlotHourStatus(member, day.dateKey, day.dayOfWeek, slot.hour);
+                          return (
+                            <div key={slot.hour} className="flex flex-col items-center">
+                              <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 select-none">
+                                {slot.label}
+                              </span>
+                              <div
+                                onClick={() => setCurrentView("dispatch")}
+                                className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
+                                  slotInfo.status === "booked"
+                                    ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
+                                    : slotInfo.status === "break"
+                                    ? "bg-[#cbd5e1] hover:bg-slate-400"
+                                    : slotInfo.status === "limited"
+                                    ? "bg-[#facc15] hover:bg-amber-400"
+                                    : "bg-[#4ade80] hover:bg-emerald-500"
+                                }`}
+                                title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to open in Dispatch`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

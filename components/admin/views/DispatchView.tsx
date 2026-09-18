@@ -713,40 +713,52 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                           const scheduleWindow = formatScheduleWindow(item.time, totalDurationMins);
                           const startTimeOnly = scheduleWindow.start.replace(/ (AM|PM)/, "");
 
+                          const cleanJobNo = `#${(item.lead.jobNo || item.lead.id.slice(-4)).replace(/^(?:Job\s*No-?|Job-?|#)/i, "")}`;
+                          const custName = item.lead.name || "Customer";
+                          const suburbName = (area.suburb || item.lead.city || "Melbourne").toUpperCase();
+                          const techName = item.tech && item.tech !== "None" ? item.tech : "Unassigned";
+
                           return (
                             <div
                               key={`${item.lead.id}-${item.time}`}
                               onClick={() => onOpenLead(item.lead.id)}
-                              className={`px-1.5 py-0.5 rounded-md border transition-all cursor-pointer shadow-2xs hover:shadow-xs flex items-center justify-between gap-1 leading-tight ${
+                              className={`p-1 px-1.5 rounded-md border transition-all cursor-pointer shadow-2xs hover:shadow-xs flex flex-col justify-center leading-tight ${
                                 isInspection
-                                  ? "bg-blue-50/90 hover:bg-blue-100/90 border-blue-200 text-blue-950"
-                                  : "bg-emerald-50/90 hover:bg-emerald-100/90 border-emerald-200 text-emerald-950"
+                                  ? "bg-blue-50/95 hover:bg-blue-100/90 border-blue-200 text-blue-950"
+                                  : "bg-emerald-50/95 hover:bg-emerald-100/90 border-emerald-200 text-emerald-950"
                               }`}
-                              title={`Click to open Lead #${item.lead.jobNo || item.lead.id} (${scheduleWindow.range})`}
+                              title={`Lead ${cleanJobNo} • ${custName} (${scheduleWindow.range})\nSuburb: ${suburbName} • Staff: ${techName} • Type: ${isInspection ? "Inspection" : "Job"}`}
                             >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1 text-[10px] font-extrabold truncate">
+                              {/* Line 1: Time, Clean Job No & Duration Badge */}
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1 font-black text-[8.5px] text-blue-950 truncate">
                                   <Clock className="w-2.5 h-2.5 text-blue-600 shrink-0 inline" />
-                                  <span className="text-blue-700 shrink-0">{startTimeOnly}</span>
-                                  <span className="truncate">#{item.lead.jobNo || item.lead.id.slice(-4)} {item.lead.name || "Customer"}</span>
+                                  <span className="text-blue-700 font-bold">{startTimeOnly}</span>
+                                  <span className="text-slate-900 font-extrabold">{cleanJobNo}</span>
                                 </div>
-                                <div className="text-[9px] text-slate-500 truncate flex items-center gap-1 font-medium">
-                                  <span>{area.suburb ? area.suburb.toUpperCase() : item.lead.city || "Melbourne"}</span>
-                                  <span>·</span>
-                                  <span className={item.tech === "None" ? "italic text-slate-400" : "text-slate-700 font-semibold"}>
-                                    {item.tech}
-                                  </span>
-                                </div>
+                                <span
+                                  className={`text-[7.5px] px-1 py-0.2 rounded font-black shrink-0 ${
+                                    isInspection
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-emerald-100 text-emerald-800"
+                                  }`}
+                                >
+                                  {scheduleWindow.durationLabel}
+                                </span>
                               </div>
-                              <span
-                                className={`text-[8.5px] px-1 py-0.2 rounded font-black shrink-0 ${
-                                  isInspection
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                {scheduleWindow.durationLabel}
-                              </span>
+
+                              {/* Line 2: Customer Name */}
+                              <div className="text-[8px] font-extrabold text-slate-900 truncate mt-0.5">
+                                {custName}
+                              </div>
+
+                              {/* Line 3: Suburb, Staff & Type */}
+                              <div className="text-[7.5px] text-slate-500 font-medium truncate flex items-center justify-between gap-1 mt-0.5 pt-0.5 border-t border-black/5">
+                                <span className="font-bold text-slate-700 truncate">{suburbName}</span>
+                                <span className={techName === "Unassigned" ? "italic text-slate-400 shrink-0" : "text-slate-600 font-semibold shrink-0"}>
+                                  {techName}
+                                </span>
+                              </div>
                             </div>
                           );
                         })}
