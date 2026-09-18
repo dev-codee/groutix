@@ -177,8 +177,12 @@ export function normalizeApptString(value: string | null | undefined): string | 
   return m ? `${m[1]}T${m[2]}:${m[3]}` : s;
 }
 
-// How far ahead we let a customer book (days).
-export const BOOKING_HORIZON_DAYS = 21;
+// Earliest date (YYYY-MM-DD) from which inspection and job bookings can be scheduled.
+// Any timings before this date are not offered.
+export const MIN_BOOKING_DATE = "2026-09-28";
+
+// How far ahead we let a customer book (days from today).
+export const BOOKING_HORIZON_DAYS = 35;
 
 export type OuterZone =
   | "mon_lower1"
@@ -663,10 +667,13 @@ export function computeAvailability(
   for (let i = 1; i <= BOOKING_HORIZON_DAYS; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
+    const dateStr = ymd(d);
+    // Do not show timings before 28 Sept 2026
+    if (MIN_BOOKING_DATE && dateStr < MIN_BOOKING_DATE) continue;
+
     const wd = d.getDay();
     if (!weekdays.has(wd)) continue;
 
-    const dateStr = ymd(d);
     const locked = bookedByDate.get(dateStr) || new Set<string>();
     // Keep every slot, flagging the ones already taken so the customer can see
     // them as "Booked" rather than them silently disappearing.
@@ -698,6 +705,7 @@ export function ymd(d: Date): string {
 /** Is a chosen date/time actually offered for this area (defensive server check)? */
 export function isSlotOffered(area: AreaInfo, date: string, time: string): boolean {
   if (!TIME_SLOTS.includes(time)) return false;
+  if (MIN_BOOKING_DATE && date < MIN_BOOKING_DATE) return false;
   const d = new Date(date + "T00:00:00");
   if (Number.isNaN(d.getTime())) return false;
   const wd = d.getDay();

@@ -186,6 +186,7 @@ export function LeadEditModal({
               </label>
               <input
                 type="datetime-local"
+                min="2026-09-28T09:00"
                 value={editingLead?.inspectionAt ? editingLead.inspectionAt.slice(0, 16) : ""}
                 onChange={(e) =>
                   setEditingLead({
@@ -225,6 +226,7 @@ export function LeadEditModal({
               <label className="font-bold text-slate-700 block mb-1">Job Date &amp; Time</label>
               <input
                 type="datetime-local"
+                min="2026-09-28T09:00"
                 value={editingLead?.jobAt ? editingLead.jobAt.slice(0, 16) : ""}
                 onChange={(e) =>
                   setEditingLead({
