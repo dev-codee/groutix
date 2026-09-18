@@ -83,51 +83,7 @@ function getVicCoordsForAddress(addressOrSuburb?: string, indexOffset = 0): { la
   };
 }
 
-function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey: string; mapMode: "map" | "zone"; leads?: Lead[] }) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [authError, setAuthError] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    (window as any).gm_authFailure = () => {
-      console.warn("Google Maps API authentication failed. Switching to embedded Victoria map.");
-      setAuthError(true);
-    };
-
-    if (window.google?.maps) {
-      setMapLoaded(true);
-      return;
-    }
-
-    if (!apiKey) {
-      setAuthError(true);
-      return;
-    }
-
-    const scriptId = "google-maps-js-sdk-dashboard";
-    const existing = document.getElementById(scriptId);
-    if (existing) {
-      const interval = setInterval(() => {
-        if (window.google?.maps) {
-          setMapLoaded(true);
-          clearInterval(interval);
-        }
-      }, 200);
-      return () => clearInterval(interval);
-    }
-
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setMapLoaded(true);
-    script.onerror = () => setAuthError(true);
-    document.head.appendChild(script);
-  }, [apiKey]);
-
+function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey?: string; mapMode: "map" | "zone"; leads?: Lead[] }) {
   const appointmentPins = useMemo(() => {
     if (!leads || leads.length === 0) {
       return [];
@@ -179,103 +135,79 @@ function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey: string; mapMode: "m
     return { inspCount, jobCount, total: appointmentPins.length };
   }, [appointmentPins]);
 
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current || !window.google?.maps || mapMode !== "map" || authError) return;
+  const mapEmbedUrl = useMemo(() => {
+    const suburbs = Array.from(
+      new Set(
+        appointmentPins.map((p) => p.suburb.replace(", VIC", "").trim()).filter(Boolean)
+      )
+    ).slice(0, 8);
 
-    try {
-      const center = { lat: -37.8136, lng: 144.9631 };
-      const map = new window.google.maps.Map(mapRef.current, {
-        center,
-        zoom: 9,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        zoomControl: true,
-      });
-
-      appointmentPins.forEach((p) => {
-        const marker = new window.google.maps.Marker({
-          position: { lat: p.lat, lng: p.lng },
-          map,
-          title: `${p.title} (${p.suburb})`,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: p.color,
-            fillOpacity: 1,
-            strokeWeight: 2.5,
-            strokeColor: "#ffffff",
-          }
-        });
-
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div style="padding:6px;font-family:sans-serif;max-width:210px;">
-              <div style="font-weight:700;color:#0f172a;font-size:12px;">${p.customerName}</div>
-              <div style="font-size:10px;font-weight:700;color:${p.color};margin-top:2px;text-transform:uppercase;">${p.type}</div>
-              <div style="font-size:11px;color:#334155;margin-top:4px;">📍 ${p.address}</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">📅 ${p.date}</div>
-              <div style="font-size:10px;color:#0f766e;font-weight:600;margin-top:4px;background:#f0fdf4;padding:2px 6px;border-radius:4px;display:inline-block;">👤 ${p.staff}</div>
-            </div>
-          `
-        });
-
-        marker.addListener("click", () => {
-          infoWindow.open(map, marker);
-        });
-      });
-    } catch (err) {
-      console.warn("Error instantiating Google Map instance:", err);
-      setAuthError(true);
+    if (suburbs.length > 0) {
+      const query = encodeURIComponent(`${suburbs.join("+")}+Melbourne+Victoria+Australia`);
+      return `https://maps.google.com/maps?q=${query}&t=&z=10&ie=UTF8&iwloc=&output=embed`;
     }
-  }, [mapLoaded, mapMode, authError, appointmentPins]);
+    return "https://maps.google.com/maps?q=Melbourne+Victoria+Australia&t=&z=10&ie=UTF8&iwloc=&output=embed";
+  }, [appointmentPins]);
 
   if (mapMode === "zone") {
     return (
-      <div className="w-full h-full min-h-[220px] rounded-xl bg-slate-50 border border-slate-200/80 p-3 space-y-2 flex flex-col justify-between">
-        <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Victoria Appointment Territory Zones</div>
-        <div className="space-y-1.5 text-xs">
-          <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-slate-200">
-            <span className="font-semibold text-slate-800">Inspection Appointments</span>
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">📋 {zoneCounts.inspCount} Booked</span>
+      <div className="w-full h-full min-h-[220px] rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-2.5 flex flex-col justify-between">
+        <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+          <span>Victoria Territory Zones</span>
+          <span className="text-[10px] font-semibold text-slate-400">Live CRM Sync</span>
+        </div>
+        <div className="space-y-2 text-xs flex-1 flex flex-col justify-center">
+          <div className="flex justify-between items-center p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-500" />
+              Inspection Appointments
+            </span>
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-md border border-purple-200/60">
+              📋 {zoneCounts.inspCount} Booked
+            </span>
           </div>
-          <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-slate-200">
-            <span className="font-semibold text-slate-800">Technician Jobs</span>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">🔧 {zoneCounts.jobCount} Scheduled</span>
+          <div className="flex justify-between items-center p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Technician Jobs
+            </span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
+              🔧 {zoneCounts.jobCount} Scheduled
+            </span>
           </div>
-          <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-slate-200">
-            <span className="font-semibold text-slate-800">Total Active VIC Coverage</span>
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">📍 {zoneCounts.total} Locations</span>
+          <div className="flex justify-between items-center p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              Active Field Coverage
+            </span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60">
+              📍 {zoneCounts.total} Locations
+            </span>
           </div>
         </div>
       </div>
     );
   }
 
-  const vicQuery = appointmentPins.map((p) => p.suburb.replace(", VIC", "")).slice(0, 5).join(" ") || "Victoria Australia";
-
-  if (authError) {
-    return (
+  return (
+    <div className="relative w-full h-full min-h-[220px] rounded-xl overflow-hidden bg-slate-100">
       <iframe
-        title="Victoria Australia Live Map"
-        src={`https://maps.google.com/maps?q=${encodeURIComponent(`Victoria Australia ${vicQuery}`)}&t=&z=9&ie=UTF8&iwloc=&output=embed`}
+        title="Victoria Operations Live Map"
+        src={mapEmbedUrl}
         className="w-full h-full min-h-[220px] rounded-xl border-0"
         loading="lazy"
-        allowFullScreen
       />
-    );
-  }
-
-  return (
-    <div className="relative w-full h-full min-h-[220px] rounded-xl overflow-hidden">
-      <div ref={mapRef} className="w-full h-full min-h-[220px] rounded-xl" />
-      {!mapLoaded && (
-        <iframe
-          title="Victoria Australia Live Map Loading Fallback"
-          src={`https://maps.google.com/maps?q=${encodeURIComponent(`Victoria Australia ${vicQuery}`)}&t=&z=9&ie=UTF8&iwloc=&output=embed`}
-          className="w-full h-full min-h-[220px] rounded-xl border-0"
-          loading="lazy"
-        />
+      {appointmentPins.length > 0 && (
+        <div className="absolute bottom-2 left-2 right-2 bg-white/95 backdrop-blur-xs border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-md flex items-center justify-between text-[10px] font-bold text-slate-700 pointer-events-none">
+          <span className="flex items-center gap-1.5 text-blue-900">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {appointmentPins.length} Active Visit{appointmentPins.length === 1 ? "" : "s"}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-purple-700">📋 {zoneCounts.inspCount} Insp</span>
+            <span className="text-emerald-700">🔧 {zoneCounts.jobCount} Jobs</span>
+          </div>
+        </div>
       )}
     </div>
   );
