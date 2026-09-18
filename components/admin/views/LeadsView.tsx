@@ -58,7 +58,12 @@ export function LeadsView() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="text-xs px-3 py-1.5 bg-slate-50/80 border border-slate-200/90 rounded-xl font-medium text-slate-700 focus:outline-hidden shadow-2xs"
             >
-              <option value="">All statuses ({STATUS_LIST.length})</option>
+              <option value="">All statuses ({totalStatusCount || leads.length})</option>
+              {statusFilter && !STATUS_LIST.includes(statusFilter) && (
+                <option value={statusFilter}>
+                  Filtered: {statusFilter.split("|").length > 3 ? `${statusFilter.split("|").slice(0, 2).join(", ")} +${statusFilter.split("|").length - 2}` : statusFilter.split("|").join(", ")} ({filteredLeads.length})
+                </option>
+              )}
               {STATUS_LIST.map((s) => (
                 <option key={s} value={s}>
                   {s} ({counts[s] || 0})

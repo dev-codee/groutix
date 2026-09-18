@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate, fmtDateOnly, getLeadQuoteTotal } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
 import { QuoteResponseBadge } from "@/components/admin/QuoteResponseBadge";
 import type { Lead } from "@/components/admin/types";
 
@@ -130,13 +130,7 @@ function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey: string; mapMode: "m
 
   const appointmentPins = useMemo(() => {
     if (!leads || leads.length === 0) {
-      return [
-        { id: "1", title: "🔧 Job: Keilor Regrout", customerName: "Keilor Reseal", address: "Keilor, VIC", suburb: "Keilor, VIC", lat: -37.7236, lng: 144.8258, type: "Technician Job", color: "#10B981", date: "Today 9:00 AM", staff: "John (Tech)" },
-        { id: "2", title: "📋 Inspection: Tullamarine", customerName: "Tullamarine Wet Area", address: "Tullamarine, VIC", suburb: "Tullamarine, VIC", lat: -37.7050, lng: 144.8810, type: "Inspection Scheduled", color: "#8B5CF6", date: "Today 11:30 AM", staff: "Alex (Inspector)" },
-        { id: "3", title: "📋 Inspection: St Albans", customerName: "St Albans Shower", address: "St Albans, VIC", suburb: "St Albans, VIC", lat: -37.7460, lng: 144.7980, type: "Inspection Scheduled", color: "#8B5CF6", date: "Today 2:00 PM", staff: "Alex (Inspector)" },
-        { id: "4", title: "🔧 Job: Essendon Regrout", customerName: "Essendon Tiles", address: "Essendon, VIC", suburb: "Essendon, VIC", lat: -37.7550, lng: 144.9120, type: "Technician Job", color: "#10B981", date: "Tomorrow 8:30 AM", staff: "Dave (Tech)" },
-        { id: "5", title: "🔧 Job: Werribee Balcony", customerName: "Werribee Repair", address: "Werribee, VIC", suburb: "Werribee, VIC", lat: -37.9000, lng: 144.6600, type: "Technician Job", color: "#10B981", date: "Tomorrow 1:00 PM", staff: "Dave (Tech)" },
-      ];
+      return [];
     }
 
     const apptLeads = leads.filter((l) => {
@@ -145,9 +139,7 @@ function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey: string; mapMode: "m
       return hasInsp || hasJob;
     });
 
-    const sourceLeads = apptLeads.length > 0 ? apptLeads : leads.slice(0, 10);
-
-    return sourceLeads.map((l, idx) => {
+    return apptLeads.map((l, idx) => {
       const isJob = Boolean(l.jobAt) || /job/i.test(l.status || "");
       const isInsp = Boolean(l.inspectionAt) || /inspection/i.test(l.status || "");
       
@@ -312,12 +304,16 @@ export function ManagerDashboard() {
     loading,
     filteredLeads,
     username,
+    staff,
+    setGlobalSearch,
+    setStatusFilter,
   } = useAdminPageCtx();
 
   const ribbonRef = useRef<HTMLDivElement>(null);
   const [mapMode, setMapMode] = useState<"map" | "zone">("map");
   const [statsPeriod, setStatsPeriod] = useState("This Month");
   const [searchQuery, setSearchQuery] = useState("");
+  const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
 
   const _now = new Date();
   const _tomDate = new Date(_now);
@@ -356,7 +352,7 @@ export function ManagerDashboard() {
     );
   }, [scopedLeads, searchQuery]);
 
-  // 1. DYNAMIC TODAY'S SCHEDULE FROM BACKEND LEADS
+  // 1. DYNAMIC TODAY'S SCHEDULE FROM REAL BACKEND LEADS
   const todayLeadsList = useMemo(() => {
     const list = matchedLeads
       .filter((l) => {
@@ -365,7 +361,7 @@ export function ManagerDashboard() {
       })
       .sort((a, b) => _apptMs(a) - _apptMs(b));
 
-    // Fallback: if fewer than 6 scheduled for today, include upcoming scheduled leads
+    // If fewer than 6 scheduled for today, include earliest upcoming scheduled leads
     if (list.length < 6) {
       const upcoming = matchedLeads
         .filter((l) => (l.inspectionAt || l.jobAt) && !list.some((existing) => existing.id === l.id))
@@ -375,36 +371,57 @@ export function ManagerDashboard() {
     return list.slice(0, 6);
   }, [matchedLeads, _todayStr]);
 
-  // 2. DYNAMIC QUICK STATS CALCULATED FROM REAL LEADS
+  // 2. DYNAMIC QUICK STATS CALCULATED STRICTLY FROM REAL LEADS & PERIOD
   const stats = useMemo(() => {
-    // Unique Customers
+    const now = new Date();
+    let periodStartMs = 0;
+    if (statsPeriod === "Today") {
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      periodStartMs = todayStart.getTime();
+    } else if (statsPeriod === "This Week") {
+      const day = now.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+      periodStartMs = monday.getTime();
+    } else {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      periodStartMs = monthStart.getTime();
+    }
+
+    const periodLeads = scopedLeads.filter((l) => {
+      const leadTime = new Date(l.received || l.createdAt || l.quoteUpdated || 0).getTime();
+      return leadTime >= periodStartMs;
+    });
+
+    const activeList = scopedLeads.filter((l) =>
+      /booked|scheduled|confirmed|en.route|arrived|started|in.progress/i.test(l.status || "")
+    );
+
+    const paidLeads = (periodLeads.length > 0 ? periodLeads : scopedLeads).filter((l) =>
+      /won|job done|completed|payment received|paid/i.test(l.status || "")
+    );
+    const revenueSum = paidLeads.reduce((acc, l) => acc + getLeadQuoteTotal(l), 0);
+
+    const pendingLeads = (periodLeads.length > 0 ? periodLeads : scopedLeads).filter((l) =>
+      /invoice sent|payment pending|partial payment/i.test(l.status || "")
+    );
+    const pendingSum = pendingLeads.reduce((acc, l) => acc + getLeadQuoteTotal(l), 0);
+
     const uniqueCustSet = new Set(
       scopedLeads.map((l) => (l.email || l.phone || l.name || "").toLowerCase().trim()).filter(Boolean)
     );
-    const totalCustomers = uniqueCustSet.size || scopedLeads.length;
-
-    // Active Jobs
-    const activeJobs = scopedLeads.filter((l) =>
-      /booked|scheduled|confirmed|en.route|arrived|started|in.progress/i.test(l.status || "")
-    ).length;
-
-    // Revenue
-    const revenueSum = scopedLeads
-      .filter((l) => /won|job done|completed|payment received|paid/i.test(l.status || ""))
-      .reduce((acc, l) => acc + getLeadQuoteTotal(l), 0);
-
-    // Pending Payments
-    const pendingSum = scopedLeads
-      .filter((l) => /invoice sent|payment pending|partial payment/i.test(l.status || ""))
-      .reduce((acc, l) => acc + getLeadQuoteTotal(l), 0);
+    const totalCustomers = uniqueCustSet.size;
 
     return {
-      customers: totalCustomers || 312,
-      activeJobs: activeJobs || 9,
-      revenue: revenueSum > 0 ? `$${revenueSum.toLocaleString("en-AU")}` : "$12,430",
-      pending: pendingSum > 0 ? `$${pendingSum.toLocaleString("en-AU")}` : "$3,200",
+      customers: totalCustomers,
+      totalLeads: scopedLeads.length,
+      activeJobs: activeList.length,
+      revenue: `$${revenueSum.toLocaleString("en-AU")}`,
+      pending: `$${pendingSum.toLocaleString("en-AU")}`,
+      paidCount: paidLeads.length,
+      pendingCount: pendingLeads.length,
     };
-  }, [scopedLeads]);
+  }, [scopedLeads, statsPeriod]);
 
   // 3. DYNAMIC RECENT ACTIVITY LOG FROM REAL LEADS
   const recentActivityLogs = useMemo(() => {
@@ -416,7 +433,6 @@ export function ManagerDashboard() {
 
     return sorted.slice(0, 5).map((l) => {
       const isInsp = isInspLead(l);
-      const isJob = /job/i.test(l.status || "");
       const isPaid = /payment|paid/i.test(l.status || "");
       const isQuote = /quote/i.test(l.status || "");
 
@@ -443,11 +459,11 @@ export function ManagerDashboard() {
       }
 
       const jobNoStr = l.jobNo ? `#${l.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${l.id.slice(0, 4)}`;
-      const suburb = getSuburb(l.address);
+      const suburb = getSuburb(l.address) || l.city || "";
       const detail = `${jobNoStr} - ${l.name || "Customer"}${suburb ? ` (${suburb})` : ""}`;
       const time = fmtDateOnly(l.quoteUpdated || l.received || l.createdAt);
 
-      return { icon, iconBg, title, detail, time };
+      return { lead: l, icon, iconBg, title, detail, time };
     });
   }, [scopedLeads]);
 
@@ -456,7 +472,7 @@ export function ManagerDashboard() {
     const list = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(_now);
-      d.setDate(d.getDate() + i);
+      d.setDate(d.getDate() + (rosterWeekOffset * 7) + i);
       list.push({
         dateObj: d,
         dateKey: _dayKey(d.toISOString()),
@@ -465,24 +481,29 @@ export function ManagerDashboard() {
       });
     }
     return list;
-  }, [_now]);
+  }, [_now, rosterWeekOffset]);
 
   const activeTechList = useMemo(() => {
-    const list = assignableTechnicians.filter((t) => t.active !== false);
-    if (list.length === 0) {
-      return [
-        { id: "tech-1", name: "Rizwan", role: "Inspector (Inspection Only)", avatar: "R" },
-        { id: "tech-2", name: "Tech 1", role: "Technician (Jobs Only)", avatar: "T1" },
-        { id: "tech-3", name: "Tech 2", role: "Technician (Jobs Only)", avatar: "T2" },
-      ];
+    const fromTechs = assignableTechnicians.filter((t) => t.active !== false);
+    if (fromTechs.length > 0) {
+      return fromTechs.map((t) => ({
+        id: t.id,
+        name: t.name,
+        role: t.role ? `${t.role}` : /inspect/i.test(t.name) ? "Inspector (Inspection Only)" : "Technician (Jobs Only)",
+        avatar: (t.name || "T")[0].toUpperCase(),
+      }));
     }
-    return list.map((t) => ({
-      id: t.id,
-      name: t.name,
-      role: t.role ? `${t.role}` : /inspect/i.test(t.name) ? "Inspector (Inspection Only)" : "Technician (Jobs Only)",
-      avatar: (t.name || "T")[0].toUpperCase(),
-    }));
-  }, [assignableTechnicians]);
+    const fromStaff = (staff || []).filter((s) => s.active !== false && (s.role === "technician" || s.role === "inspection" || s.role === "field"));
+    if (fromStaff.length > 0) {
+      return fromStaff.map((s) => ({
+        id: s.id,
+        name: s.name || s.username,
+        role: s.role === "inspection" ? "Inspector (Inspection Only)" : "Technician (Jobs Only)",
+        avatar: (s.name || s.username || "S")[0].toUpperCase(),
+      }));
+    }
+    return [];
+  }, [assignableTechnicians, staff]);
 
   // Compute 9 hourly slot states (8am-4pm) per technician per day from real booked leads
   const hoursList = [8, 9, 10, 11, 12, 1, 2, 3, 4];
@@ -491,8 +512,14 @@ export function ManagerDashboard() {
     // Lunch break at 12pm by default
     if (hourNum === 12) return "K"; // Break
 
+    const lowerTech = techName.toLowerCase();
     const techLeads = scopedLeads.filter(
-      (l) => (l.technicianId === techName || l.technician === techName || l.assigned === techName)
+      (l) => {
+        const a = (l.technician || "").toLowerCase();
+        const b = (l.assigned || "").toLowerCase();
+        const c = (l.technicianId || "").toLowerCase();
+        return a === lowerTech || b === lowerTech || c === lowerTech || a.includes(lowerTech) || b.includes(lowerTech);
+      }
     );
 
     const dayLeads = techLeads.filter((l) => {
@@ -502,7 +529,6 @@ export function ManagerDashboard() {
 
     if (dayLeads.length > 2) return "L"; // Limited / heavy schedule
     if (dayLeads.length > 0) {
-      // Check if appointment time matches the hour
       const hasHourAppt = dayLeads.some((l) => {
         const d = l.inspectionAt || l.jobAt;
         if (!d) return false;
@@ -726,7 +752,16 @@ export function ManagerDashboard() {
           <button type="button" className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 cursor-pointer">
             <Menu className="w-5 h-5" />
           </button>
-          <div className="relative flex-1 max-w-xl">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (searchQuery.trim()) {
+                setGlobalSearch(searchQuery.trim());
+                setCurrentView("leads");
+              }
+            }}
+            className="relative flex-1 max-w-xl"
+          >
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -735,7 +770,7 @@ export function ManagerDashboard() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50/90 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400"
             />
-          </div>
+          </form>
         </div>
 
         {/* Right: Live Date selector, notification, help & user info */}
@@ -919,7 +954,14 @@ export function ManagerDashboard() {
 
           <div className="space-y-3.5">
             {/* Total Customers */}
-            <div className="flex items-center justify-between">
+            <div
+              onClick={() => {
+                setStatusFilter("");
+                setCurrentView("leads");
+              }}
+              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+              title="View all customer leads"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                   <Users className="w-4 h-4" />
@@ -929,13 +971,17 @@ export function ManagerDashboard() {
                   <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.customers}</div>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                ↑ 8%
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+                {stats.totalLeads} Leads
               </span>
             </div>
 
             {/* Active Jobs */}
-            <div className="flex items-center justify-between">
+            <div
+              onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"])}
+              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+              title="View active field jobs"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
                   <CalendarDays className="w-4 h-4" />
@@ -945,29 +991,37 @@ export function ManagerDashboard() {
                   <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.activeJobs}</div>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                ↑ 12%
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/60">
+                {stats.activeJobs} Active
               </span>
             </div>
 
             {/* Revenue */}
-            <div className="flex items-center justify-between">
+            <div
+              onClick={() => openLeadsFiltered(["Job Done", "Payment Received", "Completed", "Won"])}
+              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+              title={`View completed & paid leads (${statsPeriod})`}
+            >
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                   <DollarSign className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-[11px] font-medium text-slate-500">This Week Revenue</div>
+                  <div className="text-[11px] font-medium text-slate-500">{statsPeriod} Revenue</div>
                   <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.revenue}</div>
                 </div>
               </div>
               <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                ↑ 18%
+                {stats.paidCount} Paid
               </span>
             </div>
 
             {/* Pending Payments */}
-            <div className="flex items-center justify-between">
+            <div
+              onClick={() => openLeadsFiltered(["Invoice Sent", "Payment Pending", "Partial Payment"])}
+              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+              title="View invoices pending payment"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
                   <PieChart className="w-4 h-4" />
@@ -977,8 +1031,8 @@ export function ManagerDashboard() {
                   <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.pending}</div>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60">
-                ↓ 12%
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                {stats.pendingCount} Pending
               </span>
             </div>
           </div>
@@ -1057,18 +1111,29 @@ export function ManagerDashboard() {
                 )}
                 {todayLeadsList.map((l) => {
                   const isInsp = isInspLead(l);
-                  const timeStr = formatApptTimeRange(l.inspectionAt || l.jobAt) || "8:00 AM";
-                  const suburb = getSuburb(l.address) || "Sydney";
-                  const techName = l.assigned || l.technician || "Rizwan";
+                  const apptDateStr = l.inspectionAt || l.jobAt;
+                  const isToday = apptDateStr && _dayKey(apptDateStr) === _todayStr;
+                  const timeStr = formatApptTime(apptDateStr) || "Scheduled";
+                  const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
+                  const suburb = getSuburb(l.address) || l.city || "Melbourne";
+                  const techName = l.assigned || l.technician || l.inspectorId || "Unassigned";
                   const isWorking = /in.progress|started|arrived/i.test(l.status || "");
                   const typeLabel = isInsp ? "Inspection" : "Job";
                   const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-                  const statusLabel = isWorking ? "In Progress" : "Scheduled";
+                  const statusLabel = isWorking ? "In Progress" : l.status || "Scheduled";
                   const statusColor = isWorking ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200";
 
                   return (
-                    <tr key={l.id} className="hover:bg-slate-50/70 transition-colors cursor-pointer" onClick={() => openLeadsFiltered([l.status])}>
-                      <td className="py-1.5 px-1 font-bold text-blue-600 whitespace-nowrap tabular-nums">{timeStr}</td>
+                    <tr
+                      key={l.id}
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setEditingLead(l);
+                        setLeadModalOpen(true);
+                      }}
+                      title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
+                    >
+                      <td className="py-1.5 px-1 font-bold text-blue-600 whitespace-nowrap tabular-nums">{displayTime}</td>
                       <td className="py-1.5 px-1">
                         <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${typeColor}`}>
                           {typeLabel}
@@ -1103,9 +1168,20 @@ export function ManagerDashboard() {
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
+            {recentActivityLogs.length === 0 && (
+              <div className="py-8 text-center text-slate-400 text-xs">No recent activity recorded</div>
+            )}
             {recentActivityLogs.map((act, idx) => (
-              <div key={idx} className="flex items-center justify-between gap-2 text-xs">
+              <div
+                key={idx}
+                onClick={() => {
+                  setEditingLead(act.lead);
+                  setLeadModalOpen(true);
+                }}
+                className="flex items-center justify-between gap-2 text-xs p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                title={`Open Lead #${act.lead.jobNo || act.lead.id}`}
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className={`w-7 h-7 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
                     {act.icon}
@@ -1153,13 +1229,23 @@ export function ManagerDashboard() {
 
             {/* Live Date Range Navigator */}
             <div className="flex items-center gap-2 px-3 py-1 rounded-xl border border-slate-200/90 bg-white text-slate-700 shadow-2xs">
-              <button type="button" className="p-0.5 text-slate-400 hover:text-slate-800 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setRosterWeekOffset((v) => v - 1)}
+                className="p-0.5 text-slate-400 hover:text-slate-800 cursor-pointer"
+                title="Previous Week"
+              >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="text-xs font-bold">
                 {rosterDays[0].dayName}, {rosterDays[0].fullDate} - {rosterDays[6].dayName}, {rosterDays[6].fullDate}
               </span>
-              <button type="button" className="p-0.5 text-slate-400 hover:text-slate-800 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setRosterWeekOffset((v) => v + 1)}
+                className="p-0.5 text-slate-400 hover:text-slate-800 cursor-pointer"
+                title="Next Week"
+              >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -1187,6 +1273,13 @@ export function ManagerDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {activeTechList.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="py-8 text-center text-slate-400 text-xs font-medium">
+                    No field technicians configured in system roster
+                  </td>
+                </tr>
+              )}
               {activeTechList.map((tech) => (
                 <tr key={tech.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 px-3">
@@ -1214,8 +1307,9 @@ export function ManagerDashboard() {
                           return (
                             <div
                               key={sIdx}
+                              onClick={() => setCurrentView("dispatch")}
                               className={`h-5 flex-1 rounded-xs ${slotBg} transition-all hover:scale-110 shadow-2xs cursor-pointer`}
-                              title={`${tech.name} - ${day.dayName} ${day.fullDate} @ ${h}:00 (${slotLabel})`}
+                              title={`${tech.name} - ${day.dayName} ${day.fullDate} @ ${h}:00 (${slotLabel}) - Click to view dispatch`}
                             />
                           );
                         })}

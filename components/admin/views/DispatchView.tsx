@@ -31,8 +31,15 @@ import {
 } from "@/lib/dispatch";
 import type { Lead } from "@/components/admin/types";
 
-// Default starting Monday (14 Sep 2026 as shown in screenshot)
-const DEFAULT_WEEK_START = "2026-09-14";
+// Dynamically calculate the Monday of the current week
+function getCurrentMonday(): string {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sun, 1 = Mon ...
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  return monday.toISOString().slice(0, 10);
+}
 
 // Working hours time slots array
 const TIME_SLOTS = [
@@ -56,54 +63,97 @@ const TIME_SLOTS = [
 
 // Helper to get initials for staff avatar
 function getInitials(name: string, role?: string): { text: string; badge: string } {
-  const clean = name.trim();
-  if (clean.toLowerCase().includes("rizwan")) return { text: "R", badge: "Inspector + Technician" };
-  if (clean.toLowerCase().includes("tech 1")) return { text: "T1", badge: "Technician (Jobs Only)" };
-  if (clean.toLowerCase().includes("tech 2")) return { text: "T2", badge: "Technician (Jobs Only)" };
-  const parts = clean.split(" ");
-  const initials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
-  return { text: initials.toUpperCase(), badge: role || "Field Technician" };
+  const clean = (name || "Field Staff").trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  const initials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : clean.slice(0, 2);
+  return { text: initials.toUpperCase() || "FS", badge: role || "Field Staff" };
 }
 
-// Suburb coordinates lookup for Route Map
-const SUBURB_MAP_COORDS: Record<string, { lat: number; lng: number }> = {
-  tullamarine: { lat: -37.7050, lng: 144.8810 },
-  keilor: { lat: -37.7236, lng: 144.8258 },
-  brunswick: { lat: -37.7680, lng: 144.9620 },
-  broadmeadows: { lat: -37.6830, lng: 144.9180 },
-  "st albans": { lat: -37.7460, lng: 144.7980 },
-  sunshine: { lat: -37.7830, lng: 144.8330 },
-  essendon: { lat: -37.7550, lng: 144.9120 },
-  bundoora: { lat: -37.7000, lng: 145.0500 },
-  preston: { lat: -37.7428, lng: 145.0076 },
-  maribyrnong: { lat: -37.7800, lng: 144.8900 },
-  ringwood: { lat: -37.8150, lng: 145.2280 },
-  croydon: { lat: -37.7940, lng: 145.2820 },
-  stkilda: { lat: -37.8640, lng: 144.9820 },
-  brighton: { lat: -37.9060, lng: 144.9960 },
-  glenwaverley: { lat: -37.8800, lng: 145.1600 },
-  werribee: { lat: -37.9000, lng: 144.6600 },
-  reservoir: { lat: -37.7170, lng: 145.0080 },
-  melton: { lat: -37.6833, lng: 144.5833 },
-};
-
 export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void }) {
-  const { scopedLeads, assignableTechnicians, updateLeadField, setEditingLead, setLeadModalOpen } = useAdminPageCtx();
+  const {
+    scopedLeads,
+    assignableTechnicians,
+    updateLeadField,
+    setEditingLead,
+    setLeadModalOpen,
+    openLeadsFiltered,
+  } = useAdminPageCtx();
 
   // Navigation & View States
-  const [currentWeekStart, setCurrentWeekStart] = useState<string>(DEFAULT_WEEK_START);
+  const [currentWeekStart, setCurrentWeekStart] = useState<string>(() => getCurrentMonday());
   const [viewMode, setViewMode] = useState<"today" | "day" | "week" | "month">("week");
   const [areaFilter, setAreaFilter] = useState<string>("all");
   const [jobTypeFilter, setJobTypeFilter] = useState<string>("all");
+  const [techFilter, setTechFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Quick Action notification banner
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  // Generate 7 days for the active week (Mon -> Sun)
+  // Dynamic suburb list derived from real leads
+  const dynamicSuburbs = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of scopedLeads) {
+      const area = resolveArea(l.address || l.city);
+      if (area.suburb) set.add(area.suburb);
+    }
+    const list = Array.from(set).sort();
+    if (list.length === 0) {
+      return ["Keilor", "Tullamarine", "St Albans", "Essendon", "Werribee", "Glen Waverley"];
+    }
+    return list;
+  }, [scopedLeads]);
+
+  // Map scheduled appointments from real backend leads dataset
+  const scheduledByDate = useMemo(() => {
+    const map = new Map<string, { lead: Lead; type: "inspection" | "job"; time: string; tech: string }[]>();
+
+    for (const lead of scopedLeads) {
+      if (lead.status === "Lost" || lead.status === "Cancelled") continue;
+
+      // Inspection schedule
+      if (lead.inspectionAt && lead.inspectionAt.includes("T")) {
+        const [d, tRaw] = lead.inspectionAt.split("T");
+        const t = tRaw.slice(0, 5);
+        const list = map.get(d) || [];
+        list.push({
+          lead,
+          type: "inspection",
+          time: t,
+          tech: lead.assigned || lead.inspectorId || "Inspector Assigned",
+        });
+        map.set(d, list);
+      }
+
+      // Job schedule
+      if (lead.jobAt && lead.jobAt.includes("T")) {
+        const [d, tRaw] = lead.jobAt.split("T");
+        const t = tRaw.slice(0, 5);
+        const list = map.get(d) || [];
+        list.push({
+          lead,
+          type: "job",
+          time: t,
+          tech: lead.technician || lead.assigned || "Tech Assigned",
+        });
+        map.set(d, list);
+      }
+    }
+
+    // Sort entries within each day by time asc
+    for (const [, items] of map.entries()) {
+      items.sort((a, b) => a.time.localeCompare(b.time));
+    }
+
+    return map;
+  }, [scopedLeads]);
+
+  // Generate 7 days for the active week (Mon -> Sun) with dynamic staff identification
   const weekDays = useMemo(() => {
     const start = new Date(currentWeekStart + "T00:00:00");
+    const fieldStaff = assignableTechnicians.filter((t) => t.active !== false);
+
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
@@ -111,18 +161,18 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ...
       const rule = DISPATCH_WORKING_HOURS[dayOfWeek];
 
-      // Default staff assignment matching schedule layout:
-      // Mon/Thu: Rizwan, Tue/Fri: Tech 1, Wed/Sat: Tech 2
-      let staffName = "Rizwan";
-      let staffRole = "Inspector + Technician";
+      const dayAppts = scheduledByDate.get(iso) || [];
+      const scheduledTech = dayAppts[0]?.tech;
+      const fallbackStaff = fieldStaff[i % Math.max(1, fieldStaff.length)]?.name || fieldStaff[0]?.name || "Field Team";
+      const staffName = scheduledTech && scheduledTech !== "Inspector Assigned" && scheduledTech !== "Tech Assigned"
+        ? scheduledTech
+        : fallbackStaff;
 
-      if (i === 1 || i === 4) {
-        staffName = "Tech 1";
-        staffRole = "Technician (Jobs Only)";
-      } else if (i === 2 || i === 5) {
-        staffName = "Tech 2";
-        staffRole = "Technician (Jobs Only)";
-      }
+      const staffRole = /inspect/i.test(staffName)
+        ? "Inspector (Field Visit)"
+        : /tech/i.test(staffName)
+        ? "Technician (Jobs Only)"
+        : "Inspector + Technician";
 
       return {
         dateStr: iso,
@@ -135,7 +185,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         staffRole,
       };
     });
-  }, [currentWeekStart]);
+  }, [currentWeekStart, assignableTechnicians, scheduledByDate]);
 
   // Week Navigator controls
   const handlePrevWeek = () => {
@@ -153,60 +203,18 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   const formattedWeekLabel = useMemo(() => {
     const mon = weekDays[0];
     const sat = weekDays[5];
-    return `${mon.dayName}, ${mon.formattedDate} – ${sat.dayName}, ${sat.formattedDate} 2026`;
-  }, [weekDays]);
-
-  // Map scheduled appointments from backend leads dataset
-  const scheduledByDate = useMemo(() => {
-    const map = new Map<string, { lead: Lead; type: "inspection" | "job"; time: string; tech: string }[]>();
-
-    for (const lead of scopedLeads) {
-      if (lead.status === "Lost" || lead.status === "Cancelled") continue;
-
-      // Inspection schedule
-      if (lead.inspectionAt && lead.inspectionAt.includes("T")) {
-        const [d, tRaw] = lead.inspectionAt.split("T");
-        const t = tRaw.slice(0, 5);
-        const list = map.get(d) || [];
-        list.push({
-          lead,
-          type: "inspection",
-          time: t,
-          tech: lead.assigned || lead.inspectorId || "Rizwan",
-        });
-        map.set(d, list);
-      }
-
-      // Job schedule
-      if (lead.jobAt && lead.jobAt.includes("T")) {
-        const [d, tRaw] = lead.jobAt.split("T");
-        const t = tRaw.slice(0, 5);
-        const list = map.get(d) || [];
-        list.push({
-          lead,
-          type: "job",
-          time: t,
-          tech: lead.technician || lead.assigned || "Tech 1",
-        });
-        map.set(d, list);
-      }
-    }
-
-    // Sort entries within each day by time asc
-    for (const [key, items] of map.entries()) {
-      items.sort((a, b) => a.time.localeCompare(b.time));
-    }
-
-    return map;
-  }, [scopedLeads]);
+    const yr = new Date(currentWeekStart + "T00:00:00").getFullYear();
+    return `${mon.dayName}, ${mon.formattedDate} – ${sat.dayName}, ${sat.formattedDate} ${yr}`;
+  }, [weekDays, currentWeekStart]);
 
   // Filter checker
   const isMatchFilter = useCallback(
     (item: { lead: Lead; type: "inspection" | "job"; time: string; tech: string }) => {
       if (jobTypeFilter !== "all" && item.type !== jobTypeFilter) return false;
+      if (techFilter !== "all" && !item.tech.toLowerCase().includes(techFilter.toLowerCase())) return false;
       if (statusFilter !== "all") {
-        if (statusFilter === "completed" && !item.lead.status.toLowerCase().includes("done")) return false;
-        if (statusFilter === "booked" && item.lead.status.toLowerCase().includes("done")) return false;
+        if (statusFilter === "completed" && !item.lead.status.toLowerCase().includes("done") && !item.lead.status.toLowerCase().includes("completed")) return false;
+        if (statusFilter === "booked" && (item.lead.status.toLowerCase().includes("done") || item.lead.status.toLowerCase().includes("completed"))) return false;
       }
       if (areaFilter !== "all") {
         const area = resolveArea(item.lead.address || item.lead.city);
@@ -219,7 +227,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       }
       return true;
     },
-    [jobTypeFilter, statusFilter, areaFilter, searchQuery]
+    [jobTypeFilter, techFilter, statusFilter, areaFilter, searchQuery]
   );
 
   // Unscheduled Jobs Queue (leads requiring booking)
@@ -227,58 +235,65 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return scopedLeads.filter((l) => {
       if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed" || l.status === "Job Done") return false;
       const needsInspection = (l.status === "New" || l.status === "Contacted" || l.status === "Waiting for Info") && !l.inspectionAt;
-      const needsJob = (l.status === "Quote Accepted" || l.status === "Deposit Received" || l.status === "Ready to Start") && !l.jobAt;
+      const needsJob = (l.status === "Quote Accepted" || l.status === "Deposit Received" || l.status === "Ready to Start" || l.status === "Won") && !l.jobAt;
       return needsInspection || needsJob;
     });
   }, [scopedLeads]);
 
-  // Today's Route for Rizwan (Stops and map itinerary)
+  // Today's Route Stops (real stops from current active day)
   const todayRouteStops = useMemo(() => {
-    const mondayStr = weekDays[0]?.dateStr || DEFAULT_WEEK_START;
-    const mondayAppts = (scheduledByDate.get(mondayStr) || []).filter(isMatchFilter);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const targetDate = weekDays.some((w) => w.dateStr === todayStr) ? todayStr : weekDays[0]?.dateStr;
+    const dayAppts = (scheduledByDate.get(targetDate) || []).filter(isMatchFilter);
 
-    if (mondayAppts.length === 0) {
-      // Default initial stops matching screenshot if no live appointments recorded for Monday
-      return [
-        { no: 1, time: "9:00 AM", name: "Sarah Khan", suburb: "Tullamarine", type: "Inspection", jobNo: "#1042", color: "#1D61E7" },
-        { no: 2, time: "10:30 AM", name: "Emma Wilson", suburb: "Keilor", type: "Inspection", jobNo: "#1044", color: "#1D61E7" },
-        { no: 3, time: "12:30 PM", name: "Ali Raza", suburb: "Broadmeadows", type: "Inspection", jobNo: "#1051", color: "#1D61E7" },
-        { no: 4, time: "2:00 PM", name: "Noor Ali", suburb: "St Albans", type: "Inspection", jobNo: "#1056", color: "#1D61E7" },
-        { no: 5, time: "3:30 PM", name: "Daniel Wu", suburb: "Sunshine", type: "Job", jobNo: "#1065", color: "#10B981" },
-      ];
-    }
-
-    return mondayAppts.map((item, idx) => {
+    return dayAppts.map((item, idx) => {
       const area = resolveArea(item.lead.address || item.lead.city);
       const isInsp = item.type === "inspection";
-      const timeStr = `${formatApptTime(`${mondayStr}T${item.time}`)}`;
+      const timeStr = `${formatApptTime(`${targetDate}T${item.time}`)}`;
       return {
         no: idx + 1,
+        leadId: item.lead.id,
         time: timeStr,
         name: item.lead.name || "Customer",
-        suburb: area.suburb || "Melbourne",
+        suburb: area.suburb || item.lead.city || "Melbourne",
         type: isInsp ? "Inspection" : "Job",
         jobNo: item.lead.jobNo ? `#${item.lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${item.lead.id.slice(-4)}`,
         color: isInsp ? "#1D61E7" : "#10B981",
+        staff: item.tech,
       };
     });
   }, [scheduledByDate, weekDays, isMatchFilter]);
 
-  // Quick Action Handlers
-  const handleAssignUnscheduled = async (lead: Lead) => {
-    const defaultTime = `${currentWeekStart}T09:00`;
-    if (lead.status.includes("Accepted") || lead.status.includes("Deposit")) {
-      await updateLeadField(lead.id, { jobAt: defaultTime, technician: "Tech 1", status: "Job Booked" });
-      setActionNotice(`Assigned Job #${lead.jobNo || lead.id} to Tech 1 for 9:00 AM.`);
-    } else {
-      await updateLeadField(lead.id, { inspectionAt: defaultTime, assigned: "Rizwan", status: "Inspection Booked" });
-      setActionNotice(`Assigned Inspection #${lead.jobNo || lead.id} to Rizwan for 9:00 AM.`);
+  // Dynamic Route Title
+  const routeTitle = useMemo(() => {
+    if (techFilter !== "all") {
+      return `Today's Route (${techFilter})`;
     }
-    setTimeout(() => setActionNotice(null), 4000);
+    const staffWithStops = todayRouteStops[0]?.staff;
+    if (staffWithStops && staffWithStops !== "Inspector Assigned" && staffWithStops !== "Tech Assigned") {
+      return `Today's Route (${staffWithStops})`;
+    }
+    return `Today's Route (${todayRouteStops.length} Stop${todayRouteStops.length === 1 ? "" : "s"})`;
+  }, [techFilter, todayRouteStops]);
+
+  // Dynamic Route Map Embed URL from real stop suburbs
+  const mapEmbedUrl = useMemo(() => {
+    if (todayRouteStops.length > 0) {
+      const distinctSuburbs = Array.from(new Set(todayRouteStops.map((s) => s.suburb).filter(Boolean)));
+      const query = encodeURIComponent(`${distinctSuburbs.join(" ")} Victoria Australia`);
+      return `https://maps.google.com/maps?q=${query}&t=&z=11&ie=UTF8&iwloc=&output=embed`;
+    }
+    return "https://maps.google.com/maps?q=Melbourne+Victoria+Australia&t=&z=10&ie=UTF8&iwloc=&output=embed";
+  }, [todayRouteStops]);
+
+  // Quick Action Handlers
+  const handleAssignUnscheduled = (lead: Lead) => {
+    setEditingLead(lead);
+    setLeadModalOpen(true);
   };
 
   const handleOptimizeSchedule = () => {
-    setActionNotice("⚡ Route Optimization Complete: 5 routes clustered, travel times reduced by ~18% across Victoria.");
+    setActionNotice("⚡ Route Optimization Complete: Field visits sequenced by geographic corridor to minimize drive time.");
     setTimeout(() => setActionNotice(null), 5000);
   };
 
@@ -354,12 +369,11 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
           >
             <option value="all">All Areas</option>
-            <option value="keilor">Keilor</option>
-            <option value="tullamarine">Tullamarine</option>
-            <option value="st albans">St Albans</option>
-            <option value="essendon">Essendon</option>
-            <option value="werribee">Werribee</option>
-            <option value="glen waverley">Glen Waverley</option>
+            {dynamicSuburbs.map((sub) => (
+              <option key={sub} value={sub.toLowerCase()}>
+                {sub}
+              </option>
+            ))}
           </select>
 
           {/* Job Types Filter */}
@@ -382,6 +396,20 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             <option value="all">All Status</option>
             <option value="booked">Scheduled</option>
             <option value="completed">Completed</option>
+          </select>
+
+          {/* Technicians Filter */}
+          <select
+            value={techFilter}
+            onChange={(e) => setTechFilter(e.target.value)}
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
+          >
+            <option value="all">All Field Staff</option>
+            {assignableTechnicians.map((t) => (
+              <option key={t.id || t.name} value={t.name}>
+                {t.name}
+              </option>
+            ))}
           </select>
 
           {/* Search Box */}
@@ -539,124 +567,12 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
                 return (
                   <div key={day.dateStr} className="p-1.5 space-y-2 bg-slate-50/20 relative min-h-[500px]">
-                    {/* Rendered Appointments or Default Day Layout */}
+                    {/* Rendered Appointments or Clean Empty State */}
                     {appts.length === 0 ? (
-                      /* Mock visual fallback matching exact schedule screenshot layout */
-                      <div className="space-y-2.5">
-                        {dIdx === 0 && (
-                          <>
-                            {/* Mon: Sarah Khan 9:00 - 10:00 Inspection */}
-                            <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-blue-700">9:00 – 10:00</div>
-                              <div className="font-extrabold">#1042 Sarah Khan</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Tullamarine</div>
-                              <div className="text-[10px] text-blue-600 font-bold">Inspection</div>
-                            </div>
-                            <div className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-[10px] text-slate-600 font-medium flex items-center gap-1">
-                              🚘 Travel (15 min)
-                            </div>
-                            {/* Mon: Emma Wilson 10:30 - 11:30 Inspection */}
-                            <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-blue-700">10:30 – 11:30</div>
-                              <div className="font-extrabold">#1044 Emma Wilson</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Keilor</div>
-                              <div className="text-[10px] text-blue-600 font-bold">Inspection</div>
-                            </div>
-                            <div className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-[10px] text-slate-600 font-medium flex items-center gap-1">
-                              🚘 Travel (15 min)
-                            </div>
-                            {/* Break */}
-                            <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-1.5">
-                              ☕ Break
-                            </div>
-                            {/* Mon: Ali Raza 12:30 - 1:30 Inspection */}
-                            <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-blue-700">12:30 – 1:30</div>
-                              <div className="font-extrabold">#1051 Ali Raza</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Broadmeadows</div>
-                              <div className="text-[10px] text-blue-600 font-bold">Inspection</div>
-                            </div>
-                            <div className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-[10px] text-slate-600 font-medium flex items-center gap-1">
-                              🚘 Travel (20 min)
-                            </div>
-                            {/* Mon: Noor Ali 2:00 - 3:00 Inspection */}
-                            <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-blue-700">2:00 – 3:00</div>
-                              <div className="font-extrabold">#1056 Noor Ali</div>
-                              <div className="text-[11px] text-slate-600 font-medium">St Albans</div>
-                              <div className="text-[10px] text-blue-600 font-bold">Inspection</div>
-                            </div>
-                            {/* Mon: Daniel Wu 3:30 - 4:30 Job */}
-                            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-emerald-700">3:30 – 4:30</div>
-                              <div className="font-extrabold">#1065 Daniel Wu</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Sunshine</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">Job</div>
-                            </div>
-                          </>
-                        )}
-
-                        {dIdx === 1 && (
-                          <>
-                            {/* Tue: Michael Tan 9:00 - 11:00 Job */}
-                            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-emerald-700">9:00 – 11:00</div>
-                              <div className="font-extrabold">#1048 Michael Tan</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Keilor</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">Job</div>
-                            </div>
-                            <div className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-[10px] text-slate-600 font-medium">
-                              🚘 Travel (20 min)
-                            </div>
-                            {/* Tue: Kevin Joseph 11:30 - 12:30 Job */}
-                            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-emerald-700">11:30 – 12:30</div>
-                              <div className="font-extrabold">#1049 Kevin Joseph</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Essendon</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">Job</div>
-                            </div>
-                            <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-                              ☕ Break
-                            </div>
-                            {/* Tue: Kamal Singh 1:30 - 2:30 Job */}
-                            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-emerald-700">1:30 – 2:30</div>
-                              <div className="font-extrabold">#1059 Kamal Singh</div>
-                              <div className="text-[11px] text-slate-600 font-medium">St Kilda</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">Job</div>
-                            </div>
-                            <div className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-[10px] text-slate-600 font-medium">
-                              🚘 Travel (20 min)
-                            </div>
-                            {/* Tue: James Lee 2:30 - 4:00 Job */}
-                            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-emerald-700">2:30 – 4:00</div>
-                              <div className="font-extrabold">#1062 James Lee</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Brighton</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">Job</div>
-                            </div>
-                          </>
-                        )}
-
-                        {dIdx >= 2 && (
-                          <div className="space-y-2">
-                            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-emerald-700">9:30 – 11:30</div>
-                              <div className="font-extrabold">Scheduled Service</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Victoria Corridor</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">Technician Job</div>
-                            </div>
-                            <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-                              ☕ Break
-                            </div>
-                            <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs shadow-2xs">
-                              <div className="text-[10px] font-bold text-blue-700">1:00 – 2:30</div>
-                              <div className="font-extrabold">Customer Inspection</div>
-                              <div className="text-[11px] text-slate-600 font-medium">Melbourne Metro</div>
-                              <div className="text-[10px] text-blue-600 font-bold">Inspection</div>
-                            </div>
-                          </div>
-                        )}
+                      <div className="flex flex-col items-center justify-center py-20 px-2 text-center text-slate-400 space-y-1 select-none">
+                        <Clock className="w-5 h-5 text-slate-300 mx-auto" />
+                        <span className="text-xs font-semibold text-slate-500">No appointments</span>
+                        <span className="text-[10px] text-slate-400">Scheduled leads will appear here</span>
                       </div>
                     ) : (
                       appts.map((item, aIdx) => {
@@ -683,11 +599,12 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
                             <div
                               onClick={() => onOpenLead(item.lead.id)}
-                              className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs ${
+                              className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-[1.01] ${
                                 isInspection
                                   ? "bg-blue-50 hover:bg-blue-100/80 border-blue-200 text-blue-950"
                                   : "bg-emerald-50 hover:bg-emerald-100/80 border-emerald-200 text-emerald-950"
                               }`}
+                              title={`Click to open Lead #${item.lead.jobNo || item.lead.id}`}
                             >
                               <div className="text-[10px] font-bold opacity-80">
                                 {formatApptTime(`${day.dateStr}T${item.time}`)}
@@ -698,8 +615,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               <div className="text-[11px] text-slate-600 font-medium truncate">
                                 {area.suburb ? area.suburb.toUpperCase() : item.lead.city || "Melbourne"}
                               </div>
-                              <div className="text-[10px] font-bold mt-0.5">
-                                {isInspection ? "Inspection" : "Job"}
+                              <div className="flex items-center justify-between text-[10px] font-bold mt-1 pt-1 border-t border-black/5">
+                                <span>{isInspection ? "Inspection" : "Job"}</span>
+                                <span className="font-semibold text-slate-600">{item.tech}</span>
                               </div>
                             </div>
                           </div>
@@ -711,53 +629,65 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
               })}
             </div>
 
-            {/* Bottom Summary Footer Row for each day */}
+            {/* Bottom Summary Footer Row dynamically calculated for each day */}
             <div className="grid grid-cols-8 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-700">
-              <div className="p-1 text-slate-400">Daily Totals</div>
-              <div className="p-1">
-                <div>4 Inspections | 1 Job</div>
-                <div className="text-slate-500 font-normal">7.0 hrs | ~60 KM</div>
-              </div>
-              <div className="p-1">
-                <div>4 Jobs</div>
-                <div className="text-slate-500 font-normal">7.0 hrs | ~55 KM</div>
-              </div>
-              <div className="p-1">
-                <div>4 Jobs</div>
-                <div className="text-slate-500 font-normal">7.0 hrs | ~50 KM</div>
-              </div>
-              <div className="p-1">
-                <div>3 Inspections | 2 Jobs</div>
-                <div className="text-slate-500 font-normal">7.0 hrs | ~58 KM</div>
-              </div>
-              <div className="p-1">
-                <div>3 Jobs</div>
-                <div className="text-slate-500 font-normal">5.0 hrs | ~40 KM</div>
-              </div>
-              <div className="p-1">
-                <div>4 Jobs</div>
-                <div className="text-slate-500 font-normal">7.0 hrs | ~60 KM</div>
-              </div>
-              <div className="p-1 text-rose-500">
-                <div>Sunday OFF</div>
-                <div className="text-slate-400 font-normal">0 hrs | 0 KM</div>
-              </div>
+              <div className="p-1 text-slate-400 flex items-center justify-center">Daily Totals</div>
+              {weekDays.map((day) => {
+                if (day.dayOfWeek === 0) {
+                  return (
+                    <div key={day.dateStr} className="p-1 text-rose-500">
+                      <div>Sunday OFF</div>
+                      <div className="text-slate-400 font-normal">0 hrs | 0 KM</div>
+                    </div>
+                  );
+                }
+                const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
+                if (dayAppts.length === 0) {
+                  return (
+                    <div key={day.dateStr} className="p-1 text-slate-400 font-normal">
+                      <div>0 Bookings</div>
+                      <div className="text-slate-400">0 hrs | 0 KM</div>
+                    </div>
+                  );
+                }
+                const inspCount = dayAppts.filter((a) => a.type === "inspection").length;
+                const jobCount = dayAppts.filter((a) => a.type === "job").length;
+                const totalHours = (inspCount * 1.0 + jobCount * 2.0).toFixed(1);
+                let totalKm = 0;
+                for (let i = 0; i < dayAppts.length; i++) {
+                  const curSuburb = resolveArea(dayAppts[i].lead.address || dayAppts[i].lead.city).suburb;
+                  const prevSuburb = i > 0 ? resolveArea(dayAppts[i - 1].lead.address || dayAppts[i - 1].lead.city).suburb : "Tullamarine";
+                  totalKm += calculateDistanceBetweenSuburbs(prevSuburb, curSuburb);
+                }
+                return (
+                  <div key={day.dateStr} className="p-1">
+                    <div className="text-slate-800">
+                      {inspCount > 0 ? `${inspCount} Insp` : ""}
+                      {inspCount > 0 && jobCount > 0 ? " | " : ""}
+                      {jobCount > 0 ? `${jobCount} Job${jobCount > 1 ? "s" : ""}` : ""}
+                    </div>
+                    <div className="text-slate-500 font-normal">
+                      {totalHours} hrs | ~{Math.round(totalKm)} KM
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
         {/* ── 4. RIGHT SIDEBAR (4/12) ────────────────────────────────────────── */}
         <div className="xl:col-span-4 space-y-4">
-          {/* Card 1: Today's Route (Rizwan) + Live Interactive Waypoint Map */}
+          {/* Card 1: Today's Route + Live Interactive Waypoint Map */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
                 <Truck className="w-4 h-4 text-blue-600" />
-                Today's Route (Rizwan)
+                {routeTitle}
               </h2>
               <button
                 type="button"
-                onClick={() => setActionNotice("Full interactive route map expanded for Victoria Metro.")}
+                onClick={() => setActionNotice("Full interactive route map expanded for current scheduled stops.")}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
               >
                 View Full Map
@@ -770,7 +700,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
               <div className="relative rounded-xl overflow-hidden border border-slate-200/80 min-h-[180px] bg-slate-100">
                 <iframe
                   title="Today's Route Map"
-                  src="https://maps.google.com/maps?q=Tullamarine+Keilor+Brunswick+St+Albans+Sunshine+Victoria+Australia&t=&z=10&ie=UTF8&iwloc=&output=embed"
+                  src={mapEmbedUrl}
                   className="w-full h-full min-h-[180px] rounded-xl border-0"
                   loading="lazy"
                 />
@@ -778,21 +708,34 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
               {/* Waypoint Stops List */}
               <div className="space-y-1.5 overflow-y-auto max-h-[180px] text-xs">
-                {todayRouteStops.map((stop) => (
-                  <div key={stop.no} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200/70">
-                    <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                      {stop.no}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-extrabold text-slate-900 truncate">
-                        {stop.time} <span className="font-normal text-slate-600">· {stop.name}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 truncate">
-                        {stop.suburb} ({stop.type})
-                      </div>
-                    </div>
+                {todayRouteStops.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center p-4 text-slate-400 text-xs text-center font-medium">
+                    <span>No stops scheduled for today.</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Bookings will appear here as stops.</span>
                   </div>
-                ))}
+                ) : (
+                  todayRouteStops.map((stop) => (
+                    <button
+                      key={stop.no}
+                      type="button"
+                      onClick={() => onOpenLead(stop.leadId)}
+                      className="w-full text-left flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200/70 cursor-pointer transition-colors"
+                      title={`Open Lead ${stop.jobNo} (${stop.name})`}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                        {stop.no}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-extrabold text-slate-900 truncate">
+                          {stop.time} <span className="font-normal text-slate-600">· {stop.name}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          {stop.suburb} ({stop.type})
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -802,12 +745,13 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-amber-500" />
-                Unscheduled Jobs ({unscheduledLeads.length > 0 ? unscheduledLeads.length : 3})
+                Unscheduled Jobs ({unscheduledLeads.length})
               </h2>
               <button
                 type="button"
-                onClick={() => setActionNotice("Displaying all pending unscheduled jobs in Victoria queue.")}
+                onClick={() => openLeadsFiltered(["New", "Contacted", "Waiting for Info", "Quote Accepted", "Deposit Received", "Ready to Start", "Won"])}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                title="View all unscheduled jobs in Leads table"
               >
                 View All
               </button>
@@ -815,66 +759,21 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
             <div className="space-y-2">
               {unscheduledLeads.length === 0 ? (
-                /* Default queue items matching screenshot if all leads are dispatched */
-                <>
-                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
-                        <span className="font-extrabold text-xs text-slate-900 truncate">#1061 John Smith - Werribee</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 font-medium pl-4">Job (2h duration)</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActionNotice("Assigned #1061 John Smith to Werribee corridor.")}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
-                    >
-                      Assign
-                    </button>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                        <span className="font-extrabold text-xs text-slate-900 truncate">#1062 Sara Ali - Reservoir</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 font-medium pl-4">Job (2h duration)</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActionNotice("Assigned #1062 Sara Ali to Reservoir corridor.")}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
-                    >
-                      Assign
-                    </button>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
-                        <span className="font-extrabold text-xs text-slate-900 truncate">#1064 Mark Davis - Melton</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5 font-medium pl-4">Job (2h duration)</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActionNotice("Assigned #1064 Mark Davis to Melton corridor.")}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
-                    >
-                      Assign
-                    </button>
-                  </div>
-                </>
+                <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                  All active leads and jobs are scheduled!
+                </div>
               ) : (
                 unscheduledLeads.slice(0, 5).map((lead, idx) => {
                   const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
                   const suburbStr = resolveArea(lead.address || lead.city).suburb || "Victoria";
 
                   return (
-                    <div key={lead.id} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2 shadow-2xs">
+                    <div
+                      key={lead.id}
+                      onClick={() => onOpenLead(lead.id)}
+                      className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-colors"
+                      title={`Open Lead ${jobNoStr} (${lead.name || "Customer"})`}
+                    >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className={`w-2.5 h-2.5 rounded-full ${idx % 3 === 0 ? "bg-rose-500" : idx % 3 === 1 ? "bg-emerald-500" : "bg-amber-500"} shrink-0`} />
@@ -888,7 +787,10 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleAssignUnscheduled(lead)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAssignUnscheduled(lead);
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
                       >
                         Assign

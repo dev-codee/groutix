@@ -34,11 +34,16 @@ export const STAGES: Stage[] = [
   // ── Quote ──
   { key: "Quote Pending", label: "Quote Pending", owner: "intake", group: "quote" },
   { key: "Quote Sent", label: "Quote Sent", owner: "intake", group: "quote" },
+  { key: "Negotiation", label: "Negotiation", owner: "intake", group: "quote" },
+  // Accepted quote hands off to Technician to book & execute the job.
+  { key: "Won", label: "Quote Accepted", owner: "technician", group: "booking" },
   // ── Job ──
   { key: "Job Booked", label: "Job Booked", owner: "technician", group: "job" },
+  { key: "Scheduled", label: "Scheduled", owner: "technician", group: "job" },
   { key: "Job Confirmed", label: "Job Confirmed", owner: "technician", group: "job" },
   { key: "Job En Route", label: "Job — On the Way", owner: "technician", group: "job" },
   { key: "Job Arrived", label: "Job — Reached", owner: "technician", group: "job" },
+  { key: "Job Started", label: "Job Started", owner: "technician", group: "job" },
   { key: "Job In Progress", label: "Job In Progress", owner: "technician", group: "job" },
   { key: "Job Done", label: "Job Done", owner: "finance", group: "finance" },
   // ── Finance / completion ──
@@ -47,7 +52,7 @@ export const STAGES: Stage[] = [
   { key: "Partial Payment", label: "Partial Payment", owner: "finance", group: "finance" },
   { key: "Payment Received", label: "Payment Received", owner: "finance", group: "finance" },
   { key: "Warranty Sent", label: "Warranty Sent", owner: "finance", group: "finance" },
-  { key: "Completed", label: "Completed", owner: "finance", group: "closed" },
+  { key: "Completed", label: "Completed 🏆", owner: "finance", group: "closed" },
   // ── Closed ──
   { key: "Lost", label: "Lost / Closed", owner: "intake", group: "closed" },
 ];
@@ -81,6 +86,8 @@ export const INTAKE_STATUSES: string[] = [
   "Inspection Completed",
   "Quote Pending",
   "Quote Sent",
+  "Negotiation",
+  "Won",
   "Job Booked",
   "Lost",
 ];
@@ -103,10 +110,13 @@ export const INSPECTION_STATUSES: string[] = [
  */
 export const TECHNICIAN_STATUSES: string[] = [
   ...INSPECTION_STATUSES,
+  "Won",
   "Job Booked",
+  "Scheduled",
   "Job Confirmed",
   "Job En Route",
   "Job Arrived",
+  "Job Started",
   "Job In Progress",
   "Job Done",
   "Completed",
@@ -158,6 +168,8 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Inspection Completed",
       "Quote Pending",
       "Quote Sent",
+      "Negotiation",
+      "Won",
       "Job Booked",
       "Lost",
     ].includes(status);
