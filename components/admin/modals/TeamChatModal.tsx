@@ -59,13 +59,13 @@ export function TeamChatModal({
               {chatWith.name.slice(0, 1).toUpperCase()}
             </div>
             <div>
-              <div className="font-black text-slate-900 leading-tight">{chatWith.name}</div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-[#001f97]">
+              <div className="font-bold text-slate-900 leading-tight">{chatWith.name}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                 {ROLE_LABELS[chatWith.role as Role] || chatWith.role}
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -90,12 +90,12 @@ export function TeamChatModal({
                   <div
                     className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-sm shadow-xs ${
                       mine
-                        ? "bg-[#001f97] text-white rounded-br-sm"
+                        ? "bg-blue-600 text-white rounded-br-sm"
                         : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
                     }`}
                   >
                     <div className="whitespace-pre-wrap break-words">{m.text}</div>
-                    <div className={`text-[10px] mt-1 ${mine ? "text-white/60" : "text-slate-400"}`}>
+                    <div className={`text-[10px] mt-1 ${mine ? "text-white/70" : "text-slate-400"}`}>
                       {new Date(m.createdAt).toLocaleString("en-AU", {
                         timeZone: "Australia/Sydney",
                         day: "2-digit",
@@ -123,12 +123,12 @@ export function TeamChatModal({
             }}
             rows={1}
             placeholder={`Message ${chatWith.name.split(" ")[0]}…`}
-            className="flex-1 resize-none p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:border-[#001f97] max-h-32"
+            className="flex-1 resize-none p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 max-h-32"
           />
           <button
             onClick={onSend}
             disabled={chatSending || !chatText.trim()}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
           >
             {chatSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Send

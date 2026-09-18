@@ -49,47 +49,47 @@ function LoginForm() {
         className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
       >
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#001f97]/10">
-            <Lock className="h-5 w-5 text-[#001f97]" />
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 border border-blue-100 shadow-xs">
+            <Lock className="h-5 w-5 text-blue-600" />
           </div>
-          <h1 className="text-lg font-black text-slate-900">Groutix Admin</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Groutix Admin</h1>
           <p className="mt-1 text-sm text-slate-500">Sign in to continue</p>
         </div>
 
         {error ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50/80 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
         ) : null}
 
         <label className="mb-3 block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Username</span>
+          <span className="mb-1 block text-xs font-semibold text-slate-700 uppercase tracking-wider">Username</span>
           <input
             type="text"
             autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97] focus:ring-1 focus:ring-[#001f97]"
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
           />
         </label>
 
         <label className="mb-5 block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Password</span>
+          <span className="mb-1 block text-xs font-semibold text-slate-700 uppercase tracking-wider">Password</span>
           <input
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97] focus:ring-1 focus:ring-[#001f97]"
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
           />
         </label>
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-[#001f97] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
         >
           {submitting ? "Signing in…" : "Sign in"}
         </button>

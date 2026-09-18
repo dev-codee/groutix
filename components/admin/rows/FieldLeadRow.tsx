@@ -80,35 +80,35 @@ export function FieldLeadRow({ l }: { l: Lead }) {
       <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
         {/* COLUMN 1: CLIENT */}
         <div className="col-span-4 min-w-0 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
-            <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
-            <span className="text-slate-300 font-bold">|</span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold truncate flex-wrap">
+            <span className="text-blue-700 whitespace-nowrap font-bold">{jobNoDisplay}</span>
+            <span className="text-slate-300 font-normal">|</span>
             {role === "inspection" || role === "field" || role === "technician" ? (
-              <span className="text-slate-900 truncate font-bold min-w-0" title={l.name || "Unnamed Customer"}>
+              <span className="text-slate-900 truncate font-semibold min-w-0" title={l.name || "Unnamed Customer"}>
                 {l.name || "Unnamed Customer"}
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
-                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                className="text-slate-900 hover:text-blue-600 hover:underline truncate cursor-pointer text-left font-semibold min-w-0"
                 title={l.name || "Unnamed Customer"}
               >
                 {l.name || "Unnamed Customer"}
               </button>
             )}
-            <span className="text-slate-300 font-bold">|</span>
-            <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+            <span className="text-slate-300 font-normal">|</span>
+            <span className="text-slate-500 whitespace-nowrap font-medium shrink-0">{dateTimeDisplay}</span>
             {l.status === "Completed" && (
               <>
-                <span className="text-slate-300 font-bold">|</span>
+                <span className="text-slate-300 font-normal">|</span>
                 {l.warrantyProvided === false || l.warranty?.provided === false ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs">
-                    <ShieldAlert className="w-3 h-3 text-rose-600" />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shrink-0 shadow-2xs">
+                    <ShieldAlert className="w-3 h-3 text-rose-500" />
                     Warranty Not Provided
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 shadow-2xs">
                     <ShieldCheck className="w-3 h-3 text-emerald-600" />
                     Warranty Provided
                   </span>
@@ -117,18 +117,18 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate min-w-0">
-            <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate min-w-0">
+            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate">{l.phone || "—"}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
-            <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
+            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
-            <Wrench className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
+            <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
 
@@ -136,22 +136,22 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => callCustomer(l)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 rounded-lg text-[10px] xl:text-[11px] font-semibold transition-colors cursor-pointer min-w-0 shadow-2xs"
               title="Call"
             >
-              <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+              <Phone className="w-3 h-3 text-blue-600 shrink-0" />
               <span className="truncate">Call</span>
             </button>
             <button
               type="button"
               onClick={() => openPhotosModal(l)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 rounded-lg text-[10px] xl:text-[11px] font-semibold transition-colors cursor-pointer min-w-0 shadow-2xs"
               title="View & upload job photos"
             >
-              <Camera className="w-3 h-3 text-slate-600 shrink-0" />
+              <Camera className="w-3 h-3 text-slate-500 shrink-0" />
               <span className="truncate">Photos</span>
               {Array.isArray(l.photos) && l.photos.length > 0 && (
-                <span className="min-w-[16px] h-4 px-1 rounded-full bg-blue-100 text-[#001f97] text-[10px] font-black flex items-center justify-center shrink-0">
+                <span className="min-w-[16px] h-4 px-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 text-[10px] font-semibold flex items-center justify-center shrink-0">
                   {l.photos.length}
                 </span>
               )}
@@ -163,19 +163,19 @@ export function FieldLeadRow({ l }: { l: Lead }) {
         <div className="col-span-5 min-w-0 space-y-2.5">
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
               <select
                 value={l.status || "Inspection Booked"}
                 onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
               >
                 {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
             <div className="flex-1 min-w-0">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">ASSIGNED</label>
-              <div className="w-full text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate cursor-default select-none">
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">ASSIGNED</label>
+              <div className="w-full text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate cursor-default select-none">
                 {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : null) || "Unassigned"}
               </div>
             </div>
@@ -183,7 +183,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openGpsModal(l)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-[#001f97] hover:bg-[#001777] text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-blue-600 hover:bg-blue-700 text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span>GPS</span>
@@ -234,7 +234,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isStartDone
-                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
               }`}
               title={isStartDone ? "Inspection Started (Completed)" : "Start Inspection"}
@@ -261,7 +261,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isCompleteDone
-                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
               }`}
               title={isCompleteDone ? "Inspection Completed" : "Mark Complete"}

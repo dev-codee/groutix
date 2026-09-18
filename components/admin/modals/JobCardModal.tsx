@@ -123,17 +123,17 @@ export function JobCardModal({ lead: jobCardLead, onClose }: Props) {
                       done
                         ? "bg-emerald-500 text-white"
                         : "bg-slate-100 text-slate-400 border border-slate-200"
-                    } ${current ? "ring-2 ring-[#001f97] ring-offset-2" : ""}`}
+                    } ${current ? "ring-2 ring-blue-600 ring-offset-2" : ""}`}
                   >
                     {done ? (
                       <Check className="w-4 h-4 stroke-[3]" />
                     ) : (
-                      <span className="text-[10px] font-black">{i + 1}</span>
+                      <span className="text-[10px] font-bold">{i + 1}</span>
                     )}
                   </div>
                   <span
-                    className={`mt-1.5 text-[10px] font-bold text-center leading-tight ${
-                      current ? "text-[#001f97]" : done ? "text-slate-600" : "text-slate-400"
+                    className={`mt-1.5 text-[10px] font-semibold text-center leading-tight ${
+                      current ? "text-blue-600 font-bold" : done ? "text-slate-600" : "text-slate-400"
                     }`}
                   >
                     {m.label}
@@ -147,7 +147,7 @@ export function JobCardModal({ lead: jobCardLead, onClose }: Props) {
         {/* Workflow action */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
           <div>
-            <div className="text-sm font-black text-slate-900">Workflow Action</div>
+            <div className="text-sm font-bold text-slate-900">Workflow Action</div>
             <div className="text-xs text-slate-500 mt-0.5">
               Current: <b className="text-slate-700">{l.status}</b>
               {next ? (
@@ -164,7 +164,7 @@ export function JobCardModal({ lead: jobCardLead, onClose }: Props) {
             <button
               type="button"
               onClick={() => updateLeadField(l.id, { status: next.status })}
-              className="px-5 py-2.5 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-sm font-black shadow-xs transition-colors cursor-pointer"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors cursor-pointer"
             >
               Move to {next.label} →
             </button>

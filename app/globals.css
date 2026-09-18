@@ -70,40 +70,47 @@ body {
 }
 
 /* ============================================================
-   Admin dashboard skin — clean, minimal, flat, sharp edges.
+   Admin dashboard skin — modern, clean, minimal SaaS aesthetic.
    Scoped to .admin-ui so the public marketing site is untouched.
-   These are visual-only overrides (border-radius / shadow / blur),
-   so page layout is unaffected and status-colour borders keep their
-   meaning. Applied once here to guarantee a consistent look across
-   every admin page (dashboard, staff, submissions, content, login).
+   Allows smooth radius hierarchy (rounded-2xl, rounded-xl, rounded-full),
+   soft ambient shadows, and clean focus rings.
    ============================================================ */
-.admin-ui,
-.admin-ui * {
-  /* Sharp edges everywhere. */
-  border-radius: 0 !important;
+.admin-ui {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  -webkit-font-smoothing: antialiased;
 }
 
-.admin-ui * {
-  /* Flat surfaces — replace shadows with the elements' own hairline borders. */
-  box-shadow: none !important;
-}
-
-/* Calmer surface: drop decorative backdrop blur behind modals/overlays. */
-.admin-ui .backdrop-blur-xs,
-.admin-ui .backdrop-blur-sm,
-.admin-ui .backdrop-blur,
-.admin-ui .backdrop-blur-md {
-  backdrop-filter: none !important;
-}
-
-/* Consistent, quiet focus ring across all inputs, selects and buttons. */
+/* Modern, quiet focus ring across admin inputs, selects, and textareas */
 .admin-ui input:focus,
 .admin-ui select:focus,
-.admin-ui textarea:focus,
+.admin-ui textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 .admin-ui button:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 0;
-  box-shadow: none !important;
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Sleek subtle scrollbars within the admin portal */
+.admin-ui ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-ui ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-ui ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.admin-ui ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Custom Scrollbar */

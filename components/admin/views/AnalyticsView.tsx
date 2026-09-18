@@ -28,16 +28,16 @@ interface Props {
 export function AnalyticsView({ analyticsDays, setAnalyticsDays, loadAnalytics, loadingStats, stats }: Props) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#e4e9f1]">
-        <h2 className="text-base font-black text-slate-900">Submission Analytics & Trends</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <h2 className="text-sm font-bold text-slate-900 tracking-tight">Submission Analytics &amp; Trends</h2>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-slate-300 bg-white p-0.5">
+          <div className="flex rounded-xl border border-slate-200 bg-slate-50/80 p-0.5 shadow-2xs">
             {[7, 14, 30, 90].map((r) => (
               <button
                 key={r}
                 onClick={() => setAnalyticsDays(r)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                  analyticsDays === r ? "bg-[#001f97] text-white" : "text-slate-600 hover:bg-slate-100"
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  analyticsDays === r ? "bg-blue-600 text-white shadow-2xs" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
                 {r}d
@@ -46,9 +46,9 @@ export function AnalyticsView({ analyticsDays, setAnalyticsDays, loadAnalytics, 
           </div>
           <button
             onClick={() => loadAnalytics(analyticsDays)}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer"
           >
-            <RefreshCcw className={`h-3.5 w-3.5 ${loadingStats ? "animate-spin" : ""}`} />
+            <RefreshCcw className={`h-3.5 w-3.5 text-blue-600 ${loadingStats ? "animate-spin" : ""}`} />
             Refresh Stats
           </button>
         </div>

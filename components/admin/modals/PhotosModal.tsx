@@ -52,20 +52,20 @@ export function PhotosModal({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-2">Upload New Photo(s)</label>
+          <label className="block text-xs font-semibold text-slate-700 mb-2">Upload New Photo(s)</label>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => cameraRef.current?.click()}
                 disabled={uploadingPhotos}
-                className="flex items-center gap-2 px-3 py-2 bg-[#001f97] text-white rounded-xl text-xs font-bold hover:bg-blue-800 disabled:opacity-50"
+                className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 cursor-pointer shadow-2xs transition-colors"
               >
                 <Camera className="w-4 h-4" /> Take Photo
               </button>
               <button
                 onClick={() => galleryRef.current?.click()}
                 disabled={uploadingPhotos}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-[#001f97] rounded-xl text-xs font-bold hover:bg-blue-100 disabled:opacity-50"
+                className="flex items-center gap-2 px-3.5 py-2 bg-blue-50 text-blue-700 border border-blue-200/60 rounded-xl text-xs font-semibold hover:bg-blue-100 disabled:opacity-50 cursor-pointer transition-colors"
               >
                 <Upload className="w-4 h-4" /> Browse Gallery
               </button>
@@ -88,7 +88,7 @@ export function PhotosModal({
               />
             </div>
             {uploadingPhotos && (
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#001f97] animate-pulse">
+              <div className="flex items-center gap-2 text-xs font-medium text-blue-600 animate-pulse">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Uploading to Cloudinary...</span>
               </div>
@@ -98,7 +98,7 @@ export function PhotosModal({
 
         {loadingPhotos ? (
           <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-[#001f97]" />
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
             <span>Loading customer photos...</span>
           </div>
         ) : (

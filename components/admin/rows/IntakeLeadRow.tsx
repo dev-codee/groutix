@@ -79,11 +79,11 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
         {/* COLUMN 1: CLIENT */}
         <div className="col-span-4 min-w-0 space-y-2.5">
           {/* Row 1: JobNo | Name | Date Time */}
-          <div className="flex items-center gap-1.5 text-xs font-bold truncate flex-wrap">
-            <span className="text-[#001f97] whitespace-nowrap font-black">{jobNoDisplay}</span>
-            <span className="text-slate-300 font-bold">|</span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold truncate flex-wrap">
+            <span className="text-blue-700 whitespace-nowrap font-bold">{jobNoDisplay}</span>
+            <span className="text-slate-300 font-normal">|</span>
             {role === "inspection" || role === "field" || role === "technician" ? (
-              <span className="text-slate-900 truncate font-bold min-w-0" title={l.name || "Unnamed Customer"}>
+              <span className="text-slate-900 truncate font-semibold min-w-0" title={l.name || "Unnamed Customer"}>
                 {l.name || "Unnamed Customer"}
               </span>
             ) : (
@@ -93,24 +93,24 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                   setEditingLead(l);
                   setLeadModalOpen(true);
                 }}
-                className="text-slate-900 hover:text-[#001f97] hover:underline truncate cursor-pointer text-left font-bold min-w-0"
+                className="text-slate-900 hover:text-blue-600 hover:underline truncate cursor-pointer text-left font-semibold min-w-0"
                 title={l.name || "Unnamed Customer"}
               >
                 {l.name || "Unnamed Customer"}
               </button>
             )}
-            <span className="text-slate-300 font-bold">|</span>
-            <span className="text-[#001f97] whitespace-nowrap font-bold shrink-0">{dateTimeDisplay}</span>
+            <span className="text-slate-300 font-normal">|</span>
+            <span className="text-slate-500 whitespace-nowrap font-medium shrink-0">{dateTimeDisplay}</span>
             {l.status === "Completed" && (
               <>
-                <span className="text-slate-300 font-bold">|</span>
+                <span className="text-slate-300 font-normal">|</span>
                 {l.warrantyProvided === false || l.warranty?.provided === false ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0 shadow-2xs">
-                    <ShieldAlert className="w-3 h-3 text-rose-600" />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shrink-0 shadow-2xs">
+                    <ShieldAlert className="w-3 h-3 text-rose-500" />
                     Warranty Not Provided
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 shadow-2xs">
                     <ShieldCheck className="w-3 h-3 text-emerald-600" />
                     Warranty Provided
                   </span>
@@ -121,32 +121,32 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
           {/* Row 2: Phone & Email */}
           <div className="flex items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate min-w-0">
-              <Phone className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+            <div className="flex items-center gap-1.5 text-slate-700 font-medium truncate min-w-0">
+              <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="truncate">{l.phone || "—"}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-slate-800 font-semibold truncate text-right min-w-0">
-              <Mail className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+            <div className="flex items-center gap-1.5 text-slate-700 font-medium truncate text-right min-w-0">
+              <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="truncate" title={l.email}>{l.email || "—"}</span>
             </div>
           </div>
 
           {/* Row 3: Address */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
-            <MapPin className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
+            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
           </div>
 
           {/* Row 4: Service */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
-            <Wrench className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
+            <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
 
           {/* Row 5: Notes */}
           {notesDisplay ? (
-            <div className="flex items-center gap-1.5 text-xs text-slate-800 font-semibold truncate">
-              <MessageSquare className="w-3.5 h-3.5 text-[#001f97] shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
+              <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="truncate" title={`Notes: ${notesDisplay}`}>Notes: {notesDisplay}</span>
             </div>
           ) : (
@@ -164,7 +164,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
               title="Call"
             >
-              <Phone className="w-3 h-3 text-[#001f97] shrink-0" />
+              <Phone className="w-3 h-3 text-blue-600 shrink-0" />
               <span className="truncate">Call</span>
             </button>
 
@@ -177,7 +177,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
               title="Email"
             >
-              <Mail className="w-3 h-3 text-[#001f97] shrink-0" />
+              <Mail className="w-3 h-3 text-blue-600 shrink-0" />
               <span className="truncate">Email</span>
             </button>
 
@@ -187,7 +187,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               className="flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
               title="SMS"
             >
-              <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+              <MessageSquare className="w-3 h-3 text-blue-600 shrink-0" />
               <span className="truncate">SMS</span>
             </button>
 
@@ -208,7 +208,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               className="relative flex items-center justify-center gap-1 py-1.5 px-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-[10px] xl:text-[11px] font-bold transition-colors cursor-pointer min-w-0"
               title="Conversation"
             >
-              <MessageSquare className="w-3 h-3 text-[#001f97] shrink-0" />
+              <MessageSquare className="w-3 h-3 text-blue-600 shrink-0" />
               <span className="truncate">Conversation</span>
               {hasCustomerUnread && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
@@ -228,7 +228,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               <select
                 value={l.status || "New"}
                 onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
               >
                 {statusOptions.map((s) => (
                   <option key={s} value={s}>{s}</option>
@@ -237,7 +237,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             </div>
 
             <div className="flex-1 min-w-0">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">
                 ASSIGNED
               </label>
               <select
@@ -252,7 +252,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                   const val = e.target.value;
                   updateLeadField(l.id, { assigned: val === "Unassigned" ? "" : val });
                 }}
-                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-hidden cursor-pointer hover:border-[#001f97] shadow-2xs truncate"
+                className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
                 title="Assign inspector"
               >
                 <option value="Unassigned">Unassigned</option>
@@ -275,7 +275,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openGpsModal(l)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-[#001f97] hover:bg-[#001777] text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-blue-600 hover:bg-blue-700 text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
               title={l.gps ? "GPS Location Recorded" : "GPS Check-in"}
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -310,7 +310,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <div
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isStartDone
-                  ? "bg-[#001f97] text-white shadow-2xs"
+                  ? "bg-blue-600 text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
               title="Start"
@@ -330,7 +330,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <div
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-default select-none truncate min-w-0 ${
                 isCompleteDone
-                  ? "bg-[#001f97] text-white shadow-2xs"
+                  ? "bg-blue-600 text-white shadow-2xs"
                   : "border border-slate-200 bg-slate-100 text-slate-600"
               }`}
               title="Complete"
@@ -344,7 +344,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openQuoteModal(l)}
-              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${isQuoteCreatedDone ? "bg-[#001f97] text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors cursor-pointer truncate min-w-0 ${isQuoteCreatedDone ? "bg-blue-600 text-white shadow-2xs" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
             >
               Quote
             </button>
@@ -358,7 +358,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isSentDone
-                  ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                  ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
               }`}
             >
@@ -375,7 +375,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 }}
                 className={`w-full py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                   isJobBookedBtnDone
-                    ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                    ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                     : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                 }`}
               >
@@ -402,7 +402,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                   technicianUsername: tech?.username || "",
                 });
               }}
-              className="w-full text-[10px] xl:text-[11px] font-bold text-slate-700 bg-white border border-slate-300 rounded-lg px-1 py-1.5 shadow-2xs truncate min-w-0 cursor-pointer focus:outline-hidden hover:border-[#001f97]"
+              className="w-full text-[10px] xl:text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-1 py-1.5 shadow-2xs truncate min-w-0 cursor-pointer focus:outline-hidden hover:border-blue-400"
               title="Assign technician"
             >
               <option value="">Assign Tech</option>

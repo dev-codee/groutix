@@ -226,10 +226,10 @@ export function JobsView() {
   return (
     <div className="space-y-6">
       {/* Pipeline by Stage */}
-      <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-black text-slate-900">
+            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
               {role === "finance"
                 ? "Finance Pipeline by Stage"
                 : role === "inspection" || role === "field"
@@ -237,7 +237,7 @@ export function JobsView() {
                 : "Jobs Pipeline by Stage"}
             </h2>
             {statusFilter && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#001f97]/10 text-[#001f97]">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
                 Filtered: {statusFilter}
               </span>
             )}
@@ -247,17 +247,17 @@ export function JobsView() {
               <button
                 type="button"
                 onClick={() => { setStatusFilter(""); setPage(1); }}
-                className="text-[11px] font-bold text-[#001f97] hover:underline cursor-pointer"
+                className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
               >
                 Clear Filter
               </button>
             )}
-            <span className="text-[11px] text-slate-400 hidden sm:inline">
+            <span className="text-xs text-slate-400 hidden sm:inline">
               Click any stage to filter jobs
             </span>
           </div>
         </div>
-        <div className={`grid gap-3 ${
+        <div className={`grid gap-2.5 ${
           groups.length === 3
             ? "grid-cols-1 sm:grid-cols-3"
             : groups.length === 4
@@ -266,8 +266,8 @@ export function JobsView() {
         }`}>
           {groups.map((grp) => {
             const accent = STAGE_GROUP_ACCENT[grp.group] || {
-              dot: "bg-cyan-500",
-              value: "text-cyan-600",
+              dot: "bg-sky-500",
+              value: "text-sky-600",
             };
             const value = grp.customCount !== undefined
               ? grp.customCount
@@ -284,10 +284,10 @@ export function JobsView() {
                   if (grp.totalCount) { setStatusFilter(""); } else { setStatusFilter(active ? "" : joined); }
                   setPage(1);
                 }}
-                className={`p-3 rounded-xl border text-left transition-all hover:shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#001f97]/30 cursor-pointer ${
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   active
-                    ? "border-[#001f97] bg-[#001f97]/5 ring-1 ring-[#001f97]"
-                    : "border-slate-200 bg-slate-50/60 hover:border-[#001f97]/40"
+                    ? "border-blue-600 bg-blue-50/50 ring-1 ring-blue-600 shadow-2xs"
+                    : "border-slate-200/70 bg-slate-50/50 hover:bg-slate-100/60 hover:border-slate-300"
                 }`}
                 title={
                   grp.totalCount ? "Show all leads (clear stage filter)" : `Filter by ${grp.label}`
@@ -295,15 +295,15 @@ export function JobsView() {
               >
                 <div className="flex items-center gap-1.5 mb-1">
                   <span
-                    className={`w-2 h-2 rounded-full ${grp.totalCount ? "bg-[#001f97]" : accent.dot}`}
+                    className={`w-2 h-2 rounded-full ${grp.totalCount ? "bg-blue-600" : accent.dot}`}
                   />
-                  <span className="text-[11px] font-bold text-slate-600 leading-tight line-clamp-1">
+                  <span className="text-[11px] font-semibold text-slate-600 leading-tight line-clamp-1">
                     {grp.label}
                   </span>
                 </div>
                 <div
-                  className={`text-2xl font-black ${
-                    value ? (grp.totalCount ? "text-[#001f97]" : accent.value) : "text-slate-300"
+                  className={`text-xl font-bold tabular-nums ${
+                    value ? (grp.totalCount ? "text-blue-600" : accent.value) : "text-slate-300"
                   }`}
                 >
                   {value}
@@ -315,11 +315,11 @@ export function JobsView() {
       </div>
 
       {/* Jobs list */}
-      <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
         <div className="space-y-3 pb-3 border-b border-slate-100">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-black text-slate-900">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                 {role === "finance"
                   ? "Finance & Job Completion"
                   : role === "intake"
@@ -330,7 +330,7 @@ export function JobsView() {
                   ? "Inspection Visits"
                   : "Bookings & Jobs"}
               </h2>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400 font-medium">
                 {role === "finance"
                   ? `Showing ${jobLeads.length} completed jobs for invoicing, payment & warranty`
                   : role === "intake"
@@ -346,22 +346,22 @@ export function JobsView() {
 
           {/* Filter toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-2 pt-1">
-            <div className="flex items-center gap-3 flex-wrap flex-1">
-              <div className="relative flex-1 min-w-[280px]">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <div className="flex items-center gap-2.5 flex-wrap flex-1">
+              <div className="relative flex-1 min-w-[260px]">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search job #, name, phone, email, service..."
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
                 />
               </div>
 
               <select
                 value={filterOptions.includes(statusFilter) ? statusFilter : ""}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-hidden"
+                className="text-xs px-3 py-1.5 bg-slate-50/80 border border-slate-200/90 rounded-xl font-medium text-slate-700 focus:outline-hidden shadow-2xs"
               >
                 <option value="">
                   {allLabel} ({totalActive})
@@ -382,12 +382,12 @@ export function JobsView() {
                   setCurrentView("completed");
                   setPage(1);
                 }}
-                className="text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
+                className="text-xs px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                 title="View all completed records"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Completed Records</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 text-emerald-900">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-800">
                   {completedLeads.length}
                 </span>
               </button>
@@ -395,7 +395,7 @@ export function JobsView() {
               {(statusFilter || globalSearch) && (
                 <button
                   onClick={() => { setStatusFilter(""); setGlobalSearch(""); }}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-bold px-2 py-1 rounded-md hover:bg-rose-50 transition-colors"
+                  className="text-xs text-rose-600 hover:underline font-semibold px-2 py-1 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
                 >
                   Clear filter
                 </button>
@@ -407,31 +407,31 @@ export function JobsView() {
         {/* Table header & jobs list */}
         <div className="w-full">
           {role === "intake" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">INSPECTION &amp; QUOTE</div>
               <div className="col-span-3">WORKFLOW (UPTO JOB BOOKED)</div>
             </div>
           ) : role === "inspection" || role === "field" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">INSPECTION (NO QUOTE)</div>
               <div className="col-span-3">WORKFLOW (UPTO INSPECTION COMPLETED)</div>
             </div>
           ) : role === "technician" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">JOB (NO QUOTE)</div>
               <div className="col-span-3">WORKFLOW (JOB BOOKED TO JOB DONE)</div>
             </div>
           ) : role === "finance" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">FINANCE (FROM JOB DONE)</div>
               <div className="col-span-3">WORKFLOW (FINANCE)</div>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-6 px-5 py-3 bg-[#e8f0fe] text-[#1e3a8a] text-xs font-black uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="grid grid-cols-4 gap-6 px-5 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div>CLIENT</div>
               <div>INSPECTION &amp; QUOTE</div>
               <div>FINANCE</div>

@@ -70,61 +70,61 @@ export function ScheduleView({ onOpenLead }: { onOpenLead: (id: string) => void 
   }, [bookings]);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#e4e9f1] p-5 shadow-xs space-y-4">
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-black text-slate-900">
+        <h2 className="text-sm font-bold text-slate-900 tracking-tight">
           Upcoming Bookings{" "}
           {!loading && (
-            <span className="text-slate-400 font-medium text-sm ml-2">({bookings.length})</span>
+            <span className="text-slate-400 font-medium text-xs ml-1.5">({bookings.length})</span>
           )}
         </h2>
         <button
           onClick={load}
-          className="text-xs font-semibold text-[#001f97] hover:underline flex items-center gap-1"
+          className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
         >
           <RefreshCcw className="w-3 h-3" /> Refresh
         </button>
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-slate-400 text-sm flex items-center justify-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading schedule…
+        <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading schedule…
         </div>
       ) : bookings.length === 0 ? (
-        <div className="py-12 text-center text-slate-400 text-sm">
+        <div className="py-12 text-center text-slate-400 text-xs">
           No upcoming bookings. Bookings from customer self-service and admin scheduling will appear here.
         </div>
       ) : (
         <div className="space-y-6">
           {grouped.map(([date, entries]) => (
             <div key={date}>
-              <div className="flex items-center gap-3 mb-2">
-                <CalendarDays className="w-4 h-4 text-[#001f97]" />
-                <h3 className="text-sm font-black text-slate-800">{fmtScheduleDate(date)}</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <CalendarDays className="w-4 h-4 text-blue-600" />
+                <h3 className="text-xs font-bold text-slate-800 tracking-tight">{fmtScheduleDate(date)}</h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200/60 text-slate-500 font-medium">
                   {entries.length} appointment{entries.length !== 1 ? "s" : ""}
                 </span>
               </div>
-              <div className="ml-2 border-l-2 border-[#001f97]/10 pl-4 space-y-2">
+              <div className="ml-2 border-l-2 border-blue-500/20 pl-4 space-y-2">
                 {entries.map((b) => (
                   <div
                     key={b.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer group"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/70 hover:bg-slate-100/80 border border-slate-200/60 transition-all cursor-pointer group shadow-2xs"
                     onClick={() => onOpenLead(b.leadId)}
                   >
-                    <div className="text-sm font-bold text-[#001f97] w-20 shrink-0">
+                    <div className="text-xs font-bold text-blue-600 w-20 shrink-0 tabular-nums">
                       {fmtScheduleTime(b.time)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900 truncate">
+                        <span className="text-xs font-semibold text-slate-900 truncate">
                           {b.customer?.name || "Customer"}
                         </span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                             b.type === "inspection"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-emerald-100 text-emerald-700"
+                              ? "bg-blue-50 text-blue-700 border-blue-200/60"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
                           }`}
                         >
                           {b.type === "inspection" ? "Inspection" : "Job"}

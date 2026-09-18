@@ -47,12 +47,12 @@ export const JOB_PHASE = [
 ];
 
 export const STAGE_GROUP_ACCENT: Record<StageGroup, { dot: string; value: string }> = {
-  lead: { dot: "bg-blue-500", value: "text-[#001f97]" },
+  lead: { dot: "bg-blue-500", value: "text-blue-600" },
   quote: { dot: "bg-amber-500", value: "text-amber-600" },
   booking: { dot: "bg-violet-500", value: "text-violet-600" },
-  job: { dot: "bg-cyan-500", value: "text-cyan-600" },
+  job: { dot: "bg-sky-500", value: "text-sky-600" },
   finance: { dot: "bg-emerald-500", value: "text-emerald-600" },
-  closed: { dot: "bg-slate-400", value: "text-slate-400" },
+  closed: { dot: "bg-slate-400", value: "text-slate-500" },
 };
 
 // ── Job number helpers ────────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ export function getBadgeColor(status: string) {
     case "Warranty Sent":
     case "Inspection Completed":
     case "Completed":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200/80 font-semibold";
     case "Inspection En Route":
     case "Inspection Arrived":
     case "Inspection In Progress":
@@ -342,13 +342,24 @@ export function getBadgeColor(status: string) {
     case "Job Arrived":
     case "Job Started":
     case "Job In Progress":
-      return "bg-amber-50 text-amber-700 border-amber-200";
+      return "bg-amber-50 text-amber-700 border-amber-200/80 font-semibold";
     case "Lost":
-      return "bg-slate-100 text-slate-500 border-slate-200";
+      return "bg-slate-100 text-slate-500 border-slate-200/80 font-medium";
     case "New":
-      return "bg-[#001f97]/10 text-[#001f97] border-[#001f97]/20 font-semibold";
+      return "bg-blue-50 text-blue-700 border-blue-200/80 font-semibold";
+    case "Quote Sent":
+    case "Quote Pending":
+      return "bg-indigo-50 text-indigo-700 border-indigo-200/80 font-semibold";
+    case "Job Booked":
+    case "Scheduled":
+    case "Job Confirmed":
+    case "Inspection Booked":
+      return "bg-sky-50 text-sky-700 border-sky-200/80 font-semibold";
+    case "Invoice Sent":
+    case "Payment Pending":
+      return "bg-rose-50 text-rose-700 border-rose-200/80 font-semibold";
     default:
-      return "bg-slate-50 text-slate-700 border-slate-200";
+      return "bg-slate-50 text-slate-700 border-slate-200/80 font-medium";
   }
 }
 

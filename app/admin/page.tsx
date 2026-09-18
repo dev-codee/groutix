@@ -2916,29 +2916,29 @@ export default function CrmDashboardPage() {
 
   return (
     <AdminPageProvider value={pageCtx}>
-    <div className="flex h-screen overflow-hidden bg-[#f5f7fb] text-[#14213d]">
+    <div className="flex h-screen overflow-hidden bg-slate-50/60 text-slate-900">
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-white border-r border-[#e4e9f1] p-4 flex flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
+      <aside className="w-64 bg-white border-r border-slate-200/80 p-4 flex flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
         <div>
           {/* Brand */}
-          <div className="flex items-center gap-3 pb-6 border-b border-[#e4e9f1]">
-            <div className="w-10 h-10 rounded-xl bg-[#001f97] text-white flex items-center justify-center font-black text-xl shadow-sm">
+          <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-base shadow-xs ring-1 ring-blue-500/20 shrink-0">
               G
             </div>
             <div>
-              <div className="font-black text-lg leading-tight text-[#001f97]">Groutix Portal</div>
-              <div className="text-xs text-slate-400">CRM & Administration</div>
+              <div className="font-bold text-base leading-tight text-slate-900 tracking-tight">Groutix Portal</div>
+              <div className="text-[11px] font-medium text-slate-400">CRM &amp; Operations</div>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="mt-5 flex flex-col gap-1.5">
+          <nav className="mt-4 flex flex-col gap-1">
             {canSee("dashboard") && (
               <button
                 onClick={() => setCurrentView("dashboard")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "dashboard"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "dashboard"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -2951,9 +2951,9 @@ export default function CrmDashboardPage() {
             {canSee("leads") && (
               <button
                 onClick={() => setCurrentView("leads")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "leads"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "leads"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -2961,7 +2961,7 @@ export default function CrmDashboardPage() {
                   Leads
                 </span>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                     }`}
                 >
                   {scopedLeads.length}
@@ -2972,9 +2972,9 @@ export default function CrmDashboardPage() {
             {canSee("quotes") && (
               <button
                 onClick={() => setCurrentView("quotes")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "quotes"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "quotes"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -2982,7 +2982,7 @@ export default function CrmDashboardPage() {
                   Quotes
                 </span>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                     }`}
                 >
                   {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
@@ -2993,9 +2993,9 @@ export default function CrmDashboardPage() {
             {canSee("jobs") && (
               <button
                 onClick={() => setCurrentView("jobs")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "jobs"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "jobs"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -3011,7 +3011,7 @@ export default function CrmDashboardPage() {
                           : "Bookings & Jobs"}
                 </span>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                     }`}
                 >
                   {role === "finance"
@@ -3030,9 +3030,9 @@ export default function CrmDashboardPage() {
             {canSee("completed") && (
               <button
                 onClick={() => setCurrentView("completed")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "completed"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "completed"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -3040,7 +3040,7 @@ export default function CrmDashboardPage() {
                   Completed
                 </span>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${currentView === "completed" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "completed" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
                     }`}
                 >
                   {scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length}
@@ -3051,9 +3051,9 @@ export default function CrmDashboardPage() {
             {canSee("schedule") && (
               <button
                 onClick={() => setCurrentView("schedule")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "schedule"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "schedule"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -3066,9 +3066,9 @@ export default function CrmDashboardPage() {
             {canSee("customers") && (
               <button
                 onClick={() => setCurrentView("customers")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "customers"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "customers"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -3081,9 +3081,9 @@ export default function CrmDashboardPage() {
             {canSee("team") && (
               <button
                 onClick={() => setCurrentView("team")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "team"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "team"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -3091,7 +3091,7 @@ export default function CrmDashboardPage() {
                   Team
                 </span>
                 {totalUnread > 0 && (
-                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
+                  <span className="min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
                     {totalUnread}
                   </span>
                 )}
@@ -3101,9 +3101,9 @@ export default function CrmDashboardPage() {
             {canSee("analytics") && (
               <button
                 onClick={() => setCurrentView("analytics")}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${currentView === "analytics"
-                    ? "bg-[#001f97] text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "analytics"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -3114,17 +3114,17 @@ export default function CrmDashboardPage() {
             )}
 
             {(role === "manager" || role === "super_admin") && (
-              <div className="pt-3 mt-3 border-t border-[#e4e9f1] flex flex-col gap-1.5">
+              <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
                 <Link
                   href={`${basePath}/users`}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
                 >
                   <UserCheck className="w-4 h-4" />
                   Staff Accounts
                 </Link>
                 <Link
                   href={`${basePath}/content`}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
                 >
                   <FileText className="w-4 h-4" />
                   Site Content Editor
@@ -3133,11 +3133,11 @@ export default function CrmDashboardPage() {
             )}
 
             {role === "manager" && (
-              <div className="pt-3 mt-3 border-t border-[#e4e9f1] flex flex-col gap-1.5">
-                <p className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Settings</p>
+              <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
+                <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settings</p>
                 <button
                   onClick={() => setLogoSettingsOpen(true)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 text-left"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors"
                 >
                   <Settings className="w-4 h-4" />
                   Logo Settings
@@ -3152,9 +3152,9 @@ export default function CrmDashboardPage() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* Top Header Bar */}
-        <header className="h-20 bg-white border-b border-[#e4e9f1] px-6 flex items-center justify-between gap-4 sticky top-0 z-10 shadow-xs">
+        <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-6 flex items-center justify-between gap-4 sticky top-0 z-20 shadow-2xs">
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight capitalize">
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight capitalize">
               {currentView === "dashboard"
                 ? "Manager Dashboard"
                 : currentView === "analytics"
@@ -3178,35 +3178,37 @@ export default function CrmDashboardPage() {
           </div>
 
           {/* Live AUS Time */}
-          <div className="hidden md:flex flex-col items-center px-3 py-1 rounded-xl bg-[#001f97]/5 border border-[#001f97]/10 min-w-[100px]">
-            <span className="text-[13px] font-black text-[#001f97] tabular-nums tracking-tight leading-tight">{liveAusTime}</span>
-            <span className="text-[10px] font-semibold text-slate-400 leading-tight">{liveAusDate} · AEST</span>
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-xs font-bold text-slate-800 tabular-nums tracking-tight">{liveAusTime}</span>
+              <span className="text-[10px] font-medium text-slate-400 mt-0.5">{liveAusDate} · AEST</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {/* Global Search */}
-            <div className="relative w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative w-64 md:w-72">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search job #, name, phone, service..."
+                placeholder="Search job #, name, phone..."
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-[#001f97] focus:bg-white transition-colors"
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
               />
             </div>
 
-            <div className="h-6 w-px bg-slate-200 mx-1"></div>
+            <div className="h-5 w-px bg-slate-200 mx-0.5"></div>
 
             <button
               onClick={logout}
               disabled={loggingOut}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
               {loggingOut ? "Signing out…" : "Sign Out"}
             </button>
-
 
             {/* Unread customer replies bell — hidden for inspection & technician */}
             {role !== "inspection" && role !== "field" && role !== "technician" && (
@@ -3217,11 +3219,11 @@ export default function CrmDashboardPage() {
                     ? `${unreadReplyCount} conversation(s) with unread replies`
                     : "No unread customer replies"
                 }
-                className="relative p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+                className="relative p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
               >
-                <Bell className={`w-4 h-4 ${unreadReplyCount > 0 ? "text-[#001f97]" : ""}`} />
+                <Bell className={`w-3.5 h-3.5 ${unreadReplyCount > 0 ? "text-blue-600" : ""}`} />
                 {unreadReplyCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
                     {unreadReplyCount}
                   </span>
                 )}
@@ -3232,9 +3234,9 @@ export default function CrmDashboardPage() {
             <button
               onClick={() => loadData()}
               title="Refresh database records"
-              className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+              className="p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
             >
-              <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin text-[#001f97]" : ""}`} />
+              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
             </button>
 
             {/* Sync Emails Button — hidden for inspection & technician */}
@@ -3243,9 +3245,9 @@ export default function CrmDashboardPage() {
                 onClick={handleSyncEmails}
                 disabled={syncingEmails}
                 title="Sync Inbox"
-                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200/80 bg-white text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-2xs"
               >
-                <Mail className={`w-4 h-4 ${syncingEmails ? "animate-pulse" : ""}`} />
+                <Mail className={`w-3.5 h-3.5 ${syncingEmails ? "animate-pulse text-blue-600" : ""}`} />
                 Sync Inbox
               </button>
             )}
@@ -3262,17 +3264,17 @@ export default function CrmDashboardPage() {
                   });
                   setLeadModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] shadow-sm transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 Add Lead
               </button>
             )}
 
             <div
-              className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${viewAs
+              className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${viewAs
                   ? "border-amber-300 bg-amber-50 text-amber-800"
-                  : "border-slate-200 bg-white text-slate-700"
+                  : "border-slate-200/80 bg-white text-slate-700 shadow-2xs"
                 }`}
             >
               <span
@@ -3289,10 +3291,10 @@ export default function CrmDashboardPage() {
             {/* Location sharing indicator (inspector / technician only) */}
             {(role === "inspection" || role === "technician") && (
               <div
-                className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${
+                className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${
                   locationTrackingActive
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white text-slate-400"
+                    : "border-slate-200/80 bg-white text-slate-400"
                 }`}
               >
                 <div
@@ -3485,7 +3487,7 @@ export default function CrmDashboardPage() {
                 <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-[#001f97]" />
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                       <span>Customer Request & Selected Services</span>
                     </div>
                     <button
@@ -3494,7 +3496,7 @@ export default function CrmDashboardPage() {
                         const matched = getMatchedQuoteItemsForLead(activeQuoteLead);
                         setQuoteItems(matched);
                       }}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#001f97] text-white font-bold text-[11px] hover:bg-[#001777] transition-colors shadow-2xs"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
                       title="Re-populate quote items using the best matching standard templates"
                     >
                       Auto-Match All Items
@@ -3514,7 +3516,7 @@ export default function CrmDashboardPage() {
                             key={sIdx}
                             className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-lg shadow-2xs text-xs font-semibold text-slate-800"
                           >
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#001f97]"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                             <span>{svc}</span>
                             {matchedTemplate && (
                               <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
@@ -3627,7 +3629,7 @@ export default function CrmDashboardPage() {
                                 ]);
                               }
                             }}
-                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-[#001f97] text-[11px] font-semibold hover:bg-blue-50 shadow-2xs transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-600 text-[11px] font-semibold hover:bg-blue-50 shadow-2xs transition-colors cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Add &ldquo;{svc}&rdquo;</span>
@@ -3707,7 +3709,7 @@ export default function CrmDashboardPage() {
                           }
                         }}
                         buttonLabel="Search Library"
-                        triggerClassName="flex items-center gap-1 px-2.5 py-1 bg-[#001f97] text-white font-bold text-xs rounded-lg hover:bg-[#001777] shadow-2xs transition-colors"
+                        triggerClassName="flex items-center gap-1 px-2.5 py-1 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-2xs transition-colors cursor-pointer"
                       />
                       <button
                         type="button"
@@ -3987,7 +3989,7 @@ export default function CrmDashboardPage() {
                                 const clean = line.replace(/^[•o]\s*/, "").trim();
                                 return (
                                   <li key={li} className="flex items-start gap-1 text-[10px] text-slate-600 leading-snug">
-                                    <span className="shrink-0 text-[#001f97] font-bold mt-px">•</span>
+                                    <span className="shrink-0 text-blue-600 font-bold mt-px">•</span>
                                     <span>{clean}</span>
                                   </li>
                                 );
@@ -4046,7 +4048,7 @@ export default function CrmDashboardPage() {
                   </div>
 
                   <details className="text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <summary className="font-bold text-slate-800 cursor-pointer hover:text-[#001f97] select-none">
+                    <summary className="font-bold text-slate-800 cursor-pointer hover:text-blue-600 select-none">
                       Preview All 20 Terms &amp; Conditions Clauses (Pages 2–10)
                     </summary>
                     <div className="mt-3 text-[10px] text-slate-700 space-y-2 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono bg-white p-2.5 rounded border border-slate-200">
@@ -4106,7 +4108,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={handleMarkQuoteSent}
-                className="px-4 py-2 bg-[#001f97] text-white rounded-xl font-bold hover:bg-[#001777]"
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
               >
                 Mark Quote Sent
               </button>
@@ -4132,7 +4134,7 @@ export default function CrmDashboardPage() {
             <li
               key={i}
               onMouseDown={(e) => { e.preventDefault(); setEditingLead((prev) => prev ? { ...prev, address: s } : prev); setAddressSuggestionsOpen(false); setAddressSuggestions([]); }}
-              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 hover:text-[#001f97] text-slate-700 border-b border-slate-100 last:border-0"
+              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 hover:text-blue-600 text-slate-700 border-b border-slate-100 last:border-0"
             >
               {s}
             </li>
@@ -4279,7 +4281,7 @@ export default function CrmDashboardPage() {
                       key={msg.id}
                       className={`p-3 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1 ${isCustomer
                           ? "mr-auto bg-white border border-slate-200 text-slate-800"
-                          : "ml-auto bg-[#001f97] text-white"
+                          : "ml-auto bg-blue-600 text-white"
                         }`}
                     >
                       <div
@@ -4347,7 +4349,7 @@ export default function CrmDashboardPage() {
                 <button
                   type="button"
                   onClick={() => scrollToLatestMessage(true)}
-                  className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-[#001f97] text-white text-xs font-bold rounded-full shadow-lg hover:bg-[#001777] transition-all animate-bounce cursor-pointer z-20"
+                  className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg hover:bg-blue-700 transition-all animate-bounce cursor-pointer z-20"
                   title="Jump to latest conversation"
                 >
                   <ArrowDown className="w-3.5 h-3.5" />
@@ -4365,7 +4367,7 @@ export default function CrmDashboardPage() {
                     onClick={() => setMessageChannel("email")}
                     className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       messageChannel === "email"
-                        ? "bg-white text-[#001f97] shadow-xs"
+                        ? "bg-white text-blue-600 shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -4388,7 +4390,7 @@ export default function CrmDashboardPage() {
                 <button
                   type="button"
                   onClick={handleAddCustomerDemoReply}
-                  className="text-[11px] text-[#001f97] font-semibold hover:underline"
+                  className="text-[11px] text-blue-600 font-semibold hover:underline"
                 >
                   + Add Customer Message Note
                 </button>
@@ -4510,7 +4512,7 @@ export default function CrmDashboardPage() {
                       }
                     } catch { /* silently fail */ }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#001f97] text-white text-[11px] font-bold rounded-lg hover:bg-[#001777] transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 transition cursor-pointer"
                 >
                   <CalendarDays className="w-3 h-3" />
                   <span>Inspection Booking</span>
@@ -4551,7 +4553,7 @@ export default function CrmDashboardPage() {
                         setManageTemplatesModalOpen(true);
                         handleOpenCreateTemplate();
                       }}
-                      className="text-[11px] text-[#001f97] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                      className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Add Template</span>
@@ -4585,7 +4587,7 @@ export default function CrmDashboardPage() {
                 <select
                   value={selectedTemplateId}
                   onChange={(e) => handleSelectEmailTemplate(e.target.value)}
-                  className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] transition shadow-2xs cursor-pointer"
+                  className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs cursor-pointer"
                 >
                   <option value="">-- Select an Email Template (or write custom) --</option>
                   {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => (
@@ -4614,7 +4616,7 @@ export default function CrmDashboardPage() {
                   value={replySubject}
                   onChange={(e) => setReplySubject(e.target.value)}
                   placeholder="Enter email subject line..."
-                  className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                  className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
 
@@ -4626,7 +4628,7 @@ export default function CrmDashboardPage() {
                   placeholder="Type your email message or pick a template from the dropdown above..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans resize-y min-h-[100px]"
+                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y min-h-[100px]"
                 />
               </div>
 
@@ -4688,7 +4690,7 @@ export default function CrmDashboardPage() {
                   type="button"
                   onClick={handleSendReply}
                   disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
                 >
                   {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   <span>{sendingReply ? "Sending…" : "Save & Send Email"}</span>
@@ -4710,13 +4712,13 @@ export default function CrmDashboardPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#001f97]">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-black text-slate-900">Email Templates Manager</h2>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#001f97] text-xs font-bold border border-blue-200">
+                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                       {emailTemplates.length} templates
                     </span>
                   </div>
@@ -4741,7 +4743,7 @@ export default function CrmDashboardPage() {
                     <button
                       type="button"
                       onClick={handleOpenCreateTemplate}
-                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#001f97] hover:bg-[#001777] rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add Template</span>
@@ -4787,7 +4789,7 @@ export default function CrmDashboardPage() {
                       placeholder="e.g. Booking Deposit Request"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
 
@@ -4796,7 +4798,7 @@ export default function CrmDashboardPage() {
                     <select
                       value={formCategory}
                       onChange={(e) => setFormCategory(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     >
                       <option value="Enquiries & Leads">Enquiries & Leads</option>
                       <option value="Inspections">Inspections</option>
@@ -4817,7 +4819,7 @@ export default function CrmDashboardPage() {
                     placeholder="Brief note on when staff should use this template"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
@@ -4828,13 +4830,13 @@ export default function CrmDashboardPage() {
                     placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
                     value={formSubject}
                     onChange={(e) => setFormSubject(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97]"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
                 {/* Variable helper chips */}
                 <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[11px]">
-                  <span className="font-bold text-[#001f97] mr-1">Insert Dynamic Tag:</span>
+                  <span className="font-bold text-blue-700 mr-1">Insert Dynamic Tag:</span>
                   {[
                     { label: "+ First Name", val: "{first_name}" },
                     { label: "+ Full Name", val: "{customer_name}" },
@@ -4866,7 +4868,7 @@ export default function CrmDashboardPage() {
                     placeholder="Write your email body here... You can use variables like {first_name}, {service}, etc."
                     value={formBody}
                     onChange={(e) => setFormBody(e.target.value)}
-                    className="w-full p-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-[#001f97]/20 focus:border-[#001f97] leading-relaxed font-sans"
+                    className="w-full p-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans"
                   />
                 </div>
 
@@ -4882,7 +4884,7 @@ export default function CrmDashboardPage() {
                     type="button"
                     onClick={handleSaveTemplate}
                     disabled={savingTemplate || !formName.trim() || !formBody.trim()}
-                    className="px-5 py-2 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="px-5 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     {savingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     <span>{savingTemplate ? "Saving..." : editingTemplate ? "Update Template" : "Create Template"}</span>
@@ -4954,7 +4956,7 @@ export default function CrmDashboardPage() {
                                 handleSelectEmailTemplate(t.id);
                                 setManageTemplatesModalOpen(false);
                               }}
-                              className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-[#001f97] font-bold rounded-lg text-center transition cursor-pointer"
+                              className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-center transition cursor-pointer"
                             >
                               Use in Composer →
                             </button>
@@ -4973,7 +4975,7 @@ export default function CrmDashboardPage() {
                   <button
                     type="button"
                     onClick={handleResetTemplates}
-                    className="text-xs text-[#001f97] underline font-bold cursor-pointer"
+                    className="text-xs text-blue-600 underline font-bold cursor-pointer"
                   >
                     Click here to load standard default templates
                   </button>
@@ -5083,7 +5085,7 @@ export default function CrmDashboardPage() {
                         });
                       }
                     }}
-                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#001f97] focus:ring-offset-2 ${
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                       warrantyProvided ? "bg-emerald-600" : "bg-slate-300"
                     }`}
                     title={warrantyProvided ? "Click slider to Turn OFF Warranty" : "Click slider to Turn ON Warranty"}
@@ -5272,7 +5274,7 @@ export default function CrmDashboardPage() {
                     href="/terms-conditions"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#001f97] underline font-bold inline-flex items-center gap-1 hover:text-blue-900"
+                    className="text-blue-600 underline font-bold inline-flex items-center gap-1 hover:text-blue-800"
                   >
                     <span>View Full Terms &amp; Conditions</span>
                     <ExternalLink className="w-3 h-3" />
@@ -5604,7 +5606,7 @@ export default function CrmDashboardPage() {
                               <ul className="mt-1 space-y-0.5">
                                 {invoiceDescription.split("\n").filter((l) => l.trim()).map((line, li) => (
                                   <li key={li} className="flex items-start gap-1 text-[10px] text-slate-500 leading-snug">
-                                    <span className="text-[#001f97] font-bold shrink-0 mt-px">•</span>
+                                    <span className="text-blue-600 font-bold shrink-0 mt-px">•</span>
                                     <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
                                   </li>
                                 ))}
@@ -5802,7 +5804,7 @@ export default function CrmDashboardPage() {
                   onClick={() => setStartJobDays((d) => Math.max(1, d - 1))}
                   className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
                 >−</button>
-                <span className="text-2xl font-black text-[#001f97] w-8 text-center">{startJobDays}</span>
+                <span className="text-2xl font-black text-blue-600 w-8 text-center">{startJobDays}</span>
                 <button
                   type="button"
                   onClick={() => setStartJobDays((d) => Math.min(14, d + 1))}
@@ -5822,7 +5824,7 @@ export default function CrmDashboardPage() {
                   });
                   setStartJobPrompt(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-[#001f97] text-white font-bold text-sm hover:bg-[#001777] transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
               >
                 Start Job
               </button>
@@ -5854,7 +5856,7 @@ export default function CrmDashboardPage() {
               <button
                 type="button"
                 onClick={() => executeOnTheWayNotification(notifyPrompt.lead, notifyPrompt.eventType)}
-                className="flex-1 py-2.5 rounded-xl bg-[#001f97] text-white font-bold text-sm hover:bg-[#001777] transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
               >
                 Yes, notify
               </button>
@@ -5889,7 +5891,7 @@ export default function CrmDashboardPage() {
               <input
                 type="file"
                 accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#001f97] file:text-white hover:file:bg-[#001777] cursor-pointer"
+                className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer shadow-xs"
                 disabled={logoUploading}
                 onChange={(e) => {
                   const file = e.target.files?.[0];

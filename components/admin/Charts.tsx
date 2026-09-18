@@ -15,12 +15,12 @@ export function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl border p-4 ${
-        accent ? "border-[#001f97]/20 bg-[#001f97]/5" : "border-slate-200 bg-white"
+      className={`rounded-2xl border p-4 shadow-xs ${
+        accent ? "border-blue-500/30 bg-blue-50/40" : "border-slate-200/80 bg-white"
       }`}
     >
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-black text-slate-900">{value}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-1 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{value}</div>
       {hint ? <div className="mt-0.5 text-xs text-slate-400">{hint}</div> : null}
     </div>
   );
@@ -32,8 +32,8 @@ export function TimelineChart({ data }: { data: TimelinePoint[] }) {
   const max = Math.max(1, ...data.map((d) => d.quote + d.support_ticket));
   return (
     <div>
-      <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
-        <Legend color="#001f97" label="Quotes" />
+      <div className="mb-3 flex items-center gap-4 text-xs text-slate-500 font-medium">
+        <Legend color="#2563eb" label="Quotes" />
         <Legend color="#38bdf8" label="Support tickets" />
       </div>
       <div className="flex h-40 items-end gap-[2px]">
@@ -52,7 +52,7 @@ export function TimelineChart({ data }: { data: TimelinePoint[] }) {
                 style={{ height: `${(d.support_ticket / max) * 100}%` }}
               />
               <div
-                className="w-full bg-[#001f97]"
+                className="w-full bg-blue-600"
                 style={{ height: `${(d.quote / max) * 100}%` }}
               />
               {total === 0 ? <div className="h-[2px] w-full bg-slate-200" /> : null}
@@ -60,7 +60,7 @@ export function TimelineChart({ data }: { data: TimelinePoint[] }) {
           );
         })}
       </div>
-      <div className="mt-2 flex justify-between text-[10px] text-slate-400">
+      <div className="mt-2 flex justify-between text-[10px] text-slate-400 font-medium tabular-nums">
         <span>{data[0]?.date}</span>
         <span>{data[data.length - 1]?.date}</span>
       </div>
@@ -71,7 +71,7 @@ export function TimelineChart({ data }: { data: TimelinePoint[] }) {
 function Legend({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
+      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
       {label}
     </span>
   );
@@ -92,9 +92,9 @@ export function BarList({
     <ul className="space-y-2">
       {items.map((item) => (
         <li key={item.label} className="relative">
-          <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm">
+          <div className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-1.5 text-xs">
             <div
-              className="absolute inset-y-0 left-0 rounded-md bg-[#001f97]/10"
+              className="absolute inset-y-0 left-0 rounded-xl bg-blue-500/10"
               style={{ width: `${(item.count / max) * 100}%` }}
             />
             <span className="relative z-10 truncate text-slate-700" title={item.label}>

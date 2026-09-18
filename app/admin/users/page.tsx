@@ -117,8 +117,8 @@ export default function UsersPage() {
     <AdminShell>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-black text-slate-900">
-            <ShieldCheck className="h-5 w-5 text-[#001f97]" /> Staff Accounts
+          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 tracking-tight">
+            <ShieldCheck className="h-5 w-5 text-blue-600" /> Staff Accounts
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
             Manage staff logins and roles. Use &ldquo;Open Dashboard&rdquo; to preview any staff member&rsquo;s view.
@@ -127,13 +127,13 @@ export default function UsersPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={basePath}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to CRM
           </Link>
           <Link
             href={`${basePath}?view=team`}
-            className="flex items-center gap-1.5 rounded-lg border border-[#001f97]/30 bg-[#001f97]/5 px-3 py-1.5 text-xs font-bold text-[#001f97] hover:bg-[#001f97]/10 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors shadow-2xs"
           >
             <Users className="h-3.5 w-3.5" /> Team Directory &amp; Chat
           </Link>
@@ -152,37 +152,37 @@ export default function UsersPage() {
         className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
       >
         <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800">
-          <UserPlus className="h-4 w-4 text-[#001f97]" /> Add staff login
+          <UserPlus className="h-4 w-4 text-blue-600" /> Add staff login
         </h2>
         {formError ? (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mb-3 rounded-xl border border-red-200 bg-red-50/80 px-3 py-2 text-sm text-red-700">
             {formError}
           </div>
         ) : null}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97]"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
           <input
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97]"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
             placeholder="Full name"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
             type="text"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97]"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
             placeholder="Password (min 8)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
           <select
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#001f97]"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
             value={newRole}
             onChange={(e) => setNewRole(e.target.value as Role)}
           >
@@ -195,7 +195,7 @@ export default function UsersPage() {
           <button
             type="submit"
             disabled={creating}
-            className="rounded-lg bg-[#001f97] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
           >
             {creating ? "Creating…" : "Create"}
           </button>
@@ -277,7 +277,7 @@ export default function UsersPage() {
                             ? `${basePath}?view=dashboard`
                             : `${basePath}?viewAsRole=${u.role}&viewAsName=${encodeURIComponent(u.name || u.username)}`
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#001f97] px-2.5 py-1 text-xs font-bold text-white hover:bg-[#001777] transition-colors shadow-xs"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
                         title={`Open & preview ${u.name || u.username}'s dashboard`}
                       >
                         <ExternalLink className="h-3 w-3" />

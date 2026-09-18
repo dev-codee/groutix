@@ -54,7 +54,7 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
         <div className="flex flex-col gap-2 pt-2">
           <button
             onClick={onCapture}
-            className="w-full py-2.5 bg-[#001f97] text-white text-xs font-bold rounded-xl hover:bg-[#001777]"
+            className="w-full py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
           >
             Record Current GPS Location
           </button>
@@ -63,7 +63,7 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
               href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lead.address)}`}
               target="_blank"
               rel="noreferrer"
-              className="w-full py-2.5 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 text-center"
+              className="w-full py-2.5 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 text-center shadow-2xs transition-colors"
             >
               Navigate to Customer Property
             </a>

@@ -104,10 +104,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 if (newStatus === "Completed" && !confirmCompleteIfDues()) return;
                 updateLeadField(l.id, { status: newStatus });
               }}
-              className={`text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#001f97] ${
+              className={`text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 ${
                 l.status === "Completed"
                   ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 hover:border-emerald-400"
-                  : "bg-white border-slate-200 text-slate-800 hover:border-[#001f97]"
+                  : "bg-white border-slate-200 text-slate-800 hover:border-blue-500"
               }`}
               title="Change status manually"
             >
@@ -121,7 +121,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           <div>
             <div className="flex items-center justify-between gap-1.5 min-w-0 mb-1">
-              <div className="font-black text-[#001f97] text-xs sm:text-sm whitespace-nowrap tracking-tight shrink-0">
+              <div className="font-bold text-blue-700 text-xs sm:text-sm whitespace-nowrap tracking-tight shrink-0">
                 {l.jobNo || "—"}
               </div>
               {(() => {
@@ -217,7 +217,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <Camera className="w-3.5 h-3.5 text-slate-600" />
                 <span>Photos / Camera</span>
               </span>
-              <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-[#001f97] text-[11px] font-black flex items-center justify-center">
+              <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 text-[11px] font-bold flex items-center justify-center">
                 {photosTotal}
               </span>
             </button>
@@ -424,7 +424,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           done
                             ? isOnTheWayStep
                               ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
-                              : "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                              : "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                             : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
                         title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
@@ -449,7 +449,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               <button
                 type="button"
                 onClick={() => updateLeadField(l.id, { status: "Inspection Completed" })}
-                className="w-full px-3 py-2 bg-[#001f97] hover:bg-[#001777] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                 title="Send this lead back to the Booking Office (Login 1) with all inspection info so they can send the quote"
               >
                 <Send className="w-4 h-4" />
@@ -488,9 +488,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                     if (isJobBookedDone) return;
                     updateLeadField(l.id, { status: "Job Booked" });
                   }}
-                  className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors truncate ${
+                  className={`px-1 py-1.5 rounded-lg text-[10px] font-semibold transition-colors truncate ${
                     isJobBookedDone
-                      ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                      ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                       : "bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer"
                   }`}
                   title={isJobBookedDone ? "Job Booked (Completed)" : "Set: Job Booked"}
@@ -581,9 +581,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                               if (currentIdx >= 3) return;
                               updateLeadField(l.id, { status: "Job Done" });
                             }}
-                            className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
+                            className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-semibold transition-colors truncate ${
                               currentIdx >= 3
-                                ? "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                                ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                                 : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                             }`}
                             title={currentIdx >= 3 ? "Job Done (Completed)" : "Set: Job Done"}
@@ -604,11 +604,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           if (done) return;
                           updateLeadField(l.id, { status: step.status });
                         }}
-                        className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
+                        className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-semibold transition-colors truncate ${
                           done
                             ? isYellowStep
                               ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
-                              : "bg-[#001f97] text-white shadow-2xs cursor-default select-none"
+                              : "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                             : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
                         }`}
                         title={done ? `${step.label} (Completed)` : `Set status: ${step.status}`}
@@ -643,13 +643,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               </div>
               <div className="w-full bg-blue-100 rounded-full h-2">
                 <div
-                  className="bg-[#001f97] h-2 rounded-full transition-all duration-500"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, ((l.jobDaysDone || 1) / l.jobTotalDays) * 100)}%` }}
                 />
               </div>
               <div className="flex gap-0.5">
                 {Array.from({ length: l.jobTotalDays }).map((_, i) => (
-                  <div key={i} className={`flex-1 h-1.5 rounded-full ${i < (l.jobDaysDone || 1) ? "bg-[#001f97]" : "bg-blue-100"}`} />
+                  <div key={i} className={`flex-1 h-1.5 rounded-full ${i < (l.jobDaysDone || 1) ? "bg-blue-600" : "bg-blue-100"}`} />
                 ))}
               </div>
             </div>
@@ -660,7 +660,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         <div className="space-y-2.5 min-w-0">
           <div className="p-2 space-y-1.5">
             {l.invoiceSentAt && (
-              <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50/80 text-[#001f97] border border-blue-200/80 flex items-center gap-1">
+              <div className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50/80 text-blue-700 border border-blue-200/80 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 shrink-0" />
                 <span>Invoice Sent — {fmtDate(l.invoiceSentAt)}</span>
               </div>
@@ -729,10 +729,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <button
                   type="button"
                   onClick={() => openInvoiceModal(l)}
-                  className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center cursor-pointer shadow-2xs ${
+                  className={`w-full px-2 py-2 rounded-lg text-xs font-semibold transition-colors text-center cursor-pointer shadow-2xs ${
                     isInvoiceSent
-                      ? "bg-[#001f97] text-white hover:bg-[#001777]"
-                      : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-[#001f97]"
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-blue-500"
                   }`}
                   title="Invoice Sent"
                 >
@@ -753,7 +753,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       if (isPaymentPendingDone) return;
                       updateLeadField(l.id, { status: "Payment Pending" });
                     }}
-                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold transition-colors text-center shadow-2xs ${
+                    className={`w-full px-2 py-2 rounded-lg text-xs font-semibold transition-colors text-center shadow-2xs ${
                       isPaymentPendingDone
                         ? "bg-amber-500 text-white cursor-default select-none shadow-2xs"
                         : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
@@ -766,10 +766,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   {invoiceTotalFmt && (
                     <div className="flex items-center justify-between gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 shadow-2xs">
                       <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-600">
-                        <DollarSign className="w-3 h-3 text-[#001f97] shrink-0" />
+                        <DollarSign className="w-3 h-3 text-blue-600 shrink-0" />
                         Total:
                       </span>
-                      <span className="text-[10px] font-black text-[#001f97] truncate">{invoiceTotalFmt}</span>
+                      <span className="text-[10px] font-bold text-blue-700 truncate">{invoiceTotalFmt}</span>
                     </div>
                   )}
                 </div>
@@ -783,11 +783,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   <button
                     type="button"
                     onClick={() => setPayStep("ask_type")}
-                    className={`w-full px-2 py-2 rounded-lg text-xs font-bold text-center transition-colors cursor-pointer ${
+                    className={`w-full px-2 py-2 rounded-lg text-xs font-semibold text-center transition-colors cursor-pointer ${
                       l.paymentType === "partial"
                         ? "bg-amber-500 text-white shadow-2xs hover:bg-amber-600"
                         : l.paymentType === "full" || isPaymentReceived
-                        ? "bg-[#001f97] text-white shadow-2xs hover:bg-[#001777]"
+                        ? "bg-blue-600 text-white shadow-2xs hover:bg-blue-700"
                         : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
@@ -803,23 +803,23 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       title={`Invoice: ${invoiceTotalFmt || ""} | Paid: AUD $${(amountPaid || 0).toFixed(2)} | Remaining: AUD $${remainingAmt.toFixed(2)}`}
                     >
                       <span className="text-slate-600 font-semibold text-[9.5px]">Remaining:</span>
-                      <span className="font-black text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>
+                      <span className="font-bold text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
               )}
 
               {payStep === "ask_type" && (
-                <div className="rounded-xl border border-[#001f97]/30 bg-blue-50 p-2.5 space-y-2 shadow-sm">
+                <div className="rounded-xl border border-blue-200/70 bg-blue-50/60 p-2.5 space-y-2 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-[#001f97] uppercase tracking-wider">Payment received?</span>
+                    <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Payment received?</span>
                     <button type="button" onClick={() => setPayStep("idle")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   {invoiceTotalFmt && (
                     <div className="text-[10px] font-semibold text-slate-600 text-center">
-                      Invoice: <span className="font-black text-[#001f97]">{invoiceTotalFmt}</span>
+                      Invoice: <span className="font-bold text-blue-700">{invoiceTotalFmt}</span>
                       {amountPaid !== null && amountPaid > 0 && (
                         <div className="text-[9.5px] text-amber-800 mt-0.5">
                           Paid: <b>AUD ${amountPaid.toFixed(2)}</b>
@@ -933,7 +933,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               {
                 label: l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent",
                 step: "Warranty Sent" as const,
-                color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600 text-white" : "bg-[#001f97] text-white",
+                color: l.warrantyProvided === false || l.warranty?.provided === false ? "bg-rose-600 text-white" : "bg-blue-600 text-white",
                 onClick: () => openWarrantyModal(l),
               },
               {

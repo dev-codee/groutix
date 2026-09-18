@@ -201,7 +201,7 @@ export function LeadEditModal({
                 {editingLead?.id && (
                   <button
                     type="button"
-                    className="text-[10px] font-semibold text-[#001f97] hover:text-[#001777] whitespace-nowrap"
+                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap cursor-pointer"
                     onClick={async () => {
                       try {
                         const res = await fetch(`/api/admin/booking-link/${editingLead.id}`);
@@ -240,7 +240,7 @@ export function LeadEditModal({
                 {editingLead?.id && (
                   <button
                     type="button"
-                    className="text-[10px] font-semibold text-[#001f97] hover:text-[#001777] whitespace-nowrap"
+                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap cursor-pointer"
                     onClick={async () => {
                       try {
                         const res = await fetch(`/api/admin/booking-link/${editingLead.id}`);
@@ -289,7 +289,7 @@ export function LeadEditModal({
                     key={outcome}
                     type="button"
                     onClick={() => logCall(editingLead.id!, outcome)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:border-[#001f97]/40 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer"
                   >
                     <Phone className="w-3 h-3" />
                     {outcome}
@@ -321,13 +321,13 @@ export function LeadEditModal({
             <button
               type="button"
               onClick={() => setLeadModalOpen(false)}
-              className="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-600 hover:bg-slate-100"
+              className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-[#001f97] text-white rounded-xl font-bold hover:bg-[#001777]"
+              className="px-5 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
             >
               Save Lead
             </button>
