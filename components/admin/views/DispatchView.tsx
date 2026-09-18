@@ -73,11 +73,34 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   const {
     scopedLeads,
     assignableTechnicians,
+    staff = [],
+    inspectionStaff = [],
+    isTechnicianName,
     updateLeadField,
     setEditingLead,
     setLeadModalOpen,
     openLeadsFiltered,
   } = useAdminPageCtx();
+
+  // Combined field staff list (inspectors + technicians)
+  const fieldStaffList = useMemo(() => {
+    const list: { id: string; name: string }[] = [];
+    const seen = new Set<string>();
+    for (const t of assignableTechnicians) {
+      if (t.name && !seen.has(t.name.toLowerCase())) {
+        seen.add(t.name.toLowerCase());
+        list.push({ id: t.id || t.name, name: t.name });
+      }
+    }
+    for (const s of inspectionStaff) {
+      const name = s.name?.trim() || s.username;
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        list.push({ id: s.id || name, name });
+      }
+    }
+    return list;
+  }, [assignableTechnicians, inspectionStaff]);
 
   // Navigation & View States
   const [currentWeekStart, setCurrentWeekStart] = useState<string>(() => getCurrentMonday());
@@ -117,11 +140,27 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         const [d, tRaw] = lead.inspectionAt.split("T");
         const t = tRaw.slice(0, 5);
         const list = map.get(d) || [];
+
+        // Check if an inspector is assigned to any person
+        let inspectorName = "None";
+        if (lead.inspectorId) {
+          const matched = staff.find((s) => s.id === lead.inspectorId || s.username === lead.inspectorId || s.name === lead.inspectorId);
+          inspectorName = matched?.name || matched?.username || lead.inspectorId;
+        } else if (lead.inspectionReport?.inspectorName && lead.inspectionReport.inspectorName.trim() && !/^(?:inspector|field inspector)$/i.test(lead.inspectionReport.inspectorName.trim())) {
+          inspectorName = lead.inspectionReport.inspectorName.trim();
+        } else if (lead.assigned && lead.assigned.trim() && lead.assigned.toLowerCase() !== "unassigned") {
+          const assignedLower = lead.assigned.trim().toLowerCase();
+          const matched = inspectionStaff.find((s) => s.name?.trim().toLowerCase() === assignedLower || (s.username && s.username.toLowerCase() === assignedLower));
+          if (matched) {
+            inspectorName = matched.name?.trim() || matched.username;
+          }
+        }
+
         list.push({
           lead,
           type: "inspection",
           time: t,
-          tech: lead.assigned || lead.inspectorId || "Inspector Assigned",
+          tech: inspectorName,
         });
         map.set(d, list);
       }
@@ -131,11 +170,29 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         const [d, tRaw] = lead.jobAt.split("T");
         const t = tRaw.slice(0, 5);
         const list = map.get(d) || [];
+
+        // Check if a technician is assigned to any person
+        let techName = "None";
+        if (lead.technician && lead.technician.trim() && lead.technician.toLowerCase() !== "unassigned") {
+          techName = lead.technician.trim();
+        } else if (lead.technicianId) {
+          const matched = assignableTechnicians.find((t) => t.id === lead.technicianId || t.name === lead.technicianId);
+          techName = matched?.name || lead.technicianId;
+        } else if (lead.technicianUsername) {
+          techName = lead.technicianUsername;
+        } else if (lead.assigned && lead.assigned.trim() && lead.assigned.toLowerCase() !== "unassigned") {
+          const assignedLower = lead.assigned.trim().toLowerCase();
+          const matchedTech = assignableTechnicians.find((t) => t.name?.trim().toLowerCase() === assignedLower || (t.username && t.username.toLowerCase() === assignedLower));
+          if (matchedTech) {
+            techName = matchedTech.name;
+          }
+        }
+
         list.push({
           lead,
           type: "job",
           time: t,
-          tech: lead.technician || lead.assigned || "Tech Assigned",
+          tech: techName,
         });
         map.set(d, list);
       }
@@ -147,7 +204,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     }
 
     return map;
-  }, [scopedLeads]);
+  }, [scopedLeads, staff, inspectionStaff, assignableTechnicians]);
 
   // Generate 7 days for the active week (Mon -> Sun)
   const weekDays = useMemo(() => {
@@ -385,7 +442,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
           >
             <option value="all">All Field Staff</option>
-            {assignableTechnicians.map((t) => (
+            {fieldStaffList.map((t) => (
               <option key={t.id || t.name} value={t.name}>
                 {t.name}
               </option>
@@ -603,7 +660,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               </div>
                               <div className="flex items-center justify-between text-[10px] font-bold mt-1 pt-1 border-t border-black/5">
                                 <span>{isInspection ? "Inspection" : "Job"}</span>
-                                <span className="font-semibold text-slate-600">{item.tech}</span>
+                                <span className={`font-semibold ${item.tech === "None" ? "text-slate-400 font-normal italic" : "text-slate-600"}`}>
+                                  {item.tech}
+                                </span>
                               </div>
                             </div>
                           </div>

@@ -106,7 +106,9 @@ function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey?: string; mapMode: "
       const geo = getVicCoordsForAddress(addressStr, idx);
       const apptTime = formatApptTimeRange(l.inspectionAt || l.jobAt) || "Scheduled";
       const apptDate = formatApptDate(l.inspectionAt || l.jobAt) || "Upcoming";
-      const staffName = isJob ? (l.technician || l.assigned || "Tech Assigned") : (l.inspectorId || l.assigned || "Inspector Assigned");
+      const staffName = isJob
+        ? (l.technician && l.technician !== "Unassigned" ? l.technician : "None")
+        : (l.inspectorId || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None");
 
       return {
         id: l.id,
@@ -237,6 +239,8 @@ export function ManagerDashboard() {
     filteredLeads,
     username,
     staff,
+    inspectionStaff = [],
+    isTechnicianName,
     setGlobalSearch,
     setStatusFilter,
   } = useAdminPageCtx();
@@ -1010,7 +1014,9 @@ export function ManagerDashboard() {
                   const timeStr = formatApptTime(apptDateStr) || "Scheduled";
                   const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
                   const suburb = getSuburb(l.address) || l.city || "Melbourne";
-                  const techName = l.assigned || l.technician || l.inspectorId || "Unassigned";
+                  const techName = isInsp
+                    ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
+                    : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
                   const isWorking = /in.progress|started|arrived/i.test(l.status || "");
                   const typeLabel = isInsp ? "Inspection" : "Job";
                   const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
