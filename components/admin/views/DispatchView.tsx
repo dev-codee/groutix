@@ -472,11 +472,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         </div>
       </div>
 
-      {/* ── 3. MAIN GRID & RIGHT PANEL ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
-        {/* Weekly Dispatch Calendar Grid (Left Column - 8/12) */}
-        <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto flex flex-col">
-          <div className="min-w-[780px]">
+      {/* ── 3. WEEKLY DISPATCH CALENDAR (FULL WIDTH) ────────────────────────── */}
+      <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto flex flex-col">
+        <div className="min-w-[840px] w-full">
             {/* Header Column Titles: Time + 7 Days */}
             <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50/90 text-center divide-x divide-slate-200">
               {/* Column 0: Time Label */}
@@ -676,196 +674,199 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
           </div>
         </div>
 
-        {/* ── 4. RIGHT SIDEBAR (4/12) ────────────────────────────────────────── */}
-        <div className="xl:col-span-4 space-y-4">
-          {/* Card 1: Today's Route + Live Interactive Waypoint Map */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
-                <Truck className="w-4 h-4 text-blue-600" />
-                {routeTitle}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setActionNotice("Full interactive route map expanded for current scheduled stops.")}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-              >
-                View Full Map
-              </button>
-            </div>
-
-            {/* Map & Itinerary Container */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Map Embed Canvas */}
-              <div className="relative rounded-xl overflow-hidden border border-slate-200/80 min-h-[180px] bg-slate-100">
-                <iframe
-                  title="Today's Route Map"
-                  src={mapEmbedUrl}
-                  className="w-full h-full min-h-[180px] rounded-xl border-0"
-                  loading="lazy"
-                />
-              </div>
-
-              {/* Waypoint Stops List */}
-              <div className="space-y-1.5 overflow-y-auto max-h-[180px] text-xs">
-                {todayRouteStops.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center p-4 text-slate-400 text-xs text-center font-medium">
-                    <span>No stops scheduled for today.</span>
-                    <span className="text-[10px] text-slate-400 mt-1">Bookings will appear here as stops.</span>
-                  </div>
-                ) : (
-                  todayRouteStops.map((stop) => (
-                    <button
-                      key={stop.no}
-                      type="button"
-                      onClick={() => onOpenLead(stop.leadId)}
-                      className="w-full text-left flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200/70 cursor-pointer transition-colors"
-                      title={`Open Lead ${stop.jobNo} (${stop.name})`}
-                    >
-                      <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                        {stop.no}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-extrabold text-slate-900 truncate">
-                          {stop.time} <span className="font-normal text-slate-600">· {stop.name}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 truncate">
-                          {stop.suburb} ({stop.type})
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
+      {/* ── 4. DISPATCH OPERATIONS & ROUTE DETAILS (BELOW SCHEDULE) ────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Card 1: Today's Route + Live Interactive Waypoint Map */}
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
+              <Truck className="w-4 h-4 text-blue-600" />
+              {routeTitle}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setActionNotice("Full interactive route map expanded for current scheduled stops.")}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+            >
+              View Full Map
+            </button>
           </div>
 
-          {/* Card 2: Unscheduled Jobs Queue */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-amber-500" />
-                Unscheduled Jobs ({unscheduledLeads.length})
-              </h2>
-              <button
-                type="button"
-                onClick={() => openLeadsFiltered(["New", "Contacted", "Waiting for Info", "Quote Accepted", "Deposit Received", "Ready to Start", "Won"])}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-                title="View all unscheduled jobs in Leads table"
-              >
-                View All
-              </button>
+          {/* Map & Itinerary Container */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+            {/* Map Embed Canvas */}
+            <div className="relative rounded-xl overflow-hidden border border-slate-200/80 min-h-[220px] bg-slate-100">
+              <iframe
+                title="Today's Route Map"
+                src={mapEmbedUrl}
+                className="w-full h-full min-h-[220px] rounded-xl border-0"
+                loading="lazy"
+              />
             </div>
 
-            <div className="space-y-2">
-              {unscheduledLeads.length === 0 ? (
-                <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                  All active leads and jobs are scheduled!
+            {/* Waypoint Stops List */}
+            <div className="space-y-1.5 overflow-y-auto max-h-[220px] text-xs">
+              {todayRouteStops.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center p-4 text-slate-400 text-xs text-center font-medium">
+                  <span>No stops scheduled for today.</span>
+                  <span className="text-[10px] text-slate-400 mt-1">Bookings will appear here as stops.</span>
                 </div>
               ) : (
-                unscheduledLeads.slice(0, 5).map((lead, idx) => {
-                  const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
-                  const suburbStr = resolveArea(lead.address || lead.city).suburb || "Victoria";
-
-                  return (
-                    <div
-                      key={lead.id}
-                      onClick={() => onOpenLead(lead.id)}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-colors"
-                      title={`Open Lead ${jobNoStr} (${lead.name || "Customer"})`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2.5 h-2.5 rounded-full ${idx % 3 === 0 ? "bg-rose-500" : idx % 3 === 1 ? "bg-emerald-500" : "bg-amber-500"} shrink-0`} />
-                          <span className="font-extrabold text-xs text-slate-900 truncate">
-                            {jobNoStr} {lead.name || "Customer"} - {suburbStr}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 mt-0.5 font-medium pl-4">
-                          {lead.service || "Tile & Grout Repair"} (2h)
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAssignUnscheduled(lead);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
-                      >
-                        Assign
-                      </button>
+                todayRouteStops.map((stop) => (
+                  <button
+                    key={stop.no}
+                    type="button"
+                    onClick={() => onOpenLead(stop.leadId)}
+                    className="w-full text-left flex items-center gap-2 p-2 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200/70 cursor-pointer transition-colors"
+                    title={`Open Lead ${stop.jobNo} (${stop.name})`}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                      {stop.no}
                     </div>
-                  );
-                })
+                    <div className="min-w-0 flex-1">
+                      <div className="font-extrabold text-slate-900 truncate">
+                        {stop.time} <span className="font-normal text-slate-600">· {stop.name}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate">
+                        {stop.suburb} ({stop.type})
+                      </div>
+                    </div>
+                  </button>
+                ))
               )}
             </div>
           </div>
+        </div>
 
-          {/* Card 3: Quick Actions 6-Grid */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
-            <h2 className="text-sm font-extrabold text-blue-950 pb-2 border-b border-slate-100">
+        {/* Card 2: Unscheduled Jobs Queue */}
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-amber-500" />
+              Unscheduled Jobs ({unscheduledLeads.length})
+            </h2>
+            <button
+              type="button"
+              onClick={() => openLeadsFiltered(["New", "Contacted", "Waiting for Info", "Quote Accepted", "Deposit Received", "Ready to Start", "Won"])}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+              title="View all unscheduled jobs in Leads table"
+            >
+              View All
+            </button>
+          </div>
+
+          <div className="space-y-2 overflow-y-auto max-h-[220px] flex-1">
+            {unscheduledLeads.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                All active leads and jobs are scheduled!
+              </div>
+            ) : (
+              unscheduledLeads.slice(0, 5).map((lead, idx) => {
+                const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
+                const suburbStr = resolveArea(lead.address || lead.city).suburb || "Victoria";
+
+                return (
+                  <div
+                    key={lead.id}
+                    onClick={() => onOpenLead(lead.id)}
+                    className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-colors"
+                    title={`Open Lead ${jobNoStr} (${lead.name || "Customer"})`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${idx % 3 === 0 ? "bg-rose-500" : idx % 3 === 1 ? "bg-emerald-500" : "bg-amber-500"} shrink-0`} />
+                        <span className="font-extrabold text-xs text-slate-900 truncate">
+                          {jobNoStr} {lead.name || "Customer"} - {suburbStr}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5 font-medium pl-4">
+                        {lead.service || "Tile & Grout Repair"} (2h)
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAssignUnscheduled(lead);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
+                    >
+                      Assign
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Card 3: Quick Actions */}
+        <div className="lg:col-span-12 bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h2 className="text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-emerald-600" />
               Quick Actions
             </h2>
+            <span className="text-xs text-slate-400 font-medium">1-click schedule management</span>
+          </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead(null);
-                  setLeadModalOpen(true);
-                }}
-                className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <UserPlus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span>Assign Job</span>
-              </button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingLead(null);
+                setLeadModalOpen(true);
+              }}
+              className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Assign Job</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setActionNotice("Select any booked appointment card in the grid to reschedule.")}
-                className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span>Reschedule</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setActionNotice("Select any booked appointment card in the grid to reschedule.")}
+              className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Reschedule</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setActionNotice("Selected appointment unassigned and moved to queue.")}
-                className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 text-slate-700 hover:text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                <span>Unassign</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setActionNotice("Selected appointment unassigned and moved to queue.")}
+              className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 text-slate-700 hover:text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <span>Unassign</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setActionNotice("Time slot blocked for staff maintenance.")}
-                className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                <span>Block Time</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setActionNotice("Time slot blocked for staff maintenance.")}
+              className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <span>Block Time</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setActionNotice("12:00 - 12:30 PM lunch break added to technician schedule.")}
-                className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <Coffee className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>Add Break</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setActionNotice("12:00 - 12:30 PM lunch break added to technician schedule.")}
+              className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Coffee className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Add Break</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={handleOptimizeSchedule}
-                className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Optimize Route</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleOptimizeSchedule}
+              className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Optimize Route</span>
+            </button>
           </div>
         </div>
       </div>
