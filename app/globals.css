@@ -196,3 +196,12 @@ body {
   border-color: #2F63CC;
   animation: accent-glow-pulse 1.8s ease-in-out infinite;
 }
+
+/* Suppress public website support chat button and widget inside CRM dashboard */
+body:has(.admin-ui) [data-support-chat-widget],
+body:has(.admin-ui) button.fixed.bottom-5.right-4,
+body:has(.admin-ui) section.fixed.bottom-5.right-4,
+.admin-ui ~ [data-support-chat-widget],
+.admin-ui ~ button.fixed.bottom-5.right-4 {
+  display: none !important;
+}

@@ -3330,26 +3330,6 @@ export default function CrmDashboardPage() {
               </button>
             )}
 
-            {/* Add Lead Button — manager only */}
-            {(role === "manager" || role === "super_admin") && (
-              <button
-                onClick={() => {
-                  setEditingLead({
-                    status: "New",
-                    assigned: "",
-                    priority: "Medium",
-                    received: new Date().toISOString().slice(0, 16)
-                  });
-                  setLeadModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
-                title="Add Lead"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Add Lead</span>
-              </button>
-            )}
-
             <div
               className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${viewAs
                   ? "border-amber-300 bg-amber-50 text-amber-800"

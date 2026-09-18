@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -75,8 +75,38 @@ export default function SupportChatWidget() {
     [messages]
   );
 
+  const adminBase = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH || "/adgrout";
+  const [isAdminPage, setIsAdminPage] = useState(() => {
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname;
+      return (
+        p.startsWith("/admin") ||
+        p.startsWith(adminBase) ||
+        p.startsWith("/adgrout") ||
+        Boolean(document.querySelector(".admin-ui"))
+      );
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (
+      pathname?.startsWith("/admin") ||
+      pathname?.startsWith(adminBase) ||
+      pathname?.startsWith("/adgrout") ||
+      Boolean(document.querySelector(".admin-ui"))
+    ) {
+      setIsAdminPage(true);
+    }
+  }, [pathname, adminBase]);
+
   // Do not render the website support chat widget on CRM dashboard pages
-  if (pathname?.startsWith("/admin")) {
+  if (
+    isAdminPage ||
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith(adminBase) ||
+    pathname?.startsWith("/adgrout")
+  ) {
     return null;
   }
 
@@ -183,6 +213,7 @@ export default function SupportChatWidget() {
       <AnimatePresence>
         {isOpen ? (
           <motion.section
+            data-support-chat-widget="true"
             initial={{ opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -351,6 +382,7 @@ export default function SupportChatWidget() {
 
       <button
         type="button"
+        data-support-chat-widget="true"
         onClick={() => setIsOpen(true)}
         className="fixed bottom-5 right-4 z-50 inline-flex items-center gap-3 rounded-full bg-primary px-5 py-4 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,31,151,0.35)] transition hover:bg-primary-hover"
       >
