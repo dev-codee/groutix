@@ -52,6 +52,7 @@ const TIME_SLOTS = [
   "12:00 PM",
   "12:30 PM",
   "1:00 PM",
+  "1:30 PM",
   "2:00 PM",
   "2:30 PM",
   "3:00 PM",
@@ -60,6 +61,26 @@ const TIME_SLOTS = [
   "4:30 PM",
   "5:00 PM",
 ];
+
+function getSlotKeyFromTime(timeStr?: string): string {
+  if (!timeStr) return "9:00 AM";
+  const [hStr, mStr] = timeStr.split(":");
+  let h = parseInt(hStr, 10);
+  let m = parseInt(mStr || "0", 10);
+  if (isNaN(h)) return "9:00 AM";
+
+  // Normalize minute to nearest 30-min slot (:00 or :30)
+  const slotMin = m < 30 ? "00" : "30";
+
+  // Clamp hour to working slots range (9 AM to 5 PM)
+  if (h < 9) h = 9;
+  if (h > 17) h = 17;
+
+  const period = h >= 12 ? "PM" : "AM";
+  const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
+
+  return `${displayH}:${slotMin} ${period}`;
+}
 
 // Helper to get initials for staff avatar
 function getInitials(name: string, role?: string): { text: string; badge: string } {
@@ -561,80 +582,91 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
               })}
             </div>
 
-            {/* Main Weekly Body Stream */}
-            <div className="grid grid-cols-7 divide-x divide-slate-200 bg-white">
-              {/* Time Column Labels */}
-              <div className="divide-y divide-slate-100 bg-slate-50/50 text-[10px] font-bold text-blue-900">
-                {TIME_SLOTS.map((slot) => (
-                  <div key={slot} className="h-14 px-2 flex items-center justify-center border-b border-slate-100">
+            {/* Main Weekly Body: Slot-by-Slot Grid with Guaranteed Time Alignment */}
+            <div className="divide-y divide-slate-100 bg-white">
+              {TIME_SLOTS.map((slot) => (
+                <div
+                  key={slot}
+                  className="grid grid-cols-7 divide-x divide-slate-200 hover:bg-slate-50/20 transition-colors min-h-[64px]"
+                >
+                  {/* Column 0: Time Slot Label */}
+                  <div className="p-2 bg-slate-50/70 text-[10px] font-extrabold text-blue-900 flex items-center justify-center select-none border-b border-slate-100">
                     {slot}
                   </div>
-                ))}
-              </div>
 
-              {/* Day Columns 1 to 6 */}
-              {weekDays.map((day, dIdx) => {
-                const appts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
+                  {/* Columns 1 to 6: Day Appointments for this exact Time Slot */}
+                  {weekDays.map((day) => {
+                    const allDayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
+                    const slotAppts = allDayAppts.filter(
+                      (item) => getSlotKeyFromTime(item.time) === slot
+                    );
 
-                return (
-                  <div key={day.dateStr} className="p-1.5 space-y-2 bg-slate-50/20 relative min-h-[500px]">
-                    {/* Rendered Appointments or Clean Empty State */}
-                    {appts.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-20 px-2 text-center text-slate-400 space-y-1 select-none">
-                        <Clock className="w-5 h-5 text-slate-300 mx-auto" />
-                        <span className="text-xs font-semibold text-slate-500">No appointments</span>
-                        <span className="text-[10px] text-slate-400">Scheduled leads will appear here</span>
-                      </div>
-                    ) : (
-                      appts.map((item, aIdx) => {
-                        const area = resolveArea(item.lead.address || item.lead.city);
-                        const isInspection = item.type === "inspection";
-                        const prevAppt = aIdx > 0 ? appts[aIdx - 1] : null;
-                        const travelFromPrev = prevAppt
-                          ? calculateTravel(resolveArea(prevAppt.lead.address || prevAppt.lead.city).suburb, area.suburb)
-                          : null;
+                    return (
+                      <div
+                        key={day.dateStr}
+                        className="p-1.5 flex flex-col justify-center space-y-1.5 border-b border-slate-100 relative group/cell"
+                      >
+                        {slotAppts.map((item) => {
+                          const area = resolveArea(item.lead.address || item.lead.city);
+                          const isInspection = item.type === "inspection";
+                          const aIdx = allDayAppts.findIndex(
+                            (a) => a.lead.id === item.lead.id && a.time === item.time
+                          );
+                          const prevAppt = aIdx > 0 ? allDayAppts[aIdx - 1] : null;
+                          const travelFromPrev = prevAppt
+                            ? calculateTravel(
+                                resolveArea(prevAppt.lead.address || prevAppt.lead.city).suburb,
+                                area.suburb
+                              )
+                            : null;
 
-                        return (
-                          <div key={`${item.lead.id}-${item.time}`} className="space-y-1.5">
-                            {travelFromPrev && (
-                              <div className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[10px] text-slate-600 font-medium">
-                                🚘 Travel ({travelFromPrev.durationMinutes} min)
-                              </div>
-                            )}
+                          return (
+                            <div key={`${item.lead.id}-${item.time}`} className="space-y-1">
+                              {travelFromPrev && (
+                                <div className="px-2 py-0.5 rounded-md bg-slate-100/90 border border-slate-200 text-[9px] text-slate-600 font-semibold flex items-center gap-1 shadow-2xs">
+                                  <span>🚘 Travel ({travelFromPrev.durationMinutes} min)</span>
+                                </div>
+                              )}
 
-
-                            <div
-                              onClick={() => onOpenLead(item.lead.id)}
-                              className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-[1.01] ${
-                                isInspection
-                                  ? "bg-blue-50 hover:bg-blue-100/80 border-blue-200 text-blue-950"
-                                  : "bg-emerald-50 hover:bg-emerald-100/80 border-emerald-200 text-emerald-950"
-                              }`}
-                              title={`Click to open Lead #${item.lead.jobNo || item.lead.id}`}
-                            >
-                              <div className="text-[10px] font-bold opacity-80">
-                                {formatApptTime(`${day.dateStr}T${item.time}`)}
-                              </div>
-                              <div className="font-extrabold text-xs truncate">
-                                #{item.lead.jobNo || item.lead.id.slice(-4)} {item.lead.name || "Customer"}
-                              </div>
-                              <div className="text-[11px] text-slate-600 font-medium truncate">
-                                {area.suburb ? area.suburb.toUpperCase() : item.lead.city || "Melbourne"}
-                              </div>
-                              <div className="flex items-center justify-between text-[10px] font-bold mt-1 pt-1 border-t border-black/5">
-                                <span>{isInspection ? "Inspection" : "Job"}</span>
-                                <span className={`font-semibold ${item.tech === "None" ? "text-slate-400 font-normal italic" : "text-slate-600"}`}>
-                                  {item.tech}
-                                </span>
+                              <div
+                                onClick={() => onOpenLead(item.lead.id)}
+                                className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-[1.01] ${
+                                  isInspection
+                                    ? "bg-blue-50 hover:bg-blue-100/80 border-blue-200 text-blue-950"
+                                    : "bg-emerald-50 hover:bg-emerald-100/80 border-emerald-200 text-emerald-950"
+                                }`}
+                                title={`Click to open Lead #${item.lead.jobNo || item.lead.id}`}
+                              >
+                                <div className="text-[10px] font-bold opacity-80">
+                                  {formatApptTime(`${day.dateStr}T${item.time}`)}
+                                </div>
+                                <div className="font-extrabold text-xs truncate">
+                                  #{item.lead.jobNo || item.lead.id.slice(-4)} {item.lead.name || "Customer"}
+                                </div>
+                                <div className="text-[11px] text-slate-600 font-medium truncate">
+                                  {area.suburb ? area.suburb.toUpperCase() : item.lead.city || "Melbourne"}
+                                </div>
+                                <div className="flex items-center justify-between text-[10px] font-bold mt-1 pt-1 border-t border-black/5">
+                                  <span>{isInspection ? "Inspection" : "Job"}</span>
+                                  <span
+                                    className={`font-semibold ${
+                                      item.tech === "None"
+                                        ? "text-slate-400 font-normal italic"
+                                        : "text-slate-600"
+                                    }`}
+                                  >
+                                    {item.tech}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                );
-              })}
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             {/* Bottom Summary Footer Row dynamically calculated for each day */}
