@@ -531,6 +531,40 @@ export function ManagerDashboard() {
     return list.slice(0, 6);
   }, [matchedLeads, _todayStr]);
 
+  // Dynamic 9-hour operational slots for Today
+  const todayHourlySlots = useMemo(() => {
+    const hours = [
+      { hour: 8, label: "8:00 AM" },
+      { hour: 9, label: "9:00 AM" },
+      { hour: 10, label: "10:00 AM" },
+      { hour: 11, label: "11:00 AM" },
+      { hour: 12, label: "12:00 PM", isBreak: true },
+      { hour: 13, label: "1:00 PM" },
+      { hour: 14, label: "2:00 PM" },
+      { hour: 15, label: "3:00 PM" },
+      { hour: 16, label: "4:00 PM" },
+    ];
+
+    const leadsPool = scopedLeads.filter((l) => {
+      if (l.status === "Lost" || l.status === "Cancelled") return false;
+      const d = l.inspectionAt || l.jobAt;
+      return d && _dayKey(d) === _todayStr;
+    });
+
+    const activePool = leadsPool.length >= 2 ? leadsPool : todayLeadsList;
+
+    return hours.map((h) => {
+      if (h.isBreak) return { ...h, isBreak: true, leads: [] as Lead[] };
+      const matched = activePool.filter((l) => {
+        const d = l.inspectionAt || l.jobAt;
+        if (!d) return false;
+        const hour = new Date(d).getHours();
+        return hour === h.hour;
+      });
+      return { ...h, isBreak: false, leads: matched };
+    });
+  }, [scopedLeads, _todayStr, todayLeadsList]);
+
   // 2. DYNAMIC QUICK STATS CALCULATED STRICTLY FROM REAL LEADS & PERIOD
   const stats = useMemo(() => {
     const now = new Date();
@@ -839,6 +873,135 @@ export function ManagerDashboard() {
       };
     },
     [scopedLeads, isTechnicianName]
+  );
+
+  const getStaffBadgeInitials = (name: string, isInspector: boolean, idx: number) => {
+    if (isInspector) {
+      return (name.trim()[0] || "I").toUpperCase();
+    }
+    const numMatch = name.match(/\d+/);
+    if (numMatch) return `T${numMatch[0]}`;
+    return `T${idx + 1}`;
+  };
+
+  // Realtime daily progress and location status per staff member (technicians & inspectors)
+  const getStaffRealtimeStatus = useCallback(
+    (member: { id: string; name: string; username?: string; isInspector: boolean }) => {
+      const lowerName = member.name.toLowerCase().trim();
+      const lowerUser = (member.username || "").toLowerCase().trim();
+      const sId = member.id;
+
+      // 1. All relevant leads for this staff member
+      const memberLeads = scopedLeads.filter((l) => {
+        if (l.status === "Lost" || l.status === "Cancelled") return false;
+        if (member.isInspector) {
+          if (sId && l.inspectorId && (l.inspectorId === sId || l.inspectorId.toLowerCase() === lowerName || l.inspectorId.toLowerCase() === lowerUser)) return true;
+          if (l.inspectionReport?.inspectorName) {
+            const rep = l.inspectionReport.inspectorName.toLowerCase().trim();
+            if (rep && !/^(?:inspector|field inspector)$/i.test(rep) && (rep === lowerName || rep === lowerUser)) return true;
+          }
+          if (l.assigned) {
+            const ass = l.assigned.toLowerCase().trim();
+            if (ass !== "unassigned" && (ass === lowerName || ass === lowerUser)) return true;
+          }
+          return false;
+        } else {
+          const tech = (l.technician || "").toLowerCase().trim();
+          const techId = (l.technicianId || "").toLowerCase().trim();
+          const techUser = (l.technicianUsername || "").toLowerCase().trim();
+          const assigned = (l.assigned || "").toLowerCase().trim();
+          if (tech && tech !== "unassigned" && (tech === lowerName || tech === lowerUser)) return true;
+          if (techId && (techId === sId || techId === lowerName || techId === lowerUser)) return true;
+          if (techUser && techUser === lowerUser) return true;
+          if (assigned && assigned !== "unassigned" && isTechnicianName(l.assigned) && (assigned === lowerName || assigned === lowerUser)) return true;
+          return false;
+        }
+      });
+
+      // 2. Today's leads
+      const todayLeads = memberLeads.filter((l) => {
+        const d = member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt);
+        return d && _dayKey(d) === _todayStr;
+      });
+
+      // 3. Fallback pool: today's leads if any, else upcoming scheduled leads
+      const upcomingPool = memberLeads
+        .filter((l) => {
+          const d = member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt);
+          if (!d) return false;
+          return new Date(d).getTime() >= new Date().setHours(0, 0, 0, 0);
+        })
+        .sort((a, b) => _apptMs(a) - _apptMs(b));
+
+      const poolToUse = todayLeads.length > 0 ? todayLeads : upcomingPool.slice(0, 5);
+      const isTodayData = todayLeads.length > 0;
+
+      const total = poolToUse.length;
+      const completedLeads = poolToUse.filter((l) => {
+        if (member.isInspector) {
+          return /completed|done|report done|won|quote/i.test(l.status || "") || l.inspectionReport?.status === "completed";
+        }
+        return /completed|job done|won|payment|paid/i.test(l.status || "");
+      });
+      const completed = completedLeads.length;
+
+      let percent = total > 0 ? Math.round((completed / total) * 100) : 100;
+      if (total === 0) percent = 100;
+
+      // Determine current active lead and location text
+      let locationText = "Available: Melbourne";
+      const onSiteLead = poolToUse.find((l) => /in.progress|started|arrived|on.site|inspecting/i.test(l.status || ""));
+      const enRouteLead = poolToUse.find((l) => /en.route|on.the.way|travel/i.test(l.status || ""));
+      const upcomingLead = poolToUse.find((l) => !completedLeads.includes(l));
+
+      if (onSiteLead) {
+        const suburb = getSuburb(onSiteLead.address) || onSiteLead.city || "Melbourne";
+        locationText = `On site: ${suburb}`;
+      } else if (enRouteLead) {
+        const suburb = getSuburb(enRouteLead.address) || enRouteLead.city || "Melbourne";
+        locationText = `En route: ${suburb}`;
+      } else if (upcomingLead) {
+        const suburb = getSuburb(upcomingLead.address) || upcomingLead.city || "Melbourne";
+        const appt = member.isInspector ? (upcomingLead.inspectionAt || upcomingLead.jobAt) : (upcomingLead.jobAt || upcomingLead.inspectionAt);
+        const timeStr = formatApptTime(appt);
+        locationText = isTodayData ? `On site: ${suburb}` : `Next: ${suburb}${timeStr ? ` (${timeStr})` : ""}`;
+      } else if (total > 0 && completed === total) {
+        const last = poolToUse[poolToUse.length - 1];
+        const suburb = getSuburb(last.address) || last.city || "Melbourne";
+        locationText = `On site: ${suburb}`;
+      } else {
+        const loc = staffLocations.find((sl) => sl.username?.toLowerCase() === lowerUser || sl.displayName?.toLowerCase() === lowerName);
+        if (loc) {
+          locationText = `Live: Active in VIC`;
+        } else {
+          locationText = `Available: Melbourne`;
+        }
+      }
+
+      // Metric label
+      const typeWord = member.isInspector ? (total === 1 ? "Inspection" : "Inspections") : (total === 1 ? "Job" : "Jobs");
+      const metricText = total > 0 ? `${completed} / ${total} ${typeWord}` : `Available (${typeWord})`;
+
+      // Progress bar color
+      let barBg = "bg-emerald-600";
+      if (percent === 100) {
+        barBg = "bg-emerald-600";
+      } else if (percent >= 50) {
+        barBg = "bg-blue-600";
+      } else {
+        barBg = "bg-amber-500";
+      }
+
+      return {
+        total,
+        completed,
+        percent,
+        metricText,
+        locationText,
+        barBg,
+      };
+    },
+    [scopedLeads, _todayStr, isTechnicianName, staffLocations]
   );
 
   const statusCards = [
@@ -1167,103 +1330,167 @@ export function ManagerDashboard() {
 
       {/* 3. Middle Grid: 4 Cards (2 in first row, 2 in second row) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {/* Card 1: Dynamic Quick Stats */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900 tracking-tight">Quick Stats</h2>
-            <select
-              value={statsPeriod}
-              onChange={(e) => setStatsPeriod(e.target.value)}
-              className="text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 focus:outline-hidden cursor-pointer"
-            >
-              <option value="This Month">This Month</option>
-              <option value="This Week">This Week</option>
-              <option value="Today">Today</option>
-            </select>
+        {/* Column 1: Quick Stats + Upcoming Slots (Today) */}
+        <div className="flex flex-col gap-4 sm:gap-5">
+          {/* Card 1: Dynamic Quick Stats */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Quick Stats</h2>
+              <select
+                value={statsPeriod}
+                onChange={(e) => setStatsPeriod(e.target.value)}
+                className="text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 focus:outline-hidden cursor-pointer"
+              >
+                <option value="This Month">This Month</option>
+                <option value="This Week">This Week</option>
+                <option value="Today">Today</option>
+              </select>
+            </div>
+
+            <div className="space-y-3.5">
+              {/* Total Customers */}
+              <div
+                onClick={() => {
+                  setStatusFilter("");
+                  setCurrentView("leads");
+                }}
+                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                title="View all customer leads"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-medium text-slate-500">Total Customers</div>
+                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.customers}</div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+                  {stats.totalLeads} Leads
+                </span>
+              </div>
+
+              {/* Active Jobs */}
+              <div
+                onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"])}
+                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                title="View active field jobs"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-medium text-slate-500">Active Jobs</div>
+                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.activeJobs}</div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/60">
+                  {stats.activeJobs} Active
+                </span>
+              </div>
+
+              {/* Revenue */}
+              <div
+                onClick={() => openLeadsFiltered(["Job Done", "Payment Received", "Completed", "Won"])}
+                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                title={`View completed & paid leads (${statsPeriod})`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-medium text-slate-500">{statsPeriod} Revenue</div>
+                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.revenue}</div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                  {stats.paidCount} Paid
+                </span>
+              </div>
+
+              {/* Pending Payments */}
+              <div
+                onClick={() => openLeadsFiltered(["Invoice Sent", "Payment Pending", "Partial Payment"])}
+                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                title="View invoices pending payment"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <PieChart className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-medium text-slate-500">Pending Payments</div>
+                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.pending}</div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                  {stats.pendingCount} Pending
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-3.5">
-            {/* Total Customers */}
-            <div
-              onClick={() => {
-                setStatusFilter("");
-                setCurrentView("leads");
-              }}
-              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-              title="View all customer leads"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-medium text-slate-500">Total Customers</div>
-                  <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.customers}</div>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
-                {stats.totalLeads} Leads
-              </span>
+          {/* Card: Upcoming Slots (Today) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Upcoming Slots (Today)</h2>
+              <button
+                type="button"
+                onClick={() => setCurrentView("dispatch")}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+              >
+                View All
+              </button>
             </div>
 
-            {/* Active Jobs */}
-            <div
-              onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"])}
-              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-              title="View active field jobs"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
-                  <CalendarDays className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-medium text-slate-500">Active Jobs</div>
-                  <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.activeJobs}</div>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/60">
-                {stats.activeJobs} Active
-              </span>
-            </div>
+            <div className="divide-y divide-slate-100">
+              {todayHourlySlots.map((slot) => {
+                const isBreak = slot.isBreak;
+                const isBooked = !isBreak && slot.leads.length > 0;
 
-            {/* Revenue */}
-            <div
-              onClick={() => openLeadsFiltered(["Job Done", "Payment Received", "Completed", "Won"])}
-              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-              title={`View completed & paid leads (${statsPeriod})`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                  <DollarSign className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-medium text-slate-500">{statsPeriod} Revenue</div>
-                  <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.revenue}</div>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                {stats.paidCount} Paid
-              </span>
-            </div>
+                return (
+                  <div
+                    key={slot.hour}
+                    className="flex items-center justify-between py-2 px-1 hover:bg-slate-50/60 rounded-lg transition-colors"
+                  >
+                    <span className="text-xs font-bold text-[#001f97] tabular-nums">
+                      {slot.label}
+                    </span>
 
-            {/* Pending Payments */}
-            <div
-              onClick={() => openLeadsFiltered(["Invoice Sent", "Payment Pending", "Partial Payment"])}
-              className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-              title="View invoices pending payment"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                  <PieChart className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-medium text-slate-500">Pending Payments</div>
-                  <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.pending}</div>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                {stats.pendingCount} Pending
-              </span>
+                    {isBreak ? (
+                      <span className="px-4 py-1 rounded-md text-xs font-bold bg-[#f1f5f9] text-[#64748b] border border-slate-200 min-w-[85px] text-center">
+                        Break
+                      </span>
+                    ) : isBooked ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (slot.leads[0]) {
+                            setEditingLead(slot.leads[0]);
+                            setLeadModalOpen(true);
+                          }
+                        }}
+                        className="px-4 py-1 rounded-md text-xs font-bold bg-[#fee2e2]/90 text-[#dc2626] border border-rose-200/70 min-w-[85px] text-center hover:bg-rose-200/80 transition-colors cursor-pointer"
+                        title={`${slot.label} Booked:\n` + slot.leads.map((l) => `• ${l.name || "Customer"} (${getSuburb(l.address) || "Melbourne"})`).join("\n")}
+                      >
+                        Booked
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentView("dispatch")}
+                        className="px-4 py-1 rounded-md text-xs font-bold bg-[#dcfce7]/90 text-[#16a34a] border border-emerald-200/70 min-w-[85px] text-center hover:bg-emerald-200/80 transition-colors cursor-pointer"
+                        title={`${slot.label} Available - Click to open Dispatch`}
+                      >
+                        Available
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1314,80 +1541,164 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        {/* Card 3: Dynamic Today's Schedule Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900 tracking-tight">Today's Schedule</h2>
-            <button
-              type="button"
-              onClick={() => setCurrentView("schedule")}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-            >
-              View All
-            </button>
+        {/* Card 3 Column: Today's Schedule Table + Technician & Inspector Status */}
+        <div className="flex flex-col gap-4 sm:gap-5">
+          {/* Today's Schedule Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                Today's Schedule ({_now.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })})
+              </h2>
+              <button
+                type="button"
+                onClick={() => setCurrentView("schedule")}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[11px] border-collapse min-w-[320px]">
+                <thead>
+                  <tr className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider border-b border-slate-100">
+                    <th className="py-1 px-1">Time</th>
+                    <th className="py-1 px-1">Type</th>
+                    <th className="py-1 px-1">Customer</th>
+                    <th className="py-1 px-1">Area</th>
+                    <th className="py-1 px-1">Technician</th>
+                    <th className="py-1 px-1 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {todayLeadsList.length === 0 && (
+                    <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-xs">No jobs scheduled today</td></tr>
+                  )}
+                  {todayLeadsList.map((l) => {
+                    const isInsp = isInspLead(l);
+                    const apptDateStr = l.inspectionAt || l.jobAt;
+                    const isToday = apptDateStr && _dayKey(apptDateStr) === _todayStr;
+                    const timeStr = formatApptTime(apptDateStr) || "Scheduled";
+                    const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
+                    const suburb = getSuburb(l.address) || l.city || "Melbourne";
+                    const techName = isInsp
+                      ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
+                      : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
+                    const isWorking = /in.progress|started|arrived/i.test(l.status || "");
+                    const typeLabel = isInsp ? "Inspection" : "Job";
+                    const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
+                    const statusLabel = isWorking ? "In Progress" : l.status || "Scheduled";
+                    const statusColor = isWorking ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200";
+
+                    return (
+                      <tr
+                        key={l.id}
+                        className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setEditingLead(l);
+                          setLeadModalOpen(true);
+                        }}
+                        title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
+                      >
+                        <td className="py-1.5 px-2 font-bold text-blue-600 whitespace-nowrap tabular-nums">{displayTime}</td>
+                        <td className="py-1.5 px-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${typeColor}`}>
+                            {typeLabel}
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-2 font-semibold text-slate-800 whitespace-nowrap truncate max-w-[140px]">{l.name || "Customer"}</td>
+                        <td className="py-1.5 px-2 text-slate-500 whitespace-nowrap truncate max-w-[120px]">{suburb}</td>
+                        <td className="py-1.5 px-2 text-slate-600 font-medium whitespace-nowrap">{techName}</td>
+                        <td className="py-1.5 px-2 text-right">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[11px] border-collapse min-w-[320px]">
-              <thead>
-                <tr className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider border-b border-slate-100">
-                  <th className="py-1 px-1">Time</th>
-                  <th className="py-1 px-1">Type</th>
-                  <th className="py-1 px-1">Customer</th>
-                  <th className="py-1 px-1">Area</th>
-                  <th className="py-1 px-1">Technician</th>
-                  <th className="py-1 px-1 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {todayLeadsList.length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-xs">No jobs scheduled today</td></tr>
-                )}
-                {todayLeadsList.map((l) => {
-                  const isInsp = isInspLead(l);
-                  const apptDateStr = l.inspectionAt || l.jobAt;
-                  const isToday = apptDateStr && _dayKey(apptDateStr) === _todayStr;
-                  const timeStr = formatApptTime(apptDateStr) || "Scheduled";
-                  const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
-                  const suburb = getSuburb(l.address) || l.city || "Melbourne";
-                  const techName = isInsp
-                    ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
-                    : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
-                  const isWorking = /in.progress|started|arrived/i.test(l.status || "");
-                  const typeLabel = isInsp ? "Inspection" : "Job";
-                  const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-                  const statusLabel = isWorking ? "In Progress" : l.status || "Scheduled";
-                  const statusColor = isWorking ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200";
+          {/* Technician & Inspector Status Box */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-900 tracking-tight">Technician Status</h2>
+                <span className="text-[11px] font-semibold text-slate-400">
+                  ({activeStaffRosterList.length} Field Staff)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentView("dispatch")}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+              >
+                View All
+              </button>
+            </div>
 
-                  return (
-                    <tr
-                      key={l.id}
-                      className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-                      onClick={() => {
-                        setEditingLead(l);
-                        setLeadModalOpen(true);
-                      }}
-                      title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
-                    >
-                      <td className="py-1.5 px-2 font-bold text-blue-600 whitespace-nowrap tabular-nums">{displayTime}</td>
-                      <td className="py-1.5 px-1.5">
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${typeColor}`}>
-                          {typeLabel}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {activeStaffRosterList.length === 0 && (
+                <div className="py-6 text-center text-slate-400 text-xs font-medium col-span-full">
+                  No field technicians or inspectors configured
+                </div>
+              )}
+              {activeStaffRosterList.map((member, idx) => {
+                const status = getStaffRealtimeStatus(member);
+                const initials = getStaffBadgeInitials(member.name, member.isInspector, idx);
+
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => setCurrentView("dispatch")}
+                    className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs hover:shadow-xs hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between"
+                    title={`View ${member.name}'s schedule in Dispatch`}
+                  >
+                    {/* Top: Avatar + Name + Role */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-full bg-[#0a192f] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-900 text-sm truncate">{member.name}</div>
+                        <div className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
+                          {member.isInspector ? "Inspector (Inspection Only)" : "Technician (Jobs Only)"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Middle: Metric + Progress Bar */}
+                    <div className="mt-3">
+                      <div className="text-xs font-bold text-slate-900">
+                        {status.metricText}
+                      </div>
+                      <div className="relative w-full bg-slate-100 rounded-full h-5 overflow-hidden flex items-center px-2 mt-1.5 border border-slate-200/40">
+                        <div
+                          className={`absolute left-0 top-0 bottom-0 rounded-full transition-all duration-500 ${status.barBg}`}
+                          style={{ width: `${Math.max(status.percent, 6)}%` }}
+                        />
+                        <span
+                          className={`relative z-10 text-[11px] font-black tabular-nums ml-auto ${
+                            status.percent >= 75 ? "text-white" : "text-slate-800"
+                          }`}
+                        >
+                          {status.percent}%
                         </span>
-                      </td>
-                      <td className="py-1.5 px-2 font-semibold text-slate-800 whitespace-nowrap truncate max-w-[140px]">{l.name || "Customer"}</td>
-                      <td className="py-1.5 px-2 text-slate-500 whitespace-nowrap truncate max-w-[120px]">{suburb}</td>
-                      <td className="py-1.5 px-2 text-slate-600 font-medium whitespace-nowrap">{techName}</td>
-                      <td className="py-1.5 px-2 text-right">
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${statusColor}`}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+
+                    {/* Bottom: Location Pin */}
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mt-3 pt-2 border-t border-slate-100 truncate">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600 fill-blue-600/10 shrink-0" />
+                      <span className="truncate">{status.locationText}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
