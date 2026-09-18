@@ -275,12 +275,16 @@ export function ManagerDashboard() {
     });
   }, [scopedLeads]);
 
-  // 4. DYNAMIC 7-DAY ROSTER GRID FOR ALL FIELD TEAM MEMBERS (TECHNICIANS & INSPECTORS)
+  // 4. DYNAMIC 6-DAY WORKING ROSTER GRID FOR ALL FIELD TEAM MEMBERS (EXCLUDING SUNDAYS)
   const rosterDays = useMemo(() => {
     const list = [];
-    for (let i = 0; i < 7; i++) {
+    let step = 0;
+    while (list.length < 6) {
       const d = new Date(_now);
-      d.setDate(d.getDate() + (rosterWeekOffset * 7) + i);
+      d.setDate(d.getDate() + (rosterWeekOffset * 7) + step);
+      step++;
+      // Skip Sundays (0 = Sunday)
+      if (d.getDay() === 0) continue;
       list.push({
         dateObj: d,
         dateKey: _dayKey(d.toISOString()),
@@ -1333,10 +1337,10 @@ export function ManagerDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
               <h2 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
-                Available Slots (Next 7 Days)
+                Available Slots (Working Days)
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Technician & inspector work availability and booking status at a glance.
+                Technician &amp; inspector work availability and booking status at a glance (Mon–Sat).
               </p>
             </div>
 
@@ -1416,7 +1420,7 @@ export function ManagerDashboard() {
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="text-xs font-bold">
-                {rosterDays[0].dayName}, {rosterDays[0].fullDate} - {rosterDays[6].dayName}, {rosterDays[6].fullDate}
+                {rosterDays[0]?.dayName}, {rosterDays[0]?.fullDate} - {rosterDays[rosterDays.length - 1]?.dayName}, {rosterDays[rosterDays.length - 1]?.fullDate}
               </span>
               <button
                 type="button"
@@ -1439,7 +1443,7 @@ export function ManagerDashboard() {
                 <th className="py-2.5 px-3 min-w-[130px]">Role</th>
                 {rosterDays.map((d, idx) => (
                   <th key={idx} className="py-2.5 px-2 text-center border-l border-slate-100 bg-slate-50/40">
-                    <div className={`font-extrabold text-xs ${d.dayOfWeek === 0 ? "text-rose-600" : "text-blue-950"}`}>
+                    <div className="font-extrabold text-xs text-blue-950">
                       {d.dayName}
                     </div>
                     <div className="text-[10px] text-slate-500 font-semibold">{d.fullDate}</div>
@@ -1450,7 +1454,7 @@ export function ManagerDashboard() {
             <tbody className="divide-y divide-slate-100">
               {filteredRosterList.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 text-xs font-medium">
+                  <td colSpan={rosterDays.length + 2} className="py-8 text-center text-slate-400 text-xs font-medium">
                     No field staff configured for this filter
                   </td>
                 </tr>
