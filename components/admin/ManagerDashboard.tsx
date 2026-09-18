@@ -942,85 +942,221 @@ export function ManagerDashboard() {
         </div>
       </div>
 
-      {/* 3. Middle Grid: 4 Cards (2 in first row, 2 in second row) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {/* Column 1: Quick Stats + Upcoming Slots (Today) */}
-        <div className="flex flex-col gap-4 sm:gap-5">
-          {/* Card 1: Dynamic Quick Stats */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Quick Stats</h2>
+      {/* 3. Middle Grid: 5 Core Operations Boxes in 1 Single Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 items-stretch">
+        {/* 1. Today View (Today's Schedule) */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <CalendarDays className="w-4 h-4 text-blue-600 shrink-0" />
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                  Today's Schedule
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentView("schedule")}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
+              {todayLeadsList.length === 0 && (
+                <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                  No jobs scheduled today
+                </div>
+              )}
+              {todayLeadsList.map((l) => {
+                const isInsp = isInspLead(l);
+                const apptDateStr = l.inspectionAt || l.jobAt;
+                const isToday = apptDateStr && _dayKey(apptDateStr) === _todayStr;
+                const suburb = getSuburb(l.address) || l.city || "Melbourne";
+                const timeStr = isInsp
+                  ? formatInspectionWindow(apptDateStr, suburb)
+                  : (formatApptTime(apptDateStr) || "Scheduled");
+                const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
+                const techName = isInsp
+                  ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
+                  : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
+                const isWorking = /in.progress|started|arrived/i.test(l.status || "");
+                const typeLabel = isInsp ? "Inspection" : "Job";
+                const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+                return (
+                  <div
+                    key={l.id}
+                    onClick={() => {
+                      setEditingLead(l);
+                      setLeadModalOpen(true);
+                    }}
+                    className="p-2 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-blue-50/50 transition-colors cursor-pointer shadow-2xs space-y-1 text-left"
+                    title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
+                  >
+                    <div className="flex items-center justify-between gap-1 text-[10px]">
+                      <span className="font-extrabold text-blue-700 tabular-nums truncate">
+                        {displayTime}
+                      </span>
+                      <span className={`px-1.5 py-0.2 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>
+                        {typeLabel}
+                      </span>
+                    </div>
+                    <div className="font-bold text-xs text-slate-900 truncate">
+                      #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
+                    </div>
+                    <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 pt-0.5 border-t border-slate-200/40 font-medium">
+                      <span className="truncate">{suburb}</span>
+                      <span className="text-slate-600 font-semibold truncate shrink-0 max-w-[80px]">
+                        {techName}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Recent Activity */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Clock className="w-4 h-4 text-purple-600 shrink-0" />
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                  Recent Activity
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentView("leads")}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5">
+              {recentActivityLogs.length === 0 && (
+                <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                  No recent activity recorded
+                </div>
+              )}
+              {recentActivityLogs.map((act, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setEditingLead(act.lead);
+                    setLeadModalOpen(true);
+                  }}
+                  className="flex items-center justify-between gap-2 text-xs p-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200/60"
+                  title={`Open Lead #${act.lead.jobNo || act.lead.id}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`w-6 h-6 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
+                      {act.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 truncate leading-tight text-[11px]">
+                        {act.title}
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
+                        {act.detail}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-semibold shrink-0 whitespace-nowrap">
+                    {act.time}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Quick Stats */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                  Quick Stats
+                </h2>
+              </div>
               <select
                 value={statsPeriod}
                 onChange={(e) => setStatsPeriod(e.target.value)}
-                className="text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 focus:outline-hidden cursor-pointer"
+                className="text-[10px] font-semibold text-slate-600 bg-slate-50 border border-slate-200/80 rounded-lg px-1.5 py-0.5 focus:outline-hidden cursor-pointer shrink-0"
               >
-                <option value="This Month">This Month</option>
-                <option value="This Week">This Week</option>
+                <option value="This Month">Month</option>
+                <option value="This Week">Week</option>
                 <option value="Today">Today</option>
               </select>
             </div>
 
-            <div className="space-y-3.5">
+            <div className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5">
               {/* Total Customers */}
               <div
                 onClick={() => {
                   setStatusFilter("");
                   setCurrentView("leads");
                 }}
-                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-2 rounded-xl bg-slate-50/60 hover:bg-slate-100/70 border border-slate-200/60 cursor-pointer transition-colors"
                 title="View all customer leads"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                    <Users className="w-4 h-4" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <Users className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <div className="text-[11px] font-medium text-slate-500">Total Customers</div>
-                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.customers}</div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium text-slate-500 truncate">Total Customers</div>
+                    <div className="text-sm font-extrabold text-slate-900 tabular-nums">{stats.customers}</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
-                  {stats.totalLeads} Leads
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-200/60 shrink-0">
+                  {stats.totalLeads}
                 </span>
               </div>
 
               {/* Active Jobs */}
               <div
                 onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress"])}
-                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-2 rounded-xl bg-slate-50/60 hover:bg-slate-100/70 border border-slate-200/60 cursor-pointer transition-colors"
                 title="View active field jobs"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
-                    <CalendarDays className="w-4 h-4" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <div className="text-[11px] font-medium text-slate-500">Active Jobs</div>
-                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.activeJobs}</div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium text-slate-500 truncate">Active Jobs</div>
+                    <div className="text-sm font-extrabold text-slate-900 tabular-nums">{stats.activeJobs}</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/60">
-                  {stats.activeJobs} Active
+                <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded-md border border-sky-200/60 shrink-0">
+                  Active
                 </span>
               </div>
 
               {/* Revenue */}
               <div
                 onClick={() => openLeadsFiltered(["Job Done", "Payment Received", "Completed", "Won"])}
-                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-2 rounded-xl bg-slate-50/60 hover:bg-slate-100/70 border border-slate-200/60 cursor-pointer transition-colors"
                 title={`View completed & paid leads (${statsPeriod})`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                    <DollarSign className="w-4 h-4" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <DollarSign className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <div className="text-[11px] font-medium text-slate-500">{statsPeriod} Revenue</div>
-                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.revenue}</div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium text-slate-500 truncate">Revenue</div>
+                    <div className="text-sm font-extrabold text-slate-900 tabular-nums truncate">{stats.revenue}</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60 shrink-0">
                   {stats.paidCount} Paid
                 </span>
               </div>
@@ -1028,46 +1164,53 @@ export function ManagerDashboard() {
               {/* Pending Payments */}
               <div
                 onClick={() => openLeadsFiltered(["Invoice Sent", "Payment Pending", "Partial Payment"])}
-                className="flex items-center justify-between p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-2 rounded-xl bg-slate-50/60 hover:bg-slate-100/70 border border-slate-200/60 cursor-pointer transition-colors"
                 title="View invoices pending payment"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                    <PieChart className="w-4 h-4" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <PieChart className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <div className="text-[11px] font-medium text-slate-500">Pending Payments</div>
-                    <div className="text-base font-extrabold text-slate-900 tabular-nums">{stats.pending}</div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium text-slate-500 truncate">Pending</div>
+                    <div className="text-sm font-extrabold text-slate-900 tabular-nums truncate">{stats.pending}</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                  {stats.pendingCount} Pending
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200/60 shrink-0">
+                  {stats.pendingCount} Due
                 </span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Card: Upcoming Slots (Today) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Upcoming Slots (Today)</h2>
+        {/* 4. Upcoming Slots (Today) */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                  Upcoming Slots
+                </h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setCurrentView("dispatch")}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
               >
                 View All
               </button>
             </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="max-h-[310px] overflow-y-auto divide-y divide-slate-100 pr-0.5">
               {todayHourlySlots.map((slot) => {
                 const isBooked = slot.leads.length > 0;
 
                 return (
                   <div
                     key={slot.hour}
-                    className="flex items-center justify-between py-2 px-1 hover:bg-slate-50/60 rounded-lg transition-colors"
+                    className="flex items-center justify-between py-1.5 px-1 hover:bg-slate-50/60 rounded-lg transition-colors"
                   >
                     <span className="text-xs font-bold text-[#001f97] tabular-nums">
                       {slot.label}
@@ -1082,7 +1225,7 @@ export function ManagerDashboard() {
                             setLeadModalOpen(true);
                           }
                         }}
-                        className="px-4 py-1 rounded-md text-xs font-bold bg-[#fee2e2]/90 text-[#dc2626] border border-rose-200/70 min-w-[85px] text-center hover:bg-rose-200/80 transition-colors cursor-pointer"
+                        className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#fee2e2]/90 text-[#dc2626] border border-rose-200/70 min-w-[70px] text-center hover:bg-rose-200/80 transition-colors cursor-pointer"
                         title={`${slot.label} Booked:\n` + slot.leads.map((l) => `• ${l.name || "Customer"} (${getSuburb(l.address) || "Melbourne"})`).join("\n")}
                       >
                         Booked
@@ -1091,7 +1234,7 @@ export function ManagerDashboard() {
                       <button
                         type="button"
                         onClick={() => setCurrentView("dispatch")}
-                        className="px-4 py-1 rounded-md text-xs font-bold bg-[#dcfce7]/90 text-[#16a34a] border border-emerald-200/70 min-w-[85px] text-center hover:bg-emerald-200/80 transition-colors cursor-pointer"
+                        className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#dcfce7]/90 text-[#16a34a] border border-emerald-200/70 min-w-[70px] text-center hover:bg-emerald-200/80 transition-colors cursor-pointer"
                         title={`${slot.label} Available - Click to open Dispatch`}
                       >
                         Available
@@ -1104,111 +1247,32 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        {/* Column 2: Today's Schedule Table + Technician & Inspector Status */}
-        <div className="flex flex-col gap-4 sm:gap-5">
-          {/* Today's Schedule Table */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                Today's Schedule ({_now.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })})
-              </h2>
-              <button
-                type="button"
-                onClick={() => setCurrentView("schedule")}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-              >
-                View All
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px] border-collapse min-w-[320px]">
-                <thead>
-                  <tr className="text-slate-400 font-semibold uppercase text-[9px] tracking-wider border-b border-slate-100">
-                    <th className="py-1 px-1">Time</th>
-                    <th className="py-1 px-1">Type</th>
-                    <th className="py-1 px-1">Customer</th>
-                    <th className="py-1 px-1">Area</th>
-                    <th className="py-1 px-1">Technician</th>
-                    <th className="py-1 px-1 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {todayLeadsList.length === 0 && (
-                    <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-xs">No jobs scheduled today</td></tr>
-                  )}
-                  {todayLeadsList.map((l) => {
-                    const isInsp = isInspLead(l);
-                    const apptDateStr = l.inspectionAt || l.jobAt;
-                    const isToday = apptDateStr && _dayKey(apptDateStr) === _todayStr;
-                    const suburb = getSuburb(l.address) || l.city || "Melbourne";
-                    const timeStr = isInsp
-                      ? formatInspectionWindow(apptDateStr, suburb)
-                      : (formatApptTime(apptDateStr) || "Scheduled");
-                    const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
-                    const techName = isInsp
-                      ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
-                      : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
-                    const isWorking = /in.progress|started|arrived/i.test(l.status || "");
-                    const typeLabel = isInsp ? "Inspection" : "Job";
-                    const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-                    const statusLabel = isWorking ? "In Progress" : l.status || "Scheduled";
-                    const statusColor = isWorking ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200";
-
-                    return (
-                      <tr
-                        key={l.id}
-                        className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          setEditingLead(l);
-                          setLeadModalOpen(true);
-                        }}
-                        title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
-                      >
-                        <td className="py-1.5 px-2 font-bold text-blue-600 whitespace-nowrap tabular-nums">{displayTime}</td>
-                        <td className="py-1.5 px-1.5">
-                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${typeColor}`}>
-                            {typeLabel}
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-2 font-semibold text-slate-800 whitespace-nowrap truncate max-w-[140px]">{l.name || "Customer"}</td>
-                        <td className="py-1.5 px-2 text-slate-500 whitespace-nowrap truncate max-w-[120px]">{suburb}</td>
-                        <td className="py-1.5 px-2 text-slate-600 font-medium whitespace-nowrap">{techName}</td>
-                        <td className="py-1.5 px-2 text-right">
-                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${statusColor}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Technician & Inspector Status Box */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight">Technician Status</h2>
-                <span className="text-[11px] font-semibold text-slate-400">
-                  ({activeStaffRosterList.length} Field Staff)
+        {/* 5. Tech Status (Technician & Inspector Status) */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Users className="w-4 h-4 text-blue-600 shrink-0" />
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                  Tech Status
+                </h2>
+                <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                  ({activeStaffRosterList.length})
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setCurrentView("dispatch")}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
               >
                 View All
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5">
               {activeStaffRosterList.length === 0 && (
-                <div className="py-6 text-center text-slate-400 text-xs font-medium col-span-full">
-                  No field technicians or inspectors configured
+                <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                  No field staff configured
                 </div>
               )}
               {activeStaffRosterList.map((member, idx) => {
@@ -1219,93 +1283,45 @@ export function ManagerDashboard() {
                   <div
                     key={member.id}
                     onClick={() => setCurrentView("dispatch")}
-                    className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs hover:shadow-xs hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between"
+                    className="bg-white rounded-xl border border-slate-200/80 p-2.5 shadow-2xs hover:shadow-xs hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between space-y-1.5"
                     title={`View ${member.name}'s schedule in Dispatch`}
                   >
                     {/* Top: Avatar + Name + Role */}
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-full bg-[#0a192f] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-[#0a192f] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-slate-900 text-sm truncate">{member.name}</div>
-                        <div className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
-                          {member.isInspector ? "Inspector (Inspection Only)" : "Technician (Jobs Only)"}
+                        <div className="font-bold text-slate-900 text-xs truncate leading-tight">{member.name}</div>
+                        <div className="text-[9px] font-medium text-slate-500 truncate leading-tight">
+                          {member.isInspector ? "Inspector" : "Technician"}
                         </div>
                       </div>
                     </div>
 
-                    {/* Middle: Metric + Progress Bar */}
-                    <div className="mt-3">
-                      <div className="text-xs font-bold text-slate-900">
-                        {status.metricText}
+                    {/* Progress Bar & Metric */}
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-800">
+                        <span className="truncate">{status.metricText}</span>
+                        <span className="tabular-nums font-black">{status.percent}%</span>
                       </div>
-                      <div className="relative w-full bg-slate-100 rounded-full h-5 overflow-hidden flex items-center px-2 mt-1.5 border border-slate-200/40">
+                      <div className="relative w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-1 border border-slate-200/40">
                         <div
                           className={`absolute left-0 top-0 bottom-0 rounded-full transition-all duration-500 ${status.barBg}`}
                           style={{ width: `${Math.max(status.percent, 6)}%` }}
                         />
-                        <span
-                          className={`relative z-10 text-[11px] font-black tabular-nums ml-auto ${
-                            status.percent >= 75 ? "text-white" : "text-slate-800"
-                          }`}
-                        >
-                          {status.percent}%
-                        </span>
                       </div>
                     </div>
 
-                    {/* Bottom: Location Pin */}
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mt-3 pt-2 border-t border-slate-100 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-blue-600 fill-blue-600/10 shrink-0" />
+                    {/* Location Pin */}
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 truncate pt-1 border-t border-slate-100">
+                      <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
                       <span className="truncate">{status.locationText}</span>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </div>
-
-        {/* Card 4: Dynamic Recent Activity Feed */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900 tracking-tight">Recent Activity</h2>
-            <button
-              type="button"
-              onClick={() => setCurrentView("leads")}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-            >
-              View All
-            </button>
-          </div>
-
-          <div className="space-y-2.5">
-            {recentActivityLogs.length === 0 && (
-              <div className="py-8 text-center text-slate-400 text-xs">No recent activity recorded</div>
-            )}
-            {recentActivityLogs.map((act, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setEditingLead(act.lead);
-                  setLeadModalOpen(true);
-                }}
-                className="flex items-center justify-between gap-2 text-xs p-1.5 -mx-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                title={`Open Lead #${act.lead.jobNo || act.lead.id}`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-7 h-7 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
-                    {act.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-slate-900 truncate leading-tight">{act.title}</div>
-                    <div className="text-[10px] text-slate-500 truncate leading-tight">{act.detail}</div>
-                  </div>
-                </div>
-                <div className="text-[10px] text-slate-400 font-semibold shrink-0 whitespace-nowrap">{act.time}</div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
