@@ -93,33 +93,38 @@ export default async function RootLayout({
   const [rating, content] = await Promise.all([getBusinessRating(), getSiteContent()]);
   return (
     <html lang="en-AU" className={`${roboto.className} h-full antialiased`}>
-      <head>
+      <body className="min-h-full flex flex-col">
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GT047SQJNS"
           strategy="afterInteractive"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-
-            gtag('config', 'G-GT047SQJNS');
-          `}
-        </Script>
-        <Script id="product-review-settings" strategy="beforeInteractive">
-          {`
-            window.__productReviewSettings = {
-              brandId: '426b71b0-46c5-5604-b737-26602f0dbf10'
-            };
-          `}
-        </Script>
+        <Script
+          id="google-analytics"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-GT047SQJNS');
+            `,
+          }}
+        />
+        <Script
+          id="product-review-settings"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__productReviewSettings = {
+                brandId: '426b71b0-46c5-5604-b737-26602f0dbf10'
+              };
+            `,
+          }}
+        />
         <Script
           src="https://cdn.productreview.com.au/assets/widgets/loader.js"
           strategy="afterInteractive"
         />
-      </head>
-      <body className="min-h-full flex flex-col">
         {/* Site-wide LocalBusiness structured data */}
         <script
           type="application/ld+json"

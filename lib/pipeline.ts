@@ -21,39 +21,33 @@ export interface Stage {
 // completed. The En Route / Arrived / In Progress micro-stages track a
 // technician's visit so the CRM mirrors what's happening on the ground.
 export const STAGES: Stage[] = [
-  // ── Intake / sales (Login 1) ── new enquiry capture
+  // ── Intake / sales (Login 1) ──
   { key: "New", label: "New", owner: "intake", group: "lead" },
   { key: "Contacted", label: "Contacted", owner: "intake", group: "lead" },
   { key: "Waiting for Info", label: "Waiting for Info", owner: "intake", group: "lead" },
-  // ── Inspection (Login 2 / Inspection) ── free inspection happens BEFORE the quote
+  // ── Inspection ──
   { key: "Inspection Booked", label: "Inspection Booked", owner: "inspection", group: "booking" },
   { key: "Inspection En Route", label: "Inspection — On the Way", owner: "inspection", group: "booking" },
   { key: "Inspection Arrived", label: "Inspection — Reached", owner: "inspection", group: "booking" },
   { key: "Inspection In Progress", label: "Inspection In Progress", owner: "inspection", group: "booking" },
-  // Completed inspection hands the lead BACK to Intake to build the quote.
   { key: "Inspection Completed", label: "Inspection Completed", owner: "intake", group: "booking" },
-  // ── Quote (Login 1 / Intake) ──
+  // ── Quote ──
   { key: "Quote Pending", label: "Quote Pending", owner: "intake", group: "quote" },
   { key: "Quote Sent", label: "Quote Sent", owner: "intake", group: "quote" },
-  { key: "Negotiation", label: "Negotiation", owner: "intake", group: "quote" },
-  // Accepted quote hands off to Technician to book & execute the job.
-  { key: "Won", label: "Quote Accepted", owner: "technician", group: "booking" },
-  // ── Job (Login 3 / Technician) ──
+  // ── Job ──
   { key: "Job Booked", label: "Job Booked", owner: "technician", group: "job" },
-  { key: "Scheduled", label: "Scheduled", owner: "technician", group: "job" },
   { key: "Job Confirmed", label: "Job Confirmed", owner: "technician", group: "job" },
   { key: "Job En Route", label: "Job — On the Way", owner: "technician", group: "job" },
   { key: "Job Arrived", label: "Job — Reached", owner: "technician", group: "job" },
-  { key: "Job Started", label: "Job Started", owner: "technician", group: "job" },
   { key: "Job In Progress", label: "Job In Progress", owner: "technician", group: "job" },
-  // ── Finance / completion (Login 4) ── job done hands off here
   { key: "Job Done", label: "Job Done", owner: "finance", group: "finance" },
+  // ── Finance / completion ──
   { key: "Invoice Sent", label: "Invoice Sent", owner: "finance", group: "finance" },
   { key: "Payment Pending", label: "Payment Pending", owner: "finance", group: "finance" },
+  { key: "Partial Payment", label: "Partial Payment", owner: "finance", group: "finance" },
   { key: "Payment Received", label: "Payment Received", owner: "finance", group: "finance" },
   { key: "Warranty Sent", label: "Warranty Sent", owner: "finance", group: "finance" },
-  // Everything done — invoiced, paid, warrantied.
-  { key: "Completed", label: "Completed 🏆", owner: "finance", group: "closed" },
+  { key: "Completed", label: "Completed", owner: "finance", group: "closed" },
   // ── Closed ──
   { key: "Lost", label: "Lost / Closed", owner: "intake", group: "closed" },
 ];
@@ -83,12 +77,10 @@ export const INTAKE_STATUSES: string[] = [
   "New",
   "Contacted",
   "Waiting for Info",
-  "Inspection Booked", // intake books the inspection, which hands off to inspection
-  "Inspection Completed", // handed back to intake to quote
+  "Inspection Booked",
+  "Inspection Completed",
   "Quote Pending",
   "Quote Sent",
-  "Negotiation",
-  "Won",
   "Job Booked",
   "Lost",
 ];
@@ -111,13 +103,10 @@ export const INSPECTION_STATUSES: string[] = [
  */
 export const TECHNICIAN_STATUSES: string[] = [
   ...INSPECTION_STATUSES,
-  "Won",
   "Job Booked",
-  "Scheduled",
   "Job Confirmed",
   "Job En Route",
   "Job Arrived",
-  "Job Started",
   "Job In Progress",
   "Job Done",
   "Completed",
@@ -135,6 +124,7 @@ export const FINANCE_STATUSES: string[] = [
   "Job Done",
   "Invoice Sent",
   "Payment Pending",
+  "Partial Payment",
   "Payment Received",
   "Warranty Sent",
   "Completed",
@@ -168,8 +158,6 @@ export function inRoleQueue(role: Role, status: string): boolean {
       "Inspection Completed",
       "Quote Pending",
       "Quote Sent",
-      "Negotiation",
-      "Won",
       "Job Booked",
       "Lost",
     ].includes(status);
