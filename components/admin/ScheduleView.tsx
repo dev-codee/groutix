@@ -109,19 +109,30 @@ export function ScheduleView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 {entries.map((b) => (
                   <div
                     key={b.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/70 hover:bg-slate-100/80 border border-slate-200/60 transition-all cursor-pointer group shadow-2xs"
+                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl bg-slate-50/70 hover:bg-slate-100/80 border border-slate-200/60 transition-all cursor-pointer group shadow-2xs"
                     onClick={() => onOpenLead(b.leadId)}
                   >
-                    <div className="text-xs font-bold text-blue-600 w-20 shrink-0 tabular-nums">
-                      {fmtScheduleTime(b.time)}
+                    <div className="flex items-center justify-between sm:justify-start gap-2">
+                      <div className="text-xs font-bold text-blue-600 sm:w-20 shrink-0 tabular-nums">
+                        {fmtScheduleTime(b.time)}
+                      </div>
+                      <span
+                        className={`sm:hidden text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                          b.type === "inspection"
+                            ? "bg-blue-50 text-blue-700 border-blue-200/60"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                        }`}
+                      >
+                        {b.type === "inspection" ? "Inspection" : "Job"}
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-slate-900 truncate">
                           {b.customer?.name || "Customer"}
                         </span>
                         <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                          className={`hidden sm:inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                             b.type === "inspection"
                               ? "bg-blue-50 text-blue-700 border-blue-200/60"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
@@ -130,7 +141,7 @@ export function ScheduleView({ onOpenLead }: { onOpenLead: (id: string) => void 
                           {b.type === "inspection" ? "Inspection" : "Job"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5">
+                      <div className="flex items-center gap-x-3 gap-y-0.5 mt-0.5 flex-wrap">
                         {b.customer?.address && (
                           <span className="text-[11px] text-slate-500 truncate">{b.customer.address}</span>
                         )}
@@ -139,7 +150,7 @@ export function ScheduleView({ onOpenLead }: { onOpenLead: (id: string) => void 
                         </span>
                       </div>
                     </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                     </div>
                   </div>

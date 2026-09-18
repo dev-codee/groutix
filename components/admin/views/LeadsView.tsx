@@ -294,31 +294,31 @@ export function LeadsView() {
         {/* Table header & list */}
         <div className="w-full">
           {role === "intake" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="hidden lg:grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">INSPECTION &amp; QUOTE</div>
               <div className="col-span-3">WORKFLOW (UPTO JOB BOOKED)</div>
             </div>
           ) : role === "inspection" || role === "field" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="hidden lg:grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">INSPECTION (NO QUOTE)</div>
               <div className="col-span-3">WORKFLOW (UPTO INSPECTION COMPLETED)</div>
             </div>
           ) : role === "technician" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="hidden lg:grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">JOB (NO QUOTE)</div>
               <div className="col-span-3">WORKFLOW (JOB BOOKED TO JOB DONE)</div>
             </div>
           ) : role === "finance" ? (
-            <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="hidden lg:grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div className="col-span-4">CLIENT</div>
               <div className="col-span-5">FINANCE (FROM JOB DONE)</div>
               <div className="col-span-3">WORKFLOW (FINANCE)</div>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-6 px-5 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
+            <div className="hidden lg:grid grid-cols-4 gap-6 px-5 py-2.5 bg-slate-50 border border-slate-200/60 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-xl mb-3 w-full">
               <div>CLIENT</div>
               <div>INSPECTION &amp; QUOTE</div>
               <div>FINANCE</div>

@@ -75,6 +75,11 @@ export default function SupportChatWidget() {
     [messages]
   );
 
+  // Do not render the website support chat widget on CRM dashboard pages
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   async function sendMessage(messageText: string) {
     const content = messageText.trim();
     if (!content || loadingReply) return;

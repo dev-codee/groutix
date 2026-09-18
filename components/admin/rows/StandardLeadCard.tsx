@@ -13,7 +13,7 @@ import {
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, STATUS_LIST, fmtDate, getStepActive,
 } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
+import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 
 export function StandardLeadCard({ l }: { l: Lead }) {
@@ -91,7 +91,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
   return (
     <div className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl">
-      <div className="grid grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start divide-y divide-slate-100 lg:divide-y-0">
 
         {/* COLUMN 0: CLIENT */}
         <div className="space-y-3 min-w-0">
@@ -120,7 +120,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           </div>
 
           <div>
-            <div className="flex items-center justify-between gap-1.5 min-w-0 mb-1">
+            <div className="flex flex-wrap items-center justify-between gap-1.5 min-w-0 mb-1">
               <div className="font-bold text-blue-700 text-xs sm:text-sm whitespace-nowrap tracking-tight shrink-0">
                 {l.jobNo || "—"}
               </div>
@@ -129,7 +129,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 if (!rIso) return null;
                 const dateStr = formatApptDate(rIso, { day: "numeric", month: "short" });
                 if (!dateStr) return null;
-                const timeStr = formatApptTimeRange(rIso);
+                const timeStr = formatApptTime(rIso);
                 const fullDateStr = formatApptDate(rIso);
                 return (
                   <div
@@ -301,7 +301,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         </div>
 
         {/* COLUMN 2: INSPECTION & QUOTE */}
-        <div className="space-y-2.5 min-w-0">
+        <div className="space-y-2.5 min-w-0 pt-5 lg:pt-0">
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Inspection &amp; Assigned</span>
@@ -657,7 +657,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         </div>
 
         {/* COLUMN 3: FINANCE SUMMARY */}
-        <div className="space-y-2.5 min-w-0">
+        <div className="space-y-2.5 min-w-0 pt-5 lg:pt-0">
           <div className="p-2 space-y-1.5">
             {l.invoiceSentAt && (
               <div className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50/80 text-blue-700 border border-blue-200/80 flex items-center gap-1">
@@ -975,7 +975,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         </div>
 
         {/* COLUMN 4: WORKFLOW */}
-        <div className="space-y-2">
+        <div className="space-y-2 pt-5 lg:pt-0">
           <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
             <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">FOLLOW-UP</div>
             <div className="text-xs font-semibold text-slate-800 mt-0.5">{followupPrompt}</div>

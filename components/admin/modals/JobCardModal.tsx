@@ -46,8 +46,8 @@ export function JobCardModal({ lead: jobCardLead, onClose }: Props) {
   const total = getLeadQuoteTotal(l);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-5 my-6">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 sm:pt-10 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-4 sm:p-6 space-y-5 my-4 sm:my-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
@@ -64,7 +64,7 @@ export function JobCardModal({ lead: jobCardLead, onClose }: Props) {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { label: "Current Stage", value: l.status, strong: true },
             { label: "Service", value: l.service || "Standard Service" },

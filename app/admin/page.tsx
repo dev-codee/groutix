@@ -26,6 +26,7 @@ import {
   Search,
   CheckSquare,
   Square,
+  Menu,
   X,
   Printer,
   Paperclip,
@@ -198,6 +199,7 @@ export default function CrmDashboardPage() {
   // one view renders at a time; it resets whenever the view or filters change so
   // you never land on an out-of-range page.
   const [page, setPage] = useState(1);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Staff directory (all roles) for the Team view and assignee pickers.
   const [staff, setStaff] = useState<
@@ -2913,12 +2915,239 @@ export default function CrmDashboardPage() {
     onlyUnread, setOnlyUnread, setPriorityFilter,
   };
 
+  const renderNavLinks = (onItemClick?: () => void) => (
+    <nav className="mt-4 flex flex-col gap-1">
+      {canSee("dashboard") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("dashboard"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "dashboard"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <LayoutDashboard className="w-4 h-4" />
+            CRM Dashboard
+          </span>
+        </button>
+      )}
+
+      {canSee("leads") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("leads"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "leads"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <Users className="w-4 h-4" />
+            Leads
+          </span>
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+              }`}
+          >
+            {scopedLeads.length}
+          </span>
+        </button>
+      )}
+
+      {canSee("quotes") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("quotes"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "quotes"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <FileSpreadsheet className="w-4 h-4" />
+            Quotes
+          </span>
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+              }`}
+          >
+            {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
+          </span>
+        </button>
+      )}
+
+      {canSee("jobs") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("jobs"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "jobs"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <Briefcase className="w-4 h-4" />
+            {role === "finance"
+              ? "Finance & Jobs"
+              : role === "intake"
+                ? "Leads & Bookings"
+                : role === "technician"
+                  ? "Jobs & Work"
+                  : role === "inspection" || role === "field"
+                    ? "Inspections"
+                    : "Bookings & Jobs"}
+          </span>
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+              }`}
+          >
+            {role === "finance"
+              ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
+              : role === "intake"
+                ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
+                : role === "technician"
+                  ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
+                  : role === "inspection" || role === "field"
+                    ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
+                    : scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length}
+          </span>
+        </button>
+      )}
+
+      {canSee("completed") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("completed"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "completed"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            Completed
+          </span>
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "completed" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+              }`}
+          >
+            {scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length}
+          </span>
+        </button>
+      )}
+
+      {canSee("schedule") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("schedule"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "schedule"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <CalendarDays className="w-4 h-4" />
+            Schedule
+          </span>
+        </button>
+      )}
+
+      {canSee("customers") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("customers"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "customers"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <Users className="w-4 h-4" />
+            Customers
+          </span>
+        </button>
+      )}
+
+      {canSee("team") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("team"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "team"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <ShieldCheck className="w-4 h-4" />
+            Team
+          </span>
+          {totalUnread > 0 && (
+            <span className="min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+              {totalUnread}
+            </span>
+          )}
+        </button>
+      )}
+
+      {canSee("analytics") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("analytics"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "analytics"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <BarChart3 className="w-4 h-4" />
+            Analytics Overview
+          </span>
+        </button>
+      )}
+
+      {(role === "manager" || role === "super_admin") && (
+        <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
+          <Link
+            href={`${basePath}/users`}
+            onClick={() => onItemClick?.()}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
+          >
+            <UserCheck className="w-4 h-4" />
+            Staff Accounts
+          </Link>
+          <Link
+            href={`${basePath}/content`}
+            onClick={() => onItemClick?.()}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Site Content Editor
+          </Link>
+        </div>
+      )}
+
+      {role === "manager" && (
+        <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
+          <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settings</p>
+          <button
+            type="button"
+            onClick={() => { setLogoSettingsOpen(true); onItemClick?.(); }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
+          >
+            <Settings className="w-4 h-4" />
+            Logo Settings
+          </button>
+        </div>
+      )}
+    </nav>
+  );
 
   return (
     <AdminPageProvider value={pageCtx}>
     <div className="flex h-screen overflow-hidden bg-slate-50/60 text-slate-900">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-white border-r border-slate-200/80 p-4 flex flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
+      {/* Desktop Sidebar Navigation */}
+      <aside className="hidden md:flex md:w-64 bg-white border-r border-slate-200/80 p-4 flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
         <div>
           {/* Brand */}
           <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
@@ -2931,230 +3160,78 @@ export default function CrmDashboardPage() {
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="mt-4 flex flex-col gap-1">
-            {canSee("dashboard") && (
-              <button
-                onClick={() => setCurrentView("dashboard")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "dashboard"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <LayoutDashboard className="w-4 h-4" />
-                  CRM Dashboard
-                </span>
-              </button>
-            )}
+          {/* Desktop Nav Links */}
+          {renderNavLinks()}
+        </div>
+      </aside>
 
-            {canSee("leads") && (
-              <button
-                onClick={() => setCurrentView("leads")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "leads"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4" />
-                  Leads
-                </span>
-                <span
-                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}
-                >
-                  {scopedLeads.length}
-                </span>
-              </button>
-            )}
-
-            {canSee("quotes") && (
-              <button
-                onClick={() => setCurrentView("quotes")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "quotes"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <FileSpreadsheet className="w-4 h-4" />
-                  Quotes
-                </span>
-                <span
-                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}
-                >
-                  {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
-                </span>
-              </button>
-            )}
-
-            {canSee("jobs") && (
-              <button
-                onClick={() => setCurrentView("jobs")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "jobs"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Briefcase className="w-4 h-4" />
-                  {role === "finance"
-                    ? "Finance & Jobs"
-                    : role === "intake"
-                      ? "Leads & Bookings"
-                      : role === "technician"
-                        ? "Jobs & Work"
-                        : role === "inspection" || role === "field"
-                          ? "Inspections"
-                          : "Bookings & Jobs"}
-                </span>
-                <span
-                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}
-                >
-                  {role === "finance"
-                    ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
-                    : role === "intake"
-                      ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
-                      : role === "technician"
-                        ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
-                        : role === "inspection" || role === "field"
-                          ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
-                          : scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length}
-                </span>
-              </button>
-            )}
-
-            {canSee("completed") && (
-              <button
-                onClick={() => setCurrentView("completed")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "completed"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Completed
-                </span>
-                <span
-                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "completed" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}
-                >
-                  {scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length}
-                </span>
-              </button>
-            )}
-
-            {canSee("schedule") && (
-              <button
-                onClick={() => setCurrentView("schedule")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "schedule"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <CalendarDays className="w-4 h-4" />
-                  Schedule
-                </span>
-              </button>
-            )}
-
-            {canSee("customers") && (
-              <button
-                onClick={() => setCurrentView("customers")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "customers"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4" />
-                  Customers
-                </span>
-              </button>
-            )}
-
-            {canSee("team") && (
-              <button
-                onClick={() => setCurrentView("team")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "team"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4" />
-                  Team
-                </span>
-                {totalUnread > 0 && (
-                  <span className="min-w-[18px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {totalUnread}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {canSee("analytics") && (
-              <button
-                onClick={() => setCurrentView("analytics")}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${currentView === "analytics"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                  }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <BarChart3 className="w-4 h-4" />
-                  Analytics Overview
-                </span>
-              </button>
-            )}
-
-            {(role === "manager" || role === "super_admin") && (
-              <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
-                <Link
-                  href={`${basePath}/users`}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-                >
-                  <UserCheck className="w-4 h-4" />
-                  Staff Accounts
-                </Link>
-                <Link
-                  href={`${basePath}/content`}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-                >
-                  <FileText className="w-4 h-4" />
-                  Site Content Editor
-                </Link>
-              </div>
-            )}
-
-            {role === "manager" && (
-              <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
-                <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settings</p>
+      {/* Mobile Sidebar Overlay & Drawer */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 flex flex-col justify-between h-full overflow-y-auto shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+            <div>
+              {/* Brand & Close button */}
+              <div className="flex items-center justify-between pb-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-base shadow-xs ring-1 ring-blue-500/20 shrink-0">
+                    G
+                  </div>
+                  <div>
+                    <div className="font-bold text-base leading-tight text-slate-900 tracking-tight">Groutix Portal</div>
+                    <div className="text-[11px] font-medium text-slate-400">CRM &amp; Operations</div>
+                  </div>
+                </div>
                 <button
-                  onClick={() => setLogoSettingsOpen(true)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors"
+                  type="button"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  title="Close Navigation"
                 >
-                  <Settings className="w-4 h-4" />
-                  Logo Settings
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            )}
-          </nav>
-        </div>
 
-      </aside>
+              {/* Mobile Nav Links */}
+              {renderNavLinks(() => setMobileNavOpen(false))}
+            </div>
+
+            {/* Mobile Footer */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+              <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs text-slate-600 font-medium">
+                <span>Role</span>
+                <span className="font-semibold text-slate-900">{roleLabel}</span>
+              </div>
+              <button
+                onClick={() => { setMobileNavOpen(false); logout(); }}
+                disabled={loggingOut}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                {loggingOut ? "Signing out…" : "Sign Out"}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* Top Header Bar */}
-        <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-6 flex items-center justify-between gap-4 sticky top-0 z-20 shadow-2xs">
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight capitalize">
+        <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-20 shadow-2xs">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              className="p-2 -ml-1 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 md:hidden shadow-2xs cursor-pointer shrink-0"
+              title="Open Navigation"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
               {currentView === "dashboard"
                 ? "Manager Dashboard"
                 : currentView === "analytics"
@@ -3178,7 +3255,7 @@ export default function CrmDashboardPage() {
           </div>
 
           {/* Live AUS Time */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <div className="flex flex-col items-start leading-none">
               <span className="text-xs font-bold text-slate-800 tabular-nums tracking-tight">{liveAusTime}</span>
@@ -3186,28 +3263,29 @@ export default function CrmDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Global Search */}
-            <div className="relative w-64 md:w-72">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative w-32 sm:w-48 md:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search job #, name, phone..."
+                placeholder="Search..."
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
+                className="w-full pl-8 sm:pl-9 pr-2.5 sm:pr-3 py-1.5 text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
               />
             </div>
 
-            <div className="h-5 w-px bg-slate-200 mx-0.5"></div>
+            <div className="hidden sm:block h-5 w-px bg-slate-200 mx-0.5"></div>
 
             <button
               onClick={logout}
               disabled={loggingOut}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              title="Sign Out"
             >
               <LogOut className="w-3.5 h-3.5" />
-              {loggingOut ? "Signing out…" : "Sign Out"}
+              <span className="hidden md:inline">{loggingOut ? "Signing out…" : "Sign Out"}</span>
             </button>
 
             {/* Unread customer replies bell — hidden for inspection & technician */}
@@ -3245,10 +3323,10 @@ export default function CrmDashboardPage() {
                 onClick={handleSyncEmails}
                 disabled={syncingEmails}
                 title="Sync Inbox"
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200/80 bg-white text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-2xs"
+                className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 border border-slate-200/80 bg-white text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-2xs"
               >
                 <Mail className={`w-3.5 h-3.5 ${syncingEmails ? "animate-pulse text-blue-600" : ""}`} />
-                Sync Inbox
+                <span className="hidden sm:inline">Sync</span>
               </button>
             )}
 
@@ -3264,15 +3342,16 @@ export default function CrmDashboardPage() {
                   });
                   setLeadModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                title="Add Lead"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add Lead
+                <span className="hidden sm:inline">Add Lead</span>
               </button>
             )}
 
             <div
-              className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${viewAs
+              className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${viewAs
                   ? "border-amber-300 bg-amber-50 text-amber-800"
                   : "border-slate-200/80 bg-white text-slate-700 shadow-2xs"
                 }`}
@@ -3291,7 +3370,7 @@ export default function CrmDashboardPage() {
             {/* Location sharing indicator (inspector / technician only) */}
             {(role === "inspection" || role === "technician") && (
               <div
-                className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${
+                className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${
                   locationTrackingActive
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                     : "border-slate-200/80 bg-white text-slate-400"
@@ -3309,7 +3388,7 @@ export default function CrmDashboardPage() {
         </header>
 
         {/* View Contents */}
-        <div className="p-6 space-y-6 flex-1">
+        <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 flex-1">
           {/* Impersonation banner — manager previewing another role's dashboard. */}
           {viewAs && (
             <div className="p-3 px-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-center justify-between gap-3">

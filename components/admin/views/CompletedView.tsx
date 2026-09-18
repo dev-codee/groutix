@@ -202,7 +202,7 @@ export function CompletedView() {
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
         {/* Filter bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div className="relative flex-1 min-w-[280px]">
+          <div className="relative flex-1 min-w-[200px] sm:min-w-[280px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -237,7 +237,7 @@ export function CompletedView() {
         </div>
 
         {/* Table header */}
-        <div className="grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50/80 border-y border-slate-200/70 text-slate-500 text-[11px] font-semibold uppercase tracking-wider rounded-lg w-full">
+        <div className="hidden lg:grid grid-cols-12 gap-4 xl:gap-6 px-4 py-2.5 bg-slate-50/80 border-y border-slate-200/70 text-slate-500 text-[11px] font-semibold uppercase tracking-wider rounded-lg w-full">
           <div className="col-span-4">Client & Details</div>
           <div className="col-span-5">Completed Work & Findings</div>
           <div className="col-span-3">Actions & Records</div>
@@ -271,9 +271,9 @@ export function CompletedView() {
                 key={l.id}
                 className="py-4 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
               >
-                <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-6 items-start w-full divide-y divide-slate-100 lg:divide-y-0">
                   {/* COLUMN 1: CLIENT & DETAILS */}
-                  <div className="col-span-4 min-w-0 space-y-2">
+                  <div className="col-span-1 lg:col-span-4 min-w-0 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-semibold flex-wrap">
                       <span className="text-blue-700 whitespace-nowrap font-bold">
                         {jobNoDisplay}
@@ -315,7 +315,7 @@ export function CompletedView() {
                   </div>
 
                   {/* COLUMN 2: COMPLETED WORK & FINDINGS */}
-                  <div className="col-span-5 min-w-0 space-y-2.5">
+                  <div className="col-span-1 lg:col-span-5 min-w-0 space-y-2.5 pt-3 lg:pt-0">
                     {/* Status & Flow Badges */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
@@ -408,7 +408,7 @@ export function CompletedView() {
                   </div>
 
                   {/* COLUMN 3: ACTIONS & RECORDS */}
-                  <div className="col-span-3 min-w-0 space-y-1.5">
+                  <div className="col-span-1 lg:col-span-3 min-w-0 space-y-1.5 pt-3 lg:pt-0">
                     <button
                       type="button"
                       onClick={() => callCustomer(l)}

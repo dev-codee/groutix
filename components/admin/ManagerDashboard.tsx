@@ -102,7 +102,7 @@ export function ManagerDashboard() {
         </div>
       </div>
       <div className="overflow-auto flex-1">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[500px]">
           <thead className="sticky top-0 bg-slate-50/80 backdrop-blur-xs z-10">
             <tr className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-100">
               <th className="py-2.5 px-2.5 whitespace-nowrap">Time</th>
@@ -156,7 +156,7 @@ export function ManagerDashboard() {
   return (
     <div className="space-y-4">
       {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950 text-white px-6 py-5 shadow-xs border border-slate-800/80">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950 text-white px-4 sm:px-6 py-4 sm:py-5 shadow-xs border border-slate-800/80">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-semibold uppercase tracking-wider text-blue-200 mb-1 border border-white/10">
@@ -306,7 +306,7 @@ export function ManagerDashboard() {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[760px]">
             <thead>
               <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase text-[10px] tracking-wider bg-slate-50/70">
                 <th className="py-2.5 px-3">JOB NO</th>

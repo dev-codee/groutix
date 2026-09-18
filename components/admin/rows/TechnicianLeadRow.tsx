@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
+import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
 
@@ -42,9 +42,10 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     : `JobNo-${l.id.slice(0, 4)}`;
 
   const dateTimeDisplay = (() => {
-    const v = l.jobAt || l.inspectionAt || l.createdAt;
-    if (!v) return "";
-    return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
+    const v = l.jobAt || l.inspectionAt;
+    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
+    if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
+    return "";
   })();
 
   const serviceDisplay = l.service && (l.notes || l.message)
@@ -72,9 +73,9 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
       className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
     >
 
-      <div className="grid grid-cols-12 gap-4 xl:gap-6 items-start w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-6 items-start w-full divide-y divide-slate-100 lg:divide-y-0">
         {/* COLUMN 1: CLIENT */}
-        <div className="col-span-4 min-w-0 space-y-2.5">
+        <div className="col-span-12 lg:col-span-4 min-w-0 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold truncate flex-wrap">
             <span className="text-blue-700 whitespace-nowrap font-bold">{jobNoDisplay}</span>
             <span className="text-slate-300 font-normal">|</span>
@@ -140,7 +141,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
         </div>
 
         {/* COLUMN 2: JOB */}
-        <div className="col-span-5 min-w-0 space-y-2.5">
+        <div className="col-span-12 lg:col-span-5 min-w-0 space-y-2.5 pt-4 lg:pt-0">
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
@@ -346,7 +347,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
         </div>
 
         {/* COLUMN 3: WORKFLOW */}
-        <div className="col-span-3 min-w-0 space-y-1.5">
+        <div className="col-span-12 lg:col-span-3 min-w-0 space-y-1.5 pt-4 lg:pt-0">
           <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
             <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
             <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">

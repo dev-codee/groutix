@@ -89,9 +89,29 @@ export function formatApptTimeRange(
   durationHours: number = 1
 ): string {
   if (!value) return "";
+  const str = String(value).trim();
+  if (HAS_TZ_RE.test(str)) {
+    const d = new Date(str);
+    if (!Number.isNaN(d.getTime())) {
+      const start = d.toLocaleString("en-AU", {
+        timeZone: "Australia/Melbourne",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+      const endD = new Date(d.getTime() + durationHours * 3600 * 1000);
+      const end = endD.toLocaleString("en-AU", {
+        timeZone: "Australia/Melbourne",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+      return `${start} – ${end}`;
+    }
+  }
   const start = formatApptTime(value);
   if (!start) return "";
-  const m = NAIVE_DT_RE.exec(String(value).trim());
+  const m = NAIVE_DT_RE.exec(str);
   if (!m) return start;
   const endH = (+m[4] + durationHours) % 24;
   const pad = (n: number) => String(n).padStart(2, "0");

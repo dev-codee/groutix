@@ -19,7 +19,7 @@ export function CustomersView() {
           </h2>
           <div className="text-xs text-slate-400 font-medium">Live client contact and property records</div>
         </div>
-        <div className="relative w-64 md:w-72">
+        <div className="relative w-full sm:w-64 md:w-72">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -31,7 +31,7 @@ export function CustomersView() {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
+        <table className="w-full text-left text-xs border-collapse min-w-[700px]">
           <thead>
             <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase text-[10px] tracking-wider bg-slate-50/70">
               <th className="py-2.5 px-3">Customer Name</th>
