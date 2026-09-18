@@ -820,71 +820,33 @@ export function ManagerDashboard() {
             </p>
           </div>
 
-          <div className="flex flex-col items-start xl:items-end gap-2.5">
-            <div className="text-xs sm:text-sm font-bold text-[#1D61E7] tracking-tight">
-              Cleaner Spaces, Healthier Homes.
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead({ status: "New", priority: "Medium", received: new Date().toISOString().slice(0, 16) });
-                  setLeadModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#10B981] hover:bg-emerald-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Lead
-              </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingLead({ status: "New", priority: "Medium", received: new Date().toISOString().slice(0, 16) });
+                setLeadModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#10B981] hover:bg-emerald-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Lead
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead({ status: "Inspection Booked", priority: "Medium", received: new Date().toISOString().slice(0, 16) });
-                  setLeadModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1D61E7] hover:bg-blue-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" /> Book Inspection
-              </button>
+            <button
+              type="button"
+              onClick={() => setCurrentView("dispatch")}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0B1736] hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Truck className="w-3.5 h-3.5 text-blue-300" /> Open Dispatch
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead({ status: "Quote Pending", priority: "Medium", received: new Date().toISOString().slice(0, 16) });
-                  setLeadModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#F97316] hover:bg-orange-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" /> Create Quote
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLead({ status: "Job Booked", priority: "Medium", received: new Date().toISOString().slice(0, 16) });
-                  setLeadModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#10B981] hover:bg-emerald-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" /> Book Job
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentView("dispatch")}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0B1736] hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Truck className="w-3.5 h-3.5 text-blue-300" /> Open Dispatch
-              </button>
-
-              <button
-                type="button"
-                onClick={openInbox}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1E1B4B] hover:bg-indigo-950 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <Mail className="w-3.5 h-3.5 text-blue-300" /> Open Inbox
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={openInbox}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1E1B4B] hover:bg-indigo-950 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <Mail className="w-3.5 h-3.5 text-blue-300" /> Open Inbox
+            </button>
           </div>
         </div>
 
@@ -935,10 +897,10 @@ export function ManagerDashboard() {
         </div>
       </div>
 
-      {/* 3. Middle Grid: 4 Cards (Quick Stats | Map View | Today's Schedule | Recent Activity) */}
-      <div className="grid grid-cols-12 gap-4">
+      {/* 3. Middle Grid: 4 Cards (2 in first row, 2 in second row) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         {/* Card 1: Dynamic Quick Stats */}
-        <div className="col-span-12 md:col-span-6 xl:col-span-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
             <h2 className="text-sm font-bold text-slate-900 tracking-tight">Quick Stats</h2>
             <select
@@ -1039,7 +1001,7 @@ export function ManagerDashboard() {
         </div>
 
         {/* Card 2: Map & Zone View with Live Google Maps API */}
-        <div className="col-span-12 md:col-span-6 xl:col-span-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
             <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -1071,7 +1033,7 @@ export function ManagerDashboard() {
             </div>
           </div>
 
-          <div className="relative flex-1 min-h-[190px] rounded-xl overflow-hidden border border-slate-200/80">
+          <div className="relative flex-1 min-h-[220px] rounded-xl overflow-hidden border border-slate-200/80">
             <GoogleMapLive
               apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyAuP7kswkFDeHgJPOl8shofwL8E4vhDywQ"}
               mapMode={mapMode}
@@ -1081,7 +1043,7 @@ export function ManagerDashboard() {
         </div>
 
         {/* Card 3: Dynamic Today's Schedule Table */}
-        <div className="col-span-12 md:col-span-6 xl:col-span-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
             <h2 className="text-sm font-bold text-slate-900 tracking-tight">Today's Schedule</h2>
             <button
@@ -1133,16 +1095,16 @@ export function ManagerDashboard() {
                       }}
                       title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
                     >
-                      <td className="py-1.5 px-1 font-bold text-blue-600 whitespace-nowrap tabular-nums">{displayTime}</td>
-                      <td className="py-1.5 px-1">
+                      <td className="py-1.5 px-2 font-bold text-blue-600 whitespace-nowrap tabular-nums">{displayTime}</td>
+                      <td className="py-1.5 px-1.5">
                         <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${typeColor}`}>
                           {typeLabel}
                         </span>
                       </td>
-                      <td className="py-1.5 px-1 font-semibold text-slate-800 whitespace-nowrap truncate max-w-[80px]">{l.name || "Customer"}</td>
-                      <td className="py-1.5 px-1 text-slate-500 whitespace-nowrap truncate max-w-[70px]">{suburb}</td>
-                      <td className="py-1.5 px-1 text-slate-600 font-medium whitespace-nowrap">{techName}</td>
-                      <td className="py-1.5 px-1 text-right">
+                      <td className="py-1.5 px-2 font-semibold text-slate-800 whitespace-nowrap truncate max-w-[140px]">{l.name || "Customer"}</td>
+                      <td className="py-1.5 px-2 text-slate-500 whitespace-nowrap truncate max-w-[120px]">{suburb}</td>
+                      <td className="py-1.5 px-2 text-slate-600 font-medium whitespace-nowrap">{techName}</td>
+                      <td className="py-1.5 px-2 text-right">
                         <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border whitespace-nowrap ${statusColor}`}>
                           {statusLabel}
                         </span>
@@ -1156,7 +1118,7 @@ export function ManagerDashboard() {
         </div>
 
         {/* Card 4: Dynamic Recent Activity Feed */}
-        <div className="col-span-12 md:col-span-6 xl:col-span-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex flex-col justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
             <h2 className="text-sm font-bold text-slate-900 tracking-tight">Recent Activity</h2>
             <button
@@ -1263,9 +1225,9 @@ export function ManagerDashboard() {
                   <th key={idx} className="py-2 px-2 text-center border-l border-slate-100">
                     <div className="font-extrabold text-blue-700">{d.dayName}</div>
                     <div className="text-[10px] text-slate-500">{d.fullDate}</div>
-                    <div className="flex items-center justify-between text-[8px] font-semibold text-slate-400 mt-1 px-1">
+                    <div className="flex items-center justify-between gap-0.5 text-[8px] font-semibold text-slate-400 mt-1">
                       {hoursList.map((h) => (
-                        <span key={h}>{h}</span>
+                        <span key={h} className="flex-1 text-center">{h}</span>
                       ))}
                     </div>
                   </th>
