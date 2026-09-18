@@ -204,15 +204,15 @@ export interface AreaInfo {
 }
 
 export const ZONE_LABEL: Record<Zone, string> = {
-  inner: "Inner Melbourne (Within 15 km — Monday to Sunday Every Day)",
+  inner: "Inner Melbourne (Within 15 km — Monday to Saturday)",
   mon_lower1: "Lower Area 1 — Brunswick, CBD, St Kilda, Brighton (Mondays)",
   tue_lower2: "Lower Area 2 — Inner East, Hawthorn, Kew, Doncaster (Tuesdays)",
   wed_lower3: "Lower Area 3 — Ringwood, Croydon, Lilydale, Mt Evelyn (Wednesdays)",
   thu_bundoora: "Bundoora & North-East Corridor (Thursdays)",
   fri_north: "Upper North & Craigieburn Corridor (Fridays)",
   sat_melton: "Melton & West Corridor (Saturdays)",
-  sun_stalbans: "St Albans & West-Central Corridor (Sundays)",
-  flexible: "Greater Melbourne (All Days Available)",
+  sun_stalbans: "St Albans & West-Central Corridor (Saturdays)",
+  flexible: "Greater Melbourne (Monday to Saturday Available)",
 };
 
 const ZONE_WEEKDAY: Record<OuterZone, number> = {
@@ -222,7 +222,7 @@ const ZONE_WEEKDAY: Record<OuterZone, number> = {
   thu_bundoora: 4, // Thu
   fri_north: 5, // Fri
   sat_melton: 6, // Sat
-  sun_stalbans: 0, // Sun
+  sun_stalbans: 6, // Sat (Sunday bookings closed)
 };
 
 // Melbourne suburbs mapped to their centroid coordinates and assigned outer zone.
@@ -606,17 +606,20 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
 /** Weekdays (0=Sun, 1=Mon … 6=Sat) a given area may be booked on. */
 export function allowedWeekdays(area: AreaInfo): Set<number> {
   if (area.inner || area.zone === "inner" || area.zone === "flexible") {
-    return new Set([1, 2, 3, 4, 5, 6, 0]); // Monday through Sunday (All 7 days)
+    return new Set([1, 2, 3, 4, 5, 6]); // Monday through Saturday (No Sundays)
   }
   const wd = ZONE_WEEKDAY[area.zone as OuterZone];
-  return new Set(wd !== undefined ? [wd] : [1, 2, 3, 4, 5, 6, 0]);
+  if (wd === undefined || wd === 0) {
+    return new Set([1, 2, 3, 4, 5, 6]);
+  }
+  return new Set([wd]);
 }
 
 /** Human-friendly availability text for customer emails and SMS. */
 export function getAvailableDaysSummary(area: AreaInfo): string {
   switch (area.zone) {
     case "inner":
-      return "Monday to Sunday (Available Every Day for Inner Melbourne / 15 km Tullamarine)";
+      return "Monday to Saturday (Available Monday to Saturday for Inner Melbourne / 15 km Tullamarine)";
     case "mon_lower1":
       return "Mondays (Lower Area 1 — Brunswick → Melbourne → St Kilda → Brighton)";
     case "tue_lower2":
@@ -630,9 +633,9 @@ export function getAvailableDaysSummary(area: AreaInfo): string {
     case "sat_melton":
       return "Saturdays (Melton & West Corridor)";
     case "sun_stalbans":
-      return "Sundays (St Albans & West-Central Corridor)";
+      return "Saturdays (St Albans & West-Central Corridor)";
     default:
-      return "Monday to Sunday (All 7 Days Available)";
+      return "Monday to Saturday (Monday to Saturday Available)";
   }
 }
 
@@ -672,6 +675,8 @@ export function computeAvailability(
     if (MIN_BOOKING_DATE && dateStr < MIN_BOOKING_DATE) continue;
 
     const wd = d.getDay();
+    // Do not take Sunday bookings for inspections or jobs
+    if (wd === 0) continue;
     if (!weekdays.has(wd)) continue;
 
     const locked = bookedByDate.get(dateStr) || new Set<string>();
@@ -709,6 +714,8 @@ export function isSlotOffered(area: AreaInfo, date: string, time: string): boole
   const d = new Date(date + "T00:00:00");
   if (Number.isNaN(d.getTime())) return false;
   const wd = d.getDay();
+  // Do not take Sunday bookings for inspections or jobs
+  if (wd === 0) return false;
   if (!allowedWeekdays(area).has(wd)) return false;
 
   // Must be in the future within the horizon.

@@ -188,13 +188,18 @@ export function LeadEditModal({
                 type="datetime-local"
                 min="2026-09-28T09:00"
                 value={editingLead?.inspectionAt ? editingLead.inspectionAt.slice(0, 16) : ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && new Date(val).getDay() === 0) {
+                    alert("Sunday bookings are not available. Please select Monday to Saturday.");
+                    return;
+                  }
                   setEditingLead({
                     ...editingLead,
-                    inspectionAt: e.target.value,
+                    inspectionAt: val,
                     inspectionReminderSent: false,
-                  })
-                }
+                  });
+                }}
                 className="w-full p-2.5 border border-slate-200 rounded-xl"
               />
               <div className="flex items-center gap-2 mt-1.5">
@@ -228,13 +233,18 @@ export function LeadEditModal({
                 type="datetime-local"
                 min="2026-09-28T09:00"
                 value={editingLead?.jobAt ? editingLead.jobAt.slice(0, 16) : ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && new Date(val).getDay() === 0) {
+                    alert("Sunday bookings are not available. Please select Monday to Saturday.");
+                    return;
+                  }
                   setEditingLead({
                     ...editingLead,
-                    jobAt: e.target.value,
+                    jobAt: val,
                     jobReminderSent: false,
-                  })
-                }
+                  });
+                }}
                 className="w-full p-2.5 border border-slate-200 rounded-xl"
               />
               <div className="flex items-center gap-2 mt-1.5">
