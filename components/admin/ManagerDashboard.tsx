@@ -8,7 +8,7 @@ import {
   ChevronRight, Truck, ChevronLeft, Phone, Inbox, ShieldAlert,
   UserPlus, Clock, PieChart, Sparkles, XCircle, FileSpreadsheet,
   TrendingUp, TrendingDown, MapPin, Layers, Bell, HelpCircle,
-  ChevronDown, User, DollarSign, Check, Menu, Globe
+  ChevronDown, User, DollarSign, Check, Menu, Globe, ExternalLink
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate, fmtDateOnly, getLeadQuoteTotal } from "@/lib/adminHelpers";
@@ -83,134 +83,357 @@ function getVicCoordsForAddress(addressOrSuburb?: string, indexOffset = 0): { la
   };
 }
 
-function GoogleMapLive({ apiKey, mapMode, leads }: { apiKey?: string; mapMode: "map" | "zone"; leads?: Lead[] }) {
+function GoogleMapLive({
+  apiKey,
+  mapMode,
+  leads = [],
+  onOpenLead,
+}: {
+  apiKey?: string;
+  mapMode: "map" | "zone";
+  leads?: Lead[];
+  onOpenLead?: (lead: Lead) => void;
+}) {
+  const [selectedSuburb, setSelectedSuburb] = useState<string>("all");
+  const [focusedAddress, setFocusedAddress] = useState<string | null>(null);
+  const [showStopsList, setShowStopsList] = useState<boolean>(false);
+
   const appointmentPins = useMemo(() => {
-    if (!leads || leads.length === 0) {
-      return [];
-    }
+    if (!leads || leads.length === 0) return [];
 
     const apptLeads = leads.filter((l) => {
-      const hasInsp = Boolean(l.inspectionAt) || /inspection/i.test(l.status || "");
-      const hasJob = Boolean(l.jobAt) || /job/i.test(l.status || "");
-      return hasInsp || hasJob;
+      if (l.status === "Lost" || l.status === "Cancelled") return false;
+      return Boolean(l.inspectionAt || l.jobAt);
     });
 
     return apptLeads.map((l, idx) => {
-      const isJob = Boolean(l.jobAt) || /job/i.test(l.status || "");
-      const isInsp = Boolean(l.inspectionAt) || /inspection/i.test(l.status || "");
-      
-      const typeLabel = isJob ? "Technician Job" : isInsp ? "Inspection Scheduled" : "Service Appointment";
-      const color = isJob ? "#10B981" : "#8B5CF6"; // Emerald green for Job, Purple for Inspection
+      const isJob = Boolean(l.jobAt);
+      const isInsp = Boolean(l.inspectionAt);
+      const typeLabel = isJob ? "Technician Job" : "Inspection";
+      const color = isJob ? "#10B981" : "#2563EB";
 
       const addressStr = l.address || l.city || "";
       const geo = getVicCoordsForAddress(addressStr, idx);
-      const apptTime = formatApptTimeRange(l.inspectionAt || l.jobAt) || "Scheduled";
-      const apptDate = formatApptDate(l.inspectionAt || l.jobAt) || "Upcoming";
-      const staffName = isJob
-        ? (l.technician && l.technician !== "Unassigned" ? l.technician : "None")
-        : (l.inspectorId || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None");
+      const rawDate = isJob ? l.jobAt : l.inspectionAt;
+      const apptTime = formatApptTime(rawDate) || "Scheduled";
+      const apptDate = formatApptDate(rawDate) || "Upcoming";
+
+      let staffName = "None";
+      if (isJob) {
+        staffName = l.technician && l.technician.toLowerCase() !== "unassigned" ? l.technician : "None";
+      } else {
+        if (l.inspectorId) {
+          staffName = l.inspectorId;
+        } else if (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName)) {
+          staffName = l.inspectionReport.inspectorName;
+        } else if (l.assigned && !/^(?:unassigned|intake|admin)$/i.test(l.assigned)) {
+          staffName = l.assigned;
+        }
+      }
 
       return {
         id: l.id,
-        title: l.name ? `${isJob ? "🔧 Job" : "📋 Inspection"}: ${l.name}` : typeLabel,
+        lead: l,
+        jobNo: l.jobNo ? `#${l.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${l.id.slice(-4)}`,
         customerName: l.name || "Customer",
         address: addressStr || geo.suburb,
-        suburb: geo.suburb,
+        suburb: geo.suburb.replace(", VIC", "").trim(),
+        fullSuburb: geo.suburb,
         lat: geo.lat,
         lng: geo.lng,
         type: typeLabel,
+        isJob,
+        isInsp,
         color,
-        date: `${apptDate} • ${apptTime}`,
+        time: apptTime,
+        date: apptDate,
+        rawDate,
         staff: staffName,
         status: l.status || "Scheduled",
       };
     });
   }, [leads]);
 
+  // Distinct active suburbs with counts
+  const activeSuburbs = useMemo(() => {
+    const map = new Map<string, number>();
+    appointmentPins.forEach((p) => {
+      if (p.suburb) {
+        map.set(p.suburb, (map.get(p.suburb) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries()).map(([suburb, count]) => ({ suburb, count }));
+  }, [appointmentPins]);
+
+  // Filtered pins based on active suburb selection
+  const filteredPins = useMemo(() => {
+    if (selectedSuburb === "all") return appointmentPins;
+    return appointmentPins.filter((p) => p.suburb.toLowerCase() === selectedSuburb.toLowerCase());
+  }, [appointmentPins, selectedSuburb]);
+
+  // Zone / Territory breakdown counts
   const zoneCounts = useMemo(() => {
     let inspCount = 0;
     let jobCount = 0;
     appointmentPins.forEach((p) => {
-      if (p.type.includes("Inspection")) inspCount++;
-      if (p.type.includes("Job")) jobCount++;
+      if (p.isInsp) inspCount++;
+      if (p.isJob) jobCount++;
     });
     return { inspCount, jobCount, total: appointmentPins.length };
   }, [appointmentPins]);
 
+  // Stable Google Maps embed URL that never jumps to random overseas locations
   const mapEmbedUrl = useMemo(() => {
-    const suburbs = Array.from(
-      new Set(
-        appointmentPins.map((p) => p.suburb.replace(", VIC", "").trim()).filter(Boolean)
-      )
-    ).slice(0, 8);
-
-    if (suburbs.length > 0) {
-      const query = encodeURIComponent(`${suburbs.join("+")}+Melbourne+Victoria+Australia`);
-      return `https://maps.google.com/maps?q=${query}&t=&z=10&ie=UTF8&iwloc=&output=embed`;
+    if (focusedAddress) {
+      const cleanAddr = focusedAddress.replace(/,?\s*Australia$/i, "").trim();
+      const q = encodeURIComponent(`${cleanAddr}, Victoria, Australia`);
+      return `https://maps.google.com/maps?q=${q}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
     }
+    if (selectedSuburb !== "all") {
+      const q = encodeURIComponent(`${selectedSuburb}, Victoria, Australia`);
+      return `https://maps.google.com/maps?q=${q}&t=&z=12&ie=UTF8&iwloc=&output=embed`;
+    }
+    // Default Melbourne metro overview
     return "https://maps.google.com/maps?q=Melbourne+Victoria+Australia&t=&z=10&ie=UTF8&iwloc=&output=embed";
-  }, [appointmentPins]);
+  }, [focusedAddress, selectedSuburb]);
+
+  const externalMapLink = useMemo(() => {
+    if (focusedAddress) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${focusedAddress}, Victoria, Australia`)}`;
+    }
+    if (selectedSuburb !== "all") {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedSuburb}, Victoria, Australia`)}`;
+    }
+    return "https://www.google.com/maps/search/?api=1&query=Melbourne+Victoria+Australia";
+  }, [focusedAddress, selectedSuburb]);
 
   if (mapMode === "zone") {
     return (
-      <div className="w-full h-full min-h-[220px] rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-2.5 flex flex-col justify-between">
-        <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-          <span>Victoria Territory Zones</span>
-          <span className="text-[10px] font-semibold text-slate-400">Live CRM Sync</span>
+      <div className="w-full h-full min-h-[240px] rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-3 flex flex-col justify-between">
+        <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between pb-1.5 border-b border-slate-200/70">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            Victoria Territory Zones Breakdown
+          </span>
+          <span className="text-[10px] font-semibold text-slate-500">Live Field Coverage</span>
         </div>
-        <div className="space-y-2 text-xs flex-1 flex flex-col justify-center">
-          <div className="flex justify-between items-center p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
-            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-500" />
-              Inspection Appointments
-            </span>
-            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-md border border-purple-200/60">
-              📋 {zoneCounts.inspCount} Booked
-            </span>
+
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">Inspections</div>
+            <div className="text-lg font-extrabold text-blue-600 mt-0.5">{zoneCounts.inspCount}</div>
+            <div className="text-[10px] text-slate-400 font-medium">Field Quotes</div>
           </div>
-          <div className="flex justify-between items-center p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
-            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Technician Jobs
-            </span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
-              🔧 {zoneCounts.jobCount} Scheduled
-            </span>
+          <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">Technician Jobs</div>
+            <div className="text-lg font-extrabold text-emerald-600 mt-0.5">{zoneCounts.jobCount}</div>
+            <div className="text-[10px] text-slate-400 font-medium">Active Works</div>
           </div>
-          <div className="flex justify-between items-center p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
-            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              Active Field Coverage
-            </span>
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60">
-              📍 {zoneCounts.total} Locations
-            </span>
+          <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">Total Suburbs</div>
+            <div className="text-lg font-extrabold text-purple-600 mt-0.5">{activeSuburbs.length}</div>
+            <div className="text-[10px] text-slate-400 font-medium">Service Areas</div>
           </div>
+        </div>
+
+        {/* Suburbs distribution list */}
+        <div className="space-y-1.5 flex-1 max-h-[140px] overflow-y-auto">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Service Clusters</div>
+          {activeSuburbs.length === 0 ? (
+            <div className="text-xs text-slate-400 p-2 text-center">No scheduled appointments</div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {activeSuburbs.map((s) => (
+                <div
+                  key={s.suburb}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200/90 shadow-2xs text-[11px] font-bold text-slate-700 flex items-center gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <span>{s.suburb}</span>
+                  <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 text-[10px] rounded-md font-extrabold">{s.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full min-h-[220px] rounded-xl overflow-hidden bg-slate-100">
-      <iframe
-        title="Victoria Operations Live Map"
-        src={mapEmbedUrl}
-        className="w-full h-full min-h-[220px] rounded-xl border-0"
-        loading="lazy"
-      />
-      {appointmentPins.length > 0 && (
-        <div className="absolute bottom-2 left-2 right-2 bg-white/95 backdrop-blur-xs border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-md flex items-center justify-between text-[10px] font-bold text-slate-700 pointer-events-none">
-          <span className="flex items-center gap-1.5 text-blue-900">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            {appointmentPins.length} Active Visit{appointmentPins.length === 1 ? "" : "s"}
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="text-purple-700">📋 {zoneCounts.inspCount} Insp</span>
-            <span className="text-emerald-700">🔧 {zoneCounts.jobCount} Jobs</span>
-          </div>
+    <div className="relative w-full h-full min-h-[250px] rounded-xl overflow-hidden bg-slate-100 flex flex-col">
+      {/* Top Suburb Filter Strip */}
+      <div className="bg-white/95 backdrop-blur-xs border-b border-slate-200 px-2 py-1.5 flex items-center justify-between gap-2 shrink-0 z-10">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none text-[10px] font-bold py-0.5">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSuburb("all");
+              setFocusedAddress(null);
+            }}
+            className={`px-2 py-1 rounded-md transition-all cursor-pointer shrink-0 ${
+              selectedSuburb === "all" && !focusedAddress
+                ? "bg-blue-600 text-white shadow-2xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Melbourne ({appointmentPins.length})
+          </button>
+          {activeSuburbs.map((s) => (
+            <button
+              key={s.suburb}
+              type="button"
+              onClick={() => {
+                setSelectedSuburb(s.suburb);
+                setFocusedAddress(null);
+              }}
+              className={`px-2 py-1 rounded-md transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                selectedSuburb.toLowerCase() === s.suburb.toLowerCase() && !focusedAddress
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <span>{s.suburb}</span>
+              <span className="text-[9px] px-1 rounded-full bg-black/10">{s.count}</span>
+            </button>
+          ))}
         </div>
-      )}
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowStopsList((prev) => !prev)}
+            className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+              showStopsList
+                ? "bg-blue-50 text-blue-700 border-blue-200"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            <span>Stops ({filteredPins.length})</span>
+          </button>
+          <a
+            href={externalMapLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2 py-1 rounded-md text-[10px] font-bold bg-white text-blue-600 border border-slate-200 hover:bg-blue-50 transition-all flex items-center gap-1 shrink-0"
+            title="Open in Google Maps in new tab"
+          >
+            <ExternalLink className="w-3 h-3" />
+            <span className="hidden sm:inline">Maps</span>
+          </a>
+        </div>
+      </div>
+
+      {/* Main Map Canvas or Stops Overlay */}
+      <div className="relative flex-1 min-h-[200px]">
+        <iframe
+          title="Victoria Operations Live Map"
+          src={mapEmbedUrl}
+          className="w-full h-full min-h-[200px] border-0"
+          loading="lazy"
+        />
+
+        {/* Stops Drawer / Floating overlay list if opened */}
+        {showStopsList && (
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-xs p-3 overflow-y-auto space-y-2 z-20">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 text-xs font-extrabold text-blue-950">
+              <span>Today &amp; Upcoming Stops ({filteredPins.length})</span>
+              <button
+                type="button"
+                onClick={() => setShowStopsList(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold px-1.5 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+            {filteredPins.length === 0 ? (
+              <div className="text-center py-6 text-xs text-slate-400">
+                No stops scheduled for the selected filter.
+              </div>
+            ) : (
+              filteredPins.map((pin) => (
+                <div
+                  key={pin.id}
+                  className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all flex items-center justify-between gap-2 shadow-2xs text-xs"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${
+                          pin.isInsp ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {pin.type}
+                      </span>
+                      <span className="text-blue-950 font-extrabold truncate">{pin.jobNo} {pin.customerName}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                      📍 {pin.address || pin.suburb}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-600 mt-1">
+                      <span>⏰ {pin.time}</span>
+                      <span>•</span>
+                      <span>Assignee: <strong className={pin.staff === "None" ? "text-slate-400 font-normal italic" : "text-slate-800 font-semibold"}>{pin.staff}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFocusedAddress(pin.address || pin.suburb);
+                        setShowStopsList(false);
+                      }}
+                      className="px-2 py-1 rounded bg-blue-600 text-white text-[10px] font-bold hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      Locate
+                    </button>
+                    {onOpenLead && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLead(pin.lead)}
+                        className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-[10px] font-semibold hover:bg-slate-200 transition-colors cursor-pointer"
+                      >
+                        Details
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Floating live summary pill at bottom of map */}
+        {!showStopsList && appointmentPins.length > 0 && (
+          <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-xs border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-md flex items-center justify-between text-[10px] font-bold text-slate-700 pointer-events-auto">
+            <span className="flex items-center gap-1.5 text-blue-950">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {focusedAddress ? (
+                <span>Focus: <strong className="text-blue-600">{focusedAddress}</strong></span>
+              ) : selectedSuburb !== "all" ? (
+                <span>Cluster: <strong className="text-blue-600">{selectedSuburb}</strong></span>
+              ) : (
+                <span>{appointmentPins.length} Active Field Visits</span>
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-blue-700">📋 {zoneCounts.inspCount} Insp</span>
+              <span className="text-emerald-700">🔧 {zoneCounts.jobCount} Jobs</span>
+              {focusedAddress && (
+                <button
+                  type="button"
+                  onClick={() => setFocusedAddress(null)}
+                  className="text-slate-500 hover:text-slate-800 text-[10px] font-semibold ml-1 cursor-pointer underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -969,11 +1192,15 @@ export function ManagerDashboard() {
             </div>
           </div>
 
-          <div className="relative flex-1 min-h-[220px] rounded-xl overflow-hidden border border-slate-200/80">
+          <div className="relative flex-1 min-h-[260px] rounded-xl overflow-hidden border border-slate-200/80">
             <GoogleMapLive
               apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyAuP7kswkFDeHgJPOl8shofwL8E4vhDywQ"}
               mapMode={mapMode}
               leads={scopedLeads}
+              onOpenLead={(lead) => {
+                setEditingLead(lead);
+                setLeadModalOpen(true);
+              }}
             />
           </div>
         </div>
