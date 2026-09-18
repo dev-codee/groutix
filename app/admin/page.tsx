@@ -78,7 +78,15 @@ import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
-import { EMAIL_TEMPLATES, renderEmailTemplate, type EmailTemplate } from "@/lib/emailTemplates";
+import {
+  EMAIL_TEMPLATES,
+  renderEmailTemplate,
+  DYNAMIC_EMAIL_TAGS,
+  SAMPLE_TEMPLATE_CONTEXT,
+  extractTemplateTags,
+  type EmailTemplate,
+  type DynamicTagInfo,
+} from "@/lib/emailTemplates";
 import { formatAppt, formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { AdminPageProvider } from "@/components/admin/AdminPageContext";
@@ -345,7 +353,24 @@ export default function CrmDashboardPage() {
   const [formSubject, setFormSubject] = useState("");
   const [formBody, setFormBody] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const [templateInsertTarget, setTemplateInsertTarget] = useState<"subject" | "body">("body");
+  const [templatePreviewMode, setTemplatePreviewMode] = useState(false);
+  const [selectedTagCategory, setSelectedTagCategory] = useState<string>("All");
+  const templateSubjectRef = useRef<HTMLInputElement | null>(null);
+  const templateBodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const detectedTemplateTags = useMemo(() => {
+    return extractTemplateTags(`${formSubject} ${formBody}`);
+  }, [formSubject, formBody]);
+
+  const previewTemplateRendered = useMemo(() => {
+    if (!templatePreviewMode) return { subject: "", body: "" };
+    return renderEmailTemplate(
+      { subject: formSubject || "Re: Groutix Enquiry", body: formBody || "" },
+      SAMPLE_TEMPLATE_CONTEXT
+    );
+  }, [templatePreviewMode, formSubject, formBody]);
   const [replySubject, setReplySubject] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [replyText, setReplyText] = useState("");
@@ -1758,6 +1783,9 @@ export default function CrmDashboardPage() {
     setFormSubject("");
     setFormBody("");
     setFormDescription("");
+    setTemplateInsertTarget("body");
+    setTemplatePreviewMode(false);
+    setSelectedTagCategory("All");
     setTemplateFormOpen(true);
   }
 
@@ -1768,7 +1796,45 @@ export default function CrmDashboardPage() {
     setFormSubject(tmpl.subject);
     setFormBody(tmpl.body);
     setFormDescription(tmpl.description || "");
+    setTemplateInsertTarget("body");
+    setTemplatePreviewMode(false);
+    setSelectedTagCategory("All");
     setTemplateFormOpen(true);
+  }
+
+  function handleInsertDynamicTag(tag: string) {
+    const isSubject = templateInsertTarget === "subject";
+    const el = isSubject ? templateSubjectRef.current : templateBodyRef.current;
+
+    if (!el) {
+      if (isSubject) {
+        setFormSubject((prev) => (prev ? `${prev} ${tag}` : tag));
+      } else {
+        setFormBody((prev) => (prev ? `${prev} ${tag}` : tag));
+      }
+      return;
+    }
+
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const currentVal = el.value;
+
+    const newVal = currentVal.substring(0, start) + tag + currentVal.substring(end);
+
+    if (isSubject) {
+      setFormSubject(newVal);
+    } else {
+      setFormBody(newVal);
+    }
+
+    // Set cursor position right after inserted tag and restore focus
+    setTimeout(() => {
+      if (el) {
+        el.focus();
+        const newPos = start + tag.length;
+        el.setSelectionRange(newPos, newPos);
+      }
+    }, 15);
   }
 
   async function handleSaveTemplate() {
@@ -4866,112 +4932,348 @@ export default function CrmDashboardPage() {
 
             {/* Add / Edit Form */}
             {templateFormOpen ? (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Edit3 className="w-4 h-4 text-blue-600" />
-                    <span>{editingTemplate ? "Edit Template" : "Create New Email Template"}</span>
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setTemplateFormOpen(false)}
-                    className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Template Name *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Booking Deposit Request"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
+                {/* Form Header with Tabs */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <Edit3 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">
+                        {editingTemplate ? "Edit Template" : "Create New Email Template"}
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        {editingTemplate
+                          ? `Editing "${editingTemplate.name}"`
+                          : "Configure template message with dynamic customer & job tags"}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Category *</label>
-                    <select
-                      value={formCategory}
-                      onChange={(e) => setFormCategory(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    >
-                      <option value="Enquiries & Leads">Enquiries & Leads</option>
-                      <option value="Inspections">Inspections</option>
-                      <option value="Quotations">Quotations</option>
-                      <option value="Bookings">Bookings</option>
-                      <option value="Job Completion & Care">Job Completion & Care</option>
-                      <option value="Billing">Billing</option>
-                      <option value="General">General</option>
-                      <option value="Promotions">Promotions</option>
-                    </select>
-                  </div>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex p-0.5 bg-slate-200/80 rounded-xl border border-slate-300">
+                      <button
+                        type="button"
+                        onClick={() => setTemplatePreviewMode(false)}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                          !templatePreviewMode
+                            ? "bg-white text-slate-900 shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Editor</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTemplatePreviewMode(true)}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                          templatePreviewMode
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Live Preview</span>
+                      </button>
+                    </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Short Description</label>
-                  <input
-                    type="text"
-                    placeholder="Brief note on when staff should use this template"
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Email Subject Line *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
-                    value={formSubject}
-                    onChange={(e) => setFormSubject(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-
-                {/* Variable helper chips */}
-                <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[11px]">
-                  <span className="font-bold text-blue-700 mr-1">Insert Dynamic Tag:</span>
-                  {[
-                    { label: "+ First Name", val: "{first_name}" },
-                    { label: "+ Full Name", val: "{customer_name}" },
-                    { label: "+ Service", val: "{service}" },
-                    { label: "+ Address", val: "{address}" },
-                    { label: "+ Phone", val: "{phone}" },
-                    { label: "+ Specialist", val: "{technician_name}" },
-                    { label: "+ Inspection Date", val: "{inspection_date}" },
-                    { label: "+ Booking Date", val: "{booking_date}" },
-                    { label: "+ Quote #", val: "{quote_number}" },
-                    { label: "+ Invoice #", val: "{invoice_number}" },
-                    { label: "+ Total Due", val: "{invoice_total}" },
-                  ].map((chip) => (
                     <button
-                      key={chip.val}
                       type="button"
-                      onClick={() => setFormBody((prev) => `${prev} ${chip.val}`)}
-                      className="px-2 py-0.5 bg-white border border-blue-200 rounded-md text-slate-700 hover:bg-blue-100 hover:text-blue-900 font-medium transition cursor-pointer"
+                      onClick={() => setTemplateFormOpen(false)}
+                      className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline ml-1 cursor-pointer"
                     >
-                      {chip.label}
+                      Cancel
                     </button>
-                  ))}
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Message Body *</label>
-                  <textarea
-                    rows={8}
-                    placeholder="Write your email body here... You can use variables like {first_name}, {service}, etc."
-                    value={formBody}
-                    onChange={(e) => setFormBody(e.target.value)}
-                    className="w-full p-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans"
-                  />
-                </div>
+                {templatePreviewMode ? (
+                  /* ================= LIVE PREVIEW MODE ================= */
+                  <div className="space-y-4 py-1">
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="font-bold">Live Dynamic Tags Preview</div>
+                        <div className="text-[11px] text-emerald-800">
+                          Sample Customer: <span className="font-semibold">Sarah Jenkins</span> • Job:{" "}
+                          <span className="font-semibold">Job No-1248</span> • Suburb:{" "}
+                          <span className="font-semibold">Hawthorn VIC</span> • Specialist:{" "}
+                          <span className="font-semibold">Marco Rossi</span>
+                        </div>
+                      </div>
+                    </div>
 
+                    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
+                      <div className="space-y-1 pb-3 border-b border-slate-100">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          Subject Line
+                        </span>
+                        <div className="text-sm font-bold text-slate-900">
+                          {previewTemplateRendered.subject || (
+                            <span className="text-slate-400 italic">No subject line entered</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          Email Body Preview
+                        </span>
+                        <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">
+                          {previewTemplateRendered.body || (
+                            <span className="text-slate-400 italic">No message body entered</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                      <span>
+                        {detectedTemplateTags.length > 0 ? (
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" /> {detectedTemplateTags.length} dynamic tags successfully
+                            resolved
+                          </span>
+                        ) : (
+                          "No dynamic tags found in this template yet."
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setTemplatePreviewMode(false)}
+                        className="text-blue-600 hover:underline font-bold cursor-pointer"
+                      >
+                        Return to Editor
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* ================= TEMPLATE EDITOR MODE ================= */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Template Name *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Booking Deposit Request"
+                          value={formName}
+                          onChange={(e) => setFormName(e.target.value)}
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Category *</label>
+                        <select
+                          value={formCategory}
+                          onChange={(e) => setFormCategory(e.target.value)}
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        >
+                          <option value="Enquiries & Leads">Enquiries & Leads</option>
+                          <option value="Inspections">Inspections</option>
+                          <option value="Quotations">Quotations</option>
+                          <option value="Bookings">Bookings</option>
+                          <option value="Job Completion & Care">Job Completion & Care</option>
+                          <option value="Billing">Billing</option>
+                          <option value="General">General</option>
+                          <option value="Promotions">Promotions</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Short Description</label>
+                      <input
+                        type="text"
+                        placeholder="Brief note on when staff should use this template"
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* Email Subject Line with Ref & Focus tracking */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">Email Subject Line *</label>
+                        {templateInsertTarget === "subject" && (
+                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-blue-200">
+                            <Sparkles className="w-3 h-3 text-blue-600" /> Active Insertion Target
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        ref={templateSubjectRef}
+                        type="text"
+                        placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
+                        value={formSubject}
+                        onChange={(e) => setFormSubject(e.target.value)}
+                        onFocus={() => setTemplateInsertTarget("subject")}
+                        onClick={() => setTemplateInsertTarget("subject")}
+                        onKeyUp={() => setTemplateInsertTarget("subject")}
+                        className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition ${
+                          templateInsertTarget === "subject" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
+                        }`}
+                      />
+                    </div>
+
+                    {/* Variable helper chips with Target Selector & Caret insertion */}
+                    <div className="p-3 bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border border-blue-200 rounded-xl space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 pb-2">
+                        {/* Target Switcher */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-800 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                            Insert Tag Into:
+                          </span>
+                          <div className="inline-flex p-0.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTemplateInsertTarget("subject");
+                                templateSubjectRef.current?.focus();
+                              }}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                                templateInsertTarget === "subject"
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "text-slate-600 hover:text-blue-700"
+                              }`}
+                            >
+                              {templateInsertTarget === "subject" && <Check className="w-3 h-3" />}
+                              <span>Subject Line</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTemplateInsertTarget("body");
+                                templateBodyRef.current?.focus();
+                              }}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                                templateInsertTarget === "body"
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "text-slate-600 hover:text-blue-700"
+                              }`}
+                            >
+                              {templateInsertTarget === "body" && <Check className="w-3 h-3" />}
+                              <span>Message Body</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Category filter pills */}
+                        <div className="flex items-center gap-1 flex-wrap text-[10px]">
+                          {["All", "Customer", "Job & Location", "Schedule", "Billing", "Company"].map((cat) => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setSelectedTagCategory(cat)}
+                              className={`px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
+                                selectedTagCategory === cat
+                                  ? "bg-blue-700 text-white shadow-2xs"
+                                  : "bg-white text-slate-600 border border-blue-200/70 hover:bg-blue-100"
+                              }`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Tag Chips */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {DYNAMIC_EMAIL_TAGS.filter(
+                          (t) => selectedTagCategory === "All" || t.category === selectedTagCategory
+                        ).map((chip) => (
+                          <button
+                            key={chip.tag}
+                            type="button"
+                            onClick={() => handleInsertDynamicTag(chip.tag)}
+                            title={`${chip.description} (e.g. ${chip.example}) — Click to insert at cursor in ${
+                              templateInsertTarget === "subject" ? "Subject Line" : "Message Body"
+                            }`}
+                            className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 rounded-lg text-slate-800 text-xs font-semibold shadow-2xs transition cursor-pointer"
+                          >
+                            <span className="text-blue-600 group-hover:text-white font-bold">+</span>
+                            <span>{chip.label}</span>
+                            <code className="text-[10px] text-blue-700 group-hover:text-blue-100 bg-blue-50 group-hover:bg-blue-700/60 px-1 py-0.5 rounded font-mono font-normal">
+                              {chip.tag}
+                            </code>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="text-[10px] text-slate-500 pt-0.5 flex items-center justify-between">
+                        <span>
+                          💡 Click any tag to insert directly at your cursor in{" "}
+                          <span className="font-bold text-blue-700">
+                            {templateInsertTarget === "subject" ? "Email Subject Line" : "Message Body"}
+                          </span>
+                          .
+                        </span>
+                        <span className="font-mono text-slate-400">Supports &#123;tag&#125; &amp; &#123;&#123;tag&#125;&#125;</span>
+                      </div>
+                    </div>
+
+                    {/* Message Body with Ref & Focus tracking */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">Message Body *</label>
+                        {templateInsertTarget === "body" && (
+                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-blue-200">
+                            <Sparkles className="w-3 h-3 text-blue-600" /> Active Insertion Target
+                          </span>
+                        )}
+                      </div>
+                      <textarea
+                        ref={templateBodyRef}
+                        rows={8}
+                        placeholder="Write your email body here... Click any dynamic tag above to insert it at your cursor."
+                        value={formBody}
+                        onChange={(e) => setFormBody(e.target.value)}
+                        onFocus={() => setTemplateInsertTarget("body")}
+                        onClick={() => setTemplateInsertTarget("body")}
+                        onKeyUp={() => setTemplateInsertTarget("body")}
+                        className={`w-full p-3 text-xs border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y transition ${
+                          templateInsertTarget === "body" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
+                        }`}
+                      />
+                    </div>
+
+                    {/* Detected Tags Live Feedback */}
+                    <div className="p-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-slate-700 text-[11px]">Tags active in template:</span>
+                        {detectedTemplateTags.length > 0 ? (
+                          detectedTemplateTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md font-mono text-[10px] font-semibold"
+                            >
+                              &#123;{tag}&#125;
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 text-[11px] italic">None added yet</span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setTemplatePreviewMode(true)}
+                        className="text-blue-600 hover:underline font-bold text-[11px] flex items-center gap-1 cursor-pointer ml-auto"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>Preview Resolution</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Footer Action Buttons */}
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
                   <button
                     type="button"

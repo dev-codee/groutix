@@ -11,21 +11,99 @@ export interface EmailTemplate {
 
 export interface TemplateContext {
   id?: string;
+  jobNo?: string;
   name?: string;
+  customerName?: string;
   phone?: string;
   email?: string;
   service?: string;
   address?: string;
   city?: string;
+  suburb?: string;
   state?: string;
   assigned?: string;
   technician?: string;
+  technicianName?: string;
   quoteNumber?: string;
   quoteAmount?: number;
+  depositAmount?: number;
   invoiceNumber?: string;
   inspectionAt?: string;
   jobAt?: string;
+  amountPaid?: number;
+  companyName?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  [key: string]: any;
 }
+
+export interface DynamicTagInfo {
+  tag: string;
+  label: string;
+  category: "Customer" | "Job & Location" | "Schedule" | "Billing" | "Company";
+  description: string;
+  example: string;
+}
+
+export const DYNAMIC_EMAIL_TAGS: DynamicTagInfo[] = [
+  // Customer
+  { tag: "{first_name}", label: "First Name", category: "Customer", description: "Customer's first name", example: "Sarah" },
+  { tag: "{customer_name}", label: "Full Name", category: "Customer", description: "Customer's full name", example: "Sarah Jenkins" },
+  { tag: "{phone}", label: "Phone", category: "Customer", description: "Customer's contact phone number", example: "0412 345 678" },
+  { tag: "{email}", label: "Email", category: "Customer", description: "Customer's email address", example: "sarah@example.com" },
+
+  // Job & Location
+  { tag: "{job_no}", label: "Job #", category: "Job & Location", description: "Job / lead tracking number", example: "Job No-1248" },
+  { tag: "{service}", label: "Service", category: "Job & Location", description: "Primary service required or quoted", example: "Shower Regrouting & Sealing" },
+  { tag: "{address}", label: "Full Address", category: "Job & Location", description: "Service property address", example: "14 Elm St, Hawthorn VIC 3122" },
+  { tag: "{suburb}", label: "Suburb / City", category: "Job & Location", description: "Customer's suburb or locality", example: "Hawthorn" },
+
+  // Schedule
+  { tag: "{technician_name}", label: "Specialist / Tech", category: "Schedule", description: "Assigned technician or inspector name", example: "Marco Rossi" },
+  { tag: "{inspection_date}", label: "Inspection Date/Time", category: "Schedule", description: "Formatted on-site inspection appointment", example: "Wed, 23 Sep, 10:00 AM" },
+  { tag: "{booking_date}", label: "Booking Date/Time", category: "Schedule", description: "Formatted job execution date & time", example: "Fri, 25 Sep, 8:30 AM" },
+
+  // Billing
+  { tag: "{quote_number}", label: "Quote #", category: "Billing", description: "Official quotation reference", example: "GX-9402" },
+  { tag: "{quote_amount}", label: "Quote Amount", category: "Billing", description: "Total quotation amount", example: "AUD $580.00" },
+  { tag: "{deposit_amount}", label: "Deposit Amount", category: "Billing", description: "Deposit required or paid", example: "AUD $58.00" },
+  { tag: "{invoice_number}", label: "Invoice #", category: "Billing", description: "Tax invoice reference number", example: "INV-9402" },
+  { tag: "{invoice_total}", label: "Total Due", category: "Billing", description: "Total invoice balance due", example: "AUD $580.00" },
+
+  // Company Contact & Branding
+  { tag: "{company_name}", label: "Company Name", category: "Company", description: "Business name", example: "Groutix" },
+  { tag: "{company_phone}", label: "Company Phone", category: "Company", description: "Main office / dispatch phone number", example: "7023 8094" },
+  { tag: "{company_email}", label: "Company Email", category: "Company", description: "General enquiries & support email", example: "info@groutix.com" },
+  { tag: "{company_website}", label: "Website", category: "Company", description: "Company website domain", example: "groutix.com" },
+];
+
+export const SAMPLE_TEMPLATE_CONTEXT: TemplateContext = {
+  id: "lead_demo_9402",
+  jobNo: "Job No-1248",
+  customerName: "Sarah Jenkins",
+  name: "Sarah Jenkins",
+  phone: "0412 345 678",
+  email: "sarah.jenkins@example.com",
+  service: "Shower Regrouting & Silicone Sealing",
+  address: "14 Elm St, Hawthorn VIC 3122",
+  city: "Hawthorn",
+  suburb: "Hawthorn",
+  state: "VIC",
+  assigned: "Marco Rossi",
+  technician: "Marco Rossi",
+  technicianName: "Marco Rossi",
+  quoteNumber: "GX-9402",
+  quoteAmount: 580,
+  depositAmount: 58,
+  invoiceNumber: "INV-9402",
+  inspectionAt: new Date(Date.now() + 86400000 * 2).toISOString(),
+  jobAt: new Date(Date.now() + 86400000 * 5).toISOString(),
+  companyName: "Groutix",
+  companyPhone: "7023 8094",
+  companyEmail: "info@groutix.com",
+  companyWebsite: "www.groutix.com",
+};
 
 export const EMAIL_TEMPLATES: EmailTemplate[] = [
   {
@@ -51,7 +129,7 @@ Warm regards,
 Groutix Customer Care
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "request_photos",
@@ -209,7 +287,7 @@ Warm regards,
 The Groutix Team
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "invoice_reminder",
@@ -240,7 +318,7 @@ Kind regards,
 Groutix Accounts
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "blank_custom",
@@ -256,12 +334,12 @@ Kind regards,
 Groutix Team
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
 ];
 
-function formatDateTime(isoOrStr?: string): string {
-  if (!isoOrStr) return "Scheduled Date & Time";
+function formatDateTime(isoOrStr?: string, fallback = "Scheduled Date & Time"): string {
+  if (!isoOrStr) return fallback;
   try {
     return (
       formatAppt(isoOrStr, {
@@ -280,59 +358,160 @@ function formatDateTime(isoOrStr?: string): string {
 }
 
 /**
- * Interpolate email template text with lead data
+ * Extract all dynamic tags detected in a template string
+ */
+export function extractTemplateTags(text: string): string[] {
+  if (!text) return [];
+  const matches = text.match(/\{\{?\s*([a-zA-Z0-9_-]+)\s*\}?\}/g);
+  if (!matches) return [];
+  return Array.from(new Set(matches.map((m) => m.toLowerCase().replace(/[\s{}]/g, ""))));
+}
+
+/**
+ * Interpolate email template text with lead data.
+ * Supports:
+ * - Single braces: {tag}
+ * - Double braces: {{tag}}
+ * - Spaces: { tag }, {{ tag }}
+ * - Case-insensitive: {FIRST_NAME}, {first_name}, {First_Name}
+ * - All tag synonyms: {job_no}, {job_number}, {suburb}, {quote_amount}, {deposit_amount}, {company_phone}
  */
 export function renderEmailTemplate(
-  template: EmailTemplate,
-  lead: TemplateContext
+  template: { subject?: string; body?: string;[key: string]: any },
+  lead?: TemplateContext | null
 ): { subject: string; body: string } {
-  const fullName = lead.name?.trim() || "Valued Customer";
-  const firstName = lead.name?.trim().split(/\s+/)[0] || "there";
-  const service = lead.service?.trim() || "tiling & grouting service";
+  const ctx = lead || {};
+  const fullName = (ctx.name || ctx.customerName || "").trim() || "Valued Customer";
+  const firstName = fullName.split(/\s+/)[0] || "there";
+  const service = ctx.service?.trim() || "tiling & grouting service";
+  const jobNo = ctx.jobNo?.trim() || (ctx.id ? `Job-${ctx.id.slice(-5).toUpperCase()}` : "Job No-1201");
   const address =
-    lead.address?.trim() ||
-    [lead.city, lead.state].filter(Boolean).join(", ") ||
+    ctx.address?.trim() ||
+    [ctx.city, ctx.state].filter(Boolean).join(", ") ||
     "your property";
-  const suburb = lead.city || lead.state || "";
-  const phone = lead.phone || "";
-  const email = lead.email || "";
-  const tech = lead.technician || lead.assigned || "our specialist";
-  const inspectionDate = formatDateTime(lead.inspectionAt);
-  const bookingDate = formatDateTime(lead.jobAt);
-  const quoteNum = lead.quoteNumber || "Quote";
-  const quoteClause = lead.quoteAmount && lead.quoteAmount > 0 ? ` (AUD $${Number(lead.quoteAmount).toFixed(2)})` : "";
-  const invoiceNum = lead.invoiceNumber || (lead.id ? `INV-${lead.id.slice(-5).toUpperCase()}` : "Invoice");
-  const invoiceTotal = lead.quoteAmount && lead.quoteAmount > 0
-    ? `AUD $${Number(lead.quoteAmount).toFixed(2)}`
-    : "as stated on your invoice";
+  const suburb = ctx.suburb?.trim() || ctx.city?.trim() || ctx.state?.trim() || "your area";
+  const phone = ctx.phone?.trim() || "";
+  const email = ctx.email?.trim() || "";
+  const tech = ctx.technician?.trim() || ctx.technicianName?.trim() || ctx.assigned?.trim() || "our specialist";
+  const inspectionDate = formatDateTime(ctx.inspectionAt, "Upcoming Inspection (Date TBC)");
+  const bookingDate = formatDateTime(ctx.jobAt, "Scheduled Booking (Date TBC)");
+  const quoteNum = ctx.quoteNumber?.trim() || "Quote";
+  const quoteAmountStr =
+    ctx.quoteAmount && ctx.quoteAmount > 0
+      ? `AUD $${Number(ctx.quoteAmount).toFixed(2)}`
+      : "quoted amount";
+  const quoteClause =
+    ctx.quoteAmount && ctx.quoteAmount > 0
+      ? ` (AUD $${Number(ctx.quoteAmount).toFixed(2)})`
+      : "";
+  const depositAmountStr =
+    ctx.depositAmount && ctx.depositAmount > 0
+      ? `AUD $${Number(ctx.depositAmount).toFixed(2)}`
+      : ctx.quoteAmount && ctx.quoteAmount > 0
+        ? `AUD $${(Number(ctx.quoteAmount) * 0.1).toFixed(2)}`
+        : "deposit amount";
+  const invoiceNum =
+    ctx.invoiceNumber?.trim() || (ctx.id ? `INV-${ctx.id.slice(-5).toUpperCase()}` : "Invoice");
+  const invoiceTotalStr =
+    ctx.quoteAmount && ctx.quoteAmount > 0
+      ? `AUD $${Number(ctx.quoteAmount).toFixed(2)}`
+      : "as stated on your invoice";
 
-  const replaceMap: Record<string, string> = {
-    "{customer_name}": fullName,
-    "{name}": fullName,
-    "{first_name}": firstName,
-    "{service}": service,
-    "{address}": address,
-    "{suburb}": suburb,
-    "{phone}": phone,
-    "{email}": email,
-    "{technician_name}": tech,
-    "{technician}": tech,
-    "{inspection_date}": inspectionDate,
-    "{booking_date}": bookingDate,
-    "{quote_number}": quoteNum,
-    "{quote_amount_clause}": quoteClause,
-    "{invoice_number}": invoiceNum,
-    "{invoice_total}": invoiceTotal,
+  const companyName = ctx.companyName || "Groutix";
+  const companyPhone = ctx.companyPhone || "7023 8094";
+  const companyEmail = ctx.companyEmail || "info@groutix.com";
+  const companyWebsite = ctx.companyWebsite || "www.groutix.com";
+
+  // Normalized tag lookup: keys lowercase without underscores or hyphens
+  const tagLookup: Record<string, string> = {
+    // Names & Contact
+    firstname: firstName,
+    first: firstName,
+    customername: fullName,
+    fullname: fullName,
+    name: fullName,
+    customer: fullName,
+    clientname: fullName,
+    client: fullName,
+    phone: phone,
+    customerphone: phone,
+    mobile: phone,
+    email: email,
+    customeremail: email,
+
+    // Job & Location
+    jobno: jobNo,
+    jobnumber: jobNo,
+    jobnum: jobNo,
+    jobid: jobNo,
+    job: jobNo,
+    service: service,
+    servicename: service,
+    services: service,
+    address: address,
+    propertyaddress: address,
+    streetaddress: address,
+    suburb: suburb,
+    city: suburb,
+    area: suburb,
+    state: ctx.state || "VIC",
+
+    // Schedule & Staff
+    technicianname: tech,
+    technician: tech,
+    specialist: tech,
+    tech: tech,
+    inspector: tech,
+    assigned: tech,
+    inspectiondate: inspectionDate,
+    inspectiontime: inspectionDate,
+    inspectiondatetime: inspectionDate,
+    inspection: inspectionDate,
+    bookingdate: bookingDate,
+    bookingtime: bookingDate,
+    servicedate: bookingDate,
+    jobdate: bookingDate,
+
+    // Billing & Quotes
+    quotenumber: quoteNum,
+    quoteno: quoteNum,
+    quoteid: quoteNum,
+    quote: quoteNum,
+    quoteamount: quoteAmountStr,
+    quotetotal: quoteAmountStr,
+    quoteprice: quoteAmountStr,
+    quoteamountclause: quoteClause,
+    depositamount: depositAmountStr,
+    deposit: depositAmountStr,
+    invoicenumber: invoiceNum,
+    invoiceno: invoiceNum,
+    invoiceid: invoiceNum,
+    invoice: invoiceNum,
+    invoicetotal: invoiceTotalStr,
+    invoiceamount: invoiceTotalStr,
+    totaldue: invoiceTotalStr,
+    totalamount: invoiceTotalStr,
+
+    // Company
+    companyname: companyName,
+    company: companyName,
+    companyphone: companyPhone,
+    phonecompany: companyPhone,
+    companyemail: companyEmail,
+    emailcompany: companyEmail,
+    companywebsite: companyWebsite,
+    website: companyWebsite,
   };
 
-  const applyReplacements = (str: string): string => {
-    let res = str;
-    for (const [placeholder, val] of Object.entries(replaceMap)) {
-      res = res.split(placeholder).join(val);
-      const upper = placeholder.toUpperCase();
-      if (upper !== placeholder) res = res.split(upper).join(val);
-    }
-    return res;
+  const applyReplacements = (str?: string): string => {
+    if (!str) return "";
+    return str.replace(/\{\{?\s*([a-zA-Z0-9_-]+)\s*\}?\}/g, (match, rawKey) => {
+      const normalized = rawKey.toLowerCase().replace(/[-_]/g, "");
+      if (Object.prototype.hasOwnProperty.call(tagLookup, normalized)) {
+        return tagLookup[normalized];
+      }
+      return match;
+    });
   };
 
   return {

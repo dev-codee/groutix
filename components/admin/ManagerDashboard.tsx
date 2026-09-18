@@ -146,10 +146,9 @@ export function ManagerDashboard() {
     return list.slice(0, 6);
   }, [matchedLeads, _todayStr]);
 
-  // Dynamic 9-hour operational slots for Today
+  // Dynamic operational slots for Today (9:00 AM – 5:00 PM)
   const todayHourlySlots = useMemo(() => {
     const hours = [
-      { hour: 8, label: "8:00 AM" },
       { hour: 9, label: "9:00 AM" },
       { hour: 10, label: "10:00 AM" },
       { hour: 11, label: "11:00 AM" },
@@ -158,6 +157,7 @@ export function ManagerDashboard() {
       { hour: 14, label: "2:00 PM" },
       { hour: 15, label: "3:00 PM" },
       { hour: 16, label: "4:00 PM" },
+      { hour: 17, label: "5:00 PM" },
     ];
 
     const leadsPool = scopedLeads.filter((l) => {
@@ -368,19 +368,35 @@ export function ManagerDashboard() {
   const inspectorCount = useMemo(() => activeStaffRosterList.filter((s) => s.isInspector).length, [activeStaffRosterList]);
   const technicianCount = useMemo(() => activeStaffRosterList.filter((s) => !s.isInspector).length, [activeStaffRosterList]);
 
-const ROSTER_SLOT_HOURS = [
-  { hour: 8, label: "8", time: "8:00 AM" },
-  { hour: 9, label: "9", time: "9:00 AM" },
-  { hour: 10, label: "10", time: "10:00 AM" },
-  { hour: 11, label: "11", time: "11:00 AM" },
-  { hour: 12, label: "12", time: "12:00 PM" },
-  { hour: 13, label: "1", time: "1:00 PM" },
-  { hour: 14, label: "2", time: "2:00 PM" },
-  { hour: 15, label: "3", time: "3:00 PM" },
-  { hour: 16, label: "4", time: "4:00 PM" },
-];
+  // Slot hours per day: Mon-Thu & Sat: 9 AM to 5 PM | Friday: 9 AM to 3 PM
+  const getRosterSlotsForDay = useCallback((dayOfWeek: number) => {
+    if (dayOfWeek === 5) {
+      // Friday: 9:00 AM – 3:00 PM (9, 10, 11, 12, 1, 2, 3)
+      return [
+        { hour: 9, label: "9", time: "9:00 AM" },
+        { hour: 10, label: "10", time: "10:00 AM" },
+        { hour: 11, label: "11", time: "11:00 AM" },
+        { hour: 12, label: "12", time: "12:00 PM" },
+        { hour: 13, label: "1", time: "1:00 PM" },
+        { hour: 14, label: "2", time: "2:00 PM" },
+        { hour: 15, label: "3", time: "3:00 PM" },
+      ];
+    }
+    // Mon-Thu & Sat: 9:00 AM – 5:00 PM (9, 10, 11, 12, 1, 2, 3, 4, 5)
+    return [
+      { hour: 9, label: "9", time: "9:00 AM" },
+      { hour: 10, label: "10", time: "10:00 AM" },
+      { hour: 11, label: "11", time: "11:00 AM" },
+      { hour: 12, label: "12", time: "12:00 PM" },
+      { hour: 13, label: "1", time: "1:00 PM" },
+      { hour: 14, label: "2", time: "2:00 PM" },
+      { hour: 15, label: "3", time: "3:00 PM" },
+      { hour: 16, label: "4", time: "4:00 PM" },
+      { hour: 17, label: "5", time: "5:00 PM" },
+    ];
+  }, []);
 
-  // Detailed hourly slot status for compact 8-4 visual schedule matching Image 2
+  // Detailed hourly slot status for compact visual schedule matching Image 2
   const getStaffSlotHourStatus = useCallback(
     (
       member: { id: string; name: string; username?: string; isInspector: boolean },
@@ -393,16 +409,16 @@ const ROSTER_SLOT_HOURS = [
         return { status: "break", detail: "Sunday Closed" };
       }
 
-      // 2. Outside normal hours
-      // Mon-Thu & Sat: 9:00 AM – 5:00 PM (Hour 8 is 8-9 AM before opening)
-      // Friday: 10:00 AM – 3:00 PM (Hours 8, 9, 15, 16 are outside)
+      // 2. Outside normal hours:
+      // Friday: 9:00 AM – 3:00 PM
+      // Mon-Thu & Sat: 9:00 AM – 5:00 PM
       if (dayOfWeek === 5) {
-        if (hour < 10 || hour >= 15) {
-          return { status: "break", detail: "Outside Friday Working Hours (10 AM – 3 PM)" };
+        if (hour < 9 || hour > 15) {
+          return { status: "break", detail: "Outside Friday Working Hours (9 AM – 3 PM)" };
         }
       } else {
-        if (hour < 9 || hour > 16) {
-          return { status: "break", detail: "Outside Working Hours" };
+        if (hour < 9 || hour > 17) {
+          return { status: "break", detail: "Outside Working Hours (9 AM – 5 PM)" };
         }
       }
 
@@ -1604,36 +1620,39 @@ const ROSTER_SLOT_HOURS = [
                     )}
                   </td>
 
-                  {/* Day Slots: 8 9 10 11 12 1 2 3 4 compact bars matching Image 2 */}
-                  {rosterDays.map((day, dIdx) => (
-                    <td key={dIdx} className="py-2 px-1 border-l border-slate-100 align-middle text-center">
-                      <div className="inline-flex items-center justify-center gap-0.5 p-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">
-                        {ROSTER_SLOT_HOURS.map((slot) => {
-                          const slotInfo = getStaffSlotHourStatus(member, day.dateKey, day.dayOfWeek, slot.hour);
-                          return (
-                            <div key={slot.hour} className="flex flex-col items-center">
-                              <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 select-none">
-                                {slot.label}
-                              </span>
-                              <div
-                                onClick={() => setCurrentView("dispatch")}
-                                className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
-                                  slotInfo.status === "booked"
-                                    ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
-                                    : slotInfo.status === "break"
-                                    ? "bg-[#cbd5e1] hover:bg-slate-400"
-                                    : slotInfo.status === "limited"
-                                    ? "bg-[#facc15] hover:bg-amber-400"
-                                    : "bg-[#4ade80] hover:bg-emerald-500"
-                                }`}
-                                title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to open in Dispatch`}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-                  ))}
+                  {/* Day Slots: 9-5 for Mon-Thu & Sat, 9-3 for Friday */}
+                  {rosterDays.map((day, dIdx) => {
+                    const daySlots = getRosterSlotsForDay(day.dayOfWeek);
+                    return (
+                      <td key={dIdx} className="py-2 px-1 border-l border-slate-100 align-middle text-center">
+                        <div className="inline-flex items-center justify-center gap-0.5 p-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">
+                          {daySlots.map((slot) => {
+                            const slotInfo = getStaffSlotHourStatus(member, day.dateKey, day.dayOfWeek, slot.hour);
+                            return (
+                              <div key={slot.hour} className="flex flex-col items-center">
+                                <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 select-none">
+                                  {slot.label}
+                                </span>
+                                <div
+                                  onClick={() => setCurrentView("dispatch")}
+                                  className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
+                                    slotInfo.status === "booked"
+                                      ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
+                                      : slotInfo.status === "break"
+                                      ? "bg-[#cbd5e1] hover:bg-slate-400"
+                                      : slotInfo.status === "limited"
+                                      ? "bg-[#facc15] hover:bg-amber-400"
+                                      : "bg-[#4ade80] hover:bg-emerald-500"
+                                  }`}
+                                  title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to open in Dispatch`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
