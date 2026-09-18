@@ -102,7 +102,7 @@ export const SAMPLE_TEMPLATE_CONTEXT: TemplateContext = {
   companyName: "Groutix",
   companyPhone: "7023 8094",
   companyEmail: "info@groutix.com",
-  companyWebsite: "www.groutix.com",
+  companyWebsite: "groutix.com",
 };
 
 export const EMAIL_TEMPLATES: EmailTemplate[] = [
