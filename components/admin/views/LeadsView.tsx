@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Mail, Plus, Briefcase } from "lucide-react";
+import { Search, Mail, Plus, Briefcase, Truck } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { Pagination } from "@/components/admin/Pagination";
 import { IntakeLeadRow } from "@/components/admin/rows/IntakeLeadRow";
@@ -121,10 +121,10 @@ export function LeadsView() {
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              onClick={() => setCurrentView("jobs")}
+              onClick={() => setCurrentView("dispatch")}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-all cursor-pointer"
             >
-              <Briefcase className="w-3.5 h-3.5 text-blue-300" />
+              <Truck className="w-3.5 h-3.5 text-blue-300" />
               Open Dispatch
             </button>
             <button

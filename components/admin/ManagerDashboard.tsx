@@ -4,7 +4,7 @@ import {
   CalendarDays, Search, Wrench, Briefcase, Mail, Plus,
   FileText, Settings, CheckCircle2, ArrowRight, ShieldCheck,
   Users, MessageSquare, Camera, ClipboardList, Edit3, Trash2,
-  ChevronRight,
+  ChevronRight, Truck,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate } from "@/lib/adminHelpers";
@@ -170,8 +170,8 @@ export function ManagerDashboard() {
             <span className="text-xs text-slate-300 font-medium hidden sm:inline mr-1">
               {_now.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", year: "numeric" })}
             </span>
-            <button type="button" onClick={() => setCurrentView("jobs")} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-all cursor-pointer">
-              <Briefcase className="w-3.5 h-3.5 text-blue-300" /> Open Dispatch
+            <button type="button" onClick={() => setCurrentView("dispatch")} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-all cursor-pointer">
+              <Truck className="w-3.5 h-3.5 text-blue-300" /> Open Dispatch
             </button>
             <button type="button" onClick={openInbox} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-all cursor-pointer">
               <Mail className="w-3.5 h-3.5 text-blue-300" /> Open Inbox

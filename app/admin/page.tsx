@@ -58,7 +58,8 @@ import {
   Settings,
   GripHorizontal,
   RotateCcw,
-  ArrowDown
+  ArrowDown,
+  Truck
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -98,6 +99,7 @@ import {
   getFollowupPrompt,
 } from "@/lib/adminHelpers";
 import { ScheduleView } from "@/components/admin/ScheduleView";
+import { DispatchView } from "@/components/admin/views/DispatchView";
 import { AnalyticsView } from "@/components/admin/views/AnalyticsView";
 import { LeadsView } from "@/components/admin/views/LeadsView";
 import { QuotesView } from "@/components/admin/views/QuotesView";
@@ -125,6 +127,7 @@ type DashboardView =
   | "quotes"
   | "jobs"
   | "completed"
+  | "dispatch"
   | "schedule"
   | "customers"
   | "team"
@@ -3037,6 +3040,29 @@ export default function CrmDashboardPage() {
         </button>
       )}
 
+      {canSee("dispatch") && (
+        <button
+          type="button"
+          onClick={() => { setCurrentView("dispatch"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "dispatch"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <Truck className="w-4 h-4 text-blue-500" />
+            Dispatch
+          </span>
+          <span
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              currentView === "dispatch" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
+            }`}
+          >
+            Live
+          </span>
+        </button>
+      )}
+
       {canSee("schedule") && (
         <button
           type="button"
@@ -3244,10 +3270,12 @@ export default function CrmDashboardPage() {
                         ? "Jobs & Bookings"
                         : currentView === "completed"
                           ? "Completed Records Archive"
-                          : currentView === "customers"
-                            ? "Customer Directory"
-                            : currentView === "schedule"
-                              ? "Schedule & Calendar"
+                          : currentView === "dispatch"
+                            ? "Schedule & Dispatch"
+                            : currentView === "customers"
+                              ? "Customer Directory"
+                              : currentView === "schedule"
+                                ? "Schedule & Calendar"
                               : currentView === "technicians"
                                 ? "Field Technicians"
                                 : "Team Members"}
@@ -3447,6 +3475,19 @@ export default function CrmDashboardPage() {
               VIEW: CUSTOMERS
              ========================================================================= */}
           {currentView === "customers" && <CustomersView />}
+
+          {/* =========================================================================
+              VIEW: DISPATCH
+             ========================================================================= */}
+          {currentView === "dispatch" && (
+            <DispatchView onOpenLead={(id: string) => {
+              const lead = leads.find((l) => l.id === id);
+              if (lead) {
+                setEditingLead(lead);
+                setLeadModalOpen(true);
+              }
+            }} />
+          )}
 
           {/* =========================================================================
               VIEW: SCHEDULE
