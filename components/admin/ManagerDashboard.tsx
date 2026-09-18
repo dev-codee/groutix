@@ -8,7 +8,7 @@ import {
   ChevronRight, Truck, ChevronLeft, Phone, Inbox, ShieldAlert,
   UserPlus, Clock, PieChart, Sparkles, XCircle, FileSpreadsheet,
   TrendingUp, TrendingDown, MapPin, Layers, Bell, HelpCircle,
-  ChevronDown, User, DollarSign, Check, Menu, Globe, ExternalLink
+  ChevronDown, User, DollarSign, Check, Menu, Globe, ExternalLink, Eye
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate, fmtDateOnly, getLeadQuoteTotal } from "@/lib/adminHelpers";
@@ -473,6 +473,7 @@ export function ManagerDashboard() {
   const [statsPeriod, setStatsPeriod] = useState("This Month");
   const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
+  const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
 
   const _now = new Date();
   const _tomDate = new Date(_now);
@@ -626,7 +627,7 @@ export function ManagerDashboard() {
     });
   }, [scopedLeads]);
 
-  // 4. DYNAMIC 7-DAY ROSTER GRID FOR ACTIVE TECHNICIANS
+  // 4. DYNAMIC 7-DAY ROSTER GRID FOR ALL FIELD TEAM MEMBERS (TECHNICIANS & INSPECTORS)
   const rosterDays = useMemo(() => {
     const list = [];
     for (let i = 0; i < 7; i++) {
@@ -643,31 +644,85 @@ export function ManagerDashboard() {
     return list;
   }, [_now, rosterWeekOffset]);
 
-  const activeTechList = useMemo(() => {
-    const fromTechs = assignableTechnicians.filter((t) => t.active !== false);
-    if (fromTechs.length > 0) {
-      return fromTechs.map((t) => ({
-        id: t.id,
-        name: t.name,
-        role: t.role ? `${t.role}` : /inspect/i.test(t.name) ? "Inspector (Inspection Only)" : "Technician (Jobs Only)",
-        avatar: (t.name || "T")[0].toUpperCase(),
-      }));
-    }
-    const fromStaff = (staff || []).filter((s) => s.active !== false && (s.role === "technician" || s.role === "inspection" || s.role === "field"));
-    if (fromStaff.length > 0) {
-      return fromStaff.map((s) => ({
-        id: s.id,
-        name: s.name || s.username,
-        role: s.role === "inspection" ? "Inspector (Inspection Only)" : "Technician (Jobs Only)",
-        avatar: (s.name || s.username || "S")[0].toUpperCase(),
-      }));
-    }
-    return [];
-  }, [assignableTechnicians, staff]);
+  // Combined field staff list including all active inspectors and technicians
+  const activeStaffRosterList = useMemo(() => {
+    const list: Array<{
+      id: string;
+      name: string;
+      username?: string;
+      role: string;
+      avatar: string;
+      isInspector: boolean;
+    }> = [];
+    const seen = new Set<string>();
 
-  // Compute clean status per technician per day from real booked leads
-  const getTechDayStatus = useCallback(
-    (techName: string, dateKey: string, dayOfWeek: number) => {
+    // 1. All active inspectors (from inspectionStaff & staff with role "inspection" | "field")
+    const allInspectors = [
+      ...inspectionStaff.filter((s) => s.active !== false),
+      ...(staff || []).filter(
+        (s) => s.active !== false && (s.role === "inspection" || s.role === "field")
+      ),
+    ];
+    for (const insp of allInspectors) {
+      const name = (insp.name?.trim() || insp.username || "").trim();
+      const key = ((insp.username || name) || "").toLowerCase().trim();
+      if (name && !seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: insp.id || key,
+          name,
+          username: insp.username,
+          role: "Inspector (Inspection Only)",
+          avatar: (name || "I")[0].toUpperCase(),
+          isInspector: true,
+        });
+      }
+    }
+
+    // 2. All active technicians (from assignableTechnicians & staff with role "technician")
+    const allTechs = [
+      ...assignableTechnicians.filter((t) => t.active !== false),
+      ...(staff || []).filter((s) => s.active !== false && s.role === "technician"),
+    ];
+    for (const t of allTechs) {
+      const name = (t.name?.trim() || (t as any).username || "").trim();
+      const key = (((t as any).username || name) || "").toLowerCase().trim();
+      if (name && !seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: t.id || key,
+          name,
+          username: (t as any).username,
+          role: t.role ? `${t.role}` : "Technician (Jobs Only)",
+          avatar: (name || "T")[0].toUpperCase(),
+          isInspector: false,
+        });
+      }
+    }
+
+    return list;
+  }, [assignableTechnicians, inspectionStaff, staff]);
+
+  const filteredRosterList = useMemo(() => {
+    if (rosterRoleFilter === "inspectors") {
+      return activeStaffRosterList.filter((s) => s.isInspector);
+    }
+    if (rosterRoleFilter === "technicians") {
+      return activeStaffRosterList.filter((s) => !s.isInspector);
+    }
+    return activeStaffRosterList;
+  }, [activeStaffRosterList, rosterRoleFilter]);
+
+  const inspectorCount = useMemo(() => activeStaffRosterList.filter((s) => s.isInspector).length, [activeStaffRosterList]);
+  const technicianCount = useMemo(() => activeStaffRosterList.filter((s) => !s.isInspector).length, [activeStaffRosterList]);
+
+  // Compute clean status per staff member (technician or inspector) per day from real booked leads
+  const getStaffDayStatus = useCallback(
+    (
+      member: { id: string; name: string; username?: string; isInspector: boolean },
+      dateKey: string,
+      dayOfWeek: number
+    ) => {
       if (dayOfWeek === 0) {
         return {
           status: "off" as const,
@@ -681,25 +736,48 @@ export function ManagerDashboard() {
         };
       }
 
-      const lowerTech = techName.toLowerCase();
-      const techLeads = scopedLeads.filter((l) => {
+      const lowerName = member.name.toLowerCase().trim();
+      const lowerUser = (member.username || "").toLowerCase().trim();
+      const sId = member.id;
+
+      const memberLeads = scopedLeads.filter((l) => {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
-        const a = (l.technician || "").toLowerCase();
-        const b = (l.assigned || "").toLowerCase();
-        const c = (l.technicianId || "").toLowerCase();
-        const d = (l.inspectorId || "").toLowerCase();
-        return (
-          a === lowerTech ||
-          b === lowerTech ||
-          c === lowerTech ||
-          d === lowerTech ||
-          a.includes(lowerTech) ||
-          b.includes(lowerTech)
-        );
+
+        if (member.isInspector) {
+          // Match leads assigned to this inspector
+          if (sId && l.inspectorId && (l.inspectorId === sId || l.inspectorId.toLowerCase() === lowerName || l.inspectorId.toLowerCase() === lowerUser)) {
+            return true;
+          }
+          if (l.inspectionReport?.inspectorName) {
+            const rep = l.inspectionReport.inspectorName.toLowerCase().trim();
+            if (rep && !/^(?:inspector|field inspector)$/i.test(rep) && (rep === lowerName || rep === lowerUser)) {
+              return true;
+            }
+          }
+          if (l.assigned) {
+            const ass = l.assigned.toLowerCase().trim();
+            if (ass !== "unassigned" && (ass === lowerName || ass === lowerUser)) {
+              return true;
+            }
+          }
+          return false;
+        } else {
+          // Match jobs assigned to this technician
+          const tech = (l.technician || "").toLowerCase().trim();
+          const techId = (l.technicianId || "").toLowerCase().trim();
+          const techUser = (l.technicianUsername || "").toLowerCase().trim();
+          const assigned = (l.assigned || "").toLowerCase().trim();
+
+          if (tech && tech !== "unassigned" && (tech === lowerName || tech === lowerUser)) return true;
+          if (techId && (techId === sId || techId === lowerName || techId === lowerUser)) return true;
+          if (techUser && techUser === lowerUser) return true;
+          if (assigned && assigned !== "unassigned" && isTechnicianName(l.assigned) && (assigned === lowerName || assigned === lowerUser)) return true;
+          return false;
+        }
       });
 
-      const dayLeads = techLeads.filter((l) => {
-        const d = l.inspectionAt || l.jobAt;
+      const dayLeads = memberLeads.filter((l) => {
+        const d = member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt);
         return d && _dayKey(d) === dateKey;
       });
 
@@ -709,7 +787,7 @@ export function ManagerDashboard() {
       let afternoonBooked = false;
 
       dayLeads.forEach((l) => {
-        const d = l.inspectionAt || l.jobAt;
+        const d = member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt);
         if (!d) return;
         const hour = new Date(d).getHours();
         if (hour < 11) morningBooked = true;
@@ -730,13 +808,16 @@ export function ManagerDashboard() {
         };
       }
 
+      const itemType = member.isInspector ? "Inspection" : "Booking";
+      const itemsType = member.isInspector ? "Inspections" : "Bookings";
+
       if (dayLeads.length === 1) {
         const first = dayLeads[0];
-        const time = formatApptTime(first.inspectionAt || first.jobAt) || "Booked";
+        const time = formatApptTime(member.isInspector ? (first.inspectionAt || first.jobAt) : (first.jobAt || first.inspectionAt)) || "Booked";
         const suburb = getSuburb(first.address) || first.city || "";
         return {
           status: "booked" as const,
-          label: "1 Booking",
+          label: `1 ${itemType}`,
           subLabel: `${time}${suburb ? ` · ${suburb}` : ""}`,
           count: 1,
           morningBooked,
@@ -748,7 +829,7 @@ export function ManagerDashboard() {
 
       return {
         status: "busy" as const,
-        label: `${dayLeads.length} Bookings`,
+        label: `${dayLeads.length} ${itemsType}`,
         subLabel: "Heavy schedule",
         count: dayLeads.length,
         morningBooked,
@@ -757,7 +838,7 @@ export function ManagerDashboard() {
         leads: dayLeads,
       };
     },
-    [scopedLeads]
+    [scopedLeads, isTechnicianName]
   );
 
   const statusCards = [
@@ -1060,50 +1141,27 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        {/* Scrollable Status Card Ribbon */}
-        <div className="relative group pt-1">
-          <button
-            type="button"
-            onClick={() => ribbonRef.current?.scrollBy({ left: -300, behavior: "smooth" })}
-            className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-900 text-white flex items-center justify-center shadow-md transition-all opacity-80 hover:opacity-100 cursor-pointer"
-            aria-label="Scroll Left"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div
-            ref={ribbonRef}
-            className="flex items-stretch gap-2.5 overflow-x-auto py-1 px-1 scrollbar-none scroll-smooth"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {statusCards.map((c, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => openLeadsFiltered(c.statuses)}
-                className={`flex flex-col items-center justify-between p-2.5 rounded-xl border ${c.cardBg} transition-all hover:scale-[1.03] hover:shadow-md cursor-pointer shrink-0 min-w-[95px] max-w-[110px] text-center group/card`}
-              >
-                <div className={`p-1.5 rounded-lg ${c.iconBg} mb-1 transition-transform group-hover/card:scale-110`}>
-                  {c.icon}
-                </div>
-                <span className="text-[11px] font-bold leading-tight mb-2 min-h-[28px] flex items-center justify-center">
-                  {c.label}
-                </span>
-                <span className={`text-xl font-extrabold tabular-nums ${c.countColor}`}>
-                  {c.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => ribbonRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
-            className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-900 text-white flex items-center justify-center shadow-md transition-all opacity-80 hover:opacity-100 cursor-pointer"
-            aria-label="Scroll Right"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+        {/* Status Cards Grid (Compact 2-row view without scrolling) */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 lg:grid-cols-10 xl:grid-cols-11 gap-1.5 sm:gap-2 pt-1">
+          {statusCards.map((c, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => openLeadsFiltered(c.statuses)}
+              className={`flex flex-col items-center justify-between p-1.5 sm:p-2 rounded-xl border ${c.cardBg} transition-all hover:scale-[1.03] hover:shadow-xs cursor-pointer text-center group/card min-w-0 w-full min-h-[62px] shadow-2xs`}
+              title={`${c.label}: ${c.count} leads (click to view)`}
+            >
+              <div className={`p-1 rounded-md ${c.iconBg} mb-0.5 shrink-0 transition-transform group-hover/card:scale-110 [&>svg]:w-3.5 [&>svg]:h-3.5`}>
+                {c.icon}
+              </div>
+              <span className="text-[10px] font-bold leading-tight truncate w-full px-0.5 text-slate-700" title={c.label}>
+                {c.label}
+              </span>
+              <span className={`text-base font-black tabular-nums leading-none mt-0.5 ${c.countColor}`}>
+                {c.count}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -1378,33 +1436,78 @@ export function ManagerDashboard() {
 
       {/* 4. Dynamic Available Slots (Next 7 Days) Schedule Grid */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-4">
-        {/* Header with Title, Legend & Date Navigator */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div>
-            <h2 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Available Slots (Next 7 Days)
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Field technician work availability and booking status at a glance.
-            </p>
+        {/* Header with Title, Role Filters, Legend & Date Navigator */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div>
+              <h2 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                Available Slots (Next 7 Days)
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Technician & inspector work availability and booking status at a glance.
+              </p>
+            </div>
+
+            {/* Quick Role Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/60 self-start sm:self-auto sm:ml-2">
+              <button
+                type="button"
+                onClick={() => setRosterRoleFilter("all")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  rosterRoleFilter === "all"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                All Team ({activeStaffRosterList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRosterRoleFilter("inspectors")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  rosterRoleFilter === "inspectors"
+                    ? "bg-indigo-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-indigo-700"
+                }`}
+              >
+                <Eye className="w-3 h-3" />
+                Inspectors ({inspectorCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRosterRoleFilter("technicians")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  rosterRoleFilter === "technicians"
+                    ? "bg-slate-900 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Wrench className="w-3 h-3" />
+                Technicians ({technicianCount})
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-600">
+          <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
             {/* Legend */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span>Available</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                <span>Inspection</span>
+              </div>
+              <div className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                <span>1 Booking</span>
+                <span>Job</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span>Busy / Multiple</span>
+                <span>Busy</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                 <span>Day Off</span>
               </div>
@@ -1440,8 +1543,8 @@ export function ManagerDashboard() {
           <table className="w-full text-left text-xs border-collapse min-w-[840px]">
             <thead>
               <tr className="border-b border-slate-100 text-slate-500 font-bold">
-                <th className="py-2.5 px-3 min-w-[170px]">Technician</th>
-                <th className="py-2.5 px-3 min-w-[120px]">Role</th>
+                <th className="py-2.5 px-3 min-w-[170px]">Team Member</th>
+                <th className="py-2.5 px-3 min-w-[130px]">Role</th>
                 {rosterDays.map((d, idx) => (
                   <th key={idx} className="py-2.5 px-2 text-center border-l border-slate-100 bg-slate-50/40">
                     <div className={`font-extrabold text-xs ${d.dayOfWeek === 0 ? "text-rose-600" : "text-blue-950"}`}>
@@ -1453,32 +1556,49 @@ export function ManagerDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {activeTechList.length === 0 && (
+              {filteredRosterList.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400 text-xs font-medium">
-                    No field technicians configured in system roster
+                    No field staff configured for this filter
                   </td>
                 </tr>
               )}
-              {activeTechList.map((tech) => (
-                <tr key={tech.id} className="hover:bg-slate-50/50 transition-colors">
+              {filteredRosterList.map((member) => (
+                <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                        {tech.avatar}
+                      <div
+                        className={`w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs ${
+                          member.isInspector ? "bg-indigo-600" : "bg-slate-900"
+                        }`}
+                      >
+                        {member.avatar}
                       </div>
                       <div>
-                        <div className="font-bold text-slate-900 text-xs">{tech.name}</div>
+                        <div className="font-bold text-slate-900 text-xs">{member.name}</div>
+                        {member.username && member.username !== member.name && (
+                          <div className="text-[10px] text-slate-400 font-normal">@{member.username}</div>
+                        )}
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 px-3 text-slate-500 text-[11px] font-medium max-w-[140px]">
-                    {tech.role}
+                  <td className="py-3 px-3 align-middle">
+                    {member.isInspector ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                        <Eye className="w-3 h-3 text-indigo-500" />
+                        Inspector
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
+                        <Wrench className="w-3 h-3 text-slate-500" />
+                        Technician
+                      </span>
+                    )}
                   </td>
 
                   {/* 7 Days Slots */}
                   {rosterDays.map((day, dIdx) => {
-                    const dayStatus = getTechDayStatus(tech.name, day.dateKey, day.dayOfWeek);
+                    const dayStatus = getStaffDayStatus(member, day.dateKey, day.dayOfWeek);
 
                     return (
                       <td key={dIdx} className="p-2 border-l border-slate-100 align-middle">
@@ -1488,24 +1608,26 @@ export function ManagerDashboard() {
                             dayStatus.status === "available"
                               ? "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/70 text-emerald-950"
                               : dayStatus.status === "booked"
-                              ? "bg-blue-50/70 border-blue-200/80 hover:bg-blue-100/70 text-blue-950"
+                              ? member.isInspector
+                                ? "bg-indigo-50/70 border-indigo-200/80 hover:bg-indigo-100/70 text-indigo-950"
+                                : "bg-blue-50/70 border-blue-200/80 hover:bg-blue-100/70 text-blue-950"
                               : dayStatus.status === "busy"
                               ? "bg-rose-50/70 border-rose-200/80 hover:bg-rose-100/70 text-rose-950"
                               : "bg-slate-50/80 border-slate-200/70 text-slate-400"
                           }`}
                           title={
                             dayStatus.leads.length > 0
-                              ? `${tech.name} on ${day.dayName} ${day.fullDate}:\n` +
+                              ? `${member.name} on ${day.dayName} ${day.fullDate}:\n` +
                                 dayStatus.leads
                                   .map(
                                     (l: Lead) =>
-                                      `• ${formatApptTime(l.inspectionAt || l.jobAt)} - ${l.name || "Customer"} (${
-                                        l.address || "Melbourne"
-                                      })`
+                                      `• ${formatApptTime(member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt))} - ${
+                                        l.name || "Customer"
+                                      } (${l.address || "Melbourne"}) [${member.isInspector ? "Inspection" : "Job"}]`
                                   )
                                   .join("\n") +
                                 "\nClick to open in Dispatch"
-                              : `${tech.name} - ${day.dayName} ${day.fullDate} (${dayStatus.label}) - Click to open Dispatch`
+                              : `${member.name} - ${day.dayName} ${day.fullDate} (${dayStatus.label}) - Click to open Dispatch`
                           }
                         >
                           <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1514,7 +1636,9 @@ export function ManagerDashboard() {
                                 dayStatus.status === "available"
                                   ? "bg-emerald-500"
                                   : dayStatus.status === "booked"
-                                  ? "bg-blue-600"
+                                  ? member.isInspector
+                                    ? "bg-indigo-600"
+                                    : "bg-blue-600"
                                   : dayStatus.status === "busy"
                                   ? "bg-rose-500"
                                   : "bg-slate-300"
@@ -1533,7 +1657,9 @@ export function ManagerDashboard() {
                                 dayStatus.status === "off"
                                   ? "bg-slate-200"
                                   : dayStatus.morningBooked
-                                  ? "bg-blue-600"
+                                  ? member.isInspector
+                                    ? "bg-indigo-600"
+                                    : "bg-blue-600"
                                   : "bg-emerald-400/80"
                               }`}
                               title="Morning (8:00 AM - 11:30 AM)"
@@ -1543,7 +1669,9 @@ export function ManagerDashboard() {
                                 dayStatus.status === "off"
                                   ? "bg-slate-200"
                                   : dayStatus.middayBooked
-                                  ? "bg-blue-600"
+                                  ? member.isInspector
+                                    ? "bg-indigo-600"
+                                    : "bg-blue-600"
                                   : "bg-emerald-400/80"
                               }`}
                               title="Midday (11:30 AM - 2:00 PM)"
@@ -1553,7 +1681,9 @@ export function ManagerDashboard() {
                                 dayStatus.status === "off"
                                   ? "bg-slate-200"
                                   : dayStatus.afternoonBooked
-                                  ? "bg-blue-600"
+                                  ? member.isInspector
+                                    ? "bg-indigo-600"
+                                    : "bg-blue-600"
                                   : "bg-emerald-400/80"
                               }`}
                               title="Afternoon (2:00 PM - 5:00 PM)"

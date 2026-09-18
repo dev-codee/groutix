@@ -206,11 +206,11 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return map;
   }, [scopedLeads, staff, inspectionStaff, assignableTechnicians]);
 
-  // Generate 7 days for the active week (Mon -> Sun)
+  // Generate 6 working days for the active week (Mon -> Sat)
   const weekDays = useMemo(() => {
     const start = new Date(currentWeekStart + "T00:00:00");
 
-    return Array.from({ length: 7 }, (_, i) => {
+    return Array.from({ length: 6 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       const iso = d.toISOString().slice(0, 10);
@@ -508,29 +508,26 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       {/* ── 3. WEEKLY DISPATCH CALENDAR (FULL WIDTH) ────────────────────────── */}
       <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto flex flex-col">
         <div className="min-w-[840px] w-full">
-            {/* Header Column Titles: Time + 7 Days */}
-            <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50/90 text-center divide-x divide-slate-200">
+            {/* Header Column Titles: Time + 6 Days */}
+            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/90 text-center divide-x divide-slate-200">
               {/* Column 0: Time Label */}
               <div className="p-3 font-extrabold text-xs text-blue-900 flex flex-col justify-center items-center bg-slate-100/70">
                 <span>Time</span>
                 <span className="text-[10px] font-normal text-slate-500">(Working Hours)</span>
               </div>
 
-              {/* Columns 1-7: Day & Staff Cards */}
+              {/* Columns 1-6: Day & Staff Cards */}
               {weekDays.map((day) => {
-                const isSunday = day.dayOfWeek === 0;
                 const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
 
                 return (
                   <div
                     key={day.dateStr}
-                    className={`p-2.5 flex flex-col items-center justify-between space-y-2 ${
-                      isSunday ? "bg-rose-50/30 text-rose-900" : "bg-white"
-                    }`}
+                    className="p-2.5 flex flex-col items-center justify-between space-y-2 bg-white"
                   >
                     {/* Day & Date */}
                     <div className="text-center">
-                      <div className={`text-xs font-extrabold ${isSunday ? "text-rose-600" : "text-blue-950"}`}>
+                      <div className="text-xs font-extrabold text-blue-950">
                         {day.dayName}
                       </div>
                       <div className="text-xs font-bold text-slate-800">{day.formattedDate}</div>
@@ -538,31 +535,25 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                     </div>
 
                     {/* Filtered Staff or Booking Count Badge */}
-                    {!isSunday ? (
-                      techFilter !== "all" ? (
-                        <div className="w-full bg-blue-50/80 border border-blue-200/90 rounded-xl p-1.5 flex items-center gap-1.5 text-left">
-                          <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                            {getInitials(techFilter).text}
+                    {techFilter !== "all" ? (
+                      <div className="w-full bg-blue-50/80 border border-blue-200/90 rounded-xl p-1.5 flex items-center gap-1.5 text-left">
+                        <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                          {getInitials(techFilter).text}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-extrabold text-blue-950 truncate leading-tight">
+                            {techFilter}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[11px] font-extrabold text-blue-950 truncate leading-tight">
-                              {techFilter}
-                            </div>
-                            <div className="text-[8px] text-blue-600 truncate leading-tight font-medium">
-                              Field Schedule
-                            </div>
+                          <div className="text-[8px] text-blue-600 truncate leading-tight font-medium">
+                            Field Schedule
                           </div>
                         </div>
-                      ) : (
-                        <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-1 px-2 text-center">
-                          <div className="text-[10px] font-bold text-slate-700">
-                            {dayAppts.length} Booking{dayAppts.length === 1 ? "" : "s"}
-                          </div>
-                        </div>
-                      )
+                      </div>
                     ) : (
-                      <div className="text-center py-1 text-xs font-bold text-rose-600 uppercase tracking-wider">
-                        OFF
+                      <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-1 px-2 text-center">
+                        <div className="text-[10px] font-bold text-slate-700">
+                          {dayAppts.length} Booking{dayAppts.length === 1 ? "" : "s"}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -571,7 +562,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             </div>
 
             {/* Main Weekly Body Stream */}
-            <div className="grid grid-cols-8 divide-x divide-slate-200 bg-white">
+            <div className="grid grid-cols-7 divide-x divide-slate-200 bg-white">
               {/* Time Column Labels */}
               <div className="divide-y divide-slate-100 bg-slate-50/50 text-[10px] font-bold text-blue-900">
                 {TIME_SLOTS.map((slot) => (
@@ -581,28 +572,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 ))}
               </div>
 
-              {/* Day Columns 1 to 7 */}
+              {/* Day Columns 1 to 6 */}
               {weekDays.map((day, dIdx) => {
-                const isSunday = day.dayOfWeek === 0;
-                const isFriday = day.dayOfWeek === 5;
                 const appts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
-
-                if (isSunday) {
-                  return (
-                    <div
-                      key={day.dateStr}
-                      className="p-4 bg-rose-50/20 flex flex-col items-center justify-center text-center space-y-2 select-none min-h-[500px]"
-                    >
-                      <div className="w-12 h-12 rounded-full border-2 border-rose-300 flex items-center justify-center text-rose-500 font-extrabold">
-                        🚫
-                      </div>
-                      <div className="text-xs font-extrabold text-rose-800">Sun {day.formattedDate} OFF</div>
-                      <div className="text-[11px] text-slate-500 font-medium max-w-[90px]">
-                        No inspections or jobs scheduled.
-                      </div>
-                    </div>
-                  );
-                }
 
                 return (
                   <div key={day.dateStr} className="p-1.5 space-y-2 bg-slate-50/20 relative min-h-[500px]">
@@ -666,17 +638,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             </div>
 
             {/* Bottom Summary Footer Row dynamically calculated for each day */}
-            <div className="grid grid-cols-8 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-700">
+            <div className="grid grid-cols-7 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-700">
               <div className="p-1 text-slate-400 flex items-center justify-center">Daily Totals</div>
               {weekDays.map((day) => {
-                if (day.dayOfWeek === 0) {
-                  return (
-                    <div key={day.dateStr} className="p-1 text-rose-500">
-                      <div>Sunday OFF</div>
-                      <div className="text-slate-400 font-normal">0 hrs | 0 KM</div>
-                    </div>
-                  );
-                }
                 const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
                 if (dayAppts.length === 0) {
                   return (
