@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!(await requireManagerOrSuperAdmin(req)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  let body: { username?: string; name?: string; password?: string; role?: Role };
+  let body: { username?: string; name?: string; email?: string; password?: string; role?: Role };
   try {
     body = await req.json();
   } catch {
@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
   const result = await createUser({
     username: body.username || "",
     name: body.name || "",
+    email: body.email || "",
     password: body.password || "",
     role: (body.role || "intake") as Role,
   });

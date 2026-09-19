@@ -11,6 +11,7 @@ type UserRow = {
   id: string;
   username: string;
   name: string;
+  email?: string;
   role: Role;
   active: boolean;
   createdAt: string;
@@ -27,6 +28,7 @@ export default function UsersPage() {
   // Create form
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState<Role>("intake");
   const [creating, setCreating] = useState(false);
@@ -59,12 +61,13 @@ export default function UsersPage() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, name, password, role: newRole }),
+        body: JSON.stringify({ username, name, email, password, role: newRole }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not create user.");
       setUsername("");
       setName("");
+      setEmail("");
       setPassword("");
       setNewRole("intake");
       await load();
@@ -159,7 +162,7 @@ export default function UsersPage() {
             {formError}
           </div>
         ) : null}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <input
             className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
             placeholder="Username"
@@ -172,6 +175,13 @@ export default function UsersPage() {
             placeholder="Full name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            type="email"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+            placeholder="Gmail (e.g. john@gmail.com)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <input
             type="text"
@@ -214,6 +224,7 @@ export default function UsersPage() {
             <tr>
               <th className="px-4 py-3">Username</th>
               <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Email (Gmail)</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
@@ -222,13 +233,13 @@ export default function UsersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                   Loading…
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                   No staff accounts yet. Create the first one above.
                 </td>
               </tr>
@@ -244,6 +255,18 @@ export default function UsersPage() {
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{u.name}</td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="email"
+                      className="rounded-md border border-slate-200 px-2 py-1 text-xs w-44 outline-none focus:border-blue-400"
+                      placeholder="gmail address"
+                      defaultValue={u.email || ""}
+                      onBlur={(e) => {
+                        const val = e.target.value.trim();
+                        if (val !== (u.email || "")) patchUser(u.id, { email: val });
+                      }}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <select
                       className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"

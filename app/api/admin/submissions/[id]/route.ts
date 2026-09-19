@@ -14,6 +14,7 @@ import { formatAppt } from "@/lib/scheduling";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
 import { getTechnician } from "@/lib/technicians";
+import { getStaffMemberByUsername } from "@/lib/users";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -136,6 +137,40 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         action: "Reassigned",
         detail: body.assigned,
       });
+
+      // Email the newly assigned staff member their lead details
+      if (body.assigned && isEmailConfigured()) {
+        try {
+          const staffMember = await getStaffMemberByUsername(body.assigned);
+          if (staffMember?.email) {
+            const logoUrl = await getEmailLogoUrl();
+            const lead = before;
+            const rows: string[] = [];
+            if (lead.name) rows.push(`<p><b>Customer:</b> ${lead.name}</p>`);
+            if (lead.address) rows.push(`<p><b>Address:</b> ${lead.address}</p>`);
+            if (lead.phone) rows.push(`<p><b>Phone:</b> ${lead.phone}</p>`);
+            if (lead.service) rows.push(`<p><b>Service:</b> ${lead.service}</p>`);
+            if (lead.status) rows.push(`<p><b>Status:</b> ${lead.status}</p>`);
+            if (lead.inspectionAt) {
+              rows.push(`<p><b>Inspection:</b> ${formatAppt(lead.inspectionAt, { weekday: "long", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || lead.inspectionAt}</p>`);
+            }
+            await sendEmail({
+              toEmail: staffMember.email,
+              subject: `New lead assigned to you${lead.address ? ` — ${lead.address}` : ""}`,
+              html: wrapEmailHtml(
+                `<h2 style="margin:0 0 12px">You've been assigned a lead</h2>
+                 <p>Hi ${staffMember.name || staffMember.username}, a new lead has been assigned to you:</p>
+                 ${rows.join("\n")}
+                 <p style="margin-top:16px;color:#64748b">Please log in to the CRM to review all details and take action.</p>`,
+                "New Groutix lead assigned",
+                logoUrl
+              ),
+            });
+          }
+        } catch (err) {
+          console.error("Staff assignment email failed (non-fatal):", err);
+        }
+      }
     }
 
     // Field-technician dispatch: log it, and email the technician the job

@@ -149,6 +149,7 @@ export type StaffMember = {
   id: string;
   username: string;
   name: string;
+  email?: string;
   role: string;
   active: boolean;
 };

@@ -21,6 +21,7 @@ export interface UserDoc {
   _id?: ObjectId;
   username: string;
   name: string;
+  email?: string;
   passwordHash: string;
   role: Role;
   active: boolean;
@@ -31,6 +32,7 @@ export type UserJSON = {
   id: string;
   username: string;
   name: string;
+  email?: string;
   role: Role;
   active: boolean;
   createdAt: string;
@@ -57,6 +59,7 @@ export function toUserJSON(doc: UserDoc): UserJSON {
     id: doc._id ? doc._id.toString() : "",
     username: doc.username,
     name: doc.name,
+    email: doc.email || undefined,
     role: doc.role,
     active: doc.active,
     createdAt: (doc.createdAt instanceof Date
@@ -102,6 +105,7 @@ export function normaliseUsername(username: string): string {
 export interface CreateUserInput {
   username: string;
   name: string;
+  email?: string;
   password: string;
   role: Role;
 }
@@ -132,6 +136,7 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserResu
     const doc: UserDoc = {
       username,
       name,
+      email: input.email?.trim() || undefined,
       passwordHash: await hashPassword(input.password),
       role: input.role,
       active: true,
@@ -195,8 +200,32 @@ export async function countUsers(): Promise<number> {
   }
 }
 
+/** Look up a staff member by their username/name for assignment notifications. */
+export async function getStaffMemberByUsername(
+  usernameOrName: string
+): Promise<{ username: string; name: string; email?: string; role: Role } | null> {
+  if (!isMongoConfigured()) return null;
+  try {
+    const col = await collection();
+    const needle = usernameOrName.trim().toLowerCase();
+    const doc = await col.findOne({
+      $or: [
+        { username: needle },
+        { name: { $regex: new RegExp(`^${needle}$`, "i") } },
+      ],
+    });
+    if (!doc) return null;
+    return { username: doc.username, name: doc.name, email: doc.email, role: doc.role };
+  } catch (err) {
+    console.error("getStaffMemberByUsername failed:", err);
+    return null;
+  }
+}
+
+
 export interface UpdateUserInput {
   name?: string;
+  email?: string;
   role?: Role;
   active?: boolean;
   password?: string;
@@ -209,6 +238,7 @@ export async function updateUser(
   if (!ObjectId.isValid(id)) return { ok: false, error: "Invalid id." };
   const set: Partial<UserDoc> = {};
   if (typeof updates.name === "string" && updates.name.trim()) set.name = updates.name.trim();
+  if (typeof updates.email === "string") set.email = updates.email.trim() || undefined;
   if (updates.role) {
     if (!isRole(updates.role)) return { ok: false, error: "Invalid role." };
     set.role = updates.role;

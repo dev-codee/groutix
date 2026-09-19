@@ -1,7 +1,18 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ExternalLink, MessageSquare, Trash2, Crown, UserCog, Search, Wrench, DollarSign, Plus } from "lucide-react";
+import {
+  ExternalLink,
+  MessageSquare,
+  Trash2,
+  Crown,
+  UserCog,
+  Search,
+  Wrench,
+  DollarSign,
+  Plus,
+} from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import type { StaffMember } from "@/components/admin/types";
 import { inRoleQueue, isFlowInProgress, isFlowCompleted } from "@/lib/pipeline";
@@ -26,7 +37,7 @@ const ROLE_GROUPS = [
     color: "text-rose-500",
     border: "border-rose-100",
     bg: "bg-rose-50/60",
-    headerBg: "bg-rose-50",
+    headerBg: "bg-rose-50/70",
     badgeColor: "text-rose-600 bg-rose-100",
     addLabel: "Add Manager",
   },
@@ -38,7 +49,7 @@ const ROLE_GROUPS = [
     color: "text-blue-500",
     border: "border-blue-100",
     bg: "bg-blue-50/60",
-    headerBg: "bg-blue-50",
+    headerBg: "bg-blue-50/70",
     badgeColor: "text-blue-600 bg-blue-100",
     addLabel: "Add Intake",
   },
@@ -50,7 +61,7 @@ const ROLE_GROUPS = [
     color: "text-emerald-500",
     border: "border-emerald-100",
     bg: "bg-emerald-50/60",
-    headerBg: "bg-emerald-50",
+    headerBg: "bg-emerald-50/70",
     badgeColor: "text-emerald-600 bg-emerald-100",
     addLabel: "Add Inspector",
   },
@@ -62,7 +73,7 @@ const ROLE_GROUPS = [
     color: "text-violet-500",
     border: "border-violet-100",
     bg: "bg-violet-50/60",
-    headerBg: "bg-violet-50",
+    headerBg: "bg-violet-50/70",
     badgeColor: "text-violet-600 bg-violet-100",
     addLabel: "Add Technician",
   },
@@ -71,11 +82,11 @@ const ROLE_GROUPS = [
     label: "Finance",
     roles: ["finance"],
     icon: DollarSign,
-    color: "text-amber-500",
-    border: "border-amber-100",
-    bg: "bg-amber-50/60",
-    headerBg: "bg-amber-50",
-    badgeColor: "text-amber-600 bg-amber-100",
+    color: "text-emerald-600",
+    border: "border-emerald-100",
+    bg: "bg-emerald-50/60",
+    headerBg: "bg-emerald-50/70",
+    badgeColor: "text-emerald-700 bg-emerald-100",
     addLabel: "Add Finance",
   },
 ] as const;
@@ -90,6 +101,10 @@ export function TeamView({
   unread,
 }: Props) {
   const { staff, leads, username, isTechnicianName } = useAdminPageCtx();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const getAssignedCount = (s: StaffMember) => {
     const role = s.role as Role;
@@ -153,6 +168,23 @@ export function TeamView({
   const activeStaff = staff.filter((s) => s.active).length;
   const inactiveStaff = totalStaff - activeStaff;
 
+  const filteredStaff = useMemo(() => {
+    return staff.filter((s) => {
+      if (roleFilter !== "all" && s.role !== roleFilter) return false;
+      if (statusFilter === "active" && !s.active) return false;
+      if (statusFilter === "inactive" && s.active) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = (s.name || "").toLowerCase().includes(q);
+        const matchUser = (s.username || "").toLowerCase().includes(q);
+        const matchEmail = (s.email || "").toLowerCase().includes(q);
+        const matchRole = (s.role || "").toLowerCase().includes(q);
+        if (!matchName && !matchUser && !matchEmail && !matchRole) return false;
+      }
+      return true;
+    });
+  }, [staff, roleFilter, statusFilter, searchQuery]);
+
   // Row layout: [management, intake], [inspection, technicians], [finance]
   const groupRows = [
     ["management", "intake"],
@@ -165,7 +197,7 @@ export function TeamView({
       g.key,
       {
         ...g,
-        members: [...staff]
+        members: [...filteredStaff]
           .filter((s) => (g.roles as readonly string[]).includes(s.role))
           .sort((a, b) => (a.name || a.username).localeCompare(b.name || b.username)),
       },
@@ -173,45 +205,96 @@ export function TeamView({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {/* Header bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 px-5 py-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-slate-200/80 px-4 py-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Operations Team</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Manage your team, roles and access permissions</p>
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Operations Team</h2>
+          <p className="text-xs text-slate-500">Manage your team, roles and access permissions</p>
         </div>
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-400 text-xs">👥</span>
-            <div>
-              <div className="font-bold text-slate-900 text-base leading-none">{totalStaff}</div>
-              <div className="text-[10px] text-slate-400 font-medium">Total Staff</div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-slate-200/80 bg-slate-50/60">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-slate-400 text-xs">👥</span>
+              <div>
+                <span className="font-bold text-slate-900">{totalStaff}</span>
+                <span className="text-[10px] text-slate-400 ml-1">Total</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            <div>
-              <div className="font-bold text-slate-900 text-base leading-none">{activeStaff}</div>
-              <div className="text-[10px] text-slate-400 font-medium">Active</div>
+            <div className="w-px h-3.5 bg-slate-200" />
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              <div>
+                <span className="font-bold text-slate-900">{activeStaff}</span>
+                <span className="text-[10px] text-slate-400 ml-1">Active</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
-            <div>
-              <div className="font-bold text-slate-900 text-base leading-none">{inactiveStaff}</div>
-              <div className="text-[10px] text-slate-400 font-medium">Inactive</div>
+            <div className="w-px h-3.5 bg-slate-200" />
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" />
+              <div>
+                <span className="font-bold text-slate-900">{inactiveStaff}</span>
+                <span className="text-[10px] text-slate-400 ml-1">Inactive</span>
+              </div>
             </div>
           </div>
           {isManager && (
             <Link
               href={`${basePath}/users`}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Staff
             </Link>
           )}
         </div>
+      </div>
+
+      {/* Search & filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search staff by name, role or email..."
+            className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-2xs"
+          />
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 outline-none focus:border-blue-500 shadow-2xs"
+        >
+          <option value="all">All Roles</option>
+          <option value="manager">Manager</option>
+          <option value="intake">Intake</option>
+          <option value="inspection">Inspection</option>
+          <option value="technician">Technician</option>
+          <option value="finance">Finance</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 outline-none focus:border-blue-500 shadow-2xs"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        {(searchQuery || roleFilter !== "all" || statusFilter !== "all") && (
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setRoleFilter("all");
+              setStatusFilter("all");
+            }}
+            className="text-xs text-blue-600 hover:underline px-1 font-medium"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Group rows */}
@@ -225,11 +308,11 @@ export function TeamView({
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {groupRows.map((row, ri) => (
             <div
               key={ri}
-              className={`grid gap-4 ${row.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}
+              className="grid grid-cols-1 md:grid-cols-2 gap-3.5"
             >
               {row.map((groupKey) => {
                 const group = groupMap[groupKey];
@@ -238,20 +321,20 @@ export function TeamView({
                 return (
                   <div
                     key={group.key}
-                    className={`rounded-2xl border ${group.border} bg-white shadow-xs overflow-hidden`}
+                    className={`rounded-2xl border ${group.border} bg-white shadow-2xs overflow-hidden flex flex-col`}
                   >
                     {/* Group header */}
-                    <div className={`flex items-center justify-between px-4 py-3 ${group.headerBg} border-b ${group.border}`}>
+                    <div className={`flex items-center justify-between px-3.5 py-2.5 ${group.headerBg} border-b ${group.border}`}>
                       <div className="flex items-center gap-2">
-                        <Icon className={`w-4 h-4 ${group.color}`} />
-                        <span className={`text-sm font-bold ${group.color}`}>
+                        <Icon className={`w-3.5 h-3.5 ${group.color}`} />
+                        <span className={`text-xs font-bold ${group.color}`}>
                           {group.label} ({group.members.length})
                         </span>
                       </div>
                       {isManager && (
                         <Link
                           href={`${basePath}/users`}
-                          className={`flex items-center gap-1 text-[11px] font-semibold ${group.color} hover:underline`}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white border ${group.border} text-[11px] font-semibold ${group.color} hover:bg-white/90 shadow-2xs transition-colors`}
                         >
                           <Plus className="w-3 h-3" />
                           {group.addLabel}
@@ -259,74 +342,84 @@ export function TeamView({
                       )}
                     </div>
 
-                    {/* Members */}
+                    {/* Members grid: 2 columns inside so cards are compact and never stretch to full width */}
                     {group.members.length === 0 ? (
-                      <div className="px-4 py-5 text-xs text-slate-400 text-center">
-                        No {group.label.toLowerCase()} staff yet.
+                      <div className="px-4 py-4 text-xs text-slate-400 text-center italic">
+                        No {group.label.toLowerCase()} staff found.
                       </div>
                     ) : (
-                      <div className={`grid gap-3 p-4 ${group.members.length >= 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3">
                         {group.members.map((s) => {
                           const isSelf = s.username.toLowerCase() === (username || "").toLowerCase();
                           const unreadCount = unread[s.username.toLowerCase()] || 0;
                           const assignedCount = getAssignedCount(s);
+                          const displayEmail = s.email || (s.username.includes("@") ? s.username : "");
 
                           return (
                             <div
                               key={s.id}
-                              className="rounded-xl border border-slate-200/80 bg-white p-4 space-y-3 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col"
+                              className="rounded-xl border border-slate-200/90 bg-white p-3 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between gap-2.5"
                             >
-                              {/* Name + status */}
+                              {/* Top row: Name + Role on left, Assigned leads on right */}
                               <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <div className="font-bold text-slate-900 text-sm leading-tight">
-                                    {s.name || s.username}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-900 text-xs sm:text-sm leading-tight truncate">
+                                      {s.name || s.username}
+                                    </span>
                                     {isSelf && (
-                                      <span className="ml-1.5 text-[10px] font-medium text-slate-400">(you)</span>
+                                      <span className="text-[10px] font-medium text-slate-400 flex-shrink-0">(you)</span>
                                     )}
+                                    <span
+                                      className={`w-2 h-2 rounded-full inline-block flex-shrink-0 ${
+                                        s.active ? "bg-emerald-500" : "bg-slate-300"
+                                      }`}
+                                      title={s.active ? "Active" : "Disabled"}
+                                    />
                                   </div>
-                                  <div className={`mt-0.5 text-[11px] font-bold uppercase tracking-wider ${group.color}`}>
+                                  <div className={`mt-0.5 text-[10px] font-bold uppercase tracking-wider ${group.color}`}>
                                     {s.role}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
-                                  {s.active ? (
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" title="Active" />
-                                  ) : (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
-                                      disabled
-                                    </span>
-                                  )}
+                                <div className="text-right flex-shrink-0">
+                                  <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap">
+                                    Assigned leads: <b className="text-slate-800 font-bold">{assignedCount}</b>
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* Details */}
-                              <div className="text-[11px] text-slate-500 space-y-0.5">
-                                <div className="font-medium">{s.username}@groutix.com</div>
-                                <div className="text-slate-400">Assigned leads: <b className="text-slate-700">{assignedCount}</b></div>
+                              {/* Middle: Email */}
+                              <div className="text-[11px] text-slate-500 min-w-0">
+                                {displayEmail ? (
+                                  <div className="font-medium text-slate-600 truncate" title={displayEmail}>
+                                    {displayEmail}
+                                  </div>
+                                ) : (
+                                  <div className="text-slate-300 italic text-[11px]">No email set</div>
+                                )}
                               </div>
 
-                              {/* Actions */}
-                              <div className="flex flex-wrap gap-2 pt-1 mt-auto">
+                              {/* Bottom: Action buttons */}
+                              <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-100 flex-wrap">
                                 {isManager && (
                                   <button
                                     onClick={() => openAsRole(s)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-all shadow-xs cursor-pointer"
+                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
                                   >
-                                    <ExternalLink className="w-3 h-3" />
-                                    Open Dashboard
+                                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                    <span>Open Dashboard</span>
                                   </button>
                                 )}
                                 <button
                                   onClick={() => openChat(s)}
                                   disabled={isSelf}
-                                  className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/90 bg-white text-slate-700 text-[11px] font-semibold hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+                                  className="relative flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-[11px] font-medium hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer whitespace-nowrap"
                                   title={isSelf ? "This is you" : `Message ${s.name}`}
                                 >
-                                  <MessageSquare className="w-3 h-3" />
-                                  Contact
+                                  <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                                  <span>Contact</span>
                                   {unreadCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                                    <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
                                       {unreadCount}
                                     </span>
                                   )}
@@ -335,11 +428,10 @@ export function TeamView({
                                   <button
                                     onClick={() => handleDeleteStaff(s)}
                                     disabled={isSelf || deletingStaffId === s.id}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-400 text-[11px] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
                                     title={isSelf ? "Can't delete your own account" : `Delete ${s.name}`}
                                   >
-                                    <Trash2 className="w-3 h-3" />
-                                    {deletingStaffId === s.id ? "…" : ""}
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </div>
