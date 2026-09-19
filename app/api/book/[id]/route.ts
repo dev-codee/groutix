@@ -131,6 +131,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       suburb: area.suburb,
       zone: area.zone,
       distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
+      serviced: area.serviced,
       located: lat != null && lng != null,
     },
     days,
@@ -167,6 +168,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     typeof body.lat === "number" ? body.lat : null,
     typeof body.lng === "number" ? body.lng : null
   );
+  if (type === "inspection" && (!area.serviced || area.zone === "outside")) {
+    return NextResponse.json(
+      { error: "Free inspections are only offered within a 50 km radius of Tullamarine HQ." },
+      { status: 400 }
+    );
+  }
   if (!isSlotOffered(area, date, time)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }

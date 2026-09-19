@@ -114,6 +114,7 @@ export default function HeroQuoteForm() {
   const [inspectionSectionOpen, setInspectionSectionOpen] = useState(false);
   const [inspectionDays, setInspectionDays] = useState<{ date: string; label: string; slots: { time: string; booked: boolean }[] }[]>([]);
   const [inspectionDaysLoading, setInspectionDaysLoading] = useState(false);
+  const [isOutsideServiceArea, setIsOutsideServiceArea] = useState(false);
   const [inspectionDate, setInspectionDate] = useState("");
   const [inspectionTime, setInspectionTime] = useState("");
   const [inspectionError, setInspectionError] = useState("");
@@ -169,10 +170,18 @@ export default function HeroQuoteForm() {
       const res = await fetch(`/api/inspection-availability?address=${encodeURIComponent(address)}`);
       if (!res.ok) return;
       const json = await res.json();
-      const sortedDays = (json.days || []).slice().sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
-      setInspectionDays(sortedDays);
-      setInspectionDate("");
-      setInspectionTime("");
+      if (json.inServiceArea === false) {
+        setIsOutsideServiceArea(true);
+        setInspectionDays([]);
+        setInspectionDate("");
+        setInspectionTime("");
+      } else {
+        setIsOutsideServiceArea(false);
+        const sortedDays = (json.days || []).slice().sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+        setInspectionDays(sortedDays);
+        setInspectionDate("");
+        setInspectionTime("");
+      }
     } catch {
       // ignore
     } finally {
@@ -893,6 +902,10 @@ export default function HeroQuoteForm() {
                             setData((p) => ({ ...p, address: s }));
                             setErrors((prev) => ({ ...prev, address: "" }));
                             setAddressSuggestionsOpen(false);
+                            setIsOutsideServiceArea(false);
+                            if (inspectionSectionOpen) {
+                              fetchInspectionAvailability(s);
+                            }
                           }}
                           className="px-3 py-2 text-[14px] text-neutral-800 cursor-pointer hover:bg-neutral-100"
                         >
@@ -943,6 +956,15 @@ export default function HeroQuoteForm() {
                             </p>
                           ) : inspectionDaysLoading ? (
                             <p className="text-[13px] text-neutral-500 text-center py-2">Loading available times…</p>
+                          ) : isOutsideServiceArea ? (
+                            <div className="py-2.5 px-3 bg-amber-50/90 border border-amber-200 rounded-sm text-center space-y-1">
+                              <p className="text-[13px] font-bold text-amber-900">
+                                Outside 50 km Free Inspection Service Area
+                              </p>
+                              <p className="text-[12px] text-amber-800 leading-snug">
+                                Free on-site inspection timings are offered within a 50 km radius of our Tullamarine HQ. Submit your details and our team will review your area and contact you directly.
+                              </p>
+                            </div>
                           ) : inspectionDays.length === 0 ? (
                             <p className="text-[13px] text-neutral-500 text-center py-2">
                               No online slots available right now — our team will contact you to arrange a time.

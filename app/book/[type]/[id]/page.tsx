@@ -23,6 +23,7 @@ type Availability = {
     suburb: string | null;
     zone?: string;
     distanceKm?: number | null;
+    serviced?: boolean;
     located?: boolean;
   };
   days: DayOption[];
@@ -168,9 +169,18 @@ export default function BookingPage() {
             )}
 
             {data.days.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No online times are available right now — please reply to your email or call us and we&apos;ll arrange a time.
-              </p>
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center space-y-1.5">
+                <p className="text-sm font-bold text-amber-900">
+                  {type === "inspection" && data.area?.serviced === false
+                    ? "Outside 50 km Free Inspection Service Area"
+                    : "No online times available right now"}
+                </p>
+                <p className="text-xs text-amber-800">
+                  {type === "inspection" && data.area?.serviced === false
+                    ? "Free on-site inspection timings are available within a 50 km radius of our Tullamarine HQ. Please reply to your email or call us directly so our team can assist you."
+                    : "Please reply to your email or call us and we'll arrange a suitable time for you."}
+                </p>
+              </div>
             ) : (
               <>
                 <div>

@@ -10,6 +10,16 @@ export async function GET(req: NextRequest) {
 
   const area = resolveArea(address);
 
+  if (!area.serviced || area.zone === "outside") {
+    return NextResponse.json({
+      days: [],
+      inServiceArea: false,
+      suburb: area.suburb,
+      distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
+      message: "This location is outside our 50 km free inspection service area from Tullamarine.",
+    });
+  }
+
   let bookedByDate = new Map<string, Set<string>>();
   let sameZoneDates = new Set<string>();
   try {
@@ -25,5 +35,10 @@ export async function GET(req: NextRequest) {
 
   const days = computeAvailability(area, bookedByDate, sameZoneDates).slice(0, 7);
 
-  return NextResponse.json({ days });
+  return NextResponse.json({
+    days,
+    inServiceArea: true,
+    suburb: area.suburb,
+    distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
+  });
 }

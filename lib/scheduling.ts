@@ -16,6 +16,7 @@
 
 export const TULLAMARINE = { lat: -37.7008, lng: 144.8869 };
 export const RADIUS_KM = 15;
+export const MAX_INSPECTION_RADIUS_KM = 50;
 
 // Standard appointment start times (Mon–Thu & Sat: 9:00 AM – 5:00 PM)
 export const STANDARD_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
@@ -199,13 +200,14 @@ export type OuterZone =
   | "sat_melton"
   | "sun_stalbans";
 
-export type Zone = OuterZone | "inner" | "flexible";
+export type Zone = OuterZone | "inner" | "flexible" | "outside";
 
 export interface AreaInfo {
   suburb: string | null;
   zone: Zone;
   distanceKm: number | null;
   inner: boolean;
+  serviced: boolean; // true if within 50 km straight-line radius of Tullamarine HQ
   label: string;
 }
 
@@ -219,6 +221,7 @@ export const ZONE_LABEL: Record<Zone, string> = {
   sat_melton: "Melton & West Corridor (Saturdays)",
   sun_stalbans: "St Albans & West-Central Corridor (Saturdays)",
   flexible: "Greater Melbourne (Monday to Saturday Available)",
+  outside: "Outside 50 km Service Area (From Tullamarine HQ)",
 };
 
 const ZONE_WEEKDAY: Record<OuterZone, number> = {
@@ -233,260 +236,324 @@ const ZONE_WEEKDAY: Record<OuterZone, number> = {
 
 // Melbourne suburbs mapped to their centroid coordinates and assigned outer zone.
 export const SUBURBS: { name: string; lat: number; lng: number; outerZone: OuterZone }[] = [
-  // ── Inner / North-West (15km circle + close-in) ──
-  { name: "tullamarine", lat: -37.7008, lng: 144.8869, outerZone: "fri_north" },
-  { name: "melbourne airport", lat: -37.6690, lng: 144.8410, outerZone: "fri_north" },
-  { name: "gladstone park", lat: -37.6903, lng: 144.8886, outerZone: "fri_north" },
-  { name: "westmeadows", lat: -37.6740, lng: 144.8860, outerZone: "fri_north" },
-  { name: "attwood", lat: -37.6700, lng: 144.8770, outerZone: "fri_north" },
-  { name: "gowanbrae", lat: -37.7120, lng: 144.8970, outerZone: "mon_lower1" },
+  { name: "abbotsford", lat: -37.808, lng: 144.999, outerZone: "tue_lower2" },
+  { name: "aberfeldie", lat: -37.76, lng: 144.896, outerZone: "mon_lower1" },
+  { name: "aintree", lat: -37.721, lng: 144.686, outerZone: "sat_melton" },
   { name: "airport west", lat: -37.7211, lng: 144.8836, outerZone: "mon_lower1" },
-  { name: "strathmore heights", lat: -37.7160, lng: 144.8890, outerZone: "mon_lower1" },
-  { name: "essendon fields", lat: -37.7290, lng: 144.9010, outerZone: "mon_lower1" },
-  { name: "keilor park", lat: -37.7140, lng: 144.8580, outerZone: "sat_melton" },
-  { name: "keilor", lat: -37.7186, lng: 144.8339, outerZone: "sat_melton" },
-  { name: "keilor east", lat: -37.7360, lng: 144.8620, outerZone: "sun_stalbans" },
-  { name: "niddrie", lat: -37.7353, lng: 144.8944, outerZone: "mon_lower1" },
-  { name: "essendon north", lat: -37.7400, lng: 144.9070, outerZone: "mon_lower1" },
-  { name: "essendon west", lat: -37.7480, lng: 144.8870, outerZone: "mon_lower1" },
-  { name: "essendon", lat: -37.7529, lng: 144.9075, outerZone: "mon_lower1" },
-  { name: "strathmore", lat: -37.7392, lng: 144.9203, outerZone: "mon_lower1" },
-  { name: "glenbervie", lat: -37.7430, lng: 144.9230, outerZone: "mon_lower1" },
-  { name: "oak park", lat: -37.7180, lng: 144.9220, outerZone: "mon_lower1" },
-  { name: "glenroy", lat: -37.7047, lng: 144.9186, outerZone: "mon_lower1" },
-  { name: "jacana", lat: -37.6920, lng: 144.9190, outerZone: "fri_north" },
-  { name: "broadmeadows", lat: -37.6803, lng: 144.9188, outerZone: "fri_north" },
-  { name: "dallas", lat: -37.6760, lng: 144.9310, outerZone: "fri_north" },
-  { name: "campbellfield", lat: -37.6710, lng: 144.9540, outerZone: "fri_north" },
-  { name: "coolaroo", lat: -37.6603, lng: 144.9236, outerZone: "fri_north" },
-  { name: "meadow heights", lat: -37.6470, lng: 144.9160, outerZone: "fri_north" },
-  { name: "greenvale", lat: -37.6430, lng: 144.8810, outerZone: "fri_north" },
-  { name: "somerton", lat: -37.6400, lng: 144.9500, outerZone: "fri_north" },
-  { name: "roxburgh park", lat: -37.6389, lng: 144.9236, outerZone: "fri_north" },
-  { name: "fawkner", lat: -37.7070, lng: 144.9620, outerZone: "mon_lower1" },
-  { name: "hadfield", lat: -37.7130, lng: 144.9390, outerZone: "mon_lower1" },
-  { name: "pascoe vale south", lat: -37.7420, lng: 144.9390, outerZone: "mon_lower1" },
-  { name: "pascoe vale", lat: -37.7268, lng: 144.9384, outerZone: "mon_lower1" },
-  { name: "coburg north", lat: -37.7270, lng: 144.9660, outerZone: "mon_lower1" },
-  { name: "coburg", lat: -37.7439, lng: 144.9631, outerZone: "mon_lower1" },
-  { name: "brunswick west", lat: -37.7610, lng: 144.9450, outerZone: "mon_lower1" },
-  { name: "brunswick east", lat: -37.7660, lng: 144.9780, outerZone: "mon_lower1" },
-  { name: "brunswick", lat: -37.7667, lng: 144.9603, outerZone: "mon_lower1" },
-  { name: "aberfeldie", lat: -37.7600, lng: 144.8960, outerZone: "mon_lower1" },
-  { name: "moonee ponds", lat: -37.7647, lng: 144.9203, outerZone: "mon_lower1" },
-  { name: "ascot vale", lat: -37.7760, lng: 144.9160, outerZone: "mon_lower1" },
-  { name: "travancore", lat: -37.7810, lng: 144.9360, outerZone: "mon_lower1" },
-  { name: "flemington", lat: -37.7880, lng: 144.9280, outerZone: "mon_lower1" },
-  { name: "kensington", lat: -37.7940, lng: 144.9290, outerZone: "mon_lower1" },
-  { name: "maribyrnong", lat: -37.7770, lng: 144.8920, outerZone: "sun_stalbans" },
-  { name: "avondale heights", lat: -37.7610, lng: 144.8620, outerZone: "sun_stalbans" },
-  { name: "kealba", lat: -37.7370, lng: 144.8250, outerZone: "sun_stalbans" },
-  { name: "keilor downs", lat: -37.7300, lng: 144.8080, outerZone: "sun_stalbans" },
-  { name: "st albans north", lat: -37.7350, lng: 144.7950, outerZone: "sun_stalbans" },
-  { name: "st albans", lat: -37.7447, lng: 144.8028, outerZone: "sun_stalbans" },
-  { name: "albion", lat: -37.7750, lng: 144.8190, outerZone: "sun_stalbans" },
-  { name: "sunshine north", lat: -37.7700, lng: 144.8370, outerZone: "sun_stalbans" },
-  { name: "sunshine west", lat: -37.8020, lng: 144.8210, outerZone: "sun_stalbans" },
-  { name: "sunshine", lat: -37.7883, lng: 144.8331, outerZone: "sun_stalbans" },
-  { name: "braybrook", lat: -37.7880, lng: 144.8610, outerZone: "sun_stalbans" },
-  { name: "maidstone", lat: -37.7810, lng: 144.8760, outerZone: "sun_stalbans" },
-  { name: "footscray", lat: -37.8003, lng: 144.9003, outerZone: "sun_stalbans" },
-  { name: "west footscray", lat: -37.8050, lng: 144.8790, outerZone: "sun_stalbans" },
-
-  // ── Monday: Lower Area 1 (Brunswick → City → St Kilda → Brighton) ──
-  { name: "northcote", lat: -37.7710, lng: 144.9980, outerZone: "mon_lower1" },
-  { name: "carlton north", lat: -37.7860, lng: 144.9720, outerZone: "mon_lower1" },
-  { name: "carlton", lat: -37.8000, lng: 144.9670, outerZone: "mon_lower1" },
-  { name: "parkville", lat: -37.7860, lng: 144.9510, outerZone: "mon_lower1" },
-  { name: "fitzroy north", lat: -37.7830, lng: 144.9820, outerZone: "mon_lower1" },
-  { name: "fitzroy", lat: -37.8010, lng: 144.9780, outerZone: "mon_lower1" },
-  { name: "collingwood", lat: -37.8030, lng: 144.9880, outerZone: "mon_lower1" },
-  { name: "north melbourne", lat: -37.7980, lng: 144.9450, outerZone: "mon_lower1" },
-  { name: "west melbourne", lat: -37.8080, lng: 144.9420, outerZone: "mon_lower1" },
-  { name: "southbank", lat: -37.8260, lng: 144.9640, outerZone: "mon_lower1" },
-  { name: "south melbourne", lat: -37.8330, lng: 144.9570, outerZone: "mon_lower1" },
-  { name: "port melbourne", lat: -37.8380, lng: 144.9330, outerZone: "mon_lower1" },
-  { name: "albert park", lat: -37.8440, lng: 144.9550, outerZone: "mon_lower1" },
-  { name: "middle park", lat: -37.8500, lng: 144.9610, outerZone: "mon_lower1" },
-  { name: "st kilda east", lat: -37.8670, lng: 145.0030, outerZone: "mon_lower1" },
-  { name: "st kilda", lat: -37.8678, lng: 144.9808, outerZone: "mon_lower1" },
-  { name: "elwood", lat: -37.8820, lng: 144.9870, outerZone: "mon_lower1" },
-  { name: "balaclava", lat: -37.8710, lng: 144.9960, outerZone: "mon_lower1" },
-  { name: "ripponlea", lat: -37.8770, lng: 144.9970, outerZone: "mon_lower1" },
-  { name: "elsternwick", lat: -37.8850, lng: 145.0040, outerZone: "mon_lower1" },
-  { name: "brighton east", lat: -37.9100, lng: 145.0160, outerZone: "mon_lower1" },
-  { name: "brighton", lat: -37.9061, lng: 144.9922, outerZone: "mon_lower1" },
-  { name: "gardenvale", lat: -37.8960, lng: 145.0060, outerZone: "mon_lower1" },
-  { name: "hampton", lat: -37.9360, lng: 145.0040, outerZone: "mon_lower1" },
-
-  // ── Tuesday: Lower Area 2 (Melbourne → Inner East) ──
-  { name: "cremorne", lat: -37.8300, lng: 144.9950, outerZone: "tue_lower2" },
-  { name: "richmond", lat: -37.8233, lng: 144.9981, outerZone: "tue_lower2" },
-  { name: "hawthorn east", lat: -37.8280, lng: 145.0530, outerZone: "tue_lower2" },
-  { name: "hawthorn", lat: -37.8219, lng: 145.0347, outerZone: "tue_lower2" },
-  { name: "kew east", lat: -37.7990, lng: 145.0520, outerZone: "tue_lower2" },
-  { name: "kew", lat: -37.8060, lng: 145.0320, outerZone: "tue_lower2" },
-  { name: "abbotsford", lat: -37.8080, lng: 144.9990, outerZone: "tue_lower2" },
-  { name: "fairfield", lat: -37.7780, lng: 145.0160, outerZone: "tue_lower2" },
-  { name: "alphington", lat: -37.7790, lng: 145.0300, outerZone: "tue_lower2" },
-  { name: "ivanhoe east", lat: -37.7730, lng: 145.0600, outerZone: "tue_lower2" },
-  { name: "ivanhoe", lat: -37.7700, lng: 145.0420, outerZone: "tue_lower2" },
-  { name: "eaglemont", lat: -37.7610, lng: 145.0620, outerZone: "tue_lower2" },
-  { name: "heidelberg heights", lat: -37.7470, lng: 145.0510, outerZone: "tue_lower2" },
-  { name: "heidelberg west", lat: -37.7390, lng: 145.0430, outerZone: "tue_lower2" },
-  { name: "heidelberg", lat: -37.7550, lng: 145.0610, outerZone: "tue_lower2" },
-  { name: "rosanna", lat: -37.7420, lng: 145.0690, outerZone: "tue_lower2" },
-  { name: "viewbank", lat: -37.7410, lng: 145.0930, outerZone: "tue_lower2" },
-  { name: "bulleen", lat: -37.7740, lng: 145.0940, outerZone: "tue_lower2" },
-  { name: "balwyn north", lat: -37.7940, lng: 145.0860, outerZone: "tue_lower2" },
-  { name: "balwyn", lat: -37.8110, lng: 145.0820, outerZone: "tue_lower2" },
-  { name: "canterbury", lat: -37.8240, lng: 145.0810, outerZone: "tue_lower2" },
-  { name: "surrey hills", lat: -37.8250, lng: 145.1010, outerZone: "tue_lower2" },
-  { name: "camberwell", lat: -37.8261, lng: 145.0586, outerZone: "tue_lower2" },
-  { name: "glen iris", lat: -37.8570, lng: 145.0600, outerZone: "tue_lower2" },
-  { name: "burwood east", lat: -37.8520, lng: 145.1470, outerZone: "tue_lower2" },
-  { name: "burwood", lat: -37.8500, lng: 145.1050, outerZone: "tue_lower2" },
-  { name: "box hill north", lat: -37.8060, lng: 145.1310, outerZone: "tue_lower2" },
-  { name: "box hill south", lat: -37.8340, lng: 145.1260, outerZone: "tue_lower2" },
-  { name: "box hill", lat: -37.8194, lng: 145.1219, outerZone: "tue_lower2" },
-  { name: "blackburn north", lat: -37.8060, lng: 145.1530, outerZone: "tue_lower2" },
-  { name: "blackburn south", lat: -37.8390, lng: 145.1480, outerZone: "tue_lower2" },
-  { name: "blackburn", lat: -37.8200, lng: 145.1520, outerZone: "tue_lower2" },
-  { name: "doncaster east", lat: -37.7830, lng: 145.1530, outerZone: "tue_lower2" },
-  { name: "doncaster", lat: -37.7869, lng: 145.1247, outerZone: "tue_lower2" },
-  { name: "donvale", lat: -37.7820, lng: 145.1840, outerZone: "tue_lower2" },
-  { name: "templestowe lower", lat: -37.7660, lng: 145.1240, outerZone: "tue_lower2" },
-  { name: "templestowe", lat: -37.7530, lng: 145.1310, outerZone: "tue_lower2" },
-
-  // ── Wednesday: Lower Area 3 (Ringwood → Croydon → Lilydale → Mt Evelyn) ──
-  { name: "mitcham", lat: -37.8170, lng: 145.1950, outerZone: "wed_lower3" },
-  { name: "nunawading", lat: -37.8190, lng: 145.1760, outerZone: "wed_lower3" },
-  { name: "forest hill", lat: -37.8400, lng: 145.1670, outerZone: "wed_lower3" },
-  { name: "vermont south", lat: -37.8540, lng: 145.1910, outerZone: "wed_lower3" },
-  { name: "vermont", lat: -37.8360, lng: 145.1950, outerZone: "wed_lower3" },
-  { name: "mount waverley", lat: -37.8740, lng: 145.1300, outerZone: "wed_lower3" },
-  { name: "glen waverley", lat: -37.8783, lng: 145.1642, outerZone: "wed_lower3" },
-  { name: "wheelers hill", lat: -37.9010, lng: 145.1890, outerZone: "wed_lower3" },
-  { name: "mulgrave", lat: -37.9250, lng: 145.1740, outerZone: "wed_lower3" },
-  { name: "wantirna south", lat: -37.8730, lng: 145.2290, outerZone: "wed_lower3" },
-  { name: "wantirna", lat: -37.8520, lng: 145.2280, outerZone: "wed_lower3" },
-  { name: "ringwood east", lat: -37.8140, lng: 145.2570, outerZone: "wed_lower3" },
-  { name: "ringwood north", lat: -37.7970, lng: 145.2360, outerZone: "wed_lower3" },
-  { name: "ringwood south", lat: -37.8280, lng: 145.2310, outerZone: "wed_lower3" },
-  { name: "ringwood", lat: -37.8147, lng: 145.2294, outerZone: "wed_lower3" },
-  { name: "heathmont", lat: -37.8320, lng: 145.2440, outerZone: "wed_lower3" },
-  { name: "bayswater north", lat: -37.8320, lng: 145.2850, outerZone: "wed_lower3" },
-  { name: "bayswater", lat: -37.8480, lng: 145.2670, outerZone: "wed_lower3" },
-  { name: "boronia", lat: -37.8610, lng: 145.2870, outerZone: "wed_lower3" },
-  { name: "kilsyth south", lat: -37.8270, lng: 145.3180, outerZone: "wed_lower3" },
-  { name: "kilsyth", lat: -37.8080, lng: 145.3190, outerZone: "wed_lower3" },
-  { name: "croydon hills", lat: -37.7780, lng: 145.2680, outerZone: "wed_lower3" },
-  { name: "croydon north", lat: -37.7720, lng: 145.2870, outerZone: "wed_lower3" },
-  { name: "croydon south", lat: -37.8110, lng: 145.2830, outerZone: "wed_lower3" },
-  { name: "croydon", lat: -37.7940, lng: 145.2810, outerZone: "wed_lower3" },
-  { name: "mooroolbark", lat: -37.7850, lng: 145.3120, outerZone: "wed_lower3" },
-  { name: "chirnside park", lat: -37.7550, lng: 145.3190, outerZone: "wed_lower3" },
-  { name: "lilydale", lat: -37.7561, lng: 145.3492, outerZone: "wed_lower3" },
-  { name: "mount evelyn", lat: -37.7830, lng: 145.3850, outerZone: "wed_lower3" },
-
-  // ── Thursday: Bundoora / North-East Area ──
-  { name: "reservoir", lat: -37.7169, lng: 145.0064, outerZone: "thu_bundoora" },
-  { name: "preston", lat: -37.7411, lng: 144.9992, outerZone: "thu_bundoora" },
-  { name: "thornbury", lat: -37.7560, lng: 144.9980, outerZone: "thu_bundoora" },
-  { name: "macleod", lat: -37.7280, lng: 145.0680, outerZone: "thu_bundoora" },
-  { name: "watsonia north", lat: -37.6970, lng: 145.0850, outerZone: "thu_bundoora" },
-  { name: "watsonia", lat: -37.7120, lng: 145.0830, outerZone: "thu_bundoora" },
-  { name: "yallambie", lat: -37.7260, lng: 145.1050, outerZone: "thu_bundoora" },
-  { name: "kingsbury", lat: -37.7170, lng: 145.0450, outerZone: "thu_bundoora" },
-  { name: "bundoora", lat: -37.7003, lng: 145.0669, outerZone: "thu_bundoora" },
-  { name: "greensborough", lat: -37.7042, lng: 145.1017, outerZone: "thu_bundoora" },
-  { name: "briar hill", lat: -37.7100, lng: 145.1250, outerZone: "thu_bundoora" },
-  { name: "montmorency", lat: -37.7190, lng: 145.1270, outerZone: "thu_bundoora" },
-  { name: "eltham north", lat: -37.6950, lng: 145.1520, outerZone: "thu_bundoora" },
-  { name: "eltham", lat: -37.7139, lng: 145.1478, outerZone: "thu_bundoora" },
-  { name: "lower plenty", lat: -37.7390, lng: 145.1280, outerZone: "thu_bundoora" },
-  { name: "diamond creek", lat: -37.6740, lng: 145.1570, outerZone: "thu_bundoora" },
-  { name: "lalor", lat: -37.6660, lng: 145.0180, outerZone: "thu_bundoora" },
-  { name: "thomastown", lat: -37.6830, lng: 145.0160, outerZone: "thu_bundoora" },
-  { name: "mill park", lat: -37.6670, lng: 145.0680, outerZone: "thu_bundoora" },
-  { name: "south morang", lat: -37.6440, lng: 145.0740, outerZone: "thu_bundoora" },
-  { name: "mernda", lat: -37.6040, lng: 145.1030, outerZone: "thu_bundoora" },
-  { name: "doreen", lat: -37.5930, lng: 145.1320, outerZone: "thu_bundoora" },
-
-  // ── Friday: Upper / North Area (Craigieburn Corridor) ──
-  { name: "craigieburn north", lat: -37.5750, lng: 144.9420, outerZone: "fri_north" },
-  { name: "craigieburn", lat: -37.6008, lng: 144.9403, outerZone: "fri_north" },
-  { name: "mickleham", lat: -37.5350, lng: 144.9120, outerZone: "fri_north" },
-  { name: "donnybrook", lat: -37.5340, lng: 144.9750, outerZone: "fri_north" },
-  { name: "kalkallo", lat: -37.5250, lng: 144.9480, outerZone: "fri_north" },
-  { name: "beveridge", lat: -37.4760, lng: 144.9920, outerZone: "fri_north" },
-  { name: "bulla", lat: -37.6330, lng: 144.8050, outerZone: "fri_north" },
-  { name: "oaklands junction", lat: -37.6070, lng: 144.8620, outerZone: "fri_north" },
-  { name: "yuroke", lat: -37.5990, lng: 144.8960, outerZone: "fri_north" },
-  { name: "wollert", lat: -37.5980, lng: 145.0340, outerZone: "fri_north" },
-  { name: "epping north", lat: -37.6180, lng: 145.0250, outerZone: "fri_north" },
-  { name: "epping", lat: -37.6497, lng: 145.0203, outerZone: "fri_north" },
-
-  // ── Saturday: Melton / West Area (Melton Corridor) ──
-  { name: "sunbury", lat: -37.5811, lng: 144.7278, outerZone: "sat_melton" },
-  { name: "diggers rest", lat: -37.6280, lng: 144.7210, outerZone: "sat_melton" },
-  { name: "toolern vale", lat: -37.6130, lng: 144.5710, outerZone: "sat_melton" },
-  { name: "melton west", lat: -37.6860, lng: 144.5580, outerZone: "sat_melton" },
-  { name: "melton south", lat: -37.7080, lng: 144.5790, outerZone: "sat_melton" },
-  { name: "melton", lat: -37.6839, lng: 144.5861, outerZone: "sat_melton" },
-  { name: "kurunjang", lat: -37.6630, lng: 144.5890, outerZone: "sat_melton" },
-  { name: "brookfield", lat: -37.6980, lng: 144.5480, outerZone: "sat_melton" },
-  { name: "harkness", lat: -37.6670, lng: 144.5610, outerZone: "sat_melton" },
-  { name: "weir views", lat: -37.7120, lng: 144.5690, outerZone: "sat_melton" },
-  { name: "cobblebank", lat: -37.7190, lng: 144.6060, outerZone: "sat_melton" },
-  { name: "strathtulloh", lat: -37.7280, lng: 144.6020, outerZone: "sat_melton" },
-  { name: "thornhill park", lat: -37.7190, lng: 144.6360, outerZone: "sat_melton" },
-  { name: "rockbank", lat: -37.7300, lng: 144.6540, outerZone: "sat_melton" },
-  { name: "aintree", lat: -37.7210, lng: 144.6860, outerZone: "sat_melton" },
-  { name: "bonnie brook", lat: -37.7100, lng: 144.7120, outerZone: "sat_melton" },
-  { name: "fraser rise", lat: -37.7040, lng: 144.7430, outerZone: "sat_melton" },
-  { name: "deanside", lat: -37.7290, lng: 144.7260, outerZone: "sat_melton" },
-  { name: "burnside heights", lat: -37.7470, lng: 144.7570, outerZone: "sat_melton" },
-  { name: "burnside", lat: -37.7610, lng: 144.7640, outerZone: "sat_melton" },
-  { name: "hillside", lat: -37.7020, lng: 144.7620, outerZone: "sat_melton" },
-  { name: "taylors hill", lat: -37.7130, lng: 144.7770, outerZone: "sat_melton" },
-  { name: "plumpton", lat: -37.7130, lng: 144.7260, outerZone: "sat_melton" },
-  { name: "grangefields", lat: -37.7250, lng: 144.6950, outerZone: "sat_melton" },
-  { name: "ravenhall", lat: -37.7710, lng: 144.7580, outerZone: "sat_melton" },
-  { name: "caroline springs", lat: -37.7340, lng: 144.7410, outerZone: "sat_melton" },
-  { name: "mount cottrell", lat: -37.8010, lng: 144.6180, outerZone: "sat_melton" },
-  { name: "eynesbury", lat: -37.7920, lng: 144.5640, outerZone: "sat_melton" },
-  { name: "exford", lat: -37.7420, lng: 144.5580, outerZone: "sat_melton" },
-  { name: "parwan", lat: -37.7060, lng: 144.4710, outerZone: "sat_melton" },
-
-  // ── Sunday: St Albans / West-Central Area ──
-  { name: "keilor lodge", lat: -37.7180, lng: 144.8080, outerZone: "sun_stalbans" },
-  { name: "delahey", lat: -37.7260, lng: 144.7890, outerZone: "sun_stalbans" },
-  { name: "kings park", lat: -37.7490, lng: 144.7760, outerZone: "sun_stalbans" },
-  { name: "deer park", lat: -37.7680, lng: 144.7810, outerZone: "sun_stalbans" },
-  { name: "derrimut", lat: -37.7980, lng: 144.7860, outerZone: "sun_stalbans" },
-  { name: "cairnlea", lat: -37.7670, lng: 144.8090, outerZone: "sun_stalbans" },
-  { name: "albanvale", lat: -37.7550, lng: 144.7820, outerZone: "sun_stalbans" },
-  { name: "ardeer", lat: -37.7810, lng: 144.8090, outerZone: "sun_stalbans" },
-  { name: "kingsville", lat: -37.8120, lng: 144.8810, outerZone: "sun_stalbans" },
-  { name: "seddon", lat: -37.8070, lng: 144.8930, outerZone: "sun_stalbans" },
-  { name: "brooklyn", lat: -37.8180, lng: 144.8450, outerZone: "sun_stalbans" },
-  { name: "tottenham", lat: -37.8040, lng: 144.8560, outerZone: "sun_stalbans" },
-  { name: "yarraville", lat: -37.8160, lng: 144.8910, outerZone: "sun_stalbans" },
-  { name: "laverton north", lat: -37.8340, lng: 144.7960, outerZone: "sun_stalbans" },
-  { name: "laverton", lat: -37.8620, lng: 144.7720, outerZone: "sun_stalbans" },
-  { name: "altona north", lat: -37.8420, lng: 144.8480, outerZone: "sun_stalbans" },
-  { name: "altona meadows", lat: -37.8780, lng: 144.7880, outerZone: "sun_stalbans" },
+  { name: "albanvale", lat: -37.755, lng: 144.782, outerZone: "sun_stalbans" },
+  { name: "albert park", lat: -37.844, lng: 144.955, outerZone: "mon_lower1" },
+  { name: "albion", lat: -37.775, lng: 144.819, outerZone: "sun_stalbans" },
+  { name: "alphington", lat: -37.779, lng: 145.03, outerZone: "tue_lower2" },
   { name: "altona", lat: -37.8686, lng: 144.8306, outerZone: "sun_stalbans" },
-  { name: "seabrook", lat: -37.8860, lng: 144.7570, outerZone: "sun_stalbans" },
-  { name: "truganina", lat: -37.8380, lng: 144.7210, outerZone: "sun_stalbans" },
-  { name: "hoppers crossing", lat: -37.8840, lng: 144.7000, outerZone: "sun_stalbans" },
-  { name: "tarneit", lat: -37.8330, lng: 144.6600, outerZone: "sun_stalbans" },
-  { name: "manor lakes", lat: -37.9060, lng: 144.5950, outerZone: "sun_stalbans" },
-  { name: "werribee", lat: -37.9006, lng: 144.6614, outerZone: "sun_stalbans" },
-  { name: "point cook", lat: -37.9142, lng: 144.7514, outerZone: "sun_stalbans" },
-  { name: "williamstown", lat: -37.8656, lng: 144.8969, outerZone: "sun_stalbans" },
+  { name: "altona meadows", lat: -37.878, lng: 144.788, outerZone: "sun_stalbans" },
+  { name: "altona north", lat: -37.842, lng: 144.848, outerZone: "sun_stalbans" },
+  { name: "ardeer", lat: -37.781, lng: 144.809, outerZone: "sun_stalbans" },
+  { name: "ascot vale", lat: -37.776, lng: 144.916, outerZone: "mon_lower1" },
+  { name: "attwood", lat: -37.67, lng: 144.877, outerZone: "fri_north" },
+  { name: "avondale heights", lat: -37.761, lng: 144.862, outerZone: "sun_stalbans" },
+  { name: "bacchus marsh", lat: -37.676, lng: 144.439, outerZone: "sat_melton" },
+  { name: "balaclava", lat: -37.871, lng: 144.996, outerZone: "mon_lower1" },
+  { name: "ballan", lat: -37.6, lng: 144.23, outerZone: "sat_melton" },
+  { name: "balwyn", lat: -37.811, lng: 145.082, outerZone: "tue_lower2" },
+  { name: "balwyn north", lat: -37.794, lng: 145.086, outerZone: "tue_lower2" },
+  { name: "bangholme", lat: -38.038, lng: 145.166, outerZone: "mon_lower1" },
+  { name: "bayswater", lat: -37.848, lng: 145.267, outerZone: "wed_lower3" },
+  { name: "bayswater north", lat: -37.832, lng: 145.285, outerZone: "wed_lower3" },
+  { name: "beaumaris", lat: -37.986, lng: 145.035, outerZone: "mon_lower1" },
+  { name: "belgrave", lat: -37.908, lng: 145.355, outerZone: "wed_lower3" },
+  { name: "berwick", lat: -38.031, lng: 145.346, outerZone: "mon_lower1" },
+  { name: "beveridge", lat: -37.476, lng: 144.992, outerZone: "fri_north" },
+  { name: "black rock", lat: -37.969, lng: 145.016, outerZone: "mon_lower1" },
+  { name: "blackburn", lat: -37.82, lng: 145.152, outerZone: "tue_lower2" },
+  { name: "blackburn north", lat: -37.806, lng: 145.153, outerZone: "tue_lower2" },
+  { name: "blackburn south", lat: -37.839, lng: 145.148, outerZone: "tue_lower2" },
+  { name: "blairgowrie", lat: -38.361, lng: 144.777, outerZone: "mon_lower1" },
+  { name: "bonnie brook", lat: -37.71, lng: 144.712, outerZone: "sat_melton" },
+  { name: "boronia", lat: -37.861, lng: 145.287, outerZone: "wed_lower3" },
+  { name: "box hill", lat: -37.8194, lng: 145.1219, outerZone: "tue_lower2" },
+  { name: "box hill north", lat: -37.806, lng: 145.131, outerZone: "tue_lower2" },
+  { name: "box hill south", lat: -37.834, lng: 145.126, outerZone: "tue_lower2" },
+  { name: "braybrook", lat: -37.788, lng: 144.861, outerZone: "sun_stalbans" },
+  { name: "briar hill", lat: -37.71, lng: 145.125, outerZone: "thu_bundoora" },
+  { name: "brighton", lat: -37.9061, lng: 144.9922, outerZone: "mon_lower1" },
+  { name: "brighton east", lat: -37.91, lng: 145.016, outerZone: "mon_lower1" },
+  { name: "broadmeadows", lat: -37.6803, lng: 144.9188, outerZone: "fri_north" },
+  { name: "brookfield", lat: -37.698, lng: 144.548, outerZone: "sat_melton" },
+  { name: "brooklyn", lat: -37.818, lng: 144.845, outerZone: "sun_stalbans" },
+  { name: "brunswick", lat: -37.7667, lng: 144.9603, outerZone: "mon_lower1" },
+  { name: "brunswick east", lat: -37.766, lng: 144.978, outerZone: "mon_lower1" },
+  { name: "brunswick west", lat: -37.761, lng: 144.945, outerZone: "mon_lower1" },
+  { name: "bulla", lat: -37.633, lng: 144.805, outerZone: "fri_north" },
+  { name: "bulleen", lat: -37.774, lng: 145.094, outerZone: "tue_lower2" },
+  { name: "bundoora", lat: -37.7003, lng: 145.0669, outerZone: "thu_bundoora" },
+  { name: "burnside", lat: -37.761, lng: 144.764, outerZone: "sat_melton" },
+  { name: "burnside heights", lat: -37.747, lng: 144.757, outerZone: "sat_melton" },
+  { name: "burwood", lat: -37.85, lng: 145.105, outerZone: "tue_lower2" },
+  { name: "burwood east", lat: -37.852, lng: 145.147, outerZone: "tue_lower2" },
+  { name: "cairnlea", lat: -37.767, lng: 144.809, outerZone: "sun_stalbans" },
+  { name: "camberwell", lat: -37.8261, lng: 145.0586, outerZone: "tue_lower2" },
+  { name: "campbellfield", lat: -37.671, lng: 144.954, outerZone: "fri_north" },
+  { name: "canterbury", lat: -37.824, lng: 145.081, outerZone: "tue_lower2" },
+  { name: "cape schanck", lat: -38.487, lng: 144.887, outerZone: "mon_lower1" },
+  { name: "carlton", lat: -37.8, lng: 144.967, outerZone: "mon_lower1" },
+  { name: "carlton north", lat: -37.786, lng: 144.972, outerZone: "mon_lower1" },
+  { name: "caroline springs", lat: -37.734, lng: 144.741, outerZone: "sat_melton" },
+  { name: "carrum", lat: -38.077, lng: 145.127, outerZone: "mon_lower1" },
+  { name: "caulfield", lat: -37.878, lng: 145.023, outerZone: "mon_lower1" },
+  { name: "cheltenham", lat: -37.967, lng: 145.056, outerZone: "mon_lower1" },
+  { name: "chirnside park", lat: -37.755, lng: 145.319, outerZone: "wed_lower3" },
+  { name: "clarkefield", lat: -37.495, lng: 144.747, outerZone: "fri_north" },
+  { name: "clayton", lat: -37.925, lng: 145.121, outerZone: "wed_lower3" },
+  { name: "cobblebank", lat: -37.719, lng: 144.606, outerZone: "sat_melton" },
+  { name: "coburg", lat: -37.7439, lng: 144.9631, outerZone: "mon_lower1" },
+  { name: "coburg north", lat: -37.727, lng: 144.966, outerZone: "mon_lower1" },
+  { name: "coldstream", lat: -37.728, lng: 145.378, outerZone: "wed_lower3" },
+  { name: "collingwood", lat: -37.803, lng: 144.988, outerZone: "mon_lower1" },
+  { name: "coolaroo", lat: -37.6603, lng: 144.9236, outerZone: "fri_north" },
+  { name: "craigieburn", lat: -37.6008, lng: 144.9403, outerZone: "fri_north" },
+  { name: "craigieburn north", lat: -37.575, lng: 144.942, outerZone: "fri_north" },
+  { name: "cranbourne", lat: -38.099, lng: 145.283, outerZone: "mon_lower1" },
+  { name: "cremorne", lat: -37.83, lng: 144.995, outerZone: "tue_lower2" },
+  { name: "croydon", lat: -37.794, lng: 145.281, outerZone: "wed_lower3" },
+  { name: "croydon hills", lat: -37.778, lng: 145.268, outerZone: "wed_lower3" },
+  { name: "croydon north", lat: -37.772, lng: 145.287, outerZone: "wed_lower3" },
+  { name: "croydon south", lat: -37.811, lng: 145.283, outerZone: "wed_lower3" },
+  { name: "dallas", lat: -37.676, lng: 144.931, outerZone: "fri_north" },
+  { name: "dandenong", lat: -37.987, lng: 145.215, outerZone: "mon_lower1" },
+  { name: "deanside", lat: -37.729, lng: 144.726, outerZone: "sat_melton" },
+  { name: "deer park", lat: -37.768, lng: 144.781, outerZone: "sun_stalbans" },
+  { name: "delahey", lat: -37.726, lng: 144.789, outerZone: "sun_stalbans" },
+  { name: "derrimut", lat: -37.798, lng: 144.786, outerZone: "sun_stalbans" },
+  { name: "diamond creek", lat: -37.674, lng: 145.157, outerZone: "thu_bundoora" },
+  { name: "diggers rest", lat: -37.628, lng: 144.721, outerZone: "sat_melton" },
+  { name: "doncaster", lat: -37.7869, lng: 145.1247, outerZone: "tue_lower2" },
+  { name: "doncaster east", lat: -37.783, lng: 145.153, outerZone: "tue_lower2" },
+  { name: "donnybrook", lat: -37.534, lng: 144.975, outerZone: "fri_north" },
+  { name: "donvale", lat: -37.782, lng: 145.184, outerZone: "tue_lower2" },
+  { name: "doreen", lat: -37.593, lng: 145.132, outerZone: "thu_bundoora" },
+  { name: "dromana", lat: -38.337, lng: 144.965, outerZone: "mon_lower1" },
+  { name: "eaglemont", lat: -37.761, lng: 145.062, outerZone: "tue_lower2" },
+  { name: "elsternwick", lat: -37.885, lng: 145.004, outerZone: "mon_lower1" },
+  { name: "eltham", lat: -37.7139, lng: 145.1478, outerZone: "thu_bundoora" },
+  { name: "eltham north", lat: -37.695, lng: 145.152, outerZone: "thu_bundoora" },
+  { name: "elwood", lat: -37.882, lng: 144.987, outerZone: "mon_lower1" },
+  { name: "emerald", lat: -37.933, lng: 145.441, outerZone: "wed_lower3" },
+  { name: "epping", lat: -37.6497, lng: 145.0203, outerZone: "fri_north" },
+  { name: "epping north", lat: -37.618, lng: 145.025, outerZone: "fri_north" },
+  { name: "essendon", lat: -37.7529, lng: 144.9075, outerZone: "mon_lower1" },
+  { name: "essendon fields", lat: -37.729, lng: 144.901, outerZone: "mon_lower1" },
+  { name: "essendon north", lat: -37.74, lng: 144.907, outerZone: "mon_lower1" },
+  { name: "essendon west", lat: -37.748, lng: 144.887, outerZone: "mon_lower1" },
+  { name: "exford", lat: -37.742, lng: 144.558, outerZone: "sat_melton" },
+  { name: "eynesbury", lat: -37.792, lng: 144.564, outerZone: "sat_melton" },
+  { name: "fairfield", lat: -37.778, lng: 145.016, outerZone: "tue_lower2" },
+  { name: "fawkner", lat: -37.707, lng: 144.962, outerZone: "mon_lower1" },
+  { name: "ferntree gully", lat: -37.882, lng: 145.293, outerZone: "wed_lower3" },
+  { name: "fitzroy", lat: -37.801, lng: 144.978, outerZone: "mon_lower1" },
+  { name: "fitzroy north", lat: -37.783, lng: 144.982, outerZone: "mon_lower1" },
+  { name: "flemington", lat: -37.788, lng: 144.928, outerZone: "mon_lower1" },
+  { name: "footscray", lat: -37.8003, lng: 144.9003, outerZone: "sun_stalbans" },
+  { name: "forest hill", lat: -37.84, lng: 145.167, outerZone: "wed_lower3" },
+  { name: "frankston", lat: -38.143, lng: 145.122, outerZone: "mon_lower1" },
+  { name: "fraser rise", lat: -37.704, lng: 144.743, outerZone: "sat_melton" },
+  { name: "gardenvale", lat: -37.896, lng: 145.006, outerZone: "mon_lower1" },
+  { name: "geelong", lat: -38.1499, lng: 144.3617, outerZone: "sat_melton" },
+  { name: "gisborne", lat: -37.489, lng: 144.593, outerZone: "sat_melton" },
+  { name: "gladstone park", lat: -37.6903, lng: 144.8886, outerZone: "fri_north" },
+  { name: "glen iris", lat: -37.857, lng: 145.06, outerZone: "tue_lower2" },
+  { name: "glen waverley", lat: -37.8783, lng: 145.1642, outerZone: "wed_lower3" },
+  { name: "glenbervie", lat: -37.743, lng: 144.923, outerZone: "mon_lower1" },
+  { name: "glenroy", lat: -37.7047, lng: 144.9186, outerZone: "mon_lower1" },
+  { name: "gowanbrae", lat: -37.712, lng: 144.897, outerZone: "mon_lower1" },
+  { name: "grangefields", lat: -37.725, lng: 144.695, outerZone: "sat_melton" },
+  { name: "greensborough", lat: -37.7042, lng: 145.1017, outerZone: "thu_bundoora" },
+  { name: "greenvale", lat: -37.643, lng: 144.881, outerZone: "fri_north" },
+  { name: "hadfield", lat: -37.713, lng: 144.939, outerZone: "mon_lower1" },
+  { name: "hampton", lat: -37.936, lng: 145.004, outerZone: "mon_lower1" },
+  { name: "harkness", lat: -37.667, lng: 144.561, outerZone: "sat_melton" },
+  { name: "hawthorn", lat: -37.8219, lng: 145.0347, outerZone: "tue_lower2" },
+  { name: "hawthorn east", lat: -37.828, lng: 145.053, outerZone: "tue_lower2" },
+  { name: "healesville", lat: -37.656, lng: 145.514, outerZone: "wed_lower3" },
+  { name: "heathmont", lat: -37.832, lng: 145.244, outerZone: "wed_lower3" },
+  { name: "heidelberg", lat: -37.755, lng: 145.061, outerZone: "tue_lower2" },
+  { name: "heidelberg heights", lat: -37.747, lng: 145.051, outerZone: "tue_lower2" },
+  { name: "heidelberg west", lat: -37.739, lng: 145.043, outerZone: "tue_lower2" },
+  { name: "hillside", lat: -37.702, lng: 144.762, outerZone: "sat_melton" },
+  { name: "hoppers crossing", lat: -37.884, lng: 144.7, outerZone: "sun_stalbans" },
+  { name: "indented head", lat: -38.146, lng: 144.71, outerZone: "sat_melton" },
+  { name: "ivanhoe", lat: -37.77, lng: 145.042, outerZone: "tue_lower2" },
+  { name: "ivanhoe east", lat: -37.773, lng: 145.06, outerZone: "tue_lower2" },
+  { name: "jacana", lat: -37.692, lng: 144.919, outerZone: "fri_north" },
+  { name: "kalkallo", lat: -37.525, lng: 144.948, outerZone: "fri_north" },
+  { name: "kealba", lat: -37.737, lng: 144.825, outerZone: "sun_stalbans" },
+  { name: "keilor", lat: -37.7186, lng: 144.8339, outerZone: "sat_melton" },
+  { name: "keilor downs", lat: -37.73, lng: 144.808, outerZone: "sun_stalbans" },
+  { name: "keilor east", lat: -37.736, lng: 144.862, outerZone: "sun_stalbans" },
+  { name: "keilor lodge", lat: -37.718, lng: 144.808, outerZone: "sun_stalbans" },
+  { name: "keilor park", lat: -37.714, lng: 144.858, outerZone: "sat_melton" },
+  { name: "kensington", lat: -37.794, lng: 144.929, outerZone: "mon_lower1" },
+  { name: "kew", lat: -37.806, lng: 145.032, outerZone: "tue_lower2" },
+  { name: "kew east", lat: -37.799, lng: 145.052, outerZone: "tue_lower2" },
+  { name: "keysborough", lat: -37.999, lng: 145.163, outerZone: "mon_lower1" },
+  { name: "kilmore", lat: -37.294, lng: 144.952, outerZone: "fri_north" },
+  { name: "kilsyth", lat: -37.808, lng: 145.319, outerZone: "wed_lower3" },
+  { name: "kilsyth south", lat: -37.827, lng: 145.318, outerZone: "wed_lower3" },
+  { name: "kinglake", lat: -37.521, lng: 145.356, outerZone: "thu_bundoora" },
+  { name: "kinglake west", lat: -37.498, lng: 145.296, outerZone: "thu_bundoora" },
+  { name: "kings park", lat: -37.749, lng: 144.776, outerZone: "sun_stalbans" },
+  { name: "kingsbury", lat: -37.717, lng: 145.045, outerZone: "thu_bundoora" },
+  { name: "kingsville", lat: -37.812, lng: 144.881, outerZone: "sun_stalbans" },
+  { name: "knoxfield", lat: -37.892, lng: 145.25, outerZone: "wed_lower3" },
+  { name: "kurunjang", lat: -37.663, lng: 144.589, outerZone: "sat_melton" },
+  { name: "lalor", lat: -37.666, lng: 145.018, outerZone: "thu_bundoora" },
+  { name: "lancefield", lat: -37.28, lng: 144.73, outerZone: "sat_melton" },
+  { name: "lara", lat: -38.019, lng: 144.409, outerZone: "sat_melton" },
+  { name: "laverton", lat: -37.862, lng: 144.772, outerZone: "sun_stalbans" },
+  { name: "laverton north", lat: -37.834, lng: 144.796, outerZone: "sun_stalbans" },
+  { name: "leopold", lat: -38.188, lng: 144.463, outerZone: "sat_melton" },
+  { name: "lilydale", lat: -37.7561, lng: 145.3492, outerZone: "wed_lower3" },
+  { name: "little river", lat: -37.969, lng: 144.498, outerZone: "sat_melton" },
+  { name: "lower plenty", lat: -37.739, lng: 145.128, outerZone: "thu_bundoora" },
+  { name: "macedon", lat: -37.42, lng: 144.563, outerZone: "sat_melton" },
+  { name: "macleod", lat: -37.728, lng: 145.068, outerZone: "thu_bundoora" },
+  { name: "maidstone", lat: -37.781, lng: 144.876, outerZone: "sun_stalbans" },
+  { name: "manor lakes", lat: -37.906, lng: 144.595, outerZone: "sun_stalbans" },
+  { name: "maribyrnong", lat: -37.777, lng: 144.892, outerZone: "sun_stalbans" },
+  { name: "meadow heights", lat: -37.647, lng: 144.916, outerZone: "fri_north" },
   { name: "melbourne", lat: -37.8136, lng: 144.9631, outerZone: "mon_lower1" },
+  { name: "melbourne airport", lat: -37.669, lng: 144.841, outerZone: "fri_north" },
+  { name: "melbourne cbd", lat: -37.8136, lng: 144.9631, outerZone: "mon_lower1" },
+  { name: "melton", lat: -37.6839, lng: 144.5861, outerZone: "sat_melton" },
+  { name: "melton south", lat: -37.708, lng: 144.579, outerZone: "sat_melton" },
+  { name: "melton west", lat: -37.686, lng: 144.558, outerZone: "sat_melton" },
+  { name: "mentone", lat: -37.983, lng: 145.067, outerZone: "mon_lower1" },
+  { name: "mernda", lat: -37.604, lng: 145.103, outerZone: "thu_bundoora" },
+  { name: "mickleham", lat: -37.535, lng: 144.912, outerZone: "fri_north" },
+  { name: "middle park", lat: -37.85, lng: 144.961, outerZone: "mon_lower1" },
+  { name: "mill park", lat: -37.667, lng: 145.068, outerZone: "thu_bundoora" },
+  { name: "mitcham", lat: -37.817, lng: 145.195, outerZone: "wed_lower3" },
+  { name: "monbulk", lat: -37.878, lng: 145.419, outerZone: "wed_lower3" },
+  { name: "monegeetta", lat: -37.417, lng: 144.75, outerZone: "sat_melton" },
+  { name: "montmorency", lat: -37.719, lng: 145.127, outerZone: "thu_bundoora" },
+  { name: "montrose", lat: -37.807, lng: 145.347, outerZone: "wed_lower3" },
+  { name: "moonee ponds", lat: -37.7647, lng: 144.9203, outerZone: "mon_lower1" },
+  { name: "moorabbin", lat: -37.934, lng: 145.051, outerZone: "mon_lower1" },
+  { name: "mooroolbark", lat: -37.785, lng: 145.312, outerZone: "wed_lower3" },
+  { name: "mordialloc", lat: -37.999, lng: 145.086, outerZone: "mon_lower1" },
+  { name: "mornington", lat: -38.221, lng: 145.039, outerZone: "mon_lower1" },
+  { name: "mount cottrell", lat: -37.801, lng: 144.618, outerZone: "sat_melton" },
+  { name: "mount eliza", lat: -38.188, lng: 145.093, outerZone: "mon_lower1" },
+  { name: "mount evelyn", lat: -37.783, lng: 145.385, outerZone: "wed_lower3" },
+  { name: "mount waverley", lat: -37.874, lng: 145.13, outerZone: "wed_lower3" },
+  { name: "mulgrave", lat: -37.925, lng: 145.174, outerZone: "wed_lower3" },
+  { name: "narre warren", lat: -38.016, lng: 145.304, outerZone: "mon_lower1" },
+  { name: "narre warren south", lat: -38.056, lng: 145.297, outerZone: "mon_lower1" },
+  { name: "newport", lat: -37.844, lng: 144.883, outerZone: "sun_stalbans" },
+  { name: "niddrie", lat: -37.7353, lng: 144.8944, outerZone: "mon_lower1" },
+  { name: "noble park", lat: -37.966, lng: 145.18, outerZone: "mon_lower1" },
+  { name: "north melbourne", lat: -37.798, lng: 144.945, outerZone: "mon_lower1" },
+  { name: "northcote", lat: -37.771, lng: 144.998, outerZone: "mon_lower1" },
+  { name: "nunawading", lat: -37.819, lng: 145.176, outerZone: "wed_lower3" },
+  { name: "oak park", lat: -37.718, lng: 144.922, outerZone: "mon_lower1" },
+  { name: "oaklands junction", lat: -37.607, lng: 144.862, outerZone: "fri_north" },
+  { name: "ocean grove", lat: -38.267, lng: 144.52, outerZone: "sat_melton" },
+  { name: "officer", lat: -38.062, lng: 145.417, outerZone: "mon_lower1" },
+  { name: "pakenham", lat: -38.071, lng: 145.488, outerZone: "mon_lower1" },
+  { name: "panton hill", lat: -37.643, lng: 145.238, outerZone: "thu_bundoora" },
+  { name: "parkville", lat: -37.786, lng: 144.951, outerZone: "mon_lower1" },
+  { name: "parwan", lat: -37.706, lng: 144.471, outerZone: "sat_melton" },
+  { name: "pascoe vale", lat: -37.7268, lng: 144.9384, outerZone: "mon_lower1" },
+  { name: "pascoe vale south", lat: -37.742, lng: 144.939, outerZone: "mon_lower1" },
+  { name: "plumpton", lat: -37.713, lng: 144.726, outerZone: "sat_melton" },
+  { name: "point cook", lat: -37.9142, lng: 144.7514, outerZone: "sun_stalbans" },
+  { name: "port melbourne", lat: -37.838, lng: 144.933, outerZone: "mon_lower1" },
+  { name: "portsea", lat: -38.319, lng: 144.714, outerZone: "mon_lower1" },
+  { name: "preston", lat: -37.7411, lng: 144.9992, outerZone: "thu_bundoora" },
+  { name: "queenscliff", lat: -38.268, lng: 144.659, outerZone: "sat_melton" },
+  { name: "ravenhall", lat: -37.771, lng: 144.758, outerZone: "sat_melton" },
+  { name: "reservoir", lat: -37.7169, lng: 145.0064, outerZone: "thu_bundoora" },
+  { name: "richmond", lat: -37.8233, lng: 144.9981, outerZone: "tue_lower2" },
+  { name: "riddells creek", lat: -37.465, lng: 144.68, outerZone: "sat_melton" },
+  { name: "ringwood", lat: -37.8147, lng: 145.2294, outerZone: "wed_lower3" },
+  { name: "ringwood east", lat: -37.814, lng: 145.257, outerZone: "wed_lower3" },
+  { name: "ringwood north", lat: -37.797, lng: 145.236, outerZone: "wed_lower3" },
+  { name: "ringwood south", lat: -37.828, lng: 145.231, outerZone: "wed_lower3" },
+  { name: "ripponlea", lat: -37.877, lng: 144.997, outerZone: "mon_lower1" },
+  { name: "rockbank", lat: -37.73, lng: 144.654, outerZone: "sat_melton" },
+  { name: "romsey", lat: -37.35, lng: 144.743, outerZone: "sat_melton" },
+  { name: "rosanna", lat: -37.742, lng: 145.069, outerZone: "tue_lower2" },
+  { name: "rosebud", lat: -38.358, lng: 144.908, outerZone: "mon_lower1" },
+  { name: "rowville", lat: -37.924, lng: 145.244, outerZone: "wed_lower3" },
+  { name: "roxburgh park", lat: -37.6389, lng: 144.9236, outerZone: "fri_north" },
+  { name: "rye", lat: -38.371, lng: 144.821, outerZone: "mon_lower1" },
+  { name: "sandringham", lat: -37.951, lng: 145.007, outerZone: "mon_lower1" },
+  { name: "scoresby", lat: -37.904, lng: 145.234, outerZone: "wed_lower3" },
+  { name: "seabrook", lat: -37.886, lng: 144.757, outerZone: "sun_stalbans" },
+  { name: "seaford", lat: -38.103, lng: 145.132, outerZone: "mon_lower1" },
+  { name: "seddon", lat: -37.807, lng: 144.893, outerZone: "sun_stalbans" },
+  { name: "somerton", lat: -37.64, lng: 144.95, outerZone: "fri_north" },
+  { name: "sorrento", lat: -38.339, lng: 144.743, outerZone: "mon_lower1" },
+  { name: "south melbourne", lat: -37.833, lng: 144.957, outerZone: "mon_lower1" },
+  { name: "south morang", lat: -37.644, lng: 145.074, outerZone: "thu_bundoora" },
+  { name: "south yarra", lat: -37.839, lng: 144.99, outerZone: "mon_lower1" },
+  { name: "southbank", lat: -37.826, lng: 144.964, outerZone: "mon_lower1" },
+  { name: "springvale", lat: -37.951, lng: 145.152, outerZone: "wed_lower3" },
+  { name: "st albans", lat: -37.7447, lng: 144.8028, outerZone: "sun_stalbans" },
+  { name: "st albans north", lat: -37.735, lng: 144.795, outerZone: "sun_stalbans" },
+  { name: "st andrews", lat: -37.601, lng: 145.271, outerZone: "thu_bundoora" },
+  { name: "st kilda", lat: -37.8678, lng: 144.9808, outerZone: "mon_lower1" },
+  { name: "st kilda east", lat: -37.867, lng: 145.003, outerZone: "mon_lower1" },
+  { name: "st leonards", lat: -38.172, lng: 144.717, outerZone: "sat_melton" },
+  { name: "strathmore", lat: -37.7392, lng: 144.9203, outerZone: "mon_lower1" },
+  { name: "strathmore heights", lat: -37.716, lng: 144.889, outerZone: "mon_lower1" },
+  { name: "strathtulloh", lat: -37.728, lng: 144.602, outerZone: "sat_melton" },
+  { name: "sunbury", lat: -37.5811, lng: 144.7278, outerZone: "sat_melton" },
+  { name: "sunshine", lat: -37.7883, lng: 144.8331, outerZone: "sun_stalbans" },
+  { name: "sunshine north", lat: -37.77, lng: 144.837, outerZone: "sun_stalbans" },
+  { name: "sunshine west", lat: -37.802, lng: 144.821, outerZone: "sun_stalbans" },
+  { name: "surrey hills", lat: -37.825, lng: 145.101, outerZone: "tue_lower2" },
+  { name: "tarneit", lat: -37.833, lng: 144.66, outerZone: "sun_stalbans" },
+  { name: "taylors hill", lat: -37.713, lng: 144.777, outerZone: "sat_melton" },
+  { name: "taylors lakes", lat: -37.702, lng: 144.789, outerZone: "sat_melton" },
+  { name: "templestowe", lat: -37.753, lng: 145.131, outerZone: "tue_lower2" },
+  { name: "templestowe lower", lat: -37.766, lng: 145.124, outerZone: "tue_lower2" },
+  { name: "the basin", lat: -37.855, lng: 145.32, outerZone: "wed_lower3" },
+  { name: "thomastown", lat: -37.683, lng: 145.016, outerZone: "thu_bundoora" },
+  { name: "thornbury", lat: -37.756, lng: 144.998, outerZone: "thu_bundoora" },
+  { name: "thornhill park", lat: -37.719, lng: 144.636, outerZone: "sat_melton" },
+  { name: "toolern vale", lat: -37.613, lng: 144.571, outerZone: "sat_melton" },
+  { name: "toorak", lat: -37.842, lng: 145.016, outerZone: "mon_lower1" },
+  { name: "tottenham", lat: -37.804, lng: 144.856, outerZone: "sun_stalbans" },
+  { name: "travancore", lat: -37.781, lng: 144.936, outerZone: "mon_lower1" },
+  { name: "truganina", lat: -37.838, lng: 144.721, outerZone: "sun_stalbans" },
+  { name: "tullamarine", lat: -37.7008, lng: 144.8869, outerZone: "fri_north" },
+  { name: "upper ferntree gully", lat: -37.895, lng: 145.321, outerZone: "wed_lower3" },
+  { name: "vermont", lat: -37.836, lng: 145.195, outerZone: "wed_lower3" },
+  { name: "vermont south", lat: -37.854, lng: 145.191, outerZone: "wed_lower3" },
+  { name: "viewbank", lat: -37.741, lng: 145.093, outerZone: "tue_lower2" },
+  { name: "wallan", lat: -37.4167, lng: 144.9833, outerZone: "fri_north" },
+  { name: "wantirna", lat: -37.852, lng: 145.228, outerZone: "wed_lower3" },
+  { name: "wantirna south", lat: -37.873, lng: 145.229, outerZone: "wed_lower3" },
+  { name: "warrandyte", lat: -37.74, lng: 145.22, outerZone: "tue_lower2" },
+  { name: "watsonia", lat: -37.712, lng: 145.083, outerZone: "thu_bundoora" },
+  { name: "watsonia north", lat: -37.697, lng: 145.085, outerZone: "thu_bundoora" },
+  { name: "weir views", lat: -37.712, lng: 144.569, outerZone: "sat_melton" },
+  { name: "werribee", lat: -37.9006, lng: 144.6614, outerZone: "sun_stalbans" },
+  { name: "werribee south", lat: -37.969, lng: 144.693, outerZone: "sun_stalbans" },
+  { name: "west footscray", lat: -37.805, lng: 144.879, outerZone: "sun_stalbans" },
+  { name: "west melbourne", lat: -37.808, lng: 144.942, outerZone: "mon_lower1" },
+  { name: "westmeadows", lat: -37.674, lng: 144.886, outerZone: "fri_north" },
+  { name: "wheelers hill", lat: -37.901, lng: 145.189, outerZone: "wed_lower3" },
+  { name: "whittlesea", lat: -37.514, lng: 145.115, outerZone: "thu_bundoora" },
+  { name: "wildwood", lat: -37.567, lng: 144.792, outerZone: "sat_melton" },
+  { name: "williamstown", lat: -37.8656, lng: 144.8969, outerZone: "sun_stalbans" },
+  { name: "wollert", lat: -37.598, lng: 145.034, outerZone: "fri_north" },
+  { name: "wyndham", lat: -37.9006, lng: 144.6614, outerZone: "sun_stalbans" },
+  { name: "wyndham vale", lat: -37.889, lng: 144.62, outerZone: "sun_stalbans" },
+  { name: "yallambie", lat: -37.726, lng: 145.105, outerZone: "thu_bundoora" },
+  { name: "yarra glen", lat: -37.653, lng: 145.373, outerZone: "wed_lower3" },
+  { name: "yarraville", lat: -37.816, lng: 144.891, outerZone: "sun_stalbans" },
+  { name: "yuroke", lat: -37.599, lng: 144.896, outerZone: "fri_north" },
 ];
 
 function toRad(d: number): number {
@@ -525,7 +592,7 @@ export const INNER_15KM_SUBURBS = new Set([
 export function resolveArea(addressText: string | undefined | null): AreaInfo {
   const text = (addressText || "").toLowerCase().trim();
   if (!text) {
-    return { suburb: null, zone: "flexible", distanceKm: null, inner: false, label: ZONE_LABEL.flexible };
+    return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label: "Please enter your address" };
   }
 
   // Find longest matching suburb name to avoid substring collisions
@@ -537,10 +604,24 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
   }
 
   if (!match) {
-    return { suburb: null, zone: "flexible", distanceKm: null, inner: false, label: ZONE_LABEL.flexible };
+    // Unlisted / non-Melbourne address -> outside 50 km inspection boundary
+    return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label: "Outside 50 km Service Area" };
   }
 
   const dist = distanceKm(TULLAMARINE, match);
+  const serviced = dist <= MAX_INSPECTION_RADIUS_KM;
+
+  if (!serviced) {
+    return {
+      suburb: match.name,
+      zone: "outside",
+      distanceKm: dist,
+      inner: false,
+      serviced: false,
+      label: `Outside 50 km Service Area (~${Math.round(dist)} km from Tullamarine)`,
+    };
+  }
+
   // Tullamarine 15 km inner circle rule: Available Every Day if in 15km list & within radius
   const isInner = INNER_15KM_SUBURBS.has(match.name) && dist <= RADIUS_KM;
   if (isInner) {
@@ -549,17 +630,19 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
       zone: "inner",
       distanceKm: dist,
       inner: true,
+      serviced: true,
       label: ZONE_LABEL.inner,
     };
   }
 
-  // Outside 15 km or outer corridor: Assigned to its designated regional day
+  // Outside 15 km but within 50 km: Assigned to its designated regional day
   const zone = match.outerZone;
   return {
     suburb: match.name,
     zone,
     distanceKm: dist,
     inner: false,
+    serviced: true,
     label: ZONE_LABEL[zone],
   };
 }
@@ -572,7 +655,7 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
  */
 export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return { suburb: null, zone: "flexible", distanceKm: null, inner: false, label: ZONE_LABEL.flexible };
+    return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label: "Outside 50 km Service Area" };
   }
   const pt = { lat, lng };
 
@@ -588,6 +671,19 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
   }
 
   const distToTulla = distanceKm(TULLAMARINE, pt);
+  const serviced = distToTulla <= MAX_INSPECTION_RADIUS_KM;
+
+  if (!serviced) {
+    return {
+      suburb: nearest.name,
+      zone: "outside",
+      distanceKm: distToTulla,
+      inner: false,
+      serviced: false,
+      label: `Outside 50 km Service Area (~${Math.round(distToTulla)} km from Tullamarine)`,
+    };
+  }
+
   // 15 km Tullamarine rule as a real geographic circle → available every day.
   if (distToTulla <= RADIUS_KM) {
     return {
@@ -595,6 +691,7 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
       zone: "inner",
       distanceKm: distToTulla,
       inner: true,
+      serviced: true,
       label: ZONE_LABEL.inner,
     };
   }
@@ -605,12 +702,17 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
     zone,
     distanceKm: distToTulla,
     inner: false,
+    serviced: true,
     label: ZONE_LABEL[zone],
   };
 }
 
 /** Weekdays (0=Sun, 1=Mon … 6=Sat) a given area may be booked on. */
 export function allowedWeekdays(area: AreaInfo): Set<number> {
+  // If outside 50 km, no weekdays are offered for free inspection
+  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
+    return new Set();
+  }
   if (area.inner || area.zone === "inner" || area.zone === "flexible") {
     return new Set([1, 2, 3, 4, 5, 6]); // Monday through Saturday (No Sundays)
   }
@@ -623,6 +725,9 @@ export function allowedWeekdays(area: AreaInfo): Set<number> {
 
 /** Human-friendly availability text for customer emails and SMS. */
 export function getAvailableDaysSummary(area: AreaInfo): string {
+  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
+    return "Outside 50 km Service Area (Free inspection timing not available online)";
+  }
   switch (area.zone) {
     case "inner":
       return "Monday to Saturday (Available Monday to Saturday for Inner Melbourne / 15 km Tullamarine)";
@@ -669,6 +774,11 @@ export function computeAvailability(
   bookedByDate: Map<string, Set<string>>,
   sameZoneDates: Set<string>
 ): DayOption[] {
+  // Do NOT show free inspection timing outside 50 km radius from Tullamarine
+  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
+    return [];
+  }
+
   const weekdays = allowedWeekdays(area);
   const out: DayOption[] = [];
   const now = new Date();
@@ -718,6 +828,7 @@ export function ymd(d: Date): string {
 
 /** Is a chosen date/time actually offered for this area (defensive server check)? */
 export function isSlotOffered(area: AreaInfo, date: string, time: string): boolean {
+  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) return false;
   if (MIN_BOOKING_DATE && date < MIN_BOOKING_DATE) return false;
   const d = new Date(date + "T00:00:00");
   if (Number.isNaN(d.getTime())) return false;

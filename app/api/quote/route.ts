@@ -364,34 +364,36 @@ export async function POST(req: NextRequest) {
     emailDelivered: false,
   });
 
-  // 1b) If customer selected an inspection slot, book it immediately
+  // 1b) If customer selected an inspection slot, book it immediately (only if within 50km service area)
   if (submissionId && inspectionDate && inspectionTime) {
     try {
       const area = resolveArea(address);
-      const jobNo = await getNextJobNo();
-      await updateSubmission(submissionId, { jobNo });
-      const lock = await createBooking({
-        leadId: submissionId,
-        type: "inspection",
-        date: inspectionDate,
-        time: inspectionTime,
-        zone: area.zone || "flexible",
-        suburb: area.suburb || undefined,
-        reference: jobNo,
-      });
-      if (lock.ok) {
-        // Store the NAIVE Melbourne wall-clock the customer picked (e.g.
-        // "2026-09-16T12:00"), matching the /api/book flow. Never run it through
-        // new Date().toISOString() — on a UTC server that reinterprets the local
-        // time as UTC and shifts the appointment by the Melbourne offset.
-        const inspectionAt = `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}`;
-        await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
-        await appendActivity(submissionId, {
-          time: new Date().toISOString(),
-          actor: "customer",
-          action: "Inspection booked via website form",
-          detail: `${inspectionDate} at ${inspectionTime}`,
+      if (area.serviced && area.zone !== "outside") {
+        const jobNo = await getNextJobNo();
+        await updateSubmission(submissionId, { jobNo });
+        const lock = await createBooking({
+          leadId: submissionId,
+          type: "inspection",
+          date: inspectionDate,
+          time: inspectionTime,
+          zone: area.zone || "flexible",
+          suburb: area.suburb || undefined,
+          reference: jobNo,
         });
+        if (lock.ok) {
+          // Store the NAIVE Melbourne wall-clock the customer picked (e.g.
+          // "2026-09-16T12:00"), matching the /api/book flow. Never run it through
+          // new Date().toISOString() — on a UTC server that reinterprets the local
+          // time as UTC and shifts the appointment by the Melbourne offset.
+          const inspectionAt = `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}`;
+          await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
+          await appendActivity(submissionId, {
+            time: new Date().toISOString(),
+            actor: "customer",
+            action: "Inspection booked via website form",
+            detail: `${inspectionDate} at ${inspectionTime}`,
+          });
+        }
       }
     } catch (err) {
       console.error("Auto-booking inspection failed (non-fatal):", err);
@@ -487,7 +489,7 @@ export async function POST(req: NextRequest) {
         We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
       </p>
 
-      ${SHOW_INSPECTION_BOOKING && !(inspectionDate && inspectionTime) ? inspectionBookingHtml : ""}
+      ${SHOW_INSPECTION_BOOKING && area.serviced && !(inspectionDate && inspectionTime) ? inspectionBookingHtml : ""}
 
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
         If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
