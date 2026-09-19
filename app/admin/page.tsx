@@ -1716,7 +1716,13 @@ export default function CrmDashboardPage() {
   function getConversation(lead: Lead): CustomerMessage[] {
     const list = Array.isArray(lead.messages) ? [...lead.messages] : [];
     const initialExists = list.some((m) => m.initial);
-    if (!initialExists && (lead.service || lead.notes || lead.message)) {
+    if (!initialExists && (lead.service || lead.notes || lead.message || (lead.photos && lead.photos.length > 0))) {
+      const initialAttachments = (lead.photos || []).map((p, idx) => ({
+        name: p.name || `Customer_Photo_${idx + 1}.jpg`,
+        url: p.secureUrl || p.url || p.dataUrl,
+        secureUrl: p.secureUrl || p.url,
+        contentType: p.contentType || "image/jpeg",
+      }));
       list.unshift({
         id: `initial_${lead.id}`,
         from: "customer",
@@ -1729,7 +1735,8 @@ export default function CrmDashboardPage() {
           lead.source ? `Source: ${lead.source}` : ""
         ].filter(Boolean).join("\n"),
         time: lead.received || lead.createdAt,
-        initial: true
+        initial: true,
+        ...(initialAttachments.length > 0 ? { attachments: initialAttachments } : {}),
       });
     }
     return list;
@@ -4621,30 +4628,184 @@ export default function CrmDashboardPage() {
                         );
                       })()}
                       {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {msg.attachments.map((att, i) => {
-                            const href = att.secureUrl || att.url;
-                            const chipClass = `inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${isCustomer ? "bg-slate-100 text-slate-600" : "bg-white/15 text-white"
-                              }`;
-                            return href ? (
-                              <a
-                                key={i}
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`${chipClass} underline hover:opacity-80`}
-                                title={`Open ${att.name}`}
+                        <div className="space-y-1.5 pt-2 border-t border-slate-200/50 mt-1.5">
+                          <div className={`text-[10px] font-bold flex items-center justify-between ${
+                            isCustomer ? "text-slate-500" : "text-blue-100"
+                          }`}>
+                            <span className="flex items-center gap-1">
+                              <Paperclip className="w-3 h-3" />
+                              <span>Attachments ({msg.attachments.length})</span>
+                            </span>
+                            {msg.attachments.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  msg.attachments?.forEach((att) => {
+                                    const href = att.secureUrl || att.url;
+                                    if (href) {
+                                      const downloadLink = document.createElement("a");
+                                      downloadLink.href = `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}`;
+                                      downloadLink.download = att.name;
+                                      document.body.appendChild(downloadLink);
+                                      downloadLink.click();
+                                      document.body.removeChild(downloadLink);
+                                    }
+                                  });
+                                }}
+                                className={`text-[10px] font-bold underline cursor-pointer hover:opacity-80`}
                               >
-                                <Paperclip className="w-2.5 h-2.5" />
-                                {att.name}
-                              </a>
-                            ) : (
-                              <span key={i} className={chipClass}>
-                                <Paperclip className="w-2.5 h-2.5" />
-                                {att.name}
-                              </span>
-                            );
-                          })}
+                                Download All
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {msg.attachments.map((att, i) => {
+                              const href = att.secureUrl || att.url;
+                              const isImage = att.contentType?.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(att.name || "");
+                              const downloadUrl = href ? `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}` : null;
+
+                              if (isImage && href) {
+                                return (
+                                  <div
+                                    key={i}
+                                    className={`group relative rounded-xl border overflow-hidden transition-all shadow-2xs ${
+                                      isCustomer
+                                        ? "bg-white border-slate-200 hover:border-blue-400"
+                                        : "bg-white/10 border-white/20 hover:bg-white/15"
+                                    }`}
+                                  >
+                                    {/* Image Thumbnail with Click-to-Zoom */}
+                                    <div
+                                      onClick={() => setPreviewPhoto({ url: href, name: att.name })}
+                                      className="relative h-28 bg-slate-900/5 cursor-pointer overflow-hidden flex items-center justify-center"
+                                      title="Click to zoom photo"
+                                    >
+                                      <img
+                                        src={href}
+                                        alt={att.name}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                      />
+                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <span className="p-1.5 bg-black/60 text-white rounded-full">
+                                          <ZoomIn className="w-3.5 h-3.5" />
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Action footer */}
+                                    <div className={`p-2 flex items-center justify-between gap-1.5 text-xs ${
+                                      isCustomer ? "bg-slate-50 text-slate-700" : "bg-blue-900/30 text-white"
+                                    }`}>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="truncate font-semibold text-[11px]" title={att.name}>
+                                          {att.name}
+                                        </div>
+                                        {att.size && (
+                                          <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
+                                            {att.size < 1024 * 1024
+                                              ? `${(att.size / 1024).toFixed(0)} KB`
+                                              : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewPhoto({ url: href, name: att.name })}
+                                          className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                            isCustomer
+                                              ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
+                                              : "bg-white/20 hover:bg-white/30 text-white"
+                                          }`}
+                                          title="View photo fullscreen"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        <a
+                                          href={downloadUrl!}
+                                          download={att.name}
+                                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                            isCustomer
+                                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
+                                              : "bg-white text-blue-900 hover:bg-blue-50 font-bold"
+                                          }`}
+                                          title={`Download ${att.name}`}
+                                        >
+                                          <Download className="w-3 h-3" />
+                                          <span>Download</span>
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Non-image document file (PDF, Doc, etc.) or metadata-only
+                              return (
+                                <div
+                                  key={i}
+                                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all shadow-2xs ${
+                                    isCustomer
+                                      ? "bg-white border-slate-200 hover:border-blue-400 text-slate-800"
+                                      : "bg-white/10 border-white/20 text-white"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                      isCustomer ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-white/20 text-white"
+                                    }`}>
+                                      <FileText className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-[11px] truncate" title={att.name}>
+                                        {att.name}
+                                      </div>
+                                      <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
+                                        {att.size
+                                          ? att.size < 1024 * 1024
+                                            ? `${(att.size / 1024).toFixed(0)} KB`
+                                            : `${(att.size / (1024 * 1024)).toFixed(1)} MB`
+                                          : isImage ? "Image" : "Document"}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {href ? (
+                                      <>
+                                        <a
+                                          href={href}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                                            isCustomer ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-white/20 hover:bg-white/30 text-white"
+                                          }`}
+                                          title="Open original in new tab"
+                                        >
+                                          <ExternalLink className="w-3.5 h-3.5" />
+                                        </a>
+                                        <a
+                                          href={downloadUrl!}
+                                          download={att.name}
+                                          className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                            isCustomer ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white text-blue-900 hover:bg-blue-50"
+                                          }`}
+                                          title={`Download ${att.name}`}
+                                        >
+                                          <Download className="w-3 h-3" />
+                                          <span>Download</span>
+                                        </a>
+                                      </>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 italic">Sent via email</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
