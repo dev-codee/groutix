@@ -59,7 +59,16 @@ import {
   GripHorizontal,
   RotateCcw,
   ArrowDown,
-  Truck
+  Truck,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Heading2,
+  Heading3,
+  Link2,
+  Minus
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -84,6 +93,7 @@ import {
   DYNAMIC_EMAIL_TAGS,
   SAMPLE_TEMPLATE_CONTEXT,
   extractTemplateTags,
+  formatEmailContentToHtml,
   type EmailTemplate,
   type DynamicTagInfo,
 } from "@/lib/emailTemplates";
@@ -374,6 +384,8 @@ export default function CrmDashboardPage() {
   const [replySubject, setReplySubject] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [replyText, setReplyText] = useState("");
+  const replyBodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const [replyPreviewMode, setReplyPreviewMode] = useState(false);
   // Files staged to email along with the next reply. `content` is base64 for the
   // API; the rest is metadata used for the chip UI and the logged message.
   const [replyAttachments, setReplyAttachments] = useState<
@@ -1833,6 +1845,136 @@ export default function CrmDashboardPage() {
         el.focus();
         const newPos = start + tag.length;
         el.setSelectionRange(newPos, newPos);
+      }
+    }, 15);
+  }
+
+  function applyTextFormatting(
+    type: "bold" | "italic" | "underline" | "h2" | "h3" | "bullet" | "number" | "link" | "hr",
+    target: "template" | "reply"
+  ) {
+    const isTemplate = target === "template";
+    const el = isTemplate ? templateBodyRef.current : replyBodyRef.current;
+    const currentVal = isTemplate ? formBody : replyText;
+    const setter = isTemplate ? setFormBody : setReplyText;
+
+    if (!el) {
+      let insert = "";
+      if (type === "bold") insert = "**bold text**";
+      else if (type === "italic") insert = "*italic text*";
+      else if (type === "underline") insert = "<u>underlined text</u>";
+      else if (type === "h2") insert = "\n## Heading 2\n";
+      else if (type === "h3") insert = "\n### Heading 3\n";
+      else if (type === "bullet") insert = "\n• Bullet item\n";
+      else if (type === "number") insert = "\n1. List item\n";
+      else if (type === "link") insert = "[Link text](https://...)";
+      else if (type === "hr") insert = "\n---\n";
+      setter((prev) => (prev ? `${prev} ${insert}` : insert));
+      return;
+    }
+
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const selected = currentVal.substring(start, end);
+
+    const before = currentVal.substring(0, start);
+    const after = currentVal.substring(end);
+    let replacement = "";
+    let newCursorStart = start;
+    let newCursorEnd = end;
+
+    switch (type) {
+      case "bold": {
+        const text = selected || "bold text";
+        replacement = `**${text}**`;
+        newCursorStart = start + 2;
+        newCursorEnd = start + 2 + text.length;
+        break;
+      }
+      case "italic": {
+        const text = selected || "italic text";
+        replacement = `*${text}*`;
+        newCursorStart = start + 1;
+        newCursorEnd = start + 1 + text.length;
+        break;
+      }
+      case "underline": {
+        const text = selected || "underlined text";
+        replacement = `<u>${text}</u>`;
+        newCursorStart = start + 3;
+        newCursorEnd = start + 3 + text.length;
+        break;
+      }
+      case "h2": {
+        const text = selected || "Heading 2";
+        const prefix = before.length > 0 && !before.endsWith("\n") ? "\n\n" : "";
+        const suffix = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+        replacement = `${prefix}## ${text}${suffix}`;
+        newCursorStart = start + prefix.length + 3;
+        newCursorEnd = newCursorStart + text.length;
+        break;
+      }
+      case "h3": {
+        const text = selected || "Heading 3";
+        const prefix = before.length > 0 && !before.endsWith("\n") ? "\n\n" : "";
+        const suffix = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+        replacement = `${prefix}### ${text}${suffix}`;
+        newCursorStart = start + prefix.length + 4;
+        newCursorEnd = newCursorStart + text.length;
+        break;
+      }
+      case "bullet": {
+        if (selected) {
+          const lines = selected.split("\n").map((l) => (/^(?:•|-|\*)\s+/.test(l.trim()) ? l : `• ${l}`));
+          replacement = lines.join("\n");
+          newCursorStart = start;
+          newCursorEnd = start + replacement.length;
+        } else {
+          const prefix = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+          replacement = `${prefix}• `;
+          newCursorStart = start + replacement.length;
+          newCursorEnd = newCursorStart;
+        }
+        break;
+      }
+      case "number": {
+        if (selected) {
+          const lines = selected.split("\n").map((l, idx) => (/^\d+\.\s+/.test(l.trim()) ? l : `${idx + 1}. ${l}`));
+          replacement = lines.join("\n");
+          newCursorStart = start;
+          newCursorEnd = start + replacement.length;
+        } else {
+          const prefix = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+          replacement = `${prefix}1. `;
+          newCursorStart = start + replacement.length;
+          newCursorEnd = newCursorStart;
+        }
+        break;
+      }
+      case "link": {
+        const text = selected || "Link text";
+        replacement = `[${text}](https://...)`;
+        newCursorStart = start + text.length + 3;
+        newCursorEnd = start + replacement.length - 1;
+        break;
+      }
+      case "hr": {
+        const prefix = before.length > 0 && !before.endsWith("\n") ? "\n\n" : "\n";
+        const suffix = after.length > 0 && !after.startsWith("\n") ? "\n\n" : "\n";
+        replacement = `${prefix}---${suffix}`;
+        newCursorStart = start + replacement.length;
+        newCursorEnd = newCursorStart;
+        break;
+      }
+    }
+
+    const newVal = before + replacement + after;
+    setter(newVal);
+
+    setTimeout(() => {
+      if (el) {
+        el.focus();
+        el.setSelectionRange(newCursorStart, newCursorEnd);
       }
     }, 15);
   }
@@ -4787,15 +4929,162 @@ export default function CrmDashboardPage() {
               </div>
 
               {/* Email Body */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
-                <textarea
-                  rows={6}
-                  placeholder="Type your email message or pick a template from the dropdown above..."
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y min-h-[100px]"
-                />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setReplyPreviewMode(false)}
+                      className={`px-2.5 py-0.5 text-[10px] font-bold rounded transition cursor-pointer ${
+                        !replyPreviewMode ? "bg-white text-blue-700 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      ✍️ Compose
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReplyPreviewMode(true)}
+                      className={`px-2.5 py-0.5 text-[10px] font-bold rounded transition cursor-pointer flex items-center gap-1 ${
+                        replyPreviewMode ? "bg-white text-blue-700 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      <Eye className="w-3 h-3 text-blue-600" />
+                      <span>Preview Branded Email</span>
+                    </button>
+                  </div>
+                </div>
+
+                {!replyPreviewMode ? (
+                  <div>
+                    {/* Formatting Toolbar */}
+                    <div className="flex items-center gap-1 p-1.5 bg-slate-100 border border-slate-200 rounded-t-xl text-xs flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-500 px-1">Style:</span>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("bold", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Bold (**text**)"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("italic", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Italic (*text*)"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("underline", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Underline (<u>text</u>)"
+                      >
+                        <Underline className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("h2", "reply")}
+                        className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
+                        title="Heading 2 (## Heading)"
+                      >
+                        H2
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("h3", "reply")}
+                        className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
+                        title="Heading 3 (### Heading)"
+                      >
+                        H3
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("bullet", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Bullet list (• Item)"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("number", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Numbered list (1. Item)"
+                      >
+                        <ListOrdered className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("link", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Insert Link ([Text](https://...))"
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTextFormatting("hr", "reply")}
+                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                        title="Horizontal line (---)"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="ml-auto text-[10px] text-slate-400 font-medium hidden sm:inline">
+                        Header &amp; footer auto-included
+                      </span>
+                    </div>
+
+                    <textarea
+                      ref={replyBodyRef}
+                      rows={6}
+                      placeholder="Type your email message or pick a template from the dropdown above..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="w-full p-3 text-xs border border-slate-200 rounded-b-xl border-t-0 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y min-h-[100px]"
+                    />
+                  </div>
+                ) : (
+                  /* Lead drawer Branded email preview */
+                  <div className="bg-slate-100/90 p-3 sm:p-4 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold">
+                      <span>PREVIEW FOR: {activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}</span>
+                      <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Branded Groutix Template</span>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden text-xs">
+                      {/* Logo Header */}
+                      <div className="p-4 text-center border-b border-slate-100 bg-white">
+                        <img src={siteLogoUrl || "/new_logo.jpeg"} alt="Groutix" className="h-8 mx-auto object-contain" />
+                      </div>
+                      {/* Body */}
+                      <div className="p-4 text-slate-700 leading-relaxed min-h-[90px]">
+                        {replyText.trim() ? (
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: formatEmailContentToHtml(replyText),
+                            }}
+                          />
+                        ) : (
+                          <span className="text-slate-400 italic">No message written yet</span>
+                        )}
+                      </div>
+                      {/* Footer */}
+                      <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-1.5">
+                        <div className="font-bold text-[11px] text-[#001f97]">Stay Sealed. Stay Smiling.</div>
+                        <div className="text-[10px] text-slate-500">
+                          📞 7023 8094 &nbsp;•&nbsp; ✉️ info@groutix.com &nbsp;•&nbsp; 🌐 www.groutix.com
+                        </div>
+                        <div className="text-[9px] text-slate-400">
+                          &copy; {new Date().getFullYear()} Groutix. All rights reserved.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Staged attachments */}
@@ -5019,14 +5308,57 @@ export default function CrmDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                          Email Body Preview
-                        </span>
-                        <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">
-                          {previewTemplateRendered.body || (
-                            <span className="text-slate-400 italic">No message body entered</span>
-                          )}
+                      {/* Branded Email Inbox Preview */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            Client Email Rendering (Default Branded Template)
+                          </span>
+                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
+                            Official Logo Header &amp; Footer Included
+                          </span>
+                        </div>
+
+                        <div className="max-w-[580px] mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden font-sans">
+                          {/* Logo Header */}
+                          <div className="p-6 text-center bg-white border-b-2 border-slate-100">
+                            <img
+                              src={siteLogoUrl || "/new_logo.jpeg"}
+                              alt="Groutix"
+                              className="h-10 mx-auto object-contain"
+                            />
+                          </div>
+
+                          {/* Formatted Body Content */}
+                          <div className="p-6 text-sm text-slate-700 leading-relaxed min-h-[140px]">
+                            {previewTemplateRendered.body ? (
+                              <div
+                                dangerouslySetInnerHTML={{
+                                  __html: formatEmailContentToHtml(previewTemplateRendered.body),
+                                }}
+                              />
+                            ) : (
+                              <span className="text-slate-400 italic">No message body entered</span>
+                            )}
+                          </div>
+
+                          {/* Branded Contact Footer */}
+                          <div className="p-6 bg-slate-50 border-t border-slate-200 text-center space-y-3">
+                            <p className="font-bold text-sm text-[#001f97]">Stay Sealed. Stay Smiling.</p>
+                            <p className="text-[11px] text-slate-500 leading-relaxed max-w-sm mx-auto">
+                              You are receiving this email regarding your Groutix service inquiry. If you have any questions, simply reply directly to this email.
+                            </p>
+                            <div className="flex items-center justify-center gap-4 text-xs font-semibold text-[#001f97] flex-wrap">
+                              <a href="tel:70238094" className="hover:underline">📞 7023 8094</a>
+                              <span>•</span>
+                              <a href="mailto:info@groutix.com" className="hover:underline">✉️ info@groutix.com</a>
+                              <span>•</span>
+                              <a href="https://groutix.com" target="_blank" rel="noreferrer" className="hover:underline">🌐 www.groutix.com</a>
+                            </div>
+                            <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-400">
+                              &copy; {new Date().getFullYear()} Groutix. All rights reserved.
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5228,16 +5560,99 @@ export default function CrmDashboardPage() {
                           </span>
                         )}
                       </div>
+
+                      {/* Text Formatting Toolbar */}
+                      <div className="flex items-center gap-1 p-1.5 bg-slate-100 border border-slate-200 rounded-t-xl text-xs flex-wrap">
+                        <span className="text-[10px] font-bold text-slate-500 px-1">Style:</span>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("bold", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Bold (**text**)"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("italic", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Italic (*text*)"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("underline", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Underline (<u>text</u>)"
+                        >
+                          <Underline className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("h2", "template")}
+                          className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
+                          title="Heading 2 (## Heading)"
+                        >
+                          H2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("h3", "template")}
+                          className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
+                          title="Heading 3 (### Heading)"
+                        >
+                          H3
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("bullet", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Bullet list (• Item)"
+                        >
+                          <List className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("number", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Numbered list (1. Item)"
+                        >
+                          <ListOrdered className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("link", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Insert Link ([Text](https://...))"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyTextFormatting("hr", "template")}
+                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                          title="Horizontal line (---)"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="ml-auto text-[10px] text-slate-400 font-medium hidden sm:inline">
+                          Logo header &amp; footer auto-included
+                        </span>
+                      </div>
+
                       <textarea
                         ref={templateBodyRef}
                         rows={8}
-                        placeholder="Write your email body here... Click any dynamic tag above to insert it at your cursor."
+                        placeholder="Write your email body here... Click any dynamic tag above to insert it at your cursor, or use formatting buttons above."
                         value={formBody}
                         onChange={(e) => setFormBody(e.target.value)}
                         onFocus={() => setTemplateInsertTarget("body")}
                         onClick={() => setTemplateInsertTarget("body")}
                         onKeyUp={() => setTemplateInsertTarget("body")}
-                        className={`w-full p-3 text-xs border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y transition ${
+                        className={`w-full p-3 text-xs border rounded-b-xl border-t-0 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y transition ${
                           templateInsertTarget === "body" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
                         }`}
                       />
