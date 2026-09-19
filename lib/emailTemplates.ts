@@ -519,3 +519,168 @@ export function renderEmailTemplate(
     body: applyReplacements(template.body),
   };
 }
+
+/**
+ * Converts text with formatting (Markdown / HTML) into clean email-compatible HTML.
+ * Supports:
+ * - **bold** or <b> / <strong>
+ * - *italic* or <i> / <em>
+ * - <u>underline</u> or __underline__
+ * - ### Headings / ## Headings
+ * - • or - Bullet lists
+ * - 1. Numbered lists
+ * - [link](url) or URLs
+ * - Paragraphs and line breaks
+ */
+export function formatEmailContentToHtml(text: string): string {
+  if (!text) return "";
+
+  let str = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  if (/<html[\s\S]*<\/html>/i.test(str)) {
+    return str;
+  }
+
+  // 1. Markdown Links: [label](url)
+  str = str.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" style="color:#001f97;text-decoration:underline;font-weight:600;" target="_blank">$1</a>'
+  );
+
+  // 1b. Auto-link bare URLs (not already preceded by href=" or >)
+  str = str.replace(
+    /(^|[\s(])(https?:\/\/[^\s)<]+)/g,
+    '$1<a href="$2" style="color:#001f97;text-decoration:underline;font-weight:600;" target="_blank">$2</a>'
+  );
+
+  // 2. Bold: **text**, <b>text</b>, <strong>text</strong>
+  str = str.replace(/\*\*([^*\n]+)\*\*/g, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
+  str = str.replace(/<(?:b|strong)>([\s\S]*?)<\/(?:b|strong)>/gi, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
+
+  // 3. Underline: __text__, <u>text</u>
+  str = str.replace(/__([^_\n]+)__/g, '<u style="text-decoration:underline;">$1</u>');
+  str = str.replace(/<u>([\s\S]*?)<\/u>/gi, '<u style="text-decoration:underline;">$1</u>');
+
+  // 4. Italic: *text*, <i>text</i>, <em>text</em>
+  str = str.replace(/(^|[^*])\*([^*\n]+)\*([^*]|$)/g, '$1<em style="font-style:italic;">$2</em>$3');
+  str = str.replace(/<(?:i|em)>([\s\S]*?)<\/(?:i|em)>/gi, '<em style="font-style:italic;">$1</em>');
+
+  // 5. Headings & Dividers:
+  str = str.replace(/^###\s+(.+)$/gm, '<h3 style="margin:20px 0 10px;font-size:16px;color:#001f97;font-weight:700;">$1</h3>');
+  str = str.replace(/^##\s+(.+)$/gm, '<h2 style="margin:24px 0 12px;font-size:18px;color:#001f97;font-weight:800;">$1</h2>');
+  str = str.replace(/^(?:---|___|\*\*\*)$/gm, '<hr style="border:0;border-top:1px solid #e2e8f0;margin:20px 0;"/>');
+
+  const lines = str.split("\n");
+  const result: string[] = [];
+  let inBulletList = false;
+  let inNumberedList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    const bulletMatch = trimmed.match(/^(?:•|-|\*|✓)\s+(.+)$/);
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+
+    if (bulletMatch) {
+      if (!inBulletList) {
+        if (inNumberedList) {
+          result.push("</ol>");
+          inNumberedList = false;
+        }
+        result.push('<ul style="margin:8px 0 16px 20px;padding:0;color:#334155;">');
+        inBulletList = true;
+      }
+      result.push(`<li style="margin-bottom:6px;line-height:1.5;">${bulletMatch[1]}</li>`);
+    } else if (numMatch) {
+      if (!inNumberedList) {
+        if (inBulletList) {
+          result.push("</ul>");
+          inBulletList = false;
+        }
+        result.push('<ol style="margin:8px 0 16px 20px;padding:0;color:#334155;">');
+        inNumberedList = true;
+      }
+      result.push(`<li style="margin-bottom:6px;line-height:1.5;">${numMatch[2]}</li>`);
+    } else {
+      if (inBulletList) {
+        result.push("</ul>");
+        inBulletList = false;
+      }
+      if (inNumberedList) {
+        result.push("</ol>");
+        inNumberedList = false;
+      }
+
+      if (trimmed === "") {
+        result.push('<div style="height:12px;"></div>');
+      } else if (trimmed.startsWith("<h2") || trimmed.startsWith("<h3") || trimmed.startsWith("<hr")) {
+        result.push(trimmed);
+      } else {
+        result.push(`<p style="margin:0 0 12px;line-height:1.6;color:#334155;">${line}</p>`);
+      }
+    }
+  }
+
+  if (inBulletList) result.push("</ul>");
+  if (inNumberedList) result.push("</ol>");
+
+  return result.join("\n");
+}
+
+/**
+ * Returns full email HTML wrapped in the official Groutix logo header & footer.
+ */
+export function buildBrandedEmailHtml(contentHtml: string, logoUrl = "/new_logo.jpeg"): string {
+  const currentYear = new Date().getFullYear();
+  return `
+    <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.06);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <!-- Branded Logo Header -->
+      <div style="padding:32px 24px 24px;text-align:center;background-color:#ffffff;border-bottom:2px solid #f1f5f9;">
+        <a href="https://www.groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
+          <img src="${logoUrl}" alt="Groutix" width="180" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0;" />
+        </a>
+      </div>
+
+      <!-- Email Body Content -->
+      <div style="padding:32px 28px;font-size:15px;line-height:1.6;color:#334155;">
+        ${contentHtml}
+      </div>
+
+      <!-- Branded Contact Footer -->
+      <div style="padding:28px 24px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="margin:0 0 8px;font-size:14px;color:#001f97;font-weight:700;letter-spacing:0.2px;">Stay Sealed. Stay Smiling.</p>
+        <p style="margin:0 0 16px;font-size:12px;color:#64748b;line-height:1.5;">
+          You are receiving this email regarding your Groutix service inquiry.<br/>
+          If you have any questions, simply reply directly to this email.
+        </p>
+        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:13px;line-height:1.8;color:#001f97;font-weight:600;">
+          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;">7023 8094</a></span>
+          <span style="display:inline-block;margin:0 8px;">✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;">info@groutix.com</a></span>
+          <span style="display:inline-block;margin:0 8px;">🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:none;">www.groutix.com</a></span>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
+          &copy; ${currentYear} Groutix. All rights reserved.
+        </div>
+      </div>
+    </div>
+  `.trim();
+}
+
+/**
+ * Interpolate email template and render full branded email with Groutix logo header & footer.
+ */
+export function renderEmailHtml(
+  template: { subject?: string; body?: string;[key: string]: any },
+  lead?: TemplateContext | null,
+  logoUrl?: string
+): { subject: string; body: string; html: string } {
+  const rendered = renderEmailTemplate(template, lead);
+  const formattedHtml = formatEmailContentToHtml(rendered.body);
+  const fullHtml = buildBrandedEmailHtml(formattedHtml, logoUrl || "/new_logo.jpeg");
+  return {
+    subject: rendered.subject,
+    body: rendered.body,
+    html: fullHtml,
+  };
+}

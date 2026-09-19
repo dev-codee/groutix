@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity } from "@/lib/submissions";
-import { sendEmail, cleanEmailText } from "@/lib/email";
+import { sendEmail, cleanEmailText, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
+import { formatEmailContentToHtml } from "@/lib/emailTemplates";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { CustomerMessage, SubmissionDoc } from "@/lib/submissions";
@@ -45,18 +46,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const bodyText = cleanEmailText(typeof text === "string" ? text : "");
   const cleanSubject = cleanEmailText(subject || `Re: Your Groutix Enquiry`);
-  const cleanHtml = html
-    ? cleanEmailText(html)
-    : bodyText
-    ? bodyText.replace(/\n/g, "<br/>")
-    : "(See attached files.)";
+
+  const logoUrl = await getEmailLogoUrl();
+  const rawHtml = html ? cleanEmailText(html) : formatEmailContentToHtml(bodyText);
+  const finalHtml = rawHtml ? wrapEmailHtml(rawHtml, cleanSubject, logoUrl) : "(See attached files.)";
 
   try {
-    // 1. Send the email via Nodemailer
+    // 1. Send the email via Nodemailer with Groutix logo header & footer
     await sendEmail({
       toEmail: lead.email,
       subject: cleanSubject,
-      html: cleanHtml,
+      html: finalHtml,
       attachments: validAttachments.map((a) => ({
         name: a.name,
         content: a.content,
