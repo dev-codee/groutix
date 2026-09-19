@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission, appendActivity } from "@/lib/submissions";
+import { getSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendSms } from "@/lib/sms";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { getDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 export const runtime = "nodejs";
 
@@ -194,9 +196,61 @@ export async function POST(req: NextRequest) {
     detail,
   });
 
+  // ── Conversation message log ─────────────────────────────────────────────
+  const crmMessages: CustomerMessage[] = [];
+
+  if (lead.phone) {
+    crmMessages.push({
+      id: `otw_sms_${Date.now()}`,
+      from: "groutix",
+      channel: "sms",
+      subject: eventType === "en_route" ? "🚗 Specialist On The Way" : "📍 Specialist Arrived",
+      text: smsBody,
+      time: new Date().toISOString(),
+    });
+  }
+
+  if (lead.email) {
+    crmMessages.push({
+      id: `otw_email_${Date.now() + 1}`,
+      from: "groutix",
+      channel: "email",
+      subject: emailSubject,
+      text:
+        eventType === "en_route"
+          ? `Your Groutix specialist is on the way!${etaText ? ` Estimated arrival: ${etaText}.` : ""} Heading to ${customerAddress || "your property"}.`
+          : `Your Groutix specialist has arrived at ${customerAddress || "your property"} and is ready to get started.`,
+      time: new Date().toISOString(),
+    });
+  }
+
+  if (crmMessages.length === 0) {
+    crmMessages.push({
+      id: `otw_note_${Date.now()}`,
+      from: "groutix",
+      channel: "sms",
+      subject: eventType === "en_route" ? "🚗 On The Way" : "📍 Specialist Arrived",
+      text: smsBody,
+      time: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const db = await getDb();
+    const col = db.collection<SubmissionDoc>("submissions");
+    await col.updateOne(
+      { _id: new ObjectId(leadId) },
+      { $push: { messages: { $each: crmMessages } } }
+    );
+  } catch (err) {
+    console.error("Failed to append on-the-way notification to conversation:", err);
+  }
+
   return NextResponse.json({
     ok: true,
     eta: etaText || null,
     etaMinutes: etaMinutes || null,
+    messages: crmMessages,
+    message: crmMessages[0],
   });
 }

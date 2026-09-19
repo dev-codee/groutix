@@ -396,6 +396,7 @@ export default function CrmDashboardPage() {
 
   // SMS messaging states (Texto integration)
   const [messageChannel, setMessageChannel] = useState<"email" | "sms">("email");
+  const [convFilter, setConvFilter] = useState<"all" | "email" | "sms">("all");
   const [smsText, setSmsText] = useState("");
   const [sendingSms, setSendingSms] = useState(false);
 
@@ -484,7 +485,7 @@ export default function CrmDashboardPage() {
       }, 50);
       return () => clearTimeout(t);
     }
-  }, [messagesModalOpen, messageChannel, activeMessageLead?.id, scrollToLatestMessage]);
+  }, [messagesModalOpen, messageChannel, convFilter, activeMessageLead?.id, scrollToLatestMessage]);
 
   const [gpsModalOpen, setGpsModalOpen] = useState(false);
   const [activeGpsLead, setActiveGpsLead] = useState<Lead | null>(null);
@@ -865,6 +866,22 @@ export default function CrmDashboardPage() {
   async function executeOnTheWayNotification(lead: Lead, eventType: "en_route" | "arrived") {
     setNotifyPrompt(null);
 
+    const applyNotificationResult = (data: any) => {
+      const newMsgs = Array.isArray(data?.messages) ? data.messages : data?.message ? [data.message] : [];
+      if (newMsgs.length > 0) {
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === lead.id ? { ...l, messages: [...(l.messages || []), ...newMsgs] } : l
+          )
+        );
+        setActiveMessageLead((prev) =>
+          prev && prev.id === lead.id
+            ? { ...prev, messages: [...(prev.messages || []), ...newMsgs] }
+            : prev
+        );
+      }
+    };
+
     // Get GPS location and send notification
     if (!navigator.geolocation) {
       setEtaToast({ leadId: lead.id, msg: "Location not available — notification sent without ETA." });
@@ -872,7 +889,10 @@ export default function CrmDashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadId: lead.id, lat: null, lng: null, eventType }),
-      }).catch(() => {});
+      })
+        .then((r) => r.json())
+        .then(applyNotificationResult)
+        .catch(() => {});
       setTimeout(() => setEtaToast(null), 5000);
       return;
     }
@@ -888,6 +908,7 @@ export default function CrmDashboardPage() {
             body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
           });
           const data = await res.json();
+          applyNotificationResult(data);
           setEtaToast({
             leadId: lead.id,
             msg:
@@ -917,7 +938,10 @@ export default function CrmDashboardPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ leadId: lead.id, lat: null, lng: null, eventType }),
-        }).catch(() => {});
+        })
+          .then((r) => r.json())
+          .then(applyNotificationResult)
+          .catch(() => {});
         setTimeout(() => setEtaToast(null), 5000);
       },
       { timeout: 10000, maximumAge: 60000 }
@@ -1700,6 +1724,7 @@ export default function CrmDashboardPage() {
     }
 
     setActiveMessageLead(currentLead);
+    setConvFilter("all");
     setMessageChannel(initialChannel);
     setSelectedTemplateId("");
     setReplySubject(`Re: Groutix Enquiry - ${currentLead.name || "Customer"}`);
@@ -1715,6 +1740,38 @@ export default function CrmDashboardPage() {
 
   function getConversation(lead: Lead): CustomerMessage[] {
     const list = Array.isArray(lead.messages) ? [...lead.messages] : [];
+
+    // Synthesize past On The Way / Arrived dispatch notifications from lead.activity if not yet in messages
+    if (Array.isArray(lead.activity)) {
+      lead.activity.forEach((act, idx) => {
+        if (
+          act.action === "On The Way notification sent" ||
+          act.action === "Arrived notification sent"
+        ) {
+          const isEnRoute = act.action === "On The Way notification sent";
+          const alreadyInList = list.some(
+            (m) =>
+              (m.id && (m.id.includes(`act_${idx}`) || m.id.includes(act.time))) ||
+              (m.subject && (
+                (isEnRoute && /on the way/i.test(m.subject)) ||
+                (!isEnRoute && /arrived/i.test(m.subject))
+              ) && Math.abs(new Date(m.time).getTime() - new Date(act.time).getTime()) < 120000)
+          );
+
+          if (!alreadyInList) {
+            list.push({
+              id: `otw_act_${lead.id}_${idx}_${new Date(act.time).getTime() || idx}`,
+              from: "groutix",
+              channel: "sms",
+              subject: isEnRoute ? "🚗 Specialist On The Way" : "📍 Specialist Arrived",
+              text: act.detail || (isEnRoute ? "Specialist is on the way." : "Specialist has arrived."),
+              time: act.time,
+            });
+          }
+        }
+      });
+    }
+
     const initialExists = list.some((m) => m.initial);
     if (!initialExists && (lead.service || lead.notes || lead.message || (lead.photos && lead.photos.length > 0))) {
       const initialAttachments = (lead.photos || []).map((p, idx) => ({
@@ -1739,6 +1796,14 @@ export default function CrmDashboardPage() {
         ...(initialAttachments.length > 0 ? { attachments: initialAttachments } : {}),
       });
     }
+
+    // Sort chronologically so all messages and notifications appear in exact timeline sequence
+    list.sort((a, b) => {
+      const ta = new Date(a.time).getTime() || 0;
+      const tb = new Date(b.time).getTime() || 0;
+      return ta - tb;
+    });
+
     return list;
   }
 
@@ -4575,242 +4640,395 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
-            {/* Conversation Messages Box — filtered by active tab with WhatsApp-style scroll */}
+            {/* Conversation Messages Box — with channel filter pills and WhatsApp-style scroll */}
             <div className="relative flex flex-col shrink-0" style={{ minHeight: "240px" }}>
+              {/* Thread Channel Filter Pills Bar */}
+              {(() => {
+                const allMsgs = getConversation(activeMessageLeadLive || activeMessageLead);
+                const countAll = allMsgs.length;
+                const countEmail = allMsgs.filter((m) => m.channel !== "sms").length;
+                const countSms = allMsgs.filter((m) => m.channel === "sms").length;
+                return (
+                  <div className="flex items-center justify-between gap-2 pb-2">
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setConvFilter("all")}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                          convFilter === "all"
+                            ? "bg-white text-slate-900 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        <span>All Messages</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            convFilter === "all"
+                              ? "bg-slate-200 text-slate-800"
+                              : "bg-slate-200/60 text-slate-500"
+                          }`}
+                        >
+                          {countAll}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConvFilter("email")}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                          convFilter === "email"
+                            ? "bg-white text-blue-600 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Email</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            convFilter === "email"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-slate-200/60 text-slate-500"
+                          }`}
+                        >
+                          {countEmail}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConvFilter("sms")}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                          convFilter === "sms"
+                            ? "bg-white text-emerald-700 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>SMS / Dispatch</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            convFilter === "sms"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-slate-200/60 text-slate-500"
+                          }`}
+                        >
+                          {countSms}
+                        </span>
+                      </button>
+                    </div>
+                    <div className="text-[11px] font-medium text-slate-400 hidden sm:flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Live Thread</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div
                 ref={convScrollRef}
                 onScroll={handleConvScroll}
                 className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
                 style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}
               >
-                {getConversation(activeMessageLeadLive || activeMessageLead)
-                  .filter((msg) =>
-                    messageChannel === "sms"
-                      ? msg.channel === "sms"
-                      : msg.channel !== "sms"
-                  )
-                  .map((msg) => {
-                  const isCustomer = msg.from === "customer";
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`p-3 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1 ${isCustomer
-                          ? "mr-auto bg-white border border-slate-200 text-slate-800"
-                          : "ml-auto bg-blue-600 text-white"
-                        }`}
-                    >
-                      <div
-                        className={`flex items-center justify-between gap-4 text-[10px] font-bold ${isCustomer ? "text-slate-400" : "text-blue-200"
-                          }`}
-                      >
-                        <span>{isCustomer ? "Customer" : "Groutix Team"} ({msg.channel || "note"})</span>
-                        <span>{fmtDate(msg.time)}</span>
+                {(() => {
+                  const allMsgs = getConversation(activeMessageLeadLive || activeMessageLead);
+                  const filtered = allMsgs.filter((msg) => {
+                    if (convFilter === "all") return true;
+                    if (convFilter === "sms") return msg.channel === "sms";
+                    return msg.channel !== "sms";
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-slate-400 space-y-2">
+                        <MessageSquare className="w-8 h-8 mx-auto text-slate-300 opacity-60" />
+                        <p className="text-xs font-semibold text-slate-600">
+                          No {convFilter === "all" ? "" : convFilter.toUpperCase() + " "}messages in this thread.
+                        </p>
+                        {convFilter !== "all" && (
+                          <button
+                            type="button"
+                            onClick={() => setConvFilter("all")}
+                            className="text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
+                          >
+                            View all thread messages ({allMsgs.length})
+                          </button>
+                        )}
                       </div>
-                      {msg.subject && <div className="font-bold">{msg.subject}</div>}
-                      {(() => {
-                        const isCustomerEmail = isCustomer && !msg.initial;
-                        const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
-                        const hasQuoted = isCustomerEmail && cleanText !== msg.text;
-                        return (
-                          <div className="space-y-1">
-                            <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
-                            {hasQuoted && (
-                              <details className="mt-1 text-[10px] text-slate-400">
-                                <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
-                                  ••• Show quoted email history
-                                </summary>
-                                <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
-                                  {msg.text}
-                                </div>
-                              </details>
+                    );
+                  }
+
+                  return filtered.map((msg) => {
+                    const isCustomer = msg.from === "customer";
+                    const isOtw = Boolean(
+                      msg.id?.startsWith("otw_") ||
+                      (msg.subject && /on the way|specialist arrived|we're here/i.test(msg.subject))
+                    );
+                    const isEnRoute = Boolean(msg.subject && /on the way/i.test(msg.subject));
+                    const isSms = msg.channel === "sms";
+
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`p-3.5 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1.5 transition-all ${
+                          isCustomer
+                            ? "mr-auto bg-white border border-slate-200 text-slate-800"
+                            : isOtw
+                              ? isEnRoute
+                                ? "ml-auto bg-gradient-to-r from-amber-600 to-amber-700 text-white border border-amber-500 shadow-md shadow-amber-900/10"
+                                : "ml-auto bg-gradient-to-r from-emerald-600 to-teal-800 text-white border border-emerald-500 shadow-md shadow-emerald-900/10"
+                              : isSms
+                                ? "ml-auto bg-emerald-700 text-white border border-emerald-600"
+                                : "ml-auto bg-blue-600 text-white"
+                        }`}
+                      >
+                        <div
+                          className={`flex items-center justify-between gap-4 text-[10px] font-bold ${
+                            isCustomer
+                              ? "text-slate-400"
+                              : isOtw
+                                ? isEnRoute
+                                  ? "text-amber-100"
+                                  : "text-emerald-100"
+                                : isSms
+                                  ? "text-emerald-100"
+                                  : "text-blue-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {isCustomer ? (
+                              <span>Customer ({msg.channel || "note"})</span>
+                            ) : isOtw ? (
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                                    isEnRoute ? "bg-amber-300 text-amber-950" : "bg-emerald-300 text-emerald-950"
+                                  }`}
+                                >
+                                  {isEnRoute ? "🚗 SPECIALIST ON THE WAY" : "📍 SPECIALIST ARRIVED"}
+                                </span>
+                                <span className="opacity-80 text-[9px] uppercase font-semibold">({msg.channel || "dispatch"})</span>
+                              </div>
+                            ) : isSms ? (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-800/80 text-emerald-100 font-bold text-[9px] flex items-center gap-1">
+                                <Smartphone className="w-2.5 h-2.5" /> SMS (Texto)
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-700/80 text-blue-100 font-bold text-[9px] flex items-center gap-1">
+                                <Mail className="w-2.5 h-2.5" /> Email
+                              </span>
                             )}
                           </div>
-                        );
-                      })()}
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="space-y-1.5 pt-2 border-t border-slate-200/50 mt-1.5">
-                          <div className={`text-[10px] font-bold flex items-center justify-between ${
-                            isCustomer ? "text-slate-500" : "text-blue-100"
-                          }`}>
-                            <span className="flex items-center gap-1">
-                              <Paperclip className="w-3 h-3" />
-                              <span>Attachments ({msg.attachments.length})</span>
-                            </span>
-                            {msg.attachments.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  msg.attachments?.forEach((att) => {
-                                    const href = att.secureUrl || att.url;
-                                    if (href) {
-                                      const downloadLink = document.createElement("a");
-                                      downloadLink.href = `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}`;
-                                      downloadLink.download = att.name;
-                                      document.body.appendChild(downloadLink);
-                                      downloadLink.click();
-                                      document.body.removeChild(downloadLink);
-                                    }
-                                  });
-                                }}
-                                className={`text-[10px] font-bold underline cursor-pointer hover:opacity-80`}
-                              >
-                                Download All
-                              </button>
-                            )}
+                          <span className="shrink-0">{fmtDate(msg.time)}</span>
+                        </div>
+                        {msg.subject && (
+                          <div className={`font-bold ${isOtw ? "text-sm text-white font-black" : ""}`}>
+                            {msg.subject}
                           </div>
+                        )}
+                        {(() => {
+                          const isCustomerEmail = isCustomer && !msg.initial;
+                          const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
+                          const hasQuoted = isCustomerEmail && cleanText !== msg.text;
+                          return (
+                            <div className="space-y-1">
+                              <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
+                              {hasQuoted && (
+                                <details className="mt-1 text-[10px] text-slate-400">
+                                  <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
+                                    ••• Show quoted email history
+                                  </summary>
+                                  <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
+                                    {msg.text}
+                                  </div>
+                                </details>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="space-y-1.5 pt-2 border-t border-slate-200/50 mt-1.5">
+                            <div className={`text-[10px] font-bold flex items-center justify-between ${
+                              isCustomer ? "text-slate-500" : "text-blue-100"
+                            }`}>
+                              <span className="flex items-center gap-1">
+                                <Paperclip className="w-3 h-3" />
+                                <span>Attachments ({msg.attachments.length})</span>
+                              </span>
+                              {msg.attachments.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    msg.attachments?.forEach((att) => {
+                                      const href = att.secureUrl || att.url;
+                                      if (href) {
+                                        const downloadLink = document.createElement("a");
+                                        downloadLink.href = `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}`;
+                                        downloadLink.download = att.name;
+                                        document.body.appendChild(downloadLink);
+                                        downloadLink.click();
+                                        document.body.removeChild(downloadLink);
+                                      }
+                                    });
+                                  }}
+                                  className={`text-[10px] font-bold underline cursor-pointer hover:opacity-80`}
+                                >
+                                  Download All
+                                </button>
+                              )}
+                            </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {msg.attachments.map((att, i) => {
-                              const href = att.secureUrl || att.url;
-                              const isImage = att.contentType?.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(att.name || "");
-                              const downloadUrl = href ? `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}` : null;
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {msg.attachments.map((att, i) => {
+                                const href = att.secureUrl || att.url;
+                                const isImage = att.contentType?.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(att.name || "");
+                                const downloadUrl = href ? `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}` : null;
 
-                              if (isImage && href) {
+                                if (isImage && href) {
+                                  return (
+                                    <div
+                                      key={i}
+                                      className={`group relative rounded-xl border overflow-hidden transition-all shadow-2xs ${
+                                        isCustomer
+                                          ? "bg-white border-slate-200 hover:border-blue-400"
+                                          : "bg-white/10 border-white/20 hover:bg-white/15"
+                                      }`}
+                                    >
+                                      {/* Image Thumbnail with Click-to-Zoom */}
+                                      <div
+                                        onClick={() => setPreviewPhoto({ url: href, name: att.name })}
+                                        className="relative h-28 bg-slate-900/5 cursor-pointer overflow-hidden flex items-center justify-center"
+                                        title="Click to zoom photo"
+                                      >
+                                        <img
+                                          src={href}
+                                          alt={att.name}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                        />
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                          <span className="p-1.5 bg-black/60 text-white rounded-full">
+                                            <ZoomIn className="w-3.5 h-3.5" />
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* Action footer */}
+                                      <div className={`p-2 flex items-center justify-between gap-1.5 text-xs ${
+                                        isCustomer ? "bg-slate-50 text-slate-700" : "bg-blue-900/30 text-white"
+                                      }`}>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="truncate font-semibold text-[11px]" title={att.name}>
+                                            {att.name}
+                                          </div>
+                                          {att.size && (
+                                            <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
+                                              {att.size < 1024 * 1024
+                                                ? `${(att.size / 1024).toFixed(0)} KB`
+                                                : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => setPreviewPhoto({ url: href, name: att.name })}
+                                            className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                              isCustomer
+                                                ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
+                                                : "bg-white/20 hover:bg-white/30 text-white"
+                                            }`}
+                                            title="View photo fullscreen"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                          </button>
+                                          <a
+                                            href={downloadUrl!}
+                                            download={att.name}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                              isCustomer
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
+                                                : "bg-white text-blue-900 hover:bg-blue-50 font-bold"
+                                            }`}
+                                            title={`Download ${att.name}`}
+                                          >
+                                            <Download className="w-3 h-3" />
+                                            <span>Download</span>
+                                          </a>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                // Non-image document file (PDF, Doc, etc.) or metadata-only
                                 return (
                                   <div
                                     key={i}
-                                    className={`group relative rounded-xl border overflow-hidden transition-all shadow-2xs ${
+                                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all shadow-2xs ${
                                       isCustomer
-                                        ? "bg-white border-slate-200 hover:border-blue-400"
-                                        : "bg-white/10 border-white/20 hover:bg-white/15"
+                                        ? "bg-white border-slate-200 hover:border-blue-400 text-slate-800"
+                                        : "bg-white/10 border-white/20 text-white"
                                     }`}
                                   >
-                                    {/* Image Thumbnail with Click-to-Zoom */}
-                                    <div
-                                      onClick={() => setPreviewPhoto({ url: href, name: att.name })}
-                                      className="relative h-28 bg-slate-900/5 cursor-pointer overflow-hidden flex items-center justify-center"
-                                      title="Click to zoom photo"
-                                    >
-                                      <img
-                                        src={href}
-                                        alt={att.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                      />
-                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <span className="p-1.5 bg-black/60 text-white rounded-full">
-                                          <ZoomIn className="w-3.5 h-3.5" />
-                                        </span>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                        isCustomer ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-white/20 text-white"
+                                      }`}>
+                                        <FileText className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="font-bold text-[11px] truncate" title={att.name}>
+                                          {att.name}
+                                        </div>
+                                        <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
+                                          {att.size
+                                            ? att.size < 1024 * 1024
+                                              ? `${(att.size / 1024).toFixed(0)} KB`
+                                              : `${(att.size / (1024 * 1024)).toFixed(1)} MB`
+                                            : isImage ? "Image" : "Document"}
+                                        </div>
                                       </div>
                                     </div>
 
-                                    {/* Action footer */}
-                                    <div className={`p-2 flex items-center justify-between gap-1.5 text-xs ${
-                                      isCustomer ? "bg-slate-50 text-slate-700" : "bg-blue-900/30 text-white"
-                                    }`}>
-                                      <div className="min-w-0 flex-1">
-                                        <div className="truncate font-semibold text-[11px]" title={att.name}>
-                                          {att.name}
-                                        </div>
-                                        {att.size && (
-                                          <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
-                                            {att.size < 1024 * 1024
-                                              ? `${(att.size / 1024).toFixed(0)} KB`
-                                              : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          type="button"
-                                          onClick={() => setPreviewPhoto({ url: href, name: att.name })}
-                                          className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                            isCustomer
-                                              ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
-                                              : "bg-white/20 hover:bg-white/30 text-white"
-                                          }`}
-                                          title="View photo fullscreen"
-                                        >
-                                          <Eye className="w-3.5 h-3.5" />
-                                        </button>
-                                        <a
-                                          href={downloadUrl!}
-                                          download={att.name}
-                                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                            isCustomer
-                                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                                              : "bg-white text-blue-900 hover:bg-blue-50 font-bold"
-                                          }`}
-                                          title={`Download ${att.name}`}
-                                        >
-                                          <Download className="w-3 h-3" />
-                                          <span>Download</span>
-                                        </a>
-                                      </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {href ? (
+                                        <>
+                                          <a
+                                            href={href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                                              isCustomer ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-white/20 hover:bg-white/30 text-white"
+                                            }`}
+                                            title="Open original in new tab"
+                                          >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                          </a>
+                                          <a
+                                            href={downloadUrl!}
+                                            download={att.name}
+                                            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                                              isCustomer ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white text-blue-900 hover:bg-blue-50"
+                                            }`}
+                                            title={`Download ${att.name}`}
+                                          >
+                                            <Download className="w-3 h-3" />
+                                            <span>Download</span>
+                                          </a>
+                                        </>
+                                      ) : (
+                                        <span className="text-[10px] text-slate-400 italic">Sent via email</span>
+                                      )}
                                     </div>
                                   </div>
                                 );
-                              }
-
-                              // Non-image document file (PDF, Doc, etc.) or metadata-only
-                              return (
-                                <div
-                                  key={i}
-                                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all shadow-2xs ${
-                                    isCustomer
-                                      ? "bg-white border-slate-200 hover:border-blue-400 text-slate-800"
-                                      : "bg-white/10 border-white/20 text-white"
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                      isCustomer ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-white/20 text-white"
-                                    }`}>
-                                      <FileText className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="font-bold text-[11px] truncate" title={att.name}>
-                                        {att.name}
-                                      </div>
-                                      <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
-                                        {att.size
-                                          ? att.size < 1024 * 1024
-                                            ? `${(att.size / 1024).toFixed(0)} KB`
-                                            : `${(att.size / (1024 * 1024)).toFixed(1)} MB`
-                                          : isImage ? "Image" : "Document"}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    {href ? (
-                                      <>
-                                        <a
-                                          href={href}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                                            isCustomer ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-white/20 hover:bg-white/30 text-white"
-                                          }`}
-                                          title="Open original in new tab"
-                                        >
-                                          <ExternalLink className="w-3.5 h-3.5" />
-                                        </a>
-                                        <a
-                                          href={downloadUrl!}
-                                          download={att.name}
-                                          className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                            isCustomer ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white text-blue-900 hover:bg-blue-50"
-                                          }`}
-                                          title={`Download ${att.name}`}
-                                        >
-                                          <Download className="w-3 h-3" />
-                                          <span>Download</span>
-                                        </a>
-                                      </>
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400 italic">Sent via email</span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
               {/* WhatsApp-style floating "Latest messages" jump button */}
