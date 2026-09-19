@@ -167,7 +167,12 @@ export default function HeroQuoteForm() {
     if (!address || address.length < 5) return;
     setInspectionDaysLoading(true);
     try {
-      const res = await fetch(`/api/inspection-availability?address=${encodeURIComponent(address)}`);
+      // no-store + a cache-buster so we always see live slot availability; a
+      // cached copy could show a just-booked slot as still free.
+      const res = await fetch(
+        `/api/inspection-availability?address=${encodeURIComponent(address)}&_=${Date.now()}`,
+        { cache: "no-store" }
+      );
       if (!res.ok) return;
       const json = await res.json();
       if (json.inServiceArea === false) {

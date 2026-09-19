@@ -10,6 +10,10 @@ export async function GET(req: NextRequest) {
 
   const area = resolveArea(address);
 
+  // Availability changes the instant any slot is booked, so it must never be
+  // cached — a stale copy would show a just-booked slot as still free.
+  const NO_STORE = { "Cache-Control": "no-store, max-age=0, must-revalidate" };
+
   if (!area.serviced || area.zone === "outside") {
     return NextResponse.json({
       days: [],
@@ -17,7 +21,7 @@ export async function GET(req: NextRequest) {
       suburb: area.suburb,
       distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
       message: "This location is outside our 50 km free inspection service area from Tullamarine.",
-    });
+    }, { headers: NO_STORE });
   }
 
   let bookedByDate = new Map<string, Set<string>>();
@@ -40,5 +44,5 @@ export async function GET(req: NextRequest) {
     inServiceArea: true,
     suburb: area.suburb,
     distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
-  });
+  }, { headers: NO_STORE });
 }
