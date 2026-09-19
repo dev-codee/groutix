@@ -5,8 +5,8 @@ import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
-import { resolveArea, getAvailableDaysSummary, computeAvailability } from "@/lib/scheduling";
-import { listUpcomingBookings, createBooking } from "@/lib/bookings";
+import { resolveArea, getAvailableDaysSummary, computeAvailability, isSlotOffered } from "@/lib/scheduling";
+import { listUpcomingBookings, createBooking, isSlotTaken } from "@/lib/bookings";
 import { updateSubmission, appendActivity, getNextJobNo } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
@@ -177,6 +177,29 @@ export async function POST(req: NextRequest) {
   // Minimal server-side validation mirroring the client.
   if (!firstName || !lastName || !email || !phone) {
     return NextResponse.json({ error: "Please complete the required fields." }, { status: 400 });
+  }
+
+  // If the customer chose an inspection slot, validate & confirm it's still free
+  // BEFORE recording anything or sending any mail. This is the single source of
+  // truth for the slot lock: the availability the form loaded can go stale while
+  // the form sits open, so we re-check here and reject an already-taken slot with
+  // a clear message instead of silently accepting it and forcing staff to adjust.
+  if (inspectionDate && inspectionTime) {
+    const inspectionArea = resolveArea(address);
+    if (inspectionArea.serviced && inspectionArea.zone !== "outside") {
+      if (!isSlotOffered(inspectionArea, inspectionDate, inspectionTime)) {
+        return NextResponse.json(
+          { error: "The inspection time you selected is no longer available. Please pick another slot.", slotConflict: true },
+          { status: 409 }
+        );
+      }
+      if (await isSlotTaken(inspectionDate, inspectionTime)) {
+        return NextResponse.json(
+          { error: "That inspection time has just been booked. Please choose another slot.", slotConflict: true },
+          { status: 409 }
+        );
+      }
+    }
   }
 
   // Collect optional photo attachments (Brevo wants base64-encoded content).
@@ -392,6 +415,16 @@ export async function POST(req: NextRequest) {
             actor: "customer",
             action: "Inspection booked via website form",
             detail: `${inspectionDate} at ${inspectionTime}`,
+          });
+        } else if (lock.conflict) {
+          // The pre-check above passed, so this is a genuine race: another
+          // customer locked the same slot in the moment between the two checks.
+          // Don't silently pretend it's booked — flag it so staff follow up.
+          await appendActivity(submissionId, {
+            time: new Date().toISOString(),
+            actor: "system",
+            action: "Inspection slot conflict — not booked",
+            detail: `Customer requested ${inspectionDate} at ${inspectionTime}, but the slot was taken. Please contact them to rebook.`,
           });
         }
       }

@@ -104,6 +104,53 @@ export async function listUpcomingBookings(): Promise<BookingDoc[]> {
   }
 }
 
+/**
+ * Is a calendar slot already taken by anyone else?
+ * Mirrors the two conflict checks inside createBooking (steps 1 & 2) so callers
+ * can cheaply reject an already-booked slot BEFORE doing any other work. Pass the
+ * current lead's id to `excludeLeadId` so re-confirming a slot you already own is
+ * not treated as a conflict.
+ */
+export async function isSlotTaken(
+  date: string,
+  time: string,
+  excludeLeadId?: string
+): Promise<boolean> {
+  if (!isMongoConfigured()) return false;
+  try {
+    const normalizedTime = time.slice(0, 5).padStart(5, "0");
+    const normalizedDate = date.trim();
+
+    // 1) Confirmed bookings in the atomic bookings collection.
+    const col = await collection();
+    const existing = await col.findOne({ date: normalizedDate, time: normalizedTime });
+    if (existing) {
+      // A slot the SAME lead already holds is not a conflict for that lead.
+      if (excludeLeadId && existing.leadId === excludeLeadId) return false;
+      return true;
+    }
+
+    // 2) Appointments recorded on active submissions (staff-scheduled etc.).
+    const db = await getDb();
+    const subCol = db.collection("submissions");
+    const query: Record<string, any> = {
+      status: { $nin: ["Lost", "Cancelled"] },
+      $or: [
+        { inspectionAt: { $regex: `^${normalizedDate}T${normalizedTime}` } },
+        { jobAt: { $regex: `^${normalizedDate}T${normalizedTime}` } },
+      ],
+    };
+    if (excludeLeadId && ObjectId.isValid(excludeLeadId)) {
+      query._id = { $ne: new ObjectId(excludeLeadId) };
+    }
+    const conflictSub = await subCol.findOne(query);
+    return !!conflictSub;
+  } catch (err) {
+    console.error("isSlotTaken failed:", err);
+    return false;
+  }
+}
+
 export type CreateBookingResult =
   | { ok: true; reference: string }
   | { ok: false; conflict?: boolean; error: string };

@@ -631,6 +631,16 @@ export default function HeroQuoteForm() {
       const res = await fetch("/api/quote", { method: "POST", body: payload });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        // Slot was taken between loading the form and submitting: refresh the
+        // available times so the just-booked slot shows as locked, and clear the
+        // stale selection so the customer re-picks from live availability.
+        if (body.slotConflict) {
+          setInspectionSectionOpen(true);
+          setInspectionTime("");
+          setInspectionError(body.error || "That time is no longer available. Please pick another slot.");
+          if (data.address) fetchInspectionAvailability(data.address);
+          scrollToFirstError("section-inspection");
+        }
         throw new Error(body.error || "Something went wrong. Please try again.");
       }
       setSubmitted(true);
