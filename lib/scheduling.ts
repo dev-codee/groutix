@@ -781,16 +781,25 @@ export function computeAvailability(
 
   const weekdays = allowedWeekdays(area);
   const out: DayOption[] = [];
-  const now = new Date();
+
+  // Anchor every offered day to the MELBOURNE calendar date, so the stored
+  // `date` value and the customer-facing `label` can never disagree. Previously
+  // `date` was built from the server's local timezone (UTC on Vercel) while the
+  // label used Australia/Sydney — on a UTC server that pushed the label to the
+  // next day, so picking "Wed 30 Sept" actually booked (and locked) 29 Sept.
+  // We build each day from a UTC-noon anchor representing the Melbourne date and
+  // read date/weekday/label all back in UTC so they always match.
+  const melToday = melbourneYmd(new Date());
+  const [by, bm, bd] = melToday.split("-").map(Number);
+  const baseNoonUtc = Date.UTC(by, bm - 1, bd, 12, 0, 0);
 
   for (let i = 1; i <= BOOKING_HORIZON_DAYS; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + i);
-    const dateStr = ymd(d);
+    const d = new Date(baseNoonUtc + i * 86400000);
+    const dateStr = d.toISOString().slice(0, 10);
     // Do not show timings before 28 Sept 2026
     if (MIN_BOOKING_DATE && dateStr < MIN_BOOKING_DATE) continue;
 
-    const wd = d.getDay();
+    const wd = d.getUTCDay();
     // Do not take Sunday bookings for inspections or jobs
     if (wd === 0) continue;
     if (!weekdays.has(wd)) continue;
@@ -806,8 +815,8 @@ export function computeAvailability(
 
     out.push({
       date: dateStr,
-      label: d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "long", day: "2-digit", month: "short" }),
-      weekday: d.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "long" }),
+      label: d.toLocaleDateString("en-AU", { timeZone: "UTC", weekday: "long", day: "2-digit", month: "short" }),
+      weekday: d.toLocaleDateString("en-AU", { timeZone: "UTC", weekday: "long" }),
       times,
       slots,
       recommended: sameZoneDates.has(dateStr),
@@ -817,6 +826,17 @@ export function computeAvailability(
   // Always sort in ascending chronological order by date.
   out.sort((a, b) => a.date.localeCompare(b.date));
   return out;
+}
+
+/** Current calendar date (YYYY-MM-DD) in Melbourne, regardless of server timezone. */
+export function melbourneYmd(at: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Melbourne",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at);
 }
 
 export function ymd(d: Date): string {
@@ -830,9 +850,13 @@ export function ymd(d: Date): string {
 export function isSlotOffered(area: AreaInfo, date: string, time: string): boolean {
   if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) return false;
   if (MIN_BOOKING_DATE && date < MIN_BOOKING_DATE) return false;
-  const d = new Date(date + "T00:00:00");
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return false;
+  // Interpret the picked calendar date at UTC noon so getUTCDay() is the same
+  // weekday the customer saw (computeAvailability builds labels the same way).
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0));
   if (Number.isNaN(d.getTime())) return false;
-  const wd = d.getDay();
+  const wd = d.getUTCDay();
   // Do not take Sunday bookings for inspections or jobs
   if (wd === 0) return false;
   if (!allowedWeekdays(area).has(wd)) return false;
@@ -841,9 +865,12 @@ export function isSlotOffered(area: AreaInfo, date: string, time: string): boole
   const allowedSlots = wd === 5 ? FRIDAY_TIME_SLOTS : STANDARD_TIME_SLOTS;
   if (!allowedSlots.includes(time)) return false;
 
-  // Must be in the future within the horizon.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((d.getTime() - today.getTime()) / 86400000);
+  // Must be within the booking horizon, compared against the Melbourne calendar
+  // date (not the server's local date) so the boundary is correct everywhere.
+  const melToday = melbourneYmd();
+  if (date <= melToday) return false;
+  const [ty, tm, td] = melToday.split("-").map(Number);
+  const todayNoon = Date.UTC(ty, tm - 1, td, 12, 0, 0);
+  const diffDays = Math.round((d.getTime() - todayNoon) / 86400000);
   return diffDays >= 1 && diffDays <= BOOKING_HORIZON_DAYS;
 }
