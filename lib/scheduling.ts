@@ -707,13 +707,15 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
   };
 }
 
-/** Weekdays (0=Sun, 1=Mon … 6=Sat) a given area may be booked on. */
-export function allowedWeekdays(area: AreaInfo): Set<number> {
-  // If outside 50 km, no weekdays are offered for free inspection
+/** Weekdays (0=Sun, 1=Mon … 6=Sat) a given area may be booked on.
+ *  @param allWeekdays  Pass true for job bookings (every day); false/omitted = inspection Sat+Sun only.
+ */
+export function allowedWeekdays(area: AreaInfo, allWeekdays = false): Set<number> {
   if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
     return new Set();
   }
-  // Inspections are offered on Saturday (6) and Sunday (0) only.
+  // Job bookings run every day of the week; inspection bookings are Sat+Sun only.
+  if (allWeekdays) return new Set([0, 1, 2, 3, 4, 5, 6]);
   return new Set([0, 6]);
 }
 
@@ -743,18 +745,20 @@ export interface DayOption {
  * Build the list of bookable days/times for an area.
  * @param bookedByDate  date(YYYY-MM-DD) → set of already-locked times
  * @param sameZoneDates dates that already have a job in this area (route nudge)
+ * @param allWeekdays   true for job bookings (every day); omit/false for inspection Sat+Sun only
  */
 export function computeAvailability(
   area: AreaInfo,
   bookedByDate: Map<string, Set<string>>,
-  sameZoneDates: Set<string>
+  sameZoneDates: Set<string>,
+  allWeekdays = false
 ): DayOption[] {
   // Do NOT show free inspection timing outside 50 km radius from Tullamarine
   if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
     return [];
   }
 
-  const weekdays = allowedWeekdays(area);
+  const weekdays = allowedWeekdays(area, allWeekdays);
   const out: DayOption[] = [];
 
   // Anchor every offered day to the MELBOURNE calendar date, so the stored
@@ -819,18 +823,18 @@ export function ymd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Is a chosen date/time actually offered for this area (defensive server check)? */
-export function isSlotOffered(area: AreaInfo, date: string, time: string): boolean {
+/** Is a chosen date/time actually offered for this area (defensive server check)?
+ *  @param allWeekdays  true for job bookings (every day); omit/false for inspection Sat+Sun only
+ */
+export function isSlotOffered(area: AreaInfo, date: string, time: string, allWeekdays = false): boolean {
   if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) return false;
   if (MIN_BOOKING_DATE && date < MIN_BOOKING_DATE) return false;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return false;
-  // Interpret the picked calendar date at UTC noon so getUTCDay() is the same
-  // weekday the customer saw (computeAvailability builds labels the same way).
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0));
   if (Number.isNaN(d.getTime())) return false;
   const wd = d.getUTCDay();
-  if (!allowedWeekdays(area).has(wd)) return false;
+  if (!allowedWeekdays(area, allWeekdays).has(wd)) return false;
 
   // Friday is strictly 10:00 AM – 3:00 PM; Other days are 9:00 AM – 5:00 PM
   const allowedSlots = wd === 5 ? FRIDAY_TIME_SLOTS : STANDARD_TIME_SLOTS;

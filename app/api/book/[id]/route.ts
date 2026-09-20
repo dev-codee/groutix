@@ -119,7 +119,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const lng = parseCoord(req.nextUrl.searchParams.get("lng"));
   const area = resolveLeadArea(lead, lat, lng);
   const { bookedByDate, sameZoneDates } = await buildMaps(area, id);
-  const days = computeAvailability(area, bookedByDate, sameZoneDates);
+  const days = computeAvailability(area, bookedByDate, sameZoneDates, type === "job");
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
 
   return NextResponse.json({
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       { status: 400 }
     );
   }
-  if (!isSlotOffered(area, date, time)) {
+  if (!isSlotOffered(area, date, time, type === "job")) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }
 
