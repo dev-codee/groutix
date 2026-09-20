@@ -12,7 +12,7 @@ export interface AdminPageCtxType {
 
   // Core data shared by row components
   staff: StaffMember[];
-  assignableTechnicians: { id: string; name: string; active?: boolean; username?: string; role?: string }[];
+  assignableTechnicians: { id: string; name: string; active?: boolean; username?: string; role?: string; workDays?: number[] }[];
   inspectionStaff: StaffMember[];
   scopedLeads: Lead[];
   counts: Record<string, number>;

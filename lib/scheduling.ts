@@ -212,7 +212,7 @@ export interface AreaInfo {
 }
 
 export const ZONE_LABEL: Record<Zone, string> = {
-  inner: "Inner Melbourne (Within 15 km — Monday to Saturday)",
+  inner: "Inner Melbourne (Within 15 km — Saturday & Sunday)",
   mon_lower1: "Lower Area 1 — Brunswick, CBD, St Kilda, Brighton (Mondays)",
   tue_lower2: "Lower Area 2 — Inner East, Hawthorn, Kew, Doncaster (Tuesdays)",
   wed_lower3: "Lower Area 3 — Ringwood, Croydon, Lilydale, Mt Evelyn (Wednesdays)",
@@ -713,14 +713,8 @@ export function allowedWeekdays(area: AreaInfo): Set<number> {
   if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
     return new Set();
   }
-  if (area.inner || area.zone === "inner" || area.zone === "flexible") {
-    return new Set([1, 2, 3, 4, 5, 6]); // Monday through Saturday (No Sundays)
-  }
-  const wd = ZONE_WEEKDAY[area.zone as OuterZone];
-  if (wd === undefined || wd === 0) {
-    return new Set([1, 2, 3, 4, 5, 6]);
-  }
-  return new Set([wd]);
+  // Inspections are offered on Saturday (6) and Sunday (0) only.
+  return new Set([0, 6]);
 }
 
 /** Human-friendly availability text for customer emails and SMS. */
@@ -728,26 +722,7 @@ export function getAvailableDaysSummary(area: AreaInfo): string {
   if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
     return "Outside 50 km Service Area (Free inspection timing not available online)";
   }
-  switch (area.zone) {
-    case "inner":
-      return "Monday to Saturday (Available Monday to Saturday for Inner Melbourne / 15 km Tullamarine)";
-    case "mon_lower1":
-      return "Mondays (Lower Area 1 — Brunswick → Melbourne → St Kilda → Brighton)";
-    case "tue_lower2":
-      return "Tuesdays (Lower Area 2 — Inner East / Hawthorn / Kew / Doncaster)";
-    case "wed_lower3":
-      return "Wednesdays (Lower Area 3 — Ringwood → Croydon → Lilydale → Mount Evelyn)";
-    case "thu_bundoora":
-      return "Thursdays (Bundoora & North-East Corridor)";
-    case "fri_north":
-      return "Fridays (Upper North & Craigieburn Corridor)";
-    case "sat_melton":
-      return "Saturdays (Melton & West Corridor)";
-    case "sun_stalbans":
-      return "Saturdays (St Albans & West-Central Corridor)";
-    default:
-      return "Monday to Saturday (Monday to Saturday Available)";
-  }
+  return "Saturday & Sunday (Inspections available on weekends)";
 }
 
 export interface TimeSlot {
@@ -800,8 +775,6 @@ export function computeAvailability(
     if (MIN_BOOKING_DATE && dateStr < MIN_BOOKING_DATE) continue;
 
     const wd = d.getUTCDay();
-    // Do not take Sunday bookings for inspections or jobs
-    if (wd === 0) continue;
     if (!weekdays.has(wd)) continue;
 
     const locked = bookedByDate.get(dateStr) || new Set<string>();
@@ -857,8 +830,6 @@ export function isSlotOffered(area: AreaInfo, date: string, time: string): boole
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0));
   if (Number.isNaN(d.getTime())) return false;
   const wd = d.getUTCDay();
-  // Do not take Sunday bookings for inspections or jobs
-  if (wd === 0) return false;
   if (!allowedWeekdays(area).has(wd)) return false;
 
   // Friday is strictly 10:00 AM – 3:00 PM; Other days are 9:00 AM – 5:00 PM

@@ -1,9 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { HardHat, Plus, Loader2, Trash2 } from "lucide-react";
+import { HardHat, Plus, Loader2, Trash2, Check } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 interface Props {
   basePath: string;
@@ -16,6 +19,110 @@ interface Props {
   techError: string;
   deletingTechId: string | null;
   handleDeleteTechnician: (t: { id: string; name: string }) => void;
+}
+
+function WorkDaysEditor({
+  techId,
+  workDays,
+  hasLogin,
+  onSaved,
+}: {
+  techId: string;
+  workDays: number[] | undefined;
+  hasLogin: boolean;
+  onSaved: (id: string, days: number[] | undefined) => void;
+}) {
+  const effective = workDays ?? ALL_DAYS;
+  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState<number[]>(effective);
+  const [saving, setSaving] = useState(false);
+
+  function toggle(d: number) {
+    setSelected((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()
+    );
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const days = selected.length === 7 ? null : selected; // null = clear (all days)
+      const res = await fetch(`/api/admin/technicians/${techId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workDays: days }),
+      });
+      if (res.ok) {
+        onSaved(techId, days === null ? undefined : selected);
+        setEditing(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex flex-wrap items-center gap-1 pt-1">
+        {ALL_DAYS.map((d) => (
+          <span
+            key={d}
+            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
+              effective.includes(d)
+                ? "bg-blue-50 text-blue-700 border-blue-200/70"
+                : "bg-slate-100 text-slate-300 border-slate-200/60 line-through"
+            }`}
+          >
+            {DAY_LABELS[d]}
+          </span>
+        ))}
+        {!hasLogin && (
+          <button
+            onClick={() => { setSelected(effective); setEditing(true); }}
+            className="ml-1 text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-2 space-y-2">
+      <div className="flex flex-wrap gap-1">
+        {ALL_DAYS.map((d) => (
+          <button
+            key={d}
+            onClick={() => toggle(d)}
+            className={`text-[10px] font-semibold px-2 py-1 rounded-md border transition-all cursor-pointer ${
+              selected.includes(d)
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            {DAY_LABELS[d]}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={save}
+          disabled={saving || selected.length === 0}
+          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-semibold hover:bg-blue-700 disabled:opacity-40 cursor-pointer"
+        >
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          Save
+        </button>
+        <button
+          onClick={() => setEditing(false)}
+          className="text-[10px] text-slate-500 hover:underline cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function TechniciansView({
@@ -31,6 +138,13 @@ export function TechniciansView({
   handleDeleteTechnician,
 }: Props) {
   const { assignableTechnicians, leads } = useAdminPageCtx();
+
+  // Local override for workDays after in-place edits (until next full reload)
+  const [localWorkDays, setLocalWorkDays] = useState<Record<string, number[] | undefined>>({});
+
+  function handleWorkDaysSaved(id: string, days: number[] | undefined) {
+    setLocalWorkDays((prev) => ({ ...prev, [id]: days }));
+  }
 
   return (
     <div className="space-y-5">
@@ -91,6 +205,7 @@ export function TechniciansView({
                   l.technicianId === t.id ||
                   (l.technician && l.technician.toLowerCase() === t.name.toLowerCase())
               ).length;
+              const workDays = t.id in localWorkDays ? localWorkDays[t.id] : (t as any).workDays;
               return (
                 <div
                   key={t.id}
@@ -127,6 +242,18 @@ export function TechniciansView({
                   </div>
                   <div className="text-xs text-slate-500 pt-1 font-medium">
                     Active jobs: <b className="text-slate-800 font-semibold">{activeJobs}</b>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-semibold mb-0.5 uppercase tracking-wide">Work Days</div>
+                    <WorkDaysEditor
+                      techId={t.id}
+                      workDays={workDays}
+                      hasLogin={!!(t as any).hasLogin}
+                      onSaved={handleWorkDaysSaved}
+                    />
+                    {(t as any).hasLogin && (
+                      <p className="text-[10px] text-slate-400 mt-1">Work days are set in Staff Accounts.</p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 pt-3 mt-auto">
                     {(t as any).hasLogin ? (

@@ -1,137 +1,163 @@
-// Canonical inspection report schema and item definitions for Groutix Field Technicians.
-// Matches the official "GROUTIX — INSPECTION REPORT" compact field inspection form.
+// Groutix Simplified Site Inspection — data model matching the PDF form.
+// Rooms repeat per work area; parking is recorded once for the property.
 
 export type CheckValue = "YES" | "NO" | "";
 
-export interface InspectionSectionItem {
+// ── Room types ────────────────────────────────────────────────────────────────
+
+export type RoomType = "main_bathroom" | "ensuite" | "guest_bathroom" | "other";
+export type WorkAreaType = "shower" | "bathroom_floor" | "bath" | "vanity" | "other";
+export type ShowerSizeType = "single" | "double" | "custom_extended";
+export type WorkConfigType =
+  | "walls_and_tiled_floor"
+  | "walls_to_pan"
+  | "walls_to_bath"
+  | "walls_only"
+  | "shower_floor_only";
+export type WallHeightType = "shower_screen_height" | "to_ceiling" | "custom_section";
+
+export type IssueType =
+  | "cracked_missing_grout"
+  | "deteriorated_missing_silicone"
+  | "mould_staining"
+  | "cracked_chipped_tiles"
+  | "loose_drummy_tiles"
+  | "visible_water_damage"
+  | "other";
+
+export type LeakReportedType = "yes" | "no" | "unknown";
+export type LeakObservedType = "yes" | "no" | "inconclusive" | "not_assessed";
+
+export type RecommendedWorkType =
+  | "regrout"
+  | "replace_silicone"
+  | "tile_repair"
+  | "additional_caulking"
+  | "other_work"
+  | "further_investigation";
+
+export type GroutType = "polymer" | "epoxy" | "quote_both" | "to_confirm";
+
+export interface IssueDetail {
+  type: IssueType;
+  where?: string;
+  extraNote?: string;
+}
+
+export interface RoomInspection {
   id: string;
-  label: string;
+  roomType: RoomType;
+  roomName?: string;
+  workAreas: WorkAreaType[];
+
+  // Shower details (shown only when "shower" in workAreas)
+  showerSize?: ShowerSizeType;
+  showerWidthMm?: number;
+  showerDepthMm?: number;
+  workConfig?: WorkConfigType;
+  wallHeight?: WallHeightType;
+  wallHeightMm?: number;
+  wallHeightCustomSection?: string;
+
+  // Section 3 — Issues
+  issues: IssueType[];
+  noVisibleDefects?: boolean;
+  notInspected?: boolean;
+  issueDetails?: IssueDetail[];
+
+  // Leaks
+  leakReportedByCustomer?: LeakReportedType;
+  leakObserved?: LeakObservedType;
+
+  // Section 4 — Recommended work
+  recommendedWork: RecommendedWorkType[];
+  noWorkRecommended?: boolean;
+  groutType?: GroutType;
+  groutColour?: string;
+  siliconeColour?: string;
+  accessLimitations?: string;
+  additionalNotes?: string;
 }
 
-export interface InspectionSectionDef {
-  key: string;
-  title: string;
-  items: InspectionSectionItem[];
+// ── Parking ───────────────────────────────────────────────────────────────────
+
+export type ParkingType =
+  | "client_allocated"
+  | "driveway_onsite"
+  | "visitor_parking"
+  | "free_street"
+  | "paid_street"
+  | "paid_car_park"
+  | "building_basement"
+  | "loading_dropoff"
+  | "no_suitable"
+  | "to_be_confirmed"
+  | "other";
+
+export type ParkingRestrictionType =
+  | "none_known"
+  | "time_limit"
+  | "permit_required"
+  | "building_approval"
+  | "gate_concierge"
+  | "height_restriction"
+  | "long_walk";
+
+export type CostArrangementType =
+  | "included_in_quote"
+  | "charged_separately"
+  | "client_pays_directly"
+  | "to_be_confirmed";
+
+export interface ParkingInfo {
+  types: ParkingType[];
+  spaceLocation?: string;
+  // Paid parking (shown when paid_street | paid_car_park | building_basement selected)
+  paidCostPerHour?: number;
+  paidFlatFee?: number;
+  paidEstimatedTotal?: number;
+  costArrangement?: CostArrangementType;
+  chargedSeparatelyAllowance?: number;
+  chargedSeparatelyToConfirm?: boolean;
+  // Restrictions
+  restrictions: ParkingRestrictionType[];
+  timeLimit?: string;
+  allowedHours?: string;
+  heightClearanceM?: number;
+  permitArrangedBy?: string;
+  permitStatus?: "confirmed" | "pending";
+  entryInstructions?: string;
 }
 
-export const INSPECTION_SECTIONS: InspectionSectionDef[] = [
-  {
-    key: "propertyRoom",
-    title: "Property / Room",
-    items: [
-      { id: "main_bathroom", label: "Main Bathroom" },
-      { id: "ensuite", label: "Ensuite" },
-      { id: "guest_bathroom", label: "Guest Bathroom" },
-      { id: "balcony_exterior", label: "Balcony / Exterior" },
-      { id: "single_shower", label: "Single Shower" },
-      { id: "double_shower", label: "Double Shower" },
-    ],
-  },
-  {
-    key: "areaWorkCoverage",
-    title: "Area / Work Coverage",
-    items: [
-      { id: "shower_walls", label: "Shower Walls" },
-      { id: "shower_floor", label: "Shower Floor" },
-      { id: "bath_area", label: "Bath Area" },
-      { id: "shower_pan_base", label: "Shower Pan / Base" },
-      { id: "floor_only", label: "Floor Only" },
-      { id: "walls_only", label: "Walls Only" },
-      { id: "walls_and_floor", label: "Walls & Floor" },
-      { id: "walls_to_pan", label: "Walls to Pan" },
-      { id: "ceiling_height", label: "Ceiling Height" },
-      { id: "shower_screen_height", label: "Shower Screen Height / Approx. 2.1 m" },
-    ],
-  },
-  {
-    key: "waterLeakage",
-    title: "Water / Leakage",
-    items: [
-      { id: "leakage_water_ingress", label: "Leakage / Water Ingress" },
-      { id: "water_staining", label: "Water Staining / Discolouration" },
-      { id: "moisture_shower_base", label: "Moisture Beneath Shower Base" },
-      { id: "balcony_water_ingress", label: "Known Balcony Waterproofing / Leak Issue" },
-    ],
-  },
-  {
-    key: "groutCondition",
-    title: "Grout Condition",
-    items: [
-      { id: "failed_cracked_grout", label: "Failed / Cracked / Missing Grout" },
-      { id: "mould_black_grout", label: "Mould / Black Grout" },
-      { id: "grout_joints_prep", label: "Grout Joint Preparation" },
-      { id: "movement_joint_condition", label: "Movement Joint Condition" },
-    ],
-  },
-  {
-    key: "tilesSurface",
-    title: "Tiles / Surface",
-    items: [
-      { id: "loose_damaged_tiles", label: "Loose / Damaged Tiles" },
-      { id: "cracked_tile_repair", label: "Cracked Tile Repair" },
-      { id: "mosaic_tiles", label: "Mosaic Tiles" },
-      { id: "dirt_surface_contamination", label: "Dirt / Surface Contamination" },
-      { id: "deep_staining_contamination", label: "Deep Staining / Embedded Contamination" },
-    ],
-  },
-  {
-    key: "siliconeSealing",
-    title: "Silicone / Sealing",
-    items: [
-      { id: "failed_silicone", label: "Failed Silicone / Sealant" },
-      { id: "tile_to_tile", label: "Tile-to-Tile" },
-      { id: "tile_to_floor", label: "Tile-to-Floor" },
-      { id: "tile_to_bath", label: "Tile-to-Bath" },
-      { id: "tile_to_pan", label: "Tile-to-Pan" },
-      { id: "perimeter_joints", label: "Perimeter Joints" },
-      { id: "plumbing_penetrations", label: "Plumbing Penetrations" },
-      { id: "shower_screen_vertical_io", label: "Shower Screen Vertical Inside/Outside" },
-      { id: "shower_screen_horizontal_io", label: "Shower Screen Horizontal Inside/Outside" },
-    ],
-  },
-  {
-    key: "treatmentAdditionalWork",
-    title: "Treatment / Additional Work",
-    items: [
-      { id: "mould_treatment", label: "Mould Treatment" },
-      { id: "pressure_washing_prep", label: "Pressure Washing / Surface Preparation" },
-      { id: "penetrating_grout_sealer", label: "Penetrating Grout Sealer" },
-      { id: "epoxy_grout_upgrade", label: "Epoxy Grout Upgrade" },
-      { id: "shower_screen_replacement", label: "Shower Screen Replacement" },
-    ],
-  },
-  {
-    key: "junctionsMovement",
-    title: "Junctions / Movement",
-    items: [
-      { id: "wall_to_floor", label: "Wall-to-Floor" },
-      { id: "wall_to_wall", label: "Wall-to-Wall / Tile-to-Tile" },
-      { id: "movement_joints", label: "Movement Joints" },
-    ],
-  },
-];
+// ── Top-level report ──────────────────────────────────────────────────────────
 
 export interface InspectionReportDoc {
-  // Header details
+  // Header (prefilled from lead)
   customerName?: string;
   inspectionDate?: string;
   inspectorName?: string;
   propertyAddress?: string;
   leadJobNo?: string;
-  room?: string;
 
-  // Answers keyed by itemId ("YES" | "NO" | "")
-  findings: Record<string, CheckValue>;
+  // Multi-room inspections
+  rooms?: RoomInspection[];
 
-  // Additional freeform fields
-  otherDetails?: string;
+  // Parking (once for the property)
+  parking?: ParkingInfo;
+
+  // Kept from before — estimated time and tech suggestion
   estimatedTime?: string;
+  suggestedTechnician?: string;
   quoteBuildFromReport?: CheckValue;
   warrantyEligible?: CheckValue;
   inspectorNotes?: string;
   inspectorSignature?: string;
   customerAcknowledgement?: string;
-  suggestedTechnician?: string;
+
+  // Legacy backward-compat (old checklist data)
+  findings?: Record<string, CheckValue>;
+  otherDetails?: string;
+  room?: string;
 
   // Metadata
   status?: "draft" | "completed";
@@ -139,27 +165,130 @@ export interface InspectionReportDoc {
   updatedAt?: string;
 }
 
-/** Calculate findings count (YES, NO, Unanswered) */
-export function calculateInspectionSummary(findings: Record<string, CheckValue> = {}) {
-  let yesCount = 0;
-  let noCount = 0;
-  let totalItems = 0;
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  for (const section of INSPECTION_SECTIONS) {
-    for (const item of section.items) {
-      totalItems++;
-      const val = findings[item.id];
-      if (val === "YES") yesCount++;
-      else if (val === "NO") noCount++;
-    }
-  }
-
-  const unansweredCount = totalItems - (yesCount + noCount);
-
+export function makeRoom(overrides: Partial<RoomInspection> = {}): RoomInspection {
   return {
-    yesCount,
-    noCount,
-    unansweredCount,
-    totalItems,
+    id: Math.random().toString(36).slice(2),
+    roomType: "main_bathroom",
+    workAreas: [],
+    issues: [],
+    recommendedWork: [],
+    ...overrides,
   };
 }
+
+export function calculateInspectionSummary(report: InspectionReportDoc) {
+  const rooms = report.rooms || [];
+  const totalRooms = rooms.length;
+  const roomsWithIssues = rooms.filter((r) => r.issues.length > 0 || r.noVisibleDefects).length;
+  const roomsWithWork = rooms.filter((r) => r.recommendedWork.length > 0 || r.noWorkRecommended).length;
+  return { totalRooms, roomsWithIssues, roomsWithWork };
+}
+
+// Keep old signature for any callers that pass findings record
+export function calculateInspectionSummaryLegacy(findings: Record<string, CheckValue> = {}) {
+  let yesCount = 0;
+  let noCount = 0;
+  let total = 0;
+  for (const v of Object.values(findings)) {
+    total++;
+    if (v === "YES") yesCount++;
+    else if (v === "NO") noCount++;
+  }
+  return { yesCount, noCount, unansweredCount: total - yesCount - noCount, totalItems: total };
+}
+
+// ── Label maps ────────────────────────────────────────────────────────────────
+
+export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  main_bathroom: "Main Bathroom",
+  ensuite: "Ensuite",
+  guest_bathroom: "Guest Bathroom",
+  other: "Other",
+};
+
+export const WORK_AREA_LABELS: Record<WorkAreaType, string> = {
+  shower: "Shower",
+  bathroom_floor: "Bathroom Floor",
+  bath: "Bath",
+  vanity: "Vanity",
+  other: "Other",
+};
+
+export const SHOWER_SIZE_LABELS: Record<ShowerSizeType, string> = {
+  single: "Single",
+  double: "Double",
+  custom_extended: "Custom / Extended",
+};
+
+export const WORK_CONFIG_LABELS: Record<WorkConfigType, string> = {
+  walls_and_tiled_floor: "Walls and Tiled Floor",
+  walls_to_pan: "Walls to Pan / Tray",
+  walls_to_bath: "Walls to Bath",
+  walls_only: "Walls Only",
+  shower_floor_only: "Shower Floor Only",
+};
+
+export const WALL_HEIGHT_LABELS: Record<WallHeightType, string> = {
+  shower_screen_height: "Shower-Screen Height",
+  to_ceiling: "To Ceiling",
+  custom_section: "Custom Section",
+};
+
+export const ISSUE_LABELS: Record<IssueType, string> = {
+  cracked_missing_grout: "Cracked / Missing Grout",
+  deteriorated_missing_silicone: "Deteriorated / Missing Silicone",
+  mould_staining: "Mould / Staining",
+  cracked_chipped_tiles: "Cracked / Chipped Tiles",
+  loose_drummy_tiles: "Loose / Drummy Tiles",
+  visible_water_damage: "Visible Water Damage",
+  other: "Other",
+};
+
+export const RECOMMENDED_WORK_LABELS: Record<RecommendedWorkType, string> = {
+  regrout: "Regrout Selected Area",
+  replace_silicone: "Replace Silicone",
+  tile_repair: "Tile Repair / Replacement",
+  additional_caulking: "Additional Caulking",
+  other_work: "Other Work",
+  further_investigation: "Further Investigation",
+};
+
+export const GROUT_TYPE_LABELS: Record<GroutType, string> = {
+  polymer: "Polymer",
+  epoxy: "Epoxy",
+  quote_both: "Quote Both Separately",
+  to_confirm: "To Confirm",
+};
+
+export const PARKING_TYPE_LABELS: Record<ParkingType, string> = {
+  client_allocated: "Client Allocated Space",
+  driveway_onsite: "Driveway / Onsite",
+  visitor_parking: "Visitor Parking",
+  free_street: "Free Street Parking",
+  paid_street: "Paid Street Parking",
+  paid_car_park: "Paid Car Park",
+  building_basement: "Building / Basement Parking",
+  loading_dropoff: "Loading / Drop-Off Only",
+  no_suitable: "No Suitable Parking",
+  to_be_confirmed: "To Be Confirmed",
+  other: "Other",
+};
+
+export const PARKING_RESTRICTION_LABELS: Record<ParkingRestrictionType, string> = {
+  none_known: "None Known",
+  time_limit: "Time Limit",
+  permit_required: "Permit / Booking Required",
+  building_approval: "Building Approval",
+  gate_concierge: "Gate / Remote / Concierge Access",
+  height_restriction: "Height / Vehicle-Size Restriction",
+  long_walk: "Long Walk / Difficult Unloading",
+};
+
+export const COST_ARRANGEMENT_LABELS: Record<CostArrangementType, string> = {
+  included_in_quote: "Included in Quote",
+  charged_separately: "Charged Separately",
+  client_pays_directly: "Client Pays Directly",
+  to_be_confirmed: "To Be Confirmed",
+};

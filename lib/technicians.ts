@@ -13,6 +13,8 @@ export interface TechnicianDoc {
   email: string;
   active: boolean;
   createdAt: Date;
+  /** Working weekdays: 0=Sun, 1=Mon … 6=Sat. Undefined means all days. */
+  workDays?: number[];
 }
 
 export type TechnicianJSON = {
@@ -23,6 +25,7 @@ export type TechnicianJSON = {
   createdAt: string;
   hasLogin?: boolean;
   username?: string;
+  workDays?: number[];
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,6 +42,7 @@ export function toTechnicianJSON(doc: TechnicianDoc): TechnicianJSON {
     email: doc.email,
     active: doc.active,
     createdAt: (doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt)).toISOString(),
+    workDays: doc.workDays,
   };
 }
 
@@ -140,6 +144,33 @@ export async function getTechnician(id: string): Promise<TechnicianDoc | null> {
   } catch (err) {
     console.error("getTechnician failed:", err);
     return null;
+  }
+}
+
+export async function updateTechnician(
+  id: string,
+  updates: { workDays?: number[] | null; active?: boolean }
+): Promise<{ ok: boolean; error?: string }> {
+  if (!ObjectId.isValid(id)) return { ok: false, error: "Invalid id." };
+  const set: Partial<TechnicianDoc> = {};
+  const unset: Record<string, "">=  {};
+  if (updates.workDays === null) {
+    unset.workDays = "";
+  } else if (Array.isArray(updates.workDays)) {
+    set.workDays = updates.workDays.filter((d) => d >= 0 && d <= 6);
+  }
+  if (typeof updates.active === "boolean") set.active = updates.active;
+  try {
+    const col = await collection();
+    const op: Record<string, unknown> = {};
+    if (Object.keys(set).length > 0) op.$set = set;
+    if (Object.keys(unset).length > 0) op.$unset = unset;
+    if (Object.keys(op).length === 0) return { ok: false, error: "Nothing to update." };
+    const res = await col.updateOne({ _id: new ObjectId(id) }, op);
+    return { ok: res.matchedCount > 0 };
+  } catch (err) {
+    console.error("updateTechnician failed:", err);
+    return { ok: false, error: "Could not update technician." };
   }
 }
 
