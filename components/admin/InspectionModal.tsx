@@ -442,7 +442,7 @@ function RoomForm({
             <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/50 space-y-2">
               <div className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">If Regrouting — Grout Type</div>
               <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(GROUT_TYPE_LABELS) as const).map((g) => (
+                {(["polymer", "epoxy", "quote_both", "to_confirm"] as const).map((g) => (
                   <Chip key={g} active={room.groutType === g} disabled={readOnly}
                     onClick={() => setField("groutType", g)}>
                     {GROUT_TYPE_LABELS[g]}
@@ -564,7 +564,7 @@ function ParkingForm({
           <div>
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Parking Cost Arrangement</div>
             <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(COST_ARRANGEMENT_LABELS) as const).map((ca) => (
+              {(["included_in_quote", "charged_separately", "client_pays_directly", "to_be_confirmed"] as const).map((ca) => (
                 <Chip key={ca} active={parking.costArrangement === ca} disabled={readOnly}
                   onClick={() => onChange({ ...parking, costArrangement: ca })}>
                   {COST_ARRANGEMENT_LABELS[ca]}

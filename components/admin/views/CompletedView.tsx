@@ -18,7 +18,7 @@ import {
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { Pagination } from "@/components/admin/Pagination";
 import { formatApptDate, formatApptTimeRange } from "@/lib/scheduling";
-import { calculateInspectionSummary } from "@/lib/inspection";
+import { calculateInspectionSummaryLegacy as calculateInspectionSummary } from "@/lib/inspection";
 import type { Lead } from "@/components/admin/types";
 
 const PAGE_SIZE = 20;
