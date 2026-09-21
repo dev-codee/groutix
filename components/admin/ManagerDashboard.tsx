@@ -1369,68 +1369,106 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        {/* 4. Upcoming Slots (Today) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
-          <div>
-            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
-                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
-                  Upcoming Slots
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentView("dispatch")}
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
-              >
-                View All
-              </button>
-            </div>
+        {/* 4. Unassigned Jobs */}
+        {(() => {
+          const unassignedLeads = scopedLeads.filter((l) => {
+            if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed" || l.status === "Job Done") return false;
+            const isJobStatus = /job.booked|scheduled|job.confirmed|won|inspection.booked/i.test(l.status || "");
+            if (!isJobStatus) return false;
+            const hasAssignee = (l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned");
+            return !hasAssignee;
+          }).sort((a, b) => {
+            const da = new Date(a.inspectionAt || a.jobAt || a.received || a.createdAt || 0).getTime();
+            const db = new Date(b.inspectionAt || b.jobAt || b.received || b.createdAt || 0).getTime();
+            return da - db;
+          });
 
-            <div className="max-h-[310px] overflow-y-auto divide-y divide-slate-100 pr-0.5">
-              {todayHourlySlots.map((slot) => {
-                const isBooked = slot.leads.length > 0;
-
-                return (
-                  <div
-                    key={slot.hour}
-                    className="flex items-center justify-between py-1.5 px-1 hover:bg-slate-50/60 rounded-lg transition-colors"
-                  >
-                    <span className="text-xs font-bold text-[#001f97] tabular-nums">
-                      {slot.label}
-                    </span>
-
-                    {isBooked ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (slot.leads[0]) {
-                            setEditingLead(slot.leads[0]);
-                            setLeadModalOpen(true);
-                          }
-                        }}
-                        className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#fee2e2]/90 text-[#dc2626] border border-rose-200/70 min-w-[70px] text-center hover:bg-rose-200/80 transition-colors cursor-pointer"
-                        title={`${slot.label} Booked:\n` + slot.leads.map((l) => `• ${l.name || "Customer"} (${getSuburb(l.address) || "Melbourne"})`).join("\n")}
-                      >
-                        Booked
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setCurrentView("dispatch")}
-                        className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#dcfce7]/90 text-[#16a34a] border border-emerald-200/70 min-w-[70px] text-center hover:bg-emerald-200/80 transition-colors cursor-pointer"
-                        title={`${slot.label} Available - Click to open Dispatch`}
-                      >
-                        Available
-                      </button>
+          return (
+            <div className="bg-white rounded-2xl border border-amber-200/80 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
+              <div>
+                <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                    <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                      Unassigned Jobs
+                    </h2>
+                    {unassignedLeads.length > 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0">
+                        {unassignedLeads.length}
+                      </span>
                     )}
                   </div>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Won", "Inspection Booked"])}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                  >
+                    View All
+                  </button>
+                </div>
+
+                <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
+                  {unassignedLeads.length === 0 && (
+                    <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                      All jobs are assigned
+                    </div>
+                  )}
+                  {unassignedLeads.map((l) => {
+                    const isInsp = isInspLead(l);
+                    const apptDateStr = l.inspectionAt || l.jobAt;
+                    const suburb = getSuburb(l.address) || l.city || "";
+                    const timeLabel = apptDateStr
+                      ? `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
+                      : "No date set";
+                    const mapsUrl = l.address
+                      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`
+                      : null;
+                    const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200";
+                    const typeLabel = isInsp ? "Inspection" : "Job";
+
+                    return (
+                      <div
+                        key={l.id}
+                        className="p-2 rounded-xl border border-amber-100 bg-amber-50/40 hover:bg-amber-50 transition-colors shadow-2xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-1 text-[10px]">
+                          <span className="font-extrabold text-amber-700 tabular-nums truncate">{timeLabel}</span>
+                          <span className={`px-1.5 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>{typeLabel}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            type="button"
+                            onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
+                            className="font-bold text-xs text-slate-900 truncate text-left hover:text-blue-700 cursor-pointer"
+                            title={`Open lead #${l.jobNo || l.id}`}
+                          >
+                            #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
+                          </button>
+                          {mapsUrl && (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-[9px] font-bold text-blue-600 hover:bg-blue-100 transition-colors shrink-0"
+                              title={`Map: ${l.address}`}
+                            >
+                              <MapPin className="w-2.5 h-2.5" />
+                              Map
+                            </a>
+                          )}
+                        </div>
+                        {suburb && (
+                          <div className="text-[10px] text-slate-500 font-medium truncate">{suburb}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* 5. Tech Status (Technician & Inspector Status) */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
