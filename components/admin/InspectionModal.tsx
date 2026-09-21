@@ -936,10 +936,17 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                         <Trash2 className="w-3.5 h-3.5" /> Remove Room
                       </button>
                     )}
-                    <button type="button" onClick={() => setView("parking")}
-                      className="ml-auto flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer">
-                      Parking <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+                    {activeRoomIdx < rooms.length - 1 ? (
+                      <button type="button" onClick={() => setActiveRoomIdx(activeRoomIdx + 1)}
+                        className="ml-auto flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer">
+                        Next Room <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => setView("parking")}
+                        className="ml-auto flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer">
+                        Parking <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                   <p className="text-[10px] text-slate-400 mt-2">Review all rooms, photos and proposed works, then continue to parking and final review.</p>
                 </div>

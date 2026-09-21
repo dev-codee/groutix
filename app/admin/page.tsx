@@ -43,6 +43,7 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   Clock,
   ArrowRight,
@@ -195,6 +196,29 @@ export default function CrmDashboardPage() {
       setCurrentView(ROLE_DEFAULT_VIEW[role] as DashboardView);
     }
   }, [role, currentView]);
+
+  // URL-synced navigation: updates the address bar when switching views so the
+  // browser back/forward buttons work and the URL is shareable/bookmarkable.
+  const navigateTo = useCallback((view: DashboardView) => {
+    setCurrentView(view);
+    if (typeof window !== "undefined") {
+      const defaultView = ROLE_DEFAULT_VIEW[role] as DashboardView;
+      const url = view === defaultView ? basePath : `${basePath}?view=${view}`;
+      window.history.pushState({ view }, "", url);
+    }
+  }, [role, basePath]);
+
+  // Sync view from URL when the user presses the browser back/forward buttons.
+  useEffect(() => {
+    const handler = () => {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get("view");
+      const target = (v && roleCanView(role, v)) ? v as DashboardView : ROLE_DEFAULT_VIEW[role] as DashboardView;
+      setCurrentView(target);
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, [role]);
 
   // Deep linking: support ?viewAsRole=field&viewAsName=John or ?view=team from Staff Accounts
   useEffect(() => {
@@ -3135,9 +3159,9 @@ export default function CrmDashboardPage() {
       setGlobalSearch("");
       setOnlyUnread(false);
       setStatusFilter(statuses.join("|"));
-      setCurrentView("leads");
+      navigateTo("leads");
     },
-    []
+    [navigateTo]
   );
 
   // Open the "inbox": the leads table filtered to conversations that have an
@@ -3147,7 +3171,7 @@ export default function CrmDashboardPage() {
     setGlobalSearch("");
     setStatusFilter("");
     setOnlyUnread(true);
-    setCurrentView("leads");
+    navigateTo("leads");
     if (
       typeof window !== "undefined" &&
       "Notification" in window &&
@@ -3155,7 +3179,7 @@ export default function CrmDashboardPage() {
     ) {
       Notification.requestPermission().catch(() => { });
     }
-  }, []);
+  }, [navigateTo]);
 
   // Start a brand-new lead from anywhere (hero button, etc.).
   const startNewLead = useCallback(() => {
@@ -3190,7 +3214,7 @@ export default function CrmDashboardPage() {
     // Assignee helpers
     rowAssigneeOptions, isTechnicianName,
     // Navigation
-    setCurrentView, openLeadsFiltered, openInbox, startNewLead,
+    setCurrentView: navigateTo, openLeadsFiltered, openInbox, startNewLead,
     // Manager dashboard extras
     staffLocations, leads, loading, filteredLeads,
     // Shared view state
@@ -3203,7 +3227,7 @@ export default function CrmDashboardPage() {
       {canSee("dashboard") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("dashboard"); onItemClick?.(); }}
+          onClick={() => { navigateTo("dashboard"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "dashboard"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3219,7 +3243,7 @@ export default function CrmDashboardPage() {
       {canSee("leads") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("leads"); onItemClick?.(); }}
+          onClick={() => { navigateTo("leads"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "leads"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3241,7 +3265,7 @@ export default function CrmDashboardPage() {
       {canSee("quotes") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("quotes"); onItemClick?.(); }}
+          onClick={() => { navigateTo("quotes"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "quotes"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3263,7 +3287,7 @@ export default function CrmDashboardPage() {
       {canSee("jobs") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("jobs"); onItemClick?.(); }}
+          onClick={() => { navigateTo("jobs"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "jobs"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3301,7 +3325,7 @@ export default function CrmDashboardPage() {
       {canSee("completed") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("completed"); onItemClick?.(); }}
+          onClick={() => { navigateTo("completed"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "completed"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3323,7 +3347,7 @@ export default function CrmDashboardPage() {
       {canSee("dispatch") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("dispatch"); onItemClick?.(); }}
+          onClick={() => { navigateTo("dispatch"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "dispatch"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3346,7 +3370,7 @@ export default function CrmDashboardPage() {
       {canSee("schedule") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("schedule"); onItemClick?.(); }}
+          onClick={() => { navigateTo("schedule"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "schedule"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3362,7 +3386,7 @@ export default function CrmDashboardPage() {
       {canSee("customers") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("customers"); onItemClick?.(); }}
+          onClick={() => { navigateTo("customers"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "customers"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3378,7 +3402,7 @@ export default function CrmDashboardPage() {
       {canSee("team") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("team"); onItemClick?.(); }}
+          onClick={() => { navigateTo("team"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "team"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3399,7 +3423,7 @@ export default function CrmDashboardPage() {
       {canSee("analytics") && (
         <button
           type="button"
-          onClick={() => { setCurrentView("analytics"); onItemClick?.(); }}
+          onClick={() => { navigateTo("analytics"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "analytics"
               ? "bg-blue-600 text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
@@ -3537,6 +3561,16 @@ export default function CrmDashboardPage() {
             >
               <Menu className="w-4 h-4" />
             </button>
+            {currentView !== (ROLE_DEFAULT_VIEW[role] as DashboardView) && (
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="p-1.5 rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-2xs cursor-pointer shrink-0 transition-colors"
+                title="Go back"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
             <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
               {currentView === "dashboard"
                 ? "Manager Dashboard"

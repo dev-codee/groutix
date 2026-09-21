@@ -85,6 +85,8 @@ export function ManagerDashboard() {
   } = useAdminPageCtx();
 
   const ribbonRef = useRef<HTMLDivElement>(null);
+  const activityScrollRef = useRef<HTMLDivElement>(null);
+  const activityPausedRef = useRef(false);
   const [statsPeriod, setStatsPeriod] = useState("This Month");
   const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
@@ -127,24 +129,18 @@ export function ManagerDashboard() {
     );
   }, [scopedLeads, searchQuery]);
 
-  // 1. DYNAMIC TODAY'S SCHEDULE FROM REAL BACKEND LEADS
+  // 1. TODAY & TOMORROW SCHEDULE — only jobs/inspections with a scheduled date
   const todayLeadsList = useMemo(() => {
-    const list = matchedLeads
+    return matchedLeads
       .filter((l) => {
+        if (l.status === "Lost" || l.status === "Cancelled") return false;
         const d = l.inspectionAt || l.jobAt;
-        return d && _dayKey(d) === _todayStr;
+        if (!d) return false;
+        const dk = _dayKey(d);
+        return dk === _todayStr || dk === _tomStr;
       })
       .sort((a, b) => _apptMs(a) - _apptMs(b));
-
-    // If fewer than 6 scheduled for today, include earliest upcoming scheduled leads
-    if (list.length < 6) {
-      const upcoming = matchedLeads
-        .filter((l) => (l.inspectionAt || l.jobAt) && !list.some((existing) => existing.id === l.id))
-        .sort((a, b) => _apptMs(a) - _apptMs(b));
-      return [...list, ...upcoming].slice(0, 6);
-    }
-    return list.slice(0, 6);
-  }, [matchedLeads, _todayStr]);
+  }, [matchedLeads, _todayStr, _tomStr]);
 
   // Dynamic operational slots for Today (9:00 AM – 5:00 PM)
   const todayHourlySlots = useMemo(() => {
@@ -166,7 +162,8 @@ export function ManagerDashboard() {
       return d && _dayKey(d) === _todayStr;
     });
 
-    const activePool = leadsPool.length >= 2 ? leadsPool : todayLeadsList;
+    const todayOnly = todayLeadsList.filter((l) => _dayKey(l.inspectionAt || l.jobAt) === _todayStr);
+    const activePool = leadsPool.length >= 2 ? leadsPool : todayOnly;
 
     return hours.map((h) => {
       const matched = activePool.filter((l) => {
@@ -233,47 +230,92 @@ export function ManagerDashboard() {
 
   // 3. DYNAMIC RECENT ACTIVITY LOG FROM REAL LEADS
   const recentActivityLogs = useMemo(() => {
-    const sorted = [...scopedLeads].sort((a, b) => {
-      const ta = new Date(a.quoteUpdated || a.received || a.createdAt || 0).getTime();
-      const tb = new Date(b.quoteUpdated || b.received || b.createdAt || 0).getTime();
-      return tb - ta;
-    });
+    const cutoff = new Date(_now);
+    cutoff.setDate(cutoff.getDate() - 2);
+    cutoff.setHours(0, 0, 0, 0);
+    const cutoffMs = cutoff.getTime();
 
-    return sorted.slice(0, 5).map((l) => {
-      const isInsp = isInspLead(l);
-      const isPaid = /payment|paid/i.test(l.status || "");
-      const isQuote = /quote/i.test(l.status || "");
+    return [...scopedLeads]
+      .filter((l) => {
+        const ts = new Date(l.quoteUpdated || l.received || l.createdAt || 0).getTime();
+        return ts >= cutoffMs;
+      })
+      .sort((a, b) => {
+        const ta = new Date(a.quoteUpdated || a.received || a.createdAt || 0).getTime();
+        const tb = new Date(b.quoteUpdated || b.received || b.createdAt || 0).getTime();
+        return tb - ta;
+      })
+      .map((l) => {
+        const isInsp = isInspLead(l);
+        const isPaid = /payment|paid/i.test(l.status || "");
+        const isQuote = /quote/i.test(l.status || "");
+        const isCompleted = l.status === "Completed" || l.status === "Job Done";
+        const isBooked = /job.booked|scheduled|job.confirmed/i.test(l.status || "");
+        const isEnRoute = /en.route|on.the.way/i.test(l.status || "");
+        const isStarted = /started|in.progress|arrived/i.test(l.status || "");
+        const isCancelled = /lost|cancelled/i.test(l.status || "");
 
-      let icon = <UserPlus className="w-3.5 h-3.5 text-white" />;
-      let iconBg = "bg-blue-500";
-      let title = "New lead received";
+        let icon = <UserPlus className="w-3.5 h-3.5 text-white" />;
+        let iconBg = "bg-blue-500";
+        let title = "New lead received";
 
-      if (isPaid) {
-        icon = <DollarSign className="w-3.5 h-3.5 text-white" />;
-        iconBg = "bg-teal-600";
-        title = "Payment received";
-      } else if (l.status === "Completed" || l.status === "Job Done") {
-        icon = <CheckCircle2 className="w-3.5 h-3.5 text-white" />;
-        iconBg = "bg-emerald-700";
-        title = "Job completed";
-      } else if (isQuote) {
-        icon = <FileText className="w-3.5 h-3.5 text-white" />;
-        iconBg = "bg-emerald-600";
-        title = "Quote sent";
-      } else if (isInsp) {
-        icon = <CalendarDays className="w-3.5 h-3.5 text-white" />;
-        iconBg = "bg-rose-500";
-        title = "Inspection booked";
-      }
+        if (isPaid) {
+          icon = <DollarSign className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-teal-600";
+          title = "Payment received";
+        } else if (isCompleted) {
+          icon = <CheckCircle2 className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-emerald-700";
+          title = "Job completed";
+        } else if (isStarted) {
+          icon = <Wrench className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-indigo-500";
+          title = "Job in progress";
+        } else if (isEnRoute) {
+          icon = <Truck className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-sky-500";
+          title = "Technician en route";
+        } else if (isBooked) {
+          icon = <Briefcase className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-violet-500";
+          title = "Job booked";
+        } else if (isQuote) {
+          icon = <FileText className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-emerald-600";
+          title = "Quote sent";
+        } else if (isInsp) {
+          icon = <CalendarDays className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-rose-500";
+          title = "Inspection booked";
+        } else if (isCancelled) {
+          icon = <XCircle className="w-3.5 h-3.5 text-white" />;
+          iconBg = "bg-slate-400";
+          title = l.status === "Lost" ? "Lead lost" : "Lead cancelled";
+        }
 
-      const jobNoStr = l.jobNo ? `#${l.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${l.id.slice(0, 4)}`;
-      const suburb = getSuburb(l.address) || l.city || "";
-      const detail = `${jobNoStr} - ${l.name || "Customer"}${suburb ? ` (${suburb})` : ""}`;
-      const time = fmtDateOnly(l.quoteUpdated || l.received || l.createdAt);
+        const jobNoStr = l.jobNo ? `#${l.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${l.id.slice(0, 4)}`;
+        const suburb = getSuburb(l.address) || l.city || "";
+        const detail = `${jobNoStr} - ${l.name || "Customer"}${suburb ? ` (${suburb})` : ""}`;
+        const time = fmtDateOnly(l.quoteUpdated || l.received || l.createdAt);
 
-      return { lead: l, icon, iconBg, title, detail, time };
-    });
+        return { lead: l, icon, iconBg, title, detail, time };
+      });
   }, [scopedLeads]);
+
+  // Auto-scroll the Recent Activity list; pauses on hover.
+  useEffect(() => {
+    const el = activityScrollRef.current;
+    if (!el || recentActivityLogs.length === 0) return;
+    const id = setInterval(() => {
+      if (activityPausedRef.current) return;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+        el.scrollTop = 0;
+      } else {
+        el.scrollTop += 1;
+      }
+    }, 35);
+    return () => clearInterval(id);
+  }, [recentActivityLogs]);
 
   // 4. DYNAMIC 6-DAY WORKING ROSTER GRID FOR ALL FIELD TEAM MEMBERS (EXCLUDING SUNDAYS)
   const rosterDays = useMemo(() => {
@@ -1082,7 +1124,7 @@ export function ManagerDashboard() {
               <div className="flex items-center gap-1.5 min-w-0">
                 <CalendarDays className="w-4 h-4 text-blue-600 shrink-0" />
                 <h2 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                  Today's Schedule
+                  Today &amp; Tomorrow
                 </h2>
               </div>
               <button
@@ -1097,55 +1139,62 @@ export function ManagerDashboard() {
             <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
               {todayLeadsList.length === 0 && (
                 <div className="py-12 text-center text-slate-400 text-xs font-medium">
-                  No jobs scheduled today
+                  No jobs or inspections scheduled today or tomorrow
                 </div>
               )}
-              {todayLeadsList.map((l) => {
-                const isInsp = isInspLead(l);
-                const apptDateStr = l.inspectionAt || l.jobAt;
-                const isToday = apptDateStr && _dayKey(apptDateStr) === _todayStr;
-                const suburb = getSuburb(l.address) || l.city || "Melbourne";
-                const timeStr = isInsp
-                  ? formatInspectionWindow(apptDateStr, suburb)
-                  : (formatApptTime(apptDateStr) || "Scheduled");
-                const displayTime = isToday ? timeStr : `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${timeStr}`;
-                const techName = isInsp
-                  ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
-                  : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
-                const isWorking = /in.progress|started|arrived/i.test(l.status || "");
-                const typeLabel = isInsp ? "Inspection" : "Job";
-                const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-
+              {(() => {
+                const todayItems = todayLeadsList.filter((l) => _dayKey(l.inspectionAt || l.jobAt) === _todayStr);
+                const tomItems = todayLeadsList.filter((l) => _dayKey(l.inspectionAt || l.jobAt) === _tomStr);
+                const renderCard = (l: Lead) => {
+                  const isInsp = isInspLead(l);
+                  const apptDateStr = l.inspectionAt || l.jobAt;
+                  const suburb = getSuburb(l.address) || l.city || "Melbourne";
+                  const timeStr = isInsp
+                    ? formatInspectionWindow(apptDateStr, suburb)
+                    : (formatApptTime(apptDateStr) || "Scheduled");
+                  const techName = isInsp
+                    ? (l.inspectorId || (inspectionStaff.some((s) => s.name?.toLowerCase() === l.assigned?.toLowerCase() || s.username?.toLowerCase() === l.assigned?.toLowerCase()) ? l.assigned : "") || (l.inspectionReport?.inspectorName && !/^(?:inspector|field inspector)$/i.test(l.inspectionReport.inspectorName) ? l.inspectionReport.inspectorName : "") || "None")
+                    : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
+                  const typeLabel = isInsp ? "Inspection" : "Job";
+                  const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
+                      className="p-2 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-blue-50/50 transition-colors cursor-pointer shadow-2xs space-y-1 text-left"
+                      title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
+                    >
+                      <div className="flex items-center justify-between gap-1 text-[10px]">
+                        <span className="font-extrabold text-blue-700 tabular-nums truncate">{timeStr}</span>
+                        <span className={`px-1.5 py-0.2 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>{typeLabel}</span>
+                      </div>
+                      <div className="font-bold text-xs text-slate-900 truncate">
+                        #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
+                      </div>
+                      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 pt-0.5 border-t border-slate-200/40 font-medium">
+                        <span className="truncate">{suburb}</span>
+                        <span className="text-slate-600 font-semibold truncate shrink-0 max-w-[80px]">{techName}</span>
+                      </div>
+                    </div>
+                  );
+                };
                 return (
-                  <div
-                    key={l.id}
-                    onClick={() => {
-                      setEditingLead(l);
-                      setLeadModalOpen(true);
-                    }}
-                    className="p-2 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-blue-50/50 transition-colors cursor-pointer shadow-2xs space-y-1 text-left"
-                    title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
-                  >
-                    <div className="flex items-center justify-between gap-1 text-[10px]">
-                      <span className="font-extrabold text-blue-700 tabular-nums truncate">
-                        {displayTime}
-                      </span>
-                      <span className={`px-1.5 py-0.2 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>
-                        {typeLabel}
-                      </span>
-                    </div>
-                    <div className="font-bold text-xs text-slate-900 truncate">
-                      #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
-                    </div>
-                    <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 pt-0.5 border-t border-slate-200/40 font-medium">
-                      <span className="truncate">{suburb}</span>
-                      <span className="text-slate-600 font-semibold truncate shrink-0 max-w-[80px]">
-                        {techName}
-                      </span>
-                    </div>
-                  </div>
+                  <>
+                    {todayItems.length > 0 && (
+                      <>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-0.5 pt-0.5">Today</div>
+                        {todayItems.map(renderCard)}
+                      </>
+                    )}
+                    {tomItems.length > 0 && (
+                      <>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-0.5 pt-1">Tomorrow</div>
+                        {tomItems.map(renderCard)}
+                      </>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           </div>
         </div>
@@ -1169,10 +1218,15 @@ export function ManagerDashboard() {
               </button>
             </div>
 
-            <div className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5">
+            <div
+              ref={activityScrollRef}
+              onMouseEnter={() => { activityPausedRef.current = true; }}
+              onMouseLeave={() => { activityPausedRef.current = false; }}
+              className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5 scroll-smooth"
+            >
               {recentActivityLogs.length === 0 && (
                 <div className="py-12 text-center text-slate-400 text-xs font-medium">
-                  No recent activity recorded
+                  No activity in the last 3 days
                 </div>
               )}
               {recentActivityLogs.map((act, idx) => (
