@@ -22,7 +22,7 @@ interface Props {
   onClose: () => void;
   onAddPhotos: (files: FileList | null) => void;
   onDeletePhoto: (index: number) => void;
-  onPreviewPhoto: (photo: { name: string; url: string }) => void;
+  onPreviewPhoto: (photos: { name: string; url: string }[], index: number) => void;
 }
 
 export function PhotosModal({
@@ -106,6 +106,9 @@ export function PhotosModal({
             {(lead.photos || []).map((photo, i) => {
               const imgSrc = photo.secureUrl || photo.url || photo.dataUrl || "";
               const isDeleting = deletingPhotoIndex === i;
+              const allPhotoList = (lead.photos || [])
+                .map((p) => ({ name: p.name, url: p.secureUrl || p.url || p.dataUrl || "" }))
+                .filter((p) => p.url);
               return (
                 <div
                   key={i}
@@ -113,7 +116,7 @@ export function PhotosModal({
                 >
                   <div
                     className="relative w-full h-36 bg-slate-200 rounded-lg overflow-hidden cursor-pointer"
-                    onClick={() => imgSrc && onPreviewPhoto({ url: imgSrc, name: photo.name })}
+                    onClick={() => imgSrc && onPreviewPhoto(allPhotoList, allPhotoList.findIndex((p) => p.url === imgSrc))}
                   >
                     {imgSrc ? (
                       // eslint-disable-next-line @next/next/no-img-element

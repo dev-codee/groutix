@@ -623,75 +623,67 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
       {/* ── 3. WEEKLY DISPATCH CALENDAR (FULL WIDTH) ────────────────────────── */}
       <div className="w-full bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-x-auto flex flex-col">
-        <div className="min-w-[840px] w-full">
-            {/* Header Column Titles: Time + 6 Days */}
-            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/90 text-center divide-x divide-slate-200 text-xs">
-              {/* Column 0: Time Label */}
-              <div className="py-1 px-1.5 font-extrabold text-[11px] text-blue-900 flex items-center justify-center bg-slate-100/70">
-                <span>Time <span className="text-[9px] font-normal text-slate-500">(9-5)</span></span>
+        <div style={{ minWidth: `${160 + activeTimeSlots.length * 100}px` }}>
+
+          {/* Header Row: Day-label col + one col per time slot */}
+          <div
+            className="border-b border-slate-200 bg-slate-50/90 divide-x divide-slate-200 text-xs"
+            style={{ display: "grid", gridTemplateColumns: `160px repeat(${activeTimeSlots.length}, minmax(0, 1fr))` }}
+          >
+            <div className="py-1 px-2 font-extrabold text-[11px] text-blue-900 flex items-center justify-center bg-slate-100/70 gap-1">
+              <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
+              <span>Day</span>
+            </div>
+            {activeTimeSlots.map((slot) => (
+              <div key={slot} className="py-1 px-1 font-extrabold text-[10px] text-blue-900 flex items-center justify-center text-center">
+                {slot}
               </div>
+            ))}
+          </div>
 
-              {/* Columns 1-6: Day & Staff Cards */}
-              {weekDays.map((day) => {
-                const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
+          {/* Body: one row per day, cells per time slot */}
+          <div className="divide-y divide-slate-100 bg-white">
+            {weekDays.map((day) => {
+              const allDayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
 
-                return (
-                  <div
-                    key={day.dateStr}
-                    className="py-1 px-2 flex items-center justify-between bg-white text-left"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-extrabold text-blue-950 truncate">
-                        {day.dayName}, {day.formattedDate.replace(/ \d{4}$/, "")}
-                      </div>
-                      <div className="text-[9px] text-slate-500 font-medium">({day.hoursLabel.replace(/ – /g, "-")})</div>
+              return (
+                <div
+                  key={day.dateStr}
+                  className="divide-x divide-slate-200 hover:bg-slate-50/20 transition-colors"
+                  style={{ display: "grid", gridTemplateColumns: `160px repeat(${activeTimeSlots.length}, minmax(0, 1fr))` }}
+                >
+                  {/* Col 0: Day label */}
+                  <div className="px-2 py-1.5 bg-slate-50/70 flex flex-col justify-center gap-0.5 select-none min-h-[42px]">
+                    <div className="text-[11px] font-extrabold text-blue-950 truncate">
+                      {day.dayName}, {day.formattedDate.replace(/ \d{4}$/, "")}
                     </div>
-
-                    {/* Filtered Staff or Booking Count Badge */}
+                    <div className="text-[9px] text-slate-500 font-medium">{day.hoursLabel.replace(/ – /g, "–")}</div>
                     {techFilter !== "all" ? (
-                      <div className="bg-blue-50/80 border border-blue-200/90 rounded px-1.5 py-0.5 flex items-center gap-1 text-left shrink-0">
-                        <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-black shrink-0">
+                      <div className="mt-0.5 bg-blue-50/80 border border-blue-200/90 rounded px-1 py-0.5 flex items-center gap-1 w-fit">
+                        <div className="w-3.5 h-3.5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[8px] font-black shrink-0">
                           {getInitials(techFilter).text}
                         </div>
-                        <div className="text-[10px] font-extrabold text-blue-950 truncate">
-                          {techFilter}
-                        </div>
+                        <div className="text-[9px] font-extrabold text-blue-950 truncate">{techFilter}</div>
                       </div>
                     ) : (
-                      <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                        dayAppts.length > 0 ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-500"
+                      <span className={`mt-0.5 w-fit text-[9px] font-black px-1.5 py-0.5 rounded ${
+                        allDayAppts.length > 0 ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-500"
                       }`}>
-                        {dayAppts.length} {dayAppts.length === 1 ? "bk" : "bks"}
+                        {allDayAppts.length} {allDayAppts.length === 1 ? "bk" : "bks"}
                       </span>
                     )}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Main Weekly Body: Slot-by-Slot Grid with Guaranteed Time Alignment */}
-            <div className="divide-y divide-slate-100 bg-white">
-              {activeTimeSlots.map((slot) => (
-                <div
-                  key={slot}
-                  className="grid grid-cols-7 divide-x divide-slate-200 hover:bg-slate-50/20 transition-colors min-h-[38px]"
-                >
-                  {/* Column 0: Time Slot Label */}
-                  <div className="px-1 py-1 bg-slate-50/70 text-[10px] font-extrabold text-blue-900 flex items-center justify-center select-none border-b border-slate-100">
-                    {slot}
-                  </div>
-
-                  {/* Columns 1 to 6: Day Appointments for this exact Time Slot */}
-                  {weekDays.map((day) => {
-                    const allDayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
+                  {/* Cols 1-N: one cell per time slot */}
+                  {activeTimeSlots.map((slot) => {
                     const slotAppts = allDayAppts.filter(
                       (item) => getSlotKeyFromTime(item.time, slotDensity) === slot
                     );
 
                     return (
                       <div
-                        key={day.dateStr}
-                        className="p-0.5 px-1 flex flex-col justify-center gap-1 border-b border-slate-100 relative group/cell"
+                        key={slot}
+                        className="p-0.5 px-1 flex flex-col justify-center gap-1 min-h-[42px] relative group/cell"
                       >
                         {slotAppts.map((item) => {
                           const area = resolveArea(item.lead.address || item.lead.city);
@@ -707,9 +699,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               )
                             : calculateTravel("Tullamarine", area.suburb);
 
-                          // Inspection will take approx 40 min + traveling time one way * 2 (not shown separately)
                           const oneWayTravelMins = travelFromPrev.durationMinutes;
-                          const totalDurationMins = isInspection ? (40 + (oneWayTravelMins * 2)) : 120;
+                          const totalDurationMins = isInspection ? (40 + oneWayTravelMins * 2) : 120;
                           const scheduleWindow = formatScheduleWindow(item.time, totalDurationMins);
                           const startTimeOnly = scheduleWindow.start.replace(/ (AM|PM)/, "");
 
@@ -729,30 +720,21 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               }`}
                               title={`Lead ${cleanJobNo} • ${custName} (${scheduleWindow.range})\nSuburb: ${suburbName} • Staff: ${techName} • Type: ${isInspection ? "Inspection" : "Job"}`}
                             >
-                              {/* Line 1: Time, Clean Job No & Duration Badge */}
                               <div className="flex items-center justify-between gap-1">
-                                <div className="flex items-center gap-1 font-black text-[8.5px] text-blue-950 truncate">
-                                  <Clock className="w-2.5 h-2.5 text-blue-600 shrink-0 inline" />
+                                <div className="flex items-center gap-1 font-black text-[8.5px] truncate">
+                                  <Clock className="w-2.5 h-2.5 text-blue-600 shrink-0" />
                                   <span className="text-blue-700 font-bold">{startTimeOnly}</span>
                                   <span className="text-slate-900 font-extrabold">{cleanJobNo}</span>
                                 </div>
-                                <span
-                                  className={`text-[7.5px] px-1 py-0.2 rounded font-black shrink-0 ${
-                                    isInspection
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-emerald-100 text-emerald-800"
-                                  }`}
-                                >
+                                <span className={`text-[7.5px] px-1 rounded font-black shrink-0 ${
+                                  isInspection ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"
+                                }`}>
                                   {scheduleWindow.durationLabel}
                                 </span>
                               </div>
-
-                              {/* Line 2: Customer Name */}
                               <div className="text-[8px] font-extrabold text-slate-900 truncate mt-0.5">
                                 {custName}
                               </div>
-
-                              {/* Line 3: Suburb, Staff & Type */}
                               <div className="text-[7.5px] text-slate-500 font-medium truncate flex items-center justify-between gap-1 mt-0.5 pt-0.5 border-t border-black/5">
                                 <span className="font-bold text-slate-700 truncate">{suburbName}</span>
                                 <span className={techName === "Unassigned" ? "italic text-slate-400 shrink-0" : "text-slate-600 font-semibold shrink-0"}>
@@ -766,49 +748,55 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                     );
                   })}
                 </div>
-              ))}
-            </div>
-
-            {/* Bottom Summary Footer Row dynamically calculated for each day */}
-            <div className="grid grid-cols-7 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50 px-1 py-1 text-center text-[9.5px] font-bold text-slate-700">
-              <div className="p-0.5 text-slate-400 flex items-center justify-center">Daily Totals</div>
-              {weekDays.map((day) => {
-                const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
-                if (dayAppts.length === 0) {
-                  return (
-                    <div key={day.dateStr} className="p-0.5 text-slate-400 font-normal">
-                      0 bks · 0h
-                    </div>
-                  );
-                }
-                const inspCount = dayAppts.filter((a) => a.type === "inspection").length;
-                const jobCount = dayAppts.filter((a) => a.type === "job").length;
-                let totalMins = 0;
-                let totalKm = 0;
-                for (let i = 0; i < dayAppts.length; i++) {
-                  const cur = dayAppts[i];
-                  const curSuburb = resolveArea(cur.lead.address || cur.lead.city).suburb;
-                  const prevSuburb = i > 0 ? resolveArea(dayAppts[i - 1].lead.address || dayAppts[i - 1].lead.city).suburb : "Tullamarine";
-                  const travel = calculateTravel(prevSuburb, curSuburb);
-                  totalKm += travel.distanceKm;
-
-                  if (cur.type === "inspection") {
-                    totalMins += 40 + (travel.durationMinutes * 2);
-                  } else {
-                    totalMins += 120;
-                  }
-                }
-                const totalHours = (totalMins / 60).toFixed(1);
-                return (
-                  <div key={day.dateStr} className="p-0.5 text-slate-800 truncate">
-                    <span>{inspCount > 0 ? `${inspCount} Insp` : ""}{inspCount > 0 && jobCount > 0 ? " · " : ""}{jobCount > 0 ? `${jobCount} Job` : ""}</span>
-                    <span className="text-slate-500 font-normal ml-1">({totalHours}h · ~{Math.round(totalKm)}km)</span>
-                  </div>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
+
+          {/* Footer: daily totals — one row, day col + per-day summary spanning time cols */}
+          <div className="border-t border-slate-200 bg-slate-50 divide-y divide-slate-100 text-[9.5px] font-bold text-slate-700">
+            {weekDays.map((day) => {
+              const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
+              const inspCount = dayAppts.filter((a) => a.type === "inspection").length;
+              const jobCount = dayAppts.filter((a) => a.type === "job").length;
+              let totalMins = 0;
+              let totalKm = 0;
+              for (let i = 0; i < dayAppts.length; i++) {
+                const cur = dayAppts[i];
+                const curSuburb = resolveArea(cur.lead.address || cur.lead.city).suburb;
+                const prevSuburb = i > 0
+                  ? resolveArea(dayAppts[i - 1].lead.address || dayAppts[i - 1].lead.city).suburb
+                  : "Tullamarine";
+                const travel = calculateTravel(prevSuburb, curSuburb);
+                totalKm += travel.distanceKm;
+                totalMins += cur.type === "inspection" ? 40 + travel.durationMinutes * 2 : 120;
+              }
+              const totalHours = (totalMins / 60).toFixed(1);
+              return (
+                <div
+                  key={day.dateStr}
+                  className="divide-x divide-slate-200"
+                  style={{ display: "grid", gridTemplateColumns: `160px 1fr` }}
+                >
+                  <div className="px-2 py-0.5 text-[9px] font-extrabold text-slate-500 flex items-center">
+                    {day.dayName}
+                  </div>
+                  <div className="px-2 py-0.5 text-slate-700 truncate">
+                    {dayAppts.length === 0 ? (
+                      <span className="text-slate-400 font-normal">0 bks · 0h</span>
+                    ) : (
+                      <>
+                        <span>{inspCount > 0 ? `${inspCount} Insp` : ""}{inspCount > 0 && jobCount > 0 ? " · " : ""}{jobCount > 0 ? `${jobCount} Job` : ""}</span>
+                        <span className="text-slate-500 font-normal ml-1">({totalHours}h · ~{Math.round(totalKm)}km)</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
         </div>
+      </div>
 
       {/* ── 4. DISPATCH OPERATIONS & ROUTE DETAILS (COLLAPSIBLE DRAWER) ────────── */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">

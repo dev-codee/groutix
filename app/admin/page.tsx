@@ -366,7 +366,7 @@ export default function CrmDashboardPage() {
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [deletingPhotoIndex, setDeletingPhotoIndex] = useState<number | null>(null);
-  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; name: string } | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ photos: { url: string; name: string }[]; index: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -4605,7 +4605,7 @@ export default function CrmDashboardPage() {
           onClose={() => setPhotosModalOpen(false)}
           onAddPhotos={handleAddPhotos}
           onDeletePhoto={handleDeletePhoto}
-          onPreviewPhoto={setPreviewPhoto}
+          onPreviewPhoto={(photos, index) => setPreviewPhoto({ photos, index })}
         />
       )}
       {/* =========================================================================
@@ -4613,7 +4613,12 @@ export default function CrmDashboardPage() {
           MODAL: FULLSCREEN PHOTO LIGHTBOX PREVIEW
          ========================================================================= */}
       {previewPhoto && (
-        <PhotoLightbox photo={previewPhoto} onClose={() => setPreviewPhoto(null)} />
+        <PhotoLightbox
+          photos={previewPhoto.photos}
+          index={previewPhoto.index}
+          onClose={() => setPreviewPhoto(null)}
+          onNavigate={(i) => setPreviewPhoto((prev) => prev ? { ...prev, index: i } : null)}
+        />
       )}
 
       {/* =========================================================================
@@ -4965,7 +4970,7 @@ export default function CrmDashboardPage() {
                                     >
                                       {/* Image Thumbnail with Click-to-Zoom */}
                                       <div
-                                        onClick={() => setPreviewPhoto({ url: href, name: att.name })}
+                                        onClick={() => setPreviewPhoto({ photos: [{ url: href, name: att.name }], index: 0 })}
                                         className="relative h-28 bg-slate-900/5 cursor-pointer overflow-hidden flex items-center justify-center"
                                         title="Click to zoom photo"
                                       >
@@ -5001,7 +5006,7 @@ export default function CrmDashboardPage() {
                                         <div className="flex items-center gap-1 shrink-0">
                                           <button
                                             type="button"
-                                            onClick={() => setPreviewPhoto({ url: href, name: att.name })}
+                                            onClick={() => setPreviewPhoto({ photos: [{ url: href, name: att.name }], index: 0 })}
                                             className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
                                               isCustomer
                                                 ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
