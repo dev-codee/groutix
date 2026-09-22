@@ -869,15 +869,6 @@ export function ManagerDashboard() {
       statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Won"],
     },
     {
-      label: "Job Started",
-      count: scopedLeads.filter((l) => l.status === "Job Started" || l.status === "Job Arrived").length,
-      icon: <Users className="w-4 h-4 text-sky-600" />,
-      iconBg: "bg-sky-100",
-      cardBg: "bg-sky-50/80 border-sky-200/90 text-sky-800",
-      countColor: "text-sky-600",
-      statuses: ["Job Started", "Job Arrived"],
-    },
-    {
       label: "Job In Progress",
       count: scopedLeads.filter((l) => l.status === "Job In Progress" || l.status === "Job En Route").length,
       icon: <Wrench className="w-4 h-4 text-amber-600" />,
