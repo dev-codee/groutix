@@ -394,7 +394,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
         {/* ── TIMELINE VIEW ──────────────────────────────────────────────────── */}
         {viewMode === "timeline" && (
-          <div className="flex-1 overflow-auto bg-white min-w-0">
+          <div className="flex-1 overflow-auto bg-slate-100/60 min-w-0">
             {filteredItems.length === 0 ? (
               <div className="p-12 text-center space-y-3">
                 <Calendar className="w-10 h-10 text-slate-200 mx-auto" />
@@ -402,9 +402,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 <div className="text-xs text-slate-300">Set an inspectionAt or jobAt date on any lead to see it here.</div>
               </div>
             ) : (
-              <div style={{ minWidth: DAY_LABEL_W + TIME_SLOTS.length * SLOT_W }}>
+              <div className="bg-white shadow-sm rounded-b-xl" style={{ minWidth: DAY_LABEL_W + TIME_SLOTS.length * SLOT_W }}>
                 {/* Time header */}
-                <div className="flex sticky top-0 z-20 bg-white border-b-2 border-slate-200 shadow-sm">
+                <div className="flex sticky top-0 z-20 bg-white border-b-2 border-slate-200 shadow-sm rounded-tl-xl">
                   <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
                     className="shrink-0 px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 flex items-end">
                     DATE
@@ -459,7 +459,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                           const offsetFromGrid = Math.max(0, startMins - GRID_START);
                           const suburb = resolveArea(item.lead.address || item.lead.city).suburb || "Melbourne";
                           const travelMins = calculateTravel("Tullamarine", suburb).durationMinutes;
-                          const coreMins = item.type === "inspection" ? 40 : 120;
+                          const coreMins = item.type === "inspection" ? 30 : 120;
                           const totalMins = travelMins + coreMins + travelMins;
 
                           const leftPx = minsToPx(offsetFromGrid);
@@ -480,7 +480,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               key={`${item.lead.id}-${item.time}`}
                               type="button"
                               onClick={() => setSelectedLeadId(isSelected ? null : item.lead.id)}
-                              title={`${item.lead.name} · ${fmtTime(item.time)} – ${fmtMinutesAsTime(endMins)}\nTravel: ${travelMins}min each way · ${isInsp ? "Inspection" : "Job"}: ${coreMins}min`}
+                              title={`${item.lead.name} · ${fmtTime(item.time)} – ${fmtMinutesAsTime(endMins)} · Travel: ${travelMins}min each way · ${isInsp ? "Inspection" : "Job"}: ${coreMins}min`}
                               className="absolute cursor-pointer group focus:outline-none"
                               style={{
                                 left: leftPx,
@@ -538,17 +538,17 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 })}
 
                 {/* Legend */}
-                <div className="px-4 py-2 border-t border-slate-100 flex items-center gap-4 text-[10px] text-slate-500">
+                <div className="px-4 py-2.5 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center gap-5 text-[10px] text-slate-500">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-blue-200 border border-dashed border-blue-500 inline-block" />Travel time (each way)
+                    <span className="w-3 h-3 rounded-sm bg-blue-200 border border-dashed border-blue-500 inline-block" />Travel (each way)
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-600 inline-block" />Inspection (40 min)
+                    <span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-600 inline-block" />Inspection (30 min)
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-600 inline-block" />Job (2 hr)
                   </span>
-                  <span className="text-slate-400 ml-auto">Total block = travel ↗ + work + travel ↙</span>
+                  <span className="text-slate-400 ml-auto italic">Block = travel ↗ + work + return ↙</span>
                 </div>
               </div>
             )}
