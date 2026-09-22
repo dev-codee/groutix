@@ -2,146 +2,42 @@
 
 import { useState, useMemo, useCallback } from "react";
 import {
-  Truck,
-  Calendar,
-  Clock,
-  MapPin,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  User,
-  Coffee,
-  CheckCircle2,
-  Sparkles,
-  UserPlus,
-  XCircle,
-  Zap,
-  HelpCircle,
-  Bell,
-  Layers,
-  Compass,
+  Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
+  Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
+  MoreHorizontal, ExternalLink, Plus, Home, RefreshCw, User,
+  CheckCircle2, X,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { resolveArea, formatApptTime } from "@/lib/scheduling";
-import {
-  calculateTravel,
-  DISPATCH_WORKING_HOURS,
-  calculateDistanceBetweenSuburbs,
-  getSuburbCoords,
-} from "@/lib/dispatch";
+import { resolveArea, formatApptTimeRange } from "@/lib/scheduling";
+import { calculateTravel, DISPATCH_WORKING_HOURS } from "@/lib/dispatch";
+import { getWhatsAppLink } from "@/lib/adminHelpers";
 import type { Lead } from "@/components/admin/types";
 
-// Dynamically calculate the Monday of the current week
-function getCurrentMonday(): string {
-  const now = new Date();
-  const day = now.getDay(); // 0 = Sun, 1 = Mon ...
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  return monday.toISOString().slice(0, 10);
-}
-
-// Working hours time slots arrays (1hr for fit-to-page, 30min for detailed)
-const HOURLY_TIME_SLOTS = [
-  "9:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "1:00 PM",
-  "2:00 PM",
-  "3:00 PM",
-  "4:00 PM",
-  "5:00 PM",
-];
-
-const HALF_HOURLY_TIME_SLOTS = [
-  "9:00 AM",
-  "9:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "12:00 PM",
-  "12:30 PM",
-  "1:00 PM",
-  "1:30 PM",
-  "2:00 PM",
-  "2:30 PM",
-  "3:00 PM",
-  "3:30 PM",
-  "4:00 PM",
-  "4:30 PM",
-  "5:00 PM",
-];
-
-function getSlotKeyFromTime(timeStr?: string, density: "1hr" | "30min" = "1hr"): string {
-  if (!timeStr) return "9:00 AM";
-  const [hStr, mStr] = timeStr.split(":");
-  let h = parseInt(hStr, 10);
-  let m = parseInt(mStr || "0", 10);
-  if (isNaN(h)) return "9:00 AM";
-
-  // Clamp hour to working slots range (9 AM to 5 PM)
-  if (h < 9) h = 9;
-  if (h > 17) h = 17;
-
+function fmtTime(t: string): string {
+  const [hStr, mStr] = t.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr || "0", 10);
+  if (isNaN(h)) return t;
   const period = h >= 12 ? "PM" : "AM";
-  const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
-
-  if (density === "1hr") {
-    return `${displayH}:00 ${period}`;
-  }
-
-  // Normalize minute to nearest 30-min slot (:00 or :30)
-  const slotMin = m < 30 ? "00" : "30";
-  return `${displayH}:${slotMin} ${period}`;
+  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${dh}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-function formatScheduleWindow(timeStr?: string, durationMinutes: number = 60) {
-  if (!timeStr) return { start: "9:00 AM", end: "10:00 AM", range: "9:00 AM – 10:00 AM", durationLabel: "1h" };
-  const [hStr, mStr] = timeStr.split(":");
-  let h = parseInt(hStr, 10);
-  let m = parseInt(mStr || "0", 10);
-  if (isNaN(h)) h = 9;
-  if (isNaN(m)) m = 0;
-
-  const startTotalMins = h * 60 + m;
-  const endTotalMins = startTotalMins + durationMinutes;
-
-  const startH = Math.floor(startTotalMins / 60);
-  const startM = startTotalMins % 60;
-  const endH = Math.floor(endTotalMins / 60);
-  const endM = endTotalMins % 60;
-
-  const formatPart = (hour: number, min: number) => {
-    const period = hour >= 12 && hour < 24 ? "PM" : "AM";
-    const displayH = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-    return `${displayH}:${String(min).padStart(2, "0")} ${period}`;
-  };
-
-  const startFormatted = formatPart(startH, startM);
-  const endFormatted = formatPart(endH, endM);
-
-  const hours = Math.floor(durationMinutes / 60);
-  const mins = durationMinutes % 60;
-  const durationLabel = hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
-
-  return {
-    start: startFormatted,
-    end: endFormatted,
-    range: `${startFormatted} – ${endFormatted}`,
-    durationLabel,
-    totalMinutes: durationMinutes,
-  };
+function fmtMins(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m} min`;
+  return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
 }
 
-// Helper to get initials for staff avatar
-function getInitials(name: string, role?: string): { text: string; badge: string } {
-  const clean = (name || "Field Staff").trim();
-  const parts = clean.split(/\s+/).filter(Boolean);
-  const initials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : clean.slice(0, 2);
-  return { text: initials.toUpperCase() || "FS", badge: role || "Field Staff" };
+const ITEM_COLORS = [
+  "#EF4444", "#3B82F6", "#10B981", "#F59E0B",
+  "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16",
+];
+
+function getInitials(name: string): string {
+  const parts = (name || "FS").trim().split(/\s+/);
+  return parts.length > 1 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
 }
 
 export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void }) {
@@ -150,872 +46,632 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     assignableTechnicians,
     staff = [],
     inspectionStaff = [],
-    isTechnicianName,
     updateLeadField,
     setEditingLead,
     setLeadModalOpen,
-    openLeadsFiltered,
+    openPhotosModal,
+    openMessagesModal,
+    callCustomer,
   } = useAdminPageCtx();
 
-  // Combined field staff list (inspectors + technicians)
-  const fieldStaffList = useMemo(() => {
-    const list: { id: string; name: string }[] = [];
-    const seen = new Set<string>();
-    for (const t of assignableTechnicians) {
-      if (t.name && !seen.has(t.name.toLowerCase())) {
-        seen.add(t.name.toLowerCase());
-        list.push({ id: t.id || t.name, name: t.name });
-      }
-    }
-    for (const s of inspectionStaff) {
-      const name = s.name?.trim() || s.username;
-      if (name && !seen.has(name.toLowerCase())) {
-        seen.add(name.toLowerCase());
-        list.push({ id: s.id || name, name });
-      }
-    }
-    return list;
-  }, [assignableTechnicians, inspectionStaff]);
-
-  // Navigation & View States
-  const [currentWeekStart, setCurrentWeekStart] = useState<string>(() => getCurrentMonday());
-  const [viewMode, setViewMode] = useState<"today" | "day" | "week" | "month">("week");
-  const [slotDensity, setSlotDensity] = useState<"1hr" | "30min">("1hr");
-  const [showOperations, setShowOperations] = useState<boolean>(false);
-  const [areaFilter, setAreaFilter] = useState<string>("all");
-  const [jobTypeFilter, setJobTypeFilter] = useState<string>("all");
-  const [techFilter, setTechFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  // Active time slots based on density
-  const activeTimeSlots = slotDensity === "1hr" ? HOURLY_TIME_SLOTS : HALF_HOURLY_TIME_SLOTS;
-
-  // Quick Action notification banner
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<"all" | "leads" | "inspections" | "jobs">("inspections");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [techFilter, setTechFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  // Dynamic suburb list derived from real leads
-  const dynamicSuburbs = useMemo(() => {
-    const set = new Set<string>();
-    for (const l of scopedLeads) {
-      const area = resolveArea(l.address || l.city);
-      if (area.suburb) set.add(area.suburb);
-    }
-    const list = Array.from(set).sort();
-    if (list.length === 0) {
-      return ["Keilor", "Tullamarine", "St Albans", "Essendon", "Werribee", "Glen Waverley"];
-    }
-    return list;
-  }, [scopedLeads]);
-
-  // Map scheduled appointments from real backend leads dataset
-  const scheduledByDate = useMemo(() => {
-    const map = new Map<string, { lead: Lead; type: "inspection" | "job"; time: string; tech: string }[]>();
-
+  // Build all items for selectedDate
+  const allDateItems = useMemo(() => {
+    const items: { lead: Lead; type: "inspection" | "job"; time: string; tech: string }[] = [];
     for (const lead of scopedLeads) {
       if (lead.status === "Lost" || lead.status === "Cancelled") continue;
 
-      // Inspection schedule
-      if (lead.inspectionAt && lead.inspectionAt.includes("T")) {
-        const [d, tRaw] = lead.inspectionAt.split("T");
+      if (lead.inspectionAt && lead.inspectionAt.startsWith(selectedDate)) {
+        const tRaw = lead.inspectionAt.split("T")[1] || "09:00";
         const t = tRaw.slice(0, 5);
-        const list = map.get(d) || [];
-
-        // Check if an inspector is assigned to any person
-        let inspectorName = "None";
-        if (lead.inspectorId) {
-          const matched = staff.find((s) => s.id === lead.inspectorId || s.username === lead.inspectorId || s.name === lead.inspectorId);
-          inspectorName = matched?.name || matched?.username || lead.inspectorId;
-        } else if (lead.inspectionReport?.inspectorName && lead.inspectionReport.inspectorName.trim() && !/^(?:inspector|field inspector)$/i.test(lead.inspectionReport.inspectorName.trim())) {
-          inspectorName = lead.inspectionReport.inspectorName.trim();
-        } else if (lead.assigned && lead.assigned.trim() && lead.assigned.toLowerCase() !== "unassigned") {
-          const assignedLower = lead.assigned.trim().toLowerCase();
-          const matched = inspectionStaff.find((s) => s.name?.trim().toLowerCase() === assignedLower || (s.username && s.username.toLowerCase() === assignedLower));
-          if (matched) {
-            inspectorName = matched.name?.trim() || matched.username;
-          }
-        }
-
-        list.push({
-          lead,
-          type: "inspection",
-          time: t,
-          tech: inspectorName,
-        });
-        map.set(d, list);
+        let techName = "Unassigned";
+        if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
+        else if (lead.inspectionReport?.inspectorName) techName = lead.inspectionReport.inspectorName;
+        items.push({ lead, type: "inspection", time: t, tech: techName });
       }
 
-      // Job schedule
-      if (lead.jobAt && lead.jobAt.includes("T")) {
-        const [d, tRaw] = lead.jobAt.split("T");
+      if (lead.jobAt && lead.jobAt.startsWith(selectedDate)) {
+        const tRaw = lead.jobAt.split("T")[1] || "09:00";
         const t = tRaw.slice(0, 5);
-        const list = map.get(d) || [];
-
-        // Check if a technician is assigned to any person
-        let techName = "None";
-        if (lead.technician && lead.technician.trim() && lead.technician.toLowerCase() !== "unassigned") {
-          techName = lead.technician.trim();
-        } else if (lead.technicianId) {
-          const matched = assignableTechnicians.find((t) => t.id === lead.technicianId || t.name === lead.technicianId);
-          techName = matched?.name || lead.technicianId;
-        } else if (lead.technicianUsername) {
-          techName = lead.technicianUsername;
-        } else if (lead.assigned && lead.assigned.trim() && lead.assigned.toLowerCase() !== "unassigned") {
-          const assignedLower = lead.assigned.trim().toLowerCase();
-          const matchedTech = assignableTechnicians.find((t) => t.name?.trim().toLowerCase() === assignedLower || (t.username && t.username.toLowerCase() === assignedLower));
-          if (matchedTech) {
-            techName = matchedTech.name;
-          }
-        }
-
-        list.push({
-          lead,
-          type: "job",
-          time: t,
-          tech: techName,
-        });
-        map.set(d, list);
+        let techName = "Unassigned";
+        if (lead.technician && lead.technician.toLowerCase() !== "unassigned") techName = lead.technician;
+        else if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
+        items.push({ lead, type: "job", time: t, tech: techName });
       }
     }
+    items.sort((a, b) => a.time.localeCompare(b.time));
+    return items;
+  }, [scopedLeads, selectedDate]);
 
-    // Sort entries within each day by time asc
-    for (const [, items] of map.entries()) {
-      items.sort((a, b) => a.time.localeCompare(b.time));
-    }
+  const inspItems = useMemo(() => allDateItems.filter(i => i.type === "inspection"), [allDateItems]);
+  const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job"), [allDateItems]);
+  const leadsCount = useMemo(() => scopedLeads.filter(l => ["New", "Contacted", "Waiting for Info"].includes(l.status)).length, [scopedLeads]);
 
-    return map;
-  }, [scopedLeads, staff, inspectionStaff, assignableTechnicians]);
-
-  // Generate 6 working days for the active week (Mon -> Sat)
-  const weekDays = useMemo(() => {
-    const start = new Date(currentWeekStart + "T00:00:00");
-
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
-      const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ...
-      const rule = DISPATCH_WORKING_HOURS[dayOfWeek];
-
-      return {
-        dateStr: iso,
-        dayOfWeek,
-        dayName: d.toLocaleDateString("en-AU", { weekday: "short" }),
-        formattedDate: d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }),
-        isOpen: rule?.isOpen ?? true,
-        hoursLabel: rule?.label ?? "Closed (OFF)",
-      };
-    });
-  }, [currentWeekStart]);
-
-  // Week Navigator controls
-  const handlePrevWeek = () => {
-    const d = new Date(currentWeekStart + "T00:00:00");
-    d.setDate(d.getDate() - 7);
-    setCurrentWeekStart(d.toISOString().slice(0, 10));
-  };
-
-  const handleNextWeek = () => {
-    const d = new Date(currentWeekStart + "T00:00:00");
-    d.setDate(d.getDate() + 7);
-    setCurrentWeekStart(d.toISOString().slice(0, 10));
-  };
-
-  const formattedWeekLabel = useMemo(() => {
-    const mon = weekDays[0];
-    const sat = weekDays[5];
-    const yr = new Date(currentWeekStart + "T00:00:00").getFullYear();
-    return `${mon.dayName}, ${mon.formattedDate} – ${sat.dayName}, ${sat.formattedDate} ${yr}`;
-  }, [weekDays, currentWeekStart]);
-
-  // Filter checker
-  const isMatchFilter = useCallback(
-    (item: { lead: Lead; type: "inspection" | "job"; time: string; tech: string }) => {
-      if (jobTypeFilter !== "all" && item.type !== jobTypeFilter) return false;
-      if (techFilter !== "all" && !item.tech.toLowerCase().includes(techFilter.toLowerCase())) return false;
-      if (statusFilter !== "all") {
-        if (statusFilter === "completed" && !item.lead.status.toLowerCase().includes("done") && !item.lead.status.toLowerCase().includes("completed")) return false;
-        if (statusFilter === "booked" && (item.lead.status.toLowerCase().includes("done") || item.lead.status.toLowerCase().includes("completed"))) return false;
-      }
+  const filteredItems = useMemo(() => {
+    const base = viewTab === "inspections" ? inspItems : viewTab === "jobs" ? jobItems : allDateItems;
+    return base.filter(item => {
       if (areaFilter !== "all") {
         const area = resolveArea(item.lead.address || item.lead.city);
-        if (!area.suburb || !area.suburb.toLowerCase().includes(areaFilter.toLowerCase())) return false;
+        if (!area.suburb?.toLowerCase().includes(areaFilter.toLowerCase())) return false;
       }
+      if (statusFilter !== "all" && !item.lead.status.toLowerCase().includes(statusFilter.toLowerCase())) return false;
+      if (techFilter !== "all" && !item.tech.toLowerCase().includes(techFilter.toLowerCase())) return false;
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const text = `${item.lead.name || ""} ${item.lead.address || ""} ${item.lead.jobNo || ""} ${item.lead.phone || ""}`.toLowerCase();
-        if (!text.includes(q)) return false;
+        const q = searchQuery.toLowerCase();
+        if (!`${item.lead.name || ""} ${item.lead.address || ""} ${item.lead.jobNo || ""} ${item.lead.phone || ""}`.toLowerCase().includes(q)) return false;
       }
       return true;
-    },
-    [jobTypeFilter, techFilter, statusFilter, areaFilter, searchQuery]
-  );
-
-  // Unscheduled Jobs Queue (leads requiring booking)
-  const unscheduledLeads = useMemo(() => {
-    return scopedLeads.filter((l) => {
-      if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed" || l.status === "Job Done") return false;
-      const needsInspection = (l.status === "New" || l.status === "Contacted" || l.status === "Waiting for Info") && !l.inspectionAt;
-      const needsJob = (l.status === "Quote Accepted" || l.status === "Deposit Received" || l.status === "Ready to Start" || l.status === "Won") && !l.jobAt;
-      return needsInspection || needsJob;
     });
-  }, [scopedLeads]);
+  }, [allDateItems, inspItems, jobItems, viewTab, areaFilter, statusFilter, techFilter, searchQuery]);
 
-  // Today's Route Stops (real stops from current active day)
-  const todayRouteStops = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const targetDate = weekDays.some((w) => w.dateStr === todayStr) ? todayStr : weekDays[0]?.dateStr;
-    const dayAppts = (scheduledByDate.get(targetDate) || []).filter(isMatchFilter);
+  const selectedItem = useMemo(() => filteredItems.find(i => i.lead.id === selectedLeadId) || null, [filteredItems, selectedLeadId]);
 
-    return dayAppts.map((item, idx) => {
-      const area = resolveArea(item.lead.address || item.lead.city);
-      const isInsp = item.type === "inspection";
-      const prevAppt = idx > 0 ? dayAppts[idx - 1] : null;
-      const prevSuburb = prevAppt
-        ? resolveArea(prevAppt.lead.address || prevAppt.lead.city).suburb
-        : "Tullamarine";
-      const travel = calculateTravel(prevSuburb, area.suburb);
-      const durationMins = isInsp ? (40 + travel.durationMinutes * 2) : 120;
-      const windowInfo = formatScheduleWindow(item.time, durationMins);
-
-      return {
-        no: idx + 1,
-        leadId: item.lead.id,
-        time: windowInfo.range,
-        durationLabel: windowInfo.durationLabel,
-        name: item.lead.name || "Customer",
-        suburb: area.suburb || item.lead.city || "Melbourne",
-        type: isInsp ? "Inspection" : "Job",
-        jobNo: item.lead.jobNo ? `#${item.lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${item.lead.id.slice(-4)}`,
-        color: isInsp ? "#1D61E7" : "#10B981",
-        staff: item.tech,
-      };
-    });
-  }, [scheduledByDate, weekDays, isMatchFilter]);
-
-  // Dynamic Route Title
-  const routeTitle = useMemo(() => {
-    if (techFilter !== "all") {
-      return `Today's Route (${techFilter})`;
+  // Route summary
+  const routeSummary = useMemo(() => {
+    let totalKm = 0;
+    let totalMins = 0;
+    const items = filteredItems;
+    for (let i = 0; i < items.length; i++) {
+      const area = resolveArea(items[i].lead.address || items[i].lead.city);
+      const prevSuburb = i === 0 ? "Tullamarine" : resolveArea(items[i - 1].lead.address || items[i - 1].lead.city).suburb || "Melbourne";
+      const travel = calculateTravel(prevSuburb, area.suburb || "Melbourne");
+      totalKm += travel.distanceKm;
+      totalMins += items[i].type === "inspection" ? 40 + travel.durationMinutes * 2 : 120;
     }
-    return "Today's Route";
-  }, [techFilter]);
+    if (items.length > 0) {
+      const lastArea = resolveArea(items[items.length - 1].lead.address || items[items.length - 1].lead.city);
+      totalKm += calculateTravel(lastArea.suburb || "Melbourne", "Tullamarine").distanceKm;
+    }
+    const startMins = 9 * 60;
+    const returnMins = startMins + totalMins;
+    const rh = Math.floor(returnMins / 60);
+    const rm = returnMins % 60;
+    const rPeriod = rh >= 12 ? "PM" : "AM";
+    const rdh = rh > 12 ? rh - 12 : rh;
+    return {
+      totalKm: Math.round(totalKm),
+      travelLabel: fmtMins(totalMins),
+      returnTime: `${rdh}:${String(rm).padStart(2, "0")} ${rPeriod}`,
+    };
+  }, [filteredItems]);
 
-  // Dynamic Route Map Embed URL from real stop suburbs
+  // Map embed URL — shows route from Tullamarine through all addresses
   const mapEmbedUrl = useMemo(() => {
-    if (todayRouteStops.length > 0) {
-      const distinctSuburbs = Array.from(new Set(todayRouteStops.map((s) => s.suburb).filter(Boolean)));
-      const query = encodeURIComponent(`${distinctSuburbs.join(" ")} Victoria Australia`);
-      return `https://maps.google.com/maps?q=${query}&t=&z=11&ie=UTF8&iwloc=&output=embed`;
+    const items = filteredItems.slice(0, 8);
+    if (items.length === 0) return "https://maps.google.com/maps?q=Tullamarine+Victoria+Australia&z=12&output=embed";
+    const daddr = items
+      .map(i => encodeURIComponent((i.lead.address || resolveArea(i.lead.address || i.lead.city).suburb || "Melbourne") + ", VIC, Australia"))
+      .join("+to:");
+    return `https://maps.google.com/maps?saddr=Tullamarine+Victoria+Australia&daddr=${daddr}&output=embed`;
+  }, [filteredItems]);
+
+  // Date navigation
+  const handlePrevDay = () => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d.toISOString().slice(0, 10));
+  };
+  const handleNextDay = () => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    setSelectedDate(d.toISOString().slice(0, 10));
+  };
+
+  const formattedDateLabel = useMemo(() => {
+    const d = new Date(selectedDate + "T00:00:00");
+    const prefix = selectedDate === todayStr ? "Today, " : "";
+    return prefix + d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  }, [selectedDate, todayStr]);
+
+  const dynamicSuburbs = useMemo(() => {
+    const s = new Set<string>();
+    for (const i of allDateItems) {
+      const a = resolveArea(i.lead.address || i.lead.city);
+      if (a.suburb) s.add(a.suburb);
     }
-    return "https://maps.google.com/maps?q=Melbourne+Victoria+Australia&t=&z=10&ie=UTF8&iwloc=&output=embed";
-  }, [todayRouteStops]);
+    return Array.from(s).sort();
+  }, [allDateItems]);
 
-  // Quick Action Handlers
-  const handleAssignUnscheduled = (lead: Lead) => {
-    setEditingLead(lead);
-    setLeadModalOpen(true);
-  };
+  const fieldStaffNames = useMemo(() => {
+    const s = new Set<string>();
+    for (const i of allDateItems) { if (i.tech && i.tech !== "Unassigned") s.add(i.tech); }
+    return Array.from(s).sort();
+  }, [allDateItems]);
 
-  const handleOptimizeSchedule = () => {
-    setActionNotice("⚡ Route Optimization Complete: Field visits sequenced by geographic corridor to minimize drive time.");
-    setTimeout(() => setActionNotice(null), 5000);
-  };
+  // Selected lead helpers
+  const sl = selectedItem?.lead;
+  const slArea = sl ? resolveArea(sl.address || sl.city) : null;
+  const slTravel = slArea ? calculateTravel("Tullamarine", slArea.suburb || "Melbourne") : null;
+  const slPhotos = (sl?.photos || []).filter(p => p.secureUrl || p.url || p.dataUrl);
+  const slApptStr = selectedItem?.type === "inspection" ? sl?.inspectionAt : sl?.jobAt;
+  const slTimeRange = slApptStr ? formatApptTimeRange(slApptStr) : null;
+
+  const slNavUrl = sl?.address
+    ? `https://www.google.com/maps/dir/?api=1&origin=Tullamarine+Victoria+Australia&destination=${encodeURIComponent(sl.address + ", VIC, Australia")}`
+    : null;
+
+  const slGoogleMapsUrl = sl?.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sl.address + ", VIC, Australia")}`
+    : null;
+
+  const tabLabel = viewTab === "inspections" ? "Inspections" : viewTab === "jobs" ? "Jobs" : "Appointments";
 
   return (
-    <div className="space-y-2 font-sans bg-slate-100/60 p-2 sm:p-2.5 rounded-2xl text-slate-800">
-      {/* ── 1. TOP HEADER BAR ────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-slate-200/90 px-3 py-1.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-2">
-        {/* Title & Icon */}
+    <div className="flex flex-col bg-slate-100/60 font-sans text-slate-800 rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: "calc(100vh - 80px)", minHeight: 600 }}>
+
+      {/* ── TOP HEADER ─────────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-            <Truck className="w-3.5 h-3.5" />
+          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+            <Truck className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold text-blue-950 tracking-tight flex items-center gap-2 leading-none">
-              Schedule &amp; Dispatch
-            </h1>
-            <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
-              Drag and drop to assign, reschedule and optimize routes.
+            <h1 className="text-sm font-extrabold text-blue-950 leading-none">Dispatch &amp; Map View</h1>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5 leading-none">
+              View all leads, inspections and jobs on map, plan routes and manage field team.
             </p>
           </div>
         </div>
-
-        {/* Right Mode Toggle & Action Button */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Density Mode Toggle (Fit 1-Page vs 30 Min) */}
-          <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/80 text-[11px] font-bold">
-            <button
-              type="button"
-              onClick={() => setSlotDensity("1hr")}
-              className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                slotDensity === "1hr"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-              title="Fit entire 9 AM – 5 PM schedule on one single page view"
-            >
-              Fit 1-Page
-            </button>
-            <button
-              type="button"
-              onClick={() => setSlotDensity("30min")}
-              className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                slotDensity === "30min"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-              title="Show detailed 30-minute time intervals"
-            >
-              30 Min
-            </button>
-          </div>
-
-          {/* View Mode */}
-          <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/80 text-[11px] font-bold">
-            {(["today", "day", "week", "month"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setViewMode(mode)}
-                className={`px-2.5 py-0.5 rounded-md capitalize transition-all cursor-pointer ${
-                  viewMode === mode
-                    ? "bg-blue-600 text-white shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                }`}
-              >
-                {mode === "today" ? "Today" : mode === "day" ? "Day" : mode === "week" ? "Week" : "Month"}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleOptimizeSchedule}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-xs transition-all cursor-pointer"
+            onClick={() => { setActionNotice("⚡ Route optimized for minimum travel time."); setTimeout(() => setActionNotice(null), 4000); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
           >
-            <Zap className="w-3.5 h-3.5 fill-white text-emerald-600" />
-            Optimize Schedule
+            <Zap className="w-3.5 h-3.5 fill-white" />
+            Optimize Route
           </button>
-
-          <span className="hidden xl:inline text-[10px] font-semibold text-slate-400 border-l border-slate-200 pl-2.5">
-            Cleaner Spaces, Healthier Homes.
-          </span>
+          <button
+            type="button"
+            onClick={() => { setEditingLead(null); setLeadModalOpen(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Lead
+          </button>
         </div>
       </div>
 
-      {/* Action Notice Alert */}
       {actionNotice && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center justify-between shadow-2xs">
+        <div className="bg-emerald-50 border-b border-emerald-200 text-emerald-900 text-xs font-bold px-4 py-1.5 flex items-center justify-between shrink-0">
           <span>{actionNotice}</span>
-          <button type="button" onClick={() => setActionNotice(null)} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">✕</button>
+          <button type="button" onClick={() => setActionNotice(null)} className="text-emerald-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
 
-      {/* ── 2. FILTERS & DATE NAVIGATOR TOOLBAR ────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-slate-200/90 px-3 py-1 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
-        {/* Left Filter Dropdowns */}
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-          {/* Areas Filter */}
-          <select
-            value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
+      {/* ── TAB FILTER ─────────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-4 flex items-center gap-1 shrink-0">
+        {([
+          { key: "all", label: `All (${allDateItems.length})`, icon: <Truck className="w-3 h-3" /> },
+          { key: "leads", label: `Leads (${leadsCount})`, icon: <User className="w-3 h-3" /> },
+          { key: "inspections", label: `Inspections (${inspItems.length})`, icon: <CheckCircle2 className="w-3 h-3" /> },
+          { key: "jobs", label: `Jobs (${jobItems.length})`, icon: <Navigation className="w-3 h-3" /> },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setViewTab(tab.key)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold border-b-2 transition-colors cursor-pointer ${
+              viewTab === tab.key
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
           >
-            <option value="all">All Areas</option>
-            {dynamicSuburbs.map((sub) => (
-              <option key={sub} value={sub.toLowerCase()}>
-                {sub}
-              </option>
-            ))}
-          </select>
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          {/* Job Types Filter */}
-          <select
-            value={jobTypeFilter}
-            onChange={(e) => setJobTypeFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
-          >
-            <option value="all">All Job Types</option>
-            <option value="inspection">🔵 Inspection</option>
-            <option value="job">🟢 Technician Job</option>
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
-          >
-            <option value="all">All Status</option>
-            <option value="booked">Scheduled</option>
-            <option value="completed">Completed</option>
-          </select>
-
-          {/* Technicians Filter */}
-          <select
-            value={techFilter}
-            onChange={(e) => setTechFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
-          >
-            <option value="all">All Field Staff</option>
-            {fieldStaffList.map((t) => (
-              <option key={t.id || t.name} value={t.name}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by job #, name..."
-              className="pl-6 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-500 w-36 lg:w-44"
-            />
-          </div>
+      {/* ── FILTER BAR ─────────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-4 py-1.5 flex flex-wrap items-center gap-2 shrink-0">
+        {/* Date navigator */}
+        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1 py-0.5 text-[11px] font-bold text-blue-950">
+          <button type="button" onClick={handlePrevDay} className="p-1 rounded hover:bg-slate-200 cursor-pointer">
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+          <Calendar className="w-3 h-3 text-blue-600" />
+          <span className="px-1">{formattedDateLabel}</span>
+          <button type="button" onClick={handleNextDay} className="p-1 rounded hover:bg-slate-200 cursor-pointer">
+            <ChevronRight className="w-3 h-3" />
+          </button>
         </div>
 
-        {/* Right Date Switcher & Legend */}
-        <div className="flex items-center gap-3">
-          {/* Center Date Switcher */}
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={handlePrevWeek}
-              className="p-1 rounded hover:bg-slate-200/80 text-slate-700 cursor-pointer"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            <span className="px-1.5 font-extrabold text-blue-950 flex items-center gap-1 text-[11px]">
-              <Calendar className="w-3 h-3 text-blue-600" />
-              {formattedWeekLabel}
-            </span>
-            <button
-              type="button"
-              onClick={handleNextWeek}
-              className="p-1 rounded hover:bg-slate-200/80 text-slate-700 cursor-pointer"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+        <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)}
+          className="text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none cursor-pointer hover:bg-slate-100">
+          <option value="all">All Areas</option>
+          {dynamicSuburbs.map(s => <option key={s} value={s.toLowerCase()}>{s}</option>)}
+        </select>
 
-          {/* Status Badges Legend */}
-          <div className="hidden sm:flex items-center gap-2 text-[10px] font-bold text-slate-600">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-600" />
-              Inspection
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Job
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              On Hold
-            </span>
-          </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none cursor-pointer hover:bg-slate-100">
+          <option value="all">All Status</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="booked">Booked</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <select value={techFilter} onChange={e => setTechFilter(e.target.value)}
+          className="text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none cursor-pointer hover:bg-slate-100">
+          <option value="all">All Staff</option>
+          {fieldStaffNames.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+
+        <div className="relative">
+          <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search inspections..."
+            className="pl-6 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-400 w-44"
+          />
         </div>
       </div>
 
-      {/* ── 3. WEEKLY DISPATCH CALENDAR (FULL WIDTH) ────────────────────────── */}
-      <div className="w-full bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-x-auto flex flex-col">
-        <div style={{ minWidth: `${160 + activeTimeSlots.length * 100}px` }}>
+      {/* ── MAIN 3-COLUMN LAYOUT ───────────────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0">
 
-          {/* Header Row: Day-label col + one col per time slot */}
-          <div
-            className="border-b border-slate-200 bg-slate-50/90 divide-x divide-slate-200 text-xs"
-            style={{ display: "grid", gridTemplateColumns: `160px repeat(${activeTimeSlots.length}, minmax(0, 1fr))` }}
-          >
-            <div className="py-1 px-2 font-extrabold text-[11px] text-blue-900 flex items-center justify-center bg-slate-100/70 gap-1">
-              <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
-              <span>Day</span>
+        {/* LEFT: Inspection / Job List */}
+        <div className="w-72 shrink-0 flex flex-col bg-white border-r border-slate-200 overflow-y-auto">
+          {/* List header */}
+          <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+            <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-950">
+              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+              Today&apos;s {tabLabel} ({filteredItems.length})
             </div>
-            {activeTimeSlots.map((slot) => (
-              <div key={slot} className="py-1 px-1 font-extrabold text-[10px] text-blue-900 flex items-center justify-center text-center">
-                {slot}
+            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+              Sort: Time
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="flex-1 divide-y divide-slate-100">
+            {filteredItems.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 font-medium">
+                No {tabLabel.toLowerCase()} scheduled for this day.
+              </div>
+            ) : (
+              filteredItems.map((item, idx) => {
+                const area = resolveArea(item.lead.address || item.lead.city);
+                const isSelected = item.lead.id === selectedLeadId;
+                const color = ITEM_COLORS[idx % ITEM_COLORS.length];
+                const isInsp = item.type === "inspection";
+                const statusColor = item.lead.status?.toLowerCase().includes("complete") ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                  : item.lead.status?.toLowerCase().includes("route") || item.lead.status?.toLowerCase().includes("en route") ? "text-amber-700 bg-amber-50 border-amber-200"
+                  : "text-blue-700 bg-blue-50 border-blue-200";
+
+                return (
+                  <button
+                    key={`${item.lead.id}-${item.time}`}
+                    type="button"
+                    onClick={() => setSelectedLeadId(isSelected ? null : item.lead.id)}
+                    className={`w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                      isSelected ? "bg-blue-50" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    {/* Numbered circle */}
+                    <div
+                      className="w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5"
+                      style={{ backgroundColor: color }}
+                    >
+                      {idx + 1}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-extrabold text-slate-900 truncate">{item.lead.name || "Customer"}</span>
+                        <span className="text-[10px] font-black text-blue-700 shrink-0">{fmtTime(item.time)}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate mt-0.5">{item.lead.address || area.suburb || "Address not set"}</div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${isInsp ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                          {isInsp ? "Inspection" : "Job"} · 1 hr
+                        </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
+                          {item.lead.status || "Scheduled"}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Route Summary */}
+          <div className="border-t border-slate-200 bg-slate-50 p-3 space-y-2 shrink-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">
+              <RefreshCw className="w-3 h-3 text-blue-600" />
+              Route Summary
+              {filteredItems.length > 0 && (
+                <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded ml-auto">(Optimized)</span>
+              )}
+            </div>
+            {[
+              { icon: <CheckCircle2 className="w-3 h-3 text-blue-600" />, label: `Total ${tabLabel}`, value: filteredItems.length.toString() },
+              { icon: <MapPin className="w-3 h-3 text-blue-600" />, label: "Total Distance", value: `~ ${routeSummary.totalKm} km` },
+              { icon: <Clock className="w-3 h-3 text-blue-600" />, label: "Est. Travel Time", value: `~ ${routeSummary.travelLabel}` },
+              { icon: <Clock className="w-3 h-3 text-slate-400" />, label: "Working Hours", value: "9:00 AM – 5:00 PM" },
+              { icon: <Home className="w-3 h-3 text-slate-400" />, label: "Return to Base", value: routeSummary.returnTime },
+            ].map(({ icon, label, value }) => (
+              <div key={label} className="flex items-center justify-between text-[10px]">
+                <span className="flex items-center gap-1.5 text-slate-500 font-medium">{icon}{label}</span>
+                <span className="font-bold text-slate-800">{value}</span>
               </div>
             ))}
           </div>
-
-          {/* Body: one row per day, cells per time slot */}
-          <div className="divide-y divide-slate-100 bg-white">
-            {weekDays.map((day) => {
-              const allDayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
-
-              return (
-                <div
-                  key={day.dateStr}
-                  className="divide-x divide-slate-200 hover:bg-slate-50/20 transition-colors"
-                  style={{ display: "grid", gridTemplateColumns: `160px repeat(${activeTimeSlots.length}, minmax(0, 1fr))` }}
-                >
-                  {/* Col 0: Day label */}
-                  <div className="px-2 py-1.5 bg-slate-50/70 flex flex-col justify-center gap-0.5 select-none min-h-[42px]">
-                    <div className="text-[11px] font-extrabold text-blue-950 truncate">
-                      {day.dayName}, {day.formattedDate.replace(/ \d{4}$/, "")}
-                    </div>
-                    <div className="text-[9px] text-slate-500 font-medium">{day.hoursLabel.replace(/ – /g, "–")}</div>
-                    {techFilter !== "all" ? (
-                      <div className="mt-0.5 bg-blue-50/80 border border-blue-200/90 rounded px-1 py-0.5 flex items-center gap-1 w-fit">
-                        <div className="w-3.5 h-3.5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[8px] font-black shrink-0">
-                          {getInitials(techFilter).text}
-                        </div>
-                        <div className="text-[9px] font-extrabold text-blue-950 truncate">{techFilter}</div>
-                      </div>
-                    ) : (
-                      <span className={`mt-0.5 w-fit text-[9px] font-black px-1.5 py-0.5 rounded ${
-                        allDayAppts.length > 0 ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-500"
-                      }`}>
-                        {allDayAppts.length} {allDayAppts.length === 1 ? "bk" : "bks"}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Cols 1-N: one cell per time slot */}
-                  {activeTimeSlots.map((slot) => {
-                    const slotAppts = allDayAppts.filter(
-                      (item) => getSlotKeyFromTime(item.time, slotDensity) === slot
-                    );
-
-                    return (
-                      <div
-                        key={slot}
-                        className="p-0.5 px-1 flex flex-col justify-center gap-1 min-h-[42px] relative group/cell"
-                      >
-                        {slotAppts.map((item) => {
-                          const area = resolveArea(item.lead.address || item.lead.city);
-                          const isInspection = item.type === "inspection";
-                          const aIdx = allDayAppts.findIndex(
-                            (a) => a.lead.id === item.lead.id && a.time === item.time
-                          );
-                          const prevAppt = aIdx > 0 ? allDayAppts[aIdx - 1] : null;
-                          const travelFromPrev = prevAppt
-                            ? calculateTravel(
-                                resolveArea(prevAppt.lead.address || prevAppt.lead.city).suburb,
-                                area.suburb
-                              )
-                            : calculateTravel("Tullamarine", area.suburb);
-
-                          const oneWayTravelMins = travelFromPrev.durationMinutes;
-                          const totalDurationMins = isInspection ? (40 + oneWayTravelMins * 2) : 120;
-                          const scheduleWindow = formatScheduleWindow(item.time, totalDurationMins);
-                          const startTimeOnly = scheduleWindow.start.replace(/ (AM|PM)/, "");
-
-                          const cleanJobNo = `#${(item.lead.jobNo || item.lead.id.slice(-4)).replace(/^(?:Job\s*No-?|Job-?|#)/i, "")}`;
-                          const custName = item.lead.name || "Customer";
-                          const suburbName = (area.suburb || item.lead.city || "Melbourne").toUpperCase();
-                          const techName = item.tech && item.tech !== "None" ? item.tech : "Unassigned";
-
-                          return (
-                            <div
-                              key={`${item.lead.id}-${item.time}`}
-                              onClick={() => onOpenLead(item.lead.id)}
-                              className={`p-1 px-1.5 rounded-md border transition-all cursor-pointer shadow-2xs hover:shadow-xs flex flex-col justify-center leading-tight ${
-                                isInspection
-                                  ? "bg-blue-50/95 hover:bg-blue-100/90 border-blue-200 text-blue-950"
-                                  : "bg-emerald-50/95 hover:bg-emerald-100/90 border-emerald-200 text-emerald-950"
-                              }`}
-                              title={`Lead ${cleanJobNo} • ${custName} (${scheduleWindow.range})\nSuburb: ${suburbName} • Staff: ${techName} • Type: ${isInspection ? "Inspection" : "Job"}`}
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <div className="flex items-center gap-1 font-black text-[8.5px] truncate">
-                                  <Clock className="w-2.5 h-2.5 text-blue-600 shrink-0" />
-                                  <span className="text-blue-700 font-bold">{startTimeOnly}</span>
-                                  <span className="text-slate-900 font-extrabold">{cleanJobNo}</span>
-                                </div>
-                                <span className={`text-[7.5px] px-1 rounded font-black shrink-0 ${
-                                  isInspection ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"
-                                }`}>
-                                  {scheduleWindow.durationLabel}
-                                </span>
-                              </div>
-                              <div className="text-[8px] font-extrabold text-slate-900 truncate mt-0.5">
-                                {custName}
-                              </div>
-                              <div className="text-[7.5px] text-slate-500 font-medium truncate flex items-center justify-between gap-1 mt-0.5 pt-0.5 border-t border-black/5">
-                                <span className="font-bold text-slate-700 truncate">{suburbName}</span>
-                                <span className={techName === "Unassigned" ? "italic text-slate-400 shrink-0" : "text-slate-600 font-semibold shrink-0"}>
-                                  {techName}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Footer: daily totals — one row, day col + per-day summary spanning time cols */}
-          <div className="border-t border-slate-200 bg-slate-50 divide-y divide-slate-100 text-[9.5px] font-bold text-slate-700">
-            {weekDays.map((day) => {
-              const dayAppts = (scheduledByDate.get(day.dateStr) || []).filter(isMatchFilter);
-              const inspCount = dayAppts.filter((a) => a.type === "inspection").length;
-              const jobCount = dayAppts.filter((a) => a.type === "job").length;
-              let totalMins = 0;
-              let totalKm = 0;
-              for (let i = 0; i < dayAppts.length; i++) {
-                const cur = dayAppts[i];
-                const curSuburb = resolveArea(cur.lead.address || cur.lead.city).suburb;
-                const prevSuburb = i > 0
-                  ? resolveArea(dayAppts[i - 1].lead.address || dayAppts[i - 1].lead.city).suburb
-                  : "Tullamarine";
-                const travel = calculateTravel(prevSuburb, curSuburb);
-                totalKm += travel.distanceKm;
-                totalMins += cur.type === "inspection" ? 40 + travel.durationMinutes * 2 : 120;
-              }
-              const totalHours = (totalMins / 60).toFixed(1);
-              return (
-                <div
-                  key={day.dateStr}
-                  className="divide-x divide-slate-200"
-                  style={{ display: "grid", gridTemplateColumns: `160px 1fr` }}
-                >
-                  <div className="px-2 py-0.5 text-[9px] font-extrabold text-slate-500 flex items-center">
-                    {day.dayName}
-                  </div>
-                  <div className="px-2 py-0.5 text-slate-700 truncate">
-                    {dayAppts.length === 0 ? (
-                      <span className="text-slate-400 font-normal">0 bks · 0h</span>
-                    ) : (
-                      <>
-                        <span>{inspCount > 0 ? `${inspCount} Insp` : ""}{inspCount > 0 && jobCount > 0 ? " · " : ""}{jobCount > 0 ? `${jobCount} Job` : ""}</span>
-                        <span className="text-slate-500 font-normal ml-1">({totalHours}h · ~{Math.round(totalKm)}km)</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
         </div>
-      </div>
 
-      {/* ── 4. DISPATCH OPERATIONS & ROUTE DETAILS (COLLAPSIBLE DRAWER) ────────── */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        {/* Toggle Bar */}
-        <button
-          type="button"
-          onClick={() => setShowOperations(!showOperations)}
-          className="w-full px-3.5 py-2 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer border-b border-slate-200/70 select-none text-left"
-        >
-          <div className="flex items-center gap-2 text-xs font-extrabold text-blue-950">
-            <Truck className="w-4 h-4 text-blue-600" />
-            <span>Today's Route Map &amp; Unscheduled Queue</span>
-            <span className="text-[10px] font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
-              {todayRouteStops.length} stops today · {unscheduledLeads.length} unscheduled in queue
-            </span>
+        {/* CENTER: Map */}
+        <div className="flex-1 relative flex flex-col min-w-0">
+          {/* Map legend */}
+          <div className="absolute bottom-3 left-3 z-10 bg-white/95 border border-slate-200 rounded-xl px-3 py-2 shadow-sm flex items-center gap-3 text-[10px] font-bold text-slate-600">
+            <span className="flex items-center gap-1"><Home className="w-3 h-3 text-slate-700" />Base</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Inspection</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Job</span>
+            <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-emerald-500 inline-block" />Optimized Route</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600">
-            <span>{showOperations ? "Hide Operations Panel" : "View Route Map & Queue"}</span>
-            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showOperations ? "rotate-180" : ""}`} />
-          </div>
-        </button>
 
-        {showOperations && (
-          <div className="p-3 bg-slate-50/40 space-y-3">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-              {/* Card 1: Today's Route + Live Interactive Waypoint Map */}
-              <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <h2 className="text-xs font-extrabold text-blue-950 flex items-center gap-1.5">
-                    <Truck className="w-3.5 h-3.5 text-blue-600" />
-                    {routeTitle}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => setActionNotice("Full interactive route map expanded for current scheduled stops.")}
-                    className="text-[11px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-                  >
-                    View Full Map
-                  </button>
+          <iframe
+            title="Dispatch Route Map"
+            src={mapEmbedUrl}
+            className="w-full flex-1 border-0"
+            loading="lazy"
+            allowFullScreen
+          />
+        </div>
+
+        {/* RIGHT: Inspection Details Panel */}
+        {sl ? (
+          <div className="w-80 shrink-0 flex flex-col bg-white border-l border-slate-200 overflow-y-auto">
+            {/* Panel header */}
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+              <span className="text-xs font-extrabold text-blue-950">
+                {selectedItem?.type === "inspection" ? "Inspection" : "Job"} Details
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setEditingLead(sl); setLeadModalOpen(true); }}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                >
+                  ✏️ Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLeadId(null)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 p-4 space-y-4">
+
+              {/* Customer name + status */}
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                  style={{ backgroundColor: ITEM_COLORS[(filteredItems.findIndex(i => i.lead.id === selectedLeadId)) % ITEM_COLORS.length] }}>
+                  {filteredItems.findIndex(i => i.lead.id === selectedLeadId) + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-extrabold text-slate-900 truncate">{sl.name || "Customer"}</div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                  {sl.status || "Scheduled"}
+                </span>
+              </div>
+
+              {/* Detail rows */}
+              <div className="space-y-2.5 text-xs">
+                {slTimeRange && (
+                  <div className="flex items-start gap-2.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date &amp; Time</div>
+                      <div className="font-semibold text-slate-800 text-[11px] mt-0.5">
+                        {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} | {slTimeRange}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {sl.address && (
+                  <div className="flex items-start gap-2.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Address</div>
+                      <div className="font-semibold text-slate-800 text-[11px] mt-0.5">{sl.address}</div>
+                      {slGoogleMapsUrl && (
+                        <a href={slGoogleMapsUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5 font-semibold">
+                          <ExternalLink className="w-2.5 h-2.5" />Open in Google Maps
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {slTravel && (
+                  <div className="flex items-start gap-2.5">
+                    <Navigation className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distance from Base</div>
+                      <div className="font-semibold text-slate-800 text-[11px] mt-0.5">
+                        {slTravel.distanceKm} km (Approx {slTravel.durationMinutes} min)
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Service Type</div>
+                    <div className="font-semibold text-slate-800 text-[11px] mt-0.5">
+                      {selectedItem?.type === "inspection" ? "Inspection" : "Job"} · {sl.service || "Tile & Grout"}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Map & Itinerary Container */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1">
-                  {/* Map Embed Canvas */}
-                  <div className="relative rounded-lg overflow-hidden border border-slate-200/80 min-h-[180px] bg-slate-100">
-                    <iframe
-                      title="Today's Route Map"
-                      src={mapEmbedUrl}
-                      className="w-full h-full min-h-[180px] rounded-lg border-0"
-                      loading="lazy"
-                    />
-                  </div>
-
-                  {/* Waypoint Stops List */}
-                  <div className="space-y-1.5 overflow-y-auto max-h-[180px] text-xs">
-                    {todayRouteStops.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center p-3 text-slate-400 text-xs text-center font-medium">
-                        <span>No stops scheduled for today.</span>
-                        <span className="text-[10px] text-slate-400 mt-1">Bookings will appear here as stops.</span>
-                      </div>
-                    ) : (
-                      todayRouteStops.map((stop) => (
-                        <button
-                          key={stop.no}
-                          type="button"
-                          onClick={() => onOpenLead(stop.leadId)}
-                          className="w-full text-left flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200/70 cursor-pointer transition-colors"
-                          title={`Open Lead ${stop.jobNo} (${stop.name})`}
-                        >
-                          <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-black shrink-0">
-                            {stop.no}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-extrabold text-[11px] text-slate-900 truncate">
-                              {stop.time} <span className="font-normal text-slate-600">· {stop.name}</span>
-                            </div>
-                            <div className="text-[9.5px] text-slate-500 truncate">
-                              {stop.suburb} ({stop.type})
-                            </div>
-                          </div>
+                {sl.phone && (
+                  <div className="flex items-start gap-2.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer Phone</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="font-semibold text-slate-800 text-[11px]">{sl.phone}</span>
+                        <a href={getWhatsAppLink(sl.phone)} target="_blank" rel="noopener noreferrer"
+                          className="w-5 h-5 rounded bg-emerald-100 hover:bg-emerald-200 flex items-center justify-center text-[9px] font-black text-emerald-700 transition-colors"
+                          title="WhatsApp">WA</a>
+                        <button type="button" onClick={() => callCustomer(sl)}
+                          className="w-5 h-5 rounded bg-blue-100 hover:bg-blue-200 flex items-center justify-center transition-colors cursor-pointer"
+                          title="Call">
+                          <Phone className="w-2.5 h-2.5 text-blue-700" />
                         </button>
-                      ))
-                    )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {sl.email && (
+                  <div className="flex items-start gap-2.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer Email</div>
+                      <div className="font-semibold text-slate-800 text-[11px] mt-0.5 break-all">{sl.email}</div>
+                    </div>
+                  </div>
+                )}
+
+                {(selectedItem?.tech && selectedItem.tech !== "Unassigned") && (
+                  <div className="flex items-start gap-2.5">
+                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned To</div>
+                      <div className="font-semibold text-slate-800 text-[11px] mt-0.5">
+                        {selectedItem.tech} ({selectedItem.type === "inspection" ? "Inspector" : "Technician"})
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status dropdown */}
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Status</div>
+                    <select
+                      value={sl.status || ""}
+                      onChange={e => updateLeadField(sl.id, { status: e.target.value })}
+                      className="w-full text-[11px] font-semibold px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 outline-none cursor-pointer focus:border-blue-400"
+                    >
+                      {["New", "Inspection Booked", "Inspection En Route", "Inspection Arrived", "Inspection In Progress", "Inspection Completed", "Job Booked", "Job En Route", "Job Arrived", "Job Started", "Job Done", "Completed"].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
 
-              {/* Card 2: Unscheduled Jobs Queue */}
-              <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <h2 className="text-xs font-extrabold text-blue-950 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-500" />
-                    Unscheduled Jobs ({unscheduledLeads.length})
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => openLeadsFiltered(["New", "Contacted", "Waiting for Info", "Quote Accepted", "Deposit Received", "Ready to Start", "Won"])}
-                    className="text-[11px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-                    title="View all unscheduled jobs in Leads table"
-                  >
-                    View All
-                  </button>
+              {/* Action buttons */}
+              {slNavUrl && (
+                <a
+                  href={slNavUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold shadow-sm transition-colors"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  Start Navigation
+                </a>
+              )}
+
+              <div className="grid grid-cols-3 gap-1.5">
+                <button type="button"
+                  onClick={() => setActionNotice("Open the lead to reschedule the appointment.")}
+                  className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 cursor-pointer transition-colors">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  Reschedule
+                </button>
+                <button type="button"
+                  onClick={() => { setEditingLead(sl); setLeadModalOpen(true); }}
+                  className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 cursor-pointer transition-colors">
+                  <UserPlus className="w-3.5 h-3.5 text-blue-600" />
+                  Reassign
+                </button>
+                <button type="button"
+                  onClick={() => openMessagesModal(sl)}
+                  className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 cursor-pointer transition-colors">
+                  <MoreHorizontal className="w-3.5 h-3.5 text-blue-600" />
+                  More
+                </button>
+              </div>
+
+              {/* Customer Notes */}
+              {(sl.notes || sl.technicianNotes || sl.scopeNotes) && (
+                <div>
+                  <div className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Customer Notes</div>
+                  <div className="text-[11px] text-slate-600 font-medium bg-amber-50 border border-amber-200 rounded-lg p-2.5 leading-snug">
+                    {sl.notes || sl.technicianNotes || sl.scopeNotes}
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-1.5 overflow-y-auto max-h-[180px] flex-1">
-                  {unscheduledLeads.length === 0 ? (
-                    <div className="p-4 text-center text-slate-400 text-xs font-medium">
-                      All active leads and jobs are scheduled!
-                    </div>
-                  ) : (
-                    unscheduledLeads.slice(0, 5).map((lead, idx) => {
-                      const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
-                      const suburbStr = resolveArea(lead.address || lead.city).suburb || "Victoria";
-
+              {/* Customer Photos */}
+              {slPhotos.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Customer Photos ({slPhotos.length})
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {slPhotos.slice(0, 3).map((p, i) => {
+                      const src = p.secureUrl || p.url || p.dataUrl || "";
                       return (
-                        <div
-                          key={lead.id}
-                          onClick={() => onOpenLead(lead.id)}
-                          className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-colors"
-                          title={`Open Lead ${jobNoStr} (${lead.name || "Customer"})`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1">
-                              <span className={`w-2 h-2 rounded-full ${idx % 3 === 0 ? "bg-rose-500" : idx % 3 === 1 ? "bg-emerald-500" : "bg-amber-500"} shrink-0`} />
-                              <span className="font-extrabold text-[11px] text-slate-900 truncate">
-                                {jobNoStr} {lead.name || "Customer"} - {suburbStr}
-                              </span>
-                            </div>
-                            <div className="text-[9.5px] text-slate-500 mt-0.5 font-medium pl-3">
-                              {lead.service || "Tile & Grout Repair"} (2h)
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAssignUnscheduled(lead);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-extrabold cursor-pointer transition-all shadow-2xs shrink-0"
-                          >
-                            Assign
-                          </button>
+                        <div key={i} className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => openPhotosModal(sl)}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={p.name} className="w-full h-full object-cover" />
                         </div>
                       );
-                    })
-                  )}
+                    })}
+                    <button type="button" onClick={() => openPhotosModal(sl)}
+                      className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors">
+                      <Plus className="w-4 h-4 text-slate-400" />
+                      <span className="text-[8px] font-bold text-slate-400">Add Photo</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Card 3: Quick Actions */}
-              <div className="lg:col-span-12 bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                  <h2 className="text-xs font-extrabold text-blue-950 flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                    Quick Actions
-                  </h2>
-                  <span className="text-[10px] text-slate-400 font-medium">1-click schedule management</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingLead(null);
-                      setLeadModalOpen(true);
-                    }}
-                    className="p-2 rounded-lg border border-slate-200/80 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <UserPlus className="w-3 h-3 text-blue-600 shrink-0" />
-                    <span>Assign Job</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActionNotice("Select any booked appointment card in the grid to reschedule.")}
-                    className="p-2 rounded-lg border border-slate-200/80 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <Calendar className="w-3 h-3 text-indigo-600 shrink-0" />
-                    <span>Reschedule</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActionNotice("Selected appointment unassigned and moved to queue.")}
-                    className="p-2 rounded-lg border border-slate-200/80 bg-slate-50 hover:bg-rose-50 hover:border-rose-300 text-slate-700 hover:text-rose-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <XCircle className="w-3 h-3 text-rose-600 shrink-0" />
-                    <span>Unassign</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActionNotice("Time slot blocked for staff maintenance.")}
-                    className="p-2 rounded-lg border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <Clock className="w-3 h-3 text-slate-600 shrink-0" />
-                    <span>Block Time</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActionNotice("12:00 - 12:30 PM lunch break added to technician schedule.")}
-                    className="p-2 rounded-lg border border-slate-200/80 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 text-slate-700 hover:text-amber-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <Coffee className="w-3 h-3 text-amber-600 shrink-0" />
-                    <span>Add Break</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOptimizeSchedule}
-                    className="p-2 rounded-lg border border-slate-200/80 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <Zap className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span>Optimize Route</span>
-                  </button>
-                </div>
-              </div>
+              {/* Quick action: Open full lead */}
+              <button
+                type="button"
+                onClick={() => onOpenLead(sl.id)}
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Full Lead
+              </button>
             </div>
+          </div>
+        ) : (
+          /* Placeholder when nothing selected */
+          <div className="w-72 shrink-0 bg-white border-l border-slate-200 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+            <MapPin className="w-8 h-8 mb-2 text-slate-300" />
+            <div className="text-xs font-bold text-slate-500">Select an appointment</div>
+            <div className="text-[10px] font-medium mt-1 text-slate-400">Click any item in the list to view full details here.</div>
           </div>
         )}
       </div>

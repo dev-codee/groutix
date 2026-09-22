@@ -445,22 +445,19 @@ export function ManagerDashboard() {
       dateKey: string,
       dayOfWeek: number,
       hour: number
-    ): { status: "available" | "booked" | "break" | "limited"; detail: string } => {
-      // 1. Sunday
+    ): { status: "available" | "booked"; detail: string } => {
+      // 1. Sunday or outside working hours → treat as unavailable (show as available visually but no detail)
       if (dayOfWeek === 0) {
-        return { status: "break", detail: "Sunday Closed" };
+        return { status: "available", detail: "Sunday Closed" };
       }
 
-      // 2. Outside normal hours:
-      // Friday: 9:00 AM – 3:00 PM
-      // Mon-Thu & Sat: 9:00 AM – 5:00 PM
       if (dayOfWeek === 5) {
         if (hour < 9 || hour > 15) {
-          return { status: "break", detail: "Outside Friday Working Hours (9 AM – 3 PM)" };
+          return { status: "available", detail: "Outside Friday Working Hours (9 AM – 3 PM)" };
         }
       } else {
         if (hour < 9 || hour > 17) {
-          return { status: "break", detail: "Outside Working Hours (9 AM – 5 PM)" };
+          return { status: "available", detail: "Outside Working Hours (9 AM – 5 PM)" };
         }
       }
 
@@ -518,18 +515,6 @@ export function ManagerDashboard() {
           };
         }
 
-        // Buffer / transition window (hour immediately before or after booking)
-        if (hour === apptH - 1 || hour === apptH + durationHours) {
-          return {
-            status: "limited",
-            detail: "Limited: Travel / Prep Buffer",
-          };
-        }
-      }
-
-      // 3. Lunch break at 12:00 PM if not booked
-      if (hour === 12) {
-        return { status: "break", detail: "Lunch Break (12:00 PM – 12:30 PM)" };
       }
 
       return { status: "available", detail: "Available (Free for Booking)" };
@@ -1604,7 +1589,7 @@ export function ManagerDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
-            {/* Legend (matching Image 2) */}
+            {/* Legend */}
             <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-[2px] bg-[#4ade80]" />
@@ -1613,14 +1598,6 @@ export function ManagerDashboard() {
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-[2px] bg-[#fb7185]" />
                 <span>Booked</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-[2px] bg-[#cbd5e1]" />
-                <span>Break</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-[2px] bg-[#facc15]" />
-                <span>Limited</span>
               </div>
             </div>
 
@@ -1730,10 +1707,6 @@ export function ManagerDashboard() {
                                   className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
                                     slotInfo.status === "booked"
                                       ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
-                                      : slotInfo.status === "break"
-                                      ? "bg-[#cbd5e1] hover:bg-slate-400"
-                                      : slotInfo.status === "limited"
-                                      ? "bg-[#facc15] hover:bg-amber-400"
                                       : "bg-[#4ade80] hover:bg-emerald-500"
                                   }`}
                                   title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to open in Dispatch`}
