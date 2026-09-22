@@ -57,44 +57,57 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const [viewTab, setViewTab] = useState<"all" | "leads" | "inspections" | "jobs">("inspections");
+  const [viewTab, setViewTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
   const [areaFilter, setAreaFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [techFilter, setTechFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set([todayStr]));
 
-  // Build all items for selectedDate
+  // Build all upcoming items (14-day window from selectedDate)
   const allDateItems = useMemo(() => {
-    const items: { lead: Lead; type: "inspection" | "job"; time: string; tech: string }[] = [];
+    const items: { lead: Lead; type: "inspection" | "job"; time: string; tech: string; date: string }[] = [];
+    const windowStart = selectedDate;
+    const windowEndDate = new Date(selectedDate + "T00:00:00");
+    windowEndDate.setDate(windowEndDate.getDate() + 14);
+    const windowEnd = windowEndDate.toISOString().slice(0, 10);
+
     for (const lead of scopedLeads) {
       if (lead.status === "Lost" || lead.status === "Cancelled") continue;
 
-      if (lead.inspectionAt && lead.inspectionAt.startsWith(selectedDate)) {
-        const tRaw = lead.inspectionAt.split("T")[1] || "09:00";
-        const t = tRaw.slice(0, 5);
-        let techName = "Unassigned";
-        if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
-        else if (lead.inspectionReport?.inspectorName) techName = lead.inspectionReport.inspectorName;
-        items.push({ lead, type: "inspection", time: t, tech: techName });
+      if (lead.inspectionAt) {
+        const d = lead.inspectionAt.slice(0, 10);
+        if (d >= windowStart && d <= windowEnd) {
+          const tRaw = lead.inspectionAt.split("T")[1] || "09:00";
+          const t = tRaw.slice(0, 5);
+          let techName = "Unassigned";
+          if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
+          else if (lead.inspectionReport?.inspectorName) techName = lead.inspectionReport.inspectorName;
+          items.push({ lead, type: "inspection", time: t, tech: techName, date: d });
+        }
       }
 
-      if (lead.jobAt && lead.jobAt.startsWith(selectedDate)) {
-        const tRaw = lead.jobAt.split("T")[1] || "09:00";
-        const t = tRaw.slice(0, 5);
-        let techName = "Unassigned";
-        if (lead.technician && lead.technician.toLowerCase() !== "unassigned") techName = lead.technician;
-        else if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
-        items.push({ lead, type: "job", time: t, tech: techName });
+      if (lead.jobAt) {
+        const d = lead.jobAt.slice(0, 10);
+        if (d >= windowStart && d <= windowEnd) {
+          const tRaw = lead.jobAt.split("T")[1] || "09:00";
+          const t = tRaw.slice(0, 5);
+          let techName = "Unassigned";
+          if (lead.technician && lead.technician.toLowerCase() !== "unassigned") techName = lead.technician;
+          else if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
+          items.push({ lead, type: "job", time: t, tech: techName, date: d });
+        }
       }
     }
-    items.sort((a, b) => a.time.localeCompare(b.time));
+    items.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
     return items;
   }, [scopedLeads, selectedDate]);
 
   const inspItems = useMemo(() => allDateItems.filter(i => i.type === "inspection"), [allDateItems]);
   const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job"), [allDateItems]);
   const leadsCount = useMemo(() => scopedLeads.filter(l => ["New", "Contacted", "Waiting for Info"].includes(l.status)).length, [scopedLeads]);
+  const todayItems = useMemo(() => allDateItems.filter(i => i.date === todayStr), [allDateItems, todayStr]);
 
   const filteredItems = useMemo(() => {
     const base = viewTab === "inspections" ? inspItems : viewTab === "jobs" ? jobItems : allDateItems;
@@ -113,13 +126,24 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     });
   }, [allDateItems, inspItems, jobItems, viewTab, areaFilter, statusFilter, techFilter, searchQuery]);
 
+  // Group filteredItems by date for the schedule table view
+  const groupedByDate = useMemo(() => {
+    const map = new Map<string, typeof filteredItems>();
+    for (const item of filteredItems) {
+      const arr = map.get(item.date) || [];
+      arr.push(item);
+      map.set(item.date, arr);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredItems]);
+
   const selectedItem = useMemo(() => filteredItems.find(i => i.lead.id === selectedLeadId) || null, [filteredItems, selectedLeadId]);
 
-  // Route summary
+  // Route summary (for today's appointments only)
   const routeSummary = useMemo(() => {
     let totalKm = 0;
     let totalMins = 0;
-    const items = filteredItems;
+    const items = todayItems.length > 0 ? todayItems : filteredItems.slice(0, 8);
     for (let i = 0; i < items.length; i++) {
       const area = resolveArea(items[i].lead.address || items[i].lead.city);
       const prevSuburb = i === 0 ? "Tullamarine" : resolveArea(items[i - 1].lead.address || items[i - 1].lead.city).suburb || "Melbourne";
@@ -142,17 +166,21 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       travelLabel: fmtMins(totalMins),
       returnTime: `${rdh}:${String(rm).padStart(2, "0")} ${rPeriod}`,
     };
-  }, [filteredItems]);
+  }, [filteredItems, todayItems]);
 
-  // Map embed URL — shows route from Tullamarine through all addresses
+  // Map embed URL — shows selected lead OR today's route OR base
   const mapEmbedUrl = useMemo(() => {
-    const items = filteredItems.slice(0, 8);
+    if (selectedItem?.lead.address) {
+      const dest = encodeURIComponent(selectedItem.lead.address + ", VIC, Australia");
+      return `https://maps.google.com/maps?saddr=Tullamarine+Victoria+Australia&daddr=${dest}&output=embed`;
+    }
+    const items = (todayItems.length > 0 ? todayItems : filteredItems).slice(0, 8);
     if (items.length === 0) return "https://maps.google.com/maps?q=Tullamarine+Victoria+Australia&z=12&output=embed";
     const daddr = items
       .map(i => encodeURIComponent((i.lead.address || resolveArea(i.lead.address || i.lead.city).suburb || "Melbourne") + ", VIC, Australia"))
       .join("+to:");
     return `https://maps.google.com/maps?saddr=Tullamarine+Victoria+Australia&daddr=${daddr}&output=embed`;
-  }, [filteredItems]);
+  }, [filteredItems, todayItems, selectedItem]);
 
   // Date navigation
   const handlePrevDay = () => {
@@ -252,7 +280,6 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       <div className="bg-white border-b border-slate-200 px-4 flex items-center gap-1 shrink-0">
         {([
           { key: "all", label: `All (${allDateItems.length})`, icon: <Truck className="w-3 h-3" /> },
-          { key: "leads", label: `Leads (${leadsCount})`, icon: <User className="w-3 h-3" /> },
           { key: "inspections", label: `Inspections (${inspItems.length})`, icon: <CheckCircle2 className="w-3 h-3" /> },
           { key: "jobs", label: `Jobs (${jobItems.length})`, icon: <Navigation className="w-3 h-3" /> },
         ] as const).map(tab => (
@@ -270,17 +297,18 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             {tab.label}
           </button>
         ))}
+        <span className="ml-auto text-[10px] font-medium text-slate-400 pr-1">Next 14 days</span>
       </div>
 
       {/* ── FILTER BAR ─────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-200 px-4 py-1.5 flex flex-wrap items-center gap-2 shrink-0">
-        {/* Date navigator */}
+        {/* Date navigator — "from" start */}
         <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1 py-0.5 text-[11px] font-bold text-blue-950">
           <button type="button" onClick={handlePrevDay} className="p-1 rounded hover:bg-slate-200 cursor-pointer">
             <ChevronLeft className="w-3 h-3" />
           </button>
           <Calendar className="w-3 h-3 text-blue-600" />
-          <span className="px-1">{formattedDateLabel}</span>
+          <span className="px-1">From: {formattedDateLabel}</span>
           <button type="button" onClick={handleNextDay} className="p-1 rounded hover:bg-slate-200 cursor-pointer">
             <ChevronRight className="w-3 h-3" />
           </button>
@@ -321,84 +349,111 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       {/* ── MAIN 3-COLUMN LAYOUT ───────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
 
-        {/* LEFT: Inspection / Job List */}
+        {/* LEFT: Schedule table grouped by date */}
         <div className="w-72 shrink-0 flex flex-col bg-white border-r border-slate-200 overflow-y-auto">
           {/* List header */}
           <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
             <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-950">
               <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-              Today&apos;s {tabLabel} ({filteredItems.length})
+              Schedule ({filteredItems.length})
             </div>
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-              Sort: Time
-            </div>
+            <div className="text-[10px] font-bold text-slate-400">14-day view</div>
           </div>
 
-          {/* Items */}
-          <div className="flex-1 divide-y divide-slate-100">
+          {/* Grouped by date */}
+          <div className="flex-1">
             {filteredItems.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400 font-medium">
-                No {tabLabel.toLowerCase()} scheduled for this day.
+              <div className="p-6 text-center space-y-2">
+                <Calendar className="w-8 h-8 text-slate-200 mx-auto" />
+                <div className="text-xs text-slate-400 font-medium">No appointments in the next 14 days.</div>
+                <div className="text-[10px] text-slate-300">Schedule inspections or jobs on individual leads to see them here.</div>
               </div>
             ) : (
-              filteredItems.map((item, idx) => {
-                const area = resolveArea(item.lead.address || item.lead.city);
-                const isSelected = item.lead.id === selectedLeadId;
-                const color = ITEM_COLORS[idx % ITEM_COLORS.length];
-                const isInsp = item.type === "inspection";
-                const statusColor = item.lead.status?.toLowerCase().includes("complete") ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                  : item.lead.status?.toLowerCase().includes("route") || item.lead.status?.toLowerCase().includes("en route") ? "text-amber-700 bg-amber-50 border-amber-200"
-                  : "text-blue-700 bg-blue-50 border-blue-200";
+              groupedByDate.map(([date, items]) => {
+                const isToday = date === todayStr;
+                const dateLabel = (() => {
+                  const d = new Date(date + "T00:00:00");
+                  const dayStr = d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+                  return isToday ? `Today · ${dayStr}` : dayStr;
+                })();
+                const isExpanded = expandedDates.has(date);
+                const toggleDate = () => {
+                  setExpandedDates(prev => {
+                    const next = new Set(prev);
+                    if (next.has(date)) next.delete(date); else next.add(date);
+                    return next;
+                  });
+                };
 
                 return (
-                  <button
-                    key={`${item.lead.id}-${item.time}`}
-                    type="button"
-                    onClick={() => setSelectedLeadId(isSelected ? null : item.lead.id)}
-                    className={`w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition-colors cursor-pointer ${
-                      isSelected ? "bg-blue-50" : "hover:bg-slate-50"
-                    }`}
-                  >
-                    {/* Numbered circle */}
-                    <div
-                      className="w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5"
-                      style={{ backgroundColor: color }}
+                  <div key={date}>
+                    {/* Date header row */}
+                    <button
+                      type="button"
+                      onClick={toggleDate}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-left cursor-pointer transition-colors ${
+                        isToday ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
                     >
-                      {idx + 1}
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className={`w-3 h-3 shrink-0 ${isToday ? "text-blue-200" : "text-slate-400"}`} />
+                        <span className="text-[11px] font-extrabold">{dateLabel}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isToday ? "bg-white/20 text-white" : "bg-slate-200 text-slate-500"}`}>
+                          {items.length}
+                        </span>
+                      </div>
+                      <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-90" : ""} ${isToday ? "text-blue-200" : "text-slate-400"}`} />
+                    </button>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-extrabold text-slate-900 truncate">{item.lead.name || "Customer"}</span>
-                        <span className="text-[10px] font-black text-blue-700 shrink-0">{fmtTime(item.time)}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 truncate mt-0.5">{item.lead.address || area.suburb || "Address not set"}</div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${isInsp ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                          {isInsp ? "Inspection" : "Job"} · 1 hr
-                        </span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${statusColor}`}>
-                          {item.lead.status || "Scheduled"}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
+                    {/* Appointment cards for this date */}
+                    {isExpanded && items.map((item, idx) => {
+                      const area = resolveArea(item.lead.address || item.lead.city);
+                      const isSelected = item.lead.id === selectedLeadId;
+                      const color = ITEM_COLORS[idx % ITEM_COLORS.length];
+                      const isInsp = item.type === "inspection";
+
+                      return (
+                        <button
+                          key={`${item.lead.id}-${item.time}`}
+                          type="button"
+                          onClick={() => setSelectedLeadId(isSelected ? null : item.lead.id)}
+                          className={`w-full text-left px-3 py-2.5 flex items-start gap-2.5 border-b border-slate-100 transition-colors cursor-pointer ${
+                            isSelected ? "bg-blue-50 border-l-2 border-l-blue-500" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <div
+                            className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[9px] font-black shrink-0 mt-0.5"
+                            style={{ backgroundColor: color }}
+                          >
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-extrabold text-slate-900 truncate">{item.lead.name || "Customer"}</span>
+                              <span className="text-[10px] font-black text-blue-700 shrink-0">{fmtTime(item.time)}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate mt-0.5">{item.lead.address || area.suburb || "Address not set"}</div>
+                            <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded border mt-1 ${isInsp ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                              {isInsp ? "Inspection" : "Job"}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })
             )}
           </div>
 
-          {/* Route Summary */}
+          {/* Route Summary (for today / selected date) */}
           <div className="border-t border-slate-200 bg-slate-50 p-3 space-y-2 shrink-0">
             <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">
               <RefreshCw className="w-3 h-3 text-blue-600" />
-              Route Summary
-              {filteredItems.length > 0 && (
-                <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded ml-auto">(Optimized)</span>
-              )}
+              Today&apos;s Route
             </div>
             {[
-              { icon: <CheckCircle2 className="w-3 h-3 text-blue-600" />, label: `Total ${tabLabel}`, value: filteredItems.length.toString() },
+              { icon: <CheckCircle2 className="w-3 h-3 text-blue-600" />, label: "Total Appointments", value: todayItems.length.toString() },
               { icon: <MapPin className="w-3 h-3 text-blue-600" />, label: "Total Distance", value: `~ ${routeSummary.totalKm} km` },
               { icon: <Clock className="w-3 h-3 text-blue-600" />, label: "Est. Travel Time", value: `~ ${routeSummary.travelLabel}` },
               { icon: <Clock className="w-3 h-3 text-slate-400" />, label: "Working Hours", value: "9:00 AM – 5:00 PM" },
@@ -481,7 +536,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                     <div className="min-w-0">
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date &amp; Time</div>
                       <div className="font-semibold text-slate-800 text-[11px] mt-0.5">
-                        {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} | {slTimeRange}
+                        {new Date((selectedItem?.date || selectedDate) + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} | {slTimeRange}
                       </div>
                     </div>
                   </div>
