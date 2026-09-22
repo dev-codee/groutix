@@ -10,8 +10,10 @@ import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
+import { useDistanceKm } from "@/lib/useDistanceKm";
 
 export function FinanceLeadRow({ l }: { l: Lead }) {
+  const distanceKm = useDistanceKm(l.address);
   const ctx = useAdminPageCtx();
   const {
     role,
@@ -157,6 +159,11 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            {distanceKm !== null && (
+              <span className="shrink-0 ml-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                {distanceKm} km
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">

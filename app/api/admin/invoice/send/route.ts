@@ -4,6 +4,7 @@ import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/admin
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 import { invoiceTrackingPixel } from "@/lib/automations";
+import { isQboConfigured, pushInvoiceToQbo } from "@/lib/quickbooks";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -216,6 +217,23 @@ export async function POST(req: NextRequest) {
     action: "Invoice emailed",
     detail: `${invoiceNumber} to ${lead.email} (${status})`,
   });
+
+  // Fire-and-forget QBO push — does not block or alter the email response.
+  if (isQboConfigured()) {
+    const qboItems = [
+      { description: description ? `${service} — ${description}` : service, amount: baseTotal },
+      ...(extraWork && extraCharge > 0 ? [{ description: `Additional Work — ${extraWork}`, amount: extraCharge }] : []),
+    ];
+    pushInvoiceToQbo({
+      invoiceNumber,
+      customerName: lead.name || "Customer",
+      customerEmail: lead.email,
+      customerPhone: lead.phone,
+      items: qboItems,
+    })
+      .then((qboId) => updateSubmission(body.id!, { qboInvoiceId: qboId } as any).catch(() => {}))
+      .catch((err) => console.error("QBO invoice push failed:", err));
+  }
 
   return NextResponse.json({ ok: true, invoiceNumber, total });
 }

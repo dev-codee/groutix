@@ -531,12 +531,38 @@ export default function CrmDashboardPage() {
   const [siteLogoUrl, setSiteLogoUrl] = useState("/new_logo.jpeg");
   const [logoSettingsOpen, setLogoSettingsOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [qboSettingsOpen, setQboSettingsOpen] = useState(false);
+  const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string } | null>(null);
+  const [qboDisconnecting, setQboDisconnecting] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((d) => { if (d.logoUrl) setSiteLogoUrl(d.logoUrl); })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/qbo/status")
+      .then((r) => r.json())
+      .then((d) => setQboStatus(d))
+      .catch(() => {});
+  }, []);
+
+  // Show a toast if the QBO OAuth callback added a result param.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qbo = params.get("qbo");
+    if (!qbo) return;
+    if (qbo === "connected") {
+      setQboStatus((s) => (s ? { ...s, connected: true } : s));
+      setQboSettingsOpen(true);
+    }
+    // Strip the param from the URL without a reload.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("qbo");
+    url.searchParams.delete("msg");
+    window.history.replaceState({}, "", url.toString());
   }, []);
 
   // Preload the Groutix logo image so the warranty card renders the brand mark.
@@ -3467,6 +3493,17 @@ export default function CrmDashboardPage() {
           >
             <Settings className="w-4 h-4" />
             Logo Settings
+          </button>
+          <button
+            type="button"
+            onClick={() => { setQboSettingsOpen(true); onItemClick?.(); }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
+          >
+            <Settings className="w-4 h-4" />
+            QuickBooks
+            {qboStatus?.connected && (
+              <span className="ml-auto w-2 h-2 rounded-full bg-green-500 shrink-0" />
+            )}
           </button>
         </div>
       )}
@@ -7147,6 +7184,88 @@ export default function CrmDashboardPage() {
             </div>
             <button
               onClick={() => setLogoSettingsOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* QuickBooks Settings Modal */}
+      {qboSettingsOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-900">QuickBooks Integration</h3>
+              <button onClick={() => setQboSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            {!qboStatus?.configured ? (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-1">
+                <p className="font-bold">Environment variables not set</p>
+                <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
+                <pre className="mt-2 bg-amber-100 rounded p-2 text-[10px] leading-5 overflow-x-auto">{`QBO_CLIENT_ID=your_client_id\nQBO_CLIENT_SECRET=your_client_secret`}</pre>
+                <p className="pt-1">Get these from <span className="font-semibold">developer.intuit.com</span> → My Apps → your app → Keys &amp; OAuth.</p>
+              </div>
+            ) : qboStatus.connected ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2.5 text-xs text-green-800">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+                  <div>
+                    <p className="font-bold">Connected to QuickBooks</p>
+                    {qboStatus.connectedAt && (
+                      <p className="text-green-700 mt-0.5">
+                        Since {new Date(qboStatus.connectedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    )}
+                    {qboStatus.realmId && (
+                      <p className="text-green-700 mt-0.5">Company ID: {qboStatus.realmId}</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">Invoices sent from Groutix are automatically pushed to your QuickBooks company. Customers are created in QBO if they don&apos;t already exist.</p>
+                <button
+                  type="button"
+                  disabled={qboDisconnecting}
+                  onClick={() => {
+                    setQboDisconnecting(true);
+                    fetch("/api/admin/qbo/disconnect", { method: "POST" })
+                      .then(() => {
+                        setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined } : s);
+                      })
+                      .catch(console.error)
+                      .finally(() => setQboDisconnecting(false));
+                  }}
+                  className="w-full py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {qboDisconnecting ? "Disconnecting…" : "Disconnect QuickBooks"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
+                  <p className="font-semibold text-slate-700">Setup checklist</p>
+                  <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
+                  <p>2. Set Redirect URI to:</p>
+                  <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{typeof window !== "undefined" ? `${window.location.origin}/api/admin/qbo/callback` : "/api/admin/qbo/callback"}</code>
+                  <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
+                </div>
+                <a
+                  href="/api/admin/qbo/connect"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"
+                >
+                  Connect QuickBooks
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
+
+            <button
+              onClick={() => setQboSettingsOpen(false)}
               className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
             >
               Close

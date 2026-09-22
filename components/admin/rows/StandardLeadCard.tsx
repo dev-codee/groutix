@@ -15,8 +15,10 @@ import {
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
+import { useDistanceKm } from "@/lib/useDistanceKm";
 
 export function StandardLeadCard({ l }: { l: Lead }) {
+  const distanceKm = useDistanceKm(l.address);
   const {
     role,
     updateLeadField,
@@ -169,8 +171,15 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 </div>
               )}
               {l.address && (
-                <div className="text-[11px] text-slate-400 italic pt-0.5 truncate" title={l.address}>
-                  {l.address}
+                <div className="flex items-center gap-1.5 pt-0.5 min-w-0">
+                  <span className="text-[11px] text-slate-400 italic truncate" title={l.address}>
+                    {l.address}
+                  </span>
+                  {distanceKm !== null && (
+                    <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                      {distanceKm} km
+                    </span>
+                  )}
                 </div>
               )}
             </div>
