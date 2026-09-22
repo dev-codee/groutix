@@ -169,6 +169,18 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [filteredItems]);
 
+  // All 14 days in window (for timeline — shows empty rows too)
+  const allDatesInWindow = useMemo(() => {
+    const dates: string[] = [];
+    const start = new Date(selectedDate + "T00:00:00");
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    return dates;
+  }, [selectedDate]);
+
   const selectedItem = useMemo(() => filteredItems.find(i => i.lead.id === selectedLeadId) || null, [filteredItems, selectedLeadId]);
 
   // Route summary (for today's appointments only)
@@ -424,8 +436,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                   </div>
                 </div>
 
-                {/* Day rows */}
-                {groupedByDate.map(([date, items]) => {
+                {/* Day rows — all 14 days, empty rows shown too */}
+                {allDatesInWindow.map((date) => {
+                  const items = groupedByDate.find(([d]) => d === date)?.[1] ?? [];
                   const isToday = date === todayStr;
                   const d = new Date(date + "T00:00:00");
                   const weekday = d.toLocaleDateString("en-AU", { weekday: "short" });
