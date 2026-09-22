@@ -14,8 +14,8 @@ import { getWhatsAppLink } from "@/lib/adminHelpers";
 import type { Lead } from "@/components/admin/types";
 
 // ── Timeline constants ────────────────────────────────────────────────────────
-const SLOT_W = 62;        // px per 30-min slot
-const DAY_LABEL_W = 110;  // px for day label column
+const SLOT_W = 50;        // px per 30-min slot
+const DAY_LABEL_W = 88;   // px for day label column
 const GRID_START = 8 * 60;  // 8:00 AM in minutes from midnight
 const GRID_END = 18 * 60;   // 6:00 PM
 
@@ -418,18 +418,18 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 {/* Time header */}
                 <div className="flex sticky top-0 z-20 bg-white border-b-2 border-slate-200 shadow-sm rounded-tl-xl">
                   <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
-                    className="shrink-0 px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 flex items-end">
+                    className="shrink-0 px-2 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 flex items-end">
                     DATE
                   </div>
                   <div className="flex">
                     {TIME_SLOTS.map((slot, i) => (
                       <div key={slot}
                         style={{ width: SLOT_W, minWidth: SLOT_W }}
-                        className={`text-center py-1.5 border-r relative ${i % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50/40"}`}>
+                        className={`text-center py-1 border-r relative ${i % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50/40"}`}>
                         {slot.endsWith(":00") ? (
-                          <span className="text-[10px] font-black text-slate-600 block">{fmtTime(slot)}</span>
+                          <span className="text-[9px] font-black text-slate-600 block">{fmtTime(slot)}</span>
                         ) : (
-                          <span className="text-[8px] text-slate-300 block">:30</span>
+                          <span className="text-[7px] text-slate-300 block">:30</span>
                         )}
                       </div>
                     ))}
@@ -445,17 +445,17 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                   const dateShort = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 
                   return (
-                    <div key={date} className={`flex border-b border-slate-200 ${isToday ? "bg-blue-50/20" : ""}`} style={{ minHeight: 72 }}>
+                    <div key={date} className={`flex border-b border-slate-200 ${isToday ? "bg-blue-50/20" : ""}`} style={{ minHeight: 50 }}>
                       {/* Day label */}
                       <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
-                        className={`shrink-0 px-3 py-2 border-r border-slate-200 flex flex-col justify-center ${isToday ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}>
-                        <div className={`text-[11px] font-extrabold ${isToday ? "text-white" : "text-slate-800"}`}>{weekday}</div>
-                        <div className={`text-[10px] ${isToday ? "text-blue-200" : "text-slate-400"}`}>{dateShort}</div>
-                        {isToday && <div className="text-[8px] font-black text-blue-200 mt-0.5 uppercase tracking-widest">Today</div>}
+                        className={`shrink-0 px-2 py-1 border-r border-slate-200 flex flex-col justify-center ${isToday ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}>
+                        <div className={`text-[10px] font-extrabold leading-tight ${isToday ? "text-white" : "text-slate-800"}`}>{weekday}</div>
+                        <div className={`text-[9px] leading-tight ${isToday ? "text-blue-200" : "text-slate-400"}`}>{dateShort}</div>
+                        {isToday && <div className="text-[7px] font-black text-blue-200 uppercase tracking-widest">Today</div>}
                       </div>
 
                       {/* Timeline slots area */}
-                      <div className="flex-1 relative" style={{ height: 72 }}>
+                      <div className="flex-1 relative" style={{ height: 50 }}>
                         {/* Slot grid background */}
                         <div className="absolute inset-0 flex pointer-events-none">
                           {TIME_SLOTS.map((slot, i) => (
@@ -498,8 +498,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               style={{
                                 left: leftPx,
                                 width: totalPx,
-                                top: 8,
-                                height: 56,
+                                top: 5,
+                                height: 40,
                                 zIndex: isSelected ? 20 : 10,
                               }}
                             >
@@ -509,35 +509,30 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                                 {/* Travel TO segment */}
                                 <div className="h-full flex items-center justify-center shrink-0"
                                   style={{ width: travelPx, backgroundColor: travelColor, borderRight: `1px dashed ${coreColor}` }}>
-                                  {travelPx > 28 && (
-                                    <span className="text-[8px] font-black rotate-0 whitespace-nowrap" style={{ color: coreColor }}>
-                                      {travelMins}m ↗
+                                  {travelPx > 24 && (
+                                    <span className="text-[7px] font-black whitespace-nowrap" style={{ color: coreColor }}>
+                                      {travelMins}m↗
                                     </span>
                                   )}
                                 </div>
 
                                 {/* Core appointment segment */}
-                                <div className="h-full flex flex-col justify-center px-2 overflow-hidden flex-1 min-w-0"
+                                <div className="h-full flex flex-col justify-center px-1.5 overflow-hidden flex-1 min-w-0"
                                   style={{ backgroundColor: coreBg }}>
-                                  <div className="text-[10px] font-black text-slate-900 truncate leading-tight">
+                                  <div className="text-[9px] font-black text-slate-900 truncate leading-tight">
                                     {item.lead.name || "Customer"}
                                   </div>
-                                  <div className="text-[9px] font-bold truncate leading-tight mt-0.5" style={{ color: coreColor }}>
-                                    {isInsp ? "Inspection" : "Job"} · {coreMins}min
+                                  <div className="text-[8px] font-bold truncate leading-none mt-0.5" style={{ color: coreColor }}>
+                                    {isInsp ? "Insp" : "Job"} · {coreMins}m
                                   </div>
-                                  {corePx > 80 && (
-                                    <div className="text-[8px] text-slate-500 truncate leading-tight">
-                                      {fmtTime(item.time)} – {fmtMinutesAsTime(endMins)}
-                                    </div>
-                                  )}
                                 </div>
 
                                 {/* Travel RETURN segment */}
                                 <div className="h-full flex items-center justify-center shrink-0"
                                   style={{ width: travelPx, backgroundColor: travelColor, borderLeft: `1px dashed ${coreColor}` }}>
-                                  {travelPx > 28 && (
-                                    <span className="text-[8px] font-black" style={{ color: coreColor }}>
-                                      ↙ {travelMins}m
+                                  {travelPx > 24 && (
+                                    <span className="text-[7px] font-black" style={{ color: coreColor }}>
+                                      ↙{travelMins}m
                                     </span>
                                   )}
                                 </div>
@@ -551,7 +546,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 })}
 
                 {/* Legend */}
-                <div className="px-4 py-2.5 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center gap-5 text-[10px] text-slate-500">
+                <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center gap-4 text-[9px] text-slate-500">
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-sm bg-blue-200 border border-dashed border-blue-500 inline-block" />Travel (each way)
                   </span>

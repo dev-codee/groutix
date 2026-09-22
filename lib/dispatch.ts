@@ -100,8 +100,8 @@ export function calculateTravel(
   toSuburb?: string | null
 ): TravelEstimate {
   const distKm = calculateDistanceBetweenSuburbs(fromSuburb, toSuburb);
-  // Melbourne suburban average: ~38 km/h speed + 5 mins parking/approach buffer
-  const drivingMinutes = Math.max(10, Math.round((distKm / 38) * 60) + 5);
+  // Tullamarine sits on the Tullamarine Freeway — effective average ~50 km/h + 3 min approach
+  const drivingMinutes = Math.max(10, Math.round((distKm / 50) * 60) + 3);
   return {
     distanceKm: distKm,
     durationMinutes: drivingMinutes,

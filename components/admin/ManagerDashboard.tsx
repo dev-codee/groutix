@@ -91,6 +91,7 @@ export function ManagerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
+  const [unassignedTab, setUnassignedTab] = useState<"all" | "inspections" | "jobs">("all");
 
   const _now = new Date();
   const _tomDate = new Date(_now);
@@ -1354,102 +1355,142 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        {/* 4. Unassigned Jobs */}
+        {/* 4. Unassigned */}
         {(() => {
-          const unassignedLeads = scopedLeads.filter((l) => {
+          const isUnassigned = (l: Lead) => {
             if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed" || l.status === "Job Done") return false;
-            const isJobStatus = /job.booked|scheduled|job.confirmed|won|inspection.booked/i.test(l.status || "");
-            if (!isJobStatus) return false;
             const hasAssignee = (l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned");
             return !hasAssignee;
-          }).sort((a, b) => {
-            const da = new Date(a.inspectionAt || a.jobAt || a.received || a.createdAt || 0).getTime();
-            const db = new Date(b.inspectionAt || b.jobAt || b.received || b.createdAt || 0).getTime();
-            return da - db;
-          });
+          };
+
+          const allUnassignedInsp = scopedLeads.filter((l) =>
+            isUnassigned(l) && /inspection.booked/i.test(l.status || "")
+          ).sort((a, b) => new Date(a.inspectionAt || a.received || 0).getTime() - new Date(b.inspectionAt || b.received || 0).getTime());
+
+          const allUnassignedJobs = scopedLeads.filter((l) =>
+            isUnassigned(l) && /job.booked|scheduled|job.confirmed|won/i.test(l.status || "")
+          ).sort((a, b) => new Date(a.jobAt || a.received || 0).getTime() - new Date(b.jobAt || b.received || 0).getTime());
+
+          const visibleLeads =
+            unassignedTab === "inspections" ? allUnassignedInsp :
+            unassignedTab === "jobs" ? allUnassignedJobs :
+            [...allUnassignedInsp, ...allUnassignedJobs].sort((a, b) => {
+              const da = new Date(a.inspectionAt || a.jobAt || a.received || 0).getTime();
+              const db = new Date(b.inspectionAt || b.jobAt || b.received || 0).getTime();
+              return da - db;
+            });
+
+          const totalCount = allUnassignedInsp.length + allUnassignedJobs.length;
 
           return (
-            <div className="bg-white rounded-2xl border border-amber-200/80 shadow-2xs p-3.5 sm:p-4 flex flex-col justify-between h-full min-h-[380px]">
-              <div>
-                <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
-                    <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
-                      Unassigned Jobs
-                    </h2>
-                    {unassignedLeads.length > 0 && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0">
-                        {unassignedLeads.length}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Won", "Inspection Booked"])}
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
-                  >
-                    View All
-                  </button>
-                </div>
-
-                <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
-                  {unassignedLeads.length === 0 && (
-                    <div className="py-12 text-center text-slate-400 text-xs font-medium">
-                      All jobs are assigned
-                    </div>
+            <div className="bg-white rounded-2xl border border-amber-200/80 shadow-2xs p-3.5 sm:p-4 flex flex-col h-full min-h-[380px]">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">Unassigned</h2>
+                  {totalCount > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0">
+                      {totalCount}
+                    </span>
                   )}
-                  {unassignedLeads.map((l) => {
-                    const isInsp = isInspLead(l);
-                    const apptDateStr = l.inspectionAt || l.jobAt;
-                    const suburb = getSuburb(l.address) || l.city || "";
-                    const timeLabel = apptDateStr
-                      ? `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
-                      : "No date set";
-                    const mapsUrl = l.address
-                      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`
-                      : null;
-                    const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200";
-                    const typeLabel = isInsp ? "Inspection" : "Job";
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Won", "Inspection Booked"])}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                >
+                  View All
+                </button>
+              </div>
 
-                    return (
-                      <div
-                        key={l.id}
-                        className="p-2 rounded-xl border border-amber-100 bg-amber-50/40 hover:bg-amber-50 transition-colors shadow-2xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between gap-1 text-[10px]">
-                          <span className="font-extrabold text-amber-700 tabular-nums truncate">{timeLabel}</span>
-                          <span className={`px-1.5 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>{typeLabel}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-1">
-                          <button
-                            type="button"
-                            onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
-                            className="font-bold text-xs text-slate-900 truncate text-left hover:text-blue-700 cursor-pointer"
-                            title={`Open lead #${l.jobNo || l.id}`}
+              {/* Tabs */}
+              <div className="flex gap-0.5 mb-2 shrink-0">
+                {([
+                  { key: "all", label: "All", count: totalCount },
+                  { key: "inspections", label: "Inspections", count: allUnassignedInsp.length },
+                  { key: "jobs", label: "Jobs", count: allUnassignedJobs.length },
+                ] as const).map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setUnassignedTab(t.key)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                      unassignedTab === t.key
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    {t.label}
+                    <span className={`text-[9px] font-black px-1 py-0.5 rounded-full ${
+                      unassignedTab === t.key ? "bg-white/25 text-white" : "bg-slate-200 text-slate-600"
+                    }`}>
+                      {t.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* List */}
+              <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
+                {visibleLeads.length === 0 && (
+                  <div className="py-12 text-center text-slate-400 text-xs font-medium">
+                    {unassignedTab === "inspections" ? "All inspections are assigned" :
+                     unassignedTab === "jobs" ? "All jobs are assigned" :
+                     "All leads are assigned"}
+                  </div>
+                )}
+                {visibleLeads.map((l) => {
+                  const isInsp = /inspection.booked/i.test(l.status || "");
+                  const apptDateStr = isInsp ? l.inspectionAt : l.jobAt;
+                  const suburb = getSuburb(l.address) || l.city || "";
+                  const timeLabel = apptDateStr
+                    ? `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
+                    : "No date set";
+                  const mapsUrl = l.address
+                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`
+                    : null;
+                  const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200";
+                  const typeLabel = isInsp ? "Inspection" : "Job";
+
+                  return (
+                    <div
+                      key={l.id}
+                      className="p-2 rounded-xl border border-amber-100 bg-amber-50/40 hover:bg-amber-50 transition-colors shadow-2xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-1 text-[10px]">
+                        <span className="font-extrabold text-amber-700 tabular-nums truncate">{timeLabel}</span>
+                        <span className={`px-1.5 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>{typeLabel}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
+                          className="font-bold text-xs text-slate-900 truncate text-left hover:text-blue-700 cursor-pointer"
+                          title={`Open lead #${l.jobNo || l.id}`}
+                        >
+                          #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
+                        </button>
+                        {mapsUrl && (
+                          <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-[9px] font-bold text-blue-600 hover:bg-blue-100 transition-colors shrink-0"
+                            title={`Map: ${l.address}`}
                           >
-                            #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
-                          </button>
-                          {mapsUrl && (
-                            <a
-                              href={mapsUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-[9px] font-bold text-blue-600 hover:bg-blue-100 transition-colors shrink-0"
-                              title={`Map: ${l.address}`}
-                            >
-                              <MapPin className="w-2.5 h-2.5" />
-                              Map
-                            </a>
-                          )}
-                        </div>
-                        {suburb && (
-                          <div className="text-[10px] text-slate-500 font-medium truncate">{suburb}</div>
+                            <MapPin className="w-2.5 h-2.5" />
+                            Map
+                          </a>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                      {suburb && (
+                        <div className="text-[10px] text-slate-500 font-medium truncate">{suburb}</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
