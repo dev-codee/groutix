@@ -225,6 +225,22 @@ export function LeadEditModal({
                     📋 Copy Inspection Booking Link
                   </button>
                 )}
+                {(role === "manager" || role === "super_admin") && editingLead?.inspectionAt && (
+                  <button
+                    type="button"
+                    className="text-[10px] font-semibold text-red-600 hover:text-red-700 whitespace-nowrap cursor-pointer"
+                    onClick={() => {
+                      if (!window.confirm("Cancel this inspection booking? The date/time will be cleared; nothing else on the lead changes.")) return;
+                      setEditingLead({
+                        ...editingLead,
+                        inspectionAt: "",
+                        inspectionReminderSent: false,
+                      });
+                    }}
+                  >
+                    ✕ Cancel Inspection Booking
+                  </button>
+                )}
               </div>
             </div>
             <div>
@@ -268,6 +284,22 @@ export function LeadEditModal({
                     }}
                   >
                     📋 Copy Job Booking Link
+                  </button>
+                )}
+                {(role === "manager" || role === "super_admin") && editingLead?.jobAt && (
+                  <button
+                    type="button"
+                    className="text-[10px] font-semibold text-red-600 hover:text-red-700 whitespace-nowrap cursor-pointer"
+                    onClick={() => {
+                      if (!window.confirm("Cancel this job booking? The date/time will be cleared; nothing else on the lead changes.")) return;
+                      setEditingLead({
+                        ...editingLead,
+                        jobAt: "",
+                        jobReminderSent: false,
+                      });
+                    }}
+                  >
+                    ✕ Cancel Job Booking
                   </button>
                 )}
               </div>
