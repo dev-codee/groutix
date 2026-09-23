@@ -14,7 +14,9 @@
 //       - Sunday:    St Albans / West-Central Corridor
 //   • Unknown/unlisted suburbs fall back to "flexible" (all 7 days offered).
 
-export const TULLAMARINE = { lat: -37.7008, lng: 144.8869 };
+// HQ base location: 82A Marigold Cres, Gowanbrae VIC 3043, Australia (exact
+// street address, not the Tullamarine suburb centroid).
+export const TULLAMARINE = { lat: -37.6988298, lng: 144.9004405 };
 export const RADIUS_KM = 15;
 export const MAX_INSPECTION_RADIUS_KM = 50;
 
@@ -526,7 +528,9 @@ export const SUBURBS: { name: string; lat: number; lng: number; outerZone: Outer
   { name: "tottenham", lat: -37.804, lng: 144.856, outerZone: "sun_stalbans" },
   { name: "travancore", lat: -37.781, lng: 144.936, outerZone: "mon_lower1" },
   { name: "truganina", lat: -37.838, lng: 144.721, outerZone: "sun_stalbans" },
-  { name: "tullamarine", lat: -37.7008, lng: 144.8869, outerZone: "fri_north" },
+  // Kept in sync with the TULLAMARINE (HQ) constant above — "Tullamarine" is
+  // used throughout dispatch/travel code as the stand-in name for our base.
+  { name: "tullamarine", lat: -37.6988298, lng: 144.9004405, outerZone: "fri_north" },
   { name: "upper ferntree gully", lat: -37.895, lng: 145.321, outerZone: "wed_lower3" },
   { name: "vermont", lat: -37.836, lng: 145.195, outerZone: "wed_lower3" },
   { name: "vermont south", lat: -37.854, lng: 145.191, outerZone: "wed_lower3" },

@@ -1348,8 +1348,22 @@ export function ManagerDashboard() {
 
         {/* 4. Unassigned */}
         {(() => {
+          // "assigned" is a generic field that's auto-populated with an intake
+          // rep's name when a lead is created, and that name sticks around even
+          // after the lead reaches the inspection stage. So a non-empty
+          // "assigned" value alone doesn't mean an inspector has actually picked
+          // this up — only count it if that name belongs to inspection/field staff.
+          const isInspectorName = (name?: string) => {
+            if (!name) return false;
+            const lower = name.trim().toLowerCase();
+            return inspectionStaff.some(
+              (s) => s.name.trim().toLowerCase() === lower || (s.username && s.username.toLowerCase() === lower)
+            );
+          };
+
           const hasInspectorAssignee = (l: Lead) =>
-            Boolean(l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned");
+            Boolean(l.inspectorId) ||
+            Boolean(l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned" && isInspectorName(l.assigned));
 
           const hasTechnicianAssignee = (l: Lead) =>
             Boolean((l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned" && isTechnicianName(l.assigned)));

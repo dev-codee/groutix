@@ -14,6 +14,10 @@ import { getWhatsAppLink } from "@/lib/adminHelpers";
 import type { Lead } from "@/components/admin/types";
 
 // ── Timeline constants ────────────────────────────────────────────────────────
+// HQ base address — used as the map/route origin instead of the generic
+// "Tullamarine" suburb centre.
+const HQ_ADDRESS = "82A Marigold Cres, Gowanbrae VIC 3043, Australia";
+const HQ_ADDRESS_URL = encodeURIComponent(HQ_ADDRESS);
 const DAY_LABEL_W = 88;   // px for day label column
 const GRID_START = 9 * 60;  // 9:00 AM in minutes from midnight
 const GRID_END = 17 * 60;   // 5:00 PM
@@ -219,14 +223,14 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   const mapEmbedUrl = useMemo(() => {
     if (selectedItem?.lead.address) {
       const dest = encodeURIComponent(selectedItem.lead.address + ", VIC, Australia");
-      return `https://maps.google.com/maps?saddr=Tullamarine+Victoria+Australia&daddr=${dest}&output=embed`;
+      return `https://maps.google.com/maps?saddr=${HQ_ADDRESS_URL}&daddr=${dest}&output=embed`;
     }
     const items = (todayItems.length > 0 ? todayItems : filteredItems).slice(0, 8);
-    if (items.length === 0) return "https://maps.google.com/maps?q=Tullamarine+Victoria+Australia&z=12&output=embed";
+    if (items.length === 0) return `https://maps.google.com/maps?q=${HQ_ADDRESS_URL}&z=12&output=embed`;
     const daddr = items
       .map(i => encodeURIComponent((i.lead.address || resolveArea(i.lead.address || i.lead.city).suburb || "Melbourne") + ", VIC, Australia"))
       .join("+to:");
-    return `https://maps.google.com/maps?saddr=Tullamarine+Victoria+Australia&daddr=${daddr}&output=embed`;
+    return `https://maps.google.com/maps?saddr=${HQ_ADDRESS_URL}&daddr=${daddr}&output=embed`;
   }, [filteredItems, todayItems, selectedItem]);
 
   // Date navigation — pages by the full visible window (7 days) so the arrows
@@ -276,7 +280,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   const slTimeRange = slApptStr ? formatApptTimeRange(slApptStr) : null;
 
   const slNavUrl = sl?.address
-    ? `https://www.google.com/maps/dir/?api=1&origin=Tullamarine+Victoria+Australia&destination=${encodeURIComponent(sl.address + ", VIC, Australia")}`
+    ? `https://www.google.com/maps/dir/?api=1&origin=${HQ_ADDRESS_URL}&destination=${encodeURIComponent(sl.address + ", VIC, Australia")}`
     : null;
 
   const slGoogleMapsUrl = sl?.address
@@ -451,8 +455,41 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                   const weekday = d.toLocaleDateString("en-AU", { weekday: "short" });
                   const dateShort = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 
+                  // Compute each block's time span (incl. travel), then greedily
+                  // assign non-overlapping "lanes" so appointments whose windows
+                  // intersect stack into extra rows instead of drawing on top of
+                  // each other.
+                  const metrics = items
+                    .map((item) => {
+                      const startMins = parseMinutes(item.time);
+                      const offsetFromGrid = Math.max(0, startMins - GRID_START);
+                      const suburb = resolveArea(item.lead.address || item.lead.city).suburb || "Melbourne";
+                      const travelMins = calculateTravel("Tullamarine", suburb).durationMinutes;
+                      const coreMins = item.type === "inspection" ? 30 : 120;
+                      const totalMins = travelMins + coreMins + travelMins;
+                      const endMins = startMins + totalMins;
+                      return { item, startMins, offsetFromGrid, travelMins, coreMins, totalMins, endMins };
+                    })
+                    .sort((a, b) => a.startMins - b.startMins);
+
+                  const laneEnds: number[] = [];
+                  const laidOut = metrics.map((m) => {
+                    let lane = laneEnds.findIndex((end) => end <= m.startMins);
+                    if (lane === -1) {
+                      lane = laneEnds.length;
+                      laneEnds.push(m.endMins);
+                    } else {
+                      laneEnds[lane] = m.endMins;
+                    }
+                    return { ...m, lane };
+                  });
+
+                  const LANE_HEIGHT = 44; // 40px box + 4px gap
+                  const laneCount = Math.max(1, laneEnds.length);
+                  const rowHeight = Math.max(50, 10 + laneCount * LANE_HEIGHT);
+
                   return (
-                    <div key={date} className={`flex border-b border-slate-200 ${isToday ? "bg-blue-50/20" : ""}`} style={{ minHeight: 50 }}>
+                    <div key={date} className={`flex border-b border-slate-200 ${isToday ? "bg-blue-50/20" : ""}`} style={{ minHeight: rowHeight }}>
                       {/* Day label */}
                       <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
                         className={`shrink-0 px-2 py-1 border-r border-slate-200 flex flex-col justify-center ${isToday ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}>
@@ -462,7 +499,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                       </div>
 
                       {/* Timeline slots area */}
-                      <div className="flex-1 min-w-0 relative" style={{ height: 50 }}>
+                      <div className="flex-1 min-w-0 relative" style={{ height: rowHeight }}>
                         {/* Slot grid background */}
                         <div className="absolute inset-0 flex pointer-events-none">
                           {TIME_SLOTS.map((slot, i) => (
@@ -473,18 +510,10 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                         </div>
 
                         {/* Appointment blocks */}
-                        {items.map((item) => {
-                          const startMins = parseMinutes(item.time);
-                          const offsetFromGrid = Math.max(0, startMins - GRID_START);
-                          const suburb = resolveArea(item.lead.address || item.lead.city).suburb || "Melbourne";
-                          const travelMins = calculateTravel("Tullamarine", suburb).durationMinutes;
-                          const coreMins = item.type === "inspection" ? 30 : 120;
-                          const totalMins = travelMins + coreMins + travelMins;
-
+                        {laidOut.map(({ item, offsetFromGrid, travelMins, coreMins, totalMins, endMins, lane }) => {
                           const leftPct = minsToPercent(offsetFromGrid);
                           const totalPct = minsToPercent(totalMins);
 
-                          const endMins = startMins + totalMins;
                           const isInsp = item.type === "inspection";
                           const isSelected = item.lead.id === selectedLeadId;
 
@@ -502,7 +531,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               style={{
                                 left: `${leftPct}%`,
                                 width: `${totalPct}%`,
-                                top: 5,
+                                top: 5 + lane * LANE_HEIGHT,
                                 height: 40,
                                 zIndex: isSelected ? 20 : 10,
                               }}
