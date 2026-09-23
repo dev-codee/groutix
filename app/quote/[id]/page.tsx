@@ -470,7 +470,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                         </tr>
                       )}
                     </tbody>
-                    <tfoot className="bg-slate-50/70 border-t border-slate-200 font-medium">
+                    <tfoot className="bg-white border-t border-slate-200 font-medium">
                       <tr>
                         <td colSpan={3} className="py-2 px-3.5 text-right text-slate-500">
                           Subtotal:
@@ -501,11 +501,11 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               </div>
 
               {/* Warranty Notice */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-white border border-slate-200 text-xs">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-emerald-950">Groutix 10-Year Waterproof Warranty Included</div>
-                  <div className="text-emerald-800 mt-0.5 leading-relaxed">
+                  <div className="font-bold text-slate-900">Groutix 10-Year Waterproof Warranty Included</div>
+                  <div className="text-slate-600 mt-0.5 leading-relaxed">
                     Full shower restoration and epoxy regrouting works are backed by our comprehensive 10-year written warranty certificate upon completion.
                   </div>
                 </div>
@@ -589,7 +589,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   </div>
 
                   {/* Live Signature Preview Box */}
-                  <div className="p-6 rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 text-center relative overflow-hidden shadow-inner">
+                  <div className="p-6 rounded-2xl border border-slate-200 bg-white text-center relative overflow-hidden shadow-inner">
                     <div className="text-[10px] uppercase font-bold text-slate-400 absolute top-3 left-3 tracking-wider">
                       Live Signature Preview
                     </div>
@@ -641,7 +641,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               )}
 
               {/* Agreement Checkbox */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
