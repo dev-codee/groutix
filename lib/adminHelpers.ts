@@ -26,7 +26,7 @@ export const INSPECTION_STEPS: VisitStep[] = [
 export const JOB_STEPS: VisitStep[] = [
   { label: "On the Way", status: "Job En Route" },
   { label: "Reached", status: "Job Arrived" },
-  { label: "Start", status: "Job Started" },
+  { label: "Start", status: "Job In Progress" },
   { label: "Job Done", status: "Job Done" },
 ];
 export const INSPECTION_PHASE = [

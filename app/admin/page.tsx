@@ -7090,7 +7090,7 @@ export default function CrmDashboardPage() {
                 type="button"
                 onClick={() => {
                   updateLeadField(startJobPrompt.lead.id, {
-                    status: "Job Started",
+                    status: "Job In Progress",
                     jobTotalDays: startJobDays,
                     jobDaysDone: 1,
                   });

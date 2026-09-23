@@ -295,9 +295,9 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
                   ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
               }`}
-              title={isStartDone ? "Job Started (Completed)" : "Start Job"}
+              title={isStartDone ? "Job In Progress (Completed)" : "Start Job"}
             >
-              Start
+              Job In Progress
             </button>
 
             <button
@@ -318,7 +318,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
             </button>
           </div>
 
-          {l.jobTotalDays && l.jobTotalDays > 1 && l.status === "Job Started" && (
+          {l.jobTotalDays && l.jobTotalDays > 1 && (l.status === "Job Started" || l.status === "Job In Progress") && (
             <div className="mt-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between text-[10px] font-semibold text-blue-800">
                 <span>Day {l.jobDaysDone || 1} of {l.jobTotalDays}</span>
@@ -376,7 +376,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               )}
             </div>
             {[
-              { label: "Job Started", status: "Job Started", isDone: ["Job Started","Job In Progress","In Progress","Job Done","Completed"].includes(l.status) },
+              { label: "Job In Progress", status: "Job In Progress", isDone: ["Job Started","Job In Progress","In Progress","Job Done","Completed"].includes(l.status) },
               { label: "Job Done", status: "Job Done", isDone: l.status === "Job Done" || l.status === "Completed" },
             ].map((item) => (
               <div

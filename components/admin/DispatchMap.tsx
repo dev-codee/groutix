@@ -107,8 +107,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
 
   // Init map once.
   useEffect(() => {
-    if (!apiKey) { setError("Google Maps API key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)."); return; }
-    if (!containerRef.current) return;
+    if (!apiKey || !containerRef.current) return;
     let cancelled = false;
     ensureBubbleStyle();
     loadGoogleMaps(apiKey)
