@@ -229,22 +229,27 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return `https://maps.google.com/maps?saddr=Tullamarine+Victoria+Australia&daddr=${daddr}&output=embed`;
   }, [filteredItems, todayItems, selectedItem]);
 
-  // Date navigation
+  // Date navigation — pages by the full visible window (7 days) so the arrows
+  // actually move you to a new set of days instead of shifting by one row.
   const handlePrevDay = () => {
     const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() - 1);
+    d.setDate(d.getDate() - VISIBLE_DAYS);
     setSelectedDate(d.toISOString().slice(0, 10));
   };
   const handleNextDay = () => {
     const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() + 1);
+    d.setDate(d.getDate() + VISIBLE_DAYS);
     setSelectedDate(d.toISOString().slice(0, 10));
   };
 
   const formattedDateLabel = useMemo(() => {
-    const d = new Date(selectedDate + "T00:00:00");
+    const start = new Date(selectedDate + "T00:00:00");
+    const end = new Date(start);
+    end.setDate(end.getDate() + VISIBLE_DAYS - 1);
     const prefix = selectedDate === todayStr ? "Today, " : "";
-    return prefix + d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+    const startStr = start.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+    const endStr = end.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+    return `${prefix}${startStr} – ${endStr}`;
   }, [selectedDate, todayStr]);
 
   const dynamicSuburbs = useMemo(() => {
@@ -366,7 +371,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
             <ChevronLeft className="w-3 h-3" />
           </button>
           <Calendar className="w-3 h-3 text-blue-600" />
-          <span className="px-1">From: {formattedDateLabel}</span>
+          <span className="px-1">{formattedDateLabel}</span>
           <button type="button" onClick={handleNextDay} className="p-1 rounded hover:bg-slate-200 cursor-pointer">
             <ChevronRight className="w-3 h-3" />
           </button>
