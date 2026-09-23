@@ -113,7 +113,10 @@ export async function POST(req: NextRequest) {
           <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">Download PDF</a>
         </td>
       </tr>
-    </table>`;
+    </table>
+    <p style="margin:24px 0 0;font-size:14px;color:#64748b;">
+      Questions about your quote? Call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or simply reply to this email.
+    </p>`;
 
   // Automatic step: generate a branded PDF quotation and attach it.
   const attachments: EmailAttachment[] = [];

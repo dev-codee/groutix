@@ -58,7 +58,7 @@ function reminderHtml(
           ${address ? `<tr><td style="padding:12px;background:#f8fafc;font-weight:600;">Location</td><td style="padding:12px;">${esc(address)}</td></tr>` : ""}
         </table>
       </div>
-      <p style="margin:16px 0 0;color:#64748b;font-size:13px;">Need to reschedule? Just reply to this email or call us and we'll sort it out.</p>
+      <p style="margin:16px 0 0;color:#64748b;font-size:13px;">Need to reschedule? Just reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:600;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> and we'll sort it out.</p>
     `,
     heading
   );

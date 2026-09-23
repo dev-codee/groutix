@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     <div style="margin:20px 0;padding:12px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;line-height:1.5;">
       Your warranty is issued in accordance with Clause 12 of the official <a href="https://groutix.com/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>. Please retain your certificate and tax invoice for warranty claims.
     </div>
-    <p style="margin:20px 0 0;">Your warranty card is attached. Keep it safe for your records.</p>`;
+    <p style="margin:20px 0 0;">Your warranty card is attached. Keep it safe for your records. If you ever have any questions or need warranty support, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a> or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>`;
 
   const logoUrl = await getEmailLogoUrl();
   try {

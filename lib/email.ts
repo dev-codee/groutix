@@ -90,7 +90,8 @@ export function cleanEmailText(content: string): string {
   text = text.replace(/tel:1300476884/gi, "tel:70238094");
   text = text.replace(/tel:\(03\)70238094/gi, "tel:70238094");
 
-  // 3. Remove .au -> www.groutix.com
+  // 3. Normalize website references to groutix.com
+  text = text.replace(/https?:\/\/(?:www\.)?groutix\.com\.au/gi, "https://groutix.com");
   text = text.replace(/groutix\.com\.au/gi, "groutix.com");
   text = text.replace(/Groutix\.com\.au/gi, "groutix.com");
 
@@ -98,7 +99,7 @@ export function cleanEmailText(content: string): string {
 }
 
 /**
- * Send an email via Google Workspace / SMTP with retry logic.  it is connect to workspace.
+ * Send an email via Google Workspace / SMTP with retry logic.
  */
 export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const user = process.env.SMTP_USER || "info@groutix.com";
@@ -107,7 +108,28 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const fromName = args.fromName || "Groutix";
 
   const cleanedSubject = cleanEmailText(args.subject);
-  const cleanedHtml = cleanEmailText(args.html);
+  let cleanedHtml = cleanEmailText(args.html);
+
+  // Guarantee that every outgoing email contains the official contact number (7023 8094)
+  // and a clickable link to groutix.com
+  const hasPhone = /7023\s*8094/.test(cleanedHtml);
+  const hasWebsiteLink = /href=["']https?:\/\/(?:www\.)?groutix\.com(?:\/|["'#?])/i.test(cleanedHtml);
+
+  if (!hasPhone || !hasWebsiteLink) {
+    const contactFooter = `
+      <div style="margin-top:24px;padding:16px 20px;background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.9;color:#001f97;text-align:center;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">Groutix Customer Care</div>
+        <div>📞 Phone: <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
+        <div>✉️ Email: <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
+        <div>🌐 Website: <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
+      </div>
+    `;
+    if (cleanedHtml.includes("</body>")) {
+      cleanedHtml = cleanedHtml.replace("</body>", `${contactFooter}</body>`);
+    } else {
+      cleanedHtml += contactFooter;
+    }
+  }
 
   const mailOptions: nodemailer.SendMailOptions = {
     from: `"${fromName}" <${fromAddress}>`,
@@ -302,7 +324,7 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
           <!-- Header -->
           <tr>
             <td align="center" style="padding:40px 32px 32px;background-color:#ffffff;border-bottom:2px solid #f1f5f9;">
-              <a href="https://www.groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
+              <a href="https://groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
                 <img src="${resolvedLogoUrl}" alt="Groutix" width="200" style="display:block;max-width:100%;height:auto;border:0;">
               </a>
             </td>
@@ -318,15 +340,15 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
           <!-- Footer -->
           <tr>
             <td style="padding:32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0 0 12px;font-size:14px;color:#001f97;font-weight:600;">Stay Sealed. Stay Smiling.</p>
+              <p style="margin:0 0 12px;font-size:14px;color:#001f97;font-weight:700;">Stay Sealed. Stay Smiling.</p>
               <p style="margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.5;">
                 You are receiving this email because you contacted Groutix.<br/>
-                If you have any questions, simply reply to this email.
+                If you have any questions, simply reply to this email or call us.
               </p>
-              <div style="font-size:13px;line-height:1.9;color:#001f97;font-weight:500;">
-                <div>📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;">7023 8094</a></div>
-                <div>✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;">info@groutix.com</a></div>
-                <div>🌐 <a href="https://www.groutix.com" target="_blank" style="color:#001f97;text-decoration:none;">www.groutix.com</a></div>
+              <div style="font-size:14px;line-height:2.0;color:#001f97;font-weight:600;">
+                <div>📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
+                <div>✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
+                <div>🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
               </div>
             </td>
           </tr>

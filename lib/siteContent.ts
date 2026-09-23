@@ -134,13 +134,13 @@ export const DEFAULT_CONTENT: SiteContent = {
   },
   templates: {
     quoteEmailSubject: "Your Groutix Quote is Ready",
-    quoteEmailBody: "Hi {name},\n\nThank you for choosing Groutix! Please find your quote attached.\n\nRegards,\nThe Groutix Team",
+    quoteEmailBody: "Hi {name},\n\nThank you for choosing Groutix! Please find your quote attached.\n\nRegards,\nThe Groutix Team\n📞 7023 8094\n🌐 groutix.com",
     invoiceEmailSubject: "Your Groutix Invoice",
-    invoiceEmailBody: "Hi {name},\n\nThank you for your business. Please find your invoice attached.\n\nRegards,\nThe Groutix Team",
+    invoiceEmailBody: "Hi {name},\n\nThank you for your business. Please find your invoice attached.\n\nRegards,\nThe Groutix Team\n📞 7023 8094\n🌐 groutix.com",
     warrantyEmailSubject: "Your Groutix Warranty Certificate",
-    warrantyEmailBody: "Hi {name},\n\nPlease find your warranty certificate attached.\n\nRegards,\nThe Groutix Team",
-    bookingSms: "Hi {name}, your appointment with Groutix is booked for {time}. Reply YES to confirm.",
-    reminderSms: "Hi {name}, this is a reminder for your Groutix appointment tomorrow at {time}."
+    warrantyEmailBody: "Hi {name},\n\nPlease find your warranty certificate attached.\n\nRegards,\nThe Groutix Team\n📞 7023 8094\n🌐 groutix.com",
+    bookingSms: "Hi {name}, your appointment with Groutix is booked for {time}. Call 7023 8094 or reply YES to confirm.",
+    reminderSms: "Hi {name}, this is a reminder for your Groutix appointment tomorrow at {time}. Call 7023 8094."
   },
   hero: {
     headline:

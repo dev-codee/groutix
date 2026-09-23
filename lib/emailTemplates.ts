@@ -154,7 +154,7 @@ Thank you,
 Groutix Estimations Team
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "inspection_confirmed",
@@ -181,7 +181,7 @@ Kind regards,
 Groutix Team
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "quote_followup",
@@ -208,7 +208,7 @@ Warm regards,
 Groutix Estimations Team
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "booking_confirmed",
@@ -236,7 +236,7 @@ Kind regards,
 Groutix Operations
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "job_complete_care",
@@ -261,7 +261,7 @@ Best regards,
 Groutix Team
 📞 7023 8094
 ✉️ info@groutix.com
-🌐 www.groutix.com`,
+🌐 groutix.com`,
   },
   {
     id: "review_request",
@@ -553,6 +553,18 @@ export function formatEmailContentToHtml(text: string): string {
     '$1<a href="$2" style="color:#001f97;text-decoration:underline;font-weight:600;" target="_blank">$2</a>'
   );
 
+  // 1c. Auto-link bare groutix.com / www.groutix.com
+  str = str.replace(
+    /(^|[\s(>])(www\.groutix\.com|groutix\.com)(?=[^\w.-]|$)/gi,
+    '$1<a href="https://groutix.com" style="color:#001f97;text-decoration:underline;font-weight:700;" target="_blank">groutix.com</a>'
+  );
+
+  // 1d. Auto-link phone number 7023 8094
+  str = str.replace(
+    /(^|[\s(>])(7023\s*8094)(?=[^\d]|$)/gi,
+    '$1<a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a>'
+  );
+
   // 2. Bold: **text**, <b>text</b>, <strong>text</strong>
   str = str.replace(/\*\*([^*\n]+)\*\*/g, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
   str = str.replace(/<(?:b|strong)>([\s\S]*?)<\/(?:b|strong)>/gi, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
@@ -637,7 +649,7 @@ export function buildBrandedEmailHtml(contentHtml: string, logoUrl = "/new_logo.
     <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.06);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
       <!-- Branded Logo Header -->
       <div style="padding:32px 24px 24px;text-align:center;background-color:#ffffff;border-bottom:2px solid #f1f5f9;">
-        <a href="https://www.groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
+        <a href="https://groutix.com" target="_blank" style="text-decoration:none;display:inline-block;">
           <img src="${logoUrl}" alt="Groutix" width="180" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0;" />
         </a>
       </div>
@@ -652,12 +664,12 @@ export function buildBrandedEmailHtml(contentHtml: string, logoUrl = "/new_logo.
         <p style="margin:0 0 8px;font-size:14px;color:#001f97;font-weight:700;letter-spacing:0.2px;">Stay Sealed. Stay Smiling.</p>
         <p style="margin:0 0 16px;font-size:12px;color:#64748b;line-height:1.5;">
           You are receiving this email regarding your Groutix service inquiry.<br/>
-          If you have any questions, simply reply directly to this email.
+          If you have any questions, simply reply directly to this email or call us.
         </p>
-        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:13px;line-height:1.8;color:#001f97;font-weight:600;">
-          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;">7023 8094</a></span>
-          <span style="display:inline-block;margin:0 8px;">✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;">info@groutix.com</a></span>
-          <span style="display:inline-block;margin:0 8px;">🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:none;">www.groutix.com</a></span>
+        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:14px;line-height:1.8;color:#001f97;font-weight:600;">
+          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></span>
+          <span style="display:inline-block;margin:0 8px;">✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></span>
+          <span style="display:inline-block;margin:0 8px;">🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></span>
         </div>
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
           &copy; ${currentYear} Groutix. All rights reserved.

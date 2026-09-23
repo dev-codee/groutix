@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
             : ""
         }
         <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6;">
-          If you have any questions, please don't hesitate to call us on <strong>7023 8094</strong>.
+          If you have any questions, please don't hesitate to call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> or visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>.
         </p>
         <p style="margin:0;font-size:14px;color:#334155;">See you soon!<br/><strong>The Groutix Team</strong></p>
       `
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
           <div style="font-size:24px;font-weight:900;color:#15803d;">We're here!</div>
         </div>
         <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6;">
-          If you have any questions or concerns, please speak directly with our specialist or call us on <strong>7023 8094</strong>.
+          If you have any questions or concerns, please speak directly with our specialist, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.
         </p>
         <p style="margin:0;font-size:14px;color:#334155;">Thank you for choosing Groutix!<br/><strong>The Groutix Team</strong></p>
       `;

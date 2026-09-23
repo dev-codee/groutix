@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const logoUrl = await getEmailLogoUrl();
   const rawHtml = html ? cleanEmailText(html) : formatEmailContentToHtml(bodyText);
-  const finalHtml = rawHtml ? wrapEmailHtml(rawHtml, cleanSubject, logoUrl) : "(See attached files.)";
+  const finalHtml = wrapEmailHtml(rawHtml || "<p>(See attached files.)</p>", cleanSubject, logoUrl);
 
   try {
     // 1. Send the email via Nodemailer with Groutix logo header & footer

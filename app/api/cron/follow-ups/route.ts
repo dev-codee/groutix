@@ -55,7 +55,7 @@ function followUpHtml(id: string, name: string, stage: number) {
           <a href="${jobBookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 24px;border-radius:10px;">📅 Book my job day &amp; time</a>
         </td></tr>
       </table>
-      <p style="margin:0;color:#94a3b8;font-size:13px;">Or simply reply to this email or call us and we'll take care of the rest.</p>
+      <p style="margin:0;color:#94a3b8;font-size:13px;">Or simply reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:600;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> and we'll take care of the rest.</p>
     `,
     "Checking in on your Groutix quotation."
   );

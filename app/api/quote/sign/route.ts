@@ -4,7 +4,7 @@ import { verifyQuoteToken } from "@/lib/quoteToken";
 import { buildBookingUrl } from "@/lib/bookingToken";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
-import { sendEmail, EmailAttachment } from "@/lib/email";
+import { sendEmail, wrapEmailHtml, getEmailLogoUrl, EmailAttachment } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -182,33 +182,31 @@ export async function POST(req: NextRequest) {
 
     // 5. Send confirmation email to Customer
     if (lead.email) {
+      const logoUrl = await getEmailLogoUrl();
       const customerHtml = `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;max-width:600px;margin:0 auto;line-height:1.6;">
-          <h2 style="color:#001f97;margin-bottom:8px;">Thank You for Choosing Groutix!</h2>
-          <p>Hi ${resolvedSignerName},</p>
-          <p>We have received your signed acceptance for quotation <strong>${quoteNumber}</strong>. A copy of your signed agreement is attached to this email for your records.</p>
-          
-          <div style="margin:24px 0;padding:16px 20px;background:#f8fafc;border-left:4px solid #16a34a;border-radius:6px;">
-            <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">Quote Summary:</div>
-            <div><strong>Job Ref:</strong> ${quoteNumber}</div>
-            <div><strong>Amount:</strong> $${total.toFixed(2)} AUD (incl. GST)</div>
-            <div><strong>Signed on:</strong> ${new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
-          </div>
-
-          <p style="font-weight:600;">Next Step: Select your preferred day and time for the job.</p>
-          <div style="margin:24px 0;">
-            <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book My Job Day &amp; Time</a>
-          </div>
-
-          <p style="font-size:13px;color:#64748b;margin-top:32px;">If you have any questions or need to speak with our team, call us on <strong>7023 8094</strong> or reply to this email.</p>
-          <div style="font-weight:800;color:#001f97;margin-top:16px;">GROUTIX • Stay Sealed. Stay Smiling.</div>
+        <h2 style="color:#001f97;margin:0 0 12px;font-size:24px;">Thank You for Choosing Groutix!</h2>
+        <p style="margin:0 0 16px;">Hi ${resolvedSignerName},</p>
+        <p style="margin:0 0 16px;">We have received your signed acceptance for quotation <strong>${quoteNumber}</strong>. A copy of your signed agreement is attached to this email for your records.</p>
+        
+        <div style="margin:24px 0;padding:16px 20px;background:#f8fafc;border-left:4px solid #16a34a;border-radius:6px;border:1px solid #e2e8f0;">
+          <div style="font-weight:700;color:#0f172a;margin-bottom:6px;font-size:15px;">Quote Summary:</div>
+          <div style="margin-bottom:4px;"><strong>Job Ref:</strong> ${quoteNumber}</div>
+          <div style="margin-bottom:4px;"><strong>Amount:</strong> $${total.toFixed(2)} AUD (incl. GST)</div>
+          <div><strong>Signed on:</strong> ${new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
         </div>
+
+        <p style="font-weight:700;color:#0f172a;margin:24px 0 8px;">Next Step: Select your preferred day and time for the job.</p>
+        <div style="margin:16px 0 24px;">
+          <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book My Job Day &amp; Time</a>
+        </div>
+
+        <p style="font-size:14px;color:#64748b;margin-top:28px;">If you have any questions or need to speak with our team, call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or simply reply to this email.</p>
       `;
 
       sendEmail({
         toEmail: lead.email,
         subject: `Confirmed: Signed Quotation ${quoteNumber} — Groutix`,
-        html: customerHtml,
+        html: wrapEmailHtml(customerHtml, `Confirmed: Signed Quotation ${quoteNumber}`, logoUrl),
         attachments,
       }).catch((e) => console.error("Customer sign email failed:", e));
     }

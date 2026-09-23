@@ -238,7 +238,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                    <p>Hi ${firstName},</p>
                    <p>Your on-site inspection at <strong>${propertyAddress}</strong> has been rescheduled to:</p>
                    <p style="font-size:16px;font-weight:bold;color:#001f97;margin:12px 0">&#128197; ${newDateLabel}</p>
-                   <p>If you have any questions or need to reschedule again, please reply to this email or call us on <strong>7023 8094</strong>.</p>
+                   <p>If you have any questions or need to reschedule again, please reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>
                    <p>Kind regards,<br>Groutix Team</p>`,
                   "Your Groutix inspection has been rescheduled",
                   logoUrl

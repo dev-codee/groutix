@@ -525,7 +525,7 @@ export async function POST(req: NextRequest) {
       ${SHOW_INSPECTION_BOOKING && area.serviced && !(inspectionDate && inspectionTime) ? inspectionBookingHtml : ""}
 
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-        If your enquiry is urgent, please call us on <a href="tel:${CONTACT_PHONE.replace(/\s/g, "")}" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+        If your enquiry is urgent, please call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> or visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>.
       </p>
 
       ${

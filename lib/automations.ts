@@ -92,6 +92,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
         <div>• Payment is due within 7 days of invoice date.</div>
         <div>• Access our Terms &amp; Conditions: <a href="https://groutix.com/terms-and-conditions/" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/terms-and-conditions/</a></div>
       </div>
+      <p style="margin:16px 0 0;color:#64748b;font-size:13px;">Questions about this invoice? Reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:600;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>
       ${invoiceTrackingPixel(leadId)}`;
 
     const attachments = [];
@@ -212,7 +213,7 @@ export async function autoSendWarranty(leadId: string): Promise<void> {
           <tr><td style="padding:12px;background:#f8fafc;font-weight:600;">Warranty Expiry</td><td style="padding:12px;">${esc(expiry)} <span style="color:#64748b;font-size:13px;">(10 Years)</span></td></tr>
         </table>
       </div>
-      <p style="margin:16px 0 0;color:#166534;font-size:13px;">Issued under Clause 12 of the <a href="https://groutix.com/terms-conditions" style="color:#001f97;font-weight:700;">Groutix Terms &amp; Conditions</a>. Please retain this certificate and your tax invoice.</p>`;
+      <p style="margin:16px 0 0;color:#166534;font-size:13px;">Issued under Clause 12 of the <a href="https://groutix.com/terms-conditions" style="color:#001f97;font-weight:700;">Groutix Terms &amp; Conditions</a>. Please retain this certificate and your tax invoice. Need assistance? Visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a> or call <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>`;
 
     if (isEmailConfigured()) {
       const logoUrl = await getEmailLogoUrl();

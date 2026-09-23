@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       <div>• Payment is due ${esc(dueDate)}.</div>
       <div>• Access our Terms &amp; Conditions: <a href="https://groutix.com/terms-and-conditions/" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">https://groutix.com/terms-and-conditions/</a></div>
     </div>
-    <p style="margin:20px 0 0;">Thank you for choosing Groutix. Reply to this email if you have any questions about this invoice.</p>
+    <p style="margin:20px 0 0;">Thank you for choosing Groutix. If you have any questions about this invoice, reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>
     ${invoiceTrackingPixel(body.id)}`;
 
   // Branded PDF invoice attachment (reuses the quote layout in invoice mode).

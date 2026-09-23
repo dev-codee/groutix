@@ -250,7 +250,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           <tr><td style="padding:12px;background:#f8fafc;font-weight:600;">Reference</td><td style="padding:12px;">${esc(reference)}</td></tr>
         </table>
       </div>
-      <p style="margin:16px 0 0;color:#64748b;font-size:13px;">We'll send you a reminder the day before. Need to change it? Reply to this email or call us.</p>
+      <p style="margin:16px 0 0;color:#64748b;font-size:13px;">We'll send you a reminder the day before. Need to change it? Reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:600;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>
     `,
     `${title} — ${whenLabel}`,
     logoUrl
