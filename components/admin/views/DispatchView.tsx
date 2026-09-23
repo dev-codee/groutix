@@ -684,19 +684,20 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
             {/* Center: Map */}
             <div className="flex-1 relative flex flex-col min-w-0">
-              <div className="absolute bottom-3 left-3 z-10 bg-white/95 border border-slate-200 rounded-xl px-3 py-2 shadow-sm flex items-center gap-3 text-[10px] font-bold text-slate-600">
-                <span className="flex items-center gap-1"><Home className="w-3 h-3 text-slate-700" />Base</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Inspection</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Job</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-emerald-500 inline-block" />Optimized Route</span>
-              </div>
               <div className="w-full flex-1">
                 <DispatchMap
                   items={mapItems}
                   hqAddress={HQ_ADDRESS}
                   selectedLeadId={selectedLeadId}
                   onSelectLead={(id) => setSelectedLeadId(id === selectedLeadId ? null : id)}
-                />
+                >
+                  <div className="absolute bottom-3 left-3 z-10 bg-white/95 border border-slate-200 rounded-xl px-3 py-2 shadow-sm flex items-center gap-3 text-[10px] font-bold text-slate-600">
+                    <span className="flex items-center gap-1"><Home className="w-3 h-3 text-slate-700" />Base</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Inspection</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Job</span>
+                    <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-emerald-500 inline-block" />Optimized Route</span>
+                  </div>
+                </DispatchMap>
               </div>
             </div>
           </>

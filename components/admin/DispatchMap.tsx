@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
-import { Layers, Navigation2 } from "lucide-react";
+import { Layers, Navigation2, Maximize2, Minimize2 } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
 
 export interface DispatchMapItem {
@@ -16,6 +16,8 @@ interface DispatchMapProps {
   hqAddress: string;
   selectedLeadId: string | null;
   onSelectLead: (id: string) => void;
+  /** Rendered inside the map's own container so it's still visible in fullscreen (e.g. the legend). */
+  children?: ReactNode;
 }
 
 const HQ_CENTER = { lat: -37.6988298, lng: 144.9004405 };
@@ -73,35 +75,62 @@ function homeIcon(g: typeof google): google.maps.Icon {
   };
 }
 
-// Bubble label styling injected once — hides the InfoWindow's default chrome
-// (close button, tail, shadow) so labels read as plain floating pills, like
-// the reference design.
-let bubbleStyleInjected = false;
-function ensureBubbleStyle() {
-  if (bubbleStyleInjected || typeof document === "undefined") return;
-  bubbleStyleInjected = true;
-  const style = document.createElement("style");
-  style.textContent = `
-    .dispatch-map-bubble .gm-style-iw-d { overflow: hidden !important; }
-    .dispatch-map-bubble .gm-style-iw-c { padding: 0 !important; border-radius: 10px !important; box-shadow: 0 2px 8px rgba(15,23,42,0.18) !important; }
-    .dispatch-map-bubble .gm-style-iw-t::after { display: none !important; }
-    .dispatch-map-bubble button.gm-ui-hover-effect { display: none !important; }
-  `;
-  document.head.appendChild(style);
+// A small, fully custom map label — deliberately not a google.maps.InfoWindow.
+// InfoWindows ship ~14px of default chrome/padding per instance and there's no
+// reliable way to scope a CSS override to one of several open at once (they
+// share global classnames), which is what made the old bubbles balloon in
+// size. A plain OverlayView div gives full control over size/shape instead.
+type LabelOverlay = google.maps.OverlayView & { div: HTMLDivElement | null };
+
+function createLabelOverlay(
+  g: typeof google,
+  map: google.maps.Map,
+  position: google.maps.LatLng | google.maps.LatLngLiteral,
+  html: string
+): LabelOverlay {
+  const overlay = new g.maps.OverlayView() as LabelOverlay;
+  overlay.div = null;
+  const latLng = position instanceof g.maps.LatLng ? position : new g.maps.LatLng(position);
+
+  overlay.onAdd = function (this: LabelOverlay) {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    div.style.position = "absolute";
+    div.style.transform = "translate(-50%, calc(-100% - 10px))";
+    div.style.pointerEvents = "none";
+    this.div = div;
+    this.getPanes()!.floatPane.appendChild(div);
+  };
+  overlay.draw = function (this: LabelOverlay) {
+    if (!this.div) return;
+    const point = this.getProjection()?.fromLatLngToDivPixel(latLng);
+    if (point) {
+      this.div.style.left = `${point.x}px`;
+      this.div.style.top = `${point.y}px`;
+    }
+  };
+  overlay.onRemove = function (this: LabelOverlay) {
+    this.div?.parentNode?.removeChild(this.div);
+    this.div = null;
+  };
+  overlay.setMap(map);
+  return overlay;
 }
 
-export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: DispatchMapProps) {
+export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, children }: DispatchMapProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const markerByLeadIdRef = useRef<Map<string, google.maps.Marker>>(new Map());
-  const bubblesRef = useRef<google.maps.InfoWindow[]>([]);
+  const bubblesRef = useRef<LabelOverlay[]>([]);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const trafficLayerRef = useRef<google.maps.TrafficLayer | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTraffic, setShowTraffic] = useState(false);
   const [mapType, setMapType] = useState<"roadmap" | "satellite">("roadmap");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -120,7 +149,6 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
   useEffect(() => {
     if (!apiKey || !containerRef.current) return;
     let cancelled = false;
-    ensureBubbleStyle();
     loadGoogleMaps(apiKey)
       .then((g) => {
         if (cancelled || !containerRef.current) return;
@@ -162,6 +190,34 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
     mapRef.current.setMapTypeId(mapType);
   }, [mapType, ready]);
 
+  // Fullscreen — track browser fullscreen state (so pressing Esc also updates
+  // our button) and nudge Google Maps to re-measure its container once the
+  // resize actually happens, otherwise it keeps rendering at the old size.
+  useEffect(() => {
+    const handleChange = () => setIsFullscreen(document.fullscreenElement === wrapperRef.current);
+    document.addEventListener("fullscreenchange", handleChange);
+    return () => document.removeEventListener("fullscreenchange", handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const center = mapRef.current.getCenter();
+    const timer = setTimeout(() => {
+      const g = window.google;
+      g.maps.event.trigger(mapRef.current, "resize");
+      if (center) mapRef.current?.setCenter(center);
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [isFullscreen, ready]);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      wrapperRef.current?.requestFullscreen().catch((err) => console.error("Fullscreen request failed:", err));
+    }
+  };
+
   // Rebuild markers, bubbles and the route whenever the stop list changes.
   // Selection highlighting is handled by a separate, cheaper effect below so
   // clicking between appointments doesn't re-fetch directions every time.
@@ -173,7 +229,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
     markerByLeadIdRef.current.clear();
-    bubblesRef.current.forEach((b) => b.close());
+    bubblesRef.current.forEach((b) => b.setMap(null));
     bubblesRef.current = [];
     directionsRendererRef.current?.set("directions", null);
 
@@ -191,21 +247,12 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
       markersRef.current.push(marker);
       markerByLeadIdRef.current.set(item.lead.id, marker);
 
-      const bubble = new g.maps.InfoWindow({
-        content: `<div style="font:600 11px/1.3 system-ui,sans-serif;padding:5px 9px;white-space:nowrap;color:#0F172A;">
-          <span style="color:${color};font-weight:800;">${idx + 1}.</span> ${item.lead.name || "Customer"}
-          <div style="font-weight:500;color:#64748B;font-size:10px;">${fmtApptTime(item.time)}</div>
-        </div>`,
-        disableAutoPan: true,
-        headerDisabled: true,
-        pixelOffset: new g.maps.Size(0, -6),
-      });
-      bubble.open({ map, anchor: marker });
-      // The InfoWindow's outer container gets a class only after it renders.
-      g.maps.event.addListenerOnce(bubble, "domready", () => {
-        const iw = document.querySelector(".gm-style-iw-c")?.closest(".gm-style-iw-a") as HTMLElement | null;
-        iw?.classList.add("dispatch-map-bubble");
-      });
+      const bubbleHtml = `<div style="display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;background:#fff;border-radius:6px;box-shadow:0 1px 4px rgba(15,23,42,0.22);padding:2px 6px;font:600 10px/1.3 system-ui,sans-serif;color:#0F172A;">
+        <span style="color:${color};font-weight:800;">${idx + 1}.</span>
+        <span>${item.lead.name || "Customer"}</span>
+        <span style="font-weight:500;color:#64748B;font-size:9px;">· ${fmtApptTime(item.time)}</span>
+      </div>`;
+      const bubble = createLabelOverlay(g, map, position, bubbleHtml);
       bubblesRef.current.push(bubble);
     };
 
@@ -296,7 +343,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div ref={wrapperRef} className={`relative w-full h-full ${isFullscreen ? "bg-white" : ""}`}>
       <div ref={containerRef} className="w-full h-full" />
 
       {/* Map / Satellite toggle — top-left */}
@@ -311,17 +358,29 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
         </button>
       </div>
 
-      {/* Traffic toggle — top-right */}
-      <label className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-sm border border-slate-200 px-2.5 py-1.5 flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer select-none">
-        <input type="checkbox" checked={showTraffic} onChange={(e) => setShowTraffic(e.target.checked)} className="cursor-pointer" />
-        Traffic
-      </label>
+      {/* Traffic + Fullscreen toggles — top-right */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+        <label className="bg-white rounded-lg shadow-sm border border-slate-200 px-2.5 py-1.5 flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer select-none">
+          <input type="checkbox" checked={showTraffic} onChange={(e) => setShowTraffic(e.target.checked)} className="cursor-pointer" />
+          Traffic
+        </label>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          className="bg-white rounded-lg shadow-sm border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 cursor-pointer"
+        >
+          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+        </button>
+      </div>
 
       {error && (
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-sm max-w-md text-center">
           {error}
         </div>
       )}
+
+      {children}
     </div>
   );
 }
