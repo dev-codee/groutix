@@ -105,6 +105,17 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+  // `items` and `onSelectLead` get new references on every parent re-render
+  // (e.g. the admin page's background lead-refresh poll), even when nothing
+  // relevant to the map actually changed. Rebuilding markers + re-fetching
+  // Directions on every one of those renders is what caused the pins to
+  // flicker. Only rebuild when the actual stop content (ids/type/time/address)
+  // changes, and read the latest onSelectLead via a ref so it never forces a
+  // rebuild on its own.
+  const itemsKey = items.map((i) => `${i.lead.id}:${i.type}:${i.time}:${i.lead.address || ""}`).join("|");
+  const onSelectLeadRef = useRef(onSelectLead);
+  useEffect(() => { onSelectLeadRef.current = onSelectLead; }, [onSelectLead]);
+
   // Init map once.
   useEffect(() => {
     if (!apiKey || !containerRef.current) return;
@@ -176,7 +187,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
         title: `${idx + 1}. ${item.lead.name || "Customer"} · ${fmtApptTime(item.time)}`,
         zIndex: 100 + idx,
       });
-      marker.addListener("click", () => onSelectLead(item.lead.id));
+      marker.addListener("click", () => onSelectLeadRef.current(item.lead.id));
       markersRef.current.push(marker);
       markerByLeadIdRef.current.set(item.lead.id, marker);
 
@@ -254,7 +265,8 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead }: 
         map.fitBounds(bounds, 64);
       }
     );
-  }, [ready, items, hqAddress, onSelectLead, apiKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuild is keyed on itemsKey (content), not the items array reference
+  }, [ready, itemsKey, hqAddress, apiKey]);
 
   // Highlight + pan to whichever marker is selected (from a map click or from
   // the timeline) without rebuilding the route.
