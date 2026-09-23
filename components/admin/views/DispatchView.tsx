@@ -14,14 +14,15 @@ import { getWhatsAppLink } from "@/lib/adminHelpers";
 import type { Lead } from "@/components/admin/types";
 
 // ── Timeline constants ────────────────────────────────────────────────────────
-const SLOT_W = 50;        // px per 30-min slot
 const DAY_LABEL_W = 88;   // px for day label column
-const GRID_START = 8 * 60;  // 8:00 AM in minutes from midnight
-const GRID_END = 18 * 60;   // 6:00 PM
+const GRID_START = 9 * 60;  // 9:00 AM in minutes from midnight
+const GRID_END = 17 * 60;   // 5:00 PM
+const GRID_TOTAL_MINS = GRID_END - GRID_START;
+const VISIBLE_DAYS = 7;   // day rows shown at once (paged via prev/next)
 
-// All 30-min slots from 8:00 to 17:30
-const TIME_SLOTS: string[] = Array.from({ length: 20 }, (_, i) => {
-  const totalMin = 8 * 60 + i * 30;
+// All 30-min slots from 9:00 to 16:30
+const TIME_SLOTS: string[] = Array.from({ length: GRID_TOTAL_MINS / 30 }, (_, i) => {
+  const totalMin = GRID_START + i * 30;
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
@@ -32,8 +33,10 @@ function parseMinutes(t: string): number {
   return h * 60 + (m || 0);
 }
 
-function minsToPx(mins: number): number {
-  return (mins / 30) * SLOT_W;
+// % of the timeline width a given duration (in minutes) covers — column widths
+// are flexible/percentage-based so all slots fit without horizontal scrolling.
+function minsToPercent(mins: number): number {
+  return (mins / GRID_TOTAL_MINS) * 100;
 }
 
 function fmtTime(t: string): string {
@@ -169,11 +172,11 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [filteredItems]);
 
-  // All 14 days in window (for timeline — shows empty rows too)
+  // Visible days in the timeline grid (shows empty rows too) — paged via prev/next
   const allDatesInWindow = useMemo(() => {
     const dates: string[] = [];
     const start = new Date(selectedDate + "T00:00:00");
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < VISIBLE_DAYS; i++) {
       const d = new Date(start);
       d.setDate(d.getDate() + i);
       dates.push(d.toISOString().slice(0, 10));
@@ -406,7 +409,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
         {/* ── TIMELINE VIEW ──────────────────────────────────────────────────── */}
         {viewMode === "timeline" && (
-          <div className="flex-1 overflow-auto bg-slate-100/60 min-w-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/60 min-w-0">
             {filteredItems.length === 0 ? (
               <div className="p-12 text-center space-y-3">
                 <Calendar className="w-10 h-10 text-slate-200 mx-auto" />
@@ -414,18 +417,17 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 <div className="text-xs text-slate-300">Set an inspectionAt or jobAt date on any lead to see it here.</div>
               </div>
             ) : (
-              <div className="bg-white shadow-sm rounded-b-xl" style={{ minWidth: DAY_LABEL_W + TIME_SLOTS.length * SLOT_W }}>
+              <div className="bg-white shadow-sm rounded-b-xl w-full">
                 {/* Time header */}
                 <div className="flex sticky top-0 z-20 bg-white border-b-2 border-slate-200 shadow-sm rounded-tl-xl">
                   <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
                     className="shrink-0 px-2 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 flex items-end">
                     DATE
                   </div>
-                  <div className="flex">
+                  <div className="flex flex-1 min-w-0">
                     {TIME_SLOTS.map((slot, i) => (
                       <div key={slot}
-                        style={{ width: SLOT_W, minWidth: SLOT_W }}
-                        className={`text-center py-1 border-r relative ${i % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50/40"}`}>
+                        className={`flex-1 min-w-0 text-center py-1 border-r relative ${i % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50/40"}`}>
                         {slot.endsWith(":00") ? (
                           <span className="text-[9px] font-black text-slate-600 block">{fmtTime(slot)}</span>
                         ) : (
@@ -436,7 +438,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                   </div>
                 </div>
 
-                {/* Day rows — all 14 days, empty rows shown too */}
+                {/* Day rows — 7 days at a time, empty rows shown too */}
                 {allDatesInWindow.map((date) => {
                   const items = groupedByDate.find(([d]) => d === date)?.[1] ?? [];
                   const isToday = date === todayStr;
@@ -455,13 +457,12 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                       </div>
 
                       {/* Timeline slots area */}
-                      <div className="flex-1 relative" style={{ height: 50 }}>
+                      <div className="flex-1 min-w-0 relative" style={{ height: 50 }}>
                         {/* Slot grid background */}
                         <div className="absolute inset-0 flex pointer-events-none">
                           {TIME_SLOTS.map((slot, i) => (
                             <div key={slot}
-                              style={{ width: SLOT_W, minWidth: SLOT_W }}
-                              className={`h-full border-r ${i % 2 === 0 ? "border-slate-200" : "border-slate-100"} ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}
+                              className={`flex-1 min-w-0 h-full border-r ${i % 2 === 0 ? "border-slate-200" : "border-slate-100"} ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}
                             />
                           ))}
                         </div>
@@ -475,10 +476,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                           const coreMins = item.type === "inspection" ? 30 : 120;
                           const totalMins = travelMins + coreMins + travelMins;
 
-                          const leftPx = minsToPx(offsetFromGrid);
-                          const travelPx = minsToPx(travelMins);
-                          const corePx = minsToPx(coreMins);
-                          const totalPx = minsToPx(totalMins);
+                          const leftPct = minsToPercent(offsetFromGrid);
+                          const totalPct = minsToPercent(totalMins);
 
                           const endMins = startMins + totalMins;
                           const isInsp = item.type === "inspection";
@@ -496,8 +495,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                               title={`${item.lead.name} · ${fmtTime(item.time)} – ${fmtMinutesAsTime(endMins)} · Travel: ${travelMins}min each way · ${isInsp ? "Inspection" : "Job"}: ${coreMins}min`}
                               className="absolute cursor-pointer group focus:outline-none"
                               style={{
-                                left: leftPx,
-                                width: totalPx,
+                                left: `${leftPct}%`,
+                                width: `${totalPct}%`,
                                 top: 5,
                                 height: 40,
                                 zIndex: isSelected ? 20 : 10,
@@ -507,9 +506,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                                 style={{ outlineColor: coreColor }}>
 
                                 {/* Travel TO segment */}
-                                <div className="h-full flex items-center justify-center shrink-0"
-                                  style={{ width: travelPx, backgroundColor: travelColor, borderRight: `1px dashed ${coreColor}` }}>
-                                  {travelPx > 24 && (
+                                <div className="h-full flex items-center justify-center min-w-0"
+                                  style={{ flex: `${travelMins} ${travelMins} 0%`, backgroundColor: travelColor, borderRight: `1px dashed ${coreColor}` }}>
+                                  {travelMins / totalMins > 0.12 && (
                                     <span className="text-[7px] font-black whitespace-nowrap" style={{ color: coreColor }}>
                                       {travelMins}m↗
                                     </span>
@@ -517,8 +516,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                                 </div>
 
                                 {/* Core appointment segment */}
-                                <div className="h-full flex flex-col justify-center px-1.5 overflow-hidden flex-1 min-w-0"
-                                  style={{ backgroundColor: coreBg }}>
+                                <div className="h-full flex flex-col justify-center px-1.5 overflow-hidden min-w-0"
+                                  style={{ flex: `${coreMins} ${coreMins} 0%`, backgroundColor: coreBg }}>
                                   <div className="text-[9px] font-black text-slate-900 truncate leading-tight">
                                     {item.lead.name || "Customer"}
                                   </div>
@@ -528,9 +527,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                                 </div>
 
                                 {/* Travel RETURN segment */}
-                                <div className="h-full flex items-center justify-center shrink-0"
-                                  style={{ width: travelPx, backgroundColor: travelColor, borderLeft: `1px dashed ${coreColor}` }}>
-                                  {travelPx > 24 && (
+                                <div className="h-full flex items-center justify-center min-w-0"
+                                  style={{ flex: `${travelMins} ${travelMins} 0%`, backgroundColor: travelColor, borderLeft: `1px dashed ${coreColor}` }}>
+                                  {travelMins / totalMins > 0.12 && (
                                     <span className="text-[7px] font-black" style={{ color: coreColor }}>
                                       ↙{travelMins}m
                                     </span>

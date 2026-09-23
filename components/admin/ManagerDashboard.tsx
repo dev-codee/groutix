@@ -1348,18 +1348,20 @@ export function ManagerDashboard() {
 
         {/* 4. Unassigned */}
         {(() => {
-          const isUnassigned = (l: Lead) => {
-            if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed" || l.status === "Job Done") return false;
-            const hasAssignee = (l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned");
-            return !hasAssignee;
-          };
+          const hasInspectorAssignee = (l: Lead) =>
+            Boolean(l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned");
+
+          const hasTechnicianAssignee = (l: Lead) =>
+            Boolean((l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned" && isTechnicianName(l.assigned)));
 
           const allUnassignedInsp = scopedLeads.filter((l) =>
-            isUnassigned(l) && /inspection.booked/i.test(l.status || "")
+            l.status !== "Lost" && l.status !== "Cancelled" && l.status !== "Completed" && l.status !== "Job Done" &&
+            /inspection.booked/i.test(l.status || "") && !hasInspectorAssignee(l)
           ).sort((a, b) => new Date(a.inspectionAt || a.received || 0).getTime() - new Date(b.inspectionAt || b.received || 0).getTime());
 
           const allUnassignedJobs = scopedLeads.filter((l) =>
-            isUnassigned(l) && /job.booked|scheduled|job.confirmed|won/i.test(l.status || "")
+            l.status !== "Lost" && l.status !== "Cancelled" && l.status !== "Completed" && l.status !== "Job Done" &&
+            /job.booked|scheduled|job.confirmed|won/i.test(l.status || "") && !hasTechnicianAssignee(l)
           ).sort((a, b) => new Date(a.jobAt || a.received || 0).getTime() - new Date(b.jobAt || b.received || 0).getTime());
 
           const visibleLeads =
