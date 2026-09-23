@@ -10,7 +10,7 @@ import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
-import { buildQuoteResponseUrl, buildQuoteSignUrl, siteBaseUrl, signQuoteToken } from "@/lib/quoteToken";
+import { buildQuoteResponseUrl, buildQuoteSignUrl, buildQuoteSmsUrl, siteBaseUrl, signQuoteToken } from "@/lib/quoteToken";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
 
 export const runtime = "nodejs";
@@ -189,12 +189,14 @@ export async function POST(req: NextRequest) {
     detail: `${quoteNumber} to ${lead.email}`,
   });
 
-  // Text customer that their quote is ready (strictly 1 credit GSM-7).
+  // Text customer that their quote is ready, with a short link straight to
+  // the online accept page (strictly 1 credit GSM-7 — see buildQuoteSmsUrl).
   if (lead.phone) {
     const firstName = (lead.name || "there").trim().split(/\s+/)[0];
+    const smsUrl = buildQuoteSmsUrl(body.id);
     await sendSms({
       to: lead.phone,
-      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) has been emailed. Reply YES to accept or call 7023 8094 to book.`,
+      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) is ready. Accept here: ${smsUrl}`,
     });
   }
 

@@ -44,3 +44,27 @@ export function buildQuoteSignUrl(id: string): string {
   return `${siteBaseUrl()}/quote/${id}?token=${token}`;
 }
 
+// ── Short link for SMS ────────────────────────────────────────────────────
+// The full sign token (43 chars) makes the /quote/<id>?token=... URL too long
+// to fit an SMS alongside any actual message text within a single 160-char
+// GSM-7 segment. For SMS we hand out a short redirect link instead
+// (/s/<id>?t=<10-char token>) that 302s to the full, fully-tokened page. The
+// short token is a truncated slice of the same HMAC — enough to stop blind
+// guessing of a lead id, while the real page still requires the full token.
+export function signQuoteTokenShort(id: string): string {
+  return signQuoteToken(id).slice(0, 10);
+}
+
+export function verifyQuoteTokenShort(id: string, token: string | null | undefined): boolean {
+  if (!token) return false;
+  const expected = signQuoteTokenShort(id);
+  const a = Buffer.from(expected);
+  const b = Buffer.from(token);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/** Build the short SMS-friendly link that redirects to the full sign URL. */
+export function buildQuoteSmsUrl(id: string): string {
+  return `${siteBaseUrl()}/s/${id}?t=${signQuoteTokenShort(id)}`;
+}
+

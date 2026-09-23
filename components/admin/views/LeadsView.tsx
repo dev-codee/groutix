@@ -9,7 +9,7 @@ import { FieldLeadRow } from "@/components/admin/rows/FieldLeadRow";
 import { TechnicianLeadRow } from "@/components/admin/rows/TechnicianLeadRow";
 import { FinanceLeadRow } from "@/components/admin/rows/FinanceLeadRow";
 import { StandardLeadCard } from "@/components/admin/rows/StandardLeadCard";
-import { STATUS_LIST } from "@/lib/adminHelpers";
+import { STATUS_LIST, MANAGER_STATUS_FILTER_LIST } from "@/lib/adminHelpers";
 
 const PAGE_SIZE = 20;
 
@@ -64,7 +64,7 @@ export function LeadsView() {
                   Filtered: {statusFilter.split("|").length > 3 ? `${statusFilter.split("|").slice(0, 2).join(", ")} +${statusFilter.split("|").length - 2}` : statusFilter.split("|").join(", ")} ({filteredLeads.length})
                 </option>
               )}
-              {STATUS_LIST.map((s) => (
+              {MANAGER_STATUS_FILTER_LIST.map((s) => (
                 <option key={s} value={s}>
                   {s} ({counts[s] || 0})
                 </option>

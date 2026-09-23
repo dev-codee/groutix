@@ -15,6 +15,18 @@ const DEFAULT_LEGACY_CUTOFF_MS = 1789102800000;
 
 export const STATUS_LIST: string[] = STATUS_KEYS;
 
+// The manager-facing status filter dropdown (Leads view) only surfaces the
+// primary pipeline stages — a few rarely-used micro-stages that overlap with
+// an adjacent stage (Negotiation ~ Quote Sent, Won ~ Job Booked, Scheduled ~
+// Job Confirmed, Job Started ~ Job In Progress) are left out to keep the list
+// short. Leads that happen to sit in one of those hidden statuses are still
+// counted under "All statuses" and can still be reached via links elsewhere
+// in the app (e.g. dashboard cards) — they're just not offered as a filter.
+const MANAGER_STATUS_FILTER_HIDDEN = new Set(["Negotiation", "Won", "Scheduled", "Job Started"]);
+export const MANAGER_STATUS_FILTER_LIST: string[] = STATUS_LIST.filter(
+  (s) => !MANAGER_STATUS_FILTER_HIDDEN.has(s)
+);
+
 // ── Visit micro-stages ────────────────────────────────────────────────────────
 export type VisitStep = { label: string; status: string };
 export const INSPECTION_STEPS: VisitStep[] = [
