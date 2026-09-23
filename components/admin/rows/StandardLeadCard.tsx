@@ -603,17 +603,25 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       );
                     }
                     if (isJobDone) return null;
+                    // "On the Way" and "Reached" fire the notify-customer popup, same as the inspection steps above.
                     const isYellowStep = step.label === "On the Way" || step.label === "Reached";
+                    const eventType = step.label === "On the Way" ? "en_route" : "arrived";
                     return (
                       <button
                         key={step.status}
                         type="button"
-                        disabled={done}
+                        disabled={done || (isYellowStep && onTheWayLoading === l.id)}
                         onClick={() => {
                           if (done) return;
-                          updateLeadField(l.id, { status: step.status });
+                          if (isYellowStep) {
+                            handleOnTheWay(l, eventType);
+                          } else {
+                            updateLeadField(l.id, { status: step.status });
+                          }
                         }}
                         className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-semibold transition-colors truncate ${
+                          isYellowStep && onTheWayLoading === l.id ? "opacity-60 cursor-wait " : ""
+                        }${
                           done
                             ? isYellowStep
                               ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"

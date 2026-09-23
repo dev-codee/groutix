@@ -267,7 +267,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-4 border-[#001f97] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-semibold text-slate-600">Loading your quotation…</p>
@@ -278,7 +278,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
 
   if (error || !quote) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center space-y-4">
           <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
@@ -299,7 +299,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white text-slate-800 py-10 px-4 sm:px-6">
+    <div className="min-h-screen bg-white text-slate-800 py-10 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Brand Header */}
         <header className="flex items-center justify-between bg-white rounded-2xl p-5 px-6 shadow-xs border border-slate-200">
@@ -338,7 +338,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
             </div>
 
             {/* Next Step Call to Action */}
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-[#001f97]/5 to-[#001f97]/10 border border-[#001f97]/20 max-w-lg mx-auto space-y-4 text-left">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200 max-w-lg mx-auto space-y-4 text-left">
               <div className="flex items-center gap-2 text-[#001f97] font-bold text-sm">
                 <Calendar className="w-4 h-4" /> Next Step: Pick your service date
               </div>
@@ -395,7 +395,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               </div>
 
               {/* Client & Property Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 text-xs border border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-white text-xs border border-slate-200">
                 <div>
                   <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px] block mb-1">
                     Client Details
@@ -421,7 +421,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Scope of Works
                   </h3>
-                  <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 text-xs text-slate-700 leading-relaxed whitespace-pre-line font-medium">
+                  <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed whitespace-pre-line font-medium">
                     {quote.jobDescription}
                   </div>
                 </div>
@@ -434,7 +434,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                 </h3>
                 <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 text-[11px] uppercase">
+                    <thead className="bg-white text-slate-500 font-bold border-b border-slate-200 text-[11px] uppercase">
                       <tr>
                         <th className="py-2.5 px-3.5">Description</th>
                         <th className="py-2.5 px-3 text-center">Qty</th>
@@ -445,7 +445,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                     <tbody className="divide-y divide-slate-100">
                       {quote.items.length > 0 ? (
                         quote.items.map((it, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50">
+                          <tr key={idx}>
                             <td className="py-3 px-3.5">
                               <div className="font-bold text-slate-800">{it.service || "Restoration Work"}</div>
                               {it.description && (
