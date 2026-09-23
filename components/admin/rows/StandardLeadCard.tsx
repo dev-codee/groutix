@@ -11,7 +11,7 @@ import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
-  JOB_STEPS, STATUS_LIST, fmtDate, getStepActive,
+  JOB_STEPS, STATUS_LIST, MANAGER_STATUS_FILTER_LIST, fmtDate, getStepActive,
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
@@ -113,7 +113,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               }`}
               title="Change status manually"
             >
-              {(role === "intake" ? getRoleStatusOptions(role, l.status) : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)).map((s) => (
+              {(role === "intake"
+                ? getRoleStatusOptions(role, l.status)
+                : role === "manager" || role === "super_admin"
+                  ? Array.from(new Set([l.status, ...MANAGER_STATUS_FILTER_LIST])).filter(Boolean)
+                  : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)
+              ).map((s) => (
                 <option key={s} value={s}>
                   {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
                 </option>
