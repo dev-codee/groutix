@@ -11,6 +11,7 @@ import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { resolveArea, formatApptTimeRange } from "@/lib/scheduling";
 import { calculateTravel, DISPATCH_WORKING_HOURS } from "@/lib/dispatch";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
+import { DispatchMap } from "@/components/admin/DispatchMap";
 import type { Lead } from "@/components/admin/types";
 
 // ── Timeline constants ────────────────────────────────────────────────────────
@@ -219,19 +220,12 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     };
   }, [filteredItems, todayItems]);
 
-  // Map embed URL — shows selected lead OR today's route OR base
-  const mapEmbedUrl = useMemo(() => {
-    if (selectedItem?.lead.address) {
-      const dest = encodeURIComponent(selectedItem.lead.address + ", VIC, Australia");
-      return `https://maps.google.com/maps?saddr=${HQ_ADDRESS_URL}&daddr=${dest}&output=embed`;
-    }
-    const items = (todayItems.length > 0 ? todayItems : filteredItems).slice(0, 8);
-    if (items.length === 0) return `https://maps.google.com/maps?q=${HQ_ADDRESS_URL}&z=12&output=embed`;
-    const daddr = items
-      .map(i => encodeURIComponent((i.lead.address || resolveArea(i.lead.address || i.lead.city).suburb || "Melbourne") + ", VIC, Australia"))
-      .join("+to:");
-    return `https://maps.google.com/maps?saddr=${HQ_ADDRESS_URL}&daddr=${daddr}&output=embed`;
-  }, [filteredItems, todayItems, selectedItem]);
+  // Stops shown on the live dispatch map — today's route if there is one,
+  // otherwise whatever's currently filtered. Capped well under the Directions
+  // API's 25-waypoint limit.
+  const mapItems = useMemo(() => {
+    return (todayItems.length > 0 ? todayItems : filteredItems).slice(0, 20);
+  }, [filteredItems, todayItems]);
 
   // Date navigation — pages by the full visible window (7 days) so the arrows
   // actually move you to a new set of days instead of shifting by one row.
@@ -696,7 +690,14 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Job</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-emerald-500 inline-block" />Optimized Route</span>
               </div>
-              <iframe title="Dispatch Route Map" src={mapEmbedUrl} className="w-full flex-1 border-0" loading="lazy" allowFullScreen />
+              <div className="w-full flex-1">
+                <DispatchMap
+                  items={mapItems}
+                  hqAddress={HQ_ADDRESS}
+                  selectedLeadId={selectedLeadId}
+                  onSelectLead={(id) => setSelectedLeadId(id === selectedLeadId ? null : id)}
+                />
+              </div>
             </div>
           </>
         )}
