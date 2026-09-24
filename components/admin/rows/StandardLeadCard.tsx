@@ -12,6 +12,7 @@ import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, STATUS_LIST, MANAGER_STATUS_FILTER_LIST, fmtDate, getStepActive,
+  INSPECTION_PHASE,
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
@@ -321,19 +322,27 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Inspection &amp; Assigned</span>
             </div>
             <div className="mb-1.5">
-              <button
-                type="button"
-                onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
-                  l.status === "Inspection Booked"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
-                }`}
-                title="Set status: Inspection Booked"
-              >
-                {l.status === "Inspection Booked" && <Check className="w-3 h-3 stroke-[2.5]" />}
-                <span>Inspection Booked</span>
-              </button>
+              {(() => {
+                const isInspectionBooked =
+                  Boolean(l.inspectionAt) ||
+                  l.status === "Inspection Completed" ||
+                  INSPECTION_PHASE.includes(l.status);
+                return (
+                  <button
+                    type="button"
+                    onClick={() => updateLeadField(l.id, { status: "Inspection Booked" })}
+                    className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 text-center leading-tight min-h-[34px] cursor-pointer ${
+                      isInspectionBooked
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80"
+                    }`}
+                    title="Set status: Inspection Booked"
+                  >
+                    {isInspectionBooked && <Check className="w-3 h-3 stroke-[2.5]" />}
+                    <span>Inspection Booked</span>
+                  </button>
+                );
+              })()}
               {l.inspectionAt && (
                 <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
                   📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt)}

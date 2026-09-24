@@ -11,7 +11,6 @@ import {
   Loader2,
   User,
   Plus,
-  ChevronRight,
   Car,
   Trash2,
 } from "lucide-react";
@@ -695,8 +694,6 @@ interface Props {
 
 export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], readOnly = false, onSave }: Props) {
   const [report, setReport] = useState<InspectionReportDoc>(() => buildInitial(lead, currentUsername));
-  const [activeRoomIdx, setActiveRoomIdx] = useState(0);
-  const [view, setView] = useState<"room" | "parking" | "final">("room");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -704,8 +701,6 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   useEffect(() => {
     if (!isOpen) return;
     setReport(buildInitial(lead, currentUsername));
-    setActiveRoomIdx(0);
-    setView("room");
     setSaveSuccess(false);
     setErrorMsg("");
   }, [isOpen, lead, currentUsername]);
@@ -749,15 +744,19 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   function addRoom() {
     const next = [...rooms, makeRoom()];
     setReport((prev) => ({ ...prev, rooms: next }));
-    setActiveRoomIdx(next.length - 1);
-    setView("room");
+    setTimeout(() => {
+      document.getElementById(`room-section-${next[next.length - 1].id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   }
 
   function removeRoom(idx: number) {
     if (rooms.length <= 1) return;
     const next = rooms.filter((_, i) => i !== idx);
     setReport((prev) => ({ ...prev, rooms: next }));
-    setActiveRoomIdx(Math.min(activeRoomIdx, next.length - 1));
+  }
+
+  function scrollToRoom(id: string) {
+    document.getElementById(`room-section-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function handleSave(markCompleted = false) {
@@ -878,14 +877,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
           </div>
         </div>
 
-        {/* Tab nav: Rooms + Parking + Final */}
+        {/* Quick nav: jump to a room, parking or final review without leaving the single-page flow */}
         <div className="no-print flex items-center gap-1 px-4 pt-2 pb-0 border-b border-slate-200 bg-white shrink-0 overflow-x-auto">
           {rooms.map((r, idx) => (
             <button key={r.id} type="button"
-              onClick={() => { setActiveRoomIdx(idx); setView("room"); }}
-              className={`px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 whitespace-nowrap cursor-pointer transition-all ${view === "room" && activeRoomIdx === idx
-                ? "border-[#1a6060] text-[#1a6060] bg-teal-50/50"
-                : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+              onClick={() => scrollToRoom(r.id)}
+              className="px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 border-transparent text-slate-500 hover:text-[#1a6060] hover:border-[#1a6060] whitespace-nowrap cursor-pointer transition-all">
               {ROOM_TYPE_LABELS[r.roomType]}{rooms.length > 1 ? ` ${idx + 1}` : ""}
             </button>
           ))}
@@ -896,89 +893,67 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
             </button>
           )}
           <button type="button"
-            onClick={() => setView("parking")}
-            className={`ml-auto px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 whitespace-nowrap cursor-pointer ${view === "parking" ? "border-[#1a6060] text-[#1a6060] bg-teal-50/50" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+            onClick={() => document.getElementById("parking-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="ml-auto px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 border-transparent text-slate-500 hover:text-[#1a6060] hover:border-[#1a6060] whitespace-nowrap cursor-pointer">
             <Car className="w-3 h-3 inline mr-1" />Parking
           </button>
           <button type="button"
-            onClick={() => setView("final")}
-            className={`px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 whitespace-nowrap cursor-pointer ${view === "final" ? "border-[#1a6060] text-[#1a6060] bg-teal-50/50" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+            onClick={() => document.getElementById("final-review-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 border-transparent text-slate-500 hover:text-[#1a6060] hover:border-[#1a6060] whitespace-nowrap cursor-pointer">
             Final Review
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Scrollable body: rooms, then parking, then final review — one continuous flow */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-8">
 
-          {/* Room view */}
-          {view === "room" && (
-            <>
-              {rooms[activeRoomIdx] && (
-                <RoomForm
-                  room={rooms[activeRoomIdx]}
-                  onChange={(updated) => updateRoom(activeRoomIdx, updated)}
-                  readOnly={readOnly}
-                />
-              )}
-
-              {/* Section 5: Save room */}
-              {!readOnly && (
-                <div className="border-t border-slate-200 pt-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={() => handleSave(false)} disabled={saving}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-[#1a6060] text-white text-xs font-bold hover:bg-[#154f4f] transition-colors disabled:opacity-50 cursor-pointer rounded uppercase tracking-wide">
-                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      Save Room
-                    </button>
-                    <button type="button" onClick={addRoom} disabled={saving}
-                      className="flex items-center gap-1.5 px-4 py-2 border-2 border-[#1a6060] text-[#1a6060] text-xs font-bold hover:bg-teal-50 transition-colors cursor-pointer disabled:opacity-50 rounded uppercase tracking-wide">
-                      <Plus className="w-3.5 h-3.5" /> Add Another Room
-                    </button>
-                    {rooms.length > 1 && (
-                      <button type="button" onClick={() => removeRoom(activeRoomIdx)}
-                        className="flex items-center gap-1 px-3 py-2 border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50 cursor-pointer rounded">
-                        <Trash2 className="w-3.5 h-3.5" /> Remove Room
-                      </button>
-                    )}
-                    {activeRoomIdx < rooms.length - 1 ? (
-                      <button type="button" onClick={() => setActiveRoomIdx(activeRoomIdx + 1)}
-                        className="ml-auto flex items-center gap-1 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer rounded">
-                        Next Room <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    ) : (
-                      <button type="button" onClick={() => setView("parking")}
-                        className="ml-auto flex items-center gap-1 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer rounded">
-                        Parking <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-2">Review all rooms, photos and proposed works, then continue to parking and final review.</p>
+          {/* Rooms */}
+          {rooms.map((room, idx) => (
+            <div key={room.id} id={`room-section-${room.id}`} className="space-y-4 scroll-mt-2">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1">
+                <div className="text-xs font-black text-[#1a6060] uppercase tracking-widest">
+                  Room {idx + 1} of {rooms.length} — {ROOM_TYPE_LABELS[room.roomType]}
                 </div>
-              )}
-            </>
-          )}
+                {!readOnly && rooms.length > 1 && (
+                  <button type="button" onClick={() => removeRoom(idx)}
+                    className="flex items-center gap-1 px-2 py-1 border border-rose-200 text-rose-600 text-[10px] font-semibold hover:bg-rose-50 cursor-pointer rounded">
+                    <Trash2 className="w-3 h-3" /> Remove Room
+                  </button>
+                )}
+              </div>
 
-          {/* Parking view */}
-          {view === "parking" && (
-            <>
-              <ParkingForm
-                parking={parking}
-                onChange={(p) => setReport((prev) => ({ ...prev, parking: p }))}
+              <RoomForm
+                room={room}
+                onChange={(updated) => updateRoom(idx, updated)}
                 readOnly={readOnly}
               />
-              {!readOnly && (
-                <div className="flex justify-end">
-                  <button type="button" onClick={() => setView("final")}
-                    className="flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer">
-                    Final Review <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </>
+            </div>
+          ))}
+
+          {!readOnly && (
+            <div className="border-t border-slate-200 pt-4">
+              <button type="button" onClick={addRoom} disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2 border-2 border-[#1a6060] text-[#1a6060] text-xs font-bold hover:bg-teal-50 transition-colors cursor-pointer disabled:opacity-50 rounded uppercase tracking-wide">
+                <Plus className="w-3.5 h-3.5" /> Add Another Room
+              </button>
+              <p className="text-[10px] text-slate-400 mt-2">Add every room that needs work, then continue to parking and final review below.</p>
+            </div>
           )}
 
+          {/* Parking — recorded once for the whole property, not per room */}
+          <div id="parking-section" className="space-y-4 scroll-mt-2 border-t-4 border-slate-100 pt-6">
+            <ParkingForm
+              parking={parking}
+              onChange={(p) => setReport((prev) => ({ ...prev, parking: p }))}
+              readOnly={readOnly}
+            />
+          </div>
+
           {/* Final review */}
-          {view === "final" && (
+          <div id="final-review-section" className="space-y-4 scroll-mt-2 border-t-4 border-slate-100 pt-6">
+            <div className="text-xs font-black text-[#1a6060] uppercase tracking-widest border-b border-slate-200 pb-1">
+              Final Review
+            </div>
             <div className="space-y-4">
               {/* Rooms summary */}
               <div className="p-4 pt-0">
@@ -996,7 +971,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                         <span className="text-amber-700 font-semibold">{r.issues.length} issue{r.issues.length !== 1 ? "s" : ""}</span>
                       )}
                       {r.noVisibleDefects && <span className="text-emerald-600 font-semibold">No defects</span>}
-                      <button type="button" onClick={() => { setActiveRoomIdx(i); setView("room"); }}
+                      <button type="button" onClick={() => scrollToRoom(r.id)}
                         className="ml-auto text-[#1a6060] hover:underline text-[10px] cursor-pointer">
                         Edit
                       </button>
@@ -1092,14 +1067,14 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer */}
         <div className="no-print px-4 py-2.5 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-slate-400 font-medium hidden sm:block">
-              Technician form preview · Conditional sections open only when needed
+              Technician form preview · Single-page flow: rooms → parking → final review
             </span>
             {saveSuccess && (
               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
