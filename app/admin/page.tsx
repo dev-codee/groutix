@@ -115,7 +115,7 @@ import {
   getRoleStatusOptions, normalizeStatus, esc, fmtDate, fmtDateOnly,
   fmtDateBadge, fmtTimeBadge, getLeadQuoteTotal, getWhatsAppLink,
   getStepActive, getLatestStepIndex, calcResponseTime, isRedundantScope,
-  getFollowupPrompt,
+  getFollowupPrompt, findJobsGroupForStatus,
 } from "@/lib/adminHelpers";
 import { ScheduleView } from "@/components/admin/ScheduleView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
@@ -1392,6 +1392,16 @@ export default function CrmDashboardPage() {
       });
       if (res.ok) {
         setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+        // If a lead's status changes while a Jobs-view filter tab is active, and the
+        // new status no longer belongs to that tab, follow the lead to whichever tab
+        // it now belongs to instead of letting it disappear from view.
+        if (typeof updates.status === "string" && statusFilter) {
+          const activeStatuses = statusFilter.split("|");
+          if (!activeStatuses.includes(updates.status)) {
+            const nextGroup = findJobsGroupForStatus(role, updates.status);
+            if (nextGroup) setStatusFilter(nextGroup.statuses.join("|"));
+          }
+        }
         return true;
       }
     } catch {

@@ -4,7 +4,7 @@
 import type { Lead } from "@/components/admin/types";
 import type { Role } from "./roles";
 import type { StageGroup } from "./pipeline";
-import { STATUS_KEYS, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FINANCE_STATUSES } from "./pipeline";
+import { STAGES, FIELD_STATUSES, STATUS_KEYS, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FINANCE_STATUSES } from "./pipeline";
 import { formatAppt } from "./scheduling";
 
 // ── Job number constants ──────────────────────────────────────────────────────
@@ -57,6 +57,144 @@ export const JOB_PHASE = [
   "Job Started",
   "Job In Progress",
 ];
+
+// ── Jobs view filter/tab groups ────────────────────────────────────────────────
+// Single source of truth for the "Jobs Pipeline by Stage" tabs shown in JobsView,
+// so status-changing actions (On the Way / Reached / Start / Job Done, etc.) can
+// look up which tab a lead's new status now belongs to and follow it there,
+// instead of the lead disappearing from the currently active filter.
+export type JobsGroupDef = { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean };
+
+function singleStageGroups(keys: string[]): JobsGroupDef[] {
+  return STAGES.filter((s) => keys.includes(s.key)).map((s) => ({
+    label: s.label,
+    group: s.group,
+    statuses: [s.key],
+  }));
+}
+
+export function getJobsGroups(role: Role): JobsGroupDef[] {
+  if (role === "intake") {
+    return [
+      { label: "New leads", group: "lead", statuses: ["New"] },
+      { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+      {
+        label: "Inspections",
+        group: "booking",
+        statuses: [
+          "Inspection Booked",
+          "Inspection En Route",
+          "Inspection Arrived",
+          "Inspection In Progress",
+          "Inspection Completed",
+        ],
+      },
+      {
+        label: "Quotes",
+        group: "quote",
+        statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"],
+      },
+      { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
+      { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
+      { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+    ];
+  }
+  if (role === "finance") {
+    return singleStageGroups([
+      "Job Done",
+      "Invoice Sent",
+      "Payment Pending",
+      "Payment Received",
+      "Warranty Sent",
+      "Completed",
+    ]);
+  }
+  if (role === "inspection" || role === "field") {
+    return [
+      { label: "Booked", group: "booking", statuses: ["Inspection Booked"] },
+      {
+        label: "In Progress",
+        group: "job",
+        statuses: ["Inspection En Route", "Inspection Arrived", "Inspection In Progress"],
+      },
+      { label: "Completed", group: "finance", statuses: ["Inspection Completed"] },
+    ];
+  }
+  if (role === "technician") {
+    return [
+      {
+        label: "Booked",
+        group: "job",
+        statuses: ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Inspection Booked"],
+      },
+      {
+        label: "In Progress",
+        group: "job",
+        statuses: [
+          "Job En Route",
+          "Job Arrived",
+          "Job Started",
+          "Job In Progress",
+          "Inspection En Route",
+          "Inspection Arrived",
+          "Inspection In Progress",
+        ],
+      },
+      { label: "Completed", group: "finance", statuses: ["Job Done", "Completed", "Inspection Completed"] },
+    ];
+  }
+  if (role === "manager") {
+    return [
+      { label: "New leads", group: "lead", statuses: ["New"] },
+      { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
+      {
+        label: "Inspection",
+        group: "booking",
+        statuses: [
+          "Inspection Booked",
+          "Inspection En Route",
+          "Inspection Arrived",
+          "Inspection In Progress",
+          "Inspection Completed",
+        ],
+      },
+      {
+        label: "Quotes",
+        group: "quote",
+        statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"],
+      },
+      { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
+      {
+        label: "Job Booked",
+        group: "job",
+        statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job In Progress"],
+      },
+      { label: "Job Done", group: "finance", statuses: ["Job Done"] },
+      { label: "Payment Pending", group: "finance", statuses: ["Payment Pending"] },
+      {
+        label: "Payment Received",
+        group: "finance",
+        statuses: ["Invoice Sent", "Payment Pending", "Payment Received"],
+      },
+      { label: "Warranty Sent", group: "finance", statuses: ["Warranty Sent"] },
+      { label: "Completed 🏆", group: "closed", statuses: ["Completed"] },
+      { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+    ];
+  }
+  return [
+    ...STAGES.filter((s) => FIELD_STATUSES.includes(s.key) || FINANCE_STATUSES.includes(s.key)).map((s) => ({
+      label: s.label,
+      group: s.group,
+      statuses: [s.key],
+    })),
+    { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+  ];
+}
+
+// Given a role and a lead's (new) status, find the Jobs-view tab it belongs to.
+export function findJobsGroupForStatus(role: Role, status: string): JobsGroupDef | undefined {
+  return getJobsGroups(role).find((g) => !g.totalCount && g.statuses.includes(status));
+}
 
 export const STAGE_GROUP_ACCENT: Record<StageGroup, { dot: string; value: string }> = {
   lead: { dot: "bg-blue-500", value: "text-blue-600" },
