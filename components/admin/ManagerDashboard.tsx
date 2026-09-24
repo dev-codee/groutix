@@ -85,8 +85,6 @@ export function ManagerDashboard() {
   } = useAdminPageCtx();
 
   const ribbonRef = useRef<HTMLDivElement>(null);
-  const activityScrollRef = useRef<HTMLDivElement>(null);
-  const activityPausedRef = useRef(false);
   const [statsPeriod, setStatsPeriod] = useState("This Month");
   const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
@@ -302,21 +300,6 @@ export function ManagerDashboard() {
         return { lead: l, icon, iconBg, title, detail, time };
       });
   }, [scopedLeads]);
-
-  // Auto-scroll the Recent Activity list; pauses on hover.
-  useEffect(() => {
-    const el = activityScrollRef.current;
-    if (!el || recentActivityLogs.length === 0) return;
-    const id = setInterval(() => {
-      if (activityPausedRef.current) return;
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
-        el.scrollTop = 0;
-      } else {
-        el.scrollTop += 1;
-      }
-    }, 35);
-    return () => clearInterval(id);
-  }, [recentActivityLogs]);
 
   // 4. DYNAMIC 6-DAY WORKING ROSTER GRID FOR ALL FIELD TEAM MEMBERS (EXCLUDING SUNDAYS)
   const rosterDays = useMemo(() => {
@@ -1195,12 +1178,8 @@ export function ManagerDashboard() {
               </button>
             </div>
 
-            <div
-              ref={activityScrollRef}
-              onMouseEnter={() => { activityPausedRef.current = true; }}
-              onMouseLeave={() => { activityPausedRef.current = false; }}
-              className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5 scroll-smooth"
-            >
+            <div className="max-h-[310px] overflow-y-auto space-y-2 pr-0.5">
+
               {recentActivityLogs.length === 0 && (
                 <div className="py-12 text-center text-slate-400 text-xs font-medium">
                   No activity in the last 3 days
@@ -1439,7 +1418,7 @@ export function ManagerDashboard() {
               </div>
 
               {/* List */}
-              <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
+              <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
                 {visibleLeads.length === 0 && (
                   <div className="py-12 text-center text-slate-400 text-xs font-medium">
                     {unassignedTab === "inspections" ? "All inspections are assigned" :
