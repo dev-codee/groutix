@@ -877,7 +877,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
           </div>
         </div>
 
-        {/* Quick nav: jump to a room, parking or final review without leaving the single-page flow */}
+        {/* Quick nav: jump to a room without leaving the single-page flow */}
         <div className="no-print flex items-center gap-1 px-4 pt-2 pb-0 border-b border-slate-200 bg-white shrink-0 overflow-x-auto">
           {rooms.map((r, idx) => (
             <button key={r.id} type="button"
@@ -892,16 +892,6 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               <Plus className="w-3 h-3" /> Room
             </button>
           )}
-          <button type="button"
-            onClick={() => document.getElementById("parking-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="ml-auto px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 border-transparent text-slate-500 hover:text-[#1a6060] hover:border-[#1a6060] whitespace-nowrap cursor-pointer">
-            <Car className="w-3 h-3 inline mr-1" />Parking
-          </button>
-          <button type="button"
-            onClick={() => document.getElementById("final-review-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="px-3 py-1.5 rounded-t-lg text-[11px] font-semibold border-b-2 border-transparent text-slate-500 hover:text-[#1a6060] hover:border-[#1a6060] whitespace-nowrap cursor-pointer">
-            Final Review
-          </button>
         </div>
 
         {/* Scrollable body: rooms, then parking, then final review — one continuous flow */}
