@@ -77,7 +77,6 @@ const BRAND = rgb(0, 0.122, 0.592); // #001f97
 const INK = rgb(0.06, 0.09, 0.16);
 const MUTED = rgb(0.38, 0.43, 0.51);
 const LINE = rgb(0.88, 0.90, 0.93);
-const ZEBRA = rgb(0.97, 0.98, 0.99);
 
 const A4 = { w: 595.28, h: 841.89 };
 const MARGIN = 48;
@@ -145,7 +144,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   const MUTED = rgb(0.38, 0.42, 0.48);
   const LINE = rgb(0.88, 0.9, 0.93);
   const BRAND = rgb(0, 0.122, 0.592);
-  const ZEBRA = rgb(0.97, 0.98, 0.99);
 
   const contentW = A4.w - MARGIN * 2;
   const bottomLimit = 55;
@@ -326,13 +324,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   const colAmountRight = A4.w - MARGIN - 8;
 
   // Header row
-  page1.drawRectangle({
-    x: MARGIN,
-    y: y - 16,
-    width: contentW,
-    height: 18,
-    color: rgb(0.95, 0.95, 0.96),
-  });
   page1.drawText("DESCRIPTION", { x: colDescX, y: y - 11, size: 8.5, font: bold, color: INK });
   rightTextOnPage(page1, "QTY", colQtyRight, y - 11, bold, 8.5);
   if (!isScopeDoc) {
@@ -355,7 +346,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     return !nc || nl.includes(nc) || nc.includes(nl);
   };
 
-  let zebra = false;
   for (const it of items) {
     const label = it.service || it.description || "Regrouting & waterproof resealing";
     const descMaxWidth = isScopeDoc ? colQtyRight - colDescX - 35 : colQtyRight - colDescX - 15;
@@ -383,11 +373,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       drawQuoteFooter(page1);
       y = 635;
     }
-
-    if (zebra) {
-      page1.drawRectangle({ x: MARGIN, y: y - rowH, width: contentW, height: rowH, color: ZEBRA });
-    }
-    zebra = !zebra;
 
     let ty = y - 6 - 7;
     for (const ln of descLines) {
