@@ -382,6 +382,7 @@ export function getFollowupPrompt(lead: Lead): string {
     { step: "Inspection Completed", label: "Inspection Completed" },
     { step: "Quote Sent", label: "Quote Sent" },
     { step: "Job Booked", label: "Job Booked" },
+    { step: "Job Done", label: "Job Done" },
     { step: "Invoice Sent", label: "Invoice Sent" },
     { step: "Payment Pending", label: "Payment Pending" },
     { step: "Payment Received", label: "Payment Received" },

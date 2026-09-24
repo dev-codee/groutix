@@ -1019,6 +1019,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               { label: "Inspection Completed", step: "Inspection Completed" },
               { label: "Quote Sent", step: "Quote Sent" },
               { label: "Job Booked", step: "Job Booked" },
+              { label: "Job Done", step: "Job Done" },
               { label: "Invoice Sent", step: "Invoice Sent" },
               { label: "Payment Pending", step: "Payment Pending" },
               { label: "Payment Received", step: "Payment Received" },

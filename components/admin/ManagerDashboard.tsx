@@ -853,12 +853,12 @@ export function ManagerDashboard() {
     },
     {
       label: "Job In Progress",
-      count: scopedLeads.filter((l) => l.status === "Job In Progress" || l.status === "Job En Route").length,
+      count: scopedLeads.filter((l) => l.status === "Job In Progress" || l.status === "Job En Route" || l.status === "Job Arrived").length,
       icon: <Wrench className="w-4 h-4 text-amber-600" />,
       iconBg: "bg-amber-100",
       cardBg: "bg-amber-50/80 border-amber-200/90 text-amber-800",
       countColor: "text-amber-600",
-      statuses: ["Job In Progress", "Job En Route"],
+      statuses: ["Job In Progress", "Job En Route", "Job Arrived"],
     },
     {
       label: "Job Done",
