@@ -16,7 +16,6 @@ export function FieldLeadRow({ l }: { l: Lead }) {
   const {
     role,
     onTheWayLoading,
-    isTechnicianName,
     updateLeadField,
     callCustomer,
     openGpsModal,
@@ -184,7 +183,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">ASSIGNED</label>
               <div className="w-full text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate cursor-default select-none">
-                {(l.assigned && !isTechnicianName(l.assigned) ? l.assigned : null) || "Unassigned"}
+                {l.assigned || "Unassigned"}
               </div>
             </div>
 
