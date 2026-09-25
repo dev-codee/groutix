@@ -27,6 +27,17 @@ export const MANAGER_STATUS_FILTER_LIST: string[] = STATUS_LIST.filter(
   (s) => !MANAGER_STATUS_FILTER_HIDDEN.has(s)
 );
 
+// The technician status dropdown only needs the stages a technician actually
+// works through (Job Booked -> En Route -> Arrived -> In Progress -> Done),
+// plus the inspection stages for dual-role staff. Micro-stages that overlap
+// an adjacent stage and are never set by the technician themselves (Won ~
+// Job Booked, Scheduled/Job Confirmed ~ Job Booked, Job Started ~ Job In
+// Progress) are hidden to keep the list short.
+const TECHNICIAN_STATUS_OPTIONS_HIDDEN = new Set(["Won", "Scheduled", "Job Confirmed", "Job Started"]);
+export const TECHNICIAN_STATUS_OPTIONS_LIST: string[] = TECHNICIAN_STATUSES.filter(
+  (s) => !TECHNICIAN_STATUS_OPTIONS_HIDDEN.has(s)
+);
+
 // ── Visit micro-stages ────────────────────────────────────────────────────────
 export type VisitStep = { label: string; status: string };
 export const INSPECTION_STEPS: VisitStep[] = [
@@ -79,15 +90,19 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
       { label: "New leads", group: "lead", statuses: ["New"] },
       { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
       {
-        label: "Inspections",
+        label: "Inspection In Progress",
         group: "booking",
         statuses: [
           "Inspection Booked",
           "Inspection En Route",
           "Inspection Arrived",
           "Inspection In Progress",
-          "Inspection Completed",
         ],
+      },
+      {
+        label: "Inspection Completed",
+        group: "booking",
+        statuses: ["Inspection Completed"],
       },
       {
         label: "Quotes",
@@ -301,7 +316,7 @@ export function getRoleStatusOptions(role: Role, currentStatus?: string): string
   let base: string[];
   if (role === "intake") base = INTAKE_STATUSES;
   else if (role === "inspection" || role === "field") base = INSPECTION_STATUSES;
-  else if (role === "technician") base = TECHNICIAN_STATUSES;
+  else if (role === "technician") base = TECHNICIAN_STATUS_OPTIONS_LIST;
   else if (role === "finance") base = FINANCE_STATUSES;
   else base = STATUS_LIST;
 

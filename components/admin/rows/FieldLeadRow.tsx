@@ -5,7 +5,7 @@ import {
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getRoleStatusOptions, getFollowupPrompt } from "@/lib/adminHelpers";
+import { getFollowupPrompt } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -27,7 +27,6 @@ export function FieldLeadRow({ l }: { l: Lead }) {
     staff,
   } = ctx;
 
-  const statusOptions = getRoleStatusOptions("inspection", l.status);
   const followupPrompt = getFollowupPrompt(l);
 
   const jobNoDisplay = l.jobNo
@@ -171,13 +170,9 @@ export function FieldLeadRow({ l }: { l: Lead }) {
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
-              <select
-                value={l.status || "Inspection Booked"}
-                onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
-                className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
-              >
-                {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <div className="w-full text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 shadow-2xs truncate cursor-default select-none">
+                {l.status || "Inspection Booked"}
+              </div>
             </div>
 
             <div className="flex-1 min-w-0">

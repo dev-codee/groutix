@@ -53,11 +53,8 @@ export function JobsView() {
           new Set([
             "Job Booked",
             "Inspection Booked",
-            "Scheduled",
-            "Job Confirmed",
             "Job En Route",
             "Job Arrived",
-            "Job Started",
             "Job In Progress",
             "Job Done",
             "Completed",
