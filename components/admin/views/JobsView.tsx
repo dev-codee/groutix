@@ -223,23 +223,29 @@ export function JobsView() {
                 />
               </div>
 
-              <select
-                value={filterOptions.includes(statusFilter) ? statusFilter : ""}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs px-3 py-1.5 bg-slate-50/80 border border-slate-200/90 rounded-xl font-medium text-slate-700 focus:outline-hidden shadow-2xs"
-              >
-                <option value="">
+              {role === "technician" || role === "inspection" || role === "field" ? (
+                <div className="text-xs px-3 py-1.5 bg-slate-50/80 border border-slate-200/90 rounded-xl font-medium text-slate-500 shadow-2xs cursor-default select-none">
                   {allLabel} ({totalActive})
-                </option>
-                {filterOptions.map((st) => {
-                  const count = scopedLeads.filter((l) => l.status === st).length;
-                  return (
-                    <option key={st} value={st}>
-                      {st} ({count})
-                    </option>
-                  );
-                })}
-              </select>
+                </div>
+              ) : (
+                <select
+                  value={filterOptions.includes(statusFilter) ? statusFilter : ""}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-xs px-3 py-1.5 bg-slate-50/80 border border-slate-200/90 rounded-xl font-medium text-slate-700 focus:outline-hidden shadow-2xs"
+                >
+                  <option value="">
+                    {allLabel} ({totalActive})
+                  </option>
+                  {filterOptions.map((st) => {
+                    const count = scopedLeads.filter((l) => l.status === st).length;
+                    return (
+                      <option key={st} value={st}>
+                        {st} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
 
               <button
                 type="button"
