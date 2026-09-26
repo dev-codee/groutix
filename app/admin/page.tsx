@@ -287,19 +287,19 @@ export default function CrmDashboardPage() {
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const locationWatchRef = useRef<number | null>(null);
 
-  // Live AUS clock — updates every second
-  const [liveAusTime, setLiveAusTime] = useState(() =>
-    new Date().toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
-  );
-  const [liveAusDate, setLiveAusDate] = useState(() =>
-    new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short" })
-  );
+  // Live AUS clock — updates every second.
+  // Both states start as "" so the server and first client render agree (no
+  // hydration mismatch). useEffect fires immediately after mount and sets the
+  // real time; the interval keeps it ticking every second from there.
+  const [liveAusTime, setLiveAusTime] = useState("");
+  const [liveAusDate, setLiveAusDate] = useState("");
   useEffect(() => {
     const tick = () => {
       const now = new Date();
       setLiveAusTime(now.toLocaleTimeString("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }));
       setLiveAusDate(now.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short" }));
     };
+    tick(); // populate immediately on mount
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
@@ -1162,6 +1162,10 @@ export default function CrmDashboardPage() {
       if (current && current !== "Unassigned" && !isTechnicianName(current)) {
         names.add(current);
       }
+      names.add("Adnan Muneer");
+      staff
+        .filter((s) => s.active && s.role === "finance")
+        .forEach((s) => names.add(s.name));
       const list = Array.from(names).filter((n) => n && n !== "Unassigned");
       return ["Unassigned", ...list];
     },
@@ -2432,26 +2436,19 @@ export default function CrmDashboardPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // A4 portrait: 1000 x 1414
+    // Landscape card: 1000 x 630
     const W = canvas.width;
     const H = canvas.height;
 
-    // Background
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, W, H);
-
-    // Decorative corner waves (on both pages)
+    // Decorative corner waves helper — called per-page as needed
     const drawCornerSwooshes = () => {
       // Top-right swooshes
       ctx.save();
-      // Outer cyan curve
       ctx.beginPath();
       ctx.arc(W + 50, -30, 230, 0, Math.PI * 2);
       ctx.strokeStyle = "#00a8cc";
       ctx.lineWidth = 14;
       ctx.stroke();
-
-      // Inner navy circle
       ctx.beginPath();
       ctx.arc(W + 50, -30, 200, 0, Math.PI * 2);
       ctx.fillStyle = "#071c4d";
@@ -2460,14 +2457,11 @@ export default function CrmDashboardPage() {
 
       // Bottom-left swooshes
       ctx.save();
-      // Outer cyan curve
       ctx.beginPath();
       ctx.arc(-50, H + 30, 230, 0, Math.PI * 2);
       ctx.strokeStyle = "#00a8cc";
       ctx.lineWidth = 14;
       ctx.stroke();
-
-      // Inner navy circle
       ctx.beginPath();
       ctx.arc(-50, H + 30, 200, 0, Math.PI * 2);
       ctx.fillStyle = "#071c4d";
@@ -2475,7 +2469,10 @@ export default function CrmDashboardPage() {
       ctx.restore();
     };
 
-    drawCornerSwooshes();
+    // NOTE: Each page branch draws its own background + swooshes independently
+    //       so that Page 1 (landscape card) and Page 2 (portrait terms) can
+    //       have different canvas sizes in future without conflict.
+
 
     // Helper text wrapper
     function wrapText(
@@ -2515,8 +2512,8 @@ export default function CrmDashboardPage() {
       }
     };
 
-    // Shared: navy footer banner with contact badges + page label
-    const drawWarrantyFooter = (pageLabel: string) => {
+    // Shared: navy footer banner with contact badges + optional page label
+    const drawWarrantyFooter = (pageLabel?: string) => {
       const fY = H - 70;
       ctx!.fillStyle = "#071c4d";
       ctx!.fillRect(0, fY, W, 70);
@@ -2551,81 +2548,117 @@ export default function CrmDashboardPage() {
       ctx!.fillStyle = "#ffffff";
       ctx!.font = "bold 16px Arial, sans-serif";
       ctx!.fillText("www.groutix.com", 662, cy);
-      ctx!.textAlign = "right";
-      ctx!.fillStyle = "#9cc3f0";
-      ctx!.font = "13px Arial, sans-serif";
-      ctx!.fillText(pageLabel, W - 60, cy);
-      ctx!.textAlign = "left";
+      if (pageLabel) {
+        ctx!.textAlign = "right";
+        ctx!.fillStyle = "#9cc3f0";
+        ctx!.font = "13px Arial, sans-serif";
+        ctx!.fillText(pageLabel, W - 60, cy);
+        ctx!.textAlign = "left";
+      }
       ctx!.textBaseline = "alphabetic";
     };
 
     if (warrantyTab === "page1") {
       // ==========================================
-      // PAGE 1: WARRANTY CERTIFICATE
+      // PAGE 1: LANDSCAPE WARRANTY CARD (1000 × 630)
+      // Exact match to the reference design:
+      // Left ~420px: logo · ribbon · body text · shield/bullets · ACL box
+      // Right ~530px: title stack · field rows with label + underline
+      // Divider: thin navy vertical line at x=440
+      // Footer: full-width navy bar
       // ==========================================
 
-      // 1. Top-Left Logo (real brand mark)
-      drawLogo(60, 46, 74);
+      const DIVX = 440; // vertical divider x-position
+      const PAD  = 36;  // outer horizontal padding
+      const FOOTER_H = 58;
+      const FOOTER_Y = H - FOOTER_H;
 
-      // 2. Top-Right Stacked Title (navy)
-      ctx.textAlign = "right";
-      ctx.fillStyle = "#071c4d";
-      ctx.font = "bold 30px Arial, sans-serif";
-      ctx.fillText("10-YEAR", W - 60, 82);
-      ctx.fillText("FULL SHOWER", W - 60, 118);
-      ctx.fillText("RE-GROUT WARRANTY", W - 60, 154);
-      ctx.textAlign = "left";
-
-      // 3. Navy Ribbon
-      ctx.fillStyle = "#071c4d";
-      ctx.fillRect(0, 185, W, 44);
+      // ── White background ──────────────────────────────────────────────────
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 19px Arial, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("YOUR PEACE OF MIND. ENGINEERED TO LAST.", W / 2, 213);
-      ctx.textAlign = "left";
+      ctx.fillRect(0, 0, W, H);
 
-      // 4. Warranting statement
-      ctx.fillStyle = "#0f172a";
-      ctx.font = "500 15px Arial, sans-serif";
-      wrapText(
-        "Groutix Pty Ltd trading as Groutix warrants that a qualifying full shower re-grout performed by Groutix will remain waterproof for a period of 10 years from the date of the Services are completed, subject to the terms, conditions and exclusions set out in this Warranty Document.",
-        60,
-        272,
-        W - 120,
-        24
-      );
-
-      // 5. Left Shield Badge & Right 4 Checkmark bullets (titles only)
-      const sx = 132;
-      const sy = 428;
+      // ── Top-right corner swoosh (cyan arc + navy filled arc) ──────────────
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(sx + 55, sy + 25);
-      ctx.lineTo(sx + 55, sy + 105);
-      ctx.quadraticCurveTo(sx + 55, sy + 175, sx, sy + 205);
-      ctx.quadraticCurveTo(sx - 55, sy + 175, sx - 55, sy + 105);
-      ctx.lineTo(sx - 55, sy + 25);
-      ctx.closePath();
-      ctx.fillStyle = "#e8f4fc";
-      ctx.fill();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "#071c4d";
+      ctx.arc(W + 60, -60, 200, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00a8cc";
+      ctx.lineWidth = 14;
       ctx.stroke();
-
-      // Shield droplet icon
       ctx.beginPath();
-      ctx.moveTo(sx, sy + 62);
-      ctx.quadraticCurveTo(sx + 26, sy + 100, sx + 26, sy + 128);
-      ctx.arc(sx, sy + 128, 26, 0, Math.PI, false);
-      ctx.quadraticCurveTo(sx - 26, sy + 100, sx, sy + 62);
+      ctx.arc(W + 60, -60, 175, 0, Math.PI * 2);
       ctx.fillStyle = "#071c4d";
       ctx.fill();
       ctx.restore();
 
-      // Right 4 Bullets (titles only, matching official card)
-      const bx = 262;
+      // ── Bottom-left corner swoosh ─────────────────────────────────────────
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(-40, H + 30, 210, 0, Math.PI * 2);
+      ctx.strokeStyle = "#00a8cc";
+      ctx.lineWidth = 16;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(-40, H + 30, 185, 0, Math.PI * 2);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
+
+      // ──────────────────────────────────────────────────────────────────────
+      // LEFT PANEL
+      // ──────────────────────────────────────────────────────────────────────
+
+      // Logo (top-left)
+      drawLogo(PAD, 22, 62);
+
+      // Navy ribbon banner
+      const ribbonY = 96;
+      const ribbonH = 34;
+      ctx.fillStyle = "#071c4d";
+      ctx.fillRect(0, ribbonY, DIVX - 10, ribbonH);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 13px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("YOUR PEACE OF MIND. ENGINEERED TO LAST.", (DIVX - 10) / 2, ribbonY + 22);
+      ctx.textAlign = "left";
+
+      // Warranting body text
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "500 11.5px Arial, sans-serif";
+      let bodyY = ribbonY + ribbonH + 16;
+      bodyY = wrapText(
+        "Groutix Pty Ltd trading as Groutix warrants that a qualifying full shower re-grout performed by Groutix will remain waterproof for a period of 10 years from the date of the Services are completed, subject to the terms, conditions and exclusions set out in this Warranty Document.",
+        PAD, bodyY, DIVX - PAD - 16, 17
+      );
+
+      // Shield badge
+      const sx = PAD + 46;
+      const sy = bodyY + 14;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + 40, sy + 18);
+      ctx.lineTo(sx + 40, sy + 78);
+      ctx.quadraticCurveTo(sx + 40, sy + 130, sx, sy + 152);
+      ctx.quadraticCurveTo(sx - 40, sy + 130, sx - 40, sy + 78);
+      ctx.lineTo(sx - 40, sy + 18);
+      ctx.closePath();
+      ctx.fillStyle = "#dbeafe";
+      ctx.fill();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = "#071c4d";
+      ctx.stroke();
+      // Water-drop icon inside shield
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + 46);
+      ctx.quadraticCurveTo(sx + 20, sy + 78, sx + 20, sy + 98);
+      ctx.arc(sx, sy + 98, 20, 0, Math.PI, false);
+      ctx.quadraticCurveTo(sx - 20, sy + 78, sx, sy + 46);
+      ctx.fillStyle = "#071c4d";
+      ctx.fill();
+      ctx.restore();
+
+      // 4 bullet points to the right of shield
+      const bx = PAD + 104;
       const bulletTitles = [
         "10 YEARS WORKMANSHIP WARRANTY",
         "WATERPROOF PROTECTION",
@@ -2633,86 +2666,144 @@ export default function CrmDashboardPage() {
         "EXPERT INSTALLATION",
       ];
       bulletTitles.forEach((title, i) => {
-        const itemY = 470 + i * 52;
-        // Cyan circle
+        const itemY = sy + 26 + i * 34;
+        // Cyan filled circle
         ctx.beginPath();
-        ctx.arc(bx + 14, itemY - 5, 15, 0, Math.PI * 2);
+        ctx.arc(bx + 10, itemY - 4, 11, 0, Math.PI * 2);
         ctx.fillStyle = "#00a8cc";
         ctx.fill();
         // White checkmark
         ctx.beginPath();
-        ctx.moveTo(bx + 8, itemY - 5);
-        ctx.lineTo(bx + 12, itemY - 1);
-        ctx.lineTo(bx + 21, itemY - 11);
+        ctx.moveTo(bx + 5, itemY - 4);
+        ctx.lineTo(bx + 9, itemY);
+        ctx.lineTo(bx + 16, itemY - 9);
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.2;
         ctx.stroke();
-        // Title
+        // Label
         ctx.fillStyle = "#071c4d";
-        ctx.font = "bold 18px Arial, sans-serif";
-        ctx.fillText(title, bx + 42, itemY);
+        ctx.font = "bold 12.5px Arial, sans-serif";
+        ctx.fillText(title, bx + 28, itemY);
       });
 
-      // 6. Australian Consumer Law callout box (light blue)
-      const aclY = 690;
-      const aclW = W - 120;
-      const aclH = 66;
+      // Australian Consumer Law callout box
+      const aclY = FOOTER_Y - 68;
+      const aclW = DIVX - PAD - 16;
       ctx.save();
       ctx.fillStyle = "#e8f4fc";
       ctx.strokeStyle = "#bce1f8";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.roundRect(60, aclY, aclW, aclH, 12);
+      ctx.roundRect(PAD, aclY, aclW, 56, 8);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#071c4d";
-      ctx.font = "500 15px Arial, sans-serif";
+      ctx.font = "10.5px Arial, sans-serif";
       wrapText(
         "This warranty is in addition to any rights and remedies available under the Australian Consumer Law.",
-        84,
-        aclY + 28,
-        aclW - 48,
-        22
+        PAD + 12, aclY + 18, aclW - 24, 16
       );
       ctx.restore();
 
-      // 7. Certificate detail fields (single column with underlines)
-      let fldY = 812;
-      const drawField = (label: string, value: string) => {
+      // ── Vertical divider ─────────────────────────────────────────────────
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(DIVX, 16);
+      ctx.lineTo(DIVX, FOOTER_Y - 8);
+      ctx.stroke();
+
+      // ──────────────────────────────────────────────────────────────────────
+      // RIGHT PANEL
+      // ──────────────────────────────────────────────────────────────────────
+      const RP = DIVX + 28; // right panel left edge
+      const RW = W - RP - PAD; // right panel usable width
+
+      // Stacked title (navy, bold, centered in right panel)
+      const titleCenterX = Math.round((RP + (W - PAD)) / 2);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "bold 26px Arial, sans-serif";
+      ctx.fillText("10-YEAR", titleCenterX, 52);
+      ctx.fillText("FULL SHOWER", titleCenterX, 82);
+      ctx.fillText("RE-GROUT WARRANTY", titleCenterX, 112);
+      ctx.textAlign = "left";
+
+      // Field rows — two-sub-column: label left, underline + value right
+      // Layout: label at RP, value area starts at RP+labelColW
+      const labelColW = 172;
+      const valueX = RP + labelColW + 8;
+      const valueW = W - PAD - valueX;
+
+      let fY = 152;
+      const rowGap = 54;
+
+      const drawRow = (label: string, value: string, extraGap = 0) => {
         ctx.fillStyle = "#071c4d";
-        ctx.font = "bold 15px Arial, sans-serif";
-        ctx.fillText(label, 60, fldY);
-        ctx.strokeStyle = "#cbd5e1";
-        ctx.lineWidth = 1;
+        ctx.font = "bold 11.5px Arial, sans-serif";
+        ctx.fillText(label, RP, fY);
+        // Underline
+        ctx.strokeStyle = "#1e3a8a";
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(360, fldY + 6);
-        ctx.lineTo(W - 60, fldY + 6);
+        ctx.moveTo(valueX, fY + 5);
+        ctx.lineTo(W - PAD, fY + 5);
         ctx.stroke();
+        // Value text
         if (value) {
           ctx.fillStyle = "#0f172a";
-          ctx.font = "15px Arial, sans-serif";
-          ctx.fillText(value, 372, fldY);
+          ctx.font = "bold 13px Arial, sans-serif";
+          ctx.fillText(value, valueX + 4, fY);
         }
-        fldY += 48;
+        fY += rowGap + extraGap;
       };
-      drawField("JOB / INVOICE NO.:", warrantyJobNo);
-      drawField("COMPLETION DATE:", fmtDateOnly(warrantyCompletion));
-      drawField("WARRANTY EXPIRY DATE:", fmtDateOnly(warrantyExpiry));
-      drawField("CUSTOMER NAME:", warrantyCustomer);
-      drawField("PROPERTY ADDRESS:", warrantyAddress);
-      fldY += 18;
-      drawField("AUTHORISED BY GROUTIX:", warrantyAuthorised);
-      drawField("DATE ISSUED:", fmtDateOnly(warrantyIssued));
 
-      // 8. Bottom footer banner
-      drawWarrantyFooter("Page 1 of 2");
+      drawRow("JOB / INVOICE NO.:", warrantyJobNo);
+      drawRow("COMPLETION DATE:", fmtDateOnly(warrantyCompletion));
+      drawRow("WARRANTY EXPIRY DATE:", fmtDateOnly(warrantyExpiry));
+      drawRow("CUSTOMER NAME:", warrantyCustomer);
+      // Property address gets a bit more vertical space (two-line underline)
+      fY -= 6;
+      ctx.fillStyle = "#071c4d";
+      ctx.font = "bold 11.5px Arial, sans-serif";
+      ctx.fillText("PROPERTY ADDRESS:", RP, fY);
+      ctx.strokeStyle = "#1e3a8a";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(valueX, fY + 5);
+      ctx.lineTo(W - PAD, fY + 5);
+      ctx.stroke();
+      // Second underline
+      ctx.beginPath();
+      ctx.moveTo(RP, fY + 26);
+      ctx.lineTo(W - PAD, fY + 26);
+      ctx.stroke();
+      if (warrantyAddress) {
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "bold 13px Arial, sans-serif";
+        ctx.fillText(warrantyAddress, valueX + 4, fY);
+      }
+      fY += rowGap + 24;
+
+      drawRow("AUTHORISED BY GROUTIX:", warrantyAuthorised);
+      drawRow("DATE ISSUED:", fmtDateOnly(warrantyIssued));
+
+      // ── Footer ───────────────────────────────────────────────────────────
+      drawWarrantyFooter();
+
     } else {
       // ==========================================
       // PAGE 2: TERMS & CONDITIONS
       // ==========================================
 
+      // Page 2 draws its own background + swooshes (shared pre-branch code was removed)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+      drawCornerSwooshes();
+
       // 1. Header: logo left, TERMS & CONDITIONS pill right + subtitle
       drawLogo(60, 40, 66);
+
 
       const pillW = 320;
       const pillH = 44;
@@ -6545,8 +6636,8 @@ export default function CrmDashboardPage() {
                   <canvas
                     ref={canvasRef}
                     width={1000}
-                    height={1414}
-                    className="w-full max-w-[650px] h-auto shadow-md rounded bg-white block"
+                    height={630}
+                    className="w-full max-w-[780px] h-auto shadow-md rounded bg-white block"
                   />
                 </div>
 

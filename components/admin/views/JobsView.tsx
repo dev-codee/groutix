@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, CheckCircle2 } from "lucide-react";
+import { Search, CheckCircle2, Trophy } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { Pagination } from "@/components/admin/Pagination";
 import { IntakeLeadRow } from "@/components/admin/rows/IntakeLeadRow";
@@ -123,7 +123,9 @@ export function JobsView() {
           </div>
         </div>
         <div className={`grid gap-2.5 ${
-          groups.length === 3
+          groups.length >= 10
+            ? "grid-cols-2 sm:grid-cols-5"
+            : groups.length === 3
             ? "grid-cols-1 sm:grid-cols-3"
             : groups.length === 4
             ? "grid-cols-2 sm:grid-cols-4"
@@ -134,6 +136,33 @@ export function JobsView() {
               dot: "bg-sky-500",
               value: "text-sky-600",
             };
+
+            // --- All Completed Records card ---
+            if (grp.completedCount) {
+              const isCompletedCardActive = false;
+              return (
+                <button
+                  key={grp.label}
+                  type="button"
+                  onClick={() => { setCurrentView("completed"); setPage(1); }}
+                  className="p-3 rounded-xl border text-left transition-all cursor-pointer border-emerald-200/70 bg-emerald-50/40 hover:bg-emerald-100/60 hover:border-emerald-300 group"
+                  title="View all completed records"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Trophy className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                    <span className="text-[11px] font-semibold text-emerald-700 leading-tight line-clamp-1">
+                      {grp.label}
+                    </span>
+                  </div>
+                  <div className={`text-xl font-bold tabular-nums ${
+                    completedLeads.length ? "text-emerald-600" : "text-slate-300"
+                  }`}>
+                    {completedLeads.length}
+                  </div>
+                </button>
+              );
+            }
+
             const value = grp.customCount !== undefined
               ? grp.customCount
               : grp.totalCount

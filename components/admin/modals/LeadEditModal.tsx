@@ -145,6 +145,17 @@ export function LeadEditModal({
                   value={
                     editingLead?.assigned && !isTechnicianName(editingLead.assigned)
                       ? editingLead.assigned
+                      : [
+                          "Job Done",
+                          "Invoice Sent",
+                          "Payment Request",
+                          "Payment Pending",
+                          "Partial Payment",
+                          "Payment Received",
+                          "Warranty Sent",
+                          "Completed",
+                        ].includes(editingLead?.status || "")
+                      ? "Adnan Muneer"
                       : assigneeOptions[0] || "Unassigned"
                   }
                   onChange={(e) => setEditingLead({ ...editingLead, assigned: e.target.value === "Unassigned" ? "" : e.target.value })}
@@ -155,6 +166,9 @@ export function LeadEditModal({
                       {n}
                     </option>
                   ))}
+                  {!assigneeOptions.includes("Adnan Muneer") && (
+                    <option value="Adnan Muneer">Adnan Muneer (Finance)</option>
+                  )}
                 </select>
               )}
             </div>

@@ -217,14 +217,16 @@ export async function buildWarrantyPdfBase64(input: WarrantyPdfInput): Promise<s
       color: rgb(1, 1, 1),
     });
 
-    // Page number on right
-    page.drawText(pageNumStr, {
-      x: A4.w - MARGIN - 35,
-      y: bannerH / 2 - 3.5,
-      size: 8,
-      font,
-      color: rgb(0.85, 0.9, 1.0),
-    });
+    // Page number on right (if provided)
+    if (pageNumStr) {
+      page.drawText(pageNumStr, {
+        x: A4.w - MARGIN - 35,
+        y: bannerH / 2 - 3.5,
+        size: 8,
+        font,
+        color: rgb(0.85, 0.9, 1.0),
+      });
+    }
   };
 
   // ══════════════════════════════════════════════════════════════════
@@ -232,7 +234,7 @@ export async function buildWarrantyPdfBase64(input: WarrantyPdfInput): Promise<s
   // ══════════════════════════════════════════════════════════════════
   const page1 = doc.addPage([A4.w, A4.h]);
   drawCornerWaves(page1);
-  drawFooterBanner(page1, "Page 1 of 2");
+  drawFooterBanner(page1, "");
 
   // 1. Header: Logo (left) & Stacked Title (right)
   const headerTopY = A4.h - 45;

@@ -35,11 +35,11 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const waUrl = getWhatsAppLink(l.phone);
   const followupPrompt = getFollowupPrompt(l);
 
-  const isJobDone = l.status === "Job Done" || ["Invoice Sent","Payment Request","Payment Pending","Payment Received","Warranty Sent","Completed"].includes(l.status);
-  const isInvoiceSent = l.status === "Invoice Sent" || (Boolean(l.invoiceSentAt) && l.status !== "Job Done") || ["Payment Request","Payment Pending","Payment Received","Warranty Sent","Completed"].includes(l.status);
+  const isJobDone = l.status === "Job Done" || ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
+  const isInvoiceSent = l.status === "Invoice Sent" || (Boolean(l.invoiceSentAt) && l.status !== "Job Done") || ["Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
   const isPaymentPending = l.status === "Payment Pending";
-  const isPaymentPendingDone = ["Payment Pending","Payment Request","Payment Received","Warranty Sent","Completed"].includes(l.status);
-  const isPaymentReceived = ["Payment Received","Warranty Sent","Completed"].includes(l.status);
+  const isPaymentPendingDone = ["Payment Pending", "Payment Request", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
+  const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(l.status);
   const isWarrantySent = l.status === "Warranty Sent" || Boolean(l.warranty?.sentAt) || l.status === "Completed";
   const isCompleted = l.status === "Completed";
 
@@ -296,22 +296,20 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 if (isJobDone) return;
                 updateLeadField(l.id, { status: "Job Done" });
               }}
-              className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${
-                isJobDone
+              className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${isJobDone
                   ? "bg-blue-600 text-white shadow-2xs cursor-default select-none"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-              }`}
+                }`}
             >
               Job Done
             </button>
             <button
               type="button"
               onClick={() => openInvoiceModal(l)}
-              className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center shadow-2xs ${
-                isInvoiceSent
+              className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors cursor-pointer truncate min-w-0 h-[34px] flex items-center justify-center shadow-2xs ${isInvoiceSent
                   ? "bg-blue-600 text-white shadow-2xs hover:bg-blue-700"
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+                }`}
             >
               {isInvoiceSent ? "Invoice Sent" : "Send Invoice"}
             </button>
@@ -346,11 +344,10 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   if (isPaymentPendingDone) return;
                   updateLeadField(l.id, { status: "Payment Pending" });
                 }}
-                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${
-                  isPaymentPendingDone
+                className={`py-1.5 px-2 text-center text-xs font-bold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full ${isPaymentPendingDone
                     ? "bg-amber-500 text-white shadow-2xs cursor-default select-none"
                     : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-                }`}
+                  }`}
               >
                 Payment Pending
               </button>
@@ -372,19 +369,18 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   <button
                     type="button"
                     onClick={() => setPayStep("ask_type")}
-                    className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full cursor-pointer ${
-                      l.paymentType === "partial"
+                    className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full cursor-pointer ${l.paymentType === "partial"
                         ? "bg-amber-500 hover:bg-amber-600 text-white shadow-2xs"
                         : l.paymentType === "full" || isPaymentReceived
-                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                        : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
+                          : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                   >
                     {l.paymentType === "partial"
                       ? `Part Paid${amountPaid ? ` — AUD $${amountPaid.toFixed(2)}` : ""}`
                       : l.paymentType === "full" || isPaymentReceived
-                      ? "Payment Received (Full)"
-                      : "Payment Received"}
+                        ? "Payment Received (Full)"
+                        : "Payment Received"}
                   </button>
                   {l.paymentType === "partial" && remainingAmt !== null && (
                     <div
@@ -523,13 +519,12 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 if (isWarrantySent || l.warrantyProvided === false || l.warranty?.provided === false) return;
                 openWarrantyModal(l);
               }}
-              className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${
-                l.warrantyProvided === false || l.warranty?.provided === false
+              className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center ${l.warrantyProvided === false || l.warranty?.provided === false
                   ? "border border-rose-300 bg-rose-50 text-rose-700 shadow-2xs cursor-default"
                   : isWarrantySent
-                  ? "bg-blue-600 text-white shadow-2xs cursor-default"
-                  : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-              }`}
+                    ? "bg-blue-600 text-white shadow-2xs cursor-default"
+                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                }`}
             >
               {l.warrantyProvided === false || l.warranty?.provided === false ? (
                 <span className="flex items-center gap-1 truncate">
@@ -577,13 +572,12 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               )}
 
               <div
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${
-                  l.warrantyProvided === false || l.warranty?.provided === false
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${l.warrantyProvided === false || l.warranty?.provided === false
                     ? "bg-rose-50 border-rose-300 text-rose-700"
                     : isWarrantySent
-                    ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
-                    : "bg-slate-50 border-slate-200 text-slate-600"
-                }`}
+                      ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
+                      : "bg-slate-50 border-slate-200 text-slate-600"
+                  }`}
               >
                 <span className="truncate">
                   {l.warrantyProvided === false || l.warranty?.provided === false ? "Warranty Not Provided" : "Warranty Sent"}
@@ -605,13 +599,12 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               </div>
 
               <div
-                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${
-                  isPaymentReceived
+                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isPaymentReceived
                     ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
                     : l.paymentType === "partial"
-                    ? "bg-amber-50 border-amber-300 text-amber-950"
-                    : "bg-slate-50 border-slate-200 text-slate-600"
-                }`}
+                      ? "bg-amber-50 border-amber-300 text-amber-950"
+                      : "bg-slate-50 border-slate-200 text-slate-600"
+                  }`}
               >
                 <span className="truncate">
                   {l.paymentType === "partial"

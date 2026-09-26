@@ -34,12 +34,27 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     handleDeleteLead,
     setEditingLead,
     setLeadModalOpen,
+    staff,
     inspectionStaff,
     assignableTechnicians,
     isTechnicianName,
     handleOnTheWay,
     onTheWayLoading,
   } = useAdminPageCtx();
+
+  const isFinanceStage = [
+    "Job Done",
+    "Invoice Sent",
+    "Payment Request",
+    "Payment Pending",
+    "Partial Payment",
+    "Payment Received",
+    "Warranty Sent",
+    "Completed",
+  ].includes(l.status);
+  const financeAssignee = l.assigned && !isTechnicianName(l.assigned)
+    ? l.assigned
+    : (staff?.find((s) => s.role === "finance")?.name || "Adnan Muneer");
 
   const total = getLeadQuoteTotal(l);
   const photosTotal = l.photos?.length || l.photosCount || 0;
@@ -355,20 +370,33 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   ? (inspectionStaff.find((s) => s.name === l.assigned || s.username === l.assigned)?.name || l.assigned)
                   : inspectionStaff.some((s) => s.name === l.inspectionReport?.inspectorName || s.username === l.inspectionReport?.inspectorName)
                   ? (inspectionStaff.find((s) => s.name === l.inspectionReport?.inspectorName || s.username === l.inspectionReport?.inspectorName)?.name || l.inspectionReport?.inspectorName || "Unassigned")
-                  : (l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned")
+                  : (l.assigned && !isTechnicianName(l.assigned) ? l.assigned : isFinanceStage ? financeAssignee : "Unassigned")
               }
               onChange={(e) => {
                 const val = e.target.value;
                 updateLeadField(l.id, { assigned: val === "Unassigned" ? "" : val });
               }}
               className="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-hidden min-h-[34px] cursor-pointer"
-              title="Assign inspector"
+              title="Assign inspector or finance"
             >
               <option value="Unassigned">Unassigned</option>
               {inspectionStaff.map((s) => {
                 const label = s.name?.trim() || s.username;
                 return <option key={s.id} value={label}>{label}</option>;
               })}
+              <option value="Adnan Muneer">Adnan Muneer (Finance)</option>
+              {staff
+                ?.filter((s) => s.active !== false && s.role === "finance" && s.name !== "Adnan Muneer")
+                .map((s) => {
+                  const label = s.name?.trim() || s.username;
+                  return <option key={s.id} value={label}>{label} (Finance)</option>;
+                })}
+              {l.assigned &&
+                !isTechnicianName(l.assigned) &&
+                l.assigned !== "Adnan Muneer" &&
+                !inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned) && (
+                  <option value={l.assigned}>{l.assigned}</option>
+                )}
             </select>
           </div>
 
@@ -1009,7 +1037,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         <div className="space-y-2 pt-5 lg:pt-0">
           <div className="bg-[#fee2e2]/70 border border-rose-200/80 rounded-xl p-2.5">
             <div className="text-[10px] font-black tracking-wider text-rose-800 uppercase">FOLLOW-UP</div>
-            <div className="text-xs font-semibold text-slate-800 mt-0.5">{followupPrompt}</div>
+            <div className="text-xs font-semibold text-slate-800 mt-0.5">
+              {followupPrompt}
+              {isFinanceStage && ` • Assigned to: ${financeAssignee}`}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-1.5">

@@ -74,7 +74,17 @@ export const JOB_PHASE = [
 // so status-changing actions (On the Way / Reached / Start / Job Done, etc.) can
 // look up which tab a lead's new status now belongs to and follow it there,
 // instead of the lead disappearing from the currently active filter.
-export type JobsGroupDef = { label: string; group: StageGroup; statuses: string[]; totalCount?: boolean };
+export type JobsGroupDef = {
+  label: string;
+  group: StageGroup;
+  statuses: string[];
+  /** Shows total scoped lead count and clears the status filter when clicked. */
+  totalCount?: boolean;
+  /** Shows the completed-records count and navigates to the completed view when clicked. */
+  completedCount?: boolean;
+  /** Inline icon to prefix to the label in the pipeline card. */
+  icon?: string;
+};
 
 function singleStageGroups(keys: string[]): JobsGroupDef[] {
   return STAGES.filter((s) => keys.includes(s.key)).map((s) => ({
@@ -86,14 +96,23 @@ function singleStageGroups(keys: string[]): JobsGroupDef[] {
 
 export function getJobsGroups(role: Role): JobsGroupDef[] {
   if (role === "intake") {
+    // Ordered exactly as the 10-box pipeline layout the user requested:
+    // 1. Total Leads  2. New Leads  3. Contacted  4. Inspection Booked
+    // 5. Inspection in Progress  6. Inspection Completed  7. Quotes
+    // 8. Pending Quotes  9. Job Booked  10. All Completed Records
     return [
-      { label: "New leads", group: "lead", statuses: ["New"] },
+      { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+      { label: "New Leads", group: "lead", statuses: ["New"] },
       { label: "Contacted", group: "lead", statuses: ["Contacted", "Waiting for Info"] },
       {
-        label: "Inspection In Progress",
+        label: "Inspection Booked",
+        group: "booking",
+        statuses: ["Inspection Booked"],
+      },
+      {
+        label: "Inspection in Progress",
         group: "booking",
         statuses: [
-          "Inspection Booked",
           "Inspection En Route",
           "Inspection Arrived",
           "Inspection In Progress",
@@ -107,11 +126,18 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
       {
         label: "Quotes",
         group: "quote",
-        statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"],
+        // "Inspection Completed" = inspection done, quote must be built & sent now.
+        // "Quote Pending"        = quote is being drafted (internally pending send).
+        statuses: ["Inspection Completed", "Quote Pending"],
       },
-      { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
+      {
+        label: "Pending Quotes",
+        group: "quote",
+        // After the quote is sent the lead moves here until the customer responds.
+        statuses: ["Quote Sent", "Negotiation", "Won"],
+      },
       { label: "Job Booked", group: "job", statuses: ["Job Booked", "Scheduled", "Job Confirmed"] },
-      { label: "Total Leads", group: "lead", statuses: [], totalCount: true },
+      { label: "All Completed Records", group: "closed", statuses: [], completedCount: true },
     ];
   }
   if (role === "finance") {
@@ -208,7 +234,7 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
 
 // Given a role and a lead's (new) status, find the Jobs-view tab it belongs to.
 export function findJobsGroupForStatus(role: Role, status: string): JobsGroupDef | undefined {
-  return getJobsGroups(role).find((g) => !g.totalCount && g.statuses.includes(status));
+  return getJobsGroups(role).find((g) => !g.totalCount && !g.completedCount && g.statuses.includes(status));
 }
 
 export const STAGE_GROUP_ACCENT: Record<StageGroup, { dot: string; value: string }> = {

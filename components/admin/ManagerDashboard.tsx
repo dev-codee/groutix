@@ -826,21 +826,27 @@ export function ManagerDashboard() {
     },
     {
       label: "Quote",
-      count: scopedLeads.filter((l) => l.status === "Quote" || l.status === "Quote Sent" || l.status === "Negotiation").length,
+      // Inspection done → quote must be built and sent now.
+      count: scopedLeads.filter((l) =>
+        l.status === "Inspection Completed" || l.status === "Quote Pending"
+      ).length,
       icon: <FileText className="w-4 h-4 text-orange-600" />,
       iconBg: "bg-orange-100",
       cardBg: "bg-orange-50/80 border-orange-200/90 text-orange-800",
       countColor: "text-orange-600",
-      statuses: ["Quote", "Quote Sent", "Negotiation"],
+      statuses: ["Inspection Completed", "Quote Pending"],
     },
     {
       label: "Pending Quote",
-      count: scopedLeads.filter((l) => l.status === "Pending Quote" || l.status === "Quote Pending").length,
+      // Quote sent → waiting for customer to accept / negotiate.
+      count: scopedLeads.filter((l) =>
+        l.status === "Quote Sent" || l.status === "Negotiation" || l.status === "Won"
+      ).length,
       icon: <Briefcase className="w-4 h-4 text-amber-700" />,
       iconBg: "bg-amber-200/70",
       cardBg: "bg-amber-100/70 border-amber-300 text-amber-900",
       countColor: "text-amber-700",
-      statuses: ["Pending Quote", "Quote Pending"],
+      statuses: ["Quote Sent", "Negotiation", "Won"],
     },
     {
       label: "Job Booked",

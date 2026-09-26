@@ -38,6 +38,20 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
   const waUrl = getWhatsAppLink(l.phone);
   const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
 
+  const isFinanceStage = [
+    "Job Done",
+    "Invoice Sent",
+    "Payment Request",
+    "Payment Pending",
+    "Partial Payment",
+    "Payment Received",
+    "Warranty Sent",
+    "Completed",
+  ].includes(l.status);
+  const financeAssignee = l.assigned && !isTechnicianName(l.assigned)
+    ? l.assigned
+    : (staff?.find((s) => s.role === "finance")?.name || "Adnan Muneer");
+
   const jobNoDisplay = l.jobNo
     ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
     : `JobNo-${l.id.slice(0, 4)}`;
@@ -254,14 +268,14 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                     ? (inspectionStaff.find((s) => s.name === l.assigned || s.username === l.assigned)?.name || l.assigned)
                     : inspectionStaff.some((s) => s.name === l.inspectionReport?.inspectorName || s.username === l.inspectionReport?.inspectorName)
                     ? (inspectionStaff.find((s) => s.name === l.inspectionReport?.inspectorName || s.username === l.inspectionReport?.inspectorName)?.name || l.inspectionReport?.inspectorName || "Unassigned")
-                    : (l.assigned && !isTechnicianName(l.assigned) ? l.assigned : "Unassigned")
+                    : (l.assigned && !isTechnicianName(l.assigned) ? l.assigned : isFinanceStage ? financeAssignee : "Unassigned")
                 }
                 onChange={(e) => {
                   const val = e.target.value;
                   updateLeadField(l.id, { assigned: val === "Unassigned" ? "" : val });
                 }}
                 className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
-                title="Assign inspector"
+                title="Assign inspector or finance"
               >
                 <option value="Unassigned">Unassigned</option>
                 {inspectionStaff.map((s) => {
@@ -272,8 +286,20 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                     </option>
                   );
                 })}
+                <option value="Adnan Muneer">Adnan Muneer (Finance)</option>
+                {staff
+                  ?.filter((s) => s.active !== false && s.role === "finance" && s.name !== "Adnan Muneer")
+                  .map((s) => {
+                    const label = s.name?.trim() || s.username;
+                    return (
+                      <option key={s.id} value={label}>
+                        {label} (Finance)
+                      </option>
+                    );
+                  })}
                 {l.assigned &&
                   !isTechnicianName(l.assigned) &&
+                  l.assigned !== "Adnan Muneer" &&
                   !inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned) && (
                     <option value={l.assigned}>{l.assigned}</option>
                   )}
@@ -430,6 +456,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
             <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
               {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
+              {isFinanceStage && ` • Assigned to: ${financeAssignee}`}
             </span>
           </div>
 

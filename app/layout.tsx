@@ -112,7 +112,7 @@ export default async function RootLayout({
         />
         <Script
           id="product-review-settings"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               window.__productReviewSettings = {
@@ -126,8 +126,10 @@ export default async function RootLayout({
           strategy="afterInteractive"
         />
         {/* Site-wide LocalBusiness structured data */}
-        <script
+        <Script
+          id="local-business-jsonld"
           type="application/ld+json"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(localBusinessJsonLd(rating, content.business)),
           }}
