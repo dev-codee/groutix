@@ -86,8 +86,6 @@ export const INTAKE_STATUSES: string[] = [
   "Inspection Completed",
   "Quote Pending",
   "Quote Sent",
-  "Negotiation",
-  "Won",
   "Job Booked",
   "Lost",
 ];

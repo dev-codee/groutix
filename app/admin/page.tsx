@@ -1152,12 +1152,11 @@ export default function CrmDashboardPage() {
         (s) => s.active && s.role !== "technician" && !isTechnicianName(s.name)
       );
       const owner = status ? stageOwner(status) : null;
-      let pool = owner
+      const pool = owner
         ? active.filter(
             (s) => s.role === owner || (owner === "inspection" && s.role === "field")
           )
         : active;
-      if (pool.length === 0) pool = active;
       const names = new Set<string>(pool.map((s) => s.name));
       if (current && current !== "Unassigned" && !isTechnicianName(current)) {
         names.add(current);
