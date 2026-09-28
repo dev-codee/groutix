@@ -1161,10 +1161,6 @@ export default function CrmDashboardPage() {
       if (current && current !== "Unassigned" && !isTechnicianName(current)) {
         names.add(current);
       }
-      names.add("Adnan Muneer");
-      staff
-        .filter((s) => s.active && s.role === "finance")
-        .forEach((s) => names.add(s.name));
       const list = Array.from(names).filter((n) => n && n !== "Unassigned");
       return ["Unassigned", ...list];
     },

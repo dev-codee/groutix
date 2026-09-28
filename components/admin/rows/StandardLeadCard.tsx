@@ -54,7 +54,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   ].includes(l.status);
   const financeAssignee = l.assigned && !isTechnicianName(l.assigned)
     ? l.assigned
-    : (staff?.find((s) => s.role === "finance")?.name || "Adnan Muneer");
+    : (staff?.find((s) => s.role === "finance")?.name || "Unassigned");
 
   const total = getLeadQuoteTotal(l);
   const photosTotal = l.photos?.length || l.photosCount || 0;

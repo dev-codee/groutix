@@ -50,7 +50,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
   ].includes(l.status);
   const financeAssignee = l.assigned && !isTechnicianName(l.assigned)
     ? l.assigned
-    : (staff?.find((s) => s.role === "finance")?.name || "Adnan Muneer");
+    : (staff?.find((s) => s.role === "finance")?.name || "Unassigned");
 
   const jobNoDisplay = l.jobNo
     ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
@@ -286,20 +286,8 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                     </option>
                   );
                 })}
-                <option value="Adnan Muneer">Adnan Muneer (Finance)</option>
-                {staff
-                  ?.filter((s) => s.active !== false && s.role === "finance" && s.name !== "Adnan Muneer")
-                  .map((s) => {
-                    const label = s.name?.trim() || s.username;
-                    return (
-                      <option key={s.id} value={label}>
-                        {label} (Finance)
-                      </option>
-                    );
-                  })}
                 {l.assigned &&
                   !isTechnicianName(l.assigned) &&
-                  l.assigned !== "Adnan Muneer" &&
                   !inspectionStaff.some((s) => s.name === l.assigned || s.username === l.assigned) && (
                     <option value={l.assigned}>{l.assigned}</option>
                   )}
