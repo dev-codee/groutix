@@ -14,6 +14,8 @@ import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate, fmtDateOnly, getLeadQuoteTotal } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
 import { calculateTravel } from "@/lib/dispatch";
+import { dayHours, formatHHmm, toMinutes, WEEKDAY_NAMES, type BookingType } from "@/lib/bookingRules";
+import { useBookingRules } from "@/lib/useBookingRules";
 import { QuoteResponseBadge } from "@/components/admin/QuoteResponseBadge";
 import type { Lead } from "@/components/admin/types";
 
@@ -91,6 +93,7 @@ export function ManagerDashboard() {
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
   const [unassignedTab, setUnassignedTab] = useState<"all" | "inspections" | "jobs">("all");
 
+  const bookingRules = useBookingRules();
   const _now = new Date();
   const _tomDate = new Date(_now);
   _tomDate.setDate(_tomDate.getDate() + 1);
@@ -141,19 +144,16 @@ export function ManagerDashboard() {
       .sort((a, b) => _apptMs(a) - _apptMs(b));
   }, [matchedLeads, _todayStr, _tomStr]);
 
-  // Dynamic operational slots for Today (9:00 AM – 5:00 PM)
+  // Hourly slots for Today, spanning the configured booking hours (Settings → Booking Hours)
   const todayHourlySlots = useMemo(() => {
-    const hours = [
-      { hour: 9, label: "9:00 AM" },
-      { hour: 10, label: "10:00 AM" },
-      { hour: 11, label: "11:00 AM" },
-      { hour: 12, label: "12:00 PM" },
-      { hour: 13, label: "1:00 PM" },
-      { hour: 14, label: "2:00 PM" },
-      { hour: 15, label: "3:00 PM" },
-      { hour: 16, label: "4:00 PM" },
-      { hour: 17, label: "5:00 PM" },
-    ];
+    const wd = new Date().getDay();
+    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, wd)).filter((d) => d.open);
+    const startH = open.length ? Math.floor(Math.min(...open.map((d) => toMinutes(d.start))) / 60) : 9;
+    const endH = open.length ? Math.floor(Math.max(...open.map((d) => toMinutes(d.end))) / 60) : 17;
+    const hours = Array.from({ length: Math.max(endH - startH + 1, 1) }, (_, k) => {
+      const hour = startH + k;
+      return { hour, label: formatHHmm(`${String(hour).padStart(2, "0")}:00`) };
+    });
 
     const leadsPool = scopedLeads.filter((l) => {
       if (l.status === "Lost" || l.status === "Cancelled") return false;
@@ -173,7 +173,7 @@ export function ManagerDashboard() {
       });
       return { ...h, leads: matched };
     });
-  }, [scopedLeads, _todayStr, todayLeadsList]);
+  }, [scopedLeads, _todayStr, todayLeadsList, bookingRules]);
 
   // 2. DYNAMIC QUICK STATS CALCULATED STRICTLY FROM REAL LEADS & PERIOD
   const stats = useMemo(() => {
@@ -301,7 +301,7 @@ export function ManagerDashboard() {
       });
   }, [scopedLeads]);
 
-  // 4. DYNAMIC 6-DAY WORKING ROSTER GRID FOR ALL FIELD TEAM MEMBERS (EXCLUDING SUNDAYS)
+  // 4. DYNAMIC 6-DAY WORKING ROSTER GRID FOR ALL FIELD TEAM MEMBERS (EXCLUDING DAYS CLOSED FOR BOTH TYPES)
   const rosterDays = useMemo(() => {
     const list = [];
     let step = 0;
@@ -309,8 +309,11 @@ export function ManagerDashboard() {
       const d = new Date(_now);
       d.setDate(d.getDate() + (rosterWeekOffset * 7) + step);
       step++;
-      // Skip Sundays (0 = Sunday)
-      if (d.getDay() === 0) continue;
+      // Skip weekdays closed for both inspections and jobs
+      if (!dayHours(bookingRules, "inspection", d.getDay()).open && !dayHours(bookingRules, "job", d.getDay()).open) {
+        if (step > 14) break;
+        continue;
+      }
       list.push({
         dateObj: d,
         dateKey: _dayKey(d.toISOString()),
@@ -320,7 +323,7 @@ export function ManagerDashboard() {
       });
     }
     return list;
-  }, [_now, rosterWeekOffset]);
+  }, [_now, rosterWeekOffset, bookingRules]);
 
   // Combined field staff list including all active inspectors and technicians
   const activeStaffRosterList = useMemo(() => {
@@ -394,33 +397,21 @@ export function ManagerDashboard() {
   const inspectorCount = useMemo(() => activeStaffRosterList.filter((s) => s.isInspector).length, [activeStaffRosterList]);
   const technicianCount = useMemo(() => activeStaffRosterList.filter((s) => !s.isInspector).length, [activeStaffRosterList]);
 
-  // Slot hours per day: Mon-Thu & Sat: 9 AM to 5 PM | Friday: 9 AM to 3 PM
+  // Slot hours per day, spanning the configured inspection + job hours for that weekday
   const getRosterSlotsForDay = useCallback((dayOfWeek: number) => {
-    if (dayOfWeek === 5) {
-      // Friday: 9:00 AM – 3:00 PM (9, 10, 11, 12, 1, 2, 3)
-      return [
-        { hour: 9, label: "9", time: "9:00 AM" },
-        { hour: 10, label: "10", time: "10:00 AM" },
-        { hour: 11, label: "11", time: "11:00 AM" },
-        { hour: 12, label: "12", time: "12:00 PM" },
-        { hour: 13, label: "1", time: "1:00 PM" },
-        { hour: 14, label: "2", time: "2:00 PM" },
-        { hour: 15, label: "3", time: "3:00 PM" },
-      ];
-    }
-    // Mon-Thu & Sat: 9:00 AM – 5:00 PM (9, 10, 11, 12, 1, 2, 3, 4, 5)
-    return [
-      { hour: 9, label: "9", time: "9:00 AM" },
-      { hour: 10, label: "10", time: "10:00 AM" },
-      { hour: 11, label: "11", time: "11:00 AM" },
-      { hour: 12, label: "12", time: "12:00 PM" },
-      { hour: 13, label: "1", time: "1:00 PM" },
-      { hour: 14, label: "2", time: "2:00 PM" },
-      { hour: 15, label: "3", time: "3:00 PM" },
-      { hour: 16, label: "4", time: "4:00 PM" },
-      { hour: 17, label: "5", time: "5:00 PM" },
-    ];
-  }, []);
+    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, dayOfWeek)).filter((d) => d.open);
+    if (!open.length) return [];
+    const startH = Math.floor(Math.min(...open.map((d) => toMinutes(d.start))) / 60);
+    const endH = Math.floor(Math.max(...open.map((d) => toMinutes(d.end))) / 60);
+    return Array.from({ length: endH - startH + 1 }, (_, k) => {
+      const hour = startH + k;
+      return {
+        hour,
+        label: String(hour % 12 === 0 ? 12 : hour % 12),
+        time: formatHHmm(`${String(hour).padStart(2, "0")}:00`),
+      };
+    });
+  }, [bookingRules]);
 
   // Detailed hourly slot status for compact visual schedule matching Image 2
   const getStaffSlotHourStatus = useCallback(
@@ -429,20 +420,15 @@ export function ManagerDashboard() {
       dateKey: string,
       dayOfWeek: number,
       hour: number
-    ): { status: "available" | "booked"; detail: string } => {
-      // 1. Sunday or outside working hours → treat as unavailable (show as available visually but no detail)
-      if (dayOfWeek === 0) {
-        return { status: "available", detail: "Sunday Closed" };
+    ): { status: "available" | "booked" | "closed"; detail: string } => {
+      // 1. Closed day or outside this member's configured hours (inspectors follow
+      //    inspection hours, technicians follow job hours).
+      const hrs = dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek);
+      if (!hrs.open) {
+        return { status: "closed", detail: `${WEEKDAY_NAMES[dayOfWeek]} Closed` };
       }
-
-      if (dayOfWeek === 5) {
-        if (hour < 9 || hour > 15) {
-          return { status: "available", detail: "Outside Friday Working Hours (9 AM – 3 PM)" };
-        }
-      } else {
-        if (hour < 9 || hour > 17) {
-          return { status: "available", detail: "Outside Working Hours (9 AM – 5 PM)" };
-        }
+      if (hour < Math.floor(toMinutes(hrs.start) / 60) || hour > Math.floor(toMinutes(hrs.end) / 60)) {
+        return { status: "closed", detail: `Outside Working Hours (${formatHHmm(hrs.start)} – ${formatHHmm(hrs.end)})` };
       }
 
       const lowerName = member.name.toLowerCase().trim();
@@ -503,7 +489,7 @@ export function ManagerDashboard() {
 
       return { status: "available", detail: "Available (Free for Booking)" };
     },
-    [scopedLeads, isTechnicianName]
+    [scopedLeads, isTechnicianName, bookingRules]
   );
 
   // Compute clean status per staff member (technician or inspector) per day from real booked leads
@@ -513,11 +499,11 @@ export function ManagerDashboard() {
       dateKey: string,
       dayOfWeek: number
     ) => {
-      if (dayOfWeek === 0) {
+      if (!dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek).open) {
         return {
           status: "off" as const,
           label: "Day Off",
-          subLabel: "Sunday Closed",
+          subLabel: `${WEEKDAY_NAMES[dayOfWeek]} Closed`,
           count: 0,
           morningBooked: false,
           middayBooked: false,
@@ -628,7 +614,7 @@ export function ManagerDashboard() {
         leads: dayLeads,
       };
     },
-    [scopedLeads, isTechnicianName]
+    [scopedLeads, isTechnicianName, bookingRules]
   );
 
   const getStaffBadgeInitials = (name: string, isInspector: boolean, idx: number) => {
@@ -1722,7 +1708,7 @@ export function ManagerDashboard() {
                     )}
                   </td>
 
-                  {/* Day Slots: 9-5 for Mon-Thu & Sat, 9-3 for Friday */}
+                  {/* Day Slots: configured booking hours for each weekday */}
                   {rosterDays.map((day, dIdx) => {
                     const daySlots = getRosterSlotsForDay(day.dayOfWeek);
                     return (
@@ -1740,6 +1726,8 @@ export function ManagerDashboard() {
                                   className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
                                     slotInfo.status === "booked"
                                       ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
+                                      : slotInfo.status === "closed"
+                                      ? "bg-slate-200 hover:bg-slate-300"
                                       : "bg-[#4ade80] hover:bg-emerald-500"
                                   }`}
                                   title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to open in Dispatch`}

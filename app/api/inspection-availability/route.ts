@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveArea, computeAvailability } from "@/lib/scheduling";
 import { listUpcomingBookings } from "@/lib/bookings";
+import { getBookingRules } from "@/lib/bookingRulesServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,7 +38,8 @@ export async function GET(req: NextRequest) {
     // non-fatal — return empty availability
   }
 
-  const days = computeAvailability(area, bookedByDate, sameZoneDates).slice(0, 7);
+  const rules = await getBookingRules();
+  const days = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", rules).slice(0, 7);
 
   return NextResponse.json({
     days,

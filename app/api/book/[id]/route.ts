@@ -16,6 +16,7 @@ import {
   type AreaInfo,
 } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking } from "@/lib/bookings";
+import { getBookingRules } from "@/lib/bookingRulesServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 
@@ -118,8 +119,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const lat = parseCoord(req.nextUrl.searchParams.get("lat"));
   const lng = parseCoord(req.nextUrl.searchParams.get("lng"));
   const area = resolveLeadArea(lead, lat, lng);
-  const { bookedByDate, sameZoneDates } = await buildMaps(area, id);
-  const days = computeAvailability(area, bookedByDate, sameZoneDates, type === "job");
+  const [{ bookedByDate, sameZoneDates }, rules] = await Promise.all([buildMaps(area, id), getBookingRules()]);
+  const days = computeAvailability(area, bookedByDate, sameZoneDates, type, rules);
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
 
   return NextResponse.json({
@@ -174,7 +175,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       { status: 400 }
     );
   }
-  if (!isSlotOffered(area, date, time, type === "job")) {
+  const rules = await getBookingRules();
+  if (!isSlotOffered(area, date, time, type, rules)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }
 
@@ -209,7 +211,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     day: "2-digit",
     month: "long",
   });
-  const whenLabel = `${dayName} · ${formatSlotRange(time)}`;
+  const whenLabel = `${dayName} · ${formatSlotRange(time, rules[type].slotMinutes)}`;
   const now = new Date().toISOString();
 
   // Advance the lead + arm the 24h reminder for the fresh appointment.

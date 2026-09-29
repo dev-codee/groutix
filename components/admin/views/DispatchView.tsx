@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { resolveArea, formatApptTimeRange } from "@/lib/scheduling";
-import { calculateTravel, DISPATCH_WORKING_HOURS } from "@/lib/dispatch";
+import { calculateTravel } from "@/lib/dispatch";
+import { hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
+import { useBookingRules } from "@/lib/useBookingRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
 import { DispatchMap } from "@/components/admin/DispatchMap";
 import type { Lead } from "@/components/admin/types";
@@ -20,29 +22,13 @@ import type { Lead } from "@/components/admin/types";
 const HQ_ADDRESS = "82A Marigold Cres, Gowanbrae VIC 3043, Australia";
 const HQ_ADDRESS_URL = encodeURIComponent(HQ_ADDRESS);
 const DAY_LABEL_W = 88;   // px for day label column
-const GRID_START = 9 * 60;  // 9:00 AM in minutes from midnight
-const GRID_END = 17 * 60;   // 5:00 PM
-const GRID_TOTAL_MINS = GRID_END - GRID_START;
 const VISIBLE_DAYS = 7;   // day rows shown at once (paged via prev/next)
-
-// All 30-min slots from 9:00 to 16:30
-const TIME_SLOTS: string[] = Array.from({ length: GRID_TOTAL_MINS / 30 }, (_, i) => {
-  const totalMin = GRID_START + i * 30;
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-});
 
 function parseMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + (m || 0);
 }
 
-// % of the timeline width a given duration (in minutes) covers — column widths
-// are flexible/percentage-based so all slots fit without horizontal scrolling.
-function minsToPercent(mins: number): number {
-  return (mins / GRID_TOTAL_MINS) * 100;
-}
 
 function fmtTime(t: string): string {
   const [hStr, mStr] = t.split(":");
@@ -92,6 +78,22 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     openMessagesModal,
     callCustomer,
   } = useAdminPageCtx();
+
+  // Timeline spans the configured booking hours (Settings → Booking Hours),
+  // rounded out to whole hours, in 30-min columns.
+  const bookingRules = useBookingRules();
+  const { GRID_START, TIME_SLOTS, minsToPercent } = useMemo(() => {
+    const env = hoursEnvelope(bookingRules);
+    const start = Math.floor(env.start / 60) * 60;
+    const total = Math.max(Math.ceil(env.end / 60) * 60 - start, 60);
+    return {
+      GRID_START: start,
+      TIME_SLOTS: Array.from({ length: total / 30 }, (_, i) => fromMinutes(start + i * 30)),
+      // % of the timeline width a given duration (in minutes) covers — column widths
+      // are flexible/percentage-based so all slots fit without horizontal scrolling.
+      minsToPercent: (mins: number) => (mins / total) * 100,
+    };
+  }, [bookingRules]);
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);

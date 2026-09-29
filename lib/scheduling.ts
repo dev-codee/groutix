@@ -14,31 +14,31 @@
 //       - Sunday:    St Albans / West-Central Corridor
 //   • Unknown/unlisted suburbs fall back to "flexible" (all 7 days offered).
 
+import {
+  DEFAULT_BOOKING_RULES,
+  formatHHmm,
+  fromMinutes,
+  openDaysSummary,
+  slotsForDate,
+  toMinutes,
+  type BookingRules,
+  type BookingType,
+} from "./bookingRules";
+
 // HQ base location: 82A Marigold Cres, Gowanbrae VIC 3043, Australia (exact
 // street address, not the Tullamarine suburb centroid).
 export const TULLAMARINE = { lat: -37.6988298, lng: 144.9004405 };
 export const RADIUS_KM = 15;
 export const MAX_INSPECTION_RADIUS_KM = 50;
 
-// Standard appointment start times (Mon–Thu & Sat: 9:00 AM – 5:00 PM)
-export const STANDARD_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
+// Open days, daily hours, slot length, booking window and closures are NOT
+// hard-coded here — they come from the manager-editable BookingRules
+// (lib/bookingRules.ts, stored via lib/bookingRulesServer.ts).
 
-// Friday-specific start times (strictly 10:00 AM – 3:00 PM: 10:00, 11:00, 12:00, 13:00, 14:00)
-export const FRIDAY_TIME_SLOTS = ["10:00", "11:00", "12:00", "13:00", "14:00"];
-
-// All available appointment start times offered across any open business day
-export const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
-
-/** Friendly 1-hour window label: "09:00" → "9:00 AM – 10:00 AM" */
-export function formatSlotRange(t: string): string {
-  const [h, m = 0] = t.split(":").map(Number);
-  const endH = h + 1;
-  const startAmpm = h >= 12 ? "PM" : "AM";
-  const endAmpm = endH >= 12 ? "PM" : "AM";
-  const startHr = h % 12 === 0 ? 12 : h % 12;
-  const endHr = endH % 12 === 0 ? 12 : endH % 12;
-  const minStr = m !== 0 ? `:${String(m).padStart(2, "0")}` : ":00";
-  return `${startHr}${minStr} ${startAmpm} – ${endHr}:00 ${endAmpm}`;
+/** Friendly slot window label: "09:00" → "9:00 AM – 10:00 AM" */
+export function formatSlotRange(t: string, durationMinutes: number = 60): string {
+  const start = toMinutes(t);
+  return `${formatHHmm(t)} – ${formatHHmm(fromMinutes((start + durationMinutes) % (24 * 60)))}`;
 }
 
 /**
@@ -186,13 +186,6 @@ export function normalizeApptString(value: string | null | undefined): string | 
   return m ? `${m[1]}T${m[2]}:${m[3]}` : s;
 }
 
-// Earliest date (YYYY-MM-DD) from which inspection and job bookings can be scheduled.
-// Any timings before this date are not offered.
-export const MIN_BOOKING_DATE = "2026-09-28";
-
-// How far ahead we let a customer book (days from today).
-export const BOOKING_HORIZON_DAYS = 35;
-
 export type OuterZone =
   | "mon_lower1"
   | "tue_lower2"
@@ -214,7 +207,7 @@ export interface AreaInfo {
 }
 
 export const ZONE_LABEL: Record<Zone, string> = {
-  inner: "Inner Melbourne (Within 15 km — Saturday & Sunday)",
+  inner: "Inner Melbourne (Within 15 km)",
   mon_lower1: "Lower Area 1 — Brunswick, CBD, St Kilda, Brighton (Mondays)",
   tue_lower2: "Lower Area 2 — Inner East, Hawthorn, Kew, Doncaster (Tuesdays)",
   wed_lower3: "Lower Area 3 — Ringwood, Croydon, Lilydale, Mt Evelyn (Wednesdays)",
@@ -222,7 +215,7 @@ export const ZONE_LABEL: Record<Zone, string> = {
   fri_north: "Upper North & Craigieburn Corridor (Fridays)",
   sat_melton: "Melton & West Corridor (Saturdays)",
   sun_stalbans: "St Albans & West-Central Corridor (Saturdays)",
-  flexible: "Greater Melbourne (Monday to Saturday Available)",
+  flexible: "Greater Melbourne",
   outside: "Outside 50 km Service Area (From Tullamarine HQ)",
 };
 
@@ -711,24 +704,16 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
   };
 }
 
-/** Weekdays (0=Sun, 1=Mon … 6=Sat) a given area may be booked on.
- *  @param allWeekdays  Pass true for job bookings (every day); false/omitted = inspection Sat+Sun only.
- */
-export function allowedWeekdays(area: AreaInfo, allWeekdays = false): Set<number> {
-  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
-    return new Set();
-  }
-  // Job bookings run every day of the week; inspection bookings are Sat+Sun only.
-  if (allWeekdays) return new Set([0, 1, 2, 3, 4, 5, 6]);
-  return new Set([0, 6]);
+function isServiceable(area: AreaInfo): boolean {
+  return !(!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM));
 }
 
-/** Human-friendly availability text for customer emails and SMS. */
-export function getAvailableDaysSummary(area: AreaInfo): string {
-  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
+/** Human-friendly inspection availability text for customer emails and SMS. */
+export function getAvailableDaysSummary(area: AreaInfo, rules: BookingRules = DEFAULT_BOOKING_RULES): string {
+  if (!isServiceable(area)) {
     return "Outside 50 km Service Area (Free inspection timing not available online)";
   }
-  return "Saturday & Sunday (Inspections available on weekends)";
+  return `Inspections available ${openDaysSummary(rules, "inspection")}`;
 }
 
 export interface TimeSlot {
@@ -749,20 +734,19 @@ export interface DayOption {
  * Build the list of bookable days/times for an area.
  * @param bookedByDate  date(YYYY-MM-DD) → set of already-locked times
  * @param sameZoneDates dates that already have a job in this area (route nudge)
- * @param allWeekdays   true for job bookings (every day); omit/false for inspection Sat+Sun only
+ * @param type          which rule set to apply ("inspection" or "job")
+ * @param rules         manager-configured booking rules (load via getBookingRules())
  */
 export function computeAvailability(
   area: AreaInfo,
   bookedByDate: Map<string, Set<string>>,
   sameZoneDates: Set<string>,
-  allWeekdays = false
+  type: BookingType = "inspection",
+  rules: BookingRules = DEFAULT_BOOKING_RULES
 ): DayOption[] {
   // Do NOT show free inspection timing outside 50 km radius from Tullamarine
-  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) {
-    return [];
-  }
+  if (!isServiceable(area)) return [];
 
-  const weekdays = allowedWeekdays(area, allWeekdays);
   const out: DayOption[] = [];
 
   // Anchor every offered day to the MELBOURNE calendar date, so the stored
@@ -776,22 +760,28 @@ export function computeAvailability(
   const [by, bm, bd] = melToday.split("-").map(Number);
   const baseNoonUtc = Date.UTC(by, bm - 1, bd, 12, 0, 0);
 
-  for (let i = 1; i <= BOOKING_HORIZON_DAYS; i++) {
+  for (let i = Math.max(rules.minNoticeDays, 0); i <= rules.horizonDays; i++) {
     const d = new Date(baseNoonUtc + i * 86400000);
     const dateStr = d.toISOString().slice(0, 10);
-    // Do not show timings before 28 Sept 2026
-    if (MIN_BOOKING_DATE && dateStr < MIN_BOOKING_DATE) continue;
 
-    const wd = d.getUTCDay();
-    if (!weekdays.has(wd)) continue;
+    // Honours open weekdays, daily hours, closed dates and the earliest date.
+    const daySlots = slotsForDate(rules, type, dateStr);
+    if (!daySlots.length) continue;
 
     const locked = bookedByDate.get(dateStr) || new Set<string>();
-    // Friday timing: strictly 10:00 AM – 3:00 PM; Other days: 9:00 AM – 5:00 PM
-    const daySlots = wd === 5 ? FRIDAY_TIME_SLOTS : STANDARD_TIME_SLOTS;
-
     // Keep every slot, flagging the ones already taken so the customer can see
     // them as "Booked" rather than them silently disappearing.
     const slots: TimeSlot[] = daySlots.map((t) => ({ time: t, booked: locked.has(t) }));
+    // Same-day bookings (minNoticeDays = 0): hide slots that have already started.
+    if (i === 0) {
+      const nowHHmm = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Australia/Melbourne",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(new Date());
+      for (const s of slots) if (s.time <= nowHHmm) s.booked = true;
+    }
     const times = slots.filter((s) => !s.booked).map((s) => s.time);
 
     out.push({
@@ -827,29 +817,38 @@ export function ymd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Is a chosen date/time actually offered for this area (defensive server check)?
- *  @param allWeekdays  true for job bookings (every day); omit/false for inspection Sat+Sun only
- */
-export function isSlotOffered(area: AreaInfo, date: string, time: string, allWeekdays = false): boolean {
-  if (!area.serviced || area.zone === "outside" || (area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM)) return false;
-  if (MIN_BOOKING_DATE && date < MIN_BOOKING_DATE) return false;
+/** Is a chosen date/time actually offered for this area (defensive server check)? */
+export function isSlotOffered(
+  area: AreaInfo,
+  date: string,
+  time: string,
+  type: BookingType = "inspection",
+  rules: BookingRules = DEFAULT_BOOKING_RULES
+): boolean {
+  if (!isServiceable(area)) return false;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return false;
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0));
   if (Number.isNaN(d.getTime())) return false;
-  const wd = d.getUTCDay();
-  if (!allowedWeekdays(area, allWeekdays).has(wd)) return false;
 
-  // Friday is strictly 10:00 AM – 3:00 PM; Other days are 9:00 AM – 5:00 PM
-  const allowedSlots = wd === 5 ? FRIDAY_TIME_SLOTS : STANDARD_TIME_SLOTS;
-  if (!allowedSlots.includes(time)) return false;
+  // Weekday open, within hours, not a closed date, not before the earliest date.
+  if (!slotsForDate(rules, type, date).includes(time)) return false;
 
-  // Must be within the booking horizon, compared against the Melbourne calendar
+  // Must be within the booking window, compared against the Melbourne calendar
   // date (not the server's local date) so the boundary is correct everywhere.
   const melToday = melbourneYmd();
-  if (date <= melToday) return false;
   const [ty, tm, td] = melToday.split("-").map(Number);
   const todayNoon = Date.UTC(ty, tm - 1, td, 12, 0, 0);
   const diffDays = Math.round((d.getTime() - todayNoon) / 86400000);
-  return diffDays >= 1 && diffDays <= BOOKING_HORIZON_DAYS;
+  if (diffDays < rules.minNoticeDays || diffDays > rules.horizonDays) return false;
+  if (diffDays === 0) {
+    const nowHHmm = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Australia/Melbourne",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(new Date());
+    if (time <= nowHHmm) return false;
+  }
+  return true;
 }

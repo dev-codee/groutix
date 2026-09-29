@@ -8,9 +8,17 @@ import {
   distanceKm,
   resolveArea,
   INNER_15KM_SUBURBS,
-  MIN_BOOKING_DATE,
   type AreaInfo,
 } from "@/lib/scheduling";
+import {
+  DEFAULT_BOOKING_RULES,
+  dayHours,
+  slotsForDate,
+  toMinutes,
+  weekdayOf,
+  type BookingRules,
+  type BookingType,
+} from "@/lib/bookingRules";
 import type { BookingDoc } from "@/lib/bookings";
 import type { Lead } from "@/components/admin/types";
 
@@ -42,23 +50,6 @@ export interface DayScheduleSummary {
   techniciansActive: string[];
 }
 
-// ── Working Hours Definition ────────────────────────────────────────────────
-// Mon–Thu & Sat: 9:00 AM – 5:00 PM
-// Fri: 10:00 AM – 3:00 PM
-// Sun: OFF (Closed)
-export const DISPATCH_WORKING_HOURS: Record<
-  number,
-  { startHour: number; startMin: number; endHour: number; endMin: number; isOpen: boolean; label: string }
-> = {
-  0: { startHour: 0, startMin: 0, endHour: 0, endMin: 0, isOpen: false, label: "Closed (OFF)" }, // Sunday
-  1: { startHour: 9, startMin: 0, endHour: 17, endMin: 0, isOpen: true, label: "9:00 AM – 5:00 PM" }, // Monday
-  2: { startHour: 9, startMin: 0, endHour: 17, endMin: 0, isOpen: true, label: "9:00 AM – 5:00 PM" }, // Tuesday
-  3: { startHour: 9, startMin: 0, endHour: 17, endMin: 0, isOpen: true, label: "9:00 AM – 5:00 PM" }, // Wednesday
-  4: { startHour: 9, startMin: 0, endHour: 17, endMin: 0, isOpen: true, label: "9:00 AM – 5:00 PM" }, // Thursday
-  5: { startHour: 10, startMin: 0, endHour: 15, endMin: 0, isOpen: true, label: "10:00 AM – 3:00 PM" }, // Friday
-  6: { startHour: 9, startMin: 0, endHour: 17, endMin: 0, isOpen: true, label: "9:00 AM – 5:00 PM" }, // Saturday
-};
-
 // Protected lunch break: 12:00 PM – 12:30 PM
 export const LUNCH_BREAK = {
   startHour: 12,
@@ -74,6 +65,10 @@ export const STANDARD_DISPATCH_STAFF = [
   { id: "tech-1", name: "Tech 1", role: "Field Technician", canInspect: false, canJob: true, color: "emerald" },
   { id: "tech-2", name: "Tech 2", role: "Field Technician", canInspect: false, canJob: true, color: "violet" },
 ];
+
+function ymdLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /** Suburb coordinates lookup */
 export function getSuburbCoords(suburbName?: string | null): { lat: number; lng: number } | null {
@@ -122,25 +117,18 @@ export function isOverlappingBreak(timeStr: string, durationMins: number = 60): 
   return apptStart < breakEnd && apptEnd > breakStart;
 }
 
-/** Check if an appointment is within daily working hours */
+/** Check if an appointment is within the configured daily working hours */
 export function isWithinWorkingHours(
   dateStr: string,
   timeStr: string,
-  durationMins: number = 60
+  durationMins: number = 60,
+  type: BookingType = "job",
+  rules: BookingRules = DEFAULT_BOOKING_RULES
 ): boolean {
-  const d = new Date(dateStr + "T00:00:00");
-  const dayOfWeek = d.getDay();
-  const rule = DISPATCH_WORKING_HOURS[dayOfWeek];
-  if (!rule || !rule.isOpen) return false;
-
-  const [h, m] = timeStr.split(":").map(Number);
-  const apptStart = h * 60 + (m || 0);
-  const apptEnd = apptStart + durationMins;
-
-  const workStart = rule.startHour * 60 + rule.startMin;
-  const workEnd = rule.endHour * 60 + rule.endMin;
-
-  return apptStart >= workStart && apptEnd <= workEnd;
+  const rule = dayHours(rules, type, weekdayOf(dateStr));
+  if (!rule.open) return false;
+  const apptStart = toMinutes(timeStr);
+  return apptStart >= toMinutes(rule.start) && apptStart + durationMins <= toMinutes(rule.end);
 }
 
 /** Time slot list generated in 30-min intervals */
@@ -173,8 +161,12 @@ export function suggestBestDispatchSlots(params: {
   allLeads: Lead[];
   availableStaff?: { id: string; name: string; role?: string }[];
   maxSuggestions?: number;
+  rules?: BookingRules;
 }): DispatchSlot[] {
-  const { lead, type, existingBookings, allLeads, availableStaff = [], maxSuggestions = 4 } = params;
+  const {
+    lead, type, existingBookings, allLeads, availableStaff = [], maxSuggestions = 4,
+    rules = DEFAULT_BOOKING_RULES,
+  } = params;
 
   // 1. Identify Corridor and Area
   const area = resolveArea(lead.address || lead.city);
@@ -223,22 +215,21 @@ export function suggestBestDispatchSlots(params: {
     }
   }
 
-  // 4. Candidate dates starting from MIN_BOOKING_DATE (Mon 28 Sep 2026)
+  // 4. Candidate dates starting from the configured earliest booking date (or today)
   const suggestions: DispatchSlot[] = [];
-  const minDate = new Date(MIN_BOOKING_DATE + "T00:00:00");
-  
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const minDate = new Date((rules.minDate && rules.minDate > todayStr ? rules.minDate : todayStr) + "T00:00:00");
+
   // Test across the upcoming 28 days
   for (let offset = 0; offset < 28; offset++) {
     const candidateDate = new Date(minDate);
     candidateDate.setDate(minDate.getDate() + offset);
 
     const dayOfWeek = candidateDate.getDay();
-    // Sunday rule: completely OFF
-    if (dayOfWeek === 0) continue;
-
-    const dateStr = candidateDate.toISOString().slice(0, 10);
-    const dayRule = DISPATCH_WORKING_HOURS[dayOfWeek];
-    if (!dayRule || !dayRule.isOpen) continue;
+    const dateStr = ymdLocal(candidateDate);
+    // Configured open days / hours / closures for this appointment type
+    const candidateTimes = slotsForDate(rules, type, dateStr);
+    if (!candidateTimes.length) continue;
 
     const dayName = candidateDate.toLocaleDateString("en-AU", { weekday: "short" });
 
@@ -261,17 +252,12 @@ export function suggestBestDispatchSlots(params: {
       if (corridorMatch) corridorScore = 60;
     }
 
-    // Check candidate time slots for this day
-    const candidateTimes = dayOfWeek === 5
-      ? ["10:00", "11:00", "13:00", "14:00"] // Friday 10-3pm
-      : ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"]; // Mon-Thu & Sat
-
     for (const tech of eligibleTechs) {
       const techKey = tech.name.toLowerCase();
 
       for (const timeStr of candidateTimes) {
         // Must fit working hours
-        if (!isWithinWorkingHours(dateStr, timeStr, 60)) continue;
+        if (!isWithinWorkingHours(dateStr, timeStr, 60, type, rules)) continue;
 
         // Must not clash with protected lunch break (12:00 - 12:30 PM)
         if (isOverlappingBreak(timeStr, 60)) continue;

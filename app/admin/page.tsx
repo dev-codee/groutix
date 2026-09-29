@@ -57,6 +57,7 @@ import {
   Maximize2,
   Minimize2,
   Settings,
+  CalendarClock,
   GripHorizontal,
   RotateCcw,
   ArrowDown,
@@ -134,6 +135,7 @@ import { PhotosModal } from "@/components/admin/modals/PhotosModal";
 import { TeamChatModal } from "@/components/admin/modals/TeamChatModal";
 import { JobCardModal } from "@/components/admin/modals/JobCardModal";
 import { LeadEditModal } from "@/components/admin/modals/LeadEditModal";
+import { BookingRulesModal } from "@/components/admin/modals/BookingRulesModal";
 
 // How many rows/cards to show per page in the long list views.
 const PAGE_SIZE = 20;
@@ -532,6 +534,7 @@ export default function CrmDashboardPage() {
   const [logoSettingsOpen, setLogoSettingsOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [qboSettingsOpen, setQboSettingsOpen] = useState(false);
+  const [bookingRulesOpen, setBookingRulesOpen] = useState(false);
   const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string } | null>(null);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
 
@@ -3589,6 +3592,14 @@ export default function CrmDashboardPage() {
           >
             <Settings className="w-4 h-4" />
             Logo Settings
+          </button>
+          <button
+            type="button"
+            onClick={() => { setBookingRulesOpen(true); onItemClick?.(); }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
+          >
+            <CalendarClock className="w-4 h-4" />
+            Booking Hours
           </button>
           <button
             type="button"
@@ -7239,6 +7250,9 @@ export default function CrmDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Booking Hours (inspection/job days, times, closures) */}
+      {bookingRulesOpen && <BookingRulesModal onClose={() => setBookingRulesOpen(false)} />}
 
       {/* Logo Settings Modal */}
       {logoSettingsOpen && (

@@ -5,6 +5,8 @@ import { X, Phone } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
 import { fmtDate, getRoleStatusOptions } from "@/lib/adminHelpers";
 import type { Role } from "@/lib/roles";
+import { explainOutsideRules } from "@/lib/bookingRules";
+import { useBookingRules } from "@/lib/useBookingRules";
 
 interface Props {
   editingLead: Partial<Lead> | null;
@@ -41,6 +43,13 @@ export function LeadEditModal({
   assigneeOptions,
   logCall,
 }: Props) {
+  // Manager-configured booking hours (Settings → Booking Hours). Staff can still
+  // book outside them (e.g. a special arrangement) but get a visible warning.
+  const bookingRules = useBookingRules();
+  const minBookingValue = bookingRules.minDate ? `${bookingRules.minDate}T00:00` : undefined;
+  const inspectionWarning = editingLead?.inspectionAt ? explainOutsideRules(bookingRules, "inspection", editingLead.inspectionAt) : null;
+  const jobWarning = editingLead?.jobAt ? explainOutsideRules(bookingRules, "job", editingLead.jobAt) : null;
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 sm:pt-10 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-4 sm:p-6 space-y-4 my-4 sm:my-8">
@@ -186,14 +195,10 @@ export function LeadEditModal({
               </label>
               <input
                 type="datetime-local"
-                min="2026-09-28T09:00"
+                min={minBookingValue}
                 value={editingLead?.inspectionAt ? editingLead.inspectionAt.slice(0, 16) : ""}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val && new Date(val).getDay() === 0) {
-                    alert("Sunday bookings are not available. Please select Monday to Saturday.");
-                    return;
-                  }
                   setEditingLead({
                     ...editingLead,
                     inspectionAt: val,
@@ -202,6 +207,9 @@ export function LeadEditModal({
                 }}
                 className="w-full p-2.5 border border-slate-200 rounded-xl"
               />
+              {inspectionWarning && (
+                <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {inspectionWarning}</p>
+              )}
               <div className="flex items-center gap-2 mt-1.5">
                 <p className="text-[10px] text-slate-400">Triggers a 24-hour reminder to the customer.</p>
                 {editingLead?.id && (
@@ -247,14 +255,10 @@ export function LeadEditModal({
               <label className="font-bold text-slate-700 block mb-1">Job Date &amp; Time</label>
               <input
                 type="datetime-local"
-                min="2026-09-28T09:00"
+                min={minBookingValue}
                 value={editingLead?.jobAt ? editingLead.jobAt.slice(0, 16) : ""}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val && new Date(val).getDay() === 0) {
-                    alert("Sunday bookings are not available. Please select Monday to Saturday.");
-                    return;
-                  }
                   setEditingLead({
                     ...editingLead,
                     jobAt: val,
@@ -263,6 +267,9 @@ export function LeadEditModal({
                 }}
                 className="w-full p-2.5 border border-slate-200 rounded-xl"
               />
+              {jobWarning && (
+                <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {jobWarning}</p>
+              )}
               <div className="flex items-center gap-2 mt-1.5">
                 <p className="text-[10px] text-slate-400">Triggers a 24-hour reminder to the customer.</p>
                 {editingLead?.id && (

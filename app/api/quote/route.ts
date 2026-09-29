@@ -7,6 +7,8 @@ import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
 import { resolveArea, getAvailableDaysSummary, computeAvailability, isSlotOffered } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking, isSlotTaken } from "@/lib/bookings";
+import { getBookingRules } from "@/lib/bookingRulesServer";
+import { formatHHmm, hoursEnvelope, fromMinutes, openDaysSummary } from "@/lib/bookingRules";
 import { updateSubmission, appendActivity, getNextJobNo } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
@@ -184,10 +186,11 @@ export async function POST(req: NextRequest) {
   // truth for the slot lock: the availability the form loaded can go stale while
   // the form sits open, so we re-check here and reject an already-taken slot with
   // a clear message instead of silently accepting it and forcing staff to adjust.
+  const bookingRules = await getBookingRules();
   if (inspectionDate && inspectionTime) {
     const inspectionArea = resolveArea(address);
     if (inspectionArea.serviced && inspectionArea.zone !== "outside") {
-      if (!isSlotOffered(inspectionArea, inspectionDate, inspectionTime)) {
+      if (!isSlotOffered(inspectionArea, inspectionDate, inspectionTime, "inspection", bookingRules)) {
         return NextResponse.json(
           { error: "The inspection time you selected is no longer available. Please pick another slot.", slotConflict: true },
           { status: 409 }
@@ -460,7 +463,7 @@ export async function POST(req: NextRequest) {
       (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
     const area = resolveArea(address || city);
-    const daysSummary = getAvailableDaysSummary(area);
+    const daysSummary = getAvailableDaysSummary(area, bookingRules);
     const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
 
     // Compute the customer's real bookable days/times using the SAME scheduling
@@ -476,13 +479,15 @@ export async function POST(req: NextRequest) {
         bookedByDate.get(b.date)!.add(b.time);
         if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
       }
-      availableDays = computeAvailability(area, bookedByDate, sameZoneDates)
+      availableDays = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", bookingRules)
         .slice(0, 5)
         .map((d) => ({ label: d.label, times: d.times }));
     } catch (err) {
       console.error("availability computation for confirmation email failed:", err);
     }
 
+    const inspEnvelope = hoursEnvelope(bookingRules, ["inspection"]);
+    const inspectionHoursText = `${formatHHmm(fromMinutes(inspEnvelope.start))} to ${formatHHmm(fromMinutes(inspEnvelope.end))}`;
     const availableDaysHtml = availableDays.length
       ? `<div style="margin-top:6px;">
            ${availableDays
@@ -494,7 +499,7 @@ export async function POST(req: NextRequest) {
              )
              .join("")}
          </div>`
-      : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Times from 9:00 AM to 3:00 PM — pick a slot on the booking page.</div>`;
+      : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Inspections run ${esc(openDaysSummary(bookingRules, "inspection"))}, ${esc(inspectionHoursText)} — pick a slot on the booking page.</div>`;
 
     // Inspection self-booking card. Rendered only when SHOW_INSPECTION_BOOKING is
     // true (currently disabled — see the flag near the top of this file).
