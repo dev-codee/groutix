@@ -13,6 +13,8 @@ import {
   Plus,
   Car,
   Trash2,
+  Camera,
+  ImagePlus,
 } from "lucide-react";
 import {
   type InspectionReportDoc,
@@ -34,7 +36,13 @@ import {
   PARKING_TYPE_LABELS,
   PARKING_RESTRICTION_LABELS,
   COST_ARRANGEMENT_LABELS,
+  type InspectionPhotoSection,
+  buildInspectionPhotoName,
+  isInspectionSectionPhoto,
 } from "@/lib/inspection";
+
+// Fixed branded signature shown on every inspection report.
+const INSPECTOR_SIGNATURE = "groutix.com";
 
 // ── small UI helpers ──────────────────────────────────────────────────────────
 
@@ -91,16 +99,204 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ── Section photos (camera / gallery upload per section) ──────────────────────
+
+export interface LeadPhotoLike {
+  name?: string;
+  url?: string;
+  secureUrl?: string;
+  dataUrl?: string;
+  publicId?: string;
+}
+
+function photoSrc(p: LeadPhotoLike): string {
+  return p.secureUrl || p.url || p.dataUrl || "";
+}
+
+function SectionPhotos({
+  leadId,
+  roomId,
+  section,
+  label,
+  photos,
+  onPhotosChange,
+  readOnly,
+}: {
+  leadId: string;
+  roomId: string;
+  section: InspectionPhotoSection;
+  label: string;
+  photos: LeadPhotoLike[];
+  onPhotosChange: (next: LeadPhotoLike[]) => void;
+  readOnly: boolean;
+}) {
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const mine = photos.filter((p) => isInspectionSectionPhoto(p.name, roomId, section));
+
+  async function upload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setBusy(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file, i) => {
+        const renamed = new File([file], buildInspectionPhotoName(file.name, roomId, section, i), {
+          type: file.type || "image/jpeg",
+        });
+        formData.append("photos", renamed);
+      });
+
+      const res = await fetch(`/api/admin/submissions/${leadId}/photos`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setError(data?.error || "Upload failed.");
+        return;
+      }
+      if (data.photos) onPhotosChange(data.photos as LeadPhotoLike[]);
+    } catch (err: any) {
+      setError(err?.message || "Network error while uploading.");
+    } finally {
+      if (cameraRef.current) cameraRef.current.value = "";
+      if (galleryRef.current) galleryRef.current.value = "";
+      setBusy(false);
+    }
+  }
+
+  async function remove(photo: LeadPhotoLike) {
+    if (readOnly) return;
+    if (!confirm("Delete this photo?")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/submissions/${leadId}/photos`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicId: photo.publicId, index: photos.indexOf(photo) }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error || "Delete failed.");
+        return;
+      }
+      if (data?.photos) onPhotosChange(data.photos as LeadPhotoLike[]);
+    } catch (err: any) {
+      setError(err?.message || "Network error while deleting.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+          {label} Photos {mine.length > 0 && <span className="text-[#1a6060]">({mine.length})</span>}
+        </div>
+        {!readOnly && (
+          <div className="no-print flex items-center gap-1.5">
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => upload(e.target.files)}
+            />
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => upload(e.target.files)}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => cameraRef.current?.click()}
+              className="px-2.5 py-1 rounded bg-[#1a6060] text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-[#164f4f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              Take Photo
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => galleryRef.current?.click()}
+              className="px-2.5 py-1 rounded border border-[#1a6060] text-[#1a6060] text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ImagePlus className="w-3.5 h-3.5" /> Upload
+            </button>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-red-600">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {error}
+        </div>
+      )}
+
+      {mine.length === 0 ? (
+        <div className="rounded border border-dashed border-slate-300 bg-white px-2.5 py-2 text-[11px] text-slate-400">
+          {readOnly
+            ? "No photos attached to this section."
+            : "No photos yet — use Take Photo on site, or Upload from this device."}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {mine.map((p, i) => (
+            <div key={(p.publicId || p.name || "") + i} className="relative group">
+              <a href={photoSrc(p)} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoSrc(p)}
+                  alt={p.name || "Inspection photo"}
+                  className="w-full h-16 object-cover rounded border border-slate-200 bg-white"
+                />
+              </a>
+              {!readOnly && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => remove(p)}
+                  title="Delete photo"
+                  className="no-print absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-white border border-slate-300 text-slate-400 hover:text-red-600 hover:border-red-300 cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Room form ─────────────────────────────────────────────────────────────────
 
 function RoomForm({
   room,
   onChange,
   readOnly,
+  leadId,
+  photos,
+  onPhotosChange,
 }: {
   room: RoomInspection;
   onChange: (updated: RoomInspection) => void;
   readOnly: boolean;
+  leadId: string;
+  photos: LeadPhotoLike[];
+  onPhotosChange: (next: LeadPhotoLike[]) => void;
 }) {
   function toggleArr<T>(arr: T[], val: T): T[] {
     return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
@@ -387,9 +583,6 @@ function RoomForm({
                     />
                   </div>
                 </div>
-                <div className="rounded border border-dashed border-slate-300 bg-white px-2.5 py-1.5 text-[11px] text-slate-400">
-                  + Defect close-up photo (add via Photos tab — show the affected joint, tile or surface clearly)
-                </div>
               </div>
             ))}
 
@@ -420,6 +613,16 @@ function RoomForm({
             </div>
           </div>
         )}
+
+        <SectionPhotos
+          leadId={leadId}
+          roomId={room.id}
+          section={3}
+          label="Findings"
+          photos={photos}
+          onPhotosChange={onPhotosChange}
+          readOnly={readOnly}
+        />
       </div>
 
       {/* ── Section 4: Recommended work ─── */}
@@ -492,6 +695,16 @@ function RoomForm({
               placeholder="Any additional observations or context"
               className={inputCls + " resize-none"} />
           </div>
+
+          <SectionPhotos
+            leadId={leadId}
+            roomId={room.id}
+            section={4}
+            label="Recommended Work"
+            photos={photos}
+            onPhotosChange={onPhotosChange}
+            readOnly={readOnly}
+          />
         </div>
       </div>
     </div>
@@ -680,6 +893,7 @@ interface LeadLike {
   status?: string;
   assigned?: string;
   inspectionReport?: InspectionReportDoc;
+  photos?: LeadPhotoLike[];
 }
 
 interface Props {
@@ -690,17 +904,21 @@ interface Props {
   technicians?: { id: string; name: string }[];
   readOnly?: boolean;
   onSave: (report: InspectionReportDoc, markCompleted?: boolean) => Promise<boolean>;
+  /** Lets the parent keep its own lead/photo state in sync after a section upload. */
+  onPhotosChanged?: (photos: LeadPhotoLike[]) => void;
 }
 
-export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], readOnly = false, onSave }: Props) {
+export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], readOnly = false, onSave, onPhotosChanged }: Props) {
   const [report, setReport] = useState<InspectionReportDoc>(() => buildInitial(lead, currentUsername));
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [photos, setPhotos] = useState<LeadPhotoLike[]>(lead.photos || []);
 
   useEffect(() => {
     if (!isOpen) return;
     setReport(buildInitial(lead, currentUsername));
+    setPhotos(lead.photos || []);
     setSaveSuccess(false);
     setErrorMsg("");
   }, [isOpen, lead, currentUsername]);
@@ -723,8 +941,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
       quoteBuildFromReport: ex.quoteBuildFromReport || "YES",
       warrantyEligible: ex.warrantyEligible ?? "YES",
       inspectorNotes: ex.inspectorNotes || "",
-      inspectorSignature: ex.inspectorSignature || ex.inspectorName || username || "",
-      customerAcknowledgement: ex.customerAcknowledgement || "",
+      inspectorSignature: INSPECTOR_SIGNATURE,
       findings: ex.findings || {},
       otherDetails: ex.otherDetails || "",
       status: ex.status || "draft",
@@ -916,6 +1133,12 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                 room={room}
                 onChange={(updated) => updateRoom(idx, updated)}
                 readOnly={readOnly}
+                leadId={lead.id}
+                photos={photos}
+                onPhotosChange={(next) => {
+                  setPhotos(next);
+                  onPhotosChanged?.(next);
+                }}
               />
             </div>
           ))}
@@ -1037,23 +1260,11 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100">
-                  <div>
-                    <label className="block text-[9px] font-bold text-[#1a6060] uppercase tracking-widest mb-0.5">Inspector Signature / Confirmed By</label>
-                    <input type="text" readOnly={readOnly}
-                      value={report.inspectorSignature || ""}
-                      onChange={(e) => setReport({ ...report, inspectorSignature: e.target.value })}
-                      placeholder="Technician Name / Signature"
-                      className={inputCls + " italic"} />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-[#1a6060] uppercase tracking-widest mb-0.5">Customer Acknowledgement</label>
-                    <input type="text" readOnly={readOnly}
-                      value={report.customerAcknowledgement || ""}
-                      onChange={(e) => setReport({ ...report, customerAcknowledgement: e.target.value })}
-                      placeholder="Customer Name / Acknowledgement"
-                      className={inputCls} />
-                  </div>
+                <div className="pt-1 border-t border-slate-100">
+                  <label className="block text-[9px] font-bold text-[#1a6060] uppercase tracking-widest mb-0.5">Inspector Signature / Confirmed By</label>
+                  <input type="text" readOnly
+                    value={INSPECTOR_SIGNATURE}
+                    className={inputCls + " italic cursor-not-allowed"} />
                 </div>
               </div>
             </div>

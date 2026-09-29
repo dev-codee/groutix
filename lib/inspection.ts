@@ -152,6 +152,7 @@ export interface InspectionReportDoc {
   warrantyEligible?: CheckValue;
   inspectorNotes?: string;
   inspectorSignature?: string;
+  /** @deprecated Removed from the inspection form; kept only to read legacy reports. */
   customerAcknowledgement?: string;
 
   // Legacy backward-compat (old checklist data)
@@ -176,6 +177,34 @@ export function makeRoom(overrides: Partial<RoomInspection> = {}): RoomInspectio
     recommendedWork: [],
     ...overrides,
   };
+}
+
+// Section photos are stored in the lead's normal photos array, but the file name
+// carries a prefix so each room/section can show only its own pictures.
+// e.g. "insp-a1b2c3-s3__1717000000000.jpg"
+export type InspectionPhotoSection = 3 | 4;
+
+export function inspectionPhotoPrefix(roomId: string, section: InspectionPhotoSection): string {
+  return `insp-${roomId}-s${section}__`;
+}
+
+export function isInspectionSectionPhoto(
+  name: string | undefined,
+  roomId: string,
+  section: InspectionPhotoSection
+): boolean {
+  return !!name && name.startsWith(inspectionPhotoPrefix(roomId, section));
+}
+
+export function buildInspectionPhotoName(
+  original: string,
+  roomId: string,
+  section: InspectionPhotoSection,
+  index = 0
+): string {
+  const dot = original.lastIndexOf(".");
+  const ext = dot > 0 ? original.slice(dot + 1).toLowerCase() : "jpg";
+  return `${inspectionPhotoPrefix(roomId, section)}${Date.now() + index}.${ext}`;
 }
 
 export function calculateInspectionSummary(report: InspectionReportDoc) {

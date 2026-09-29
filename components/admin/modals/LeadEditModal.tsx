@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { X, Phone } from "lucide-react";
+import { X, Phone, MapPin } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
 import { fmtDate, getRoleStatusOptions } from "@/lib/adminHelpers";
 import type { Role } from "@/lib/roles";
@@ -239,7 +239,7 @@ export function LeadEditModal({
               {inspectionConflict && (
                 <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {inspectionConflict.label}</p>
               )}
-              <div className="flex items-center gap-3 mt-1.5">
+              <div className="flex items-center gap-3 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowBoard((v) => ({ ...v, inspection: !v.inspection }))}
@@ -250,9 +250,10 @@ export function LeadEditModal({
                 <button
                   type="button"
                   onClick={() => setPlannerFor("inspection")}
-                  className="text-[10px] font-bold text-green-700 hover:text-green-800 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold shadow-sm transition-colors cursor-pointer"
                 >
-                  🗺 Plan on map
+                  <MapPin className="w-3.5 h-3.5" />
+                  Plan on Map
                 </button>
               </div>
               {showBoard.inspection && (
@@ -326,7 +327,7 @@ export function LeadEditModal({
               {jobConflict && (
                 <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {jobConflict.label}</p>
               )}
-              <div className="flex items-center gap-3 mt-1.5">
+              <div className="flex items-center gap-3 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowBoard((v) => ({ ...v, job: !v.job }))}
@@ -337,9 +338,10 @@ export function LeadEditModal({
                 <button
                   type="button"
                   onClick={() => setPlannerFor("job")}
-                  className="text-[10px] font-bold text-green-700 hover:text-green-800 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold shadow-sm transition-colors cursor-pointer"
                 >
-                  🗺 Plan on map
+                  <MapPin className="w-3.5 h-3.5" />
+                  Plan on Map
                 </button>
               </div>
               {showBoard.job && (

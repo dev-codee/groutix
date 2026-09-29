@@ -166,11 +166,14 @@ export function BookingPlanner({
     const items: DispatchMapItem[] = selectedDay.stops
       .filter((s) => s.address || s.suburb)
       .map((s) => ({ lead: asLead(s.leadId, s.name, s.address, s.suburb), type: s.type, time: s.time }));
-    if (selectedTime && (lead.address || lead.city)) {
+    // Always show the customer's address marker — even before a slot is picked.
+    // If a slot is selected, use that time so the marker lands in timeline order;
+    // otherwise use an empty string (the map/route-builder ignores it gracefully).
+    if (lead.address || lead.city) {
       items.push({
         lead: asLead(lead.id || "new-lead", lead.name || "This customer", lead.address, lead.city),
         type,
-        time: selectedTime,
+        time: selectedTime ?? "",
         proposed: true,
       });
     }
@@ -332,7 +335,7 @@ export function BookingPlanner({
                 </DispatchMap>
                 {!selectedTime && (
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-white/95 border border-slate-200 rounded-full px-3 py-1 shadow-sm text-[11px] font-semibold text-slate-600">
-                    Pick a free slot to see this customer on the route
+                    Pick a free slot to see this customer placed in the route
                   </div>
                 )}
               </div>

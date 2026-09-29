@@ -7120,6 +7120,18 @@ export default function CrmDashboardPage() {
           currentUsername={username || undefined}
           technicians={assignableTechnicians}
           readOnly={isTechnician}
+          onPhotosChanged={(photos) => {
+            setActiveInspectionLead((prev) =>
+              prev ? { ...prev, photos: photos as any, photosCount: photos.length } : prev
+            );
+            setLeads((prev) =>
+              prev.map((l) =>
+                l.id === activeInspectionLead.id
+                  ? { ...l, photos: photos as any, photosCount: photos.length }
+                  : l
+              )
+            );
+          }}
           onSave={async (report, markCompleted) => {
             const updates: Partial<Lead> = {
               inspectionReport: report,
