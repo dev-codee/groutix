@@ -8,6 +8,7 @@ import type { Role } from "@/lib/roles";
 import { explainOutsideRules } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { SlotBoard, useSlotConflict } from "@/components/admin/SlotBoard";
+import { BookingPlanner } from "@/components/admin/BookingPlanner";
 
 interface Props {
   editingLead: Partial<Lead> | null;
@@ -53,6 +54,7 @@ export function LeadEditModal({
 
   // Live view of who holds which slot (inspections + jobs share one calendar).
   const [showBoard, setShowBoard] = useState<{ inspection: boolean; job: boolean }>({ inspection: false, job: false });
+  const [plannerFor, setPlannerFor] = useState<"inspection" | "job" | null>(null);
   const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id);
   const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id);
   // Times as they were when the form opened — only a CHANGED time needs the double-booking check.
@@ -237,13 +239,22 @@ export function LeadEditModal({
               {inspectionConflict && (
                 <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {inspectionConflict.label}</p>
               )}
-              <button
-                type="button"
-                onClick={() => setShowBoard((v) => ({ ...v, inspection: !v.inspection }))}
-                className="mt-1.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
-              >
-                {showBoard.inspection ? "▾ Hide booked slots" : "▸ Show booked slots"}
-              </button>
+              <div className="flex items-center gap-3 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowBoard((v) => ({ ...v, inspection: !v.inspection }))}
+                  className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+                >
+                  {showBoard.inspection ? "▾ Hide booked slots" : "▸ Show booked slots"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlannerFor("inspection")}
+                  className="text-[10px] font-bold text-green-700 hover:text-green-800 cursor-pointer"
+                >
+                  🗺 Plan on map
+                </button>
+              </div>
               {showBoard.inspection && (
                 <SlotBoard
                   type="inspection"
@@ -315,13 +326,22 @@ export function LeadEditModal({
               {jobConflict && (
                 <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {jobConflict.label}</p>
               )}
-              <button
-                type="button"
-                onClick={() => setShowBoard((v) => ({ ...v, job: !v.job }))}
-                className="mt-1.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
-              >
-                {showBoard.job ? "▾ Hide booked slots" : "▸ Show booked slots"}
-              </button>
+              <div className="flex items-center gap-3 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowBoard((v) => ({ ...v, job: !v.job }))}
+                  className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+                >
+                  {showBoard.job ? "▾ Hide booked slots" : "▸ Show booked slots"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlannerFor("job")}
+                  className="text-[10px] font-bold text-green-700 hover:text-green-800 cursor-pointer"
+                >
+                  🗺 Plan on map
+                </button>
+              </div>
               {showBoard.job && (
                 <SlotBoard
                   type="job"
@@ -445,6 +465,21 @@ export function LeadEditModal({
           </div>
         </form>
       </div>
+      {plannerFor && editingLead && (
+        <BookingPlanner
+          type={plannerFor}
+          lead={editingLead}
+          value={plannerFor === "inspection" ? editingLead.inspectionAt : editingLead.jobAt}
+          onPick={(val) =>
+            setEditingLead(
+              plannerFor === "inspection"
+                ? { ...editingLead, inspectionAt: val, inspectionReminderSent: false }
+                : { ...editingLead, jobAt: val, jobReminderSent: false }
+            )
+          }
+          onClose={() => setPlannerFor(null)}
+        />
+      )}
     </div>
   );
 }

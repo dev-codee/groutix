@@ -9,6 +9,8 @@ export interface DispatchMapItem {
   lead: Lead;
   type: "inspection" | "job";
   time: string;
+  /** The customer currently being scheduled (booking planner) — drawn as a green "NEW" stop. */
+  proposed?: boolean;
 }
 
 interface DispatchMapProps {
@@ -141,7 +143,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
   // flicker. Only rebuild when the actual stop content (ids/type/time/address)
   // changes, and read the latest onSelectLead via a ref so it never forces a
   // rebuild on its own.
-  const itemsKey = items.map((i) => `${i.lead.id}:${i.type}:${i.time}:${i.lead.address || ""}`).join("|");
+  const itemsKey = items.map((i) => `${i.lead.id}:${i.type}:${i.time}:${i.lead.address || ""}:${i.proposed ? 1 : 0}`).join("|");
   const onSelectLeadRef = useRef(onSelectLead);
   useEffect(() => { onSelectLeadRef.current = onSelectLead; }, [onSelectLead]);
 
@@ -234,14 +236,14 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
     directionsRendererRef.current?.set("directions", null);
 
     const addStopMarker = (position: google.maps.LatLng | google.maps.LatLngLiteral, idx: number, item: DispatchMapItem) => {
-      const color = item.type === "inspection" ? "#EF4444" : "#3B82F6";
+      const color = item.proposed ? "#16A34A" : item.type === "inspection" ? "#EF4444" : "#3B82F6";
       const marker = new g.maps.Marker({
         position,
         map,
         icon: pinIcon(g, color),
         label: { text: String(idx + 1), color: "#0F172A", fontWeight: "800", fontSize: "12px" },
         title: `${idx + 1}. ${item.lead.name || "Customer"} · ${fmtApptTime(item.time)}`,
-        zIndex: 100 + idx,
+        zIndex: item.proposed ? 1500 : 100 + idx,
       });
       marker.addListener("click", () => onSelectLeadRef.current(item.lead.id));
       markersRef.current.push(marker);
@@ -249,7 +251,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
 
       const bubbleHtml = `<div style="display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;background:#fff;border-radius:6px;box-shadow:0 1px 4px rgba(15,23,42,0.22);padding:2px 6px;font:600 10px/1.3 system-ui,sans-serif;color:#0F172A;">
         <span style="color:${color};font-weight:800;">${idx + 1}.</span>
-        <span>${item.lead.name || "Customer"}</span>
+        <span>${item.proposed ? "NEW · " : ""}${item.lead.name || "Customer"}</span>
         <span style="font-weight:500;color:#64748B;font-size:9px;">· ${fmtApptTime(item.time)}</span>
       </div>`;
       const bubble = createLabelOverlay(g, map, position, bubbleHtml);

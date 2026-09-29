@@ -248,46 +248,57 @@ export async function deleteBooking(leadId: string, type?: "inspection" | "job")
 }
 
 export interface DayAppointment {
+  date: string; // YYYY-MM-DD
   time: string; // HH:mm
   type: "inspection" | "job";
   leadId: string;
   name: string;
   jobNo?: string;
+  address?: string;
   suburb?: string;
   status?: string;
   source: "online" | "staff"; // slot lock row vs. appointment recorded on the lead
 }
 
+/** Everything occupying the shared calendar on one date (see listAppointmentsBetween). */
+export function listAppointmentsOnDate(date: string): Promise<DayAppointment[]> {
+  return listAppointmentsBetween(date, date);
+}
+
 /**
- * Everything occupying the shared calendar on one date, with customer details —
- * for staff to see who holds which slot while scheduling. Includes both slot-lock
- * rows (online bookings) and appointments recorded directly on leads, so a manual
- * or double-booked entry is visible too.
+ * Everything occupying the shared calendar between two dates (inclusive), with
+ * customer details — for staff to see who holds which slot, and where, while
+ * scheduling. Includes both slot-lock rows (online bookings) and appointments
+ * recorded directly on leads, so a manual or double-booked entry is visible too.
  */
-export async function listAppointmentsOnDate(date: string): Promise<DayAppointment[]> {
-  if (!isMongoConfigured() || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return [];
+export async function listAppointmentsBetween(from: string, to: string): Promise<DayAppointment[]> {
+  const YMD = /^\d{4}-\d{2}-\d{2}$/;
+  if (!isMongoConfigured() || !YMD.test(from) || !YMD.test(to) || to < from) return [];
   try {
     const col = await collection();
     const db = await getDb();
     const subCol = db.collection("submissions");
+    // Naive "YYYY-MM-DDTHH:mm" strings sort lexically, so a string range works.
+    const range = { $gte: `${from}T`, $lt: `${to}T~` };
 
     const [locks, subs] = await Promise.all([
-      col.find({ date }).toArray(),
+      col.find({ date: { $gte: from, $lte: to } }).toArray(),
       subCol
         .find({
           status: { $nin: ["Lost", "Cancelled"] },
-          $or: [{ inspectionAt: { $regex: `^${date}T` } }, { jobAt: { $regex: `^${date}T` } }],
+          $or: [{ inspectionAt: range }, { jobAt: range }],
         })
         .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1 })
         .toArray(),
     ]);
 
     const out: DayAppointment[] = [];
-    const seen = new Set<string>(); // leadId|type|time
-    const info = new Map<string, { name: string; jobNo?: string; suburb?: string; status?: string }>();
+    const seen = new Set<string>(); // leadId|type|date|time
+    const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string }>();
     const describe = (s: Record<string, unknown>) => ({
       name: String(s.name || "Customer"),
       jobNo: typeof s.jobNo === "string" ? s.jobNo : undefined,
+      address: typeof s.address === "string" && s.address ? s.address : undefined,
       suburb: typeof s.city === "string" && s.city ? s.city : undefined,
       status: typeof s.status === "string" ? s.status : undefined,
     });
@@ -297,43 +308,47 @@ export async function listAppointmentsOnDate(date: string): Promise<DayAppointme
       info.set(id, describe(s));
       for (const type of ["inspection", "job"] as const) {
         const when = type === "inspection" ? s.inspectionAt : s.jobAt;
-        if (typeof when !== "string" || !when.startsWith(`${date}T`)) continue;
-        const time = when.split("T")[1].slice(0, 5).padStart(5, "0");
-        seen.add(`${id}|${type}|${time}`);
-        out.push({ time, type, leadId: id, ...info.get(id)!, source: "staff" });
+        if (typeof when !== "string" || !when.includes("T")) continue;
+        const [date, tRaw] = when.split("T");
+        if (date < from || date > to) continue;
+        const time = tRaw.slice(0, 5).padStart(5, "0");
+        seen.add(`${id}|${type}|${date}|${time}`);
+        out.push({ date, time, type, leadId: id, ...info.get(id)!, source: "staff" });
       }
     }
 
-    // Slot locks whose lead no longer records that time (e.g. online bookings not
-    // yet reflected, or leads we didn't match above) — fetch their details.
-    const extra = locks.filter((b) => !seen.has(`${b.leadId}|${b.type}|${b.time.slice(0, 5).padStart(5, "0")}`));
+    // Slot locks whose lead doesn't record that time (e.g. online bookings not
+    // yet reflected on the lead) — fetch their details.
+    const extra = locks.filter((b) => !seen.has(`${b.leadId}|${b.type}|${b.date}|${b.time.slice(0, 5).padStart(5, "0")}`));
     const missingIds = [...new Set(extra.map((b) => b.leadId))].filter((id) => !info.has(id) && ObjectId.isValid(id));
     if (missingIds.length) {
       const docs = await subCol
         .find({ _id: { $in: missingIds.map((id) => new ObjectId(id)) } })
-        .project({ _id: 1, name: 1, jobNo: 1, city: 1, status: 1 })
+        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1 })
         .toArray();
       for (const d of docs) info.set(d._id.toString(), describe(d));
     }
     for (const b of extra) {
       const i = info.get(b.leadId);
-      // Lock held by a lead that's since been lost/cancelled → it no longer blocks anything meaningful.
+      // Lock held by a lead that's since been lost/cancelled → no longer a real appointment.
       if (i?.status === "Lost" || i?.status === "Cancelled") continue;
       out.push({
+        date: b.date,
         time: b.time.slice(0, 5).padStart(5, "0"),
         type: b.type,
         leadId: b.leadId,
         name: i?.name || "Customer",
         jobNo: i?.jobNo || b.reference,
+        address: i?.address,
         suburb: i?.suburb || b.suburb,
         status: i?.status,
         source: "online",
       });
     }
 
-    return out.sort((a, b) => a.time.localeCompare(b.time));
+    return out.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   } catch (err) {
-    console.error("listAppointmentsOnDate failed:", err);
+    console.error("listAppointmentsBetween failed:", err);
     return [];
   }
 }

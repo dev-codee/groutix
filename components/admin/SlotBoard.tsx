@@ -18,16 +18,8 @@ import { melbourneYmd } from "@/lib/scheduling";
 // Inspections and jobs share ONE calendar (see lib/bookings.ts), so every
 // appointment on the day is shown, whatever its type.
 
-export interface DayAppointment {
-  time: string;
-  type: "inspection" | "job";
-  leadId: string;
-  name: string;
-  jobNo?: string;
-  suburb?: string;
-  status?: string;
-  source: "online" | "staff";
-}
+import type { DayAppointment } from "@/lib/bookings";
+export type { DayAppointment };
 
 // Short-lived per-date cache so both boards (inspection + job) and the conflict
 // check share one request, without showing stale data after a save.
