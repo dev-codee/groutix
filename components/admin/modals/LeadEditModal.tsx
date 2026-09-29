@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { X, Phone } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
 import { fmtDate, getRoleStatusOptions } from "@/lib/adminHelpers";
 import type { Role } from "@/lib/roles";
 import { explainOutsideRules } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
+import { SlotBoard, useSlotConflict } from "@/components/admin/SlotBoard";
 
 interface Props {
   editingLead: Partial<Lead> | null;
@@ -50,6 +51,29 @@ export function LeadEditModal({
   const inspectionWarning = editingLead?.inspectionAt ? explainOutsideRules(bookingRules, "inspection", editingLead.inspectionAt) : null;
   const jobWarning = editingLead?.jobAt ? explainOutsideRules(bookingRules, "job", editingLead.jobAt) : null;
 
+  // Live view of who holds which slot (inspections + jobs share one calendar).
+  const [showBoard, setShowBoard] = useState<{ inspection: boolean; job: boolean }>({ inspection: false, job: false });
+  const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id);
+  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id);
+  // Times as they were when the form opened — only a CHANGED time needs the double-booking check.
+  const original = useRef({ inspectionAt: editingLead?.inspectionAt || "", jobAt: editingLead?.jobAt || "" });
+
+  const onSubmit = (e: React.FormEvent) => {
+    const clashes = [
+      editingLead?.inspectionAt !== original.current.inspectionAt && inspectionConflict
+        ? `Inspection: ${inspectionConflict.time} is already booked by ${inspectionConflict.label}`
+        : null,
+      editingLead?.jobAt !== original.current.jobAt && jobConflict
+        ? `Job: ${jobConflict.time} is already booked by ${jobConflict.label}`
+        : null,
+    ].filter(Boolean);
+    if (clashes.length && !window.confirm(`Double booking!\n\n${clashes.join("\n")}\n\nSave anyway?`)) {
+      e.preventDefault();
+      return;
+    }
+    handleSaveLead(e);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 sm:pt-10 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-4 sm:p-6 space-y-4 my-4 sm:my-8">
@@ -65,7 +89,7 @@ export function LeadEditModal({
           </button>
         </div>
 
-        <form onSubmit={handleSaveLead} className="space-y-4 text-xs">
+        <form onSubmit={onSubmit} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="font-bold text-slate-700 block mb-1">Customer Name *</label>
@@ -210,6 +234,24 @@ export function LeadEditModal({
               {inspectionWarning && (
                 <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {inspectionWarning}</p>
               )}
+              {inspectionConflict && (
+                <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {inspectionConflict.label}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowBoard((v) => ({ ...v, inspection: !v.inspection }))}
+                className="mt-1.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                {showBoard.inspection ? "▾ Hide booked slots" : "▸ Show booked slots"}
+              </button>
+              {showBoard.inspection && (
+                <SlotBoard
+                  type="inspection"
+                  value={editingLead?.inspectionAt}
+                  leadId={editingLead?.id}
+                  onPick={(val) => setEditingLead({ ...editingLead, inspectionAt: val, inspectionReminderSent: false })}
+                />
+              )}
               <div className="flex items-center gap-2 mt-1.5">
                 <p className="text-[10px] text-slate-400">Triggers a 24-hour reminder to the customer.</p>
                 {editingLead?.id && (
@@ -269,6 +311,24 @@ export function LeadEditModal({
               />
               {jobWarning && (
                 <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {jobWarning}</p>
+              )}
+              {jobConflict && (
+                <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {jobConflict.label}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowBoard((v) => ({ ...v, job: !v.job }))}
+                className="mt-1.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                {showBoard.job ? "▾ Hide booked slots" : "▸ Show booked slots"}
+              </button>
+              {showBoard.job && (
+                <SlotBoard
+                  type="job"
+                  value={editingLead?.jobAt}
+                  leadId={editingLead?.id}
+                  onPick={(val) => setEditingLead({ ...editingLead, jobAt: val, jobReminderSent: false })}
+                />
               )}
               <div className="flex items-center gap-2 mt-1.5">
                 <p className="text-[10px] text-slate-400">Triggers a 24-hour reminder to the customer.</p>
