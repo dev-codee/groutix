@@ -26,6 +26,10 @@ console.log("=== Configuration ===");
 console.log("QBO_CLIENT_ID:", env.QBO_CLIENT_ID ? "set" : "MISSING");
 console.log("QBO_CLIENT_SECRET:", env.QBO_CLIENT_SECRET ? "set" : "MISSING");
 console.log("QBO_SERVICE_ITEM_ID:", env.QBO_SERVICE_ITEM_ID || '(unset -> defaults to "1")');
+const sandbox = (env.QBO_ENVIRONMENT || "production").toLowerCase() === "sandbox";
+console.log("QBO_ENVIRONMENT:", env.QBO_ENVIRONMENT || "(unset -> production)");
+console.log("API host:", sandbox ? "sandbox-quickbooks.api.intuit.com" : "quickbooks.api.intuit.com");
+if (sandbox) console.log("  NOTE: sandbox mode - Development keys + a sandbox company are required.");
 console.log("redirect URI (production):", `${(env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "")}/api/admin/qbo/callback`);
 
 console.log("\n=== Connection ===");

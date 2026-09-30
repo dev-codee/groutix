@@ -535,7 +535,7 @@ export default function CrmDashboardPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [qboSettingsOpen, setQboSettingsOpen] = useState(false);
   const [bookingRulesOpen, setBookingRulesOpen] = useState(false);
-  const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string } | null>(null);
+  const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string; environment?: "sandbox" | "production" } | null>(null);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
 
   useEffect(() => {
@@ -7400,6 +7400,9 @@ export default function CrmDashboardPage() {
                 <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
                   <p className="font-semibold text-slate-700">Setup checklist</p>
+                  {qboStatus?.environment === "sandbox" && (
+                    <p className="text-amber-700">Using <span className="font-semibold">sandbox</span> keys — you&apos;ll be asked to connect a sandbox company, not your real one. Create one under Sandboxes at developer.intuit.com, or switch to Production keys and remove QBO_ENVIRONMENT.</p>
+                  )}
                   <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
                   <p>2. Set Redirect URI to:</p>
                   <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>

@@ -1,8 +1,21 @@
 import { getDb } from "./mongodb";
 
+// The OAuth endpoints are shared, but the API host is not: Development keys from
+// developer.intuit.com only work against the sandbox host, and Production keys
+// only against the live one. Mismatching them gives a clean OAuth handshake
+// followed by 401s on every call, so this is driven by QBO_ENVIRONMENT.
 const QBO_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QBO_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
-const QBO_API_BASE = "https://quickbooks.api.intuit.com/v3/company";
+
+export function isQboSandbox(): boolean {
+  return (process.env.QBO_ENVIRONMENT || "production").toLowerCase() === "sandbox";
+}
+
+function qboApiBase(): string {
+  return isQboSandbox()
+    ? "https://sandbox-quickbooks.api.intuit.com/v3/company"
+    : "https://quickbooks.api.intuit.com/v3/company";
+}
 
 interface QboTokenDoc {
   realmId: string;
@@ -165,7 +178,7 @@ async function getValidToken(): Promise<{ token: string; realmId: string }> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function qboGet(path: string): Promise<any> {
   const { token, realmId } = await getValidToken();
-  const res = await fetch(`${QBO_API_BASE}/${realmId}/${path}`, {
+  const res = await fetch(`${qboApiBase()}/${realmId}/${path}`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });
   if (!res.ok) {
@@ -177,7 +190,7 @@ async function qboGet(path: string): Promise<any> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function qboPost(path: string, body: unknown): Promise<any> {
   const { token, realmId } = await getValidToken();
-  const res = await fetch(`${QBO_API_BASE}/${realmId}/${path}`, {
+  const res = await fetch(`${qboApiBase()}/${realmId}/${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -261,6 +274,8 @@ export interface QboStatus {
   connected: boolean;
   /** The exact callback URL to register at developer.intuit.com. */
   redirectUri: string;
+  /** "sandbox" when using Development keys, "production" for live keys. */
+  environment: "sandbox" | "production";
   connectedAt?: string;
   realmId?: string;
   refreshExpiresAt?: number;
@@ -268,14 +283,16 @@ export interface QboStatus {
 
 export async function getQboStatus(requestOrigin?: string): Promise<QboStatus> {
   const redirectUri = getQboRedirectUri(requestOrigin);
+  const environment = isQboSandbox() ? ("sandbox" as const) : ("production" as const);
   const configured = isQboConfigured();
-  if (!configured) return { configured: false, connected: false, redirectUri };
+  if (!configured) return { configured: false, connected: false, redirectUri, environment };
   const doc = await getTokenDoc();
-  if (!doc) return { configured: true, connected: false, redirectUri };
+  if (!doc) return { configured: true, connected: false, redirectUri, environment };
   return {
     configured: true,
     connected: true,
     redirectUri,
+    environment,
     connectedAt: doc.connectedAt,
     realmId: doc.realmId,
     refreshExpiresAt: doc.refreshExpiresAt,
