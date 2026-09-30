@@ -5,10 +5,10 @@ import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl } from "@/lib/bookingToken";
-import { resolveArea, getAvailableDaysSummary, computeAvailability, isSlotOffered } from "@/lib/scheduling";
+import { resolveArea, getAvailableDaysSummary, computeAvailability, isSlotOffered, inspectionDaysText } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking, isSlotTaken } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
-import { formatHHmm, hoursEnvelope, fromMinutes, openDaysSummary } from "@/lib/bookingRules";
+import { formatHHmm, hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
 import { updateSubmission, appendActivity, getNextJobNo } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
@@ -495,7 +495,7 @@ export async function POST(req: NextRequest) {
              )
              .join("")}
          </div>`
-      : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Inspections run ${esc(openDaysSummary(bookingRules, "inspection"))}, ${esc(inspectionHoursText)} — pick a slot on the booking page.</div>`;
+      : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Inspections run ${esc(inspectionDaysText(bookingRules))}, ${esc(inspectionHoursText)} — pick a slot on the booking page.</div>`;
 
     // Inspection self-booking card. Rendered only when SHOW_INSPECTION_BOOKING is
     // true (currently disabled — see the flag near the top of this file).

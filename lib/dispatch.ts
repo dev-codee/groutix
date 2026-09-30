@@ -125,7 +125,7 @@ export function isWithinWorkingHours(
   type: BookingType = "job",
   rules: BookingRules = DEFAULT_BOOKING_RULES
 ): boolean {
-  const rule = dayHours(rules, type, weekdayOf(dateStr));
+  const rule = dayHours(rules, type, weekdayOf(dateStr), dateStr);
   if (!rule.open) return false;
   const apptStart = toMinutes(timeStr);
   return apptStart >= toMinutes(rule.start) && apptStart + durationMins <= toMinutes(rule.end);

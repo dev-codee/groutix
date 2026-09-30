@@ -129,10 +129,10 @@ export function SlotBoard({
   const error = !!current?.error;
 
   const wd = weekdayOf(day);
-  const hours = dayHours(rules, type, wd);
+  const hours = dayHours(rules, type, wd, day);
   const closed = closedDateInfo(rules, day);
   const beforeMin = !!rules.minDate && day < rules.minDate;
-  const gridTimes = slotsForWeekday(rules, type, wd);
+  const gridTimes = slotsForWeekday(rules, type, wd, day);
   const nowHHmm = nowMelbourneHHmm();
 
   const byTime = useMemo(() => {

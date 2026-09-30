@@ -99,6 +99,12 @@ export function ManagerDashboard() {
   _tomDate.setDate(_tomDate.getDate() + 1);
   const _dayKey = (v?: string) => formatApptDate(v, { year: "numeric", month: "2-digit", day: "2-digit" });
   const _todayStr = _dayKey(_now.toISOString());
+  // Booking rules are keyed by ISO date (YYYY-MM-DD) so scheduled changeovers
+  // resolve correctly; day keys above are the en-AU "DD/MM/YYYY" display form.
+  const _ymd = (dayKey: string) => {
+    const [d, m, y] = dayKey.split("/");
+    return y && m && d ? `${y}-${m}-${d}` : "";
+  };
   const _tomStr = _dayKey(_tomDate.toISOString());
   const _apptMs = (l: Lead) => apptInstantMs(l.inspectionAt || l.jobAt) || 0;
 
@@ -147,7 +153,7 @@ export function ManagerDashboard() {
   // Hourly slots for Today, spanning the configured booking hours (Settings → Booking Hours)
   const todayHourlySlots = useMemo(() => {
     const wd = new Date().getDay();
-    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, wd)).filter((d) => d.open);
+    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, wd, _ymd(_todayStr))).filter((d) => d.open);
     const startH = open.length ? Math.floor(Math.min(...open.map((d) => toMinutes(d.start))) / 60) : 9;
     const endH = open.length ? Math.floor(Math.max(...open.map((d) => toMinutes(d.end))) / 60) : 17;
     const hours = Array.from({ length: Math.max(endH - startH + 1, 1) }, (_, k) => {
@@ -310,7 +316,8 @@ export function ManagerDashboard() {
       d.setDate(d.getDate() + (rosterWeekOffset * 7) + step);
       step++;
       // Skip weekdays closed for both inspections and jobs
-      if (!dayHours(bookingRules, "inspection", d.getDay()).open && !dayHours(bookingRules, "job", d.getDay()).open) {
+      const iso = _ymd(_dayKey(d.toISOString()));
+      if (!dayHours(bookingRules, "inspection", d.getDay(), iso).open && !dayHours(bookingRules, "job", d.getDay(), iso).open) {
         if (step > 14) break;
         continue;
       }
@@ -398,8 +405,9 @@ export function ManagerDashboard() {
   const technicianCount = useMemo(() => activeStaffRosterList.filter((s) => !s.isInspector).length, [activeStaffRosterList]);
 
   // Slot hours per day, spanning the configured inspection + job hours for that weekday
-  const getRosterSlotsForDay = useCallback((dayOfWeek: number) => {
-    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, dayOfWeek)).filter((d) => d.open);
+  const getRosterSlotsForDay = useCallback((dayOfWeek: number, dateKey?: string) => {
+    const iso = dateKey ? _ymd(dateKey) : undefined;
+    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, dayOfWeek, iso)).filter((d) => d.open);
     if (!open.length) return [];
     const startH = Math.floor(Math.min(...open.map((d) => toMinutes(d.start))) / 60);
     const endH = Math.floor(Math.max(...open.map((d) => toMinutes(d.end))) / 60);
@@ -423,7 +431,7 @@ export function ManagerDashboard() {
     ): { status: "available" | "booked" | "closed"; detail: string } => {
       // 1. Closed day or outside this member's configured hours (inspectors follow
       //    inspection hours, technicians follow job hours).
-      const hrs = dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek);
+      const hrs = dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey));
       if (!hrs.open) {
         return { status: "closed", detail: `${WEEKDAY_NAMES[dayOfWeek]} Closed` };
       }
@@ -499,7 +507,7 @@ export function ManagerDashboard() {
       dateKey: string,
       dayOfWeek: number
     ) => {
-      if (!dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek).open) {
+      if (!dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey)).open) {
         return {
           status: "off" as const,
           label: "Day Off",
@@ -1736,7 +1744,7 @@ export function ManagerDashboard() {
 
                   {/* Day Slots: configured booking hours for each weekday */}
                   {rosterDays.map((day, dIdx) => {
-                    const daySlots = getRosterSlotsForDay(day.dayOfWeek);
+                    const daySlots = getRosterSlotsForDay(day.dayOfWeek, day.dateKey);
                     return (
                       <td key={dIdx} className="py-2 px-1 border-l border-slate-100 align-middle text-center">
                         <div className="inline-flex items-center justify-center gap-0.5 p-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">

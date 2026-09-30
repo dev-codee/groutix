@@ -18,6 +18,7 @@ import {
   DEFAULT_BOOKING_RULES,
   formatHHmm,
   fromMinutes,
+  nextChangeover,
   openDaysSummary,
   slotsForDate,
   toMinutes,
@@ -713,7 +714,31 @@ export function getAvailableDaysSummary(area: AreaInfo, rules: BookingRules = DE
   if (!isServiceable(area)) {
     return "Outside 50 km Service Area (Free inspection timing not available online)";
   }
-  return `Inspections available ${openDaysSummary(rules, "inspection")}`;
+  return `Inspections available ${inspectionDaysText(rules)}`;
+}
+
+/**
+ * Open-days wording for the current booking window: the days in force on the
+ * earliest bookable date, plus a note when a changeover lands inside the horizon
+ * (e.g. "Saturday & Sunday, and every day from 7 Oct").
+ */
+export function inspectionDaysText(rules: BookingRules = DEFAULT_BOOKING_RULES): string {
+  const today = melbourneYmd();
+  const earliest = addDaysYmd(today, Math.max(rules.minNoticeDays, 0));
+  const from = rules.minDate && rules.minDate > earliest ? rules.minDate : earliest;
+  const now = openDaysSummary(rules, "inspection", from);
+  const next = nextChangeover(rules, "inspection", from);
+  if (!next || next.from > addDaysYmd(today, rules.horizonDays)) return now;
+  const then = openDaysSummary({ ...rules, inspection: { ...rules.inspection, days: next.days } }, "inspection");
+  if (then === now) return now;
+  const label = formatApptDate(`${next.from}T00:00`, { day: "numeric", month: "short" });
+  return `${now}, and ${then} from ${label}`;
+}
+
+/** Shift a YYYY-MM-DD calendar date by whole days, timezone-independently. */
+export function addDaysYmd(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12) + days * 86400000).toISOString().slice(0, 10);
 }
 
 export interface TimeSlot {

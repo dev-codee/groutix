@@ -6,11 +6,14 @@ import {
   DEFAULT_BOOKING_RULES,
   WEEKDAY_NAMES,
   formatHHmm,
+  WEEKDAY_SHORT,
+  openDaysSummary,
   sanitizeBookingRules,
   slotsForWeekday,
   validateBookingRules,
   type BookingRules,
   type BookingType,
+  type DayChangeover,
   type DayHours,
 } from "@/lib/bookingRules";
 import { publishBookingRules } from "@/lib/useBookingRules";
@@ -26,6 +29,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [newClosed, setNewClosed] = useState({ date: "", label: "" });
+  const [newChangeFrom, setNewChangeFrom] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/settings/booking-rules", { cache: "no-store" })
@@ -58,6 +62,11 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
     const days = rules[tab].days.map((d) => (d.open ? { ...d, start: src.start, end: src.end } : d));
     update({ ...rules, [tab]: { ...rules[tab], days } });
   };
+  const changeovers = rules[tab].changeovers ?? [];
+  const setChangeovers = (next: DayChangeover[]) =>
+    update(sanitizeBookingRules({ ...rules, [tab]: { ...rules[tab], changeovers: next } }));
+  const setChangeDay = (from: string, wd: number, patch: Partial<DayHours>) =>
+    setChangeovers(changeovers.map((c) => (c.from === from ? { ...c, days: c.days.map((d, i) => (i === wd ? { ...d, ...patch } : d)) } : c)));
 
   const problems = validateBookingRules(rules);
 
@@ -156,6 +165,79 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
         })}
       </div>
       <SlotPreview rules={rules} type={tab} />
+
+      {/* Scheduled changes — open/close days from a future date without touching
+          dates customers are already booking. */}
+      <div className="text-xs space-y-2">
+        <p className="font-bold text-slate-700">
+          Scheduled changes{" "}
+          <span className="font-normal text-slate-400">
+            (different days from a future date — the hours above apply until then)
+          </span>
+        </p>
+        {changeovers.map((c) => (
+          <div key={c.from} className="border border-blue-200 bg-blue-50/40 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-700">From</span>
+              <input
+                type="date"
+                value={c.from}
+                onChange={(e) =>
+                  e.target.value && setChangeovers(changeovers.map((x) => (x.from === c.from ? { ...x, from: e.target.value } : x)))
+                }
+                className="p-1.5 border border-slate-200 rounded-lg bg-white"
+                aria-label="Change takes effect from"
+              />
+              <span className="text-slate-500 truncate">
+                {openDaysSummary({ ...rules, [tab]: { ...rules[tab], days: c.days } }, tab)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setChangeovers(changeovers.filter((x) => x.from !== c.from))}
+                className="ml-auto p-1 text-slate-400 hover:text-red-600 cursor-pointer"
+                aria-label={`Remove change from ${c.from}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {DISPLAY_ORDER.map((wd) => {
+                const d = c.days[wd];
+                return (
+                  <div key={wd} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1">
+                    <label className="flex items-center gap-1 font-semibold text-slate-700 cursor-pointer">
+                      <input type="checkbox" checked={d.open} onChange={(e) => setChangeDay(c.from, wd, { open: e.target.checked })} className="accent-blue-600" />
+                      {WEEKDAY_SHORT[wd]}
+                    </label>
+                    {d.open && (
+                      <>
+                        <input type="time" step={900} value={d.start} onChange={(e) => e.target.value && setChangeDay(c.from, wd, { start: e.target.value })} className="p-0.5 border border-slate-200 rounded" aria-label={`${WEEKDAY_NAMES[wd]} opens from ${c.from}`} />
+                        <span className="text-slate-400">–</span>
+                        <input type="time" step={900} value={d.end} onChange={(e) => e.target.value && setChangeDay(c.from, wd, { end: e.target.value })} className="p-0.5 border border-slate-200 rounded" aria-label={`${WEEKDAY_NAMES[wd]} closes from ${c.from}`} />
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="flex gap-2">
+          <input type="date" value={newChangeFrom} onChange={(e) => setNewChangeFrom(e.target.value)} className="p-2 border border-slate-200 rounded-lg" aria-label="New change takes effect from" />
+          <button
+            type="button"
+            disabled={!newChangeFrom || changeovers.some((c) => c.from === newChangeFrom)}
+            onClick={() => {
+              const base = changeovers.length ? changeovers[changeovers.length - 1].days : rules[tab].days;
+              setChangeovers([...changeovers, { from: newChangeFrom, days: base.map((d) => ({ ...d })) }]);
+              setNewChangeFrom("");
+            }}
+            className="px-3 rounded-lg bg-slate-900 text-white font-semibold disabled:opacity-40 flex items-center gap-1 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add change
+          </button>
+        </div>
+      </div>
 
       {/* Booking window (applies to both types) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">

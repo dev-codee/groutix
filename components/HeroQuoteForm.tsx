@@ -349,7 +349,7 @@ export default function HeroQuoteForm() {
     const nonImage = newFiles.find((f) => !f.type.startsWith("image/"));
     if (nonImage) {
       setPhotoError(
-        `"${nonImage.name}" is not a supported image. Please select JPG, PNG, or WebP files.`
+        `"${nonImage.name}" is not a supported image. Please select image files only.`
       );
       return;
     }
@@ -436,12 +436,6 @@ export default function HeroQuoteForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
-
-    if (photos.length === 0) {
-      setSubmitError("Please attach at least one photo.");
-      scrollToFirstError("section-photos");
-      return;
-    }
 
     if (photoError || totalPhotoBytes > MAX_TOTAL_BYTES) {
       setSubmitError(
@@ -686,11 +680,17 @@ export default function HeroQuoteForm() {
                 <CheckCircle2 className="h-9 w-9" />
               </motion.div>
               <h4 className="text-xl font-bold text-neutral-900">
-                Quote Request Received!
+                Thank You, We’ve Received Your Request
               </h4>
-              <p className="max-w-sm text-[15px] text-neutral-600">
-                Thank you. We have received your details and will be in touch with you shortly.
-              </p>
+              <div className="max-w-sm space-y-2 text-[15px] text-neutral-600">
+                <p>Thanks for reaching out to Groutix. Our team has received your details and will review your request shortly.</p>
+                <p>
+                  If you selected a preferred inspection time, we’ll keep that time wherever possible and will only contact
+                  you if we need to arrange an alternative.
+                </p>
+                <p>We look forward to helping you.</p>
+              </div>
+              <p className="text-[15px] font-bold text-neutral-900">Stay Sealed. Stay Smiling.</p>
               <button
                 type="button"
                 onClick={() => {
@@ -719,7 +719,7 @@ export default function HeroQuoteForm() {
                 }}
                 className="mt-3 rounded-sm bg-primary hover:bg-primary-hover px-6 py-2.5 text-[16px] font-bold text-white transition-all duration-200 active:scale-95"
               >
-                Request Another Quote
+                Submit Another Request
               </button>
             </motion.div>
           ) : (
@@ -965,6 +965,11 @@ export default function HeroQuoteForm() {
                         className="overflow-hidden"
                       >
                         <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
+                          <p className="text-[12px] text-neutral-600 leading-snug">
+                            Free on site inspections are available across our service area. For properties more than
+                            50 km from Tullamarine, inspection dates and times are arranged directly by our team based
+                            on availability. Submit your details and we’ll contact you to organise a suitable time.
+                          </p>
                           {!data.address || data.address.length < 5 ? (
                             <p className="text-[13px] text-neutral-500 text-center py-2">
                               Please enter your address above first to see available times.
@@ -974,10 +979,11 @@ export default function HeroQuoteForm() {
                           ) : isOutsideServiceArea ? (
                             <div className="py-2.5 px-3 bg-amber-50/90 border border-amber-200 rounded-sm text-center space-y-1">
                               <p className="text-[13px] font-bold text-amber-900">
-                                Outside 50 km Free Inspection Service Area
+                                More Than 50 km From Tullamarine
                               </p>
                               <p className="text-[12px] text-amber-800 leading-snug">
-                                Free on-site inspection timings are offered within a 50 km radius of our Tullamarine HQ. Submit your details and our team will review your area and contact you directly.
+                                Online times aren’t offered for this address — our team will arrange your inspection
+                                directly. Submit your details and we’ll contact you to organise a suitable time.
                               </p>
                             </div>
                           ) : inspectionDays.length === 0 ? (
@@ -1068,22 +1074,28 @@ export default function HeroQuoteForm() {
                                 </p>
                               )}
                               {inspectionDate && inspectionTime && (
-                                <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 font-semibold flex items-center justify-between">
-                                  <span>
-                                    ✓ Inspection confirmed — {inspectionDays.find((d) => d.date === inspectionDate)?.label} at {(() => {
-                                      const [h] = inspectionTime.split(":").map(Number);
-                                      const endH = h + 1;
-                                      const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
-                                      return `${fmt(h)} – ${fmt(endH)}`;
-                                    })()}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setInspectionTime("")}
-                                    className="text-[11px] text-green-800 underline hover:text-green-900 ml-2 font-normal"
-                                  >
-                                    Change Time
-                                  </button>
+                                <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 space-y-1">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className="font-semibold">
+                                      ✓ Preferred inspection time selected — {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {(() => {
+                                        const [h] = inspectionTime.split(":").map(Number);
+                                        const endH = h + 1;
+                                        const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
+                                        return `${fmt(h)} – ${fmt(endH)}`;
+                                      })()}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setInspectionTime("")}
+                                      className="shrink-0 text-[11px] text-green-800 underline hover:text-green-900 font-normal"
+                                    >
+                                      Change Time
+                                    </button>
+                                  </div>
+                                  <p className="font-normal leading-snug text-green-800/90">
+                                    If this time is unavailable, our team will contact you to arrange an alternative.
+                                    Otherwise, your selected time will remain as booked.
+                                  </p>
                                 </div>
                               )}
                             </>
@@ -1366,7 +1378,8 @@ export default function HeroQuoteForm() {
               <div id="section-photos" className={`space-y-2 rounded-sm transition-all ${flashErrorId === "section-photos" ? "form-error-flash" : ""}`}>
                 <div className="flex items-center gap-2">
                   <p className="text-[15px] font-bold text-neutral-900">
-                    7. Attach photos of the area *
+                    7. Attach photos of the area{" "}
+                    <span className="text-[11px] font-medium text-neutral-400">(Optional)</span>
                   </p>
                   <div className="relative">
                     <button
@@ -1408,8 +1421,8 @@ export default function HeroQuoteForm() {
                 </div>
 
                 <p className="text-[13px] text-neutral-600 leading-snug">
-                  For a faster and more accurate quote, please upload clear photos showing
-                  the entire area and any areas of concern
+                  If you would like an initial estimate, please upload clear photos showing the
+                  entire area, along with close up photos of any areas of concern.
                 </p>
 
                 <label
@@ -1427,7 +1440,7 @@ export default function HeroQuoteForm() {
                     <span>{isDragging ? "Drop photos here" : "Click or drag photos here"}</span>
                   </div>
                   <span className="text-[11px] text-neutral-500 font-medium">
-                    JPG, PNG, WebP &mdash; max 100MB total
+                    Max 100MB total
                   </span>
                   <input
                     ref={fileInputRef}
