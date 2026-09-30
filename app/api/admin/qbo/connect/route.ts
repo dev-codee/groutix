@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   const state = randomBytes(16).toString("hex");
-  const authUrl = buildQboAuthUrl(state);
+  const authUrl = buildQboAuthUrl(state, req.nextUrl.origin);
 
   const res = NextResponse.redirect(authUrl);
   // Short-lived cookie to verify the state on callback and prevent CSRF.

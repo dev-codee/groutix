@@ -62,7 +62,7 @@ function esc(v: string) {
 
 // Resolve the customer's service area. Precise GPS coordinates (captured via the
 // booking page "use my location" button) win over the lead's stored address text
-// because they classify the 15 km Tullamarine circle and corridor day exactly.
+// because they classify the inner Tullamarine circle and corridor day exactly.
 function resolveLeadArea(
   lead: { address?: string | null; city?: string | null },
   lat?: number | null,

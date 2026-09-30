@@ -8,6 +8,6 @@ export async function GET(req: NextRequest) {
   const session = await verifyRequestSession(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const status = await getQboStatus();
+  const status = await getQboStatus(req.nextUrl.origin);
   return NextResponse.json(status);
 }

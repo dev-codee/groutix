@@ -464,7 +464,7 @@ export async function POST(req: NextRequest) {
 
     // Compute the customer's real bookable days/times using the SAME scheduling
     // logic the booking page/API use, so the email and the booking button always
-    // agree (15 km Tullamarine = every day; otherwise the suburb's zone day).
+    // agree (inner Tullamarine radius = every day; otherwise the suburb's zone day).
     let availableDays: { label: string; times: string[] }[] = [];
     try {
       const bookings = await listUpcomingBookings();

@@ -17,16 +17,35 @@ export function isQboConfigured(): boolean {
   return Boolean(process.env.QBO_CLIENT_ID && process.env.QBO_CLIENT_SECRET);
 }
 
-export function getQboRedirectUri(): string {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+function isLocalOrigin(origin?: string): boolean {
+  if (!origin) return false;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The callback URL registered with Intuit. Intuit requires the redirect_uri sent
+ * on the token exchange to match the one that started the flow byte for byte, so
+ * /connect and /callback must derive it the same way - both pass their own request
+ * origin. Production always uses NEXT_PUBLIC_SITE_URL (so a preview deployment
+ * can't mint a URI nobody registered); a localhost origin wins over it so the
+ * flow can be completed against a dev server.
+ */
+export function getQboRedirectUri(requestOrigin?: string): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = (isLocalOrigin(requestOrigin) ? requestOrigin! : configured || requestOrigin || "http://localhost:3000").replace(/\/$/, "");
   return `${base}/api/admin/qbo/callback`;
 }
 
-export function buildQboAuthUrl(state: string): string {
+export function buildQboAuthUrl(state: string, requestOrigin?: string): string {
   const params = new URLSearchParams({
     client_id: process.env.QBO_CLIENT_ID!,
     scope: "com.intuit.quickbooks.accounting",
-    redirect_uri: getQboRedirectUri(),
+    redirect_uri: getQboRedirectUri(requestOrigin),
     response_type: "code",
     access_type: "offline",
     state,
@@ -52,7 +71,11 @@ async function saveTokenDoc(data: Partial<QboTokenDoc>): Promise<void> {
   );
 }
 
-export async function exchangeCodeForTokens(code: string, realmId: string): Promise<void> {
+export async function exchangeCodeForTokens(
+  code: string,
+  realmId: string,
+  requestOrigin?: string
+): Promise<void> {
   const creds = Buffer.from(
     `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
   ).toString("base64");
@@ -67,7 +90,7 @@ export async function exchangeCodeForTokens(code: string, realmId: string): Prom
     body: new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      redirect_uri: getQboRedirectUri(),
+      redirect_uri: getQboRedirectUri(requestOrigin),
     }),
   });
 
@@ -236,19 +259,23 @@ export async function pushInvoiceToQbo(input: QboInvoiceInput): Promise<string> 
 export interface QboStatus {
   configured: boolean;
   connected: boolean;
+  /** The exact callback URL to register at developer.intuit.com. */
+  redirectUri: string;
   connectedAt?: string;
   realmId?: string;
   refreshExpiresAt?: number;
 }
 
-export async function getQboStatus(): Promise<QboStatus> {
+export async function getQboStatus(requestOrigin?: string): Promise<QboStatus> {
+  const redirectUri = getQboRedirectUri(requestOrigin);
   const configured = isQboConfigured();
-  if (!configured) return { configured: false, connected: false };
+  if (!configured) return { configured: false, connected: false, redirectUri };
   const doc = await getTokenDoc();
-  if (!doc) return { configured: true, connected: false };
+  if (!doc) return { configured: true, connected: false, redirectUri };
   return {
     configured: true,
     connected: true,
+    redirectUri,
     connectedAt: doc.connectedAt,
     realmId: doc.realmId,
     refreshExpiresAt: doc.refreshExpiresAt,

@@ -7,7 +7,7 @@ import {
   TULLAMARINE,
   distanceKm,
   resolveArea,
-  INNER_15KM_SUBURBS,
+  INNER_RADIUS_SUBURBS,
   type AreaInfo,
 } from "@/lib/scheduling";
 import {

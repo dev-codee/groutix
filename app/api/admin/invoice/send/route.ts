@@ -224,6 +224,9 @@ export async function POST(req: NextRequest) {
       { description: description ? `${service} — ${description}` : service, amount: baseTotal },
       ...(extraWork && extraCharge > 0 ? [{ description: `Additional Work — ${extraWork}`, amount: extraCharge }] : []),
     ];
+    // Fire-and-forget so a QBO outage never blocks the emailed invoice - but the
+    // outcome is recorded either way, otherwise a silent failure is invisible to
+    // staff, who have already been told the invoice went out.
     pushInvoiceToQbo({
       invoiceNumber,
       customerName: lead.name || "Customer",
@@ -231,8 +234,33 @@ export async function POST(req: NextRequest) {
       customerPhone: lead.phone,
       items: qboItems,
     })
-      .then((qboId) => updateSubmission(body.id!, { qboInvoiceId: qboId } as any).catch(() => {}))
-      .catch((err) => console.error("QBO invoice push failed:", err));
+      .then(async (qboId) => {
+        await updateSubmission(body.id!, {
+          qboInvoiceId: qboId,
+          qboSyncedAt: new Date().toISOString(),
+          qboError: "",
+        }).catch(() => {});
+        await appendActivity(body.id!, {
+          time: new Date().toISOString(),
+          actor: "system",
+          action: "QuickBooks invoice created",
+          detail: `QBO invoice ${qboId}`,
+        });
+      })
+      .catch(async (err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("QBO invoice push failed:", err);
+        await updateSubmission(body.id!, {
+          qboError: msg.slice(0, 500),
+          qboErrorAt: new Date().toISOString(),
+        }).catch(() => {});
+        await appendActivity(body.id!, {
+          time: new Date().toISOString(),
+          actor: "system",
+          action: "QuickBooks sync failed",
+          detail: msg.slice(0, 500),
+        });
+      });
   }
 
   return NextResponse.json({ ok: true, invoiceNumber, total });

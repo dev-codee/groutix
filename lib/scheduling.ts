@@ -1,10 +1,10 @@
 // Melbourne smart-route scheduling.
 //
 // Operational Rules:
-//   • Within 15 km of Tullamarine  → Available EVERY DAY (Monday to Sunday).
+//   • Within 20 km of Tullamarine  → Available EVERY DAY (Monday to Sunday).
 //     Inner leads are nudged toward days that already have bookings in that
 //     direction to cluster technician travel.
-//   • Outside 15 km (approx. 35–40 km boundary) → Divided into 7 weekday corridors:
+//   • Outside 20 km (approx. 35–40 km boundary) → Divided into 7 weekday corridors:
 //       - Monday:    Lower Area 1 (Brunswick → Melbourne → St Kilda → Brighton)
 //       - Tuesday:   Lower Area 2 (Melbourne → Inner East → Eastern Suburbs)
 //       - Wednesday: Lower Area 3 (Eastern Suburbs → Ringwood → Croydon → Lilydale → Mt Evelyn)
@@ -29,7 +29,7 @@ import {
 // HQ base location: 82A Marigold Cres, Gowanbrae VIC 3043, Australia (exact
 // street address, not the Tullamarine suburb centroid).
 export const TULLAMARINE = { lat: -37.6988298, lng: 144.9004405 };
-export const RADIUS_KM = 15;
+export const RADIUS_KM = 20;
 export const MAX_INSPECTION_RADIUS_KM = 50;
 
 // Open days, daily hours, slot length, booking window and closures are NOT
@@ -208,7 +208,7 @@ export interface AreaInfo {
 }
 
 export const ZONE_LABEL: Record<Zone, string> = {
-  inner: "Inner Melbourne (Within 15 km)",
+  inner: "Inner Melbourne (Within 20 km)",
   mon_lower1: "Lower Area 1 — Brunswick, CBD, St Kilda, Brighton (Mondays)",
   tue_lower2: "Lower Area 2 — Inner East, Hawthorn, Kew, Doncaster (Tuesdays)",
   wed_lower3: "Lower Area 3 — Ringwood, Croydon, Lilydale, Mt Evelyn (Wednesdays)",
@@ -568,8 +568,8 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// The designated 15 KM Tullamarine Service Area suburbs list
-export const INNER_15KM_SUBURBS = new Set([
+// The designated inner Tullamarine Service Area suburbs list (see RADIUS_KM)
+export const INNER_RADIUS_SUBURBS = new Set([
   // North / North-East
   "tullamarine", "melbourne airport", "gladstone park", "westmeadows", "attwood",
   "broadmeadows", "jacana", "dallas", "campbellfield", "coolaroo", "meadow heights",
@@ -586,7 +586,7 @@ export const INNER_15KM_SUBURBS = new Set([
   "albion", "sunshine", "sunshine north", "braybrook", "maidstone", "footscray", "west footscray",
 ]);
 
-/** Match a lead's address/suburb text to our catalog and classify into 15km Inner or 7-Day Outer Zone. */
+/** Match a lead's address/suburb text to our catalog and classify into inner-radius or 7-Day Outer Zone. */
 export function resolveArea(addressText: string | undefined | null): AreaInfo {
   const text = (addressText || "").toLowerCase().trim();
   if (!text) {
@@ -620,8 +620,8 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
     };
   }
 
-  // Tullamarine 15 km inner circle rule: Available Every Day if in 15km list & within radius
-  const isInner = INNER_15KM_SUBURBS.has(match.name) && dist <= RADIUS_KM;
+  // Tullamarine inner circle rule: Available Every Day if in the inner list & within radius
+  const isInner = INNER_RADIUS_SUBURBS.has(match.name) && dist <= RADIUS_KM;
   if (isInner) {
     return {
       suburb: match.name,
@@ -633,7 +633,7 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
     };
   }
 
-  // Outside 15 km but within 50 km: Assigned to its designated regional day
+  // Outside the inner radius but within 50 km: Assigned to its designated regional day
   const zone = match.outerZone;
   return {
     suburb: match.name,
@@ -648,7 +648,7 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
 /**
  * Resolve a customer's area from precise GPS coordinates (e.g. captured via the
  * browser "use my location" button on the booking page). This is the most
- * accurate classifier: the 15 km "every day" rule is applied as a true distance
+ * accurate classifier: the inner "every day" rule is applied as a true distance
  * to Tullamarine, and the corridor day is taken from the nearest known suburb.
  */
 export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
@@ -682,7 +682,7 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
     };
   }
 
-  // 15 km Tullamarine rule as a real geographic circle → available every day.
+  // Inner Tullamarine rule as a real geographic circle → available every day.
   if (distToTulla <= RADIUS_KM) {
     return {
       suburb: nearest.name,

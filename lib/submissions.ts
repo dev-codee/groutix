@@ -183,6 +183,12 @@ export interface SubmissionDoc {
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
   invoiceOpenedAt?: string; // ISO time the customer first opened the invoice email
   invoiceStatus?: string; // "Paid" | "Unpaid"
+  // QuickBooks Online sync outcome for the emailed invoice. The push is
+  // fire-and-forget, so these are the only record of whether it landed.
+  qboInvoiceId?: string; // QBO Invoice Id once the push succeeded
+  qboSyncedAt?: string; // ISO time the invoice reached QBO
+  qboError?: string; // Last push failure message ("" once a retry succeeds)
+  qboErrorAt?: string; // ISO time of that failure
   followUpStage?: number; // 0 = none, 1..3 = follow-up sent, 4 = no response
   followUpNext?: string; // ISO time the next follow-up is due
   // Scheduling — the booked date/time for the free inspection and the job. Set

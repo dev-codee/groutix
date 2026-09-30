@@ -5,7 +5,9 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const adminPath = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH || "/admin";
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}${adminPath}`;
+  // Return to the host the flow was started from, so connecting against a dev
+  // server doesn't bounce the browser over to production.
+  const adminUrl = `${req.nextUrl.origin}${adminPath}`;
 
   const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await exchangeCodeForTokens(code, realmId);
+    await exchangeCodeForTokens(code, realmId, req.nextUrl.origin);
   } catch (err) {
     console.error("QBO callback error:", err);
     const msg = err instanceof Error ? err.message : "unknown_error";

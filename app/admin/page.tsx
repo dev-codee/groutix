@@ -535,7 +535,7 @@ export default function CrmDashboardPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [qboSettingsOpen, setQboSettingsOpen] = useState(false);
   const [bookingRulesOpen, setBookingRulesOpen] = useState(false);
-  const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string } | null>(null);
+  const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string } | null>(null);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
 
   useEffect(() => {
@@ -7402,7 +7402,10 @@ export default function CrmDashboardPage() {
                   <p className="font-semibold text-slate-700">Setup checklist</p>
                   <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
                   <p>2. Set Redirect URI to:</p>
-                  <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{typeof window !== "undefined" ? `${window.location.origin}/api/admin/qbo/callback` : "/api/admin/qbo/callback"}</code>
+                  <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>
+                  {qboStatus?.redirectUri && typeof window !== "undefined" && !qboStatus.redirectUri.startsWith(window.location.origin) && (
+                    <p className="pt-1 text-amber-700">Heads up: this differs from the page you&apos;re on ({window.location.origin}), so Intuit will send you back to the address above. Connect from that host, or register this URI at Intuit.</p>
+                  )}
                   <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
                 </div>
                 <a
