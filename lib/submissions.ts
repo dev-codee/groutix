@@ -318,7 +318,10 @@ export async function createLead(
   try {
     const col = await collection();
     const now = new Date();
-    const assigned = doc.assigned || (await pickAssignee());
+    // New leads land Unassigned on purpose: they stay in the manager's
+    // Unassigned box until someone picks them up. Only an explicit assignee
+    // passed in by the caller is honoured.
+    const assigned = doc.assigned || "";
     const jobNo = doc.jobNo || (await getNextJobNo());
     const fullDoc: SubmissionDoc = {
       type: (doc.type as SubmissionType) || "lead",
@@ -347,7 +350,9 @@ export async function createLead(
       warranty: doc.warranty,
       activity: doc.activity || [
         { time: now.toISOString(), actor: "system", action: "Lead created", detail: doc.source || "Manual Entry" },
-        { time: now.toISOString(), actor: "system", action: "Auto-assigned", detail: assigned },
+        ...(assigned
+          ? [{ time: now.toISOString(), actor: "system", action: "Assigned", detail: assigned }]
+          : []),
       ],
     };
     const res = await col.insertOne(fullDoc);

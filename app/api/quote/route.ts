@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
-import { recordSubmission, updateEmailDelivered, pickAssignee } from "@/lib/submissions";
+import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
@@ -309,9 +309,6 @@ export async function POST(req: NextRequest) {
 
   const fullName = `${firstName} ${lastName}`.trim();
 
-  // Automatic step: assign the new lead to the least-loaded intake staffer.
-  const assignee = await pickAssignee();
-
   const tenantRows = tenants
     .map(
       (t, i) =>
@@ -351,7 +348,7 @@ export async function POST(req: NextRequest) {
       ${row("Message", message)}
       ${row("Heard about us", heard)}
       ${row("Photos attached", submissionPhotos.length ? `${submissionPhotos.length} attached${photoLinksHtml ? ` (${photoLinksHtml})` : ""}` : "")}
-      ${row("Auto-assigned to", assignee)}
+      ${row("Assigned to", "Unassigned — pick it up in the CRM")}
     </table>
   </div>`;
 
@@ -376,12 +373,11 @@ export async function POST(req: NextRequest) {
     areas,
     heard,
     sourcePage,
-    assigned: assignee,
+    assigned: "",
     received: nowIso,
     priority: "Medium",
     activity: [
       { time: nowIso, actor: "system", action: "Lead created", detail: sourcePage || "Website form" },
-      { time: nowIso, actor: "system", action: "Auto-assigned", detail: assignee },
     ],
     photosCount: submissionPhotos.length,
     photos: submissionPhotos,

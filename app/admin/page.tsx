@@ -74,7 +74,7 @@ import {
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
-import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
+import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
 import {
   SERVICE_TEMPLATES,
   DEFAULT_QUOTE_CONDITIONS,
@@ -1338,16 +1338,32 @@ export default function CrmDashboardPage() {
       return;
     }
 
+    // Booking an appointment here advances the lead the same way a customer
+    // self-booking does (/api/book/[id]): a lead that skipped the inspection at
+    // intake shouldn't stay on "New" once staff put a time in. Only a newly set
+    // or changed time counts, an explicit status edit in the same save wins,
+    // and statusAfterBooking never moves a lead backwards.
+    const before = editingLead.id ? leads.find((l) => l.id === editingLead.id) : undefined;
+    const payload: Partial<Lead> = { ...editingLead };
+    if (!before || payload.status === before.status) {
+      if (payload.inspectionAt && payload.inspectionAt !== (before?.inspectionAt || "")) {
+        payload.status = statusAfterBooking("inspection", payload.status) ?? payload.status;
+      }
+      if (payload.jobAt && payload.jobAt !== (before?.jobAt || "")) {
+        payload.status = statusAfterBooking("job", payload.status) ?? payload.status;
+      }
+    }
+
     try {
-      if (editingLead.id) {
-        const res = await fetch(`/api/admin/submissions/${editingLead.id}`, {
+      if (payload.id) {
+        const res = await fetch(`/api/admin/submissions/${payload.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editingLead)
+          body: JSON.stringify(payload)
         });
         if (res.ok) {
           setLeads((prev) =>
-            prev.map((l) => (l.id === editingLead.id ? ({ ...l, ...editingLead } as Lead) : l))
+            prev.map((l) => (l.id === payload.id ? ({ ...l, ...payload } as Lead) : l))
           );
           setLeadModalOpen(false);
         } else {
@@ -1360,7 +1376,7 @@ export default function CrmDashboardPage() {
           if (n !== null && n > maxN) maxN = n;
         }
         const newJobNo = `${JOB_NO_PREFIX}${maxN + 1}`;
-        const leadToCreate: Partial<Lead> = { ...editingLead, jobNo: newJobNo };
+        const leadToCreate: Partial<Lead> = { ...payload, jobNo: newJobNo };
         const res = await fetch("/api/admin/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

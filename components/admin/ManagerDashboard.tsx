@@ -91,7 +91,7 @@ export function ManagerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
-  const [unassignedTab, setUnassignedTab] = useState<"all" | "inspections" | "jobs">("all");
+  const [unassignedTab, setUnassignedTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
 
   const bookingRules = useBookingRules();
   const _now = new Date();
@@ -1339,6 +1339,20 @@ export function ManagerDashboard() {
           const hasTechnicianAssignee = (l: Lead) =>
             Boolean((l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned" && isTechnicianName(l.assigned)));
 
+          // A brand-new lead nobody has picked up yet: no assignee of any kind
+          // and still at a pre-inspection stage. These now arrive Unassigned
+          // (auto round-robin was removed), so they belong in this box until a
+          // staffer takes them.
+          const hasAnyAssignee = (l: Lead) =>
+            Boolean(l.inspectorId) ||
+            Boolean(l.technicianId) ||
+            Boolean(l.technician && l.technician.trim()) ||
+            Boolean(l.assigned && l.assigned.trim() && l.assigned.trim().toLowerCase() !== "unassigned");
+
+          const allUnassignedNew = scopedLeads.filter((l) =>
+            ["New", "Contacted", "Waiting for Info"].includes(l.status || "New") && !hasAnyAssignee(l)
+          ).sort((a, b) => new Date(b.received || 0).getTime() - new Date(a.received || 0).getTime());
+
           const allUnassignedInsp = scopedLeads.filter((l) =>
             l.status !== "Lost" && l.status !== "Cancelled" && l.status !== "Completed" && l.status !== "Job Done" &&
             /inspection.booked/i.test(l.status || "") && !hasInspectorAssignee(l)
@@ -1350,15 +1364,18 @@ export function ManagerDashboard() {
           ).sort((a, b) => new Date(a.jobAt || a.received || 0).getTime() - new Date(b.jobAt || b.received || 0).getTime());
 
           const visibleLeads =
+            unassignedTab === "leads" ? allUnassignedNew :
             unassignedTab === "inspections" ? allUnassignedInsp :
             unassignedTab === "jobs" ? allUnassignedJobs :
-            [...allUnassignedInsp, ...allUnassignedJobs].sort((a, b) => {
+            // New leads have no appointment yet, so they sit above the dated
+            // inspection/job rows rather than being sorted in among them.
+            [...allUnassignedNew, ...[...allUnassignedInsp, ...allUnassignedJobs].sort((a, b) => {
               const da = new Date(a.inspectionAt || a.jobAt || a.received || 0).getTime();
               const db = new Date(b.inspectionAt || b.jobAt || b.received || 0).getTime();
               return da - db;
-            });
+            })];
 
-          const totalCount = allUnassignedInsp.length + allUnassignedJobs.length;
+          const totalCount = allUnassignedNew.length + allUnassignedInsp.length + allUnassignedJobs.length;
 
           return (
             <div className="bg-white rounded-2xl border border-amber-200/80 shadow-2xs p-3.5 sm:p-4 flex flex-col h-full min-h-[380px]">
@@ -1375,7 +1392,7 @@ export function ManagerDashboard() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => openLeadsFiltered(["Job Booked", "Scheduled", "Job Confirmed", "Won", "Inspection Booked"])}
+                  onClick={() => openLeadsFiltered(["New", "Contacted", "Waiting for Info", "Job Booked", "Scheduled", "Job Confirmed", "Won", "Inspection Booked"])}
                   className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
                 >
                   View All
@@ -1386,6 +1403,7 @@ export function ManagerDashboard() {
               <div className="flex gap-0.5 mb-2 shrink-0">
                 {([
                   { key: "all", label: "All", count: totalCount },
+                  { key: "leads", label: "Leads", count: allUnassignedNew.length },
                   { key: "inspections", label: "Inspections", count: allUnassignedInsp.length },
                   { key: "jobs", label: "Jobs", count: allUnassignedJobs.length },
                 ] as const).map((t) => (
@@ -1413,23 +1431,31 @@ export function ManagerDashboard() {
               <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
                 {visibleLeads.length === 0 && (
                   <div className="py-12 text-center text-slate-400 text-xs font-medium">
-                    {unassignedTab === "inspections" ? "All inspections are assigned" :
+                    {unassignedTab === "leads" ? "All new leads are assigned" :
+                     unassignedTab === "inspections" ? "All inspections are assigned" :
                      unassignedTab === "jobs" ? "All jobs are assigned" :
                      "All leads are assigned"}
                   </div>
                 )}
                 {visibleLeads.map((l) => {
-                  const isInsp = /inspection.booked/i.test(l.status || "");
-                  const apptDateStr = isInsp ? l.inspectionAt : l.jobAt;
+                  const isNewLead = ["New", "Contacted", "Waiting for Info"].includes(l.status || "New") && !hasAnyAssignee(l);
+                  const isInsp = !isNewLead && /inspection.booked/i.test(l.status || "");
+                  const apptDateStr = isNewLead ? l.received : isInsp ? l.inspectionAt : l.jobAt;
                   const suburb = getSuburb(l.address) || l.city || "";
                   const timeLabel = apptDateStr
-                    ? `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
-                    : "No date set";
+                    ? `${isNewLead ? "Received " : ""}${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
+                    : isNewLead
+                      ? "New lead"
+                      : "No date set";
                   const mapsUrl = l.address
                     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`
                     : null;
-                  const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200";
-                  const typeLabel = isInsp ? "Inspection" : "Job";
+                  const typeColor = isNewLead
+                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                    : isInsp
+                      ? "bg-sky-50 text-sky-700 border-sky-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200";
+                  const typeLabel = isNewLead ? "New Lead" : isInsp ? "Inspection" : "Job";
 
                   return (
                     <div
