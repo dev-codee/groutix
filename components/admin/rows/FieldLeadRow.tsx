@@ -198,7 +198,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               disabled={isOnTheWayDone || onTheWayLoading === l.id}
               onClick={() => {
                 if (isOnTheWayDone) return;
-                handleOnTheWay(l, "en_route");
+                handleOnTheWay(l, "en_route", "inspection");
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isOnTheWayDone
@@ -215,7 +215,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               disabled={isReachedDone || onTheWayLoading === l.id}
               onClick={() => {
                 if (isReachedDone) return;
-                handleOnTheWay(l, "arrived");
+                handleOnTheWay(l, "arrived", "inspection");
               }}
               className={`py-1.5 px-0.5 text-center text-[10px] xl:text-[11px] font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isReachedDone

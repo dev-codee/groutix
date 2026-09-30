@@ -74,6 +74,25 @@ export function stageGroup(status: string): StageGroup | null {
 }
 
 /**
+ * The status a lead should land on once an appointment is booked for it, so a
+ * booking made by staff (edit form, slot board, planner) advances the lead the
+ * same way a customer self-booking does (see /api/book/[id]).
+ *
+ * Returns null when nothing should change: the lead is already at or past that
+ * stage, so rescheduling an inspection that is already "In Progress" — or a job
+ * that is already "Job Done" — never knocks it backwards.
+ */
+export function statusAfterBooking(
+  type: "inspection" | "job",
+  currentStatus?: string
+): string | null {
+  const target = type === "inspection" ? "Inspection Booked" : "Job Booked";
+  const cur = STATUS_KEYS.indexOf(currentStatus || "New");
+  if (cur === -1) return target; // unrecognised status → treat as pre-booking
+  return cur < STATUS_KEYS.indexOf(target) ? target : null;
+}
+
+/**
  * 1st Login (Intake / Leads): capture the lead, book the free inspection, then
  * (after the inspection) build & send the quote. Owns the pre-inspection and
  * quoting stages, plus Lost.

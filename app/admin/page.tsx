@@ -871,8 +871,16 @@ export default function CrmDashboardPage() {
 
   // ── On-The-Way / GPS handlers ─────────────────────────────────────────────
 
-  async function handleOnTheWay(lead: Lead, eventType: "en_route" | "arrived") {
-    const isInspection = Boolean(lead.status?.startsWith("Inspection"));
+  async function handleOnTheWay(
+    lead: Lead,
+    eventType: "en_route" | "arrived",
+    phase?: "inspection" | "job"
+  ) {
+    // The caller tells us which live-visit row was clicked. Only fall back to
+    // guessing from the status when it doesn't (e.g. legacy callers), because a
+    // lead sitting on a non-"Inspection *" status (New, Contacted, Quote Sent…)
+    // would otherwise get pushed into the Job pipeline from the inspection row.
+    const isInspection = phase ? phase === "inspection" : Boolean(lead.status?.startsWith("Inspection"));
     if (isInspection) {
       const order: Record<string, number> = {
         "Inspection Booked": 0,

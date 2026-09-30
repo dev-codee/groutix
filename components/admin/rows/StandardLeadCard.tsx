@@ -456,7 +456,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                         onClick={() => {
                           if (done) return;
                           if (isOnTheWayStep) {
-                            handleOnTheWay(l, eventType);
+                            handleOnTheWay(l, eventType, "inspection");
                           } else {
                             updateLeadField(l.id, { status: step.status });
                           }
@@ -648,7 +648,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                         onClick={() => {
                           if (done) return;
                           if (isYellowStep) {
-                            handleOnTheWay(l, eventType);
+                            handleOnTheWay(l, eventType, "job");
                           } else {
                             updateLeadField(l.id, { status: step.status });
                           }

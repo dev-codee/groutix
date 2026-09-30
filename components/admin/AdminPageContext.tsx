@@ -47,7 +47,7 @@ export interface AdminPageCtxType {
   openInvoiceModal: (l: Lead) => void;
 
   // On-the-way
-  handleOnTheWay: (l: Lead, eventType: "en_route" | "arrived") => Promise<void>;
+  handleOnTheWay: (l: Lead, eventType: "en_route" | "arrived", phase?: "inspection" | "job") => Promise<void>;
 
   // Assignee helpers
   rowAssigneeOptions: (current?: string, status?: string) => string[];

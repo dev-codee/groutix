@@ -248,7 +248,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               disabled={isOnTheWayDone || onTheWayLoading === l.id}
               onClick={() => {
                 if (isOnTheWayDone) return;
-                handleOnTheWay(l, "en_route");
+                handleOnTheWay(l, "en_route", "job");
               }}
               className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isOnTheWayDone
@@ -265,7 +265,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               disabled={isReachedDone || onTheWayLoading === l.id}
               onClick={() => {
                 if (isReachedDone) return;
-                handleOnTheWay(l, "arrived");
+                handleOnTheWay(l, "arrived", "job");
               }}
               className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isReachedDone
