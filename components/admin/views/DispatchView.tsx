@@ -222,12 +222,12 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     };
   }, [filteredItems, todayItems]);
 
-  // Stops shown on the live dispatch map — today's route if there is one,
-  // otherwise whatever's currently filtered. Capped well under the Directions
-  // API's 25-waypoint limit.
+  // Stops shown on the live dispatch map — all upcoming items in the current
+  // filter window, capped just under the Directions API's 25-waypoint limit so
+  // every unassigned inspection/job always has a pin on the map.
   const mapItems = useMemo(() => {
-    return (todayItems.length > 0 ? todayItems : filteredItems).slice(0, 20);
-  }, [filteredItems, todayItems]);
+    return filteredItems.slice(0, 23);
+  }, [filteredItems]);
 
   // Date navigation — pages by the full visible window (7 days) so the arrows
   // actually move you to a new set of days instead of shifting by one row.
@@ -414,7 +414,9 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
         {/* ── TIMELINE VIEW ──────────────────────────────────────────────────── */}
         {viewMode === "timeline" && (
-          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/60 min-w-0">
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Timeline grid */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/60 min-w-0">
             {filteredItems.length === 0 ? (
               <div className="p-12 text-center space-y-3">
                 <Calendar className="w-10 h-10 text-slate-200 mx-auto" />
@@ -589,6 +591,23 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
                 </div>
               </div>
             )}
+            </div>
+
+            {/* Map panel — always shown alongside the timeline */}
+            <div className="w-96 shrink-0 border-l border-slate-200 relative">
+              <DispatchMap
+                items={mapItems}
+                hqAddress={HQ_ADDRESS}
+                selectedLeadId={selectedLeadId}
+                onSelectLead={(id) => setSelectedLeadId(id === selectedLeadId ? null : id)}
+              >
+                <div className="absolute bottom-3 left-3 z-10 bg-white/95 border border-slate-200 rounded-xl px-3 py-2 shadow-sm flex items-center gap-3 text-[10px] font-bold text-slate-600">
+                  <span className="flex items-center gap-1"><Home className="w-3 h-3 text-slate-700" />Base</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Inspection</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Job</span>
+                </div>
+              </DispatchMap>
+            </div>
           </div>
         )}
 

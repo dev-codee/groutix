@@ -39,7 +39,7 @@ export function PhotosModal({
   const galleryRef = useRef<HTMLInputElement | null>(null);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 sm:pt-10 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-4 sm:pt-10 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-4 sm:p-6 space-y-4 my-4 sm:my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>

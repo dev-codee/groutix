@@ -937,175 +937,6 @@ export default function HeroQuoteForm() {
                   )}
                 </div>
 
-                {/* Optional: Book Inspection */}
-                <div id="section-inspection" className={`border rounded-sm overflow-hidden ${inspectionError ? "border-red-400" : "border-neutral-200"}`}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !inspectionSectionOpen;
-                      setInspectionSectionOpen(next);
-                      if (!next) setInspectionError("");
-                      if (next && data.address && data.address.length >= 5) fetchInspectionAvailability(data.address);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-neutral-50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-semibold text-neutral-800">Book Your Free Inspection</span>
-                      <span className="text-[11px] text-neutral-400 font-medium">(Optional)</span>
-                    </div>
-                    <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${inspectionSectionOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  <AnimatePresence>
-                    {inspectionSectionOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
-                          <p className="text-[12px] text-neutral-600 leading-snug">
-                            Free on site inspections are available across our service area. For properties more than
-                            50 km from Tullamarine, inspection dates and times are arranged directly by our team based
-                            on availability. Submit your details and we’ll contact you to organise a suitable time.
-                          </p>
-                          {!data.address || data.address.length < 5 ? (
-                            <p className="text-[13px] text-neutral-500 text-center py-2">
-                              Please enter your address above first to see available times.
-                            </p>
-                          ) : inspectionDaysLoading ? (
-                            <p className="text-[13px] text-neutral-500 text-center py-2">Loading available times…</p>
-                          ) : isOutsideServiceArea ? (
-                            <div className="py-2.5 px-3 bg-amber-50/90 border border-amber-200 rounded-sm text-center space-y-1">
-                              <p className="text-[13px] font-bold text-amber-900">
-                                More Than 50 km From Tullamarine
-                              </p>
-                              <p className="text-[12px] text-amber-800 leading-snug">
-                                Online times aren’t offered for this address — our team will arrange your inspection
-                                directly. Submit your details and we’ll contact you to organise a suitable time.
-                              </p>
-                            </div>
-                          ) : inspectionDays.length === 0 ? (
-                            <p className="text-[13px] text-neutral-500 text-center py-2">
-                              No online slots available right now — our team will contact you to arrange a time.
-                            </p>
-                          ) : (
-                            <>
-                              {!inspectionDate ? (
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">
-                                    Select Day
-                                  </label>
-                                  <select
-                                    value=""
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        setInspectionDate(e.target.value);
-                                        setInspectionTime("");
-                                        setInspectionError("");
-                                      }
-                                    }}
-                                    className={`w-full rounded-sm border bg-white px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${inspectionError && !inspectionDate ? "border-red-400 focus:ring-red-500/20" : "border-neutral-200"}`}
-                                  >
-                                    <option value="">Choose a day…</option>
-                                    {inspectionDays.map((d) => (
-                                      <option key={d.date} value={d.date}>
-                                        {d.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">
-                                      Select Arrival Time ({inspectionDays.find((d) => d.date === inspectionDate)?.label})
-                                    </label>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setInspectionDate("");
-                                        setInspectionTime("");
-                                      }}
-                                      className="text-[11px] font-semibold text-secondary hover:underline cursor-pointer flex items-center gap-1"
-                                    >
-                                      ← Change Day
-                                    </button>
-                                  </div>
-                                  <select
-                                    ref={timeSelectRef}
-                                    value={inspectionTime}
-                                    onChange={(e) => {
-                                      if (e.target.value === "__CHANGE_DAY__") {
-                                        setInspectionDate("");
-                                        setInspectionTime("");
-                                      } else {
-                                        setInspectionTime(e.target.value);
-                                        if (e.target.value) setInspectionError("");
-                                      }
-                                    }}
-                                    className={`w-full rounded-sm border px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${
-                                      inspectionTime ? "border-green-600 bg-white" : inspectionError ? "border-red-400 bg-white" : "border-secondary bg-white"
-                                    }`}
-                                  >
-                                    <option value="">
-                                      Choose arrival time for {inspectionDays.find((d) => d.date === inspectionDate)?.label}…
-                                    </option>
-                                    {(inspectionDays.find((d) => d.date === inspectionDate)?.slots || []).map((s) => {
-                                      const [h] = s.time.split(":").map(Number);
-                                      const endH = h + 1;
-                                      const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
-                                      const label = `${fmt(h)} – ${fmt(endH)}`;
-                                      return (
-                                        <option key={s.time} value={s.time} disabled={s.booked}>
-                                          {label} {s.booked ? "(Booked)" : ""}
-                                        </option>
-                                      );
-                                    })}
-                                    <option value="__CHANGE_DAY__">← Choose a different day</option>
-                                  </select>
-                                </div>
-                              )}
-                              {inspectionError && (
-                                <p className="text-[12px] font-semibold text-red-600 flex items-center gap-1">
-                                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                                  {inspectionError}
-                                </p>
-                              )}
-                              {inspectionDate && inspectionTime && (
-                                <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 space-y-1">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <span className="font-semibold">
-                                      ✓ Preferred inspection time selected — {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {(() => {
-                                        const [h] = inspectionTime.split(":").map(Number);
-                                        const endH = h + 1;
-                                        const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
-                                        return `${fmt(h)} – ${fmt(endH)}`;
-                                      })()}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => setInspectionTime("")}
-                                      className="shrink-0 text-[11px] text-green-800 underline hover:text-green-900 font-normal"
-                                    >
-                                      Change Time
-                                    </button>
-                                  </div>
-                                  <p className="font-normal leading-snug text-green-800/90">
-                                    If this time is unavailable, our team will contact you to arrange an alternative.
-                                    Otherwise, your selected time will remain as booked.
-                                  </p>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
                 {/* Property Manager: Tenant Details for Site Access */}
                 <AnimatePresence>
                   {isPropertyManager && (
@@ -1513,6 +1344,175 @@ export default function HeroQuoteForm() {
                         <span className={totalPhotoBytes > MAX_TOTAL_BYTES ? "font-bold text-red-600" : ""}>
                           Total: {formatBytes(totalPhotoBytes)} / {formatBytes(MAX_TOTAL_BYTES)}
                         </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Book Your Free Inspection — shown at the end, just before the captcha */}
+              <div id="section-inspection" className={`border rounded-sm overflow-hidden ${inspectionError ? "border-red-400" : "border-neutral-200"}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !inspectionSectionOpen;
+                    setInspectionSectionOpen(next);
+                    if (!next) setInspectionError("");
+                    if (next && data.address && data.address.length >= 5) fetchInspectionAvailability(data.address);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-neutral-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px] font-semibold text-neutral-800">Book Your Free Inspection</span>
+                    <span className="text-[11px] text-neutral-400 font-medium">(Optional)</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${inspectionSectionOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {inspectionSectionOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
+                        <p className="text-[12px] text-neutral-600 leading-snug">
+                          Free on site inspections are available across our service area. For properties more than
+                          50 km from Tullamarine, inspection dates and times are arranged directly by our team based
+                          on availability. Submit your details and we'll contact you to organise a suitable time.
+                        </p>
+                        {!data.address || data.address.length < 5 ? (
+                          <p className="text-[13px] text-neutral-500 text-center py-2">
+                            Please enter your address above first to see available times.
+                          </p>
+                        ) : inspectionDaysLoading ? (
+                          <p className="text-[13px] text-neutral-500 text-center py-2">Loading available times…</p>
+                        ) : isOutsideServiceArea ? (
+                          <div className="py-2.5 px-3 bg-amber-50/90 border border-amber-200 rounded-sm text-center space-y-1">
+                            <p className="text-[13px] font-bold text-amber-900">
+                              More Than 50 km From Tullamarine
+                            </p>
+                            <p className="text-[12px] text-amber-800 leading-snug">
+                              Online times aren't offered for this address — our team will arrange your inspection
+                              directly. Submit your details and we'll contact you to organise a suitable time.
+                            </p>
+                          </div>
+                        ) : inspectionDays.length === 0 ? (
+                          <p className="text-[13px] text-neutral-500 text-center py-2">
+                            No online slots available right now — our team will contact you to arrange a time.
+                          </p>
+                        ) : (
+                          <>
+                            {!inspectionDate ? (
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">
+                                  Select Day
+                                </label>
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      setInspectionDate(e.target.value);
+                                      setInspectionTime("");
+                                      setInspectionError("");
+                                    }
+                                  }}
+                                  className={`w-full rounded-sm border bg-white px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${inspectionError && !inspectionDate ? "border-red-400 focus:ring-red-500/20" : "border-neutral-200"}`}
+                                >
+                                  <option value="">Choose a day…</option>
+                                  {inspectionDays.map((d) => (
+                                    <option key={d.date} value={d.date}>
+                                      {d.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide">
+                                    Select Arrival Time ({inspectionDays.find((d) => d.date === inspectionDate)?.label})
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInspectionDate("");
+                                      setInspectionTime("");
+                                    }}
+                                    className="text-[11px] font-semibold text-secondary hover:underline cursor-pointer flex items-center gap-1"
+                                  >
+                                    ← Change Day
+                                  </button>
+                                </div>
+                                <select
+                                  ref={timeSelectRef}
+                                  value={inspectionTime}
+                                  onChange={(e) => {
+                                    if (e.target.value === "__CHANGE_DAY__") {
+                                      setInspectionDate("");
+                                      setInspectionTime("");
+                                    } else {
+                                      setInspectionTime(e.target.value);
+                                      if (e.target.value) setInspectionError("");
+                                    }
+                                  }}
+                                  className={`w-full rounded-sm border px-3 py-2 text-[14px] text-neutral-900 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all cursor-pointer ${
+                                    inspectionTime ? "border-green-600 bg-white" : inspectionError ? "border-red-400 bg-white" : "border-secondary bg-white"
+                                  }`}
+                                >
+                                  <option value="">
+                                    Choose arrival time for {inspectionDays.find((d) => d.date === inspectionDate)?.label}…
+                                  </option>
+                                  {(inspectionDays.find((d) => d.date === inspectionDate)?.slots || []).map((s) => {
+                                    const [h] = s.time.split(":").map(Number);
+                                    const endH = h + 1;
+                                    const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
+                                    const label = `${fmt(h)} – ${fmt(endH)}`;
+                                    return (
+                                      <option key={s.time} value={s.time} disabled={s.booked}>
+                                        {label} {s.booked ? "(Booked)" : ""}
+                                      </option>
+                                    );
+                                  })}
+                                  <option value="__CHANGE_DAY__">← Choose a different day</option>
+                                </select>
+                              </div>
+                            )}
+                            {inspectionError && (
+                              <p className="text-[12px] font-semibold text-red-600 flex items-center gap-1">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                {inspectionError}
+                              </p>
+                            )}
+                            {inspectionDate && inspectionTime && (
+                              <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 space-y-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="font-semibold">
+                                    ✓ Preferred inspection time selected — {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {(() => {
+                                      const [h] = inspectionTime.split(":").map(Number);
+                                      const endH = h + 1;
+                                      const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
+                                      return `${fmt(h)} – ${fmt(endH)}`;
+                                    })()}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setInspectionTime("")}
+                                    className="shrink-0 text-[11px] text-green-800 underline hover:text-green-900 font-normal"
+                                  >
+                                    Change Time
+                                  </button>
+                                </div>
+                                <p className="font-normal leading-snug text-green-800/90">
+                                  If this time is unavailable, our team will contact you to arrange an alternative.
+                                  Otherwise, your selected time will remain as booked.
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   )}

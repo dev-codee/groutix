@@ -831,7 +831,7 @@ export function ManagerDashboard() {
       statuses: ["Inspection Completed", "Quote Pending"],
     },
     {
-      label: "Pending Quote",
+      label: "Quote waiting for approval",
       // Quote sent → waiting for customer to accept / negotiate.
       count: scopedLeads.filter((l) =>
         l.status === "Quote Sent" || l.status === "Negotiation" || l.status === "Won"

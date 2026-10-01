@@ -38,7 +38,7 @@ export function PhotoLightbox({ photos, index, onClose, onNavigate }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div

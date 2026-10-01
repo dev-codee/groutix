@@ -89,9 +89,11 @@ export async function sendSms(args: {
   body: string;
   from?: string;
   campaign?: string;
+  /** Override the default 160-char cap. Pass a higher value (e.g. 480) to allow multi-part SMS. */
+  maxChars?: number;
 }): Promise<SmsResult> {
   const to = normaliseAuNumber(args.to);
-  const body = prepareSinglePartSms(args.body);
+  const body = prepareSinglePartSms(args.body, args.maxChars ?? 160);
   if (!to || !body) return { ok: false, error: "missing_to_or_body" };
   if (!isSmsConfigured()) return { ok: false, skipped: true };
 

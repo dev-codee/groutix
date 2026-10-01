@@ -131,7 +131,7 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
         statuses: ["Inspection Completed", "Quote Pending"],
       },
       {
-        label: "Pending Quotes",
+        label: "Quote waiting for approval",
         group: "quote",
         // After the quote is sent the lead moves here until the customer responds.
         statuses: ["Quote Sent", "Negotiation", "Won"],
@@ -204,7 +204,7 @@ export function getJobsGroups(role: Role): JobsGroupDef[] {
         group: "quote",
         statuses: ["Quote Pending", "Quote Sent", "Negotiation", "Won"],
       },
-      { label: "Pending Quote", group: "quote", statuses: ["Quote Pending"] },
+      { label: "Quote waiting for approval", group: "quote", statuses: ["Quote Pending"] },
       {
         label: "Job Booked",
         group: "job",

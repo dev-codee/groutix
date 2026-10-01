@@ -355,6 +355,7 @@ export default function CrmDashboardPage() {
   }
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [quoteFullscreen, setQuoteFullscreen] = useState(false);
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("inclusive");
@@ -1551,10 +1552,12 @@ export default function CrmDashboardPage() {
 
     if (quoteTaxMode === "exclusive") {
       gst = subtotal * (quoteTaxRate / 100);
-      total = subtotal + gst;
+      total = Math.round(subtotal + gst);
     } else if (quoteTaxMode === "inclusive") {
       gst = subtotal - subtotal / (1 + quoteTaxRate / 100);
-      total = subtotal;
+      total = Math.round(subtotal);
+    } else {
+      total = Math.round(subtotal);
     }
 
     return { subtotal, gst, total };
@@ -1572,7 +1575,7 @@ export default function CrmDashboardPage() {
       quoteUpdated: new Date().toISOString()
     };
     await updateLeadField(activeQuoteLead.id, updates);
-    alert(isTechnician ? "Scope of work saved successfully." : "Quote saved successfully.");
+    setQuoteModalOpen(false);
   }
 
   async function handleMarkQuoteSent() {
@@ -4047,22 +4050,41 @@ export default function CrmDashboardPage() {
           MODAL: QUOTE BUILDER & DOCUMENT PREVIEW
          ========================================================================= */}
       {quoteModalOpen && activeQuoteLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full p-6 space-y-4 my-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${quoteFullscreen ? "p-0" : "items-start justify-center p-4 sm:pt-10 overflow-y-auto"}`}>
+          <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-full h-full rounded-none p-4 sm:p-6 space-y-3" : "rounded-2xl max-w-7xl w-full p-6 space-y-4 my-6"}`}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div>
                 <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
                 <div className="text-xs text-slate-500">Customer: {activeQuoteLead.name}</div>
               </div>
-              <button
-                onClick={() => setQuoteModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openPhotosModal(activeQuoteLead)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                  title="View customer / inspection photos"
+                >
+                  <Camera className="w-4 h-4 text-blue-600" />
+                  <span>View Photos{activeQuoteLead.photos && activeQuoteLead.photos.length > 0 ? ` (${activeQuoteLead.photos.length})` : ""}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuoteFullscreen(!quoteFullscreen)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
+                  title={quoteFullscreen ? "Exit full screen" : "Full screen view"}
+                >
+                  {quoteFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={() => setQuoteModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 text-xs max-h-[72vh] overflow-y-auto p-1">
+            <div className={`grid grid-cols-1 gap-6 text-xs p-1 ${quoteFullscreen ? "flex-1 overflow-y-auto" : "max-h-[72vh] overflow-y-auto"}`}>
               {/* Left Column: Quote Form Controls */}
               <div className="space-y-4">
                 {/* Customer Request & Selected Services Details Card */}
@@ -4131,6 +4153,48 @@ export default function CrmDashboardPage() {
                     >
                       {activeQuoteLead.inspectionReport ? "View Findings" : "Open Form"}
                     </button>
+                  </div>
+
+                  {/* Job & Customer Photos Picture Option */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-blue-200 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Camera className="w-4 h-4 text-blue-600 shrink-0" />
+                      <div className="truncate">
+                        <span className="font-bold text-slate-900">Job & Customer Photos: </span>
+                        <span className="text-slate-600 font-semibold">
+                          {activeQuoteLead.photos && activeQuoteLead.photos.length > 0
+                            ? `${activeQuoteLead.photos.length} photo${activeQuoteLead.photos.length === 1 ? "" : "s"} available`
+                            : "No photos uploaded yet"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {activeQuoteLead.photos && activeQuoteLead.photos.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          {activeQuoteLead.photos.slice(0, 3).map((p, pIdx) => {
+                            const url = p.secureUrl || p.url || p.dataUrl || "";
+                            return (
+                              <button
+                                key={pIdx}
+                                type="button"
+                                onClick={() => openPhotosModal(activeQuoteLead)}
+                                className="w-7 h-7 rounded border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
+                                title={p.name || "View photo"}
+                              >
+                                <img src={url} alt={p.name || ""} className="w-full h-full object-cover" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openPhotosModal(activeQuoteLead)}
+                        className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 text-[11px] font-bold cursor-pointer shrink-0"
+                      >
+                        {activeQuoteLead.photos && activeQuoteLead.photos.length > 0 ? "View Pictures" : "+ Add Pictures"}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Additional Property & Condition Details */}
@@ -4328,8 +4392,12 @@ export default function CrmDashboardPage() {
                           <th className="py-2 px-2 font-bold text-center">Qty</th>
                           {!isTechnician && (
                             <>
-                              <th className="py-2 px-2 font-bold text-right">Price ex GST</th>
-                              <th className="py-2 px-2 font-bold text-right">Total ex GST</th>
+                              <th className="py-2 px-2 font-bold text-right">
+                                {quoteTaxMode === "exclusive" ? "Price (ex GST)" : "Price (inc GST)"}
+                              </th>
+                              <th className="py-2 px-2 font-bold text-right">
+                                {quoteTaxMode === "exclusive" ? "Total (ex GST)" : "Total (inc GST)"}
+                              </th>
                             </>
                           )}
                           <th className="py-2 px-2" />
@@ -4381,7 +4449,7 @@ export default function CrmDashboardPage() {
                                   updated[idx].service = e.target.value;
                                   setQuoteItems(updated);
                                 }}
-                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-black"
                                 placeholder="Service title..."
                               />
                               <textarea
@@ -4395,7 +4463,7 @@ export default function CrmDashboardPage() {
                                     .join("\n");
                                   setQuoteItems(updated);
                                 }}
-                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed text-slate-600"
+                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed text-black font-normal"
                                 placeholder="Detailed scope of works (one bullet per line)..."
                               />
                             </td>
@@ -4415,7 +4483,7 @@ export default function CrmDashboardPage() {
                               />
                             </td>
 
-                            {/* Price ex GST */}
+                            {/* Price */}
                             {!isTechnician && (
                               <td className="py-2 px-2">
                                 <input
@@ -4433,7 +4501,7 @@ export default function CrmDashboardPage() {
                               </td>
                             )}
 
-                            {/* Total ex GST */}
+                            {/* Total */}
                             {!isTechnician && (
                               <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
                                 ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
@@ -4446,7 +4514,7 @@ export default function CrmDashboardPage() {
                                 <button
                                   type="button"
                                   onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
-                                  className="text-rose-400 hover:text-rose-600"
+                                  className="text-rose-400 hover:text-rose-600 cursor-pointer"
                                   title="Remove item"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -4458,6 +4526,46 @@ export default function CrmDashboardPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Tax inclusive / exclusive toggle under price button */}
+                  {!isTechnician && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/90 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800">Tax Pricing:</span>
+                        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => setQuoteTaxMode("inclusive")}
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                              quoteTaxMode === "inclusive"
+                                ? "bg-blue-600 text-white shadow-2xs"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                            }`}
+                          >
+                            Tax Inclusive (GST Inc)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuoteTaxMode("exclusive")}
+                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                              quoteTaxMode === "exclusive"
+                                ? "bg-blue-600 text-white shadow-2xs"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                            }`}
+                          >
+                            Tax Exclusive (+10% GST)
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-[11px] font-semibold">
+                        {quoteTaxMode === "exclusive" ? (
+                          <span className="text-amber-700 font-bold">• Prices are Ex-Tax (+10% GST added on top)</span>
+                        ) : (
+                          <span className="text-emerald-700 font-bold">• Prices are Tax-Inclusive (10% GST included)</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tax Settings */}
@@ -4493,12 +4601,12 @@ export default function CrmDashboardPage() {
                 )}
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Quote Conditions / Special Notes</label>
+                  <label className="font-bold text-slate-900 block mb-1">Quote Conditions / Special Notes</label>
                   <textarea
                     rows={3}
                     value={quoteTerms}
                     onChange={(e) => setQuoteTerms(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl text-black font-normal"
                   />
                 </div>
               </div>
@@ -4540,7 +4648,7 @@ export default function CrmDashboardPage() {
                 {/* 3. JOB DESCRIPTION («job.work_done_description») */}
                 <div className="pt-2 space-y-1">
                   <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wide">JOB DESCRIPTION:</div>
-                  <div className="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="text-[11px] text-black whitespace-pre-wrap leading-relaxed font-normal">
                     {activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified."}
                   </div>
                 </div>
@@ -4564,14 +4672,14 @@ export default function CrmDashboardPage() {
                       <tr key={i}>
                         <td className="py-2.5 px-2.5">
                           {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
-                          <div className="font-bold text-slate-900 text-xs">{item.service}</div>
+                          <div className="font-bold text-black text-xs">{item.service}</div>
                           {item.scope && !isRedundantScope(item.service, item.scope) && (
                             <ul className="mt-1 space-y-0.5">
                               {item.scope.split("\n").filter(l => l.trim()).map((line, li) => {
                                 const clean = line.replace(/^[•o]\s*/, "").trim();
                                 return (
-                                  <li key={li} className="flex items-start gap-1 text-[10px] text-slate-600 leading-snug">
-                                    <span className="shrink-0 text-blue-600 font-bold mt-px">•</span>
+                                  <li key={li} className="flex items-start gap-1 text-[10px] text-black leading-snug font-normal">
+                                    <span className="shrink-0 text-black font-bold mt-px">•</span>
                                     <span>{clean}</span>
                                   </li>
                                 );
@@ -4583,7 +4691,7 @@ export default function CrmDashboardPage() {
                         {!isTechnician && (
                           <>
                             <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
-                            <td className="py-2.5 px-2.5 text-right font-bold">
+                            <td className="py-2.5 px-2.5 text-right font-bold text-black">
                               ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
                             </td>
                           </>
@@ -4593,7 +4701,7 @@ export default function CrmDashboardPage() {
                   </tbody>
                 </table>
 
-                {/* 5. Totals */}
+                {/* 5. Totals with Round Figure Final Price */}
                 {!isTechnician && (
                   <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
                     <div className="flex justify-end gap-6">
@@ -4606,14 +4714,17 @@ export default function CrmDashboardPage() {
                     </div>
                     <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
                       <span>TOTAL:</span>
-                      <span className="w-24 text-right">${quoteTotals().total.toFixed(2)}</span>
+                      <span className="w-24 text-right tabular-nums">${quoteTotals().total.toFixed(2)}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium pt-0.5">
+                      (Round figure: ${quoteTotals().total} {quoteTaxMode === "exclusive" ? "ex-tax + GST" : "inc GST"})
                     </div>
                   </div>
                 )}
 
-                {/* 6. Centered «final_note» */}
+                {/* 6. Centered «final_note» in solid black font */}
                 <div className="pt-4 text-center">
-                  <div className="text-[10px] text-slate-500 italic">
+                  <div className="text-[10px] text-black font-medium leading-relaxed">
                     {quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
                       ? quoteTerms
                       : DEFAULT_QUOTE_CONDITIONS}

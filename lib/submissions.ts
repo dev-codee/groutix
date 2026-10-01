@@ -488,13 +488,20 @@ function buildFilter(params: ListParams): Filter<SubmissionDoc> {
   }
   if (params.search) {
     const rx = { $regex: escapeRegex(params.search), $options: "i" };
+    // Also build a space/separator-stripped variant for the phone field so that
+    // "0412 345 678", "0412-345-678", or "+61 412 345 678" all match the
+    // compactly-stored number (e.g. "0412345678") in the database.
+    const phoneQuery = params.search.replace(/[\s\-().]/g, "");
+    const phoneRx = phoneQuery
+      ? { $regex: escapeRegex(phoneQuery), $options: "i" }
+      : rx;
     filter.$or = [
       { jobNo: rx },
       { name: rx },
       { customerType: rx },
       { agency: rx },
       { email: rx },
-      { phone: rx },
+      { phone: phoneRx },
       { message: rx },
       { issue: rx },
       { city: rx },

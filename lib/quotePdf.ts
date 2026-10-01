@@ -62,13 +62,14 @@ export function computeQuoteTotals(
   const rawSub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
   if (mode === "exclusive") {
     const gst = rawSub * (rate / 100);
-    return { subtotal: rawSub, gst, total: rawSub + gst };
+    const total = Math.round(rawSub + gst);
+    return { subtotal: rawSub, gst, total };
   }
   if (mode === "none") {
-    return { subtotal: rawSub, gst: 0, total: rawSub };
+    return { subtotal: rawSub, gst: 0, total: Math.round(rawSub) };
   }
   // inclusive: entered prices already contain GST.
-  const total = quoteAmount || rawSub;
+  const total = Math.round(quoteAmount || rawSub);
   const subtotal = total / (1 + rate / 100);
   return { subtotal, gst: total - subtotal, total };
 }
@@ -380,7 +381,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       ty -= 11;
     }
     for (const ln of scopeLines) {
-      page1.drawText(cleanPdfText(ln), { x: colDescX, y: ty, size: 7.5, font, color: MUTED });
+      page1.drawText(cleanPdfText(ln), { x: colDescX, y: ty, size: 7.5, font, color: INK });
       ty -= 9.5;
     }
 
@@ -800,7 +801,7 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
       y -= 11;
     }
     for (const ln of scopeLines) {
-      text(ln, colDescX, y, { font, size: 7.5, color: MUTED });
+      text(ln, colDescX, y, { font, size: 7.5, color: INK });
       y -= 9.5;
     }
 

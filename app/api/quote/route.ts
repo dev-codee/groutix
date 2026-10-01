@@ -520,19 +520,19 @@ export async function POST(req: NextRequest) {
     const customerHtml = `
       <h2 style="margin:0 0 14px;color:#001f97;font-size:24px;">Thanks, ${esc(firstName)}!</h2>
       <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
-        We've received your quote request and a Groutix specialist will be in touch shortly to arrange the next steps.
+        We've received your request and our team will review your details shortly.
       </p>
-
-      ${SHOW_INSPECTION_BOOKING && area.serviced && !(inspectionDate && inspectionTime) ? inspectionBookingHtml : ""}
-
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-        If your enquiry is urgent, please call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> or visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>.
+        If you selected a preferred inspection date and time, we'll keep that booking wherever possible and will only contact you if an alternative needs to be arranged.
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
+        If you have any questions, simply reply to this email or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
       </p>
 
       ${
         message
           ? `<div style="margin:20px 0;padding:16px;background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid #001f97;border-radius:6px;color:#475569;font-size:14px;">
-               <strong style="color:#0f172a;display:block;margin-bottom:6px;">Your message:</strong>
+               <strong style="color:#0f172a;display:block;margin-bottom:6px;">Your request:</strong>
                ${esc(message).replace(/\n/g, "<br/>")}
              </div>`
           : ""
@@ -555,10 +555,10 @@ export async function POST(req: NextRequest) {
       logSendError("customer confirmation", err);
     }
 
-    // Acknowledge by SMS (strictly 1 credit <= 160 chars GSM-7).
+    // Acknowledge by SMS — multi-part message (≤ 3 × 160-char GSM-7 parts).
     if (phone) {
-      const smsBody = `Groutix: Thanks ${firstName || "there"}! We received your enquiry and will be in touch shortly. Call ${CONTACT_PHONE}.`;
-      await sendSms({ to: phone, body: smsBody });
+      const smsBody = `Thanks ${firstName || "there"}!\n\nWe've received your enquiry and any preferred booking date/time you selected. Please note that your selected time is a booking preference and is subject to availability.\nIf we need to make any changes, our team will contact you. Otherwise, we'll proceed with your requested time.\n\nQuestions?\nCall: ${CONTACT_PHONE}\nEmail: info@groutix.com\n\nGroutix\nStay Sealed. Stay Smiling.`;
+      await sendSms({ to: phone, body: smsBody, maxChars: 480 });
     }
   };
 
