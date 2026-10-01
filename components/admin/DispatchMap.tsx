@@ -285,7 +285,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
     const geocoder = new g.maps.Geocoder();
     const geocodeStop = (addr: string): Promise<google.maps.LatLngLiteral | null> =>
       new Promise((resolve) => {
-        geocoder.geocode({ address: addr, componentRestrictions: { country: "AU" } }, (results, status) => {
+        geocoder.geocode({ address: addr, componentRestrictions: { country: "AU" } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
           if (status === "OK" && results?.[0]) {
             const loc = results[0].geometry.location;
             resolve({ lat: loc.lat(), lng: loc.lng() });
