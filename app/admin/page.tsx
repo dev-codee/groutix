@@ -4316,10 +4316,10 @@ export default function CrmDashboardPage() {
               quoteViewTab === "split" 
                 ? "grid-cols-1 lg:grid-cols-2" 
                 : "grid-cols-1"
-            } ${quoteFullscreen ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[72vh] overflow-y-auto"}`}>
+            } ${quoteFullscreen ? "flex-1 min-h-0 overflow-hidden" : "max-h-[78vh] overflow-hidden"}`}>
               {/* Left Column: Quote Form Controls */}
               {(quoteViewTab === "split" || quoteViewTab === "form") && (
-                <div className="space-y-4 min-w-0">
+                <div className={`space-y-4 min-w-0 pr-1 ${quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"}`}>
                 {/* Customer Request & Selected Services Details Card */}
                 <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
                   <div className="flex items-center justify-between">
@@ -5002,9 +5002,13 @@ export default function CrmDashboardPage() {
                   />
                 </div>
               </div>
+            )}
 
-              {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
-              <div className="border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 max-h-[70vh] overflow-y-auto">
+            {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
+            {(quoteViewTab === "split" || quoteViewTab === "preview") && (
+              <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 ${
+                quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"
+              } ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
                 {/* 1. Header: Logo (left) & Right-Aligned Address + Gold Quote + ACN + Quote # + Date */}
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -5142,6 +5146,7 @@ export default function CrmDashboardPage() {
                   </details>
                 </div>
               </div>
+            )}
             </div>
 
             {/* Bottom Actions Bar */}
