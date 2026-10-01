@@ -86,10 +86,12 @@ function money(n: number): string {
   return `$${(Number.isFinite(n) ? n : 0).toFixed(2)}`;
 }
 
-/** Sanitize unicode characters that fail StandardFonts (WinAnsiEncoding). */
+/** Sanitize unicode characters and formatting markup that fail StandardFonts (WinAnsiEncoding). */
 function cleanPdfText(str: string): string {
   if (!str) return "";
   return str
+    .replace(/<\/?(?:u|b|i|strong|em|p|div|span)[^>]*>/gi, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/[\u2000-\u200B\u202F\u205F\u3000]/g, " ")
     .replace(/[\uFEFF]/g, "")
     .replace(/[^\x00-\xFF]/g, (ch) => {

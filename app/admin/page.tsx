@@ -363,6 +363,7 @@ export default function CrmDashboardPage() {
   const [quoteTerms, setQuoteTerms] = useState<string>(
     "Final scope is subject to the details stated in this quotation. Any additional work not listed will require approval before proceeding."
   );
+  const [quoteScope, setQuoteScope] = useState<string>("");
 
   const [photosModalOpen, setPhotosModalOpen] = useState(false);
   const [activePhotoLead, setActivePhotoLead] = useState<Lead | null>(null);
@@ -1542,6 +1543,8 @@ export default function CrmDashboardPage() {
     const existingTerms = (lead.quoteTerms || "").trim();
     const isFullTermsDump = existingTerms.length > 500 || /^Groutix terms and conditions/i.test(existingTerms);
     setQuoteTerms(!existingTerms || isFullTermsDump ? DEFAULT_QUOTE_CONDITIONS : existingTerms);
+    const initialScope = lead.quoteScope || lead.message || lead.enquiry || "Tile regrouting and waterproof resealing works as specified.";
+    setQuoteScope(initialScope);
     setQuoteModalOpen(true);
   }
 
@@ -1563,10 +1566,198 @@ export default function CrmDashboardPage() {
     return { subtotal, gst, total };
   }
 
+  // Text formatting helper: parses inline **bold**, *italic*, <u>underline</u> into React nodes
+  function renderFormattedText(text?: string | null): React.ReactNode {
+    if (!text) return null;
+    const regex = /(\*\*[\s\S]*?\*\*|\*[^\n*]+?\*|<u>[\s\S]*?<\/u>)/g;
+    const parts = text.split(regex);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        return <strong key={i} className="font-bold text-black">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("*") && part.endsWith("*") && part.length >= 2 && !part.startsWith("**")) {
+        return <em key={i} className="italic text-black">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith("<u>") && part.endsWith("</u>") && part.length >= 7) {
+        return <u key={i} className="underline text-black">{part.slice(3, -4)}</u>;
+      }
+      return part;
+    });
+  }
+
+  // Format active quote item scope
+  function applyItemScopeFormatting(
+    idx: number,
+    type: "bold" | "italic" | "underline" | "bullet" | "number"
+  ) {
+    const el = document.getElementById(`quote-scope-${idx}`) as HTMLTextAreaElement | null;
+    const current = quoteItems[idx]?.scope || "";
+    let updated = current;
+
+    if (el) {
+      const start = el.selectionStart ?? current.length;
+      const end = el.selectionEnd ?? current.length;
+      const selected = current.substring(start, end);
+      const before = current.substring(0, start);
+      const after = current.substring(end);
+      let rep = "";
+      let newCursor = start;
+
+      switch (type) {
+        case "bold": {
+          const t = selected || "bold text";
+          rep = `**${t}**`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "italic": {
+          const t = selected || "italic text";
+          rep = `*${t}*`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "underline": {
+          const t = selected || "underlined text";
+          rep = `<u>${t}</u>`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "bullet": {
+          const lines = (selected || "Scope bullet point").split("\n");
+          rep = lines.map((l) => (l.startsWith("• ") ? l : `• ${l}`)).join("\n");
+          if (before && !before.endsWith("\n")) rep = `\n${rep}`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "number": {
+          const lines = (selected || "Scope item").split("\n");
+          rep = lines.map((l, i) => `${i + 1}. ${l.replace(/^\d+\.\s*/, "")}`).join("\n");
+          if (before && !before.endsWith("\n")) rep = `\n${rep}`;
+          newCursor = start + rep.length;
+          break;
+        }
+      }
+
+      updated = before + rep + after;
+      const nextItems = [...quoteItems];
+      nextItems[idx] = { ...nextItems[idx], scope: updated };
+      setQuoteItems(nextItems);
+
+      setTimeout(() => {
+        el.focus();
+        el.setSelectionRange(newCursor, newCursor);
+      }, 15);
+    } else {
+      const addition =
+        type === "bold" ? "**bold text**" :
+        type === "italic" ? "*italic text*" :
+        type === "underline" ? "<u>underlined text</u>" :
+        type === "bullet" ? "\n• bullet item" : "\n1. list item";
+      const nextItems = [...quoteItems];
+      nextItems[idx] = { ...nextItems[idx], scope: `${current} ${addition}` };
+      setQuoteItems(nextItems);
+    }
+  }
+
+  // Format overarching Job Description / Scope Overview
+  function applyScopeOverviewFormatting(
+    type: "bold" | "italic" | "underline" | "bullet" | "custom"
+  ) {
+    const el = document.getElementById("quote-scope-overview") as HTMLTextAreaElement | null;
+    const current = quoteScope;
+    let updated = current;
+
+    if (el) {
+      const start = el.selectionStart ?? current.length;
+      const end = el.selectionEnd ?? current.length;
+      const selected = current.substring(start, end);
+      const before = current.substring(0, start);
+      const after = current.substring(end);
+      let rep = "";
+      let newCursor = start;
+
+      switch (type) {
+        case "bold": {
+          const t = selected || "bold text";
+          rep = `**${t}**`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "italic": {
+          const t = selected || "italic text";
+          rep = `*${t}*`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "underline": {
+          const t = selected || "underlined text";
+          rep = `<u>${t}</u>`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "bullet": {
+          const lines = (selected || "Scope bullet point").split("\n");
+          rep = lines.map((l) => (l.startsWith("• ") ? l : `• ${l}`)).join("\n");
+          if (before && !before.endsWith("\n")) rep = `\n${rep}`;
+          newCursor = start + rep.length;
+          break;
+        }
+        case "custom": {
+          rep = "\n• Additional custom work: ";
+          if (before && !before.endsWith("\n")) rep = `\n${rep}`;
+          newCursor = start + rep.length;
+          break;
+        }
+      }
+
+      updated = before + rep + after;
+      setQuoteScope(updated);
+      setTimeout(() => {
+        el.focus();
+        el.setSelectionRange(newCursor, newCursor);
+      }, 15);
+    } else {
+      const addition =
+        type === "bold" ? "**bold text**" :
+        type === "italic" ? "*italic text*" :
+        type === "underline" ? "<u>underlined text</u>" :
+        "\n• Additional custom scope: ";
+      setQuoteScope(`${current} ${addition}`);
+    }
+  }
+
+  // Format Quote Conditions / Special Notes
+  function applyTermsFormatting(type: "bold" | "italic" | "underline" | "bullet") {
+    const el = document.getElementById("quote-terms-textarea") as HTMLTextAreaElement | null;
+    const current = quoteTerms;
+    if (el) {
+      const start = el.selectionStart ?? current.length;
+      const end = el.selectionEnd ?? current.length;
+      const selected = current.substring(start, end);
+      const before = current.substring(0, start);
+      const after = current.substring(end);
+      let rep = "";
+      switch (type) {
+        case "bold": rep = `**${selected || "bold text"}**`; break;
+        case "italic": rep = `*${selected || "italic text"}*`; break;
+        case "underline": rep = `<u>${selected || "underlined text"}</u>`; break;
+        case "bullet": rep = `\n• ${selected || "Special condition"}`; break;
+      }
+      setQuoteTerms(before + rep + after);
+      setTimeout(() => {
+        el.focus();
+        el.setSelectionRange(start + rep.length, start + rep.length);
+      }, 15);
+    } else {
+      setQuoteTerms((prev) => `${prev} ${type === "bold" ? "**bold**" : type === "italic" ? "*italic*" : "<u>underlined</u>"}`);
+    }
+  }
+
   async function handleSaveQuote() {
     if (!activeQuoteLead) return;
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
+      quoteScope,
       quoteItems,
       quoteTaxMode,
       quoteTaxRate,
@@ -1582,6 +1773,7 @@ export default function CrmDashboardPage() {
     if (!activeQuoteLead) return;
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
+      quoteScope,
       quoteItems,
       quoteTaxMode,
       quoteTaxRate,
@@ -1598,6 +1790,7 @@ export default function CrmDashboardPage() {
     if (!activeQuoteLead) return;
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
+      quoteScope,
       quoteItems,
       quoteTaxMode,
       quoteTaxRate,
@@ -1618,6 +1811,7 @@ export default function CrmDashboardPage() {
     // Persist the latest edits first so the emailed quote matches the screen.
     const { total } = quoteTotals();
     await updateLeadField(activeQuoteLead.id, {
+      quoteScope,
       quoteItems,
       quoteTaxMode,
       quoteTaxRate,
@@ -1646,6 +1840,7 @@ export default function CrmDashboardPage() {
     if (!activeQuoteLead) return window.print();
     const { total } = quoteTotals();
     await updateLeadField(activeQuoteLead.id, {
+      quoteScope,
       quoteItems,
       quoteTaxMode,
       quoteTaxRate,
@@ -1655,8 +1850,9 @@ export default function CrmDashboardPage() {
     });
     const itemsParam = encodeURIComponent(JSON.stringify(quoteItems));
     const notesParam = encodeURIComponent(quoteTerms || "");
+    const scopeParam = encodeURIComponent(quoteScope || "");
     const typeParam = isTechnician ? "&type=scope" : "";
-    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}${typeParam}&t=${Date.now()}`, "_blank");
+    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}&scope=${scopeParam}${typeParam}&t=${Date.now()}`, "_blank");
   }
 
   function handleEmailQuote() {
@@ -4321,11 +4517,72 @@ export default function CrmDashboardPage() {
                   </div>
                 </div>
 
+                {/* Overarching Job Description / Scope Overview (Editable with formatting) */}
+                <div className="space-y-1.5 p-3 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <span>Job Description / Scope Overview</span>
+                      <span className="text-[10px] text-slate-400 font-normal">(Page 1 of Quote)</span>
+                    </label>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[9px] font-bold text-slate-400">Format:</span>
+                      <button
+                        type="button"
+                        onClick={() => applyScopeOverviewFormatting("bold")}
+                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-black text-slate-900 cursor-pointer shadow-2xs"
+                        title="Bold (**text**)"
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyScopeOverviewFormatting("italic")}
+                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold italic text-slate-900 cursor-pointer shadow-2xs"
+                        title="Italic (*text*)"
+                      >
+                        I
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyScopeOverviewFormatting("underline")}
+                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold underline text-slate-900 cursor-pointer shadow-2xs"
+                        title="Underline (<u>text</u>)"
+                      >
+                        U
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyScopeOverviewFormatting("bullet")}
+                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold text-slate-900 cursor-pointer shadow-2xs"
+                        title="Insert Bullet Point"
+                      >
+                        • Bullet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyScopeOverviewFormatting("custom")}
+                        className="px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-[10px] font-bold text-emerald-800 cursor-pointer shadow-2xs"
+                        title="Append custom addition note"
+                      >
+                        + Custom Addition
+                      </button>
+                    </div>
+                  </div>
+                  <textarea
+                    id="quote-scope-overview"
+                    rows={2}
+                    value={quoteScope}
+                    onChange={(e) => setQuoteScope(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-lg text-xs text-black leading-relaxed font-normal focus:border-blue-400 focus:outline-none"
+                    placeholder="Provide overarching job description or custom scope summary (supports **bold**, *italic*, <u>underline</u>)..."
+                  />
+                </div>
+
                 {/* Items */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="font-bold text-slate-800 text-sm">Quote Items ({quoteItems.length})</div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <TemplatePicker
                         onSelectTemplate={(t) => {
                           if (t) {
@@ -4362,12 +4619,24 @@ export default function CrmDashboardPage() {
                         onClick={() =>
                           setQuoteItems([
                             ...quoteItems,
-                            { templateNo: "", code: "", service: "Additional Regrouting Work", scope: "", price: 0, qty: 1 }
+                            { templateNo: "", code: "", service: "Custom Service Item", scope: "• Detailed scope of works...", price: 0, qty: 1 }
                           ])
                         }
-                        className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 text-xs transition-colors"
+                        className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg hover:bg-slate-200 text-xs transition-colors cursor-pointer shadow-2xs"
                       >
-                        + Add Custom
+                        + Add Custom Item
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuoteItems([
+                            ...quoteItems,
+                            { templateNo: "", code: "EXTRA", service: "Custom Addition / Extra Work", scope: "• Custom addition as requested by customer", price: 0, qty: 1 }
+                          ])
+                        }
+                        className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold rounded-lg hover:bg-emerald-100 text-xs transition-colors cursor-pointer shadow-2xs"
+                      >
+                        + Custom Addition
                       </button>
                     </div>
                   </div>
@@ -4452,20 +4721,68 @@ export default function CrmDashboardPage() {
                                 className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-black"
                                 placeholder="Service title..."
                               />
-                              <textarea
-                                rows={Math.max(4, (item.scope || "").split("\n").length + 1)}
-                                value={item.scope || ""}
-                                onChange={(e) => {
-                                  const updated = [...quoteItems];
-                                  updated[idx].scope = e.target.value
-                                    .split("\n")
-                                    .map((line) => line.replace(/^o\s+/, "• "))
-                                    .join("\n");
-                                  setQuoteItems(updated);
-                                }}
-                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] leading-relaxed text-black font-normal"
-                                placeholder="Detailed scope of works (one bullet per line)..."
-                              />
+                              <div className="rounded-lg border border-slate-200 overflow-hidden focus-within:border-blue-400">
+                                <div className="flex items-center justify-between gap-1 px-2 py-1 bg-slate-100/90 border-b border-slate-200 text-[10px]">
+                                  <span className="text-slate-500 font-bold uppercase text-[9px]">Scope Format:</span>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => applyItemScopeFormatting(idx, "bold")}
+                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-black text-slate-900 cursor-pointer shadow-2xs"
+                                      title="Bold (**text**)"
+                                    >
+                                      B
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => applyItemScopeFormatting(idx, "italic")}
+                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold italic text-slate-900 cursor-pointer shadow-2xs"
+                                      title="Italic (*text*)"
+                                    >
+                                      I
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => applyItemScopeFormatting(idx, "underline")}
+                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold underline text-slate-900 cursor-pointer shadow-2xs"
+                                      title="Underline (<u>text</u>)"
+                                    >
+                                      U
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => applyItemScopeFormatting(idx, "bullet")}
+                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 cursor-pointer shadow-2xs"
+                                      title="Bullet Point (• item)"
+                                    >
+                                      • List
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => applyItemScopeFormatting(idx, "number")}
+                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 cursor-pointer shadow-2xs"
+                                      title="Numbered Step (1. item)"
+                                    >
+                                      1. Step
+                                    </button>
+                                  </div>
+                                </div>
+                                <textarea
+                                  id={`quote-scope-${idx}`}
+                                  rows={Math.max(4, (item.scope || "").split("\n").length + 1)}
+                                  value={item.scope || ""}
+                                  onChange={(e) => {
+                                    const updated = [...quoteItems];
+                                    updated[idx].scope = e.target.value
+                                      .split("\n")
+                                      .map((line) => line.replace(/^o\s+/, "• "))
+                                      .join("\n");
+                                    setQuoteItems(updated);
+                                  }}
+                                  className="w-full p-2 bg-white text-[11px] leading-relaxed text-black font-normal outline-none focus:bg-white resize-y"
+                                  placeholder="Detailed scope of works (supports **bold**, *italic*, <u>underline</u>, • bullets)..."
+                                />
+                              </div>
                             </td>
 
                             {/* Qty */}
@@ -4600,13 +4917,51 @@ export default function CrmDashboardPage() {
                   </div>
                 )}
 
-                <div>
-                  <label className="font-bold text-slate-900 block mb-1">Quote Conditions / Special Notes</label>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-900 block text-xs">Quote Conditions / Special Notes</label>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => applyTermsFormatting("bold")}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-black text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                        title="Bold (**text**)"
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTermsFormatting("italic")}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold italic text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                        title="Italic (*text*)"
+                      >
+                        I
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTermsFormatting("underline")}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold underline text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                        title="Underline (<u>text</u>)"
+                      >
+                        U
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTermsFormatting("bullet")}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                        title="Bullet point"
+                      >
+                        • Bullet
+                      </button>
+                    </div>
+                  </div>
                   <textarea
+                    id="quote-terms-textarea"
                     rows={3}
                     value={quoteTerms}
                     onChange={(e) => setQuoteTerms(e.target.value)}
                     className="w-full p-2.5 border border-slate-200 rounded-xl text-black font-normal"
+                    placeholder="Enter conditions or special notes (supports **bold**, *italic*, <u>underline</u>)..."
                   />
                 </div>
               </div>
@@ -4649,7 +5004,7 @@ export default function CrmDashboardPage() {
                 <div className="pt-2 space-y-1">
                   <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wide">JOB DESCRIPTION:</div>
                   <div className="text-[11px] text-black whitespace-pre-wrap leading-relaxed font-normal">
-                    {activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified."}
+                    {renderFormattedText(quoteScope || activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified.")}
                   </div>
                 </div>
 
@@ -4672,7 +5027,7 @@ export default function CrmDashboardPage() {
                       <tr key={i}>
                         <td className="py-2.5 px-2.5">
                           {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
-                          <div className="font-bold text-black text-xs">{item.service}</div>
+                          <div className="font-bold text-black text-xs">{renderFormattedText(item.service)}</div>
                           {item.scope && !isRedundantScope(item.service, item.scope) && (
                             <ul className="mt-1 space-y-0.5">
                               {item.scope.split("\n").filter(l => l.trim()).map((line, li) => {
@@ -4680,7 +5035,7 @@ export default function CrmDashboardPage() {
                                 return (
                                   <li key={li} className="flex items-start gap-1 text-[10px] text-black leading-snug font-normal">
                                     <span className="shrink-0 text-black font-bold mt-px">•</span>
-                                    <span>{clean}</span>
+                                    <span>{renderFormattedText(clean)}</span>
                                   </li>
                                 );
                               })}
@@ -4725,9 +5080,9 @@ export default function CrmDashboardPage() {
                 {/* 6. Centered «final_note» in solid black font */}
                 <div className="pt-4 text-center">
                   <div className="text-[10px] text-black font-medium leading-relaxed">
-                    {quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
+                    {renderFormattedText(quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
                       ? quoteTerms
-                      : DEFAULT_QUOTE_CONDITIONS}
+                      : DEFAULT_QUOTE_CONDITIONS)}
                   </div>
                 </div>
 
