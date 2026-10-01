@@ -141,10 +141,25 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
           items.push({ lead, type: "job", time: t, tech: techName, date: d });
         }
       }
+
+      // Include unassigned jobs / inspections with addresses so they show on dispatch map
+      if (!lead.inspectionAt && !lead.jobAt && (lead.address || lead.city)) {
+        const isJob = lead.status.toLowerCase().includes("job") || lead.status === "Won" || Boolean(lead.jobNo);
+        let techName = "Unassigned";
+        if (lead.technician && lead.technician.toLowerCase() !== "unassigned") techName = lead.technician;
+        else if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
+        items.push({
+          lead,
+          type: isJob ? "job" : "inspection",
+          time: "TBD",
+          tech: techName,
+          date: todayStr,
+        });
+      }
     }
     items.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
     return items;
-  }, [scopedLeads, selectedDate]);
+  }, [scopedLeads, selectedDate, todayStr]);
 
   const inspItems = useMemo(() => allDateItems.filter(i => i.type === "inspection"), [allDateItems]);
   const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job"), [allDateItems]);

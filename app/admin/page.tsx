@@ -356,6 +356,7 @@ export default function CrmDashboardPage() {
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [quoteFullscreen, setQuoteFullscreen] = useState(false);
+  const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("inclusive");
@@ -4253,7 +4254,38 @@ export default function CrmDashboardPage() {
                 <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
                 <div className="text-xs text-slate-500">Customer: {activeQuoteLead.name}</div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 3-way layout toggle: Split View (Side-by-Side) | Form Editor | Live Preview */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setQuoteViewTab("split")}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                      quoteViewTab === "split" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Split View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuoteViewTab("form")}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                      quoteViewTab === "form" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Form Editor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuoteViewTab("preview")}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                      quoteViewTab === "preview" ? "bg-white text-blue-700 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Live Preview
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => openPhotosModal(activeQuoteLead)}
@@ -4280,9 +4312,14 @@ export default function CrmDashboardPage() {
               </div>
             </div>
 
-            <div className={`grid grid-cols-1 gap-6 text-xs p-1 ${quoteFullscreen ? "flex-1 overflow-y-auto" : "max-h-[72vh] overflow-y-auto"}`}>
+            <div className={`grid gap-6 text-xs p-1 ${
+              quoteViewTab === "split" 
+                ? "grid-cols-1 lg:grid-cols-2" 
+                : "grid-cols-1"
+            } ${quoteFullscreen ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[72vh] overflow-y-auto"}`}>
               {/* Left Column: Quote Form Controls */}
-              <div className="space-y-4">
+              {(quoteViewTab === "split" || quoteViewTab === "form") && (
+                <div className="space-y-4 min-w-0">
                 {/* Customer Request & Selected Services Details Card */}
                 <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
                   <div className="flex items-center justify-between">
