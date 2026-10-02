@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
 import { verifyQuoteToken } from "@/lib/quoteToken";
-import { buildBookingUrl } from "@/lib/bookingToken";
+import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl, EmailAttachment } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
 
 export const runtime = "nodejs";
 
@@ -209,6 +210,20 @@ export async function POST(req: NextRequest) {
         html: wrapEmailHtml(customerHtml, `Confirmed: Signed Quotation ${quoteNumber}`, logoUrl),
         attachments,
       }).catch((e) => console.error("Customer sign email failed:", e));
+    }
+
+    // 5b. Text the customer the same job-booking link. The email carries the
+    // signed PDF, but the booking link is the action we actually need from
+    // them, so it goes out on both channels.
+    if (lead.phone) {
+      const firstName = (resolvedSignerName || lead.name || "there").trim().split(/\s+/)[0];
+      await sendSms({
+        to: lead.phone,
+        // Kept short so it stays within one 160-char GSM-7 segment (1 credit)
+        // even with a long name and quote number — sendSms truncates, and a
+        // truncated link is a dead link.
+        body: `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Book your job time: ${buildBookingSmsUrl(id, "job")}`,
+      }).catch((e) => console.error("Customer sign SMS failed:", e));
     }
 
     // 6. Send alert email to Groutix Staff (info@groutix.com)
