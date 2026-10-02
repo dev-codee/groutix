@@ -975,7 +975,9 @@ export default function CrmDashboardPage() {
           leadId: lead.id,
           msg:
             eventType === "en_route"
-              ? `Customer notified! ETA: ~${data.eta || "unknown"}`
+              ? data.eta
+                ? `Customer notified! ETA: ~${data.eta}`
+                : `Customer notified! (ETA unavailable)`
               : `Customer notified of your arrival!`,
         });
         if (lat && lng) {

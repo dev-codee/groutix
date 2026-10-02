@@ -21,55 +21,140 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Approximate Melbourne CBD centre as fallback destination for Haversine
-const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 };
+// Straight-line distance understates road distance; Melbourne arterial routes
+// run ~1.3x the crow-flies figure, at an effective ~35 km/h door to door.
+const ROAD_DETOUR_FACTOR = 1.3;
+const AVG_SPEED_KMH = 35;
+
+function minutesFromStraightLine(distKm: number): number {
+  const raw = ((distKm * ROAD_DETOUR_FACTOR) / AVG_SPEED_KMH) * 60;
+  // An estimate, not a measured route — round to 5 minutes so it does not read
+  // as more precise than it is.
+  return Math.max(5, Math.round(raw / 5) * 5);
+}
 
 /**
- * Calculate ETA using Google Maps Distance Matrix API.
- * Falls back to Haversine at avg 35 km/h driving speed if the API is
- * unavailable or returns a non-OK element status.
+ * Resolve an address to coordinates.
+ *
+ * Tries the Geocoding API first, then Places Text Search. They are separate
+ * products in Google Cloud and a key may be authorized for one and not the
+ * other, so trying both keeps the ETA working whichever one is enabled.
+ */
+async function geocodeAddress(
+  address: string,
+  apiKey: string
+): Promise<{ lat: number; lng: number } | null> {
+  return (
+    (await geocodeViaGeocodingApi(address, apiKey)) ??
+    (await geocodeViaPlacesSearch(address, apiKey))
+  );
+}
+
+async function geocodeViaGeocodingApi(
+  address: string,
+  apiKey: string
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("address", address);
+    url.searchParams.set("key", apiKey);
+    url.searchParams.set("components", "country:AU");
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.status !== "OK" || !data.results?.[0]) {
+      console.warn("[on-the-way] Geocoding failed:", data?.status, data?.error_message || "");
+      return null;
+    }
+    const loc = data.results[0].geometry?.location;
+    if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") return null;
+    return { lat: loc.lat, lng: loc.lng };
+  } catch {
+    return null;
+  }
+}
+
+async function geocodeViaPlacesSearch(
+  address: string,
+  apiKey: string
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.location",
+      },
+      body: JSON.stringify({ textQuery: address, regionCode: "AU" }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) {
+      console.warn("[on-the-way] Places text search failed:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    const loc = data?.places?.[0]?.location;
+    if (typeof loc?.latitude !== "number" || typeof loc?.longitude !== "number") return null;
+    return { lat: loc.latitude, lng: loc.longitude };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Travel time from the staff member's live position to the customer's address.
+ *
+ * Distance Matrix is preferred because it follows real roads and accounts for
+ * traffic. If it is unavailable (key missing, API not enabled on the key, quota,
+ * timeout) we geocode the destination and estimate from the straight-line
+ * distance to THAT address. Returns null when neither route works — the caller
+ * then sends the customer a message with no ETA rather than a made-up one.
  */
 async function calculateEta(
   staffLat: number,
   staffLng: number,
   destinationAddress: string
-): Promise<{ etaText: string; etaMinutes: number }> {
+): Promise<{ etaText: string; etaMinutes: number } | null> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
-
-  const haversineFallback = () => {
-    const distKm = haversineKm(
-      staffLat,
-      staffLng,
-      MELBOURNE_CENTRE.lat,
-      MELBOURNE_CENTRE.lng
-    );
-    const minutes = Math.max(1, Math.round((distKm / 35) * 60));
-    return {
-      etaText: `${minutes} min${minutes !== 1 ? "s" : ""}`,
-      etaMinutes: minutes,
-    };
-  };
-
-  if (!apiKey) return haversineFallback();
+  if (!apiKey) {
+    console.warn("[on-the-way] GOOGLE_PLACES_API_KEY is not set; no ETA can be calculated.");
+    return null;
+  }
 
   try {
     const encoded = encodeURIComponent(destinationAddress);
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${staffLat},${staffLng}&destinations=${encoded}&key=${apiKey}&mode=driving`;
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${staffLat},${staffLng}&destinations=${encoded}&key=${apiKey}&mode=driving&departure_time=now&region=au`;
     const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return haversineFallback();
-    const data = await res.json();
-    const element = data?.rows?.[0]?.elements?.[0];
-    if (!element || element.status !== "OK") return haversineFallback();
-    const durationText: string = element.duration?.text || "";
-    const durationSec: number = element.duration?.value || 0;
-    const etaMinutes = Math.max(1, Math.round(durationSec / 60));
-    return {
-      etaText: durationText || `${etaMinutes} mins`,
-      etaMinutes,
-    };
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.status !== "OK") {
+        console.warn("[on-the-way] Distance Matrix status:", data?.status, data?.error_message || "");
+      }
+      const element = data?.rows?.[0]?.elements?.[0];
+      if (element?.status === "OK") {
+        // duration_in_traffic is present when departure_time is supplied
+        const durationSec: number =
+          element.duration_in_traffic?.value || element.duration?.value || 0;
+        if (durationSec > 0) {
+          const etaMinutes = Math.max(1, Math.round(durationSec / 60));
+          return { etaText: `${etaMinutes} min${etaMinutes !== 1 ? "s" : ""}`, etaMinutes };
+        }
+      } else if (element) {
+        console.warn("[on-the-way] Distance Matrix element status:", element.status);
+      }
+    }
   } catch {
-    return haversineFallback();
+    // fall through to the geocoded estimate
   }
+
+  // Fallback: straight-line distance to the customer's own address.
+  const dest = await geocodeAddress(destinationAddress, apiKey);
+  if (!dest) return null;
+  const minutes = minutesFromStraightLine(
+    haversineKm(staffLat, staffLng, dest.lat, dest.lng)
+  );
+  return { etaText: `${minutes} min${minutes !== 1 ? "s" : ""}`, etaMinutes: minutes };
 }
 
 export async function POST(req: NextRequest) {
@@ -108,8 +193,10 @@ export async function POST(req: NextRequest) {
   let etaMinutes = 0;
   if (eventType === "en_route" && lat != null && lng != null && customerAddress) {
     const eta = await calculateEta(lat, lng, customerAddress);
-    etaText = eta.etaText;
-    etaMinutes = eta.etaMinutes;
+    if (eta) {
+      etaText = eta.etaText;
+      etaMinutes = eta.etaMinutes;
+    }
   }
 
   // ── SMS ──────────────────────────────────────────────────────────────────
