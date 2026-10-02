@@ -15,6 +15,7 @@ import {
   Trash2,
   Camera,
   ImagePlus,
+  Upload,
 } from "lucide-react";
 import {
   type InspectionReportDoc,
@@ -133,6 +134,8 @@ function SectionPhotos({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
 
   const mine = photos.filter((p) => isInspectionSectionPhoto(p.name, roomId, section));
@@ -140,6 +143,7 @@ function SectionPhotos({
   async function upload(files: FileList | null) {
     if (!files || files.length === 0) return;
     setBusy(true);
+    setUploadCount(files.length);
     setError("");
     try {
       const formData = new FormData();
@@ -166,6 +170,7 @@ function SectionPhotos({
       if (cameraRef.current) cameraRef.current.value = "";
       if (galleryRef.current) galleryRef.current.value = "";
       setBusy(false);
+      setUploadCount(0);
     }
   }
 
@@ -194,17 +199,29 @@ function SectionPhotos({
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-      <div className="flex items-center justify-between gap-2 mb-2">
+    <div
+      onDragOver={(e) => { e.preventDefault(); if (!readOnly) setIsDragging(true); }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (!readOnly && !busy && e.dataTransfer.files) upload(e.dataTransfer.files);
+      }}
+      className={`mt-4 rounded-lg border transition-colors p-3 ${
+        isDragging ? "border-[#1a6060] bg-teal-50/70" : "border-slate-200 bg-slate-50/60"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
           {label} Photos {mine.length > 0 && <span className="text-[#1a6060]">({mine.length})</span>}
         </div>
         {!readOnly && (
-          <div className="no-print flex items-center gap-1.5">
+          <div className="no-print flex items-center gap-1.5 flex-wrap">
             <input
               ref={cameraRef}
               type="file"
-              accept="image/*"
+              accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              multiple
               capture="environment"
               className="hidden"
               onChange={(e) => upload(e.target.files)}
@@ -212,7 +229,7 @@ function SectionPhotos({
             <input
               ref={galleryRef}
               type="file"
-              accept="image/*"
+              accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
               multiple
               className="hidden"
               onChange={(e) => upload(e.target.files)}
@@ -220,19 +237,30 @@ function SectionPhotos({
             <button
               type="button"
               disabled={busy}
-              onClick={() => cameraRef.current?.click()}
-              className="px-2.5 py-1 rounded bg-[#1a6060] text-white text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-[#164f4f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              onClick={() => galleryRef.current?.click()}
+              className="px-3 py-1 rounded bg-[#1a6060] text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer hover:bg-[#164f4f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-2xs"
             >
-              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-              Take Photo
+              {busy ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Uploading {uploadCount > 0 ? `${uploadCount} ` : ""}photos...</span>
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="w-3.5 h-3.5" />
+                  <span>+ Select Multiple Photos</span>
+                </>
+              )}
             </button>
             <button
               type="button"
               disabled={busy}
-              onClick={() => galleryRef.current?.click()}
-              className="px-2.5 py-1 rounded border border-[#1a6060] text-[#1a6060] text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              onClick={() => cameraRef.current?.click()}
+              className="px-2.5 py-1 rounded border border-slate-300 bg-white text-slate-700 text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Take a live photo using camera"
             >
-              <ImagePlus className="w-3.5 h-3.5" /> Upload
+              <Camera className="w-3.5 h-3.5 text-slate-600" />
+              <span>Camera</span>
             </button>
           </div>
         )}
@@ -245,10 +273,25 @@ function SectionPhotos({
       )}
 
       {mine.length === 0 ? (
-        <div className="rounded border border-dashed border-slate-300 bg-white px-2.5 py-2 text-[11px] text-slate-400">
-          {readOnly
-            ? "No photos attached to this section."
-            : "No photos yet — use Take Photo on site, or Upload from this device."}
+        <div
+          onClick={() => !readOnly && !busy && galleryRef.current?.click()}
+          className={`rounded-lg border-2 border-dashed p-4 text-center transition-all ${
+            isDragging
+              ? "border-[#1a6060] bg-teal-50"
+              : "border-slate-300 bg-white hover:border-[#1a6060] hover:bg-slate-50 cursor-pointer"
+          }`}
+        >
+          <div className="flex flex-col items-center justify-center gap-1 text-slate-500">
+            <Upload className="w-5 h-5 text-[#1a6060]" />
+            <div className="text-xs font-bold text-slate-700">
+              {readOnly ? "No photos attached to this section." : "Click to select or drop multiple photos"}
+            </div>
+            {!readOnly && (
+              <div className="text-[10px] text-slate-400">
+                You can select multiple photos at once from your gallery or files
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">

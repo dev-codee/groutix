@@ -607,22 +607,6 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
               </div>
             )}
             </div>
-
-            {/* Map panel — always shown alongside the timeline */}
-            <div className="w-96 shrink-0 border-l border-slate-200 relative">
-              <DispatchMap
-                items={mapItems}
-                hqAddress={HQ_ADDRESS}
-                selectedLeadId={selectedLeadId}
-                onSelectLead={(id) => setSelectedLeadId(id === selectedLeadId ? null : id)}
-              >
-                <div className="absolute bottom-3 left-3 z-10 bg-white/95 border border-slate-200 rounded-xl px-3 py-2 shadow-sm flex items-center gap-3 text-[10px] font-bold text-slate-600">
-                  <span className="flex items-center gap-1"><Home className="w-3 h-3 text-slate-700" />Base</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Inspection</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Job</span>
-                </div>
-              </DispatchMap>
-            </div>
           </div>
         )}
 

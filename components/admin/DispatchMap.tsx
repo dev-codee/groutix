@@ -77,8 +77,6 @@ function homeIcon(g: typeof google): google.maps.Icon {
   };
 }
 
-const geocodeCache = new Map<string, google.maps.LatLngLiteral>();
-
 // A small, fully custom map label — deliberately not a google.maps.InfoWindow.
 // InfoWindows ship ~14px of default chrome/padding per instance and there's no
 // reliable way to scope a CSS override to one of several open at once (they
@@ -271,93 +269,93 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
       markersRef.current.push(marker);
     };
 
-    const validItems = items.filter((item) => {
-      const addr = item.lead?.address?.trim();
-      return Boolean(addr && addr.length > 2);
-    });
-
-    if (validItems.length === 0) {
+    if (items.length === 0) {
       addHomeMarker(HQ_CENTER);
       map.setCenter(HQ_CENTER);
       map.setZoom(12);
       return;
     }
 
-    const directionsService = new g.maps.DirectionsService();
-    const waypoints = validItems.slice(0, -1).map((item) => ({ location: fullAddress(item.lead), stopover: true }));
-    const destination = fullAddress(validItems[validItems.length - 1].lead);
+    // Geocode all stops individually and place pins — this is the guaranteed
+    // fallback that always shows every job/inspection on the map, regardless of
+    // whether the Directions API can build a route between them. Unassigned jobs,
+    // jobs in areas the Directions API can't route, or quota-exceeded responses
+    // previously wiped all markers. Now we geocode first, then attempt to overlay
+    // a driving route on top as a bonus.
+    const geocoder = new g.maps.Geocoder();
+    const geocodeStop = (addr: string): Promise<google.maps.LatLngLiteral | null> =>
+      new Promise((resolve) => {
+        geocoder.geocode({ address: addr, componentRestrictions: { country: "AU" } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
+          if (status === "OK" && results?.[0]) {
+            const loc = results[0].geometry.location;
+            resolve({ lat: loc.lat(), lng: loc.lng() });
+          } else {
+            resolve(null);
+          }
+        });
+      });
 
-    directionsService.route(
-      {
-        origin: hqAddress,
-        destination,
-        waypoints,
-        optimizeWaypoints: false,
-        travelMode: g.maps.TravelMode.DRIVING,
-      },
-      (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
-        if (status === "OK" && result?.routes?.[0]?.legs) {
-          directionsRendererRef.current?.setDirections(result);
-          const legs = result.routes[0].legs;
-          const bounds = new g.maps.LatLngBounds();
-          const startLoc = legs[0].start_location;
-          addHomeMarker(startLoc);
-          bounds.extend(startLoc);
+    // Geocode HQ + all stops in parallel, then place pins and attempt the route.
+    Promise.all([
+      geocodeStop(hqAddress),
+      ...items.map((item) => geocodeStop(fullAddress(item.lead))),
+    ]).then((positions) => {
+      const [hqPos, ...stopPositions] = positions;
+      const bounds = new g.maps.LatLngBounds();
 
-          legs.forEach((leg: google.maps.DirectionsLeg, i: number) => {
-            const item = validItems[i];
-            if (!item) return;
-            addStopMarker(leg.end_location, i, item);
-            bounds.extend(leg.end_location);
-            geocodeCache.set(fullAddress(item.lead), { lat: leg.end_location.lat(), lng: leg.end_location.lng() });
-          });
+      // Place HQ marker
+      const hqLatLng = hqPos ?? HQ_CENTER;
+      addHomeMarker(hqLatLng);
+      bounds.extend(hqLatLng);
 
-          map.fitBounds(bounds, 64);
-          setError(null);
-        } else {
-          // If Directions API fails (e.g. invalid waypoint), fallback to sequential geocoded pins
-          const geocoder = new g.maps.Geocoder();
-          const bounds = new g.maps.LatLngBounds();
-          addHomeMarker(HQ_CENTER);
-          bounds.extend(HQ_CENTER);
+      // Place a pin for every stop that geocoded successfully
+      stopPositions.forEach((pos, i) => {
+        if (!pos) return; // skip ungeocodable addresses but keep others
+        addStopMarker(pos, i, items[i]);
+        bounds.extend(pos);
+      });
 
-          (async () => {
-            for (let i = 0; i < validItems.length; i++) {
-              const item = validItems[i];
-              const addr = fullAddress(item.lead);
-              let coord: google.maps.LatLngLiteral | null = null;
-              if (item.lead.gps?.lat && item.lead.gps?.lng) {
-                coord = { lat: item.lead.gps.lat, lng: item.lead.gps.lng };
-              } else if (geocodeCache.has(addr)) {
-                coord = geocodeCache.get(addr)!;
-              } else {
-                coord = await new Promise((resolve) => {
-                  geocoder.geocode({ address: addr, componentRestrictions: { country: "AU" } }, (res: google.maps.GeocoderResult[] | null, st: google.maps.GeocoderStatus) => {
-                    if (st === "OK" && res?.[0]) {
-                      const loc = res[0].geometry.location;
-                      const c = { lat: loc.lat(), lng: loc.lng() };
-                      geocodeCache.set(addr, c);
-                      resolve(c);
-                    } else {
-                      resolve(null);
-                    }
-                  });
-                });
-                await new Promise((r) => setTimeout(r, 120));
-              }
-
-              if (coord) {
-                addStopMarker(coord, i, item);
-                bounds.extend(coord);
-              }
-            }
-            if (!bounds.isEmpty()) {
-              map.fitBounds(bounds, 64);
-            }
-          })();
-        }
+      // Fit map to all placed pins
+      if (bounds.isEmpty()) {
+        map.setCenter(HQ_CENTER);
+        map.setZoom(12);
+      } else {
+        map.fitBounds(bounds, 64);
       }
-    );
+
+      // Now try to overlay a driving route on top of the individual pins.
+      // If it fails (quota, bad address, too many waypoints) the pins already
+      // placed above remain — the map never goes blank.
+      const validItems = items.filter((_, i) => stopPositions[i] !== null);
+      if (validItems.length === 0) {
+        setError(null);
+        return;
+      }
+
+      const directionsService = new g.maps.DirectionsService();
+      const waypoints = validItems.slice(0, -1).map((item) => ({ location: fullAddress(item.lead), stopover: true }));
+      const destination = fullAddress(validItems[validItems.length - 1].lead);
+
+      directionsService.route(
+        {
+          origin: hqAddress,
+          destination,
+          waypoints,
+          optimizeWaypoints: false,
+          travelMode: g.maps.TravelMode.DRIVING,
+        },
+        (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+          if (status !== "OK" || !result) {
+            // Route failed — pins are already on the map, just clear any stale route polyline
+            directionsRendererRef.current?.set("directions", null);
+            setError(null); // pins are showing, no need to alarm
+            return;
+          }
+          setError(null);
+          directionsRendererRef.current?.setDirections(result);
+        }
+      );
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuild is keyed on itemsKey (content), not the items array reference
   }, [ready, itemsKey, hqAddress, apiKey]);
 
