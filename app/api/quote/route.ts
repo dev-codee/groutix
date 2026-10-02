@@ -387,6 +387,10 @@ export async function POST(req: NextRequest) {
   });
 
   // 1b) If customer selected an inspection slot, book it immediately (only if within 50km service area)
+  // Tracks whether that actually succeeded: a slot can be requested but not
+  // secured (outside the service area, or another customer took it first), and
+  // those customers still need the self-booking link.
+  let inspectionSelfBooked = false;
   if (submissionId && inspectionDate && inspectionTime) {
     try {
       const area = resolveArea(address);
@@ -403,6 +407,7 @@ export async function POST(req: NextRequest) {
           reference: jobNo,
         });
         if (lock.ok) {
+          inspectionSelfBooked = true;
           // Store the NAIVE Melbourne wall-clock the customer picked (e.g.
           // "2026-09-16T12:00"), matching the /api/book flow. Never run it through
           // new Date().toISOString() — on a UTC server that reinterprets the local
@@ -497,24 +502,23 @@ export async function POST(req: NextRequest) {
          </div>`
       : `<div style="font-size:13px;color:#64748b;margin-top:6px;">Inspections run ${esc(inspectionDaysText(bookingRules))}, ${esc(inspectionHoursText)} — pick a slot on the booking page.</div>`;
 
-    // Inspection self-booking card. Rendered only when SHOW_INSPECTION_BOOKING is
-    // true (currently disabled — see the flag near the top of this file).
-    const inspectionBookingHtml = `
+    // Inspection self-booking card. Shown only when SHOW_INSPECTION_BOOKING is on
+    // AND the form did not already secure a slot — there is no point asking a
+    // customer to book an inspection they have just booked.
+    const showBookingCta = SHOW_INSPECTION_BOOKING && !inspectionSelfBooked && Boolean(bookingUrl);
+    const inspectionBookingHtml = !showBookingCta ? "" : `
       <div style="margin:24px 0;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
         <h3 style="margin:0 0 14px;color:#001f97;font-size:17px;font-weight:700;">Book your free Inspection</h3>
-        ${
-          bookingUrl
-            ? `<table cellpadding="0" cellspacing="0">
-                 <tr>
-                   <td>
-                     <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;text-align:center;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
-                       Book Your Free Inspection
-                     </a>
-                   </td>
-                 </tr>
-               </table>`
-            : ""
-        }
+        <table cellpadding="0" cellspacing="0">
+          <tr>
+            <td>
+              <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;text-align:center;box-shadow:0 2px 4px rgba(0,31,151,0.2);">
+                Book Your Free Inspection
+              </a>
+            </td>
+          </tr>
+        </table>
+        ${availableDaysHtml}
       </div>`;
 
     const customerHtml = `
@@ -538,6 +542,8 @@ export async function POST(req: NextRequest) {
           : ""
       }
 
+      ${inspectionBookingHtml}
+
       <p style="margin:28px 0 0;font-size:16px;font-weight:700;color:#001f97;">
         Stay Sealed. Stay Smiling.
       </p>`;
@@ -560,7 +566,9 @@ export async function POST(req: NextRequest) {
     if (phone) {
       // Short self-booking link so the customer can pick (or change) their
       // inspection slot straight from the text.
-      const smsBookingUrl = submissionId ? buildBookingSmsUrl(submissionId, "inspection") : "";
+      const smsBookingUrl = showBookingCta && submissionId
+        ? buildBookingSmsUrl(submissionId, "inspection")
+        : "";
       const bookingLine = smsBookingUrl
         ? `\n\nBook or change your free inspection time:\n${smsBookingUrl}`
         : "";
