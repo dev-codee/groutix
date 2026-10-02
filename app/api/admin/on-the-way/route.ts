@@ -5,6 +5,7 @@ import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { geocodeAddress } from "@/lib/geocode";
 
 export const runtime = "nodejs";
 
@@ -31,75 +32,6 @@ function minutesFromStraightLine(distKm: number): number {
   // An estimate, not a measured route — round to 5 minutes so it does not read
   // as more precise than it is.
   return Math.max(5, Math.round(raw / 5) * 5);
-}
-
-/**
- * Resolve an address to coordinates.
- *
- * Tries the Geocoding API first, then Places Text Search. They are separate
- * products in Google Cloud and a key may be authorized for one and not the
- * other, so trying both keeps the ETA working whichever one is enabled.
- */
-async function geocodeAddress(
-  address: string,
-  apiKey: string
-): Promise<{ lat: number; lng: number } | null> {
-  return (
-    (await geocodeViaGeocodingApi(address, apiKey)) ??
-    (await geocodeViaPlacesSearch(address, apiKey))
-  );
-}
-
-async function geocodeViaGeocodingApi(
-  address: string,
-  apiKey: string
-): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("address", address);
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("components", "country:AU");
-    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data?.status !== "OK" || !data.results?.[0]) {
-      console.warn("[on-the-way] Geocoding failed:", data?.status, data?.error_message || "");
-      return null;
-    }
-    const loc = data.results[0].geometry?.location;
-    if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") return null;
-    return { lat: loc.lat, lng: loc.lng };
-  } catch {
-    return null;
-  }
-}
-
-async function geocodeViaPlacesSearch(
-  address: string,
-  apiKey: string
-): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "places.location",
-      },
-      body: JSON.stringify({ textQuery: address, regionCode: "AU" }),
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) {
-      console.warn("[on-the-way] Places text search failed:", res.status);
-      return null;
-    }
-    const data = await res.json();
-    const loc = data?.places?.[0]?.location;
-    if (typeof loc?.latitude !== "number" || typeof loc?.longitude !== "number") return null;
-    return { lat: loc.latitude, lng: loc.longitude };
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -149,7 +81,7 @@ async function calculateEta(
   }
 
   // Fallback: straight-line distance to the customer's own address.
-  const dest = await geocodeAddress(destinationAddress, apiKey);
+  const dest = await geocodeAddress(destinationAddress);
   if (!dest) return null;
   const minutes = minutesFromStraightLine(
     haversineKm(staffLat, staffLng, dest.lat, dest.lng)

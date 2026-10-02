@@ -282,8 +282,13 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
     // jobs in areas the Directions API can't route, or quota-exceeded responses
     // previously wiped all markers. Now we geocode first, then attempt to overlay
     // a driving route on top as a bonus.
+    // Geocode server-side: the browser Geocoder needs the Geocoding API enabled
+    // on the public Maps key, and when it is not, every stop silently resolves
+    // to null and the map shows nothing but the base pin. The server route can
+    // fall back to Places Text Search. The browser Geocoder stays as a backup
+    // in case the route itself is unreachable.
     const geocoder = new g.maps.Geocoder();
-    const geocodeStop = (addr: string): Promise<google.maps.LatLngLiteral | null> =>
+    const geocodeStopInBrowser = (addr: string): Promise<google.maps.LatLngLiteral | null> =>
       new Promise((resolve) => {
         geocoder.geocode({ address: addr, componentRestrictions: { country: "AU" } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
           if (status === "OK" && results?.[0]) {
@@ -295,11 +300,31 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
         });
       });
 
-    // Geocode HQ + all stops in parallel, then place pins and attempt the route.
-    Promise.all([
-      geocodeStop(hqAddress),
-      ...items.map((item) => geocodeStop(fullAddress(item.lead))),
-    ]).then((positions) => {
+    const geocodeAll = async (addresses: string[]): Promise<(google.maps.LatLngLiteral | null)[]> => {
+      try {
+        const res = await fetch("/api/admin/geocode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addresses }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data?.results) && data.results.length === addresses.length) {
+            return data.results.map((r: { lat?: number; lng?: number } | null) =>
+              r && typeof r.lat === "number" && typeof r.lng === "number"
+                ? { lat: r.lat, lng: r.lng }
+                : null
+            );
+          }
+        }
+      } catch {
+        // fall through to the browser geocoder
+      }
+      return Promise.all(addresses.map(geocodeStopInBrowser));
+    };
+
+    // Geocode HQ + all stops, then place pins and attempt the route.
+    geocodeAll([hqAddress, ...items.map((item) => fullAddress(item.lead))]).then((positions) => {
       const [hqPos, ...stopPositions] = positions;
       const bounds = new g.maps.LatLngBounds();
 
@@ -315,30 +340,42 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
         bounds.extend(pos);
       });
 
-      // Fit map to all placed pins
-      if (bounds.isEmpty()) {
-        map.setCenter(HQ_CENTER);
+      // Fit map to all placed pins. With only the base pin there is nothing to
+      // fit — fitBounds on a single point zooms to street level and hides the
+      // fact that no stop could be placed.
+      const placedCount = stopPositions.filter(Boolean).length;
+      if (bounds.isEmpty() || placedCount === 0) {
+        map.setCenter(hqLatLng);
         map.setZoom(12);
       } else {
         map.fitBounds(bounds, 64);
       }
 
+      // A stop that cannot be placed is invisible to the dispatcher, so say so
+      // rather than quietly drawing a map that looks fine.
+      const geocodeNotice =
+        placedCount === 0
+          ? "Could not place any stop on the map — check the addresses and that the Maps key can geocode."
+          : placedCount < items.length
+            ? `${items.length - placedCount} of ${items.length} addresses could not be placed on the map.`
+            : null;
+      setError(geocodeNotice);
+
       // Now try to overlay a driving route on top of the individual pins.
       // If it fails (quota, bad address, too many waypoints) the pins already
       // placed above remain — the map never goes blank.
-      const validItems = items.filter((_, i) => stopPositions[i] !== null);
-      if (validItems.length === 0) {
-        setError(null);
-        return;
-      }
+      const validStops = stopPositions.filter((p): p is google.maps.LatLngLiteral => p !== null);
+      if (validStops.length === 0) return;
 
+      // Route on the coordinates we just resolved rather than the raw address
+      // strings, so Directions does not have to geocode them all over again.
       const directionsService = new g.maps.DirectionsService();
-      const waypoints = validItems.slice(0, -1).map((item) => ({ location: fullAddress(item.lead), stopover: true }));
-      const destination = fullAddress(validItems[validItems.length - 1].lead);
+      const waypoints = validStops.slice(0, -1).map((pos) => ({ location: pos, stopover: true }));
+      const destination = validStops[validStops.length - 1];
 
       directionsService.route(
         {
-          origin: hqAddress,
+          origin: hqLatLng,
           destination,
           waypoints,
           optimizeWaypoints: false,
@@ -348,10 +385,10 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
           if (status !== "OK" || !result) {
             // Route failed — pins are already on the map, just clear any stale route polyline
             directionsRendererRef.current?.set("directions", null);
-            setError(null); // pins are showing, no need to alarm
+            setError(geocodeNotice); // pins are showing, no need to alarm
             return;
           }
-          setError(null);
+          setError(geocodeNotice);
           directionsRendererRef.current?.setDirections(result);
         }
       );
