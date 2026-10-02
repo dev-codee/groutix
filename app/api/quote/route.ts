@@ -8,6 +8,7 @@ import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
 import { resolveArea, getAvailableDaysSummary, computeAvailability, isSlotOffered, inspectionDaysText } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking, isSlotTaken } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
+import { getZoneRules } from "@/lib/zoneRulesServer";
 import { formatHHmm, hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
 import { updateSubmission, appendActivity, getNextJobNo } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
@@ -187,10 +188,11 @@ export async function POST(req: NextRequest) {
   // the form sits open, so we re-check here and reject an already-taken slot with
   // a clear message instead of silently accepting it and forcing staff to adjust.
   const bookingRules = await getBookingRules();
+  const zoneRules = await getZoneRules();
   if (inspectionDate && inspectionTime) {
-    const inspectionArea = resolveArea(address);
-    if (inspectionArea.serviced && inspectionArea.zone !== "outside") {
-      if (!isSlotOffered(inspectionArea, inspectionDate, inspectionTime, "inspection", bookingRules)) {
+    const inspectionArea = resolveArea(address, zoneRules);
+    if (inspectionArea.serviced) {
+      if (!isSlotOffered(inspectionArea, inspectionDate, inspectionTime, "inspection", bookingRules, zoneRules)) {
         return NextResponse.json(
           { error: "The inspection time you selected is no longer available. Please pick another slot.", slotConflict: true },
           { status: 409 }
@@ -393,8 +395,8 @@ export async function POST(req: NextRequest) {
   let inspectionSelfBooked = false;
   if (submissionId && inspectionDate && inspectionTime) {
     try {
-      const area = resolveArea(address);
-      if (area.serviced && area.zone !== "outside") {
+      const area = resolveArea(address, zoneRules);
+      if (area.serviced) {
         const jobNo = await getNextJobNo();
         await updateSubmission(submissionId, { jobNo });
         const lock = await createBooking({
@@ -463,8 +465,8 @@ export async function POST(req: NextRequest) {
     const CONTACT_PHONE =
       (await getSiteContent().catch(() => null))?.business.phone || DEFAULT_CONTACT_PHONE;
 
-    const area = resolveArea(address || city);
-    const daysSummary = getAvailableDaysSummary(area, bookingRules);
+    const area = resolveArea(address || city, zoneRules);
+    const daysSummary = getAvailableDaysSummary(area, bookingRules, zoneRules);
     const bookingUrl = submissionId ? buildBookingUrl(submissionId, "inspection") : "";
 
     // Compute the customer's real bookable days/times using the SAME scheduling
@@ -480,7 +482,7 @@ export async function POST(req: NextRequest) {
         bookedByDate.get(b.date)!.add(b.time);
         if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
       }
-      availableDays = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", bookingRules)
+      availableDays = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", bookingRules, zoneRules)
         .slice(0, 5)
         .map((d) => ({ label: d.label, times: d.times }));
     } catch (err) {

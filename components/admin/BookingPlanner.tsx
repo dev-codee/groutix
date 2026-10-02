@@ -7,7 +7,8 @@ import type { Lead } from "@/components/admin/types";
 import type { DayAppointment } from "@/lib/bookings";
 import { WEEKDAY_SHORT, formatHHmm, slotsForDate, type BookingType } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
-import { melbourneYmd } from "@/lib/scheduling";
+import { melbourneYmd, resolveArea, isZoneDate, zoneDayName, ZONE_COLOR, ZONE_SHORT } from "@/lib/scheduling";
+import { useZoneRules } from "@/lib/useZoneRules";
 import {
   distanceFromBase,
   driveMinutes,
@@ -61,6 +62,8 @@ interface DaySummary {
   free: string[];
   best: SlotFit | null;
   nearest: { stop: PlannerStop; km: number } | null;
+  /** Outside this customer's day-wise zone day — bookable, but off-route. */
+  offZone: boolean;
 }
 
 export function BookingPlanner({
@@ -77,6 +80,7 @@ export function BookingPlanner({
   onClose: () => void;
 }) {
   const rules = useBookingRules();
+  const zoneRules = useZoneRules();
   const today = melbourneYmd();
   const firstDay = useMemo(() => {
     const byNotice = addDays(today, Math.max(rules.minNoticeDays, 0));
@@ -86,6 +90,15 @@ export function BookingPlanner({
 
   const target = useMemo(() => locate(lead.address) ?? locate(lead.city), [lead.address, lead.city]);
   const customerLabel = target?.label || lead.city || "Unknown suburb";
+
+  // Day-wise zoning for this address. Staff may still book off-zone (Key Rule 10
+  // allows a manual override) — we surface it rather than block it.
+  const area = useMemo(
+    () => resolveArea(lead.address || lead.city, zoneRules),
+    [lead.address, lead.city, zoneRules]
+  );
+  const zoneDay = zoneDayName(area.zone, zoneRules);
+  const zoneStyle = ZONE_COLOR[area.zone];
 
   // ── Load every appointment in the window (one request) ──
   const [tick, setTick] = useState(0);
@@ -128,15 +141,27 @@ export function BookingPlanner({
           if (better) best = f;
         }
       }
-      out.push({ date: d, stops, free, best, nearest: target ? nearestStop(target, stops) : null });
+      out.push({
+        date: d,
+        stops,
+        free,
+        best,
+        nearest: target ? nearestStop(target, stops) : null,
+        offZone: !isZoneDate(area.zone, d, zoneRules),
+      });
     }
     return out;
-  }, [appts, firstDay, lastDay, rules, type, lead.id, target, today]);
+  }, [appts, firstDay, lastDay, rules, type, lead.id, target, today, area.zone, zoneRules]);
 
   // Top 3 days by route fit (days with existing nearby stops beat empty days).
   const topDays = useMemo(() => {
-    const rank = (s: DaySummary) =>
-      !s.free.length || !s.best ? Infinity : s.best.fit === "empty" ? 1000 + s.best.detourKm : s.best.detourKm + (s.best.tight ? 50 : 0);
+    const rank = (s: DaySummary) => {
+      if (!s.free.length || !s.best) return Infinity;
+      const base = s.best.fit === "empty" ? 1000 + s.best.detourKm : s.best.detourKm + (s.best.tight ? 50 : 0);
+      // An off-zone day means a special trip across Melbourne — never a top pick
+      // while any on-zone day is available.
+      return s.offZone ? base + 10000 : base;
+    };
     return new Set(
       [...days].filter((s) => rank(s) < Infinity).sort((a, b) => rank(a) - rank(b)).slice(0, 3).map((s) => s.date)
     );
@@ -204,6 +229,22 @@ export function BookingPlanner({
           </button>
         </div>
 
+        <div className={`mx-4 mt-3 p-2.5 rounded-xl border flex flex-wrap items-center gap-x-2 gap-y-1 ${zoneStyle.bg} border-slate-200`}>
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${zoneStyle.dot}`} />
+          <span className={`font-black ${zoneStyle.text}`}>{ZONE_SHORT[area.zone]}</span>
+          {area.distanceKm != null && <span className="text-slate-500">· {Math.round(area.distanceKm)} km from base</span>}
+          <span className="text-slate-600">
+            {zoneDay
+              ? <>· routed on <span className="font-bold">{zoneDay}</span></>
+              : area.inner
+              ? "· inside the daily-flex circle — any open day"
+              : area.serviced
+              ? "· any open day"
+              : "· outside the service area"}
+          </span>
+          {zoneDay && <span className="text-slate-400 ml-auto">Other days are still bookable as a manual override.</span>}
+        </div>
+
         {!target && (
           <div className="mx-4 mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -240,6 +281,11 @@ export function BookingPlanner({
                         {topDays.has(d.date) && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 ml-auto" aria-label="Top pick" />}
                       </div>
                       <div className="text-[10px] text-slate-500">{d.free.length} free · {d.stops.length} booked</div>
+                      {d.offZone && (
+                        <div className="mt-0.5 text-[10px] font-bold text-amber-700 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" /> Off-zone
+                        </div>
+                      )}
                       {fit && d.free.length > 0 && (
                         <div className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-slate-700">
                           <span className={`w-2 h-2 rounded-full ${FIT_STYLE[fit].dot}`} />
@@ -261,6 +307,15 @@ export function BookingPlanner({
             {/* Body: timeline + map */}
             <div className="flex-1 min-h-0 flex flex-col lg:flex-row border-t border-slate-100">
               <div className="lg:w-[400px] shrink-0 overflow-y-auto p-3 space-y-1.5 max-h-[45vh] lg:max-h-none">
+                {selectedDay?.offZone && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+                    <span>
+                      This day is outside {customerLabel}&apos;s zone{zoneDay ? <> — we normally route there on <span className="font-bold">{zoneDay}</span></> : null}.
+                      Booking it means a special trip. You can still do it if the customer needs this day.
+                    </span>
+                  </div>
+                )}
                 {timeline.length === 0 && <p className="text-slate-400 p-2">Nothing on this day.</p>}
                 {timeline.map((row) => {
                   if (row.kind === "stop") {

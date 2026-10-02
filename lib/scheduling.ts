@@ -40,6 +40,43 @@ import {
   type BookingRules,
   type BookingType,
 } from "./bookingRules";
+import {
+  DEFAULT_ZONE_RULES,
+  ZONE_DIRECTION,
+  isOuterZone,
+  isZoneDay,
+  sectorZoneFromBearing,
+  zoneDayName,
+  zoneLabel,
+  zoneWeekday,
+  type OuterZone,
+  type Zone,
+  type ZoneRules,
+} from "./zoneRules";
+
+// Zone taxonomy, sectors, labels and the day-wise gate live in lib/zoneRules.ts so
+// that module stays dependency-free and manager-editable. Re-exported here because
+// most callers want scheduling + zoning from one place.
+export {
+  DEFAULT_ZONE_RULES,
+  OUTER_ZONES,
+  SECTORS,
+  ZONE_COLOR,
+  ZONE_DIRECTION,
+  ZONE_SHORT,
+  isOuterZone,
+  isZoneDay,
+  sanitizeZoneRules,
+  sectorZoneFromBearing,
+  validateZoneRules,
+  zoneDayName,
+  zoneLabel,
+  zoneWeekday,
+  zonesByWeekday,
+  type OuterZone,
+  type Zone,
+  type ZoneRules,
+} from "./zoneRules";
 
 // HQ base location: 82A Marigold Cres, Gowanbrae VIC 3043, Australia (exact
 // street address, not the Tullamarine suburb centroid).
@@ -47,17 +84,22 @@ export const BASE_LOCATION = { lat: -37.6988298, lng: 144.9004405 };
 /** @deprecated Historical name for BASE_LOCATION — kept so existing imports keep working. */
 export const TULLAMARINE = BASE_LOCATION;
 
-/** Inner "daily flex" circle: anywhere this close to base is bookable on any open day. */
-export const DAILY_FLEX_RADIUS_KM = 15;
+// Radii, the day each zone runs on, coastal skips and per-suburb overrides are NOT
+// hard-coded here either — they come from the manager-editable ZoneRules
+// (lib/zoneRules.ts, stored via lib/zoneRulesServer.ts). Server callers pass
+// `await getZoneRules()`; client components use `useZoneRules()`. The constants
+// below are the defaults, kept for callers that don't thread rules through.
+
+/** Default inner "daily flex" circle. @see ZoneRules.flexRadiusKm */
+export const DAILY_FLEX_RADIUS_KM = DEFAULT_ZONE_RULES.flexRadiusKm;
 /** @deprecated Historical name for DAILY_FLEX_RADIUS_KM. */
 export const RADIUS_KM = DAILY_FLEX_RADIUS_KM;
-/** Outer edge of the service area — nothing beyond this is bookable online. */
-export const MAX_INSPECTION_RADIUS_KM = 50;
+/** Default outer edge of the service area. @see ZoneRules.maxRadiusKm */
+export const MAX_INSPECTION_RADIUS_KM = DEFAULT_ZONE_RULES.maxRadiusKm;
 
-// Open days, daily hours, slot length, booking window and closures are NOT
-// hard-coded here — they come from the manager-editable BookingRules
-// (lib/bookingRules.ts, stored via lib/bookingRulesServer.ts). The day-wise zoning
-// below narrows those open days further for outer-area customers.
+// Open days, daily hours, slot length, booking window and closures come from the
+// manager-editable BookingRules (lib/bookingRules.ts). The day-wise zoning below
+// narrows those open days further for outer-area customers.
 
 /** Friendly slot window label: "09:00" → "9:00 AM – 10:00 AM" */
 export function formatSlotRange(t: string, durationMinutes: number = 60): string {
@@ -210,83 +252,41 @@ export function normalizeApptString(value: string | null | undefined): string | 
   return m ? `${m[1]}T${m[2]}:${m[3]}` : s;
 }
 
-export type OuterZone =
-  | "mon_south_west"
-  | "tue_south"
-  | "wed_west"
-  | "thu_north"
-  | "fri_north_east"
-  | "sat_east"
-  | "sun_south_east";
-
-export type Zone = OuterZone | "inner" | "flexible" | "coastal" | "outside";
-
 export interface AreaInfo {
   suburb: string | null;
   zone: Zone;
   distanceKm: number | null;
-  /** True when the address sits in the 0–15 km daily-flex circle (any open day). */
+  /** True when the address sits in the daily-flex circle (bookable any open day). */
   inner: boolean;
-  /** True when we service the address at all (inside 50 km and not a coastal skip). */
+  /** True when we service the address at all (inside the radius, not a coastal skip). */
   serviced: boolean;
   label: string;
 }
 
+/**
+ * Static zone labels built from the default rules. Prefer `zoneLabel(zone, rules)`
+ * when you have the manager's live rules — these read the defaults.
+ */
 export const ZONE_LABEL: Record<Zone, string> = {
-  inner: "Daily Flex Area (0 – 15 km from base) — any day",
-  mon_south_west: "South-West (15 – 50 km) — Mondays",
-  tue_south: "South (15 – 50 km) — Tuesdays",
-  wed_west: "West (15 – 50 km) — Wednesdays",
-  thu_north: "North (15 – 50 km) — Thursdays",
-  fri_north_east: "North-East (15 – 50 km) — Fridays",
-  sat_east: "East (15 – 50 km) — Saturdays",
-  sun_south_east: "South-East (15 – 50 km) — Sundays",
-  flexible: "Greater Melbourne",
-  coastal: "Coastal / Ocean area — not serviced",
-  outside: "Outside 50 km Service Area (from base)",
-};
-
-/** Short zone name for admin lists and route summaries. */
-export const ZONE_SHORT: Record<Zone, string> = {
-  inner: "Daily Flex",
-  mon_south_west: "South-West",
-  tue_south: "South",
-  wed_west: "West",
-  thu_north: "North",
-  fri_north_east: "North-East",
-  sat_east: "East",
-  sun_south_east: "South-East",
-  flexible: "Greater Melb",
-  coastal: "Coastal (skip)",
-  outside: "Outside area",
-};
-
-/** The one weekday each outer zone is serviced on (0 = Sunday … 6 = Saturday). */
-export const ZONE_WEEKDAY: Record<OuterZone, number> = {
-  sun_south_east: 0,
-  mon_south_west: 1,
-  tue_south: 2,
-  wed_west: 3,
-  thu_north: 4,
-  fri_north_east: 5,
-  sat_east: 6,
+  inner: zoneLabel("inner"),
+  mon_south_west: zoneLabel("mon_south_west"),
+  tue_south: zoneLabel("tue_south"),
+  wed_west: zoneLabel("wed_west"),
+  thu_north: zoneLabel("thu_north"),
+  fri_north_east: zoneLabel("fri_north_east"),
+  sat_east: zoneLabel("sat_east"),
+  sun_south_east: zoneLabel("sun_south_east"),
+  flexible: zoneLabel("flexible"),
+  coastal: zoneLabel("coastal"),
+  outside: zoneLabel("outside"),
 };
 
 /**
- * The seven outer sectors as compass bearings from base, clockwise from North.
- * Each entry is the exclusive upper bound of that sector; the list is scanned in
- * order and `thu_north` wraps around 0°. The cuts were chosen so every suburb the
- * routing plan names lands in the zone the plan assigns it to.
+ * The weekday each outer zone runs on by default.
+ * @deprecated Read `rules.zoneDays` / `zoneWeekday(zone, rules)` instead, so
+ * manager changes are honoured.
  */
-const SECTORS: { untilDeg: number; zone: OuterZone }[] = [
-  { untilDeg: 45, zone: "thu_north" },        // 340° – 45°   N
-  { untilDeg: 95, zone: "fri_north_east" },   //  45° – 95°   NE
-  { untilDeg: 125, zone: "sat_east" },        //  95° – 125°  E
-  { untilDeg: 147, zone: "sun_south_east" },  // 125° – 147°  SE
-  { untilDeg: 185, zone: "tue_south" },       // 147° – 185°  S
-  { untilDeg: 228, zone: "mon_south_west" },  // 185° – 228°  SW
-  { untilDeg: 340, zone: "wed_west" },        // 228° – 340°  W
-];
+export const ZONE_WEEKDAY: Record<OuterZone, number> = DEFAULT_ZONE_RULES.zoneDays;
 
 /** Initial bearing (degrees clockwise from North) from base to a point. */
 export function bearingFromBase(to: { lat: number; lng: number }): number {
@@ -300,44 +300,21 @@ export function bearingFromBase(to: { lat: number; lng: number }): number {
 
 /** Which day-wise outer zone a point falls in, by its compass sector from base. */
 export function sectorZone(to: { lat: number; lng: number }): OuterZone {
-  const b = bearingFromBase(to);
-  for (const s of SECTORS) if (b < s.untilDeg) return s.zone;
-  return "thu_north"; // 340° – 360° wraps back into North
+  return sectorZoneFromBearing(bearingFromBase(to));
 }
 
 /**
- * Coastal / Southern Ocean suburbs we skip entirely (plan: "No Coastal/Southern
- * Ocean Area"). These are beachfront or peninsula suburbs where the job mix isn't
- * worth the drive; the inland neighbours listed in the plan — Altona, Hampton,
- * Brighton East, Cheltenham, Elsternwick, Williamstown's inland streets — stay
- * serviceable and are deliberately NOT in this set.
+ * Coastal / Southern Ocean suburbs skipped by the DEFAULT rules. Prefer
+ * `rules.coastalExcluded` when you have the manager's live rules — managers can
+ * add or remove suburbs from Settings → Service Zones.
  */
-export const COASTAL_EXCLUDED = new Set([
-  // Inner bay strip
-  "port melbourne", "albert park", "middle park", "st kilda", "elwood",
-  "brighton", "sandringham", "black rock", "beaumaris",
-  // Bayside south
-  "mentone", "parkdale", "mordialloc", "aspendale", "edithvale", "chelsea",
-  "bonbeach", "patterson lakes", "carrum", "seaford",
-  // Western shoreline
-  "williamstown", "seaholme", "werribee south",
-  // Mornington Peninsula
-  "frankston", "mount eliza", "mornington", "dromana", "rosebud", "rye",
-  "blairgowrie", "sorrento", "portsea", "cape schanck",
-  // Bellarine Peninsula
-  "queenscliff", "st leonards", "indented head", "ocean grove",
-]);
+export const COASTAL_EXCLUDED = new Set(DEFAULT_ZONE_RULES.coastalExcluded);
 
-// Melbourne suburb centroids and the day-wise outer zone each one belongs to.
-// `outerZone` only takes effect beyond the 15 km daily-flex circle, and is this
-// table that resolveArea()/resolveAreaByCoords() read — so it is the single source
-// of truth for which day a suburb is visited on.
-//
-// Values are the suburb's compass sector from base (see sectorZone()), except for
-// the Oakleigh/Clarinda pocket: the routing plan's Day-wise Zone table lists those
-// under Tuesday (South) with Bentleigh and Moorabbin, even though they sit a few
-// degrees into the South-East sector. Clayton, Chadstone, Glen Waverley, Mulgrave
-// and Rowville stay on Sunday (South-East) exactly as the plan lists them.
+// Melbourne suburb centroids and the compass sector each one falls in. `outerZone`
+// is pure geometry (see sectorZone()) and only takes effect beyond the daily-flex
+// circle. Policy exceptions — the routing plan listing Oakleigh and Clarinda under
+// Tuesday/South rather than their South-East sector — are NOT baked in here; they
+// live in ZoneRules.suburbOverrides so a manager can change them without a deploy.
 export const SUBURBS: { name: string; lat: number; lng: number; outerZone: OuterZone }[] = [
   { name: "abbotsford", lat: -37.808, lng: 144.999, outerZone: "sun_south_east" },
   { name: "aberfeldie", lat: -37.76, lng: 144.896, outerZone: "tue_south" },
@@ -419,7 +396,7 @@ export const SUBURBS: { name: string; lat: number; lng: number; outerZone: Outer
   { name: "chelsea", lat: -38.0514, lng: 145.1178, outerZone: "tue_south" },
   { name: "cheltenham", lat: -37.967, lng: 145.056, outerZone: "tue_south" },
   { name: "chirnside park", lat: -37.755, lng: 145.319, outerZone: "sat_east" },
-  { name: "clarinda", lat: -37.9447, lng: 145.1061, outerZone: "tue_south" },
+  { name: "clarinda", lat: -37.9447, lng: 145.1061, outerZone: "sun_south_east" },
   { name: "clarkefield", lat: -37.495, lng: 144.747, outerZone: "wed_west" },
   { name: "clayton", lat: -37.925, lng: 145.121, outerZone: "sun_south_east" },
   { name: "clayton south", lat: -37.9458, lng: 145.1222, outerZone: "sun_south_east" },
@@ -505,8 +482,8 @@ export const SUBURBS: { name: string; lat: number; lng: number; outerZone: Outer
   { name: "highett", lat: -37.9456, lng: 145.0411, outerZone: "tue_south" },
   { name: "hillside", lat: -37.702, lng: 144.762, outerZone: "wed_west" },
   { name: "hoppers crossing", lat: -37.884, lng: 144.7, outerZone: "mon_south_west" },
-  { name: "hughesdale", lat: -37.8953, lng: 145.0836, outerZone: "tue_south" },
-  { name: "huntingdale", lat: -37.9114, lng: 145.1036, outerZone: "tue_south" },
+  { name: "hughesdale", lat: -37.8953, lng: 145.0836, outerZone: "sun_south_east" },
+  { name: "huntingdale", lat: -37.9114, lng: 145.1036, outerZone: "sun_south_east" },
   { name: "indented head", lat: -38.146, lng: 144.71, outerZone: "mon_south_west" },
   { name: "ivanhoe", lat: -37.77, lng: 145.042, outerZone: "sat_east" },
   { name: "ivanhoe east", lat: -37.773, lng: 145.06, outerZone: "sat_east" },
@@ -588,8 +565,8 @@ export const SUBURBS: { name: string; lat: number; lng: number; outerZone: Outer
   { name: "nunawading", lat: -37.819, lng: 145.176, outerZone: "sat_east" },
   { name: "oak park", lat: -37.718, lng: 144.922, outerZone: "sun_south_east" },
   { name: "oaklands junction", lat: -37.607, lng: 144.862, outerZone: "thu_north" },
-  { name: "oakleigh", lat: -37.8997, lng: 145.0886, outerZone: "tue_south" },
-  { name: "oakleigh east", lat: -37.8928, lng: 145.1081, outerZone: "tue_south" },
+  { name: "oakleigh", lat: -37.8997, lng: 145.0886, outerZone: "sun_south_east" },
+  { name: "oakleigh east", lat: -37.8928, lng: 145.1081, outerZone: "sun_south_east" },
   { name: "oakleigh south", lat: -37.9247, lng: 145.0797, outerZone: "tue_south" },
   { name: "ocean grove", lat: -38.267, lng: 144.52, outerZone: "mon_south_west" },
   { name: "officer", lat: -38.062, lng: 145.417, outerZone: "sun_south_east" },
@@ -720,65 +697,109 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
 }
 
 /**
- * Suburbs inside the 0 – 15 km daily-flex circle. Derived from the catalogue
- * rather than hand-maintained, so moving DAILY_FLEX_RADIUS_KM can never leave a
- * stale list behind.
+ * Suburbs inside the DEFAULT daily-flex circle. Derived from the catalogue rather
+ * than hand-maintained, so changing the radius can never leave a stale list.
+ * Prefer `innerSuburbs(rules)` when you have the manager's live rules.
  */
 export const INNER_RADIUS_SUBURBS = new Set(
   SUBURBS.filter((s) => distanceKm(BASE_LOCATION, s) <= DAILY_FLEX_RADIUS_KM).map((s) => s.name)
 );
 
-/** Is this a coastal / ocean suburb the routing plan tells us to skip? */
-export function isCoastalExcluded(suburb: string | null | undefined): boolean {
-  return !!suburb && COASTAL_EXCLUDED.has(suburb);
+/** Suburb names inside the daily-flex circle for a given rule set. */
+export function innerSuburbs(rules: ZoneRules = DEFAULT_ZONE_RULES): Set<string> {
+  return new Set(
+    SUBURBS.filter((s) => distanceKm(BASE_LOCATION, s) <= rules.flexRadiusKm).map((s) => s.name)
+  );
 }
 
-function coastalArea(suburb: string, dist: number | null): AreaInfo {
-  return {
-    suburb,
-    zone: "coastal",
-    distanceKm: dist,
-    inner: false,
-    serviced: false,
-    label: ZONE_LABEL.coastal,
-  };
+/** Is this a coastal / ocean suburb we skip? */
+export function isCoastalExcluded(
+  suburb: string | null | undefined,
+  rules: ZoneRules = DEFAULT_ZONE_RULES
+): boolean {
+  return !!suburb && rules.coastalExcluded.includes(suburb);
 }
 
-/** Build the AreaInfo for a point we know the distance of, applying every plan rule in order. */
-function classify(suburb: string, point: { lat: number; lng: number }, dist: number): AreaInfo {
+/**
+ * The zone a catalogued suburb is serviced in: the manager's override if one is
+ * set, else its compass sector from the catalogue.
+ */
+export function zoneForSuburb(
+  suburb: string | null | undefined,
+  rules: ZoneRules = DEFAULT_ZONE_RULES
+): OuterZone | null {
+  if (!suburb) return null;
+  return rules.suburbOverrides[suburb] ?? SUBURB_ZONE.get(suburb) ?? null;
+}
+
+/** Build the AreaInfo for a point we know the distance of, applying every rule in order. */
+function classify(
+  suburb: string,
+  point: { lat: number; lng: number },
+  dist: number,
+  rules: ZoneRules
+): AreaInfo {
   // 1. Coastal / Southern Ocean areas are skipped regardless of distance.
-  if (isCoastalExcluded(suburb)) return coastalArea(suburb, dist);
+  if (isCoastalExcluded(suburb, rules)) {
+    return {
+      suburb,
+      zone: "coastal",
+      distanceKm: dist,
+      inner: false,
+      serviced: false,
+      label: zoneLabel("coastal", rules),
+    };
+  }
 
-  // 2. Beyond the 50 km service area → not bookable online.
-  if (dist > MAX_INSPECTION_RADIUS_KM) {
+  // 2. Beyond the service area → not bookable online.
+  if (dist > rules.maxRadiusKm) {
     return {
       suburb,
       zone: "outside",
       distanceKm: dist,
       inner: false,
       serviced: false,
-      label: `Outside 50 km Service Area (~${Math.round(dist)} km from base)`,
+      label: `Outside ${rules.maxRadiusKm} km Service Area (~${Math.round(dist)} km from base)`,
     };
   }
 
-  // 3. Inner 0 – 15 km daily-flex circle → bookable on any open day.
-  if (dist <= DAILY_FLEX_RADIUS_KM) {
-    return { suburb, zone: "inner", distanceKm: dist, inner: true, serviced: true, label: ZONE_LABEL.inner };
+  // 3. Inner daily-flex circle → bookable on any open day.
+  if (dist <= rules.flexRadiusKm) {
+    return {
+      suburb,
+      zone: "inner",
+      distanceKm: dist,
+      inner: true,
+      serviced: true,
+      label: zoneLabel("inner", rules),
+    };
   }
 
-  // 4. Outer 15 – 50 km → the one weekday its zone is serviced on. The suburb
-  // table wins (it carries the plan's hand-checked exceptions); the raw compass
-  // sector is the fallback for a point with no catalogued suburb.
-  const zone = SUBURB_ZONE.get(suburb) ?? sectorZone(point);
-  return { suburb, zone, distanceKm: dist, inner: false, serviced: true, label: ZONE_LABEL[zone] };
+  // 4. Outer area → the one weekday its zone is serviced on. A manager override
+  // wins, then the suburb's catalogued sector, then the raw bearing (for a point
+  // with no catalogued suburb nearby).
+  const zone = zoneForSuburb(suburb, rules) ?? sectorZone(point);
+  return {
+    suburb,
+    zone,
+    distanceKm: dist,
+    inner: false,
+    serviced: true,
+    label: zoneLabel(zone, rules),
+  };
+}
+
+function unknownArea(label: string): AreaInfo {
+  return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label };
 }
 
 /** Match a lead's address/suburb text to our catalogue and classify it. */
-export function resolveArea(addressText: string | undefined | null): AreaInfo {
+export function resolveArea(
+  addressText: string | undefined | null,
+  rules: ZoneRules = DEFAULT_ZONE_RULES
+): AreaInfo {
   const text = (addressText || "").toLowerCase().trim();
-  if (!text) {
-    return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label: "Please enter your address" };
-  }
+  if (!text) return unknownArea("Please enter your address");
 
   // Find longest matching suburb name to avoid substring collisions
   let match: (typeof SUBURBS)[number] | null = null;
@@ -788,28 +809,30 @@ export function resolveArea(addressText: string | undefined | null): AreaInfo {
     }
   }
 
-  if (!match) {
-    // Unlisted / non-Melbourne address -> outside the 50 km inspection boundary
-    return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label: "Outside 50 km Service Area" };
-  }
+  // Unlisted / non-Melbourne address -> outside the service boundary
+  if (!match) return unknownArea(`Outside ${rules.maxRadiusKm} km Service Area`);
 
-  return classify(match.name, match, distanceKm(BASE_LOCATION, match));
+  return classify(match.name, match, distanceKm(BASE_LOCATION, match), rules);
 }
 
 /**
  * Resolve a customer's area from precise GPS coordinates (e.g. captured via the
- * browser "use my location" button on the booking page). This is the most
- * accurate classifier: both the 15 km daily-flex circle and the outer sector are
- * measured from the real point rather than a suburb centroid. The nearest
- * catalogued suburb is still used for naming and for the coastal skip list.
+ * browser "use my location" button on the booking page). This is the most accurate
+ * classifier: both the daily-flex circle and the outer sector are measured from the
+ * real point rather than a suburb centroid. The nearest catalogued suburb is still
+ * used for naming, for the coastal skip list and for manager overrides.
  */
-export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
+export function resolveAreaByCoords(
+  lat: number,
+  lng: number,
+  rules: ZoneRules = DEFAULT_ZONE_RULES
+): AreaInfo {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return { suburb: null, zone: "outside", distanceKm: null, inner: false, serviced: false, label: "Outside 50 km Service Area" };
+    return unknownArea(`Outside ${rules.maxRadiusKm} km Service Area`);
   }
   const pt = { lat, lng };
 
-  // Nearest catalogued suburb — names the area and drives the coastal skip check.
+  // Nearest catalogued suburb — names the area and drives the coastal/override checks.
   let nearest = SUBURBS[0];
   let best = Infinity;
   for (const s of SUBURBS) {
@@ -820,55 +843,36 @@ export function resolveAreaByCoords(lat: number, lng: number): AreaInfo {
     }
   }
 
-  return classify(nearest.name, pt, distanceKm(BASE_LOCATION, pt));
+  return classify(nearest.name, pt, distanceKm(BASE_LOCATION, pt), rules);
 }
 
-function isServiceable(area: AreaInfo): boolean {
+function isServiceable(area: AreaInfo, rules: ZoneRules = DEFAULT_ZONE_RULES): boolean {
   if (!area.serviced) return false;
   if (area.zone === "outside" || area.zone === "coastal") return false;
-  return !(area.distanceKm != null && area.distanceKm > MAX_INSPECTION_RADIUS_KM);
+  return !(area.distanceKm != null && area.distanceKm > rules.maxRadiusKm);
 }
 
-/** Is `zone` an outer 15 – 50 km day-wise zone (as opposed to inner / flexible)? */
-export function isOuterZone(zone: Zone): zone is OuterZone {
-  return zone in ZONE_WEEKDAY;
-}
-
-/**
- * Day-wise zoning gate: may this area be visited on this weekday?
- *
- * Inner (0 – 15 km) and unclassified "flexible" areas are bookable on any open
- * day. Outer areas are bookable ONLY on their zone's weekday, which is what keeps
- * the inspector from driving to opposite sides of Melbourne on the same day
- * (Key Rule 9: "Do not mix opposite zones on the same day").
- */
-export function isZoneDay(zone: Zone, weekday: number): boolean {
-  if (!isOuterZone(zone)) return true;
-  return ZONE_WEEKDAY[zone] === weekday;
-}
-
-/** Same check against a YYYY-MM-DD calendar date. */
-export function isZoneDate(zone: Zone, date: string): boolean {
-  return isZoneDay(zone, weekdayOf(date));
-}
-
-/** "Mondays" / "Saturdays" — the day an outer zone is serviced on, else null. */
-export function zoneDayName(zone: Zone): string | null {
-  return isOuterZone(zone) ? `${WEEKDAY_NAMES[ZONE_WEEKDAY[zone]]}s` : null;
+/** Day-wise zoning gate against a YYYY-MM-DD calendar date. @see isZoneDay */
+export function isZoneDate(zone: Zone, date: string, rules: ZoneRules = DEFAULT_ZONE_RULES): boolean {
+  return isZoneDay(zone, weekdayOf(date), rules);
 }
 
 /** Human-friendly inspection availability text for customer emails and SMS. */
-export function getAvailableDaysSummary(area: AreaInfo, rules: BookingRules = DEFAULT_BOOKING_RULES): string {
+export function getAvailableDaysSummary(
+  area: AreaInfo,
+  rules: BookingRules = DEFAULT_BOOKING_RULES,
+  zoneRules: ZoneRules = DEFAULT_ZONE_RULES
+): string {
   if (area.zone === "coastal") {
     return "Coastal / ocean area — not covered by our inspection routes";
   }
-  if (!isServiceable(area)) {
-    return "Outside 50 km Service Area (Free inspection timing not available online)";
+  if (!isServiceable(area, zoneRules)) {
+    return `Outside ${zoneRules.maxRadiusKm} km Service Area (Free inspection timing not available online)`;
   }
-  const day = zoneDayName(area.zone);
+  const day = zoneDayName(area.zone, zoneRules);
   if (day) {
     // Outer area: only its own zone day, and only when that weekday is open.
-    return `Inspections in ${ZONE_SHORT[area.zone]} run on ${day}`;
+    return `Inspections in ${ZONE_DIRECTION[area.zone as OuterZone]} run on ${day}`;
   }
   return `Inspections available ${inspectionDaysText(rules)}`;
 }
@@ -923,10 +927,11 @@ export function computeAvailability(
   bookedByDate: Map<string, Set<string>>,
   sameZoneDates: Set<string>,
   type: BookingType = "inspection",
-  rules: BookingRules = DEFAULT_BOOKING_RULES
+  rules: BookingRules = DEFAULT_BOOKING_RULES,
+  zoneRules: ZoneRules = DEFAULT_ZONE_RULES
 ): DayOption[] {
-  // Do NOT show inspection timing outside the 50 km radius, or for coastal areas.
-  if (!isServiceable(area)) return [];
+  // Do NOT show inspection timing outside the service radius, or for coastal areas.
+  if (!isServiceable(area, zoneRules)) return [];
 
   const out: DayOption[] = [];
 
@@ -945,10 +950,11 @@ export function computeAvailability(
     const d = new Date(baseNoonUtc + i * 86400000);
     const dateStr = d.toISOString().slice(0, 10);
 
-    // Day-wise zoning: an outer 15 – 50 km area is only offered on its own day,
-    // so one day's route never spans opposite sides of Melbourne. Inner (daily
-    // flex) and flexible areas pass straight through.
-    if (!isZoneDate(area.zone, dateStr)) continue;
+    // Day-wise zoning: an outer area is only offered on its own day, so one day's
+    // route never spans opposite sides of Melbourne. Inner (daily flex) and
+    // flexible areas pass straight through, as does everything when the manager
+    // has switched day-wise zoning off.
+    if (!isZoneDate(area.zone, dateStr, zoneRules)) continue;
 
     // Honours open weekdays, daily hours, closed dates and the earliest date.
     const daySlots = slotsForDate(rules, type, dateStr);
@@ -1009,16 +1015,17 @@ export function isSlotOffered(
   date: string,
   time: string,
   type: BookingType = "inspection",
-  rules: BookingRules = DEFAULT_BOOKING_RULES
+  rules: BookingRules = DEFAULT_BOOKING_RULES,
+  zoneRules: ZoneRules = DEFAULT_ZONE_RULES
 ): boolean {
-  if (!isServiceable(area)) return false;
+  if (!isServiceable(area, zoneRules)) return false;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return false;
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0));
   if (Number.isNaN(d.getTime())) return false;
 
   // Outer areas are only serviced on their own zone day (see isZoneDay).
-  if (!isZoneDate(area.zone, date)) return false;
+  if (!isZoneDate(area.zone, date, zoneRules)) return false;
 
   // Weekday open, within hours, not a closed date, not before the earliest date.
   if (!slotsForDate(rules, type, date).includes(time)) return false;

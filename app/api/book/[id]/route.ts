@@ -15,9 +15,11 @@ import {
   formatSlotRange,
   zoneDayName,
   type AreaInfo,
+  type ZoneRules,
 } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
+import { getZoneRules } from "@/lib/zoneRulesServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 
@@ -66,13 +68,14 @@ function esc(v: string) {
 // because they classify the inner Tullamarine circle and corridor day exactly.
 function resolveLeadArea(
   lead: { address?: string | null; city?: string | null },
-  lat?: number | null,
-  lng?: number | null
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  zoneRules: ZoneRules
 ): AreaInfo {
   if (typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng)) {
-    return resolveAreaByCoords(lat, lng);
+    return resolveAreaByCoords(lat, lng, zoneRules);
   }
-  return resolveArea(lead.address || lead.city);
+  return resolveArea(lead.address || lead.city, zoneRules);
 }
 
 function parseCoord(v: string | null | undefined): number | null {
@@ -119,9 +122,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const lat = parseCoord(req.nextUrl.searchParams.get("lat"));
   const lng = parseCoord(req.nextUrl.searchParams.get("lng"));
-  const area = resolveLeadArea(lead, lat, lng);
+  const zoneRules = await getZoneRules();
+  const area = resolveLeadArea(lead, lat, lng, zoneRules);
   const [{ bookedByDate, sameZoneDates }, rules] = await Promise.all([buildMaps(area, id), getBookingRules()]);
-  const days = computeAvailability(area, bookedByDate, sameZoneDates, type, rules);
+  const days = computeAvailability(area, bookedByDate, sameZoneDates, type, rules, zoneRules);
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
 
   return NextResponse.json({
@@ -134,7 +138,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       zone: area.zone,
       // Outer 15 – 50 km areas are only visited on their zone's weekday; the UI
       // uses this to explain why only those days came back.
-      zoneDay: zoneDayName(area.zone),
+      zoneDay: zoneDayName(area.zone, zoneRules),
       distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
       serviced: area.serviced,
       located: lat != null && lng != null,
@@ -168,10 +172,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "This booking link is no longer active." }, { status: 409 });
   }
 
+  const zoneRules = await getZoneRules();
   const area = resolveLeadArea(
     lead,
     typeof body.lat === "number" ? body.lat : null,
-    typeof body.lng === "number" ? body.lng : null
+    typeof body.lng === "number" ? body.lng : null,
+    zoneRules
   );
   if (type === "inspection" && (!area.serviced || area.zone === "outside" || area.zone === "coastal")) {
     return NextResponse.json(
@@ -185,7 +191,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
   const rules = await getBookingRules();
-  if (!isSlotOffered(area, date, time, type, rules)) {
+  if (!isSlotOffered(area, date, time, type, rules, zoneRules)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }
 

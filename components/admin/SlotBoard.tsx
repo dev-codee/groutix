@@ -12,7 +12,8 @@ import {
   type BookingType,
 } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
-import { melbourneYmd } from "@/lib/scheduling";
+import { melbourneYmd, resolveArea, isZoneDate, zoneDayName, ZONE_SHORT } from "@/lib/scheduling";
+import { useZoneRules } from "@/lib/useZoneRules";
 
 // Staff-facing availability board for one appointment field in the lead form.
 // Inspections and jobs share ONE calendar (see lib/bookings.ts), so every
@@ -90,14 +91,18 @@ export function SlotBoard({
   type,
   value,
   leadId,
+  address,
   onPick,
 }: {
   type: BookingType;
   value: string | undefined;
   leadId?: string;
+  /** Customer address, so the board can flag days outside their zone. */
+  address?: string;
   onPick: (value: string) => void;
 }) {
   const rules = useBookingRules();
+  const zoneRules = useZoneRules();
   const today = melbourneYmd();
   const valueDate = /^(\d{4}-\d{2}-\d{2})/.exec(value || "")?.[1];
   const valueTime = /T(\d{2}:\d{2})/.exec(value || "")?.[1];
@@ -127,6 +132,12 @@ export function SlotBoard({
   const current = loaded?.key === loadKey ? loaded : null;
   const appts = current?.appts ?? null;
   const error = !!current?.error;
+
+  // Day-wise zoning for this customer. Staff can still book off-zone (Key Rule 10
+  // allows a manual override), so this warns rather than blocks.
+  const area = useMemo(() => (address ? resolveArea(address, zoneRules) : null), [address, zoneRules]);
+  const zoneDay = area ? zoneDayName(area.zone, zoneRules) : null;
+  const offZone = !!area && !isZoneDate(area.zone, day, zoneRules);
 
   const wd = weekdayOf(day);
   const hours = dayHours(rules, type, wd, day);
@@ -173,6 +184,13 @@ export function SlotBoard({
         </button>
       </div>
       <p className={`text-[10px] font-semibold ${outsideRules ? "text-amber-700" : "text-slate-500"}`}>{dayNote}</p>
+      {area && zoneDay && (
+        <p className={`text-[10px] ${offZone ? "font-semibold text-amber-700" : "text-slate-400"}`}>
+          {offZone
+            ? `Off-zone — ${ZONE_SHORT[area.zone]} is routed on ${zoneDay}. Bookable as a manual override.`
+            : `${ZONE_SHORT[area.zone]} zone day (${zoneDay}).`}
+        </p>
+      )}
 
       {error ? (
         <p className="text-[11px] text-red-600">Couldn&apos;t load bookings for this day.</p>

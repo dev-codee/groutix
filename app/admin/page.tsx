@@ -57,6 +57,7 @@ import {
   Maximize2,
   Minimize2,
   Settings,
+  Map as MapIcon,
   CalendarClock,
   GripHorizontal,
   RotateCcw,
@@ -119,6 +120,7 @@ import {
   getFollowupPrompt, findJobsGroupForStatus,
 } from "@/lib/adminHelpers";
 import { ScheduleView } from "@/components/admin/ScheduleView";
+import { ZonesView } from "@/components/admin/views/ZonesView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
 import { AnalyticsView } from "@/components/admin/views/AnalyticsView";
 import { LeadsView } from "@/components/admin/views/LeadsView";
@@ -136,6 +138,7 @@ import { TeamChatModal } from "@/components/admin/modals/TeamChatModal";
 import { JobCardModal } from "@/components/admin/modals/JobCardModal";
 import { LeadEditModal } from "@/components/admin/modals/LeadEditModal";
 import { BookingRulesModal } from "@/components/admin/modals/BookingRulesModal";
+import { ZoneRulesModal } from "@/components/admin/modals/ZoneRulesModal";
 
 // How many rows/cards to show per page in the long list views.
 const PAGE_SIZE = 20;
@@ -150,6 +153,7 @@ type DashboardView =
   | "completed"
   | "dispatch"
   | "schedule"
+  | "zones"
   | "customers"
   | "team"
   | "technicians";
@@ -539,6 +543,7 @@ export default function CrmDashboardPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [qboSettingsOpen, setQboSettingsOpen] = useState(false);
   const [bookingRulesOpen, setBookingRulesOpen] = useState(false);
+  const [zoneRulesOpen, setZoneRulesOpen] = useState(false);
   const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string; environment?: "sandbox" | "production" } | null>(null);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
 
@@ -3845,6 +3850,22 @@ export default function CrmDashboardPage() {
         </button>
       )}
 
+      {canSee("zones") && (
+        <button
+          type="button"
+          onClick={() => { navigateTo("zones"); onItemClick?.(); }}
+          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "zones"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <MapIcon className="w-4 h-4" />
+            Service Zones
+          </span>
+        </button>
+      )}
+
       {canSee("customers") && (
         <button
           type="button"
@@ -3937,6 +3958,14 @@ export default function CrmDashboardPage() {
           >
             <CalendarClock className="w-4 h-4" />
             Booking Hours
+          </button>
+          <button
+            type="button"
+            onClick={() => { setZoneRulesOpen(true); onItemClick?.(); }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
+          >
+            <MapIcon className="w-4 h-4" />
+            Service Zones
           </button>
           <button
             type="button"
@@ -4071,6 +4100,8 @@ export default function CrmDashboardPage() {
                               ? "Customer Directory"
                               : currentView === "schedule"
                                 ? "Schedule & Calendar"
+                              : currentView === "zones"
+                                ? "Service Zones"
                               : currentView === "technicians"
                                 ? "Field Technicians"
                                 : "Team Members"}
@@ -4304,6 +4335,13 @@ export default function CrmDashboardPage() {
                 setLeadModalOpen(true);
               }
             }} />
+          )}
+
+          {/* =========================================================================
+              VIEW: SERVICE ZONES
+             ========================================================================= */}
+          {currentView === "zones" && (
+            <ZonesView onOpenSettings={role === "manager" ? () => setZoneRulesOpen(true) : undefined} />
           )}
 
           {/* =========================================================================
@@ -7973,6 +8011,9 @@ export default function CrmDashboardPage() {
 
       {/* Booking Hours (inspection/job days, times, closures) */}
       {bookingRulesOpen && <BookingRulesModal onClose={() => setBookingRulesOpen(false)} />}
+
+      {/* Service Zones (radii, day-wise zones, coastal skips, suburb overrides) */}
+      {zoneRulesOpen && <ZoneRulesModal onClose={() => setZoneRulesOpen(false)} />}
 
       {/* Logo Settings Modal */}
       {logoSettingsOpen && (

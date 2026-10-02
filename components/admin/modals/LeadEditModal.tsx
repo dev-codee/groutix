@@ -261,6 +261,7 @@ export function LeadEditModal({
                   type="inspection"
                   value={editingLead?.inspectionAt}
                   leadId={editingLead?.id}
+                  address={editingLead?.address || editingLead?.city}
                   onPick={(val) => setEditingLead({ ...editingLead, inspectionAt: val, inspectionReminderSent: false })}
                 />
               )}
@@ -349,6 +350,7 @@ export function LeadEditModal({
                   type="job"
                   value={editingLead?.jobAt}
                   leadId={editingLead?.id}
+                  address={editingLead?.address || editingLead?.city}
                   onPick={(val) => setEditingLead({ ...editingLead, jobAt: val, jobReminderSent: false })}
                 />
               )}

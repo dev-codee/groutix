@@ -8,8 +8,10 @@ import {
   distanceKm,
   resolveArea,
   isOuterZone,
-  ZONE_WEEKDAY,
+  zoneWeekday,
+  DEFAULT_ZONE_RULES,
   type AreaInfo,
+  type ZoneRules,
 } from "@/lib/scheduling";
 import {
   DEFAULT_BOOKING_RULES,
@@ -163,14 +165,15 @@ export function suggestBestDispatchSlots(params: {
   availableStaff?: { id: string; name: string; role?: string }[];
   maxSuggestions?: number;
   rules?: BookingRules;
+  zoneRules?: ZoneRules;
 }): DispatchSlot[] {
   const {
     lead, type, existingBookings, allLeads, availableStaff = [], maxSuggestions = 4,
-    rules = DEFAULT_BOOKING_RULES,
+    rules = DEFAULT_BOOKING_RULES, zoneRules = DEFAULT_ZONE_RULES,
   } = params;
 
   // 1. Identify Corridor and Area
-  const area = resolveArea(lead.address || lead.city);
+  const area = resolveArea(lead.address || lead.city, zoneRules);
   const suburb = area.suburb;
 
   // 2. Identify eligible technicians
@@ -241,8 +244,8 @@ export function suggestBestDispatchSlots(params: {
     let corridorMatch = false;
     let corridorScore = 0;
 
-    if (isOuterZone(area.zone)) {
-      if (ZONE_WEEKDAY[area.zone] !== dayOfWeek) continue;
+    if (zoneRules.dayWiseEnabled && isOuterZone(area.zone)) {
+      if (zoneWeekday(area.zone, zoneRules) !== dayOfWeek) continue;
       corridorMatch = true;
       corridorScore = 60;
     } else {
@@ -286,7 +289,7 @@ export function suggestBestDispatchSlots(params: {
           let minDistance = 999;
           let closestSuburb = "";
           for (const appt of dayAppointments) {
-            const otherArea = resolveArea(appt.address || appt.city);
+            const otherArea = resolveArea(appt.address || appt.city, zoneRules);
             const dist = calculateDistanceBetweenSuburbs(suburb, otherArea.suburb);
             if (dist < minDistance) {
               minDistance = dist;

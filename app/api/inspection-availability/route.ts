@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveArea, computeAvailability, zoneDayName } from "@/lib/scheduling";
 import { listUpcomingBookings } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
+import { getZoneRules } from "@/lib/zoneRulesServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address")?.trim() || "";
 
-  const area = resolveArea(address);
+  const zoneRules = await getZoneRules();
+  const area = resolveArea(address, zoneRules);
 
   // Availability changes the instant any slot is booked, so it must never be
   // cached — a stale copy would show a just-booked slot as still free.
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   const rules = await getBookingRules();
-  const days = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", rules).slice(0, 7);
+  const days = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", rules, zoneRules).slice(0, 7);
 
   return NextResponse.json({
     days,
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
     zone: area.zone,
     // Outer areas are only visited on their zone's weekday — surface that so the
     // UI can explain why fewer days came back.
-    zoneDay: zoneDayName(area.zone),
+    zoneDay: zoneDayName(area.zone, zoneRules),
     label: area.label,
     inner: area.inner,
     distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,

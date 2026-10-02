@@ -13,6 +13,7 @@ import { sendSms, isSmsConfigured, prepareSinglePartSms } from "@/lib/sms";
 import { formatAppt } from "@/lib/scheduling";
 import { createBooking, deleteBooking } from "@/lib/bookings";
 import { resolveArea } from "@/lib/scheduling";
+import { getZoneRules } from "@/lib/zoneRulesServer";
 import { getTechnician } from "@/lib/technicians";
 import { getStaffMemberByUsername } from "@/lib/users";
 
@@ -196,7 +197,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (body.status === "Lost" || body.status === "Cancelled") {
       await deleteBooking(id);
     } else {
-      const area = resolveArea(before.address || before.city);
+      const area = resolveArea(before.address || before.city, await getZoneRules());
       if (typeof body.inspectionAt === "string" && body.inspectionAt !== before.inspectionAt) {
         if (body.inspectionAt.includes("T")) {
           const [d, tRaw] = body.inspectionAt.split("T");

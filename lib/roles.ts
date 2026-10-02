@@ -30,7 +30,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   // Operational roles share their focused views:
   // primary board ("jobs"), completed records archive ("completed"), etc.
   intake: ["jobs", "completed"],
-  inspection: ["jobs", "completed"],
+  inspection: ["jobs", "completed", "zones"],
   field: ["jobs", "completed"],
   technician: ["jobs", "completed"],
   finance: ["jobs", "customers", "completed"],
@@ -43,6 +43,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "completed",
     "dispatch",
     "schedule",
+    "zones",
     "customers",
     "team",
     "technicians",
@@ -56,6 +57,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "completed",
     "dispatch",
     "schedule",
+    "zones",
     "customers",
     "team",
     "technicians",
