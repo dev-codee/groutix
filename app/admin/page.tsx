@@ -2644,8 +2644,30 @@ export default function CrmDashboardPage() {
     setGpsModalOpen(true);
   }
 
-  function handleCaptureGps() {
-    if (!navigator.geolocation || !activeGpsLead) {
+  async function handleCaptureGps(customGps?: GpsCheckin) {
+    if (!activeGpsLead) return;
+
+    if (customGps && customGps.lat && customGps.lng) {
+      await updateLeadField(activeGpsLead.id, { gps: customGps });
+      setActiveGpsLead((prev) => (prev ? { ...prev, gps: customGps } : prev));
+      setGpsStatusMessage("Real-time GPS Check-in recorded & synced.");
+      return;
+    }
+
+    if (liveGpsCoords && liveGpsCoords.lat && liveGpsCoords.lng) {
+      const gps: GpsCheckin = {
+        lat: liveGpsCoords.lat,
+        lng: liveGpsCoords.lng,
+        accuracy: liveGpsCoords.accuracy,
+        time: liveGpsCoords.time || new Date().toISOString(),
+      };
+      await updateLeadField(activeGpsLead.id, { gps });
+      setActiveGpsLead((prev) => (prev ? { ...prev, gps } : prev));
+      setGpsStatusMessage("Live GPS Check-in recorded from active stream.");
+      return;
+    }
+
+    if (!navigator.geolocation) {
       alert("Geolocation is not supported in this browser.");
       return;
     }
@@ -3379,6 +3401,24 @@ export default function CrmDashboardPage() {
     return pool.filter((l) => isLegacyLead(l, newLeadsCutoffMs)).length;
   }, [leads, role, newLeadsCutoffMs]);
 
+  function getLeadAppointmentTimestamp(l: Lead): { hasAppt: boolean; timestamp: number } {
+    const dtStr = l.inspectionAt || l.jobAt;
+    if (dtStr) {
+      const t = new Date(dtStr).getTime();
+      if (!isNaN(t) && t > 0) {
+        return { hasAppt: true, timestamp: t };
+      }
+    }
+    const fallback = l.received || l.createdAt;
+    if (fallback) {
+      const t = new Date(fallback).getTime();
+      if (!isNaN(t) && t > 0) {
+        return { hasAppt: false, timestamp: t };
+      }
+    }
+    return { hasAppt: false, timestamp: 0 };
+  }
+
   // Filtering & Search
   const filteredLeads = useMemo(() => {
     let list = scopedLeads;
@@ -3419,8 +3459,39 @@ export default function CrmDashboardPage() {
         l.messages?.some((m) => m.from === "customer" && m.read === false)
       );
     }
+
+    // For inspection & field roles: sort leads chronologically by appointment date and time (closest first)
+    if (role === "inspection" || role === "field") {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const startOfTodayMs = startOfToday.getTime();
+
+      list = [...list].sort((a, b) => {
+        const apptA = getLeadAppointmentTimestamp(a);
+        const apptB = getLeadAppointmentTimestamp(b);
+
+        if (apptA.hasAppt && apptB.hasAppt) {
+          const isUpcomingA = apptA.timestamp >= startOfTodayMs;
+          const isUpcomingB = apptB.timestamp >= startOfTodayMs;
+
+          if (isUpcomingA && !isUpcomingB) return -1; // Today and upcoming appointments first
+          if (!isUpcomingA && isUpcomingB) return 1;
+
+          if (isUpcomingA && isUpcomingB) {
+            return apptA.timestamp - apptB.timestamp; // Chronological ascending: closest appointment comes first
+          }
+          return apptB.timestamp - apptA.timestamp; // Most recent past appointment first
+        }
+
+        if (apptA.hasAppt && !apptB.hasAppt) return -1;
+        if (!apptA.hasAppt && apptB.hasAppt) return 1;
+
+        return apptB.timestamp - apptA.timestamp;
+      });
+    }
+
     return list;
-  }, [scopedLeads, globalSearch, statusFilter, priorityFilter, onlyUnread]);
+  }, [scopedLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role]);
 
   // Leads with at least one unread customer reply — drives the header bell badge.
   const unreadReplyCount = useMemo(
@@ -3587,6 +3658,7 @@ export default function CrmDashboardPage() {
     staff, assignableTechnicians, inspectionStaff, scopedLeads, counts,
     // Row UI state
     onTheWayLoading, openDetails, setOpenDetails, unreadReplyCount,
+    locationTrackingActive, liveGpsCoords,
     // Lead CRUD
     updateLeadField, handleDeleteLead, setEditingLead, setLeadModalOpen,
     setStartJobPrompt, setStartJobDays,
@@ -4095,21 +4167,30 @@ export default function CrmDashboardPage() {
                   : roleLabel}
             </div>
 
-            {/* Location sharing indicator (inspector / technician only) */}
-            {(role === "inspection" || role === "technician") && (
+            {/* Location sharing indicator (inspector / field / technician) */}
+            {(role === "inspection" || role === "field" || role === "technician") && (
               <div
                 className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${
                   locationTrackingActive
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                     : "border-slate-200/80 bg-white text-slate-400"
                 }`}
+                title={
+                  liveGpsCoords
+                    ? `Live GPS streaming: ${liveGpsCoords.lat.toFixed(5)}, ${liveGpsCoords.lng.toFixed(5)} (±${Math.round(liveGpsCoords.accuracy || 0)}m)`
+                    : "Live GPS Continuous Tracking"
+                }
               >
                 <div
                   className={`w-2 h-2 rounded-full ${
                     locationTrackingActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
                   }`}
                 />
-                {locationTrackingActive ? "Location sharing active" : "Location sharing off"}
+                <span>
+                  {locationTrackingActive
+                    ? `Live GPS Active${liveGpsCoords?.accuracy ? ` (±${Math.round(liveGpsCoords.accuracy)}m)` : ""}`
+                    : "Live GPS Off"}
+                </span>
               </div>
             )}
           </div>
