@@ -32,7 +32,7 @@ export function isSmsConfigured(): boolean {
 
 /** Normalise an Australian number toward E.164 (+61…) as best we can. */
 export function normaliseAuNumber(raw: string): string {
-  let n = (raw || "").replace(/[^\d+]/g, "");
+  const n = (raw || "").replace(/[^\d+]/g, "");
   if (!n) return "";
   if (n.startsWith("+")) return n;
   if (n.startsWith("0")) return "+61" + n.slice(1); // 04xx / 03x local → +61

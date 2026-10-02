@@ -8095,6 +8095,7 @@ export default function CrmDashboardPage() {
                   )}
                   <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
                 </div>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- an API route that redirects to Intuit's OAuth consent screen, not a page; <Link> would client-side navigate and break the handshake */}
                 <a
                   href="/api/admin/qbo/connect"
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"

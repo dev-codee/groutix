@@ -953,6 +953,33 @@ interface Props {
   onPhotosChanged?: (photos: LeadPhotoLike[]) => void;
 }
 
+// Module scope: the component seeds its state from this, so it must exist
+// before the component body runs rather than relying on hoisting.
+function buildInitial(l: LeadLike, username?: string): InspectionReportDoc {
+  const ex: Partial<InspectionReportDoc> = l.inspectionReport || {};
+  const defaultDate = l.inspectionAt ? l.inspectionAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  return {
+    customerName: ex.customerName || l.name || "",
+    inspectionDate: ex.inspectionDate || defaultDate,
+    inspectorName: ex.inspectorName || l.assigned || username || "",
+    propertyAddress: ex.propertyAddress || [l.address, l.city, l.state].filter(Boolean).join(", "),
+    leadJobNo: ex.leadJobNo || l.jobNo || `GX-${l.id.slice(-6).toUpperCase()}`,
+    rooms: ex.rooms && ex.rooms.length > 0 ? ex.rooms : [makeRoom()],
+    parking: ex.parking || { types: [], restrictions: [] },
+    estimatedTime: ex.estimatedTime || "",
+    suggestedTechnician: ex.suggestedTechnician || (l as any).technician || "",
+    quoteBuildFromReport: ex.quoteBuildFromReport || "YES",
+    warrantyEligible: ex.warrantyEligible ?? "YES",
+    inspectorNotes: ex.inspectorNotes || "",
+    inspectorSignature: INSPECTOR_SIGNATURE,
+    findings: ex.findings || {},
+    otherDetails: ex.otherDetails || "",
+    status: ex.status || "draft",
+    completedAt: ex.completedAt,
+    updatedAt: ex.updatedAt,
+  };
+}
+
 export function InspectionModal({ isOpen, onClose, lead, currentUsername, technicians = [], readOnly = false, onSave, onPhotosChanged }: Props) {
   const [report, setReport] = useState<InspectionReportDoc>(() => buildInitial(lead, currentUsername));
   const [saving, setSaving] = useState(false);
@@ -980,31 +1007,6 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   }, [isOpen, lead, currentUsername]);
 
   if (!isOpen) return null;
-
-  function buildInitial(l: LeadLike, username?: string): InspectionReportDoc {
-    const ex: Partial<InspectionReportDoc> = l.inspectionReport || {};
-    const defaultDate = l.inspectionAt ? l.inspectionAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
-    return {
-      customerName: ex.customerName || l.name || "",
-      inspectionDate: ex.inspectionDate || defaultDate,
-      inspectorName: ex.inspectorName || l.assigned || username || "",
-      propertyAddress: ex.propertyAddress || [l.address, l.city, l.state].filter(Boolean).join(", "),
-      leadJobNo: ex.leadJobNo || l.jobNo || `GX-${l.id.slice(-6).toUpperCase()}`,
-      rooms: ex.rooms && ex.rooms.length > 0 ? ex.rooms : [makeRoom()],
-      parking: ex.parking || { types: [], restrictions: [] },
-      estimatedTime: ex.estimatedTime || "",
-      suggestedTechnician: ex.suggestedTechnician || (l as any).technician || "",
-      quoteBuildFromReport: ex.quoteBuildFromReport || "YES",
-      warrantyEligible: ex.warrantyEligible ?? "YES",
-      inspectorNotes: ex.inspectorNotes || "",
-      inspectorSignature: INSPECTOR_SIGNATURE,
-      findings: ex.findings || {},
-      otherDetails: ex.otherDetails || "",
-      status: ex.status || "draft",
-      completedAt: ex.completedAt,
-      updatedAt: ex.updatedAt,
-    };
-  }
 
   const rooms = report.rooms || [makeRoom()];
   const parking = report.parking || { types: [], restrictions: [] };

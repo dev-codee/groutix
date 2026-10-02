@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
     }, { headers: NO_STORE });
   }
 
-  let bookedByDate = new Map<string, Set<string>>();
-  let sameZoneDates = new Set<string>();
+  const bookedByDate = new Map<string, Set<string>>();
+  const sameZoneDates = new Set<string>();
   try {
     const bookings = await listUpcomingBookings();
     for (const b of bookings) {

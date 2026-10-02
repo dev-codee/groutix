@@ -76,37 +76,24 @@ export default function SupportChatWidget() {
   );
 
   const adminBase = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH || "/adgrout";
-  const [isAdminPage, setIsAdminPage] = useState(() => {
-    if (typeof window !== "undefined") {
-      const p = window.location.pathname;
-      return (
-        p.startsWith("/admin") ||
-        p.startsWith(adminBase) ||
-        p.startsWith("/adgrout") ||
-        Boolean(document.querySelector(".admin-ui"))
-      );
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (
-      pathname?.startsWith("/admin") ||
+  // The path is known during render, so derive it rather than storing it.
+  const isAdminPath = Boolean(
+    pathname?.startsWith("/admin") ||
       pathname?.startsWith(adminBase) ||
-      pathname?.startsWith("/adgrout") ||
-      Boolean(document.querySelector(".admin-ui"))
-    ) {
-      setIsAdminPage(true);
-    }
-  }, [pathname, adminBase]);
+      pathname?.startsWith("/adgrout")
+  );
+
+  // The .admin-ui probe needs the DOM, so it has to run in an effect. It is
+  // re-evaluated on every navigation and can go back to false — the old code
+  // only ever set it true, which left the widget hidden for the rest of the
+  // session once the visitor had been on an admin page.
+  const [hasAdminUi, setHasAdminUi] = useState(false);
+  useEffect(() => {
+    setHasAdminUi(Boolean(document.querySelector(".admin-ui")));
+  }, [pathname]);
 
   // Do not render the website support chat widget on CRM dashboard pages
-  if (
-    isAdminPage ||
-    pathname?.startsWith("/admin") ||
-    pathname?.startsWith(adminBase) ||
-    pathname?.startsWith("/adgrout")
-  ) {
+  if (isAdminPath || hasAdminUi) {
     return null;
   }
 

@@ -10,6 +10,7 @@ export default function ProductReviewWidget({ className = "" }: { className?: st
           (window as any).__productReviewCallbackQueue || [];
         (window as any).__productReviewCallbackQueue.push(function (ProductReview: any) {
           try {
+            // eslint-disable-next-line react-hooks/rules-of-hooks -- ProductReview.use is a third-party widget SDK method, not a React Hook
             ProductReview.use("rich-rating-badge", {
               container: "#pr-rich-rating-badge-widget",
               identificationDetails: {

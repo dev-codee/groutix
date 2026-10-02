@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { ShieldCheck, Award, Users, Clock, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { motion } from "framer-motion";
@@ -305,9 +306,9 @@ export default function AboutClient() {
             transition={{ delay: 0.1 }}
             className="flex gap-3"
           >
-            <a href="/contact" className="bg-white text-[#001F97] font-bold px-5 py-2.5 rounded-sm text-base hover:bg-accent hover:text-[#001F97] transition-colors active:scale-95 border-2 border-accent">
+            <Link href="/contact" className="bg-white text-[#001F97] font-bold px-5 py-2.5 rounded-sm text-base hover:bg-accent hover:text-[#001F97] transition-colors active:scale-95 border-2 border-accent">
               Request A Quote
-            </a>
+            </Link>
             <a href={tel} className="flex items-center gap-2 bg-[#001F97] text-white font-bold px-5 py-2.5 rounded-sm text-base hover:bg-[#2F63CC] transition-colors border border-white/20 active:scale-95">
               {phone}
             </a>

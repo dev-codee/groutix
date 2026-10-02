@@ -145,7 +145,7 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
               </div>
               <div>
                 <span className="font-medium">Time: </span>
-                <b>{new Date(activeGps.time || Date.now()).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</b>
+                <b>{activeGps.time ? new Date(activeGps.time).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}</b>
               </div>
             </div>
 
