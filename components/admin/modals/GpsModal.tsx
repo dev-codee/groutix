@@ -23,6 +23,13 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
   const [autoSaved, setAutoSaved] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const hasAutoSavedRef = useRef(false);
+  // onCapture is re-created on every parent render, so hold it in a ref and keep
+  // the geolocation watch out of its dependency list — otherwise each parent
+  // re-render tears the watch down and restarts GPS acquisition from scratch.
+  const onCaptureRef = useRef(onCapture);
+  useEffect(() => {
+    onCaptureRef.current = onCapture;
+  });
 
   // Watch position in real time as long as this modal is open
   useEffect(() => {
@@ -48,7 +55,7 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
         if (!hasAutoSavedRef.current) {
           hasAutoSavedRef.current = true;
           setAutoSaved(true);
-          onCapture(coords);
+          onCaptureRef.current(coords);
         }
       },
       (err) => {
@@ -61,7 +68,7 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [onCapture]);
+  }, []);
 
   const activeGps = livePos || lead.gps;
 
