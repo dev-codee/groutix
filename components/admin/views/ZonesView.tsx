@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapPin, Search, Settings, Info, AlertTriangle, Ban } from "lucide-react";
+import { Search, Settings, Info, AlertTriangle, Ban } from "lucide-react";
 import {
   BASE_LOCATION,
   SUBURBS,
@@ -14,7 +14,6 @@ import {
   OUTER_ZONES,
   ZONE_COLOR,
   ZONE_DIRECTION,
-  ZONE_SHORT,
   type OuterZone,
 } from "@/lib/scheduling";
 import { WEEKDAY_NAMES } from "@/lib/bookingRules";
@@ -290,24 +289,5 @@ function ZoneRow({
         </div>
       )}
     </div>
-  );
-}
-
-/** Compact zone badge, reusable anywhere a lead's area is shown. */
-export function ZoneBadge({ address }: { address?: string | null }) {
-  const rules = useZoneRules();
-  const area = address ? resolveArea(address, rules) : null;
-  if (!area) return null;
-  const c = ZONE_COLOR[area.zone];
-  const day = zoneDayName(area.zone, rules);
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${c.bg} ${c.text}`}
-      title={area.label}
-    >
-      <MapPin className="w-2.5 h-2.5" />
-      {ZONE_SHORT[area.zone]}
-      {day && <span className="font-normal opacity-70">· {day}</span>}
-    </span>
   );
 }

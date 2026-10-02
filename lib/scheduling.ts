@@ -36,19 +36,16 @@ import {
   slotsForDate,
   toMinutes,
   weekdayOf,
-  WEEKDAY_NAMES,
   type BookingRules,
   type BookingType,
 } from "./bookingRules";
 import {
   DEFAULT_ZONE_RULES,
   ZONE_DIRECTION,
-  isOuterZone,
   isZoneDay,
   sectorZoneFromBearing,
   zoneDayName,
   zoneLabel,
-  zoneWeekday,
   type OuterZone,
   type Zone,
   type ZoneRules,
@@ -989,6 +986,26 @@ export function computeAvailability(
   // Always sort in ascending chronological order by date.
   out.sort((a, b) => a.date.localeCompare(b.date));
   return out;
+}
+
+/**
+ * Trim a day list down to what's worth putting in front of a customer.
+ *
+ * Bounded by BOTH a count and a calendar window, because a count alone means
+ * wildly different things per area: a daily-flex address has a bookable day every
+ * day, so 7 options is next week — but an outer address only has its own zone day,
+ * so 7 options is seven WEEKS out. The window is what keeps the far end sane; the
+ * count is what keeps the near end from becoming an unreadable wall of dates.
+ *
+ * Both limits are maximums, never minimums — if the booking horizon or the zone
+ * day yields fewer, that's what comes back.
+ */
+export function shortlistDays(
+  days: DayOption[],
+  { maxOptions = 7, maxDaysAhead = 28 }: { maxOptions?: number; maxDaysAhead?: number } = {}
+): DayOption[] {
+  const cutoff = addDaysYmd(melbourneYmd(), Math.max(maxDaysAhead, 0));
+  return days.filter((d) => d.date <= cutoff).slice(0, Math.max(maxOptions, 0));
 }
 
 /** Current calendar date (YYYY-MM-DD) in Melbourne, regardless of server timezone. */

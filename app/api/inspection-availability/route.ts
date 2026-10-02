@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveArea, computeAvailability, zoneDayName } from "@/lib/scheduling";
+import { resolveArea, computeAvailability, shortlistDays, zoneDayName } from "@/lib/scheduling";
 import { listUpcomingBookings } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 import { getZoneRules } from "@/lib/zoneRulesServer";
@@ -45,7 +45,13 @@ export async function GET(req: NextRequest) {
   }
 
   const rules = await getBookingRules();
-  const days = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", rules, zoneRules).slice(0, 7);
+  // Compact in-form picker: a handful of near-term choices. Bounded by a window as
+  // well as a count — an outer-zone address only has one bookable day a week, so a
+  // count alone would offer dates two months out.
+  const days = shortlistDays(
+    computeAvailability(area, bookedByDate, sameZoneDates, "inspection", rules, zoneRules),
+    { maxOptions: 7, maxDaysAhead: 28 }
+  );
 
   return NextResponse.json({
     days,

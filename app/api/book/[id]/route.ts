@@ -5,12 +5,14 @@ import {
   appendActivity,
   getNextJobNo,
   createTask,
+  assignInspectorOnBooking,
 } from "@/lib/submissions";
 import { verifyBookingToken } from "@/lib/bookingToken";
 import {
   resolveArea,
   resolveAreaByCoords,
   computeAvailability,
+  shortlistDays,
   isSlotOffered,
   formatSlotRange,
   zoneDayName,
@@ -125,7 +127,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const zoneRules = await getZoneRules();
   const area = resolveLeadArea(lead, lat, lng, zoneRules);
   const [{ bookedByDate, sameZoneDates }, rules] = await Promise.all([buildMaps(area, id), getBookingRules()]);
-  const days = computeAvailability(area, bookedByDate, sameZoneDates, type, rules, zoneRules);
+  // Dedicated booking page — more room than the quote form, so offer a wider
+  // choice, still bounded so an outer-zone customer isn't shown next quarter.
+  const days = shortlistDays(
+    computeAvailability(area, bookedByDate, sameZoneDates, type, rules, zoneRules),
+    { maxOptions: 14, maxDaysAhead: 35 }
+  );
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
 
   return NextResponse.json({
@@ -236,6 +243,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       status: "Inspection Booked",
       inspectionReminderSent: false,
     });
+    // Hand it to the inspection team, or it never reaches their dashboard.
+    await assignInspectorOnBooking(id, lead.assigned);
   } else {
     await updateSubmission(id, {
       jobAt: whenIso,

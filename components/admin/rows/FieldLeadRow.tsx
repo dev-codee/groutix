@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Phone, MapPin, Wrench, Camera,
+  Phone, MapPin, Wrench, Camera, Navigation,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -9,6 +9,7 @@ import { getFollowupPrompt } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
+import { ZoneBadge } from "@/components/admin/ZoneBadge";
 
 export function FieldLeadRow({ l }: { l: Lead }) {
   const distanceKm = useDistanceKm(l.address);
@@ -133,12 +134,36 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             )}
           </div>
 
+          {l.address && (
+            <div className="flex items-center gap-1.5">
+              <ZoneBadge address={l.address} />
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
             <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
 
           <div className="pt-1 flex gap-1.5">
+            {/* Directions: an inspector drives to every one of these, so the map
+                link belongs on the row rather than two clicks deep in the GPS modal. */}
+            <a
+              href={l.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${l.address}, VIC, Australia`)}` : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!l.address}
+              onClick={(e) => { if (!l.address) e.preventDefault(); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 border rounded-lg text-[10px] xl:text-[11px] font-semibold transition-colors min-w-0 shadow-2xs ${
+                l.address
+                  ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80 cursor-pointer"
+                  : "bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed"
+              }`}
+              title={l.address ? "Open driving directions" : "No address on this lead"}
+            >
+              <Navigation className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span className="truncate">Navigate</span>
+            </a>
             <button
               type="button"
               onClick={() => callCustomer(l)}
@@ -304,7 +329,11 @@ export function FieldLeadRow({ l }: { l: Lead }) {
                 }`}
               >
                 <span className="truncate">{item.label}</span>
-                <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                {item.isDone ? (
+                  <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                ) : (
+                  <span className="w-4 h-4 rounded-full border-2 border-slate-300 shrink-0 ml-1" aria-label="Not done yet" />
+                )}
               </div>
             ))}
           </div>

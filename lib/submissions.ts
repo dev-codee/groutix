@@ -418,6 +418,58 @@ export async function pickAssigneeForRole(
   }
 }
 
+/**
+ * Hand a freshly booked inspection to the inspection team.
+ *
+ * Without this the lead keeps whatever assignee it had — usually none, since new
+ * leads are created with `assigned: ""` — and the inspection dashboard only shows
+ * leads assigned to the signed-in inspector. A customer self-booking would create
+ * an appointment its own inspector could never see.
+ *
+ * Booking an inspection moves the lead into a stage the inspection role owns (see
+ * lib/pipeline.ts), so this is a stage handoff, the same shape as reassigning to
+ * Finance when a job is marked done. It therefore takes over an assignee from
+ * another team — but never from someone already on the inspection team, because
+ * that was a deliberate choice about WHICH inspector goes.
+ *
+ * Returns the name assigned, or null when nothing changed. Best-effort: a booking
+ * must never fail because assignment did.
+ */
+export async function assignInspectorOnBooking(
+  id: string,
+  currentAssigned?: string | null
+): Promise<string | null> {
+  try {
+    const inspectors = await getActiveUsersByRole("inspection");
+    if (inspectors.length === 0) return null;
+
+    // Already with an inspector? Leave their choice alone.
+    const held = (currentAssigned || "").trim().toLowerCase();
+    if (held && held !== "unassigned") {
+      const alreadyInspection = inspectors.some(
+        (u) => u.name.trim().toLowerCase() === held || u.username.trim().toLowerCase() === held
+      );
+      if (alreadyInspection) return null;
+    }
+
+    const name = await pickAssigneeForRole("inspection");
+    if (!name || name === "Unassigned") return null;
+    if (name.trim().toLowerCase() === held) return null;
+
+    await updateSubmission(id, { assigned: name });
+    await appendActivity(id, {
+      time: new Date().toISOString(),
+      actor: "system",
+      action: "Inspection assigned",
+      detail: `Auto-assigned to ${name} when the inspection was booked.`,
+    });
+    return name;
+  } catch (err) {
+    console.error("assignInspectorOnBooking failed (non-fatal):", err);
+    return null;
+  }
+}
+
 /** Append one entry to a lead's audit trail. Best-effort; never throws. */
 export async function appendActivity(id: string, entry: ActivityEntry): Promise<void> {
   if (!ObjectId.isValid(id)) return;

@@ -10,6 +10,7 @@ import { FinanceLeadRow } from "@/components/admin/rows/FinanceLeadRow";
 import { StandardLeadCard } from "@/components/admin/rows/StandardLeadCard";
 import { STAGE_GROUP_ACCENT, getRoleStatusOptions, getJobsGroups, type JobsGroupDef } from "@/lib/adminHelpers";
 import { isFlowCompleted } from "@/lib/pipeline";
+import { InspectorDayStrip } from "@/components/admin/InspectorDayStrip";
 
 const PAGE_SIZE = 20;
 
@@ -90,6 +91,9 @@ export function JobsView() {
 
   return (
     <div className="space-y-6">
+      {/* The inspector's day comes first — it's what they open the board for. */}
+      {(role === "inspection" || role === "field") && <InspectorDayStrip />}
+
       {/* Pipeline by Stage */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">

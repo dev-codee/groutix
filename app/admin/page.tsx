@@ -3391,7 +3391,19 @@ export default function CrmDashboardPage() {
                 Boolean(targetId && l.technicianId === targetId) ||
                 Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
 
-              if (!isAssigned) return false;
+              // Safety net: an inspection nobody owns is still the inspection
+              // team's work, so show it rather than leaving it invisible to
+              // everyone. Auto-assignment on booking normally claims these, but it
+              // can't when no inspection account exists yet, and older leads
+              // pre-date it. Without this an unclaimed booking would be seen by no
+              // one until a manager noticed it.
+              const isUnclaimedInspection =
+                !l.inspectorId &&
+                !l.technicianId &&
+                (!l.assigned || l.assigned.trim() === "" || l.assigned.trim().toLowerCase() === "unassigned") &&
+                INSPECTION_STATUSES.includes(l.status);
+
+              if (!isAssigned && !isUnclaimedInspection) return false;
               return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
             }
             if (!inRoleQueue(role, l.status) && !isFlowInProgress(role, l.status, l) && !isFlowCompleted(role, l.status, l)) return false;
@@ -3411,7 +3423,10 @@ export default function CrmDashboardPage() {
   function getLeadAppointmentTimestamp(l: Lead): { hasAppt: boolean; timestamp: number } {
     const dtStr = l.inspectionAt || l.jobAt;
     if (dtStr) {
-      const t = new Date(dtStr).getTime();
+      // Appointments are naive Melbourne wall-clock strings; new Date() would read
+      // them in the viewer's timezone and mis-order the inspector's day on any
+      // machine not set to Melbourne time. apptInstantMs resolves them properly.
+      const t = apptInstantMs(dtStr);
       if (!isNaN(t) && t > 0) {
         return { hasAppt: true, timestamp: t };
       }

@@ -72,21 +72,42 @@ API: `app/api/admin/settings/zone-rules/route.ts` (GET any staff, PUT manager).
   `address` prop, passed from `LeadEditModal`
 - `components/admin/views/ZonesView.tsx` — read-only overview + address lookup
   + `ZoneBadge` export
+- `components/admin/modals/ZoneRulesModal.tsx` — manager editor (day-wise switch,
+  both radii + live suburb-count preview, zone->day selects with clash warnings,
+  suburb overrides, coastal skip chips, reset-to-defaults)
+- `app/admin/page.tsx` — "Service Zones" nav entry rendering `ZonesView`, a
+  Settings entry opening the modal, `zoneRulesOpen` state, page title.
+  NOTE: the lucide `Map` icon is imported as `MapIcon` — importing it as `Map`
+  shadows the global `Map` constructor and breaks the file's typecheck.
+- `lib/roles.ts` — `"zones"` view granted to manager, super_admin and inspection
 
 ## Remaining
 
-1. `components/admin/modals/ZoneRulesModal.tsx` — manager editor. Mirror
-   `components/admin/modals/BookingRulesModal.tsx` closely (same Shell pattern,
-   load -> edit -> validate -> PUT -> `publishZoneRules`). Needs to edit:
-   `dayWiseEnabled`, `flexRadiusKm`, `maxRadiusKm`, `zoneDays` (a weekday select
-   per zone; `validateZoneRules` rejects two zones on one day), `coastalExcluded`
-   (chip add/remove), `suburbOverrides` (suburb -> zone).
-2. Wire into `app/admin/page.tsx`:
-   - a `zones` nav entry rendering `<ZonesView onOpenSettings={...} />`
-     (follow how `currentView === "schedule"` renders `ScheduleView`, ~line 4300)
-   - a "Service Zones" item in the manager Settings block (~line 3933, next to
-     "Booking Hours") opening the modal, mounted near line 7975
-3. `npx tsc --noEmit` and `npx next build` both clean.
+Nothing — all three UI pieces plus the day-shortlisting fix are built,
+typechecked, linted and the production build is clean.
+
+Nice-to-haves not done: `ZoneBadge` (exported from `ZonesView.tsx`) isn't used
+on the leads/jobs rows yet; a visual map of the zone pie would be a natural
+addition to `ZonesView` (`DispatchMap` already loads Google Maps).
+
+## Day shortlisting
+
+`shortlistDays(days, { maxOptions, maxDaysAhead })` in `lib/scheduling.ts` is the
+single place that decides how many days a customer is shown. It is bounded by
+BOTH a count and a calendar window, because a count alone means different things
+per area: a daily-flex address has a bookable day every day (7 options = next
+week), but an outer address only has its own zone day (7 options = seven WEEKS).
+
+Call sites, previously inconsistent (7 / none / 5 with no window at all):
+
+| surface | file | maxOptions | maxDaysAhead |
+|---|---|---|---|
+| quote form picker | `app/api/inspection-availability/route.ts` | 7 | 28 |
+| self-booking page | `app/api/book/[id]/route.ts` | 14 | 35 |
+| confirmation email | `app/api/quote/route.ts` | 5 | 28 |
+
+Both limits are maximums, never minimums — the booking horizon and the zone day
+can yield fewer.
 
 ## Verification
 

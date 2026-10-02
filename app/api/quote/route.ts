@@ -5,12 +5,12 @@ import { getSiteContent } from "@/lib/siteContentServer";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
-import { resolveArea, getAvailableDaysSummary, computeAvailability, isSlotOffered, inspectionDaysText } from "@/lib/scheduling";
+import { resolveArea, getAvailableDaysSummary, computeAvailability, shortlistDays, isSlotOffered, inspectionDaysText } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking, isSlotTaken } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 import { getZoneRules } from "@/lib/zoneRulesServer";
 import { formatHHmm, hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
-import { updateSubmission, appendActivity, getNextJobNo } from "@/lib/submissions";
+import { updateSubmission, appendActivity, getNextJobNo, assignInspectorOnBooking } from "@/lib/submissions";
 import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
@@ -416,6 +416,8 @@ export async function POST(req: NextRequest) {
           // time as UTC and shifts the appointment by the Melbourne offset.
           const inspectionAt = `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}`;
           await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
+          // Hand it to the inspection team, or it never reaches their dashboard.
+          await assignInspectorOnBooking(submissionId);
           await appendActivity(submissionId, {
             time: new Date().toISOString(),
             actor: "customer",
@@ -482,9 +484,11 @@ export async function POST(req: NextRequest) {
         bookedByDate.get(b.date)!.add(b.time);
         if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
       }
-      availableDays = computeAvailability(area, bookedByDate, sameZoneDates, "inspection", bookingRules, zoneRules)
-        .slice(0, 5)
-        .map((d) => ({ label: d.label, times: d.times }));
+      // Email teaser: a few soon dates, with the booking link for the rest.
+      availableDays = shortlistDays(
+        computeAvailability(area, bookedByDate, sameZoneDates, "inspection", bookingRules, zoneRules),
+        { maxOptions: 5, maxDaysAhead: 28 }
+      ).map((d) => ({ label: d.label, times: d.times }));
     } catch (err) {
       console.error("availability computation for confirmation email failed:", err);
     }
