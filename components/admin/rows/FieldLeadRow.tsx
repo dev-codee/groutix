@@ -185,10 +185,18 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             <button
               type="button"
               onClick={() => openGpsModal(l)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors shrink-0 cursor-pointer h-[34px] ${l.gps ? "bg-blue-600 hover:bg-blue-700 text-white" : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all shrink-0 cursor-pointer h-[34px] ${
+                l.gps
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : ctx.locationTrackingActive
+                    ? "border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+              title={l.gps ? `GPS Check-in: ${l.gps.lat.toFixed(5)}, ${l.gps.lng.toFixed(5)}` : "Live Real-Time GPS Tracking"}
             >
+              <span className={`w-2 h-2 rounded-full ${l.gps ? "bg-white" : ctx.locationTrackingActive ? "bg-blue-600 animate-ping" : "bg-slate-400"}`} />
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span>GPS</span>
+              <span>{l.gps ? "GPS Saved" : ctx.locationTrackingActive ? "Live GPS" : "GPS"}</span>
             </button>
           </div>
 

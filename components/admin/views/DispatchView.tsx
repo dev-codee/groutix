@@ -162,7 +162,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   }, [scopedLeads, selectedDate, todayStr]);
 
   const inspItems = useMemo(() => allDateItems.filter(i => i.type === "inspection"), [allDateItems]);
-  const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job"), [allDateItems]);
+  // Jobs tab shows only leads that have actually been booked as a job
+  const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job" && i.lead.status === "Job Booked"), [allDateItems]);
   const leadsCount = useMemo(() => scopedLeads.filter(l => ["New", "Contacted", "Waiting for Info"].includes(l.status)).length, [scopedLeads]);
   const todayItems = useMemo(() => allDateItems.filter(i => i.date === todayStr), [allDateItems, todayStr]);
 

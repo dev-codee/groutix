@@ -22,6 +22,8 @@ export interface AdminPageCtxType {
   openDetails: Record<string, boolean>;
   setOpenDetails: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   unreadReplyCount: number;
+  locationTrackingActive?: boolean;
+  liveGpsCoords?: { lat: number; lng: number; accuracy?: number; time: string } | null;
 
   // Lead CRUD
   updateLeadField: (id: string, updates: Partial<Lead>) => Promise<void | boolean>;

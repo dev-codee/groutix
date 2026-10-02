@@ -5,7 +5,7 @@ export type CheckValue = "YES" | "NO" | "";
 
 // ── Room types ────────────────────────────────────────────────────────────────
 
-export type RoomType = "main_bathroom" | "ensuite" | "guest_bathroom" | "other";
+export type RoomType = "balcony" | "main_bathroom" | "ensuite" | "guest_bathroom" | "other";
 export type WorkAreaType = "shower" | "bathroom_floor" | "bath" | "vanity" | "other";
 export type ShowerSizeType = "single" | "double" | "custom_extended";
 export type WorkConfigType =
@@ -231,6 +231,7 @@ export function calculateInspectionSummaryLegacy(findings: Record<string, CheckV
 // ── Label maps ────────────────────────────────────────────────────────────────
 
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  balcony: "Balcony",
   main_bathroom: "Main Bathroom",
   ensuite: "Ensuite",
   guest_bathroom: "Guest Bathroom",

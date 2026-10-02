@@ -350,6 +350,8 @@ function RoomForm({
   }
 
   const hasShower = room.workAreas.includes("shower");
+  // Section 2 (Shower Details) is conditional — renumber so headings stay sequential
+  const sectionNum = (n: number) => (hasShower || n < 2 ? n : n - 1);
   const hasPaidParking = false; // parking handled separately
 
   // Issue details map
@@ -389,13 +391,13 @@ function RoomForm({
 
       {/* ── Section 1: Room and inspection area ─── */}
       <div className="p-4 pt-0">
-        <SectionHeader num={1} title="Room and Inspection Area" />
+        <SectionHeader num={sectionNum(1)} title="Room and Inspection Area" />
 
         <div className="space-y-3">
           <div>
             <FieldLabel>Room Type</FieldLabel>
             <div className="flex flex-wrap gap-1.5">
-              {(["main_bathroom", "ensuite", "guest_bathroom", "other"] as const).map((rt) => (
+              {(["balcony", "main_bathroom", "ensuite", "guest_bathroom", "other"] as const).map((rt) => (
                 <Chip
                   key={rt}
                   active={room.roomType === rt}
@@ -445,7 +447,7 @@ function RoomForm({
       {/* ── Section 2: Shower details (conditional) ─── */}
       {hasShower && (
         <div className="p-4 pt-0">
-          <SectionHeader num={2} title="Shower Details" />
+          <SectionHeader num={sectionNum(2)} title="Shower Details" />
 
           <div className="space-y-3">
             <div>
@@ -553,7 +555,7 @@ function RoomForm({
 
       {/* ── Section 3: What did you find ─── */}
       <div className="p-4 pt-0">
-        <SectionHeader num={3} title="What Did You Find?" />
+        <SectionHeader num={sectionNum(3)} title="What Did You Find?" />
 
         <p className="text-[11px] text-slate-500 mb-3">Select observed issues. Leave uninspected areas as Not Inspected.</p>
 
@@ -670,7 +672,7 @@ function RoomForm({
 
       {/* ── Section 4: Recommended work ─── */}
       <div className="p-4 pt-0">
-        <SectionHeader num={4} title="Recommended Work" />
+        <SectionHeader num={sectionNum(4)} title="Recommended Work" />
 
         <div className="space-y-3">
           <div className="flex flex-wrap gap-1.5">

@@ -287,6 +287,7 @@ export default function CrmDashboardPage() {
   const [startJobDays, setStartJobDays] = useState(1);
   const [staffLocations, setStaffLocations] = useState<any[]>([]);
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
+  const [liveGpsCoords, setLiveGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
 
   // Live AUS clock — updates every second.
@@ -961,83 +962,120 @@ export default function CrmDashboardPage() {
       return;
     }
 
-    setOnTheWayLoading(lead.id);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        try {
-          const res = await fetch("/api/admin/on-the-way", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
-          });
-          const data = await res.json();
-          applyNotificationResult(data);
-          setEtaToast({
-            leadId: lead.id,
-            msg:
-              eventType === "en_route"
-                ? `Customer notified! ETA: ~${data.eta || "unknown"}`
-                : `Customer notified of your arrival!`,
-          });
+    const sendOnTheWayWithCoords = async (lat: number | null, lng: number | null) => {
+      try {
+        const res = await fetch("/api/admin/on-the-way", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
+        });
+        const data = await res.json();
+        applyNotificationResult(data);
+        setEtaToast({
+          leadId: lead.id,
+          msg:
+            eventType === "en_route"
+              ? `Customer notified! ETA: ~${data.eta || "unknown"}`
+              : `Customer notified of your arrival!`,
+        });
+        if (lat && lng) {
           fetch("/api/admin/staff/location", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lat, lng, leadId: lead.id }),
           }).catch(() => {});
-        } catch {
-          setEtaToast({ leadId: lead.id, msg: "Notification sent (no ETA)." });
-        } finally {
-          setOnTheWayLoading(null);
-          setTimeout(() => setEtaToast(null), 6000);
         }
+      } catch {
+        setEtaToast({ leadId: lead.id, msg: "Notification sent (no ETA)." });
+      } finally {
+        setOnTheWayLoading(null);
+        setTimeout(() => setEtaToast(null), 6000);
+      }
+    };
+
+    // If real-time continuous GPS already has a lock, dispatch immediately without delay
+    if (liveGpsCoords && liveGpsCoords.lat && liveGpsCoords.lng) {
+      setOnTheWayLoading(lead.id);
+      sendOnTheWayWithCoords(liveGpsCoords.lat, liveGpsCoords.lng);
+      return;
+    }
+
+    setOnTheWayLoading(lead.id);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        sendOnTheWayWithCoords(lat, lng);
       },
       () => {
-        setOnTheWayLoading(null);
-        setEtaToast({
-          leadId: lead.id,
-          msg: "Location denied — customer still notified without ETA.",
-        });
-        fetch("/api/admin/on-the-way", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId: lead.id, lat: null, lng: null, eventType }),
-        })
-          .then((r) => r.json())
-          .then(applyNotificationResult)
-          .catch(() => {});
-        setTimeout(() => setEtaToast(null), 5000);
+        sendOnTheWayWithCoords(null, null);
       },
-      { timeout: 10000, maximumAge: 60000 }
+      { timeout: 10000, maximumAge: 30000 }
     );
   }
 
-  // Auto-share location for inspector/technician roles while dashboard is open
+  // Auto-share location in real-time for inspector / field / technician roles while dashboard is open
   useEffect(() => {
-    if (role !== "inspection" && role !== "technician") return;
+    if (role !== "inspection" && role !== "field" && role !== "technician") {
+      setLocationTrackingActive(false);
+      return;
+    }
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
 
-    const sendLocation = () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          fetch("/api/admin/staff/location", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-            }),
-          }).catch(() => {});
-          setLocationTrackingActive(true);
-        },
-        () => setLocationTrackingActive(false),
-        { timeout: 8000, maximumAge: 30000 }
-      );
+    let lastSent = 0;
+    const sendLocationUpdate = (lat: number, lng: number, accuracy?: number) => {
+      const now = Date.now();
+      if (now - lastSent >= 15000) {
+        lastSent = now;
+        fetch("/api/admin/staff/location", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat, lng, accuracy }),
+        }).catch(() => {});
+      }
     };
 
-    sendLocation();
-    const id = setInterval(sendLocation, 60000);
-    return () => clearInterval(id);
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          time: new Date().toISOString(),
+        };
+        setLiveGpsCoords(coords);
+        setLocationTrackingActive(true);
+        sendLocationUpdate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+      },
+      (err) => {
+        console.warn("Continuous GPS watch warning:", err.message);
+        // Fallback snapshot
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const coords = {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              time: new Date().toISOString(),
+            };
+            setLiveGpsCoords(coords);
+            setLocationTrackingActive(true);
+            sendLocationUpdate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+          },
+          () => setLocationTrackingActive(false),
+          { timeout: 10000, maximumAge: 30000 }
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+
+    locationWatchRef.current = watchId;
+
+    return () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current);
+        locationWatchRef.current = null;
+      }
+    };
   }, [role]);
 
   // Load staff locations every 30s (managers/super_admin only)
