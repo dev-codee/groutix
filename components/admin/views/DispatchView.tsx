@@ -130,7 +130,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         }
       }
 
-      if (lead.jobAt) {
+      // Jobs only enter dispatch once they are actually booked
+      if (lead.jobAt && lead.status === "Job Booked") {
         const d = lead.jobAt.slice(0, 10);
         if (d >= windowStart && d <= windowEnd) {
           const tRaw = lead.jobAt.split("T")[1] || "09:00";
@@ -145,6 +146,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
       // Include unassigned jobs / inspections with addresses so they show on dispatch map
       if (!lead.inspectionAt && !lead.jobAt && (lead.address || lead.city)) {
         const isJob = lead.status.toLowerCase().includes("job") || lead.status === "Won" || Boolean(lead.jobNo);
+        if (isJob && lead.status !== "Job Booked") continue;
         let techName = "Unassigned";
         if (lead.technician && lead.technician.toLowerCase() !== "unassigned") techName = lead.technician;
         else if (lead.assigned && lead.assigned.toLowerCase() !== "unassigned") techName = lead.assigned;
@@ -162,8 +164,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
   }, [scopedLeads, selectedDate, todayStr]);
 
   const inspItems = useMemo(() => allDateItems.filter(i => i.type === "inspection"), [allDateItems]);
-  // Jobs tab shows only leads that have actually been booked as a job
-  const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job" && i.lead.status === "Job Booked"), [allDateItems]);
+  const jobItems = useMemo(() => allDateItems.filter(i => i.type === "job"), [allDateItems]);
   const leadsCount = useMemo(() => scopedLeads.filter(l => ["New", "Contacted", "Waiting for Info"].includes(l.status)).length, [scopedLeads]);
   const todayItems = useMemo(() => allDateItems.filter(i => i.date === todayStr), [allDateItems, todayStr]);
 
