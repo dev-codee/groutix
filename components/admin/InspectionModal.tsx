@@ -960,8 +960,19 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
   const [errorMsg, setErrorMsg] = useState("");
   const [photos, setPhotos] = useState<LeadPhotoLike[]>(lead.photos || []);
 
+  // Seed the form once per opening, keyed on the lead being inspected. The
+  // `lead` prop is a fresh object on every parent state change — a photo upload
+  // pushes the new photo list up, which re-creates it — so reacting to its
+  // identity would throw away everything typed since the modal opened.
+  const seededLeadIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      seededLeadIdRef.current = null;
+      return;
+    }
+    if (seededLeadIdRef.current === lead.id) return;
+    seededLeadIdRef.current = lead.id;
     setReport(buildInitial(lead, currentUsername));
     setPhotos(lead.photos || []);
     setSaveSuccess(false);
