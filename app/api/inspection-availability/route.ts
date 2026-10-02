@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveArea, computeAvailability } from "@/lib/scheduling";
+import { resolveArea, computeAvailability, zoneDayName } from "@/lib/scheduling";
 import { listUpcomingBookings } from "@/lib/bookings";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 
@@ -15,13 +15,17 @@ export async function GET(req: NextRequest) {
   // cached — a stale copy would show a just-booked slot as still free.
   const NO_STORE = { "Cache-Control": "no-store, max-age=0, must-revalidate" };
 
-  if (!area.serviced || area.zone === "outside") {
+  if (!area.serviced || area.zone === "outside" || area.zone === "coastal") {
     return NextResponse.json({
       days: [],
       inServiceArea: false,
       suburb: area.suburb,
+      zone: area.zone,
       distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
-      message: "This location is outside our 50 km free inspection service area from Tullamarine.",
+      message:
+        area.zone === "coastal"
+          ? "We don't currently run inspection routes through coastal / ocean areas. Please contact us and we'll let you know if we can help."
+          : "This location is outside our 50 km free inspection service area.",
     }, { headers: NO_STORE });
   }
 
@@ -45,6 +49,12 @@ export async function GET(req: NextRequest) {
     days,
     inServiceArea: true,
     suburb: area.suburb,
+    zone: area.zone,
+    // Outer areas are only visited on their zone's weekday — surface that so the
+    // UI can explain why fewer days came back.
+    zoneDay: zoneDayName(area.zone),
+    label: area.label,
+    inner: area.inner,
     distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
   }, { headers: NO_STORE });
 }

@@ -115,6 +115,11 @@ export default function HeroQuoteForm() {
   const [inspectionDays, setInspectionDays] = useState<{ date: string; label: string; slots: { time: string; booked: boolean }[] }[]>([]);
   const [inspectionDaysLoading, setInspectionDaysLoading] = useState(false);
   const [isOutsideServiceArea, setIsOutsideServiceArea] = useState(false);
+  // Why we can't offer online times: "coastal" (route skips the bay/ocean strip)
+  // or "outside" (further than 50 km from base).
+  const [outsideReason, setOutsideReason] = useState<"coastal" | "outside">("outside");
+  // "Mondays" … "Sundays" when the address sits in an outer 15 – 50 km zone.
+  const [inspectionZoneDay, setInspectionZoneDay] = useState<string | null>(null);
   const [inspectionDate, setInspectionDate] = useState("");
   const [inspectionTime, setInspectionTime] = useState("");
   const [inspectionError, setInspectionError] = useState("");
@@ -177,11 +182,14 @@ export default function HeroQuoteForm() {
       const json = await res.json();
       if (json.inServiceArea === false) {
         setIsOutsideServiceArea(true);
+        setOutsideReason(json.zone === "coastal" ? "coastal" : "outside");
+        setInspectionZoneDay(null);
         setInspectionDays([]);
         setInspectionDate("");
         setInspectionTime("");
       } else {
         setIsOutsideServiceArea(false);
+        setInspectionZoneDay(json.zoneDay || null);
         const sortedDays = (json.days || []).slice().sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
         setInspectionDays(sortedDays);
         setInspectionDate("");
@@ -1379,10 +1387,17 @@ export default function HeroQuoteForm() {
                     >
                       <div className="px-4 py-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
                         <p className="text-[12px] text-neutral-600 leading-snug">
-                          Free on site inspections are available across our service area. For properties more than
-                          50 km from Tullamarine, inspection dates and times are arranged directly by our team based
-                          on availability. Submit your details and we'll contact you to organise a suitable time.
+                          Free on site inspections are available across our service area. Addresses within 15 km of
+                          our base can be booked on any day; further out we visit one part of Melbourne per day, so
+                          you'll see the days our inspector is already in your area. For properties more than 50 km
+                          away, or in coastal areas, our team arranges the time with you directly.
                         </p>
+                        {inspectionZoneDay && (
+                          <p className="text-[12px] text-neutral-600 leading-snug">
+                            We route your area on{" "}
+                            <span className="font-bold text-neutral-800">{inspectionZoneDay}</span>.
+                          </p>
+                        )}
                         {!data.address || data.address.length < 5 ? (
                           <p className="text-[13px] text-neutral-500 text-center py-2">
                             Please enter your address above first to see available times.
@@ -1392,7 +1407,9 @@ export default function HeroQuoteForm() {
                         ) : isOutsideServiceArea ? (
                           <div className="py-2.5 px-3 bg-amber-50/90 border border-amber-200 rounded-sm text-center space-y-1">
                             <p className="text-[13px] font-bold text-amber-900">
-                              More Than 50 km From Tullamarine
+                              {outsideReason === "coastal"
+                                ? "Coastal / Ocean Area"
+                                : "More Than 50 km From Our Base"}
                             </p>
                             <p className="text-[12px] text-amber-800 leading-snug">
                               Online times aren't offered for this address — our team will arrange your inspection

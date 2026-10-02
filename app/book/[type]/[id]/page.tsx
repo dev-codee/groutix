@@ -22,6 +22,8 @@ type Availability = {
     inner: boolean;
     suburb: string | null;
     zone?: string;
+    /** "Mondays" … "Sundays" when the address is in an outer 15 – 50 km zone. */
+    zoneDay?: string | null;
     distanceKm?: number | null;
     serviced?: boolean;
     located?: boolean;
@@ -29,6 +31,8 @@ type Availability = {
   days: DayOption[];
   current: string | null;
 };
+
+const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
 function timeLabel(t: string): string {
   const [h, m = 0] = t.split(":").map(Number);
@@ -168,16 +172,28 @@ export default function BookingPage() {
               </div>
             )}
 
+            {data.area?.zoneDay && data.days.length > 0 && (
+              <div className="text-xs bg-slate-50 border border-slate-200 text-slate-600 rounded-lg px-3 py-2">
+                We route {data.area.suburb ? titleCase(data.area.suburb) : "your area"} on{" "}
+                <span className="font-bold text-slate-800">{data.area.zoneDay}</span>, so the days below
+                are the ones our inspector is already in your part of Melbourne.
+              </div>
+            )}
+
             {data.days.length === 0 ? (
               <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center space-y-1.5">
                 <p className="text-sm font-bold text-amber-900">
-                  {type === "inspection" && data.area?.serviced === false
+                  {type === "inspection" && data.area?.zone === "coastal"
+                    ? "Coastal / Ocean Area"
+                    : type === "inspection" && data.area?.serviced === false
                     ? "Outside 50 km Free Inspection Service Area"
                     : "No online times available right now"}
                 </p>
                 <p className="text-xs text-amber-800">
-                  {type === "inspection" && data.area?.serviced === false
-                    ? "Free on-site inspection timings are available within a 50 km radius of our Tullamarine HQ. Please reply to your email or call us directly so our team can assist you."
+                  {type === "inspection" && data.area?.zone === "coastal"
+                    ? "Our inspection routes don't currently cover coastal / ocean areas. Please reply to your email or call us directly so our team can assist you."
+                    : type === "inspection" && data.area?.serviced === false
+                    ? "Free on-site inspection timings are available within a 50 km radius of our base. Please reply to your email or call us directly so our team can assist you."
                     : "Please reply to your email or call us and we'll arrange a suitable time for you."}
                 </p>
               </div>

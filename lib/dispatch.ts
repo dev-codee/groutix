@@ -7,7 +7,8 @@ import {
   TULLAMARINE,
   distanceKm,
   resolveArea,
-  INNER_RADIUS_SUBURBS,
+  isOuterZone,
+  ZONE_WEEKDAY,
   type AreaInfo,
 } from "@/lib/scheduling";
 import {
@@ -233,23 +234,20 @@ export function suggestBestDispatchSlots(params: {
 
     const dayName = candidateDate.toLocaleDateString("en-AU", { weekday: "short" });
 
-    // Corridor matching score
-    // mon_lower1: 1, tue_lower2: 2, wed_lower3: 3, thu_northeast: 4, fri_north: 5, sat_melton: 6
+    // Day-wise zone matching. Outer 15 – 50 km areas are serviced on exactly one
+    // weekday (ZONE_WEEKDAY); suggesting any other day would send the inspector
+    // across Melbourne, so those days are skipped outright rather than scored
+    // down. Inner (0 – 15 km daily flex) areas fit any open day.
     let corridorMatch = false;
     let corridorScore = 0;
 
-    if (area.inner || area.zone === "flexible") {
+    if (isOuterZone(area.zone)) {
+      if (ZONE_WEEKDAY[area.zone] !== dayOfWeek) continue;
       corridorMatch = true;
-      corridorScore = 40; // Flexible inner corridor
+      corridorScore = 60;
     } else {
-      if (area.zone === "mon_lower1" && dayOfWeek === 1) corridorMatch = true;
-      if (area.zone === "tue_lower2" && dayOfWeek === 2) corridorMatch = true;
-      if (area.zone === "wed_lower3" && dayOfWeek === 3) corridorMatch = true;
-      if (area.zone === "thu_bundoora" && dayOfWeek === 4) corridorMatch = true;
-      if (area.zone === "fri_north" && dayOfWeek === 5) corridorMatch = true;
-      if ((area.zone === "sat_melton" || area.zone === "sun_stalbans") && dayOfWeek === 6) corridorMatch = true;
-
-      if (corridorMatch) corridorScore = 60;
+      corridorMatch = true;
+      corridorScore = 40; // Daily-flex / unclassified area
     }
 
     for (const tech of eligibleTechs) {

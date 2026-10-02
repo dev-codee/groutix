@@ -13,6 +13,7 @@ import {
   computeAvailability,
   isSlotOffered,
   formatSlotRange,
+  zoneDayName,
   type AreaInfo,
 } from "@/lib/scheduling";
 import { listUpcomingBookings, createBooking } from "@/lib/bookings";
@@ -131,6 +132,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       inner: area.inner,
       suburb: area.suburb,
       zone: area.zone,
+      // Outer 15 – 50 km areas are only visited on their zone's weekday; the UI
+      // uses this to explain why only those days came back.
+      zoneDay: zoneDayName(area.zone),
       distanceKm: area.distanceKm != null ? Math.round(area.distanceKm * 10) / 10 : null,
       serviced: area.serviced,
       located: lat != null && lng != null,
@@ -169,9 +173,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     typeof body.lat === "number" ? body.lat : null,
     typeof body.lng === "number" ? body.lng : null
   );
-  if (type === "inspection" && (!area.serviced || area.zone === "outside")) {
+  if (type === "inspection" && (!area.serviced || area.zone === "outside" || area.zone === "coastal")) {
     return NextResponse.json(
-      { error: "Free inspections are only offered within a 50 km radius of Tullamarine HQ." },
+      {
+        error:
+          area.zone === "coastal"
+            ? "We don't run inspection routes through coastal / ocean areas. Please contact us directly."
+            : "Free inspections are only offered within a 50 km radius of our base.",
+      },
       { status: 400 }
     );
   }

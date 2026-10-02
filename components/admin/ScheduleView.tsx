@@ -16,10 +16,17 @@ type BookingEntry = {
   customer: { name: string; phone: string; email: string; address: string; status: string } | null;
 };
 
+// Day-wise zones from lib/scheduling.ts, plus the legacy compass codes that older
+// booking documents were stored with.
 const ZONE_LABELS: Record<string, string> = {
+  inner: "Daily Flex", flexible: "Greater Melb",
+  mon_south_west: "South-West (Mon)", tue_south: "South (Tue)",
+  wed_west: "West (Wed)", thu_north: "North (Thu)",
+  fri_north_east: "North-East (Fri)", sat_east: "East (Sat)",
+  sun_south_east: "South-East (Sun)",
+  coastal: "Coastal (skip)", outside: "Outside area",
   N: "North", NE: "North-East", E: "East", SE: "South-East",
   S: "South", SW: "South-West", W: "West", NW: "North-West",
-  inner: "Inner", flexible: "Greater Melb",
 };
 
 function fmtScheduleDate(dateStr: string) {
