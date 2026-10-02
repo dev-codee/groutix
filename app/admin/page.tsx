@@ -3674,6 +3674,7 @@ export default function CrmDashboardPage() {
     rowAssigneeOptions, isTechnicianName,
     // Navigation
     setCurrentView: navigateTo, openLeadsFiltered, openInbox, startNewLead,
+    openJobCard: setJobCardLead,
     // Manager dashboard extras
     staffLocations, leads, loading, filteredLeads,
     // Shared view state

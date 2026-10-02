@@ -65,6 +65,7 @@ export function ManagerDashboard() {
     unreadReplyCount,
     setCurrentView,
     openLeadsFiltered,
+    openJobCard,
     openInbox,
     startNewLead,
     openQuoteModal,
@@ -1120,9 +1121,9 @@ export function ManagerDashboard() {
                   return (
                     <div
                       key={l.id}
-                      onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
+                      onClick={() => openJobCard(l)}
                       className="p-2 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-blue-50/50 transition-colors cursor-pointer shadow-2xs space-y-1 text-left"
-                      title={`Open Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
+                      title={`View Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
                     >
                       <div className="flex items-center justify-between gap-1 text-[10px]">
                         <span className="font-extrabold text-blue-700 tabular-nums truncate">{timeStr}</span>

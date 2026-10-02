@@ -60,6 +60,8 @@ export interface AdminPageCtxType {
   openLeadsFiltered: (statuses: string[]) => void;
   openInbox: () => void;
   startNewLead: () => void;
+  /** Open the read-only client job card for a lead (no edit form). */
+  openJobCard: (lead: Lead) => void;
 
   // Manager dashboard extras
   staffLocations: any[];
