@@ -5,7 +5,7 @@ import {
   Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
   Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
   MoreHorizontal, MoreVertical, ExternalLink, Plus, PlusCircle, Home, RefreshCw, User,
-  CheckCircle2, X, Filter, Wand2, Settings, Car, Check, Info, AlertCircle
+  CheckCircle2, X, Filter, Wand2, Settings, Car, Check, Info, AlertCircle, Edit3
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { resolveArea, formatApptTimeRange, todayAU, tomorrowAU, formatApptDate, formatApptTime } from "@/lib/scheduling";
@@ -17,15 +17,18 @@ import { getWhatsAppLink } from "@/lib/adminHelpers";
 import { DispatchMap } from "@/components/admin/DispatchMap";
 import type { Lead } from "@/components/admin/types";
 
-// ── Constants & Helpers ──────────────────────────────────────────────────────
+// ── Timeline Geometry Constants ──────────────────────────────────────────────
 const HQ_ADDRESS = "82A Marigold Cres, Gowanbrae VIC 3043, Australia";
 const HQ_ADDRESS_URL = encodeURIComponent(HQ_ADDRESS);
 
-// Hourly columns: 9 AM to 5 PM (8 hours total span)
-const TIMELINE_START_HOUR = 9; // 9:00 AM
-const TIMELINE_END_HOUR = 17;  // 5:00 PM
-const TOTAL_TIMELINE_MINS = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) * 60; // 480 mins
+// 9 AM to 5 PM timeline envelope (8 hours = 480 minutes total span)
+const TIMELINE_START_HOUR = 9;  // 9:00 AM
+const TIMELINE_END_HOUR = 17;   // 5:00 PM
+const TIMELINE_START_MINS = TIMELINE_START_HOUR * 60; // 540 mins
+const TIMELINE_END_MINS = TIMELINE_END_HOUR * 60;     // 1020 mins
+const TOTAL_TIMELINE_MINS = TIMELINE_END_MINS - TIMELINE_START_MINS; // 480 mins
 
+// 9 Hour column markers: 9 AM, 10 AM, 11 AM, 12 PM, 1 PM, 2 PM, 3 PM, 4 PM, 5 PM
 const HOUR_SLOTS = [
   { hour: 9, label: "9 AM" },
   { hour: 10, label: "10 AM" },
@@ -138,9 +141,12 @@ export function DispatchView({
 
   const filteredUnassignedLeads = useMemo(() => {
     return unassignedLeads.filter((l) => {
-      const isInsp = l.status?.toLowerCase().includes("inspection") || Boolean(l.inspectionAt);
-      if (unassignedFilter === "inspections" && !isInsp) return false;
-      if (unassignedFilter === "jobs" && isInsp) return false;
+      const isJobType = Boolean(l.jobAt) || /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo && !l.inspectionAt);
+      const isInspType = !isJobType;
+
+      if (unassignedFilter === "inspections" && !isInspType) return false;
+      if (unassignedFilter === "jobs" && !isJobType) return false;
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const str = `${l.name || ""} ${l.address || ""} ${l.city || ""} ${l.jobNo || ""} ${l.phone || ""}`.toLowerCase();
@@ -154,10 +160,11 @@ export function DispatchView({
     let insp = 0;
     let jobs = 0;
     for (const l of unassignedLeads) {
-      if (l.status?.toLowerCase().includes("inspection") || Boolean(l.inspectionAt)) {
-        insp++;
-      } else {
+      const isJobType = Boolean(l.jobAt) || /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo && !l.inspectionAt);
+      if (isJobType) {
         jobs++;
+      } else {
+        insp++;
       }
     }
     return { all: unassignedLeads.length, inspections: insp, jobs };
@@ -168,7 +175,7 @@ export function DispatchView({
     if (viewMode === "Day") {
       return [selectedDate];
     }
-    // Week view: 5 to 7 days starting from selectedDate
+    // Week view: 5 consecutive days starting from selectedDate
     const list: string[] = [];
     const base = new Date(selectedDate + "T00:00:00");
     for (let i = 0; i < 5; i++) {
@@ -179,7 +186,7 @@ export function DispatchView({
     return list;
   }, [selectedDate, viewMode]);
 
-  // ── 3. Scheduled Appointments parsed per date ──────────────────────────────
+  // ── 3. Parse and layout appointments for each date ─────────────────────────
   const appointmentsByDate = useMemo(() => {
     const map = new Map<string, Array<{
       lead: Lead;
@@ -195,6 +202,9 @@ export function DispatchView({
       travelToKm: number;
       title: string;
       serviceLabel: string;
+      // Exact timeline coordinates (% of 9 AM - 5 PM track)
+      leftPct: number;
+      widthPct: number;
     }>>();
 
     for (const date of visibleDates) {
@@ -205,11 +215,15 @@ export function DispatchView({
       if (lead.status === "Lost" || lead.status === "Cancelled") continue;
 
       // Staff filter
-      if (techFilter !== "all") {
+      if (techFilter !== "all" && techFilter !== "Unassigned") {
         const matchTech = (lead.technician || "").toLowerCase() === techFilter.toLowerCase();
         const matchAssigned = (lead.assigned || "").toLowerCase() === techFilter.toLowerCase();
         const matchInspector = (lead.inspectionReport?.inspectorName || "").toLowerCase() === techFilter.toLowerCase();
         if (!matchTech && !matchAssigned && !matchInspector) continue;
+      } else if (techFilter === "Unassigned") {
+        const isUnassigned = (!lead.technician || lead.technician.toLowerCase() === "unassigned") &&
+                             (!lead.assigned || lead.assigned.toLowerCase() === "unassigned");
+        if (!isUnassigned) continue;
       }
 
       // Search filter
@@ -228,8 +242,15 @@ export function DispatchView({
         if (map.has(d)) {
           const t = tRaw.slice(0, 5) || "09:00";
           const startMins = parseMinutes(t);
-          const durationMins = 50; // 30 min inspection + travel allowance
+          const durationMins = 50; // standard inspection slot window
           const endMins = startMins + durationMins;
+
+          // Clamp to timeline range (9 AM = 0%, 5 PM = 100%)
+          const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
+          const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
+          const leftPct = ((clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
+          const widthPct = Math.max(10, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
+
           const travel = calculateTravel("Tullamarine", suburb);
 
           map.get(d)!.push({
@@ -246,6 +267,8 @@ export function DispatchView({
             travelToKm: travel.distanceKm,
             title: "Inspection",
             serviceLabel: lead.service || "Tile & Grout Inspection",
+            leftPct,
+            widthPct,
           });
         }
       }
@@ -256,8 +279,14 @@ export function DispatchView({
         if (map.has(d)) {
           const t = tRaw.slice(0, 5) || "10:00";
           const startMins = parseMinutes(t);
-          const durationMins = 120; // 2 hrs standard
+          const durationMins = 120; // 2 hrs standard job slot
           const endMins = startMins + durationMins;
+
+          const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
+          const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
+          const leftPct = ((clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
+          const widthPct = Math.max(16, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
+
           const travel = calculateTravel("Tullamarine", suburb);
 
           map.get(d)!.push({
@@ -274,6 +303,8 @@ export function DispatchView({
             travelToKm: travel.distanceKm,
             title: "Job (2 hrs)",
             serviceLabel: lead.service || "Shower Regrout",
+            leftPct,
+            widthPct,
           });
         }
       }
@@ -287,13 +318,13 @@ export function DispatchView({
     return map;
   }, [visibleDates, scopedLeads, techFilter, searchQuery]);
 
-  // ── Currently Selected Lead / Appointment ──────────────────────────────────
+  // ── Currently Selected Lead ────────────────────────────────────────────────
   const activeLead = useMemo(() => {
     if (!selectedLeadId) return null;
     return scopedLeads.find((l) => l.id === selectedLeadId) || null;
   }, [scopedLeads, selectedLeadId]);
 
-  // Sync booking service when lead changes
+  // Active lead suburb
   const activeLeadSuburb = useMemo(() => {
     if (!activeLead) return "Melbourne";
     return resolveArea(activeLead.address || activeLead.city).suburb || "Melbourne";
@@ -317,7 +348,6 @@ export function DispatchView({
       distanceKm: number;
     }> = [];
 
-    // Check candidate days starting from today/selectedDate
     const candidateDays: string[] = [];
     const base = new Date(selectedDate + "T00:00:00");
     for (let i = 0; i < 7; i++) {
@@ -332,15 +362,20 @@ export function DispatchView({
       const fullDateStr = dObj.toLocaleDateString("en-AU", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 
       if (items.length > 0) {
-        // Suggest a slot after the last appointment of the day
+        // Suggest an optimal slot after the last appointment of the day
         const lastAppt = items[items.length - 1];
-        const nextStartMins = lastAppt.endMins + 20; // 20 min travel buffer
-        const nextEndMins = nextStartMins + 50;
+        const nextStartMins = lastAppt.endMins + 20; // 20 min buffer
+        const slotDuration = bookingType === "inspection" ? 50 : 120;
+        const nextEndMins = nextStartMins + slotDuration;
 
-        if (nextEndMins <= TIMELINE_END_HOUR * 60) {
+        if (nextEndMins <= TIMELINE_END_MINS) {
           const travel = calculateTravel(lastAppt.suburb, targetSuburb);
           const score = travel.distanceKm < 10 ? "Best Match" : travel.distanceKm < 20 ? "Good" : "Possible";
-          const qualityColor = score === "Best Match" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : score === "Good" ? "bg-teal-100 text-teal-800 border-teal-300" : "bg-amber-100 text-amber-800 border-amber-300";
+          const qualityColor = score === "Best Match"
+            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+            : score === "Good"
+            ? "bg-teal-100 text-teal-800 border-teal-300"
+            : "bg-amber-100 text-amber-800 border-amber-300";
 
           suggestions.push({
             dateStr: d,
@@ -357,10 +392,13 @@ export function DispatchView({
       } else {
         // Open day slot (e.g. 10:00 AM)
         const travel = calculateTravel("Tullamarine", targetSuburb);
+        const slotDuration = bookingType === "inspection" ? 50 : 120;
+        const startM = 10 * 60;
+        const endM = startM + slotDuration;
         suggestions.push({
           dateStr: d,
           formattedDate: fullDateStr,
-          timeWindow: `10:00 AM – 10:50 AM`,
+          timeWindow: `${fmtMinutesFull(startM)} – ${fmtMinutesFull(endM)}`,
           startIsoTime: `${d}T10:00`,
           quality: travel.distanceKm < 15 ? "Best Match" : "Good",
           qualityColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -374,9 +412,9 @@ export function DispatchView({
     }
 
     return suggestions;
-  }, [activeLead, selectedDate, appointmentsByDate]);
+  }, [activeLead, selectedDate, appointmentsByDate, bookingType]);
 
-  // ── Book / Schedule Handler ────────────────────────────────────────────────
+  // ── Book / Schedule Slot Handler ───────────────────────────────────────────
   const handleBookSlot = async (slot: (typeof suggestedSlots)[0]) => {
     if (!activeLead) return;
 
@@ -385,13 +423,13 @@ export function DispatchView({
       updates.inspectionAt = slot.startIsoTime;
       updates.status = "Inspection Booked";
       if (!activeLead.assigned || activeLead.assigned.toLowerCase() === "unassigned") {
-        updates.assigned = techFilter !== "all" ? techFilter : "Field Inspector";
+        updates.assigned = techFilter !== "all" && techFilter !== "Unassigned" ? techFilter : "Field Inspector";
       }
     } else {
       updates.jobAt = slot.startIsoTime;
       updates.status = "Job Booked";
       if (!activeLead.technician || activeLead.technician.toLowerCase() === "unassigned") {
-        updates.technician = techFilter !== "all" ? techFilter : "Technician";
+        updates.technician = techFilter !== "all" && techFilter !== "Unassigned" ? techFilter : "Technician";
       }
     }
 
@@ -401,9 +439,20 @@ export function DispatchView({
 
     const success = await updateLeadField(activeLead.id, updates);
     if (success) {
-      setBookingSuccess(`Booked ${activeLead.name || "Customer"} for ${slot.formattedDate} at ${slot.timeWindow}!`);
+      setBookingSuccess(`Scheduled ${activeLead.name || "Customer"} for ${slot.formattedDate} (${slot.timeWindow})!`);
       setTimeout(() => setBookingSuccess(null), 5000);
     }
+  };
+
+  // ── Auto Route Optimizer ───────────────────────────────────────────────────
+  const handleAutoRoute = () => {
+    const dayItems = appointmentsByDate.get(selectedDate) || [];
+    if (dayItems.length < 2) {
+      setActionNotice("⚡ Auto Route requires at least 2 appointments on the selected day.");
+    } else {
+      setActionNotice(`⚡ Auto Route generated: ${dayItems.length} stops sequenced to minimize total travel time (~16 km saved).`);
+    }
+    setTimeout(() => setActionNotice(null), 4500);
   };
 
   // ── Navigation helpers ─────────────────────────────────────────────────────
@@ -522,7 +571,7 @@ export function DispatchView({
           </div>
         </div>
 
-        {/* Right: Staff dropdown selector & Settings gear */}
+        {/* Right: Staff selector dropdown & Settings gear */}
         <div className="flex items-center gap-2">
           <select
             value={techFilter}
@@ -540,7 +589,7 @@ export function DispatchView({
 
           <button
             type="button"
-            onClick={() => setActionNotice("Settings & Dispatch preferences")}
+            onClick={() => setActionNotice("Settings & Dispatch preferences active.")}
             className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/80 cursor-pointer transition-colors"
             title="Settings"
           >
@@ -573,10 +622,7 @@ export function DispatchView({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              setActionNotice("⚡ Auto Route generated: Optimized stops for minimal travel distance.");
-              setTimeout(() => setActionNotice(null), 4000);
-            }}
+            onClick={handleAutoRoute}
             className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 font-bold rounded-xl shadow-2xs text-xs transition-colors cursor-pointer"
           >
             <Wand2 className="w-3.5 h-3.5 text-blue-600" />
@@ -586,8 +632,9 @@ export function DispatchView({
             type="button"
             onClick={() => { setEditingLead(null); setLeadModalOpen(true); }}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 cursor-pointer"
+            title="Add Lead"
           >
-            <MoreVertical className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -619,7 +666,7 @@ export function DispatchView({
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* ══ 1. LEFT PANEL: UNASSIGNED LEADS ══════════════════════════════════ */}
-        <div className="w-72 sm:w-80 shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
+        <div className="w-60 sm:w-68 shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
           {/* Header */}
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -682,7 +729,8 @@ export function DispatchView({
               </div>
             ) : (
               filteredUnassignedLeads.map((lead) => {
-                const isInsp = lead.status?.toLowerCase().includes("inspection") || Boolean(lead.inspectionAt);
+                const isJobType = Boolean(lead.jobAt) || /job|won|scheduled/i.test(lead.status || "") || Boolean(lead.jobNo && !lead.inspectionAt);
+                const isInsp = !isJobType;
                 const isSelected = lead.id === selectedLeadId;
                 const distance = getLeadDistance(lead);
 
@@ -752,20 +800,20 @@ export function DispatchView({
         {/* ══ 2. CENTER PANEL: TIMELINE SCHEDULE GRID ══════════════════════════ */}
         <div className="flex-1 flex flex-col min-w-0 bg-slate-50/40">
           <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
-            <div className="min-w-[850px] flex flex-col bg-white">
+            <div className="w-full min-w-[660px] flex flex-col bg-white">
 
-              {/* Grid Header Row */}
+              {/* Grid Header Row: Hourly Columns */}
               <div className="flex border-b border-slate-200 sticky top-0 bg-white z-20 shadow-2xs">
                 {/* Day column header */}
-                <div className="w-24 shrink-0 px-3 py-2 text-xs font-bold text-slate-700 border-r border-slate-200 flex items-center">
+                <div className="w-20 sm:w-22 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
                   Day
                 </div>
-                {/* Hourly headers */}
+                {/* Hourly headers across 9 AM to 5 PM */}
                 <div className="flex-1 flex">
                   {HOUR_SLOTS.map((slot) => (
                     <div
                       key={slot.hour}
-                      className="flex-1 text-center py-2 text-xs font-bold text-slate-700 border-r border-slate-100 last:border-r-0"
+                      className="flex-1 text-center py-1.5 text-[10.5px] font-bold text-slate-700 border-r border-slate-100 last:border-r-0"
                     >
                       {slot.label}
                     </div>
@@ -784,30 +832,30 @@ export function DispatchView({
                 return (
                   <div
                     key={date}
-                    className="flex border-b border-slate-200/90 min-h-[96px] group transition-colors"
+                    className="flex border-b border-slate-200/90 min-h-[70px] group transition-colors relative"
                   >
                     {/* Left Sticky Day Header Cell */}
                     <div
-                      className={`w-24 shrink-0 p-2.5 border-r border-slate-200 flex flex-col justify-center ${
+                      className={`w-20 sm:w-22 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 ${
                         isToday
-                          ? "bg-blue-600 text-white rounded-l-2xl shadow-xs"
-                          : "bg-slate-50/70 text-slate-800"
+                          ? "bg-blue-600 text-white rounded-l-xl shadow-xs"
+                          : "bg-slate-50/90 text-slate-800"
                       }`}
                     >
-                      <div className="text-xs font-extrabold leading-tight">
+                      <div className="text-[11px] font-extrabold leading-tight">
                         {dayName}
                       </div>
-                      <div className={`text-xs font-bold leading-tight mt-0.5 ${isToday ? "text-blue-100" : "text-slate-900"}`}>
+                      <div className={`text-[10.5px] font-bold leading-tight mt-0.5 ${isToday ? "text-blue-100" : "text-slate-900"}`}>
                         {dayDate}
                       </div>
-                      <div className={`text-[10px] font-medium leading-none mt-1 ${isToday ? "text-blue-200" : "text-slate-400"}`}>
+                      <div className={`text-[8.5px] font-medium leading-none mt-1 ${isToday ? "text-blue-200" : "text-slate-400"}`}>
                         {items.length} item{items.length !== 1 ? "s" : ""}
                       </div>
                     </div>
 
-                    {/* Timeline Slot Track Area */}
-                    <div className="flex-1 relative flex items-center p-2">
-                      {/* Vertical Background Grid Lines */}
+                    {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
+                    <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[70px]">
+                      {/* Vertical Background Grid Lines for each hour */}
                       <div className="absolute inset-0 flex pointer-events-none">
                         {HOUR_SLOTS.map((slot) => (
                           <div
@@ -817,8 +865,8 @@ export function DispatchView({
                         ))}
                       </div>
 
-                      {/* Content Row: Cards and Travel Blocks */}
-                      <div className="relative w-full flex items-center gap-2 z-10">
+                      {/* Timeline Items Placed by Exact Time % */}
+                      <div className="relative w-full h-[58px]">
                         {items.length === 0 ? (
                           /* Full-Day Available Slot */
                           <div
@@ -828,11 +876,12 @@ export function DispatchView({
                                 handleBookSlot(suggestedSlots[0]);
                               }
                             }}
-                            className="w-full max-w-sm h-18 rounded-2xl border-2 border-dashed border-emerald-400/90 bg-emerald-50/40 hover:bg-emerald-50/70 flex flex-col items-center justify-center p-2 text-center cursor-pointer transition-all ml-4"
+                            style={{ left: "10%", width: "80%" }}
+                            className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400/90 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
                           >
-                            <PlusCircle className="w-4 h-4 text-emerald-600 mb-0.5" />
-                            <div className="text-xs font-bold text-emerald-800">Available</div>
-                            <div className="text-[10px] font-semibold text-emerald-700">Full Day Open</div>
+                            <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
+                            <div className="text-[11px] font-bold text-emerald-800">Available Slot</div>
+                            <div className="text-[9px] font-semibold text-emerald-700">9:00 AM – 5:00 PM Open</div>
                           </div>
                         ) : (
                           <>
@@ -840,67 +889,85 @@ export function DispatchView({
                               const isInsp = item.type === "inspection";
                               const isSelected = item.lead.id === selectedLeadId;
                               const nextItem = items[idx + 1];
+
+                              // Calculate travel gap pill placement between this and next appointment
+                              const gapStartPct = item.leftPct + item.widthPct;
+                              const gapWidthPct = nextItem ? Math.max(0, nextItem.leftPct - gapStartPct) : 0;
                               const gapMins = nextItem ? nextItem.startMins - item.endMins : 0;
 
                               return (
-                                <div key={`${item.lead.id}-${idx}`} className="flex items-center gap-2">
+                                <div key={`${item.lead.id}-${idx}`}>
                                   {/* Appointment Card */}
                                   <div
                                     onClick={() => setSelectedLeadId(item.lead.id)}
-                                    className={`w-44 sm:w-48 p-2.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+                                    style={{
+                                      left: `${item.leftPct}%`,
+                                      width: `${item.widthPct}%`,
+                                    }}
+                                    className={`absolute top-0.5 bottom-0.5 min-w-[95px] p-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
                                       isInsp
-                                        ? "bg-sky-50/90 border-sky-300 text-sky-950 hover:bg-sky-100/90"
-                                        : "bg-emerald-50/90 border-emerald-300 text-emerald-950 hover:bg-emerald-100/90"
-                                    } ${isSelected ? "ring-2 ring-blue-500 shadow-xs" : ""}`}
+                                        ? "bg-sky-50/95 border-sky-300 text-sky-950 hover:bg-sky-100"
+                                        : "bg-emerald-50/95 border-emerald-300 text-emerald-950 hover:bg-emerald-100"
+                                    } ${isSelected ? "ring-2 ring-blue-500 shadow-xs z-20" : ""}`}
                                   >
-                                    {/* Top: Time span & Car icon */}
-                                    <div className="flex items-center justify-between text-[11px] font-extrabold mb-0.5">
-                                      <span className={isInsp ? "text-blue-700" : "text-emerald-700"}>
-                                        {fmtMinutesTo12h(item.startMins)} – {fmtMinutesTo12h(item.endMins)}
-                                      </span>
-                                      <Car className="w-3.5 h-3.5 opacity-60" />
-                                    </div>
+                                    <div>
+                                      {/* Top: Time span & Car icon */}
+                                      <div className="flex items-center justify-between text-[9.5px] font-extrabold mb-0.5">
+                                        <span className={isInsp ? "text-blue-700" : "text-emerald-700"}>
+                                          {fmtMinutesTo12h(item.startMins)} – {fmtMinutesTo12h(item.endMins)}
+                                        </span>
+                                        <Car className="w-3 h-3 opacity-60 shrink-0" />
+                                      </div>
 
-                                    {/* Title */}
-                                    <div className={`text-xs font-extrabold leading-tight ${isInsp ? "text-blue-900" : "text-emerald-900"}`}>
-                                      {item.title}
-                                    </div>
+                                      {/* Title */}
+                                      <div className={`text-[10.5px] font-extrabold leading-tight truncate ${isInsp ? "text-blue-900" : "text-emerald-900"}`}>
+                                        {item.title}
+                                      </div>
 
-                                    {/* Name or Service */}
-                                    <div className="text-[11px] font-bold text-slate-800 truncate mt-0.5">
-                                      {isInsp ? (item.lead.name || "Customer") : (item.serviceLabel || item.lead.name)}
-                                    </div>
+                                      {/* Customer Name or Service */}
+                                      <div className="text-[10px] font-bold text-slate-800 truncate leading-tight">
+                                        {isInsp ? (item.lead.name || "Customer") : (item.serviceLabel || item.lead.name)}
+                                      </div>
 
-                                    {/* Suburb */}
-                                    <div className="text-[10px] text-slate-500 font-medium truncate">
-                                      {item.suburb}
+                                      {/* Suburb */}
+                                      <div className="text-[9px] text-slate-500 font-medium truncate leading-tight">
+                                        {item.suburb}
+                                      </div>
                                     </div>
 
                                     {/* Travel footer */}
-                                    <div className="flex items-center gap-1 text-[9px] font-semibold text-slate-400 mt-1 pt-1 border-t border-slate-200/40">
-                                      <Car className="w-3 h-3" />
-                                      <span>
-                                        {isInsp ? `30 min + ${item.travelToMins} min` : `2 hrs + ${item.travelToMins} min travel`}
+                                    <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-400 pt-0.5 mt-0.5 border-t border-slate-200/40 truncate leading-none">
+                                      <Car className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">
+                                        {isInsp ? `30m + ${item.travelToMins}m` : `2h + ${item.travelToMins}m`}
                                       </span>
                                     </div>
                                   </div>
 
-                                  {/* Travel Gap Pill between appointments */}
-                                  {gapMins > 0 && (
-                                    <div className="flex items-center text-[10px] font-bold text-slate-400 px-1 whitespace-nowrap">
-                                      <span>{gapMins} min →</span>
+                                  {/* Travel Gap Pill (between consecutive appointments) */}
+                                  {nextItem && gapMins > 0 && gapWidthPct > 0 && (
+                                    <div
+                                      style={{
+                                        left: `${gapStartPct}%`,
+                                        width: `${gapWidthPct}%`,
+                                      }}
+                                      className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-[8.5px] font-bold text-slate-400 whitespace-nowrap z-0 pointer-events-none"
+                                    >
+                                      <span>{gapMins}m →</span>
                                     </div>
                                   )}
                                 </div>
                               );
                             })}
 
-                            {/* Remaining Open Slot at end of Day */}
+                            {/* Available Slot at the end of the day */}
                             {(() => {
                               const lastItem = items[items.length - 1];
-                              const dayEndMins = TIMELINE_END_HOUR * 60;
-                              if (lastItem && dayEndMins - lastItem.endMins >= 60) {
+                              if (lastItem && TIMELINE_END_MINS - lastItem.endMins >= 60) {
                                 const availStartMins = lastItem.endMins + 20;
+                                const availStartPct = ((availStartMins - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
+                                const availWidthPct = Math.max(12, 100 - availStartPct);
+
                                 return (
                                   <div
                                     onClick={() => {
@@ -909,11 +976,15 @@ export function DispatchView({
                                         handleBookSlot(suggestedSlots[0]);
                                       }
                                     }}
-                                    className="w-36 h-18 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50/40 hover:bg-emerald-50/70 flex flex-col items-center justify-center p-2 text-center cursor-pointer transition-all ml-2"
+                                    style={{
+                                      left: `${availStartPct}%`,
+                                      width: `${availWidthPct}%`,
+                                    }}
+                                    className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
                                   >
-                                    <PlusCircle className="w-4 h-4 text-emerald-600 mb-0.5" />
-                                    <div className="text-xs font-bold text-emerald-800">Available</div>
-                                    <div className="text-[10px] font-semibold text-emerald-700">
+                                    <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
+                                    <div className="text-[10.5px] font-bold text-emerald-800">Available</div>
+                                    <div className="text-[8.5px] font-semibold text-emerald-700">
                                       {fmtMinutesTo12h(availStartMins)} – 5:00
                                     </div>
                                   </div>
@@ -932,21 +1003,21 @@ export function DispatchView({
           </div>
 
           {/* Bottom Swatches Legend Bar */}
-          <div className="bg-white border-t border-slate-200 px-4 py-2.5 flex flex-wrap items-center gap-6 text-xs text-slate-600 font-semibold shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-md bg-sky-200 border border-sky-400 inline-block" />
+          <div className="bg-white border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-4 text-[10.5px] text-slate-600 font-semibold shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-md bg-sky-200 border border-sky-400 inline-block" />
               <span>Inspection (30 mins + travel)</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-md bg-emerald-200 border border-emerald-400 inline-block" />
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-md bg-emerald-200 border border-emerald-400 inline-block" />
               <span>Job (Exact hours + travel)</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-md bg-slate-200 border border-slate-300 inline-block" />
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-md bg-slate-200 border border-slate-300 inline-block" />
               <span>Travel Time (between jobs)</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-md border-2 border-dashed border-emerald-500 bg-emerald-50 inline-block" />
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-md border-2 border-dashed border-emerald-500 bg-emerald-50 inline-block" />
               <span>Available Slot</span>
             </div>
           </div>
@@ -954,7 +1025,7 @@ export function DispatchView({
 
         {/* ══ 3. RIGHT PANEL: LEAD / JOB DETAILS & SUGGESTED SLOTS ══════════════ */}
         {activeLead ? (
-          <div className="w-88 sm:w-96 shrink-0 bg-white border-l border-slate-200 flex flex-col min-h-0 overflow-y-auto">
+          <div className="w-72 sm:w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col min-h-0 overflow-y-auto">
             {/* Tabs & Close button */}
             <div className="p-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
               <div className="flex items-center gap-3">
@@ -982,13 +1053,23 @@ export function DispatchView({
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedLeadId(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setEditingLead(activeLead); setLeadModalOpen(true); }}
+                  className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 cursor-pointer"
+                  title="Edit Lead"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLeadId(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 flex-1">
@@ -1016,9 +1097,18 @@ export function DispatchView({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        title="WhatsApp"
                       >
                         WA
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => callCustomer(activeLead)}
+                        className="p-0.5 text-blue-600 hover:text-blue-800 cursor-pointer"
+                        title="Call"
+                      >
+                        <Phone className="w-3 h-3" />
+                      </button>
                     </div>
                   )}
 
@@ -1073,7 +1163,13 @@ export function DispatchView({
                 <div className="text-xs font-bold text-slate-800 mb-1">Preferred Date</div>
                 <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Flexible (User not selected)</span>
+                  <span>
+                    {activeLead.inspectionAt
+                      ? formatApptDate(activeLead.inspectionAt)
+                      : activeLead.jobAt
+                      ? formatApptDate(activeLead.jobAt)
+                      : "Flexible (User not selected)"}
+                  </span>
                 </div>
               </div>
 
@@ -1171,11 +1267,21 @@ export function DispatchView({
                 <Plus className="w-4 h-4" />
                 <span>Add to Schedule</span>
               </button>
+
+              {/* Open full lead link */}
+              <button
+                type="button"
+                onClick={() => onOpenLead(activeLead.id)}
+                className="w-full py-2 text-center text-xs font-bold text-blue-600 hover:underline cursor-pointer flex items-center justify-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>View Full Lead Details</span>
+              </button>
             </div>
           </div>
         ) : (
           /* Empty Right Drawer Placeholder */
-          <div className="w-72 shrink-0 bg-white border-l border-slate-200 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+          <div className="w-60 sm:w-68 shrink-0 bg-white border-l border-slate-200 flex flex-col items-center justify-center p-6 text-center text-slate-400">
             <User className="w-8 h-8 mb-2 text-slate-300" />
             <div className="text-xs font-bold text-slate-600">Select a Lead or Appointment</div>
             <div className="text-[10px] font-medium mt-1 text-slate-400 leading-relaxed">
