@@ -135,3 +135,106 @@ assigns, including the coastal skips and the Oakleigh/Clarinda overrides.
   and contains the first batch of this work.
 - Availability API still slices to 7 days; for an outer zone that is 7 *weeks*.
   Worth tightening — flagged to the user, not yet decided.
+
+---
+
+# Inspector role audit (second pass)
+
+## Critical bug found and fixed: inspections were invisible to the inspector
+
+`scopedLeads` in `app/admin/page.tsx` requires `isAssigned` for the inspection
+role. But nothing ever assigned an inspection: `app/api/quote/route.ts` creates
+leads with a literal `assigned: ""`, the booking route never set it, and
+`inspectorId` is READ in five places and WRITTEN nowhere. `pickAssignee` /
+`pickAssigneeForRole` in `lib/submissions.ts` existed, documented as "used for
+auto-assignment", and were dead code — never called from anywhere.
+
+Net effect: every customer self-booked inspection was visible to no one on the
+inspection dashboard until a manager manually assigned it. With the routing
+plan's "1 Inspector", that made the role non-functional out of the box.
+
+Two-layer fix:
+
+1. `assignInspectorOnBooking(id, currentAssigned)` in `lib/submissions.ts`,
+   called from both booking paths (`app/api/book/[id]/route.ts` and the quote
+   form's auto-booking in `app/api/quote/route.ts`). Booking an inspection moves
+   the lead into a stage the inspection role owns, so this is a stage handoff —
+   it takes the lead from another team's assignee, but never from someone already
+   on the inspection team (that was a deliberate choice of WHICH inspector).
+   Best-effort; a booking never fails because assignment did.
+2. Safety net in `scopedLeads`: an inspection-stage lead with no assignee at all
+   is visible to every inspector. Covers zero inspection accounts, a failed
+   lookup, and pre-existing leads. Verified it does NOT leak an inspection
+   already assigned to a different inspector.
+
+## Other fixes
+
+- `components/admin/rows/FieldLeadRow.tsx`: the workflow checklist rendered a
+  green tick for both steps unconditionally — an incomplete step looked done.
+  Now shows an empty ring until `isDone`.
+- `app/admin/page.tsx` `getLeadAppointmentTimestamp`: used `new Date(naive)`,
+  which reads a Melbourne wall-clock in the viewer's timezone and mis-orders the
+  inspector's day off-Melbourne. Switched to `apptInstantMs` (already imported).
+
+## Added
+
+- `components/admin/InspectorDayStrip.tsx`, mounted at the top of `JobsView` for
+  the inspection/field roles. Today's stops in time order with zone, per-leg
+  drive estimate (same `calculateTravel` model as the dispatch board), total km,
+  next-up, and one-tap navigate/call. The board underneath is a flat
+  chronological list with no day boundary, so "what am I doing today, in what
+  order" previously took counting.
+- Navigate (directions) button on `FieldLeadRow` — it existed only inside
+  `GpsModal`, two clicks deep, for a role that drives to every lead.
+- Zone badge on `FieldLeadRow` via the new `components/admin/ZoneBadge.tsx`
+  (extracted from `ZonesView` so the leads board doesn't pull the whole view in).
+
+## Verified
+
+Both decision tables were extracted and unit-tested standalone:
+inspector visibility 9/9 (including "assigned to another inspector stays
+hidden"), assignment handoff 7/7 plus the no-accounts and no-pick fallbacks.
+
+## Known gaps NOT addressed (deliberate)
+
+- `app/api/admin/submissions/[id]/route.ts` authenticates but does no per-role
+  field gating — any signed-in role can PATCH any field. `lib/roles.ts` says
+  "the pipeline step tightens per-field write access later", so this is an
+  existing design choice; changing it would affect every role, not just the
+  inspector.
+- `app/admin/page.tsx` has 21 pre-existing lint errors (`set-state-in-effect`,
+  `no-explicit-any`), unchanged by this work — verified against commit 9b3d609.
+
+---
+
+# Lead submission vs. inspection booking
+
+Intended rule: **anyone can submit a lead from any address; only the self-service
+inspection BOOKING is gated by the 50 km / coastal rules.**
+
+## Server — was already correct
+
+`app/api/quote/route.ts` records every submission regardless of area. Both
+`serviced` checks sit INSIDE `if (inspectionDate && inspectionTime)` blocks and
+only guard the slot lock, so an out-of-area or coastal lead is saved with no
+booking and the confirmation email carries the "we'll arrange a time" CTA.
+
+## Client — had a trap, now fixed
+
+`handleSubmit` in `components/HeroQuoteForm.tsx` required a date AND time
+whenever the inspection section was open, with no regard for whether booking was
+possible. Opening the section and then entering an out-of-area address cleared
+the slot list (by design) but left the section open — so submitting demanded a
+date the picker had no way to supply, and the customer could not send a lead at
+all. Three states were affected: outside 50 km, coastal, and in-area with no
+slots free.
+
+Fixed by gating on `canBookInspection = inspectionSectionOpen &&
+!isOutsideServiceArea && inspectionDays.length > 0`. Verified 8/8 across the
+matrix; the three previously-stuck states now submit.
+
+Also: availability is now re-fetched when the address is TYPED, not only when
+picked from the suggestion list. Editing "Brunswick" to "Geelong" by hand used to
+leave the chosen slot on screen, so the customer believed they held a time the
+server would correctly refuse to book. (The server never created a bad booking —
+this was a display-truth problem only.)

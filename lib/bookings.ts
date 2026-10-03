@@ -6,6 +6,7 @@
 
 import { ObjectId, type Collection } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
+import { todayAU } from "@/lib/scheduling";
 
 export interface BookingDoc {
   _id?: ObjectId;
@@ -46,9 +47,9 @@ export async function listUpcomingBookings(): Promise<BookingDoc[]> {
   if (!isMongoConfigured()) return [];
   try {
     const col = await collection();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
+    // Use Australian Eastern Time for "today" so the booking window is correct
+    // regardless of where the server is hosted (UTC vs AU).
+    const todayStr = todayAU();
 
     // 1) All confirmed bookings from the atomic bookings collection
     const bookings = await col.find({ date: { $gte: todayStr } }).toArray();

@@ -105,6 +105,37 @@ export function formatSlotRange(t: string, durationMinutes: number = 60): string
 }
 
 /**
+ * Returns today's date as "YYYY-MM-DD" in Australian Eastern Time (Melbourne/Sydney),
+ * fully DST-aware. Use this everywhere instead of `new Date().toISOString().slice(0, 10)`
+ * which gives UTC date and breaks across midnight when AU is ahead of UTC.
+ *
+ * AEST = UTC+10, AEDT = UTC+11 (DST roughly Oct–Apr).
+ */
+export function todayAU(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Melbourne",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date()); // en-CA gives YYYY-MM-DD natively
+}
+
+/**
+ * Returns tomorrow's date as "YYYY-MM-DD" in Australian Eastern Time.
+ */
+export function tomorrowAU(): string {
+  const d = new Date();
+  // Advance by 24 h then format in AU tz — handles DST transitions correctly
+  d.setUTCHours(d.getUTCHours() + 24);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Melbourne",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/**
  * Format an appointment timestamp for display.
  *
  * Appointment fields (`inspectionAt`, `jobAt`, customer bookings) are stored as

@@ -8,7 +8,7 @@ import {
   CheckCircle2, X,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { resolveArea, formatApptTimeRange } from "@/lib/scheduling";
+import { resolveArea, formatApptTimeRange, todayAU } from "@/lib/scheduling";
 import { calculateTravel } from "@/lib/dispatch";
 import { hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
@@ -65,7 +65,15 @@ function getInitials(name: string): string {
   return parts.length > 1 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
 }
 
-export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void }) {
+export function DispatchView({
+  onOpenLead,
+  initialTab = "all",
+  initialTechFilter = "all",
+}: {
+  onOpenLead: (id: string) => void;
+  initialTab?: "all" | "leads" | "inspections" | "jobs";
+  initialTechFilter?: string;
+}) {
   const {
     scopedLeads,
     assignableTechnicians,
@@ -95,14 +103,14 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
     };
   }, [bookingRules]);
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => todayAU(), []);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const [viewTab, setViewTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
+  const [viewTab, setViewTab] = useState<"all" | "leads" | "inspections" | "jobs">(initialTab);
   const [viewMode, setViewMode] = useState<"timeline" | "list">("timeline");
   const [areaFilter, setAreaFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [techFilter, setTechFilter] = useState("all");
+  const [techFilter, setTechFilter] = useState(initialTechFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set([todayStr]));
@@ -280,9 +288,14 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
   const fieldStaffNames = useMemo(() => {
     const s = new Set<string>();
+    // Include all roster members — not just those with scheduled items in the current window
+    for (const t of assignableTechnicians) { if (t.name) s.add(t.name); }
+    for (const i of inspectionStaff) { if (i.name) s.add(i.name); }
+    // Also include any names that appear in scheduled items but aren't on the roster
     for (const i of allDateItems) { if (i.tech && i.tech !== "Unassigned") s.add(i.tech); }
+    // Add "Unassigned" as the first special option (handled separately in the JSX)
     return Array.from(s).sort();
-  }, [allDateItems]);
+  }, [allDateItems, assignableTechnicians, inspectionStaff]);
 
   // Selected lead helpers
   const sl = selectedItem?.lead;
@@ -411,6 +424,7 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
         <select value={techFilter} onChange={e => setTechFilter(e.target.value)}
           className="text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none cursor-pointer hover:bg-slate-100">
           <option value="all">All Staff</option>
+          <option value="Unassigned">Unassigned</option>
           {fieldStaffNames.map(n => <option key={n} value={n}>{n}</option>)}
         </select>
 
@@ -894,8 +908,8 @@ export function DispatchView({ onOpenLead }: { onOpenLead: (id: string) => void 
 
               <div className="grid grid-cols-3 gap-1.5">
                 <button type="button"
-                  onClick={() => setActionNotice("Open the lead to reschedule the appointment.")}
-                  className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 cursor-pointer transition-colors">
+                  onClick={() => { setEditingLead(sl); setLeadModalOpen(true); }}
+                  className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[10px] font-bold text-blue-700 cursor-pointer transition-colors">
                   <Calendar className="w-3.5 h-3.5 text-blue-600" />
                   Reschedule
                 </button>

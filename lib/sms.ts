@@ -49,13 +49,13 @@ export type SmsResult = {
 };
 
 /**
- * Sanitise text to strict GSM-7 7-bit character set:
+ * Sanitise text to GSM-7 7-bit character set:
  * 1. Replaces smart quotes, em-dashes, and unicode symbols with standard ASCII equivalents.
  * 2. Ensures the text clearly mentions "Groutix" so the customer knows who it is from.
  * 3. Strips emojis and non-GSM characters that would force UCS-2 encoding (costing 2 credits per part).
- * 4. Ensures the final message fits within 160 characters (strictly 1 SMS credit).
+ * 4. Allows multi-part SMS — no hard 160-char cap by default.
  */
-export function prepareSinglePartSms(text: string, maxChars: number = 160): string {
+export function prepareSinglePartSms(text: string, maxChars: number = 1600): string {
   let cleaned = (text || "")
     // Normalize unicode punctuation to standard ASCII
     .replace(/[\u2018\u2019]/g, "'")
@@ -72,7 +72,7 @@ export function prepareSinglePartSms(text: string, maxChars: number = 160): stri
     cleaned = `Groutix: ${cleaned}`;
   }
 
-  // Cap at 160 characters to strictly guarantee 1 credit per SMS
+  // Safety cap to avoid runaway messages
   if (cleaned.length > maxChars) {
     cleaned = cleaned.slice(0, maxChars).trim();
   }
@@ -89,11 +89,11 @@ export async function sendSms(args: {
   body: string;
   from?: string;
   campaign?: string;
-  /** Override the default 160-char cap. Pass a higher value (e.g. 480) to allow multi-part SMS. */
+  /** Override the default 1600-char safety cap. Multi-part SMS is supported natively. */
   maxChars?: number;
 }): Promise<SmsResult> {
   const to = normaliseAuNumber(args.to);
-  const body = prepareSinglePartSms(args.body, args.maxChars ?? 160);
+  const body = prepareSinglePartSms(args.body, args.maxChars ?? 1600);
   if (!to || !body) return { ok: false, error: "missing_to_or_body" };
   if (!isSmsConfigured()) return { ok: false, skipped: true };
 

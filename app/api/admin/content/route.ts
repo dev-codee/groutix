@@ -133,6 +133,16 @@ function sanitize(body: Record<string, any>): SiteContentOverrides {
           }))
           .filter((cat: { title: string; faqs: any[] }) => cat.title || cat.faqs.length)
       : [],
+    templates: {
+      quoteEmailSubject: str(body.templates?.quoteEmailSubject, 300),
+      quoteEmailBody: str(body.templates?.quoteEmailBody, 5000),
+      invoiceEmailSubject: str(body.templates?.invoiceEmailSubject, 300),
+      invoiceEmailBody: str(body.templates?.invoiceEmailBody, 5000),
+      warrantyEmailSubject: str(body.templates?.warrantyEmailSubject, 300),
+      warrantyEmailBody: str(body.templates?.warrantyEmailBody, 5000),
+      bookingSms: str(body.templates?.bookingSms, 1600),
+      reminderSms: str(body.templates?.reminderSms, 1600),
+    },
   };
   return out;
 }
