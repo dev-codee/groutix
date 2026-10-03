@@ -47,6 +47,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "customers",
     "team",
     "technicians",
+    "recyclebin",
   ],
   super_admin: [
     "dashboard",
@@ -61,6 +62,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "customers",
     "team",
     "technicians",
+    "recyclebin",
   ],
 };
 
@@ -102,6 +104,7 @@ const MANAGER_ONLY_API = [
   "/api/admin/users",
   "/api/admin/content",
   "/api/admin/stats",
+  "/api/admin/recycle-bin",
 ];
 
 export function canAccessApi(role: Role, pathname: string): boolean {

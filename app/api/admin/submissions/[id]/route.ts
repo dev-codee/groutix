@@ -292,7 +292,14 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
   }
   const { id } = await params;
-  const ok = await deleteSubmission(id);
+  // Identify who is deleting for recycle bin audit trail
+  let deletedBy = "system";
+  const token = _req.cookies.get(SESSION_COOKIE)?.value;
+  if (token) {
+    const session = await verifySession(token);
+    if (session?.username) deletedBy = session.username;
+  }
+  const ok = await deleteSubmission(id, deletedBy);
   if (!ok) return NextResponse.json({ error: "Not found." }, { status: 404 });
   await deleteBooking(id);
   return NextResponse.json({ ok: true });
