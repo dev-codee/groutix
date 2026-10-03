@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission } from "@/lib/submissions";
-import { buildBookingUrl } from "@/lib/bookingToken";
+import { buildBookingSmsUrl, buildBookingUrl } from "@/lib/bookingToken";
 
 export const runtime = "nodejs";
 
@@ -19,5 +19,7 @@ export async function GET(
   return NextResponse.json({
     inspectionUrl: buildBookingUrl(id, "inspection"),
     jobUrl: buildBookingUrl(id, "job"),
+    inspectionSmsUrl: buildBookingSmsUrl(id, "inspection"),
+    jobSmsUrl: buildBookingSmsUrl(id, "job"),
   });
 }

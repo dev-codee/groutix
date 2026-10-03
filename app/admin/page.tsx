@@ -130,6 +130,7 @@ import { CustomersView } from "@/components/admin/views/CustomersView";
 import { TeamView } from "@/components/admin/views/TeamView";
 import { TechniciansView } from "@/components/admin/views/TechniciansView";
 import { CompletedView } from "@/components/admin/views/CompletedView";
+import { RecycleBinView } from "@/components/admin/views/RecycleBinView";
 import type { Stats } from "@/components/admin/views/AnalyticsView";
 import { GpsModal } from "@/components/admin/modals/GpsModal";
 import { PhotoLightbox } from "@/components/admin/modals/PhotoLightbox";
@@ -156,7 +157,8 @@ type DashboardView =
   | "zones"
   | "customers"
   | "team"
-  | "technicians";
+  | "technicians"
+  | "recyclebin";
 
 export default function CrmDashboardPage() {
   const basePath = useAdminBasePath();
@@ -549,19 +551,29 @@ export default function CrmDashboardPage() {
   const [zoneRulesOpen, setZoneRulesOpen] = useState(false);
   const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string; environment?: "sandbox" | "production" } | null>(null);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
+  const [recycleBinCount, setRecycleBinCount] = useState(0);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((d) => { if (d.logoUrl) setSiteLogoUrl(d.logoUrl); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
     fetch("/api/admin/qbo/status")
       .then((r) => r.json())
       .then((d) => setQboStatus(d))
-      .catch(() => {});
+      .catch(() => { });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/recycle-bin?page=1&pageSize=1", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.total === "number") setRecycleBinCount(d.total);
+      })
+      .catch(() => { });
   }, []);
 
   // Show a toast if the QBO OAuth callback added a result param.
@@ -672,9 +684,9 @@ export default function CrmDashboardPage() {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ jobNo: c.jobNo ?? null }),
-              }).catch(() => {})
+              }).catch(() => { })
             )
-          ).catch(() => {});
+          ).catch(() => { });
         }
         setLeads(withJobNos);
       } else {
@@ -858,7 +870,7 @@ export default function CrmDashboardPage() {
               setEmailTemplates(cleaned);
               localStorage.setItem("gx_email_templates", JSON.stringify(cleaned));
             }
-          } catch {}
+          } catch { }
         }
       }
       const res = await fetch("/api/admin/email-templates");
@@ -965,7 +977,7 @@ export default function CrmDashboardPage() {
       })
         .then((r) => r.json())
         .then(applyNotificationResult)
-        .catch(() => {});
+        .catch(() => { });
       setTimeout(() => setEtaToast(null), 5000);
       return;
     }
@@ -993,7 +1005,7 @@ export default function CrmDashboardPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lat, lng, leadId: lead.id }),
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch {
         setEtaToast({ leadId: lead.id, msg: "Notification sent (no ETA)." });
@@ -1040,7 +1052,7 @@ export default function CrmDashboardPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lat, lng, accuracy }),
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
 
@@ -1216,8 +1228,8 @@ export default function CrmDashboardPage() {
       const owner = status ? stageOwner(status) : null;
       const pool = owner
         ? active.filter(
-            (s) => s.role === owner || (owner === "inspection" && s.role === "field")
-          )
+          (s) => s.role === owner || (owner === "inspection" && s.role === "field")
+        )
         : active;
       const names = new Set<string>(pool.map((s) => s.name));
       if (current && current !== "Unassigned" && !isTechnicianName(current)) {
@@ -1447,11 +1459,12 @@ export default function CrmDashboardPage() {
   }
 
   async function handleDeleteLead(id: string) {
-    if (!confirm("Are you sure you want to delete this lead?")) return;
+    if (!confirm("Move this lead to the Recycle Bin? You can restore it later from Settings → Recycle Bin.")) return;
     try {
       const res = await fetch(`/api/admin/submissions/${id}`, { method: "DELETE" });
       if (res.ok) {
         setLeads((prev) => prev.filter((l) => l.id !== id));
+        setRecycleBinCount((count) => count + 1);
       } else {
         alert("Failed to delete lead.");
       }
@@ -1699,9 +1712,9 @@ export default function CrmDashboardPage() {
     } else {
       const addition =
         type === "bold" ? "**bold text**" :
-        type === "italic" ? "*italic text*" :
-        type === "underline" ? "<u>underlined text</u>" :
-        type === "bullet" ? "\n• bullet item" : "\n1. list item";
+          type === "italic" ? "*italic text*" :
+            type === "underline" ? "<u>underlined text</u>" :
+              type === "bullet" ? "\n• bullet item" : "\n1. list item";
       const nextItems = [...quoteItems];
       nextItems[idx] = { ...nextItems[idx], scope: `${current} ${addition}` };
       setQuoteItems(nextItems);
@@ -1768,9 +1781,9 @@ export default function CrmDashboardPage() {
     } else {
       const addition =
         type === "bold" ? "**bold text**" :
-        type === "italic" ? "*italic text*" :
-        type === "underline" ? "<u>underlined text</u>" :
-        "\n• Additional custom scope: ";
+          type === "italic" ? "*italic text*" :
+            type === "underline" ? "<u>underlined text</u>" :
+              "\n• Additional custom scope: ";
       setQuoteScope(`${current} ${addition}`);
     }
   }
@@ -2626,6 +2639,26 @@ export default function CrmDashboardPage() {
     }
   }
 
+  async function handleInsertSmsBookingLink(type: "inspection" | "job") {
+    const lead = activeMessageLeadLive || activeMessageLead;
+    if (!lead?.id) return;
+
+    try {
+      const res = await fetch(`/api/admin/booking-link/${lead.id}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Could not load booking links");
+      const data = await res.json();
+      const url = type === "job" ? data.jobSmsUrl || data.jobUrl : data.inspectionSmsUrl || data.inspectionUrl;
+      if (!url) throw new Error("No booking URL available");
+      setSmsText((prev) => {
+        const trimmed = prev.trimEnd();
+        return trimmed ? `${trimmed} ${url}` : url;
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Could not load the booking link for SMS.");
+    }
+  }
+
   async function handleAddCustomerDemoReply() {
     if (!activeMessageLead) return;
     const text = prompt("Enter message received from customer:");
@@ -2861,7 +2894,7 @@ export default function CrmDashboardPage() {
       // ==========================================
 
       const DIVX = 440; // vertical divider x-position
-      const PAD  = 36;  // outer horizontal padding
+      const PAD = 36;  // outer horizontal padding
       const FOOTER_H = 58;
       const FOOTER_Y = H - FOOTER_H;
 
@@ -3288,7 +3321,7 @@ export default function CrmDashboardPage() {
       setInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num") || "123456789");
       setInvoiceBsb(localStorage.getItem("groutix_inv_bsb") || "013442");
       setInvoiceDueDate(localStorage.getItem("groutix_inv_due_date") || "Within 7 days of invoice date");
-    } catch {}
+    } catch { }
     setInvoiceModalOpen(true);
   }
 
@@ -3346,72 +3379,72 @@ export default function CrmDashboardPage() {
       role === "manager" || role === "super_admin"
         ? leads
         : leads.filter((l) => {
-            if (role === "technician") {
-              const targetStaffRecord = viewAs
-                ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
-                : staff.find((s) => s.username === username);
-              const targetName = viewAs
-                ? viewAs.name.trim().toLowerCase()
-                : (targetStaffRecord?.name || username || "").trim().toLowerCase();
-              const targetUser = viewAs ? viewAs.name.trim().toLowerCase() : (username || "").trim().toLowerCase();
-              const targetId = targetStaffRecord?.id;
-              // Collect all known IDs for this tech (staff id + any roster entries sharing the same name/username)
-              const targetAllIds = new Set<string>(targetId ? [targetId] : []);
-              assignableTechnicians.forEach((t) => {
-                if (t.username && (t.username.toLowerCase() === targetUser || t.username.toLowerCase() === targetName)) targetAllIds.add(t.id);
-                if (t.name.trim().toLowerCase() === targetName || t.name.trim().toLowerCase() === targetUser) targetAllIds.add(t.id);
-              });
+          if (role === "technician") {
+            const targetStaffRecord = viewAs
+              ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
+              : staff.find((s) => s.username === username);
+            const targetName = viewAs
+              ? viewAs.name.trim().toLowerCase()
+              : (targetStaffRecord?.name || username || "").trim().toLowerCase();
+            const targetUser = viewAs ? viewAs.name.trim().toLowerCase() : (username || "").trim().toLowerCase();
+            const targetId = targetStaffRecord?.id;
+            // Collect all known IDs for this tech (staff id + any roster entries sharing the same name/username)
+            const targetAllIds = new Set<string>(targetId ? [targetId] : []);
+            assignableTechnicians.forEach((t) => {
+              if (t.username && (t.username.toLowerCase() === targetUser || t.username.toLowerCase() === targetName)) targetAllIds.add(t.id);
+              if (t.name.trim().toLowerCase() === targetName || t.name.trim().toLowerCase() === targetUser) targetAllIds.add(t.id);
+            });
 
-              const hasTechField = Boolean(l.technicianId || l.technician || l.technicianUsername);
+            const hasTechField = Boolean(l.technicianId || l.technician || l.technicianUsername);
 
-              const isAssigned = hasTechField
-                ? Boolean(
-                    (l.technicianUsername && targetUser && l.technicianUsername.toLowerCase() === targetUser) ||
-                    (l.technicianId && targetAllIds.has(l.technicianId)) ||
-                    (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
-                    (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser))
-                  )
-                : Boolean(
-                    l.assigned &&
-                    l.assigned.trim().toLowerCase() !== "unassigned" &&
-                    isTechnicianName(l.assigned) &&
-                    (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser)
-                  );
+            const isAssigned = hasTechField
+              ? Boolean(
+                (l.technicianUsername && targetUser && l.technicianUsername.toLowerCase() === targetUser) ||
+                (l.technicianId && targetAllIds.has(l.technicianId)) ||
+                (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+                (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser))
+              )
+              : Boolean(
+                l.assigned &&
+                l.assigned.trim().toLowerCase() !== "unassigned" &&
+                isTechnicianName(l.assigned) &&
+                (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser)
+              );
 
-              if (!isAssigned) return false;
-              return true;
-            }
-            if (role === "inspection" || role === "field") {
-              const targetStaff = viewAs
-                ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
-                : staff.find((s) => s.username === username);
-              const targetId = targetStaff?.id;
-              const targetName = (targetStaff?.name || (viewAs ? viewAs.name : username) || "").trim().toLowerCase();
-              const targetUser = (viewAs ? viewAs.name : username || "").trim().toLowerCase();
-
-              const isAssigned =
-                Boolean(targetId && l.inspectorId === targetId) ||
-                Boolean(targetId && l.technicianId === targetId) ||
-                Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
-
-              // Safety net: an inspection nobody owns is still the inspection
-              // team's work, so show it rather than leaving it invisible to
-              // everyone. Auto-assignment on booking normally claims these, but it
-              // can't when no inspection account exists yet, and older leads
-              // pre-date it. Without this an unclaimed booking would be seen by no
-              // one until a manager noticed it.
-              const isUnclaimedInspection =
-                !l.inspectorId &&
-                !l.technicianId &&
-                (!l.assigned || l.assigned.trim() === "" || l.assigned.trim().toLowerCase() === "unassigned") &&
-                INSPECTION_STATUSES.includes(l.status);
-
-              if (!isAssigned && !isUnclaimedInspection) return false;
-              return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
-            }
-            if (!inRoleQueue(role, l.status) && !isFlowInProgress(role, l.status, l) && !isFlowCompleted(role, l.status, l)) return false;
+            if (!isAssigned) return false;
             return true;
-          });
+          }
+          if (role === "inspection" || role === "field") {
+            const targetStaff = viewAs
+              ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
+              : staff.find((s) => s.username === username);
+            const targetId = targetStaff?.id;
+            const targetName = (targetStaff?.name || (viewAs ? viewAs.name : username) || "").trim().toLowerCase();
+            const targetUser = (viewAs ? viewAs.name : username || "").trim().toLowerCase();
+
+            const isAssigned =
+              Boolean(targetId && l.inspectorId === targetId) ||
+              Boolean(targetId && l.technicianId === targetId) ||
+              Boolean(l.assigned && l.assigned.trim().toLowerCase() !== "unassigned" && (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser));
+
+            // Safety net: an inspection nobody owns is still the inspection
+            // team's work, so show it rather than leaving it invisible to
+            // everyone. Auto-assignment on booking normally claims these, but it
+            // can't when no inspection account exists yet, and older leads
+            // pre-date it. Without this an unclaimed booking would be seen by no
+            // one until a manager noticed it.
+            const isUnclaimedInspection =
+              !l.inspectorId &&
+              !l.technicianId &&
+              (!l.assigned || l.assigned.trim() === "" || l.assigned.trim().toLowerCase() === "unassigned") &&
+              INSPECTION_STATUSES.includes(l.status);
+
+            if (!isAssigned && !isUnclaimedInspection) return false;
+            return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
+          }
+          if (!inRoleQueue(role, l.status) && !isFlowInProgress(role, l.status, l) && !isFlowCompleted(role, l.status, l)) return false;
+          return true;
+        });
     if (showLegacyLeads) return roleScoped;
     if (newLeadsCutoffMs <= 0) return roleScoped;
     return roleScoped.filter((l) => (role === "technician" ? true : !isLegacyLead(l, newLeadsCutoffMs)));
@@ -3724,8 +3757,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("dashboard"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "dashboard"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3740,8 +3773,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("leads"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "leads"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3762,8 +3795,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("quotes"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "quotes"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3784,8 +3817,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("jobs"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "jobs"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3822,8 +3855,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("completed"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "completed"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3844,8 +3877,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("dispatch"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "dispatch"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3853,9 +3886,8 @@ export default function CrmDashboardPage() {
             Dispatch
           </span>
           <span
-            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-              currentView === "dispatch" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
-            }`}
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${currentView === "dispatch" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
+              }`}
           >
             Live
           </span>
@@ -3867,8 +3899,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("schedule"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "schedule"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3883,8 +3915,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("zones"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "zones"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3899,8 +3931,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("customers"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "customers"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3915,8 +3947,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("team"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "team"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3936,8 +3968,8 @@ export default function CrmDashboardPage() {
           type="button"
           onClick={() => { navigateTo("analytics"); onItemClick?.(); }}
           className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "analytics"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+            ? "bg-blue-600 text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
             }`}
         >
           <span className="flex items-center gap-2.5">
@@ -3968,7 +4000,7 @@ export default function CrmDashboardPage() {
         </div>
       )}
 
-      {role === "manager" && (
+      {(role === "manager" || role === "super_admin") && (
         <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
           <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settings</p>
           <button
@@ -4006,6 +4038,20 @@ export default function CrmDashboardPage() {
               <span className="ml-auto w-2 h-2 rounded-full bg-green-500 shrink-0" />
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => { navigateTo("recyclebin"); onItemClick?.(); }}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${currentView === "recyclebin"
+              ? "bg-rose-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+              }`}
+          >
+            <Trash2 className={`w-4 h-4 ${currentView === "recyclebin" ? "" : "text-rose-400"}`} />
+            Recycle Bin
+            <span className={`ml-auto min-w-[18px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${currentView === "recyclebin" ? "bg-white/20 text-white" : "bg-rose-100 text-rose-700"}`}>
+              {recycleBinCount}
+            </span>
+          </button>
         </div>
       )}
     </nav>
@@ -4013,684 +4059,825 @@ export default function CrmDashboardPage() {
 
   return (
     <AdminPageProvider value={pageCtx}>
-    <div className="flex h-screen overflow-hidden bg-slate-50/60 text-slate-900">
-      {/* Desktop Sidebar Navigation */}
-      <aside className="hidden md:flex md:w-64 bg-white border-r border-slate-200/80 p-4 flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
-        <div>
-          {/* Brand */}
-          <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-base shadow-xs ring-1 ring-blue-500/20 shrink-0">
-              G
+      <div className="flex h-screen overflow-hidden bg-slate-50/60 text-slate-900">
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden md:flex md:w-64 bg-white border-r border-slate-200/80 p-4 flex-col justify-between shrink-0 h-screen overflow-y-auto sticky top-0">
+          <div>
+            {/* Brand */}
+            <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-base shadow-xs ring-1 ring-blue-500/20 shrink-0">
+                G
+              </div>
+              <div>
+                <div className="font-bold text-base leading-tight text-slate-900 tracking-tight">Groutix Portal</div>
+                <div className="text-[11px] font-medium text-slate-400">CRM &amp; Operations</div>
+              </div>
             </div>
-            <div>
-              <div className="font-bold text-base leading-tight text-slate-900 tracking-tight">Groutix Portal</div>
-              <div className="text-[11px] font-medium text-slate-400">CRM &amp; Operations</div>
-            </div>
+
+            {/* Desktop Nav Links */}
+            {renderNavLinks()}
           </div>
+        </aside>
 
-          {/* Desktop Nav Links */}
-          {renderNavLinks()}
-        </div>
-      </aside>
+        {/* Mobile Sidebar Overlay & Drawer */}
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <div
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <aside className="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 flex flex-col justify-between h-full overflow-y-auto shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+              <div>
+                {/* Brand & Close button */}
+                <div className="flex items-center justify-between pb-5 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-base shadow-xs ring-1 ring-blue-500/20 shrink-0">
+                      G
+                    </div>
+                    <div>
+                      <div className="font-bold text-base leading-tight text-slate-900 tracking-tight">Groutix Portal</div>
+                      <div className="text-[11px] font-medium text-slate-400">CRM &amp; Operations</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileNavOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Close Navigation"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
 
-      {/* Mobile Sidebar Overlay & Drawer */}
-      {mobileNavOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
-            onClick={() => setMobileNavOpen(false)}
-          />
-          <aside className="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-4 flex flex-col justify-between h-full overflow-y-auto shadow-2xl z-10 animate-in slide-in-from-left duration-200">
-            <div>
-              {/* Brand & Close button */}
-              <div className="flex items-center justify-between pb-5 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-base shadow-xs ring-1 ring-blue-500/20 shrink-0">
-                    G
-                  </div>
-                  <div>
-                    <div className="font-bold text-base leading-tight text-slate-900 tracking-tight">Groutix Portal</div>
-                    <div className="text-[11px] font-medium text-slate-400">CRM &amp; Operations</div>
-                  </div>
+                {/* Mobile Nav Links */}
+                {renderNavLinks(() => setMobileNavOpen(false))}
+              </div>
+
+              {/* Mobile Footer */}
+              <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+                <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs text-slate-600 font-medium">
+                  <span>Role</span>
+                  <span className="font-semibold text-slate-900">{roleLabel}</span>
                 </div>
                 <button
-                  type="button"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                  title="Close Navigation"
+                  onClick={() => { setMobileNavOpen(false); logout(); }}
+                  disabled={loggingOut}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <LogOut className="w-3.5 h-3.5" />
+                  {loggingOut ? "Signing out…" : "Sign Out"}
                 </button>
               </div>
+            </aside>
+          </div>
+        )}
 
-              {/* Mobile Nav Links */}
-              {renderNavLinks(() => setMobileNavOpen(false))}
-            </div>
-
-            {/* Mobile Footer */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
-              <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs text-slate-600 font-medium">
-                <span>Role</span>
-                <span className="font-semibold text-slate-900">{roleLabel}</span>
-              </div>
-              <button
-                onClick={() => { setMobileNavOpen(false); logout(); }}
-                disabled={loggingOut}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                {loggingOut ? "Signing out…" : "Sign Out"}
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* Top Header Bar */}
-        <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-20 shadow-2xs">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              className="p-2 -ml-1 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 md:hidden shadow-2xs cursor-pointer shrink-0"
-              title="Open Navigation"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-            {currentView !== (ROLE_DEFAULT_VIEW[role] as DashboardView) && (
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+          {/* Top Header Bar */}
+          <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-20 shadow-2xs">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
-                onClick={() => window.history.back()}
-                className="p-1.5 rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-2xs cursor-pointer shrink-0 transition-colors"
-                title="Go back"
+                onClick={() => setMobileNavOpen(true)}
+                className="p-2 -ml-1 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 md:hidden shadow-2xs cursor-pointer shrink-0"
+                title="Open Navigation"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <Menu className="w-4 h-4" />
               </button>
-            )}
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
-              {currentView === "dashboard"
-                ? "Manager Dashboard"
-                : currentView === "analytics"
-                  ? "Analytics & Performance"
-                  : currentView === "leads"
-                    ? "All Leads"
-                    : currentView === "quotes"
-                      ? "Quotations"
-                      : currentView === "jobs"
-                        ? "Jobs & Bookings"
-                        : currentView === "completed"
-                          ? "Completed Records Archive"
-                          : currentView === "dispatch"
-                            ? "Schedule & Dispatch"
-                            : currentView === "customers"
-                              ? "Customer Directory"
-                              : currentView === "schedule"
-                                ? "Schedule & Calendar"
-                              : currentView === "zones"
-                                ? "Service Zones"
-                              : currentView === "technicians"
-                                ? "Field Technicians"
-                                : "Team Members"}
-            </h1>
-          </div>
-
-          {/* Live AUS Time */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <div className="flex flex-col items-start leading-none">
-              <span className="text-xs font-bold text-slate-800 tabular-nums tracking-tight">{liveAusTime}</span>
-              <span className="text-[10px] font-medium text-slate-400 mt-0.5">{liveAusDate} · AEST</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Global Search */}
-            <div className="relative w-32 sm:w-48 md:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
-                className="w-full pl-8 sm:pl-9 pr-2.5 sm:pr-3 py-1.5 text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
-              />
+              {currentView !== (ROLE_DEFAULT_VIEW[role] as DashboardView) && (
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  className="p-1.5 rounded-lg border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-2xs cursor-pointer shrink-0 transition-colors"
+                  title="Go back"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
+                {currentView === "dashboard"
+                  ? "Manager Dashboard"
+                  : currentView === "analytics"
+                    ? "Analytics & Performance"
+                    : currentView === "leads"
+                      ? "All Leads"
+                      : currentView === "quotes"
+                        ? "Quotations"
+                        : currentView === "jobs"
+                          ? "Jobs & Bookings"
+                          : currentView === "completed"
+                            ? "Completed Records Archive"
+                            : currentView === "dispatch"
+                              ? "Schedule & Dispatch"
+                              : currentView === "customers"
+                                ? "Customer Directory"
+                                : currentView === "schedule"
+                                  ? "Schedule & Calendar"
+                                  : currentView === "zones"
+                                    ? "Service Zones"
+                                    : currentView === "technicians"
+                                      ? "Field Technicians"
+                                      : currentView === "recyclebin"
+                                        ? "Recycle Bin"
+                                        : "Team Members"}
+              </h1>
             </div>
 
-            <div className="hidden sm:block h-5 w-px bg-slate-200 mx-0.5"></div>
-
-            <button
-              onClick={logout}
-              disabled={loggingOut}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">{loggingOut ? "Signing out…" : "Sign Out"}</span>
-            </button>
-
-            {/* Unread customer replies bell — hidden for inspection & technician */}
-            {role !== "inspection" && role !== "field" && role !== "technician" && (
-              <button
-                onClick={openInbox}
-                title={
-                  unreadReplyCount > 0
-                    ? `${unreadReplyCount} conversation(s) with unread replies`
-                    : "No unread customer replies"
-                }
-                className="relative p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
-              >
-                <Bell className={`w-3.5 h-3.5 ${unreadReplyCount > 0 ? "text-blue-600" : ""}`} />
-                {unreadReplyCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                    {unreadReplyCount}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Refresh Button */}
-            <button
-              onClick={() => loadData()}
-              title="Refresh database records"
-              className="p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
-            >
-              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
-            </button>
-
-            {/* Sync Emails Button — hidden for inspection & technician */}
-            {role !== "inspection" && role !== "field" && role !== "technician" && (
-              <button
-                onClick={handleSyncEmails}
-                disabled={syncingEmails}
-                title="Sync Inbox"
-                className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 border border-slate-200/80 bg-white text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-2xs"
-              >
-                <Mail className={`w-3.5 h-3.5 ${syncingEmails ? "animate-pulse text-blue-600" : ""}`} />
-                <span className="hidden sm:inline">Sync</span>
-              </button>
-            )}
-
-            <div
-              className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${viewAs
-                  ? "border-amber-300 bg-amber-50 text-amber-800"
-                  : "border-slate-200/80 bg-white text-slate-700 shadow-2xs"
-                }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${viewAs ? "bg-amber-500" : "bg-emerald-500"
-                  }`}
-              ></span>
-              {viewAs
-                ? `Viewing as ${viewAs.name} • ${roleLabel}`
-                : username
-                  ? `${username} • ${roleLabel}`
-                  : roleLabel}
+            {/* Live AUS Time */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="flex flex-col items-start leading-none">
+                <span className="text-xs font-bold text-slate-800 tabular-nums tracking-tight">{liveAusTime}</span>
+                <span className="text-[10px] font-medium text-slate-400 mt-0.5">{liveAusDate} · AEST</span>
+              </div>
             </div>
 
-            {/* Location sharing indicator (inspector / field / technician) */}
-            {(role === "inspection" || role === "field" || role === "technician") && (
-              <div
-                className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${
-                  locationTrackingActive
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200/80 bg-white text-slate-400"
-                }`}
-                title={
-                  liveGpsCoords
-                    ? `Live GPS streaming: ${liveGpsCoords.lat.toFixed(5)}, ${liveGpsCoords.lng.toFixed(5)} (±${Math.round(liveGpsCoords.accuracy || 0)}m)`
-                    : "Live GPS Continuous Tracking"
-                }
-              >
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    locationTrackingActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
-                  }`}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Global Search */}
+              <div className="relative w-32 sm:w-48 md:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className="w-full pl-8 sm:pl-9 pr-2.5 sm:pr-3 py-1.5 text-xs bg-slate-50/80 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
                 />
-                <span>
-                  {locationTrackingActive
-                    ? `Live GPS Active${liveGpsCoords?.accuracy ? ` (±${Math.round(liveGpsCoords.accuracy)}m)` : ""}`
-                    : "Live GPS Off"}
-                </span>
               </div>
-            )}
-          </div>
-        </header>
 
-        {/* View Contents */}
-        <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 flex-1">
-          {/* Impersonation banner — manager previewing another role's dashboard. */}
-          {viewAs && (
-            <div className="p-3 px-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span>
-                  You are viewing <b>{viewAs.name}</b>&rsquo;s dashboard ({roleLabel}).
-                  Changes you make still act as the manager account.
-                </span>
-              </div>
+              <div className="hidden sm:block h-5 w-px bg-slate-200 mx-0.5"></div>
+
               <button
-                onClick={returnToManager}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors"
+                onClick={logout}
+                disabled={loggingOut}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                Return to Manager
+                <span className="hidden md:inline">{loggingOut ? "Signing out…" : "Sign Out"}</span>
               </button>
-            </div>
-          )}
 
-          {error && (
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center justify-between">
-              <div>
-                <b>Notice:</b> {error}
-              </div>
+              {/* Unread customer replies bell — hidden for inspection & technician */}
+              {role !== "inspection" && role !== "field" && role !== "technician" && (
+                <button
+                  onClick={openInbox}
+                  title={
+                    unreadReplyCount > 0
+                      ? `${unreadReplyCount} conversation(s) with unread replies`
+                      : "No unread customer replies"
+                  }
+                  className="relative p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
+                >
+                  <Bell className={`w-3.5 h-3.5 ${unreadReplyCount > 0 ? "text-blue-600" : ""}`} />
+                  {unreadReplyCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {unreadReplyCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Refresh Button */}
               <button
                 onClick={() => loadData()}
-                className="text-xs bg-amber-200/60 px-3 py-1 rounded-lg font-semibold hover:bg-amber-200"
+                title="Refresh database records"
+                className="p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
               >
-                Retry
+                <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
               </button>
-            </div>
-          )}
 
-          {/* =========================================================================
+              {/* Sync Emails Button — hidden for inspection & technician */}
+              {role !== "inspection" && role !== "field" && role !== "technician" && (
+                <button
+                  onClick={handleSyncEmails}
+                  disabled={syncingEmails}
+                  title="Sync Inbox"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 border border-slate-200/80 bg-white text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-2xs"
+                >
+                  <Mail className={`w-3.5 h-3.5 ${syncingEmails ? "animate-pulse text-blue-600" : ""}`} />
+                  <span className="hidden sm:inline">Sync</span>
+                </button>
+              )}
+
+              <div
+                className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${viewAs
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-slate-200/80 bg-white text-slate-700 shadow-2xs"
+                  }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${viewAs ? "bg-amber-500" : "bg-emerald-500"
+                    }`}
+                ></span>
+                {viewAs
+                  ? `Viewing as ${viewAs.name} • ${roleLabel}`
+                  : username
+                    ? `${username} • ${roleLabel}`
+                    : roleLabel}
+              </div>
+
+              {/* Location sharing indicator (inspector / field / technician) */}
+              {(role === "inspection" || role === "field" || role === "technician") && (
+                <div
+                  className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${locationTrackingActive
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200/80 bg-white text-slate-400"
+                    }`}
+                  title={
+                    liveGpsCoords
+                      ? `Live GPS streaming: ${liveGpsCoords.lat.toFixed(5)}, ${liveGpsCoords.lng.toFixed(5)} (±${Math.round(liveGpsCoords.accuracy || 0)}m)`
+                      : "Live GPS Continuous Tracking"
+                  }
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full ${locationTrackingActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                      }`}
+                  />
+                  <span>
+                    {locationTrackingActive
+                      ? `Live GPS Active${liveGpsCoords?.accuracy ? ` (±${Math.round(liveGpsCoords.accuracy)}m)` : ""}`
+                      : "Live GPS Off"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </header>
+
+          {/* View Contents */}
+          <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 flex-1">
+            {/* Impersonation banner — manager previewing another role's dashboard. */}
+            {viewAs && (
+              <div className="p-3 px-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>
+                    You are viewing <b>{viewAs.name}</b>&rsquo;s dashboard ({roleLabel}).
+                    Changes you make still act as the manager account.
+                  </span>
+                </div>
+                <button
+                  onClick={returnToManager}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Return to Manager
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center justify-between">
+                <div>
+                  <b>Notice:</b> {error}
+                </div>
+                <button
+                  onClick={() => loadData()}
+                  className="text-xs bg-amber-200/60 px-3 py-1 rounded-lg font-semibold hover:bg-amber-200"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* =========================================================================
           {/* =========================================================================
               VIEW: ANALYTICS OVERVIEW
              ========================================================================= */}
-          {currentView === "analytics" && (
-            <AnalyticsView
-              analyticsDays={analyticsDays}
-              setAnalyticsDays={setAnalyticsDays}
-              loadAnalytics={loadAnalytics}
-              loadingStats={loadingStats}
-              stats={stats}
-            />
-          )}
+            {currentView === "analytics" && (
+              <AnalyticsView
+                analyticsDays={analyticsDays}
+                setAnalyticsDays={setAnalyticsDays}
+                loadAnalytics={loadAnalytics}
+                loadingStats={loadingStats}
+                stats={stats}
+              />
+            )}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: CRM DASHBOARD
              ========================================================================= */}
-          {currentView === "dashboard" && <ManagerDashboard />}
+            {currentView === "dashboard" && <ManagerDashboard />}
 
-          {/* =========================================================================
+            {/* =========================================================================
           {/* =========================================================================
               VIEW: LEADS
              ========================================================================= */}
-          {currentView === "leads" && <LeadsView />}
+            {currentView === "leads" && <LeadsView />}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: QUOTES
              ========================================================================= */}
-          {currentView === "quotes" && <QuotesView />}
+            {currentView === "quotes" && <QuotesView />}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: JOBS / BOOKINGS
              ========================================================================= */}
-          {currentView === "jobs" && <JobsView />}
+            {currentView === "jobs" && <JobsView />}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: COMPLETED RECORDS ARCHIVE
              ========================================================================= */}
-          {currentView === "completed" && <CompletedView />}
+            {currentView === "completed" && <CompletedView />}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: CUSTOMERS
              ========================================================================= */}
-          {currentView === "customers" && <CustomersView />}
+            {currentView === "customers" && <CustomersView />}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: DISPATCH
              ========================================================================= */}
-          {currentView === "dispatch" && (
-            <DispatchView
-              initialTab={dispatchInitialTab}
-              initialTechFilter={dispatchInitialTechFilter}
-              onOpenLead={(id: string) => {
+            {currentView === "dispatch" && (
+              <DispatchView
+                initialTab={dispatchInitialTab}
+                initialTechFilter={dispatchInitialTechFilter}
+                onOpenLead={(id: string) => {
+                  const lead = leads.find((l) => l.id === id);
+                  if (lead) {
+                    setEditingLead(lead);
+                    setLeadModalOpen(true);
+                  }
+                }}
+              />
+            )}
+
+            {/* =========================================================================
+              VIEW: SCHEDULE
+             ========================================================================= */}
+            {currentView === "schedule" && (
+              <ScheduleView onOpenLead={(id: string) => {
                 const lead = leads.find((l) => l.id === id);
                 if (lead) {
                   setEditingLead(lead);
                   setLeadModalOpen(true);
                 }
-              }}
-            />
-          )}
+              }} />
+            )}
 
-          {/* =========================================================================
-              VIEW: SCHEDULE
-             ========================================================================= */}
-          {currentView === "schedule" && (
-            <ScheduleView onOpenLead={(id: string) => {
-              const lead = leads.find((l) => l.id === id);
-              if (lead) {
-                setEditingLead(lead);
-                setLeadModalOpen(true);
-              }
-            }} />
-          )}
-
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: SERVICE ZONES
              ========================================================================= */}
-          {currentView === "zones" && (
-            <ZonesView onOpenSettings={role === "manager" ? () => setZoneRulesOpen(true) : undefined} />
-          )}
+            {currentView === "zones" && (
+              <ZonesView onOpenSettings={role === "manager" ? () => setZoneRulesOpen(true) : undefined} />
+            )}
 
-          {/* =========================================================================
+            {/* =========================================================================
           {/* =========================================================================
               VIEW: TEAM
              ========================================================================= */}
-          {currentView === "team" && (
-            <TeamView
-              isManager={isManager}
-              basePath={basePath}
-              openAsRole={openAsRole}
-              openChat={openChat}
-              handleDeleteStaff={handleDeleteStaff}
-              deletingStaffId={deletingStaffId}
-              unread={unread}
-            />
-          )}
+            {currentView === "team" && (
+              <TeamView
+                isManager={isManager}
+                basePath={basePath}
+                openAsRole={openAsRole}
+                openChat={openChat}
+                handleDeleteStaff={handleDeleteStaff}
+                deletingStaffId={deletingStaffId}
+                unread={unread}
+              />
+            )}
 
-          {/* =========================================================================
+            {/* =========================================================================
               VIEW: TECHNICIANS (Field roster — add + dispatch)
              ========================================================================= */}
-          {currentView === "technicians" && (
-            <TechniciansView
-              basePath={basePath}
-              techName={techName}
-              setTechName={setTechName}
-              techEmail={techEmail}
-              setTechEmail={setTechEmail}
-              handleAddTechnician={handleAddTechnician}
-              techBusy={techBusy}
-              techError={techError}
-              deletingTechId={deletingTechId}
-              handleDeleteTechnician={handleDeleteTechnician}
-            />
-          )}
-        </div>
-      </main>
+            {currentView === "technicians" && (
+              <TechniciansView
+                basePath={basePath}
+                techName={techName}
+                setTechName={setTechName}
+                techEmail={techEmail}
+                setTechEmail={setTechEmail}
+                handleAddTechnician={handleAddTechnician}
+                techBusy={techBusy}
+                techError={techError}
+                deletingTechId={deletingTechId}
+                handleDeleteTechnician={handleDeleteTechnician}
+              />
+            )}
 
-      {/* =========================================================================
+            {/* =========================================================================
+              VIEW: RECYCLE BIN
+             ========================================================================= */}
+            {currentView === "recyclebin" && <RecycleBinView onCountChange={setRecycleBinCount} />}
+          </div>
+        </main>
+
+        {/* =========================================================================
           MODAL: ADD / EDIT LEAD
          ========================================================================= */}
-      {leadModalOpen && (
-        <LeadEditModal
-          editingLead={editingLead}
-          setEditingLead={setEditingLead}
-          setLeadModalOpen={setLeadModalOpen}
-          handleSaveLead={handleSaveLead}
-          addressInputRef={addressInputRef}
-          addressDebounceRef={addressDebounceRef}
-          fetchAddressSuggestions={fetchAddressSuggestions}
-          addressSuggestions={addressSuggestions}
-          setAddressSuggestionsOpen={setAddressSuggestionsOpen}
-          setAddressDropdownStyle={setAddressDropdownStyle}
-          role={role}
-          isTechnician={isTechnician}
-          isTechnicianName={isTechnicianName}
-          assigneeOptions={assigneeOptions}
-          logCall={logCall}
-        />
-      )}
+        {leadModalOpen && (
+          <LeadEditModal
+            editingLead={editingLead}
+            setEditingLead={setEditingLead}
+            setLeadModalOpen={setLeadModalOpen}
+            handleSaveLead={handleSaveLead}
+            addressInputRef={addressInputRef}
+            addressDebounceRef={addressDebounceRef}
+            fetchAddressSuggestions={fetchAddressSuggestions}
+            addressSuggestions={addressSuggestions}
+            setAddressSuggestionsOpen={setAddressSuggestionsOpen}
+            setAddressDropdownStyle={setAddressDropdownStyle}
+            role={role}
+            isTechnician={isTechnician}
+            isTechnicianName={isTechnicianName}
+            assigneeOptions={assigneeOptions}
+            logCall={logCall}
+          />
+        )}
 
-      {/* =========================================================================
+        {/* =========================================================================
           MODAL: QUOTE BUILDER & DOCUMENT PREVIEW
          ========================================================================= */}
-      {quoteModalOpen && activeQuoteLead && (
-        <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${quoteFullscreen ? "p-0" : "items-start justify-center p-4 sm:pt-10 overflow-y-auto"}`}>
-          <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-full h-full rounded-none p-4 sm:p-6 space-y-3" : "rounded-2xl max-w-7xl w-full p-6 space-y-4 my-6"}`}>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
-                <div className="text-xs text-slate-500">Customer: {activeQuoteLead.name}</div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* 3-way layout toggle: Split View (Side-by-Side) | Form Editor | Live Preview */}
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+        {quoteModalOpen && activeQuoteLead && (
+          <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${quoteFullscreen ? "p-0" : "items-start justify-center p-4 sm:pt-10 overflow-y-auto"}`}>
+            <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-full h-full rounded-none p-4 sm:p-6 space-y-3" : "rounded-2xl max-w-7xl w-full p-6 space-y-4 my-6"}`}>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
+                  <div className="text-xs text-slate-500">Customer: {activeQuoteLead.name}</div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* 3-way layout toggle: Split View (Side-by-Side) | Form Editor | Live Preview */}
+                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setQuoteViewTab("split")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${quoteViewTab === "split"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                        }`}
+                    >
+                      <span>⊞ Split View</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuoteViewTab("preview")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${quoteViewTab === "preview"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                        }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Live Preview (Full View)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuoteViewTab("form")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${quoteViewTab === "form"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                        }`}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Form Editor</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => setQuoteViewTab("split")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      quoteViewTab === "split" 
-                        ? "bg-blue-600 text-white shadow-sm" 
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                    }`}
+                    onClick={() => openPhotosModal(activeQuoteLead)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                    title="View customer / inspection photos"
                   >
-                    <span>⊞ Split View</span>
+                    <Camera className="w-4 h-4 text-blue-600" />
+                    <span>View Photos{activeQuoteLead.photos && activeQuoteLead.photos.length > 0 ? ` (${activeQuoteLead.photos.length})` : ""}</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setQuoteViewTab("preview")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      quoteViewTab === "preview" 
-                        ? "bg-blue-600 text-white shadow-sm" 
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                    }`}
+                    onClick={() => setQuoteFullscreen(!quoteFullscreen)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
+                    title={quoteFullscreen ? "Exit full screen" : "Full screen view"}
                   >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Live Preview (Full View)</span>
+                    {quoteFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                   </button>
                   <button
-                    type="button"
-                    onClick={() => setQuoteViewTab("form")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      quoteViewTab === "form" 
-                        ? "bg-blue-600 text-white shadow-sm" 
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                    }`}
+                    onClick={() => setQuoteModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Form Editor</span>
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => openPhotosModal(activeQuoteLead)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                  title="View customer / inspection photos"
-                >
-                  <Camera className="w-4 h-4 text-blue-600" />
-                  <span>View Photos{activeQuoteLead.photos && activeQuoteLead.photos.length > 0 ? ` (${activeQuoteLead.photos.length})` : ""}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuoteFullscreen(!quoteFullscreen)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
-                  title={quoteFullscreen ? "Exit full screen" : "Full screen view"}
-                >
-                  {quoteFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                </button>
-                <button
-                  onClick={() => setQuoteModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
               </div>
-            </div>
 
-            <div className={`grid gap-6 text-xs p-1 ${
-              quoteViewTab === "split" 
-                ? "grid-cols-1 md:grid-cols-2" 
+              <div className={`grid gap-6 text-xs p-1 ${quoteViewTab === "split"
+                ? "grid-cols-1 md:grid-cols-2"
                 : "grid-cols-1"
-            } ${quoteFullscreen ? "flex-1 min-h-0 overflow-hidden" : "max-h-[78vh] overflow-hidden"}`}>
-              {/* Left Column: Quote Form Controls */}
-              {(quoteViewTab === "split" || quoteViewTab === "form") && (
-                <div className={`space-y-4 min-w-0 pr-1 ${quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"}`}>
-                {/* Customer Request & Selected Services Details Card */}
-                <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Customer Request & Selected Services</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const matched = getMatchedQuoteItemsForLead(activeQuoteLead);
-                        setQuoteItems(matched);
-                      }}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
-                      title="Re-populate quote items using the best matching standard templates"
-                    >
-                      Auto-Match All Items
-                    </button>
-                  </div>
+                } ${quoteFullscreen ? "flex-1 min-h-0 overflow-hidden" : "max-h-[78vh] overflow-hidden"}`}>
+                {/* Left Column: Quote Form Controls */}
+                {(quoteViewTab === "split" || quoteViewTab === "form") && (
+                  <div className={`space-y-4 min-w-0 pr-1 ${quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"}`}>
+                    {/* Customer Request & Selected Services Details Card */}
+                    <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Customer Request & Selected Services</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const matched = getMatchedQuoteItemsForLead(activeQuoteLead);
+                            setQuoteItems(matched);
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
+                          title="Re-populate quote items using the best matching standard templates"
+                        >
+                          Auto-Match All Items
+                        </button>
+                      </div>
 
-                  {/* Selected Services Badges */}
-                  <div className="space-y-1.5">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Selected Service(s):
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
-                        const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
-                        return (
-                          <div
-                            key={sIdx}
-                            className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-lg shadow-2xs text-xs font-semibold text-slate-800"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                            <span>{svc}</span>
-                            {matchedTemplate && (
-                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
-                                {matchedTemplate.code}
-                              </span>
-                            )}
+                      {/* Selected Services Badges */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Selected Service(s):
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
+                            const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
+                            return (
+                              <div
+                                key={sIdx}
+                                className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-lg shadow-2xs text-xs font-semibold text-slate-800"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                <span>{svc}</span>
+                                {matchedTemplate && (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
+                                    {matchedTemplate.code}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Field Inspection Report Summary */}
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-teal-200 text-xs">
+                        <div className="flex items-center gap-2">
+                          <ClipboardList className="w-4 h-4 text-teal-700 shrink-0" />
+                          <div>
+                            <span className="font-bold text-slate-900">Field Inspection Report: </span>
+                            <span className={activeQuoteLead.inspectionReport ? "text-emerald-700 font-semibold" : "text-slate-500"}>
+                              {activeQuoteLead.inspectionReport
+                                ? `${activeQuoteLead.inspectionReport.status === "completed" ? "Completed" : "Draft saved"} by ${activeQuoteLead.inspectionReport.inspectorName || "Inspector"}`
+                                : "Not filled yet"}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Field Inspection Report Summary */}
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-teal-200 text-xs">
-                    <div className="flex items-center gap-2">
-                      <ClipboardList className="w-4 h-4 text-teal-700 shrink-0" />
-                      <div>
-                        <span className="font-bold text-slate-900">Field Inspection Report: </span>
-                        <span className={activeQuoteLead.inspectionReport ? "text-emerald-700 font-semibold" : "text-slate-500"}>
-                          {activeQuoteLead.inspectionReport
-                            ? `${activeQuoteLead.inspectionReport.status === "completed" ? "Completed" : "Draft saved"} by ${activeQuoteLead.inspectionReport.inspectorName || "Inspector"}`
-                            : "Not filled yet"}
-                        </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openInspectionModal(activeQuoteLead)}
+                          className="px-2.5 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 text-[11px] font-bold cursor-pointer shrink-0"
+                        >
+                          {activeQuoteLead.inspectionReport ? "View Findings" : "Open Form"}
+                        </button>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openInspectionModal(activeQuoteLead)}
-                      className="px-2.5 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 text-[11px] font-bold cursor-pointer shrink-0"
-                    >
-                      {activeQuoteLead.inspectionReport ? "View Findings" : "Open Form"}
-                    </button>
-                  </div>
 
-                  {/* Job & Customer Photos Picture Option */}
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-blue-200 text-xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Camera className="w-4 h-4 text-blue-600 shrink-0" />
-                      <div className="truncate">
-                        <span className="font-bold text-slate-900">Job & Customer Photos: </span>
-                        <span className="text-slate-600 font-semibold">
-                          {activeQuoteLead.photos && activeQuoteLead.photos.length > 0
-                            ? `${activeQuoteLead.photos.length} photo${activeQuoteLead.photos.length === 1 ? "" : "s"} available`
-                            : "No photos uploaded yet"}
-                        </span>
+                      {/* Job & Customer Photos Picture Option */}
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-blue-200 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Camera className="w-4 h-4 text-blue-600 shrink-0" />
+                          <div className="truncate">
+                            <span className="font-bold text-slate-900">Job & Customer Photos: </span>
+                            <span className="text-slate-600 font-semibold">
+                              {activeQuoteLead.photos && activeQuoteLead.photos.length > 0
+                                ? `${activeQuoteLead.photos.length} photo${activeQuoteLead.photos.length === 1 ? "" : "s"} available`
+                                : "No photos uploaded yet"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {activeQuoteLead.photos && activeQuoteLead.photos.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              {activeQuoteLead.photos.slice(0, 3).map((p, pIdx) => {
+                                const url = p.secureUrl || p.url || p.dataUrl || "";
+                                return (
+                                  <button
+                                    key={pIdx}
+                                    type="button"
+                                    onClick={() => openPhotosModal(activeQuoteLead)}
+                                    className="w-7 h-7 rounded border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
+                                    title={p.name || "View photo"}
+                                  >
+                                    <img src={url} alt={p.name || ""} className="w-full h-full object-cover" />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openPhotosModal(activeQuoteLead)}
+                            className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 text-[11px] font-bold cursor-pointer shrink-0"
+                          >
+                            {activeQuoteLead.photos && activeQuoteLead.photos.length > 0 ? "View Pictures" : "+ Add Pictures"}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {activeQuoteLead.photos && activeQuoteLead.photos.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          {activeQuoteLead.photos.slice(0, 3).map((p, pIdx) => {
-                            const url = p.secureUrl || p.url || p.dataUrl || "";
+
+                      {/* Additional Property & Condition Details */}
+                      {(activeQuoteLead.areas || activeQuoteLead.leaking || activeQuoteLead.damagedTiles) && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-200/70 text-[11px]">
+                          {activeQuoteLead.areas && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700">
+                              <span className="text-slate-400 font-medium">Areas:</span>
+                              <b>{activeQuoteLead.areas}</b>
+                            </div>
+                          )}
+                          {activeQuoteLead.leaking && (
+                            <div
+                              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${activeQuoteLead.leaking.toLowerCase() === "yes"
+                                ? "bg-rose-50 border-rose-200 text-rose-800 font-bold"
+                                : "bg-slate-100 border-slate-200 text-slate-700 font-medium"
+                                }`}
+                            >
+                              <span>Leaking:</span>
+                              <b>{activeQuoteLead.leaking}</b>
+                            </div>
+                          )}
+                          {activeQuoteLead.damagedTiles && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md text-amber-900">
+                              <span className="text-amber-600 font-medium">Tiles:</span>
+                              <b>{activeQuoteLead.damagedTiles}</b>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Customer Enquiry / Message */}
+                      {(activeQuoteLead.message || activeQuoteLead.notes) && (
+                        <div className="p-2 rounded-lg bg-white/90 border border-slate-200/80 text-[11px] text-slate-700 space-y-0.5">
+                          <div className="text-[10px] font-bold text-slate-400">Customer Note / Message:</div>
+                          <div className="italic leading-relaxed whitespace-pre-wrap">
+                            &ldquo;{activeQuoteLead.message || activeQuoteLead.notes}&rdquo;
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quick Click-to-Add Individual Services */}
+                      <div className="space-y-1 pt-1.5 border-t border-slate-200/60">
+                        <div className="text-[10px] font-bold text-slate-400">
+                          Click to append matching item to quote:
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
+                            const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
                             return (
                               <button
-                                key={pIdx}
+                                key={sIdx}
                                 type="button"
-                                onClick={() => openPhotosModal(activeQuoteLead)}
-                                className="w-7 h-7 rounded border border-slate-200 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
-                                title={p.name || "View photo"}
+                                onClick={() => {
+                                  if (matchedTemplate) {
+                                    setQuoteItems([
+                                      ...quoteItems,
+                                      {
+                                        templateNo: matchedTemplate.no,
+                                        code: matchedTemplate.code,
+                                        service: matchedTemplate.service,
+                                        scope: matchedTemplate.scope,
+                                        price: Number(matchedTemplate.price) || 0,
+                                        qty: 1
+                                      }
+                                    ]);
+                                  } else {
+                                    setQuoteItems([
+                                      ...quoteItems,
+                                      {
+                                        templateNo: "",
+                                        code: "",
+                                        service: svc,
+                                        scope: activeQuoteLead.message || activeQuoteLead.notes || "",
+                                        price: 0,
+                                        qty: 1
+                                      }
+                                    ]);
+                                  }
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-600 text-[11px] font-semibold hover:bg-blue-50 shadow-2xs transition-colors cursor-pointer"
                               >
-                                <img src={url} alt={p.name || ""} className="w-full h-full object-cover" />
+                                <Plus className="w-3 h-3" />
+                                <span>Add &ldquo;{svc}&rdquo;</span>
                               </button>
                             );
                           })}
                         </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => openPhotosModal(activeQuoteLead)}
-                        className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 text-[11px] font-bold cursor-pointer shrink-0"
-                      >
-                        {activeQuoteLead.photos && activeQuoteLead.photos.length > 0 ? "View Pictures" : "+ Add Pictures"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Additional Property & Condition Details */}
-                  {(activeQuoteLead.areas || activeQuoteLead.leaking || activeQuoteLead.damagedTiles) && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-200/70 text-[11px]">
-                      {activeQuoteLead.areas && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700">
-                          <span className="text-slate-400 font-medium">Areas:</span>
-                          <b>{activeQuoteLead.areas}</b>
-                        </div>
-                      )}
-                      {activeQuoteLead.leaking && (
-                        <div
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${activeQuoteLead.leaking.toLowerCase() === "yes"
-                              ? "bg-rose-50 border-rose-200 text-rose-800 font-bold"
-                              : "bg-slate-100 border-slate-200 text-slate-700 font-medium"
-                            }`}
-                        >
-                          <span>Leaking:</span>
-                          <b>{activeQuoteLead.leaking}</b>
-                        </div>
-                      )}
-                      {activeQuoteLead.damagedTiles && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md text-amber-900">
-                          <span className="text-amber-600 font-medium">Tiles:</span>
-                          <b>{activeQuoteLead.damagedTiles}</b>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Customer Enquiry / Message */}
-                  {(activeQuoteLead.message || activeQuoteLead.notes) && (
-                    <div className="p-2 rounded-lg bg-white/90 border border-slate-200/80 text-[11px] text-slate-700 space-y-0.5">
-                      <div className="text-[10px] font-bold text-slate-400">Customer Note / Message:</div>
-                      <div className="italic leading-relaxed whitespace-pre-wrap">
-                        &ldquo;{activeQuoteLead.message || activeQuoteLead.notes}&rdquo;
                       </div>
                     </div>
-                  )}
 
-                  {/* Quick Click-to-Add Individual Services */}
-                  <div className="space-y-1 pt-1.5 border-t border-slate-200/60">
-                    <div className="text-[10px] font-bold text-slate-400">
-                      Click to append matching item to quote:
+                    {/* Customer Details Form */}
+                    <div className="space-y-2">
+                      <div className="font-bold text-slate-800 text-sm">Customer Details</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Customer Name"
+                          value={activeQuoteLead.name || ""}
+                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, name: e.target.value })}
+                          className="p-2 border border-slate-200 rounded-lg text-xs"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Phone"
+                          value={activeQuoteLead.phone || ""}
+                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, phone: e.target.value })}
+                          className="p-2 border border-slate-200 rounded-lg text-xs"
+                        />
+                        <input
+                          type="email"
+                          placeholder="Email"
+                          value={activeQuoteLead.email || ""}
+                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, email: e.target.value })}
+                          className="p-2 border border-slate-200 rounded-lg text-xs"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Property Address"
+                          value={activeQuoteLead.address || ""}
+                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, address: e.target.value })}
+                          className="p-2 border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {parseCustomerServices(activeQuoteLead.service || activeQuoteLead.enquiry).map((svc, sIdx) => {
-                        const matchedTemplate = findBestTemplateForService(svc, activeQuoteLead.areas);
-                        return (
+
+                    {/* Overarching Job Description / Scope Overview (Editable with formatting) */}
+                    <div className="space-y-1.5 p-3 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                          <span>Job Description / Scope Overview</span>
+                          <span className="text-[10px] text-slate-400 font-normal">(Page 1 of Quote)</span>
+                        </label>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-[9px] font-bold text-slate-400">Format:</span>
                           <button
-                            key={sIdx}
                             type="button"
-                            onClick={() => {
-                              if (matchedTemplate) {
+                            onClick={() => applyScopeOverviewFormatting("bold")}
+                            className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-black text-slate-900 cursor-pointer shadow-2xs"
+                            title="Bold (**text**)"
+                          >
+                            B
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyScopeOverviewFormatting("italic")}
+                            className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold italic text-slate-900 cursor-pointer shadow-2xs"
+                            title="Italic (*text*)"
+                          >
+                            I
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyScopeOverviewFormatting("underline")}
+                            className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold underline text-slate-900 cursor-pointer shadow-2xs"
+                            title="Underline (<u>text</u>)"
+                          >
+                            U
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyScopeOverviewFormatting("bullet")}
+                            className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold text-slate-900 cursor-pointer shadow-2xs"
+                            title="Insert Bullet Point"
+                          >
+                            • Bullet
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyScopeOverviewFormatting("custom")}
+                            className="px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-[10px] font-bold text-emerald-800 cursor-pointer shadow-2xs"
+                            title="Append custom addition note"
+                          >
+                            + Custom Addition
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        id="quote-scope-overview"
+                        rows={2}
+                        value={quoteScope}
+                        onChange={(e) => setQuoteScope(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg text-xs text-black leading-relaxed font-normal focus:border-blue-400 focus:outline-none"
+                        placeholder="Provide overarching job description or custom scope summary (supports **bold**, *italic*, <u>underline</u>)..."
+                      />
+                    </div>
+
+                    {/* Items */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-bold text-slate-800 text-sm">Quote Items ({quoteItems.length})</div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <TemplatePicker
+                            onSelectTemplate={(t) => {
+                              if (t) {
                                 setQuoteItems([
                                   ...quoteItems,
                                   {
-                                    templateNo: matchedTemplate.no,
-                                    code: matchedTemplate.code,
-                                    service: matchedTemplate.service,
-                                    scope: matchedTemplate.scope,
-                                    price: Number(matchedTemplate.price) || 0,
+                                    templateNo: t.no,
+                                    code: t.code,
+                                    service: t.service,
+                                    scope: t.scope,
+                                    price: Number(t.price) || 0,
                                     qty: 1
                                   }
                                 ]);
@@ -4700,1037 +4887,884 @@ export default function CrmDashboardPage() {
                                   {
                                     templateNo: "",
                                     code: "",
-                                    service: svc,
-                                    scope: activeQuoteLead.message || activeQuoteLead.notes || "",
+                                    service: "Custom Service Item",
+                                    scope: "",
                                     price: 0,
                                     qty: 1
                                   }
                                 ]);
                               }
                             }}
-                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-600 text-[11px] font-semibold hover:bg-blue-50 shadow-2xs transition-colors cursor-pointer"
+                            buttonLabel="Search Library"
+                            triggerClassName="flex items-center gap-1 px-2.5 py-1 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-2xs transition-colors cursor-pointer"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQuoteItems([
+                                ...quoteItems,
+                                { templateNo: "", code: "", service: "Custom Service Item", scope: "• Detailed scope of works...", price: 0, qty: 1 }
+                              ])
+                            }
+                            className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg hover:bg-slate-200 text-xs transition-colors cursor-pointer shadow-2xs"
                           >
-                            <Plus className="w-3 h-3" />
-                            <span>Add &ldquo;{svc}&rdquo;</span>
+                            + Add Custom Item
                           </button>
-                        );
-                      })}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQuoteItems([
+                                ...quoteItems,
+                                { templateNo: "", code: "EXTRA", service: "Custom Addition / Extra Work", scope: "• Custom addition as requested by customer", price: 0, qty: 1 }
+                              ])
+                            }
+                            className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold rounded-lg hover:bg-emerald-100 text-xs transition-colors cursor-pointer shadow-2xs"
+                          >
+                            + Custom Addition
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Spreadsheet-style items table (Item Code | Item Name | Qty | Price | Total) */}
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 820 }}>
+                          <colgroup>
+                            <col style={{ width: 36 }} />
+                            <col style={{ width: 160 }} />
+                            <col />
+                            <col style={{ width: 56 }} />
+                            <col style={{ width: 80 }} />
+                            <col style={{ width: 80 }} />
+                            <col style={{ width: 40 }} />
+                          </colgroup>
+                          <thead>
+                            <tr className="bg-slate-100 text-slate-700 text-left">
+                              <th className="py-2 px-2 font-bold text-center">#</th>
+                              <th className="py-2 px-2 font-bold">Item Code</th>
+                              <th className="py-2 px-2 font-bold">Item Name</th>
+                              <th className="py-2 px-2 font-bold text-center">Qty</th>
+                              {!isTechnician && (
+                                <>
+                                  <th className="py-2 px-2 font-bold text-right">
+                                    {quoteTaxMode === "exclusive" ? "Price (ex GST)" : "Price (inc GST)"}
+                                  </th>
+                                  <th className="py-2 px-2 font-bold text-right">
+                                    {quoteTaxMode === "exclusive" ? "Total (ex GST)" : "Total (inc GST)"}
+                                  </th>
+                                </>
+                              )}
+                              <th className="py-2 px-2" />
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {quoteItems.map((item, idx) => (
+                              <tr key={idx} className="bg-white hover:bg-slate-50/70 align-top">
+                                <td className="py-2 px-2 text-center font-black text-slate-400">{idx + 1}</td>
+
+                                {/* Item Code — template picker */}
+                                <td className="py-2 px-2">
+                                  <TemplatePicker
+                                    selectedTemplateNo={item.templateNo}
+                                    onSelectTemplate={(t) => {
+                                      const updated = [...quoteItems];
+                                      if (t) {
+                                        const normalizedScope = (t.scope || "")
+                                          .split("\n")
+                                          .map((line) => line.replace(/^o\s+/, "• "))
+                                          .join("\n");
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          templateNo: t.no,
+                                          code: t.code,
+                                          service: t.service,
+                                          scope: normalizedScope,
+                                          price: Number(t.price) || updated[idx].price || 0
+                                        };
+                                      } else {
+                                        updated[idx] = {
+                                          ...updated[idx],
+                                          templateNo: "",
+                                          code: ""
+                                        };
+                                      }
+                                      setQuoteItems(updated);
+                                    }}
+                                  />
+                                </td>
+
+                                {/* Item Name — editable title + scope */}
+                                <td className="py-2 px-2 space-y-1.5">
+                                  <input
+                                    type="text"
+                                    value={item.service || ""}
+                                    onChange={(e) => {
+                                      const updated = [...quoteItems];
+                                      updated[idx].service = e.target.value;
+                                      setQuoteItems(updated);
+                                    }}
+                                    className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-black"
+                                    placeholder="Service title..."
+                                  />
+                                  <div className="rounded-lg border border-slate-200 overflow-hidden focus-within:border-blue-400">
+                                    <div className="flex items-center justify-between gap-1 px-2 py-1 bg-slate-100/90 border-b border-slate-200 text-[10px]">
+                                      <span className="text-slate-500 font-bold uppercase text-[9px]">Scope Format:</span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => applyItemScopeFormatting(idx, "bold")}
+                                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-black text-slate-900 cursor-pointer shadow-2xs"
+                                          title="Bold (**text**)"
+                                        >
+                                          B
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyItemScopeFormatting(idx, "italic")}
+                                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold italic text-slate-900 cursor-pointer shadow-2xs"
+                                          title="Italic (*text*)"
+                                        >
+                                          I
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyItemScopeFormatting(idx, "underline")}
+                                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold underline text-slate-900 cursor-pointer shadow-2xs"
+                                          title="Underline (<u>text</u>)"
+                                        >
+                                          U
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyItemScopeFormatting(idx, "bullet")}
+                                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 cursor-pointer shadow-2xs"
+                                          title="Bullet Point (• item)"
+                                        >
+                                          • List
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyItemScopeFormatting(idx, "number")}
+                                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 cursor-pointer shadow-2xs"
+                                          title="Numbered Step (1. item)"
+                                        >
+                                          1. Step
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <textarea
+                                      id={`quote-scope-${idx}`}
+                                      rows={Math.max(4, (item.scope || "").split("\n").length + 1)}
+                                      value={item.scope || ""}
+                                      onChange={(e) => {
+                                        const updated = [...quoteItems];
+                                        updated[idx].scope = e.target.value
+                                          .split("\n")
+                                          .map((line) => line.replace(/^o\s+/, "• "))
+                                          .join("\n");
+                                        setQuoteItems(updated);
+                                      }}
+                                      className="w-full p-2 bg-white text-[11px] leading-relaxed text-black font-normal outline-none focus:bg-white resize-y"
+                                      placeholder="Detailed scope of works (supports **bold**, *italic*, <u>underline</u>, • bullets)..."
+                                    />
+                                  </div>
+                                </td>
+
+                                {/* Qty */}
+                                <td className="py-2 px-2">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.qty || 1}
+                                    onChange={(e) => {
+                                      const updated = [...quoteItems];
+                                      updated[idx].qty = parseInt(e.target.value, 10) || 1;
+                                      setQuoteItems(updated);
+                                    }}
+                                    className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-center"
+                                  />
+                                </td>
+
+                                {/* Price */}
+                                {!isTechnician && (
+                                  <td className="py-2 px-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={item.price || ""}
+                                      onChange={(e) => {
+                                        const updated = [...quoteItems];
+                                        updated[idx].price = parseFloat(e.target.value) || 0;
+                                        setQuoteItems(updated);
+                                      }}
+                                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
+                                    />
+                                  </td>
+                                )}
+
+                                {/* Total */}
+                                {!isTechnician && (
+                                  <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
+                                    ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                                  </td>
+                                )}
+
+                                {/* Remove */}
+                                <td className="py-2 px-2 text-center">
+                                  {quoteItems.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
+                                      className="text-rose-400 hover:text-rose-600 cursor-pointer"
+                                      title="Remove item"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Tax inclusive / exclusive toggle under price button */}
+                      {!isTechnician && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/90 shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-800">Tax Pricing:</span>
+                            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => setQuoteTaxMode("inclusive")}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "inclusive"
+                                  ? "bg-blue-600 text-white shadow-2xs"
+                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                  }`}
+                              >
+                                Tax Inclusive (GST Inc)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setQuoteTaxMode("exclusive")}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "exclusive"
+                                  ? "bg-blue-600 text-white shadow-2xs"
+                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                  }`}
+                              >
+                                Tax Exclusive (+10% GST)
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-[11px] font-semibold">
+                            {quoteTaxMode === "exclusive" ? (
+                              <span className="text-amber-700 font-bold">• Prices are Ex-Tax (+10% GST added on top)</span>
+                            ) : (
+                              <span className="text-emerald-700 font-bold">• Prices are Tax-Inclusive (10% GST included)</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
 
-                {/* Customer Details Form */}
-                <div className="space-y-2">
-                  <div className="font-bold text-slate-800 text-sm">Customer Details</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Customer Name"
-                      value={activeQuoteLead.name || ""}
-                      onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, name: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg text-xs"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Phone"
-                      value={activeQuoteLead.phone || ""}
-                      onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, phone: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg text-xs"
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={activeQuoteLead.email || ""}
-                      onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, email: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg text-xs"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Property Address"
-                      value={activeQuoteLead.address || ""}
-                      onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, address: e.target.value })}
-                      className="p-2 border border-slate-200 rounded-lg text-xs"
-                    />
-                  </div>
-                </div>
+                    {/* Tax Settings */}
+                    {!isTechnician && (
+                      <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                        <div className="font-bold text-slate-800 text-xs">Tax Calculation Settings</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Tax Mode</label>
+                            <select
+                              value={quoteTaxMode}
+                              onChange={(e) => setQuoteTaxMode(e.target.value as any)}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                            >
+                              <option value="inclusive">GST Inclusive (prices include tax)</option>
+                              <option value="exclusive">GST Exclusive (tax added on top)</option>
+                              <option value="none">No Tax</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">GST Rate</label>
+                            <select
+                              value={quoteTaxRate}
+                              onChange={(e) => setQuoteTaxRate(Number(e.target.value))}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                            >
+                              <option value="10">10%</option>
+                              <option value="0">0%</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                {/* Overarching Job Description / Scope Overview (Editable with formatting) */}
-                <div className="space-y-1.5 p-3 rounded-xl border border-slate-200 bg-white shadow-2xs">
-                  <div className="flex items-center justify-between flex-wrap gap-1">
-                    <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                      <span>Job Description / Scope Overview</span>
-                      <span className="text-[10px] text-slate-400 font-normal">(Page 1 of Quote)</span>
-                    </label>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[9px] font-bold text-slate-400">Format:</span>
-                      <button
-                        type="button"
-                        onClick={() => applyScopeOverviewFormatting("bold")}
-                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-black text-slate-900 cursor-pointer shadow-2xs"
-                        title="Bold (**text**)"
-                      >
-                        B
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyScopeOverviewFormatting("italic")}
-                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold italic text-slate-900 cursor-pointer shadow-2xs"
-                        title="Italic (*text*)"
-                      >
-                        I
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyScopeOverviewFormatting("underline")}
-                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold underline text-slate-900 cursor-pointer shadow-2xs"
-                        title="Underline (<u>text</u>)"
-                      >
-                        U
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyScopeOverviewFormatting("bullet")}
-                        className="px-2 py-0.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-[10px] font-bold text-slate-900 cursor-pointer shadow-2xs"
-                        title="Insert Bullet Point"
-                      >
-                        • Bullet
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyScopeOverviewFormatting("custom")}
-                        className="px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-[10px] font-bold text-emerald-800 cursor-pointer shadow-2xs"
-                        title="Append custom addition note"
-                      >
-                        + Custom Addition
-                      </button>
-                    </div>
-                  </div>
-                  <textarea
-                    id="quote-scope-overview"
-                    rows={2}
-                    value={quoteScope}
-                    onChange={(e) => setQuoteScope(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-lg text-xs text-black leading-relaxed font-normal focus:border-blue-400 focus:outline-none"
-                    placeholder="Provide overarching job description or custom scope summary (supports **bold**, *italic*, <u>underline</u>)..."
-                  />
-                </div>
-
-                {/* Items */}
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-bold text-slate-800 text-sm">Quote Items ({quoteItems.length})</div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <TemplatePicker
-                        onSelectTemplate={(t) => {
-                          if (t) {
-                            setQuoteItems([
-                              ...quoteItems,
-                              {
-                                templateNo: t.no,
-                                code: t.code,
-                                service: t.service,
-                                scope: t.scope,
-                                price: Number(t.price) || 0,
-                                qty: 1
-                              }
-                            ]);
-                          } else {
-                            setQuoteItems([
-                              ...quoteItems,
-                              {
-                                templateNo: "",
-                                code: "",
-                                service: "Custom Service Item",
-                                scope: "",
-                                price: 0,
-                                qty: 1
-                              }
-                            ]);
-                          }
-                        }}
-                        buttonLabel="Search Library"
-                        triggerClassName="flex items-center gap-1 px-2.5 py-1 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-2xs transition-colors cursor-pointer"
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-slate-900 block text-xs">Quote Conditions / Special Notes</label>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => applyTermsFormatting("bold")}
+                            className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-black text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                            title="Bold (**text**)"
+                          >
+                            B
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTermsFormatting("italic")}
+                            className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold italic text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                            title="Italic (*text*)"
+                          >
+                            I
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTermsFormatting("underline")}
+                            className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold underline text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                            title="Underline (<u>text</u>)"
+                          >
+                            U
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTermsFormatting("bullet")}
+                            className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 text-[10px] cursor-pointer shadow-2xs"
+                            title="Bullet point"
+                          >
+                            • Bullet
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        id="quote-terms-textarea"
+                        rows={3}
+                        value={quoteTerms}
+                        onChange={(e) => setQuoteTerms(e.target.value)}
+                        className="w-full p-2.5 border border-slate-200 rounded-xl text-black font-normal"
+                        placeholder="Enter conditions or special notes (supports **bold**, *italic*, <u>underline</u>)..."
                       />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuoteItems([
-                            ...quoteItems,
-                            { templateNo: "", code: "", service: "Custom Service Item", scope: "• Detailed scope of works...", price: 0, qty: 1 }
-                          ])
-                        }
-                        className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg hover:bg-slate-200 text-xs transition-colors cursor-pointer shadow-2xs"
-                      >
-                        + Add Custom Item
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuoteItems([
-                            ...quoteItems,
-                            { templateNo: "", code: "EXTRA", service: "Custom Addition / Extra Work", scope: "• Custom addition as requested by customer", price: 0, qty: 1 }
-                          ])
-                        }
-                        className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold rounded-lg hover:bg-emerald-100 text-xs transition-colors cursor-pointer shadow-2xs"
-                      >
-                        + Custom Addition
-                      </button>
                     </div>
                   </div>
+                )}
 
-                  {/* Spreadsheet-style items table (Item Code | Item Name | Qty | Price | Total) */}
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
-                    <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 820 }}>
-                      <colgroup>
-                        <col style={{ width: 36 }} />
-                        <col style={{ width: 160 }} />
-                        <col />
-                        <col style={{ width: 56 }} />
-                        <col style={{ width: 80 }} />
-                        <col style={{ width: 80 }} />
-                        <col style={{ width: 40 }} />
-                      </colgroup>
+                {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
+                {(quoteViewTab === "split" || quoteViewTab === "preview") && (
+                  <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 ${quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"
+                    } ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
+                    {/* Live Document Preview Header Bar */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-blue-600" />
+                          Live Document Preview (Official 10-Page Template)
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                          Live
+                        </span>
+                      </div>
+                      {quoteViewTab === "split" && (
+                        <button
+                          type="button"
+                          onClick={() => setQuoteViewTab("preview")}
+                          className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer transition-colors"
+                          title="Expand to full screen document preview"
+                        >
+                          <Maximize2 className="w-3 h-3" />
+                          <span>Full Preview View</span>
+                        </button>
+                      )}
+                      {quoteViewTab === "preview" && (
+                        <button
+                          type="button"
+                          onClick={() => setQuoteViewTab("split")}
+                          className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                        >
+                          <span>← Back to Split View</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 1. Header: Logo (left) & Right-Aligned Address + Gold Quote + ACN + Quote # + Date */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <img
+                          src={siteLogoUrl}
+                          alt="Groutix"
+                          className="h-11 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
+                        <div>Melbourne</div>
+                        <div>VIC</div>
+                        <div>7023 8094</div>
+                        <div>info@groutix.com</div>
+                        <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
+                        <div className="font-bold text-slate-900">ACN: 687 415 005</div>
+                        <div className="pt-1.5 text-slate-900">Quote # {activeQuoteLead.jobNo || `JOBNO-${activeQuoteLead.id.slice(-6).toUpperCase()}`}</div>
+                        <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
+                      </div>
+                    </div>
+
+                    {/* 2. Customer Details / Billing Address («job.instantpost_billing_address») */}
+                    <div className="text-[11px] leading-relaxed text-slate-800 pt-3">
+                      <div className="font-bold text-slate-900">{activeQuoteLead.name || "Customer Name"}</div>
+                      {activeQuoteLead.address && <div>{activeQuoteLead.address}</div>}
+                      {(activeQuoteLead.phone || activeQuoteLead.email) && (
+                        <div className="text-slate-500 text-[10.5px]">
+                          {[activeQuoteLead.phone, activeQuoteLead.email].filter(Boolean).join(" • ")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 3. JOB DESCRIPTION («job.work_done_description») */}
+                    <div className="pt-2 space-y-1">
+                      <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wide">JOB DESCRIPTION:</div>
+                      <div className="text-[11px] text-black whitespace-pre-wrap leading-relaxed font-normal">
+                        {renderFormattedText(quoteScope || activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified.")}
+                      </div>
+                    </div>
+
+                    {/* 4. Table: DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE with light-gray bar */}
+                    <table className="w-full text-left text-[11px] border-collapse mt-2">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-700 text-left">
-                          <th className="py-2 px-2 font-bold text-center">#</th>
-                          <th className="py-2 px-2 font-bold">Item Code</th>
-                          <th className="py-2 px-2 font-bold">Item Name</th>
-                          <th className="py-2 px-2 font-bold text-center">Qty</th>
+                        <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[9.5px]">
+                          <th className="py-2 px-2.5">DESCRIPTION</th>
+                          <th className="py-2 px-2.5 text-right">QTY</th>
                           {!isTechnician && (
                             <>
-                              <th className="py-2 px-2 font-bold text-right">
-                                {quoteTaxMode === "exclusive" ? "Price (ex GST)" : "Price (inc GST)"}
-                              </th>
-                              <th className="py-2 px-2 font-bold text-right">
-                                {quoteTaxMode === "exclusive" ? "Total (ex GST)" : "Total (inc GST)"}
-                              </th>
+                              <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
+                              <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
                             </>
                           )}
-                          <th className="py-2 px-2" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {quoteItems.map((item, idx) => (
-                          <tr key={idx} className="bg-white hover:bg-slate-50/70 align-top">
-                            <td className="py-2 px-2 text-center font-black text-slate-400">{idx + 1}</td>
-
-                            {/* Item Code — template picker */}
-                            <td className="py-2 px-2">
-                              <TemplatePicker
-                                selectedTemplateNo={item.templateNo}
-                                onSelectTemplate={(t) => {
-                                  const updated = [...quoteItems];
-                                  if (t) {
-                                    const normalizedScope = (t.scope || "")
-                                      .split("\n")
-                                      .map((line) => line.replace(/^o\s+/, "• "))
-                                      .join("\n");
-                                    updated[idx] = {
-                                      ...updated[idx],
-                                      templateNo: t.no,
-                                      code: t.code,
-                                      service: t.service,
-                                      scope: normalizedScope,
-                                      price: Number(t.price) || updated[idx].price || 0
-                                    };
-                                  } else {
-                                    updated[idx] = {
-                                      ...updated[idx],
-                                      templateNo: "",
-                                      code: ""
-                                    };
-                                  }
-                                  setQuoteItems(updated);
-                                }}
-                              />
-                            </td>
-
-                            {/* Item Name — editable title + scope */}
-                            <td className="py-2 px-2 space-y-1.5">
-                              <input
-                                type="text"
-                                value={item.service || ""}
-                                onChange={(e) => {
-                                  const updated = [...quoteItems];
-                                  updated[idx].service = e.target.value;
-                                  setQuoteItems(updated);
-                                }}
-                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-black"
-                                placeholder="Service title..."
-                              />
-                              <div className="rounded-lg border border-slate-200 overflow-hidden focus-within:border-blue-400">
-                                <div className="flex items-center justify-between gap-1 px-2 py-1 bg-slate-100/90 border-b border-slate-200 text-[10px]">
-                                  <span className="text-slate-500 font-bold uppercase text-[9px]">Scope Format:</span>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => applyItemScopeFormatting(idx, "bold")}
-                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-black text-slate-900 cursor-pointer shadow-2xs"
-                                      title="Bold (**text**)"
-                                    >
-                                      B
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => applyItemScopeFormatting(idx, "italic")}
-                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold italic text-slate-900 cursor-pointer shadow-2xs"
-                                      title="Italic (*text*)"
-                                    >
-                                      I
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => applyItemScopeFormatting(idx, "underline")}
-                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold underline text-slate-900 cursor-pointer shadow-2xs"
-                                      title="Underline (<u>text</u>)"
-                                    >
-                                      U
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => applyItemScopeFormatting(idx, "bullet")}
-                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 cursor-pointer shadow-2xs"
-                                      title="Bullet Point (• item)"
-                                    >
-                                      • List
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => applyItemScopeFormatting(idx, "number")}
-                                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 cursor-pointer shadow-2xs"
-                                      title="Numbered Step (1. item)"
-                                    >
-                                      1. Step
-                                    </button>
-                                  </div>
-                                </div>
-                                <textarea
-                                  id={`quote-scope-${idx}`}
-                                  rows={Math.max(4, (item.scope || "").split("\n").length + 1)}
-                                  value={item.scope || ""}
-                                  onChange={(e) => {
-                                    const updated = [...quoteItems];
-                                    updated[idx].scope = e.target.value
-                                      .split("\n")
-                                      .map((line) => line.replace(/^o\s+/, "• "))
-                                      .join("\n");
-                                    setQuoteItems(updated);
-                                  }}
-                                  className="w-full p-2 bg-white text-[11px] leading-relaxed text-black font-normal outline-none focus:bg-white resize-y"
-                                  placeholder="Detailed scope of works (supports **bold**, *italic*, <u>underline</u>, • bullets)..."
-                                />
-                              </div>
-                            </td>
-
-                            {/* Qty */}
-                            <td className="py-2 px-2">
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.qty || 1}
-                                onChange={(e) => {
-                                  const updated = [...quoteItems];
-                                  updated[idx].qty = parseInt(e.target.value, 10) || 1;
-                                  setQuoteItems(updated);
-                                }}
-                                className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-center"
-                              />
-                            </td>
-
-                            {/* Price */}
-                            {!isTechnician && (
-                              <td className="py-2 px-2">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={item.price || ""}
-                                  onChange={(e) => {
-                                    const updated = [...quoteItems];
-                                    updated[idx].price = parseFloat(e.target.value) || 0;
-                                    setQuoteItems(updated);
-                                  }}
-                                  className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
-                                />
-                              </td>
-                            )}
-
-                            {/* Total */}
-                            {!isTechnician && (
-                              <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
-                                ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
-                              </td>
-                            )}
-
-                            {/* Remove */}
-                            <td className="py-2 px-2 text-center">
-                              {quoteItems.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
-                                  className="text-rose-400 hover:text-rose-600 cursor-pointer"
-                                  title="Remove item"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                        {quoteItems.map((item, i) => (
+                          <tr key={i}>
+                            <td className="py-2.5 px-2.5">
+                              {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
+                              <div className="font-bold text-black text-xs">{renderFormattedText(item.service)}</div>
+                              {item.scope && !isRedundantScope(item.service, item.scope) && (
+                                <ul className="mt-1 space-y-0.5">
+                                  {item.scope.split("\n").filter(l => l.trim()).map((line, li) => {
+                                    const clean = line.replace(/^[•o]\s*/, "").trim();
+                                    return (
+                                      <li key={li} className="flex items-start gap-1 text-[10px] text-black leading-snug font-normal">
+                                        <span className="shrink-0 text-black font-bold mt-px">•</span>
+                                        <span>{renderFormattedText(clean)}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
                               )}
                             </td>
+                            <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
+                            {!isTechnician && (
+                              <>
+                                <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
+                                <td className="py-2.5 px-2.5 text-right font-bold text-black">
+                                  ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  </div>
 
-                  {/* Tax inclusive / exclusive toggle under price button */}
-                  {!isTechnician && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/90 shadow-2xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-800">Tax Pricing:</span>
-                        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs">
-                          <button
-                            type="button"
-                            onClick={() => setQuoteTaxMode("inclusive")}
-                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                              quoteTaxMode === "inclusive"
-                                ? "bg-blue-600 text-white shadow-2xs"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                            }`}
-                          >
-                            Tax Inclusive (GST Inc)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setQuoteTaxMode("exclusive")}
-                            className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                              quoteTaxMode === "exclusive"
-                                ? "bg-blue-600 text-white shadow-2xs"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                            }`}
-                          >
-                            Tax Exclusive (+10% GST)
-                          </button>
+                    {/* 5. Totals with Round Figure Final Price */}
+                    {!isTechnician && (
+                      <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
+                        <div className="flex justify-end gap-6">
+                          <span className="text-slate-600 font-medium">SUBTOTAL:</span>
+                          <span className="w-24 text-right font-semibold">${quoteTotals().subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-end gap-6">
+                          <span className="text-slate-600 font-medium">GST ({quoteTaxRate}%):</span>
+                          <span className="w-24 text-right font-semibold">${quoteTotals().gst.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
+                          <span>TOTAL:</span>
+                          <span className="w-24 text-right tabular-nums">${quoteTotals().total.toFixed(2)}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium pt-0.5">
+                          (Round figure: ${quoteTotals().total} {quoteTaxMode === "exclusive" ? "ex-tax + GST" : "inc GST"})
                         </div>
                       </div>
-                      <div className="text-[11px] font-semibold">
-                        {quoteTaxMode === "exclusive" ? (
-                          <span className="text-amber-700 font-bold">• Prices are Ex-Tax (+10% GST added on top)</span>
-                        ) : (
-                          <span className="text-emerald-700 font-bold">• Prices are Tax-Inclusive (10% GST included)</span>
-                        )}
+                    )}
+
+                    {/* 6. Centered «final_note» in solid black font */}
+                    <div className="pt-4 text-center">
+                      <div className="text-[10px] text-black font-medium leading-relaxed">
+                        {renderFormattedText(quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
+                          ? quoteTerms
+                          : DEFAULT_QUOTE_CONDITIONS)}
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Tax Settings */}
-                {!isTechnician && (
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
-                    <div className="font-bold text-slate-800 text-xs">Tax Calculation Settings</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Tax Mode</label>
-                        <select
-                          value={quoteTaxMode}
-                          onChange={(e) => setQuoteTaxMode(e.target.value as any)}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
-                        >
-                          <option value="inclusive">GST Inclusive (prices include tax)</option>
-                          <option value="exclusive">GST Exclusive (tax added on top)</option>
-                          <option value="none">No Tax</option>
-                        </select>
+                    {/* 7. Full Text of All 20 Terms & Conditions Clauses Preview */}
+                    <div className="border-t border-slate-200 pt-4 space-y-3">
+                      <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 text-[10.5px] text-amber-950 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#b8860b]">✓ 10-Page Quotation Template Active</span>
+                          <span className="text-[10px] text-slate-600">All 20 Clauses &amp; Signature block printed in PDF (No external terms links)</span>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">GST Rate</label>
-                        <select
-                          value={quoteTaxRate}
-                          onChange={(e) => setQuoteTaxRate(Number(e.target.value))}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
-                        >
-                          <option value="10">10%</option>
-                          <option value="0">0%</option>
-                        </select>
-                      </div>
+
+                      <details className="text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <summary className="font-bold text-slate-800 cursor-pointer hover:text-blue-600 select-none">
+                          Preview All 20 Terms &amp; Conditions Clauses (Pages 2–10)
+                        </summary>
+                        <div className="mt-3 text-[10px] text-slate-700 space-y-2 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono bg-white p-2.5 rounded border border-slate-200">
+                          {GROUTIX_QUOTE_TERMS}
+                        </div>
+                      </details>
                     </div>
                   </div>
                 )}
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-900 block text-xs">Quote Conditions / Special Notes</label>
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => applyTermsFormatting("bold")}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-black text-slate-900 text-[10px] cursor-pointer shadow-2xs"
-                        title="Bold (**text**)"
-                      >
-                        B
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTermsFormatting("italic")}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold italic text-slate-900 text-[10px] cursor-pointer shadow-2xs"
-                        title="Italic (*text*)"
-                      >
-                        I
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTermsFormatting("underline")}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold underline text-slate-900 text-[10px] cursor-pointer shadow-2xs"
-                        title="Underline (<u>text</u>)"
-                      >
-                        U
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTermsFormatting("bullet")}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-900 text-[10px] cursor-pointer shadow-2xs"
-                        title="Bullet point"
-                      >
-                        • Bullet
-                      </button>
-                    </div>
-                  </div>
-                  <textarea
-                    id="quote-terms-textarea"
-                    rows={3}
-                    value={quoteTerms}
-                    onChange={(e) => setQuoteTerms(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl text-black font-normal"
-                    placeholder="Enter conditions or special notes (supports **bold**, *italic*, <u>underline</u>)..."
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
-            {(quoteViewTab === "split" || quoteViewTab === "preview") && (
-              <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 ${
-                quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"
-              } ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
-                {/* Live Document Preview Header Bar */}
-                <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      Live Document Preview (Official 10-Page Template)
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                      Live
-                    </span>
-                  </div>
-                  {quoteViewTab === "split" && (
-                    <button
-                      type="button"
-                      onClick={() => setQuoteViewTab("preview")}
-                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer transition-colors"
-                      title="Expand to full screen document preview"
-                    >
-                      <Maximize2 className="w-3 h-3" />
-                      <span>Full Preview View</span>
-                    </button>
-                  )}
-                  {quoteViewTab === "preview" && (
-                    <button
-                      type="button"
-                      onClick={() => setQuoteViewTab("split")}
-                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer transition-colors"
-                    >
-                      <span>← Back to Split View</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* 1. Header: Logo (left) & Right-Aligned Address + Gold Quote + ACN + Quote # + Date */}
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <img
-                      src={siteLogoUrl}
-                      alt="Groutix"
-                      className="h-11 w-auto object-contain"
-                    />
-                  </div>
-                  <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
-                    <div>Melbourne</div>
-                    <div>VIC</div>
-                    <div>7023 8094</div>
-                    <div>info@groutix.com</div>
-                    <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
-                    <div className="font-bold text-slate-900">ACN: 687 415 005</div>
-                    <div className="pt-1.5 text-slate-900">Quote # {activeQuoteLead.jobNo || `JOBNO-${activeQuoteLead.id.slice(-6).toUpperCase()}`}</div>
-                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
-                  </div>
-                </div>
-
-                {/* 2. Customer Details / Billing Address («job.instantpost_billing_address») */}
-                <div className="text-[11px] leading-relaxed text-slate-800 pt-3">
-                  <div className="font-bold text-slate-900">{activeQuoteLead.name || "Customer Name"}</div>
-                  {activeQuoteLead.address && <div>{activeQuoteLead.address}</div>}
-                  {(activeQuoteLead.phone || activeQuoteLead.email) && (
-                    <div className="text-slate-500 text-[10.5px]">
-                      {[activeQuoteLead.phone, activeQuoteLead.email].filter(Boolean).join(" • ")}
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. JOB DESCRIPTION («job.work_done_description») */}
-                <div className="pt-2 space-y-1">
-                  <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wide">JOB DESCRIPTION:</div>
-                  <div className="text-[11px] text-black whitespace-pre-wrap leading-relaxed font-normal">
-                    {renderFormattedText(quoteScope || activeQuoteLead.quoteScope || activeQuoteLead.message || activeQuoteLead.enquiry || "Tile regrouting and waterproof resealing works as specified.")}
-                  </div>
-                </div>
-
-                {/* 4. Table: DESCRIPTION | QTY | UNIT PRICE | TOTAL PRICE with light-gray bar */}
-                <table className="w-full text-left text-[11px] border-collapse mt-2">
-                  <thead>
-                    <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[9.5px]">
-                      <th className="py-2 px-2.5">DESCRIPTION</th>
-                      <th className="py-2 px-2.5 text-right">QTY</th>
-                      {!isTechnician && (
-                        <>
-                          <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
-                          <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {quoteItems.map((item, i) => (
-                      <tr key={i}>
-                        <td className="py-2.5 px-2.5">
-                          {item.code && <div className="text-[9px] font-bold text-blue-700">{item.code}</div>}
-                          <div className="font-bold text-black text-xs">{renderFormattedText(item.service)}</div>
-                          {item.scope && !isRedundantScope(item.service, item.scope) && (
-                            <ul className="mt-1 space-y-0.5">
-                              {item.scope.split("\n").filter(l => l.trim()).map((line, li) => {
-                                const clean = line.replace(/^[•o]\s*/, "").trim();
-                                return (
-                                  <li key={li} className="flex items-start gap-1 text-[10px] text-black leading-snug font-normal">
-                                    <span className="shrink-0 text-black font-bold mt-px">•</span>
-                                    <span>{renderFormattedText(clean)}</span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
-                        {!isTechnician && (
-                          <>
-                            <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
-                            <td className="py-2.5 px-2.5 text-right font-bold text-black">
-                              ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* 5. Totals with Round Figure Final Price */}
-                {!isTechnician && (
-                  <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
-                    <div className="flex justify-end gap-6">
-                      <span className="text-slate-600 font-medium">SUBTOTAL:</span>
-                      <span className="w-24 text-right font-semibold">${quoteTotals().subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-end gap-6">
-                      <span className="text-slate-600 font-medium">GST ({quoteTaxRate}%):</span>
-                      <span className="w-24 text-right font-semibold">${quoteTotals().gst.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-end gap-6 pt-1 text-sm font-black text-slate-900 border-t border-slate-200">
-                      <span>TOTAL:</span>
-                      <span className="w-24 text-right tabular-nums">${quoteTotals().total.toFixed(2)}</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-medium pt-0.5">
-                      (Round figure: ${quoteTotals().total} {quoteTaxMode === "exclusive" ? "ex-tax + GST" : "inc GST"})
-                    </div>
-                  </div>
-                )}
-
-                {/* 6. Centered «final_note» in solid black font */}
-                <div className="pt-4 text-center">
-                  <div className="text-[10px] text-black font-medium leading-relaxed">
-                    {renderFormattedText(quoteTerms && quoteTerms.length < 500 && !/^Groutix terms/i.test(quoteTerms)
-                      ? quoteTerms
-                      : DEFAULT_QUOTE_CONDITIONS)}
-                  </div>
-                </div>
-
-                {/* 7. Full Text of All 20 Terms & Conditions Clauses Preview */}
-                <div className="border-t border-slate-200 pt-4 space-y-3">
-                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-2.5 text-[10.5px] text-amber-950 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[#b8860b]">✓ 10-Page Quotation Template Active</span>
-                      <span className="text-[10px] text-slate-600">All 20 Clauses &amp; Signature block printed in PDF (No external terms links)</span>
-                    </div>
-                  </div>
-
-                  <details className="text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <summary className="font-bold text-slate-800 cursor-pointer hover:text-blue-600 select-none">
-                      Preview All 20 Terms &amp; Conditions Clauses (Pages 2–10)
-                    </summary>
-                    <div className="mt-3 text-[10px] text-slate-700 space-y-2 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono bg-white p-2.5 rounded border border-slate-200">
-                      {GROUTIX_QUOTE_TERMS}
-                    </div>
-                  </details>
-                </div>
-              </div>
-            )}
-            </div>
-
-            {/* Bottom Actions Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 shrink-0">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setQuoteViewTab(quoteViewTab === "preview" ? "split" : "preview")}
-                  className="flex items-center gap-1.5 px-3.5 py-2 border border-blue-200 bg-blue-50/80 hover:bg-blue-100 rounded-xl font-bold text-blue-800 text-xs cursor-pointer shadow-2xs transition-colors"
-                >
-                  <Eye className="w-4 h-4 text-blue-600" />
-                  <span>{quoteViewTab === "preview" ? "Exit Full Preview" : "View Full Quote Preview"}</span>
-                </button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrintQuote}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-100 text-xs"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Preview / Save PDF
-                </button>
-              {!isTechnician && (
-                <>
+              {/* Bottom Actions Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 shrink-0">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleWhatsappQuote}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700"
+                    onClick={() => setQuoteViewTab(quoteViewTab === "preview" ? "split" : "preview")}
+                    className="flex items-center gap-1.5 px-3.5 py-2 border border-blue-200 bg-blue-50/80 hover:bg-blue-100 rounded-xl font-bold text-blue-800 text-xs cursor-pointer shadow-2xs transition-colors"
                   >
-                    WhatsApp Quote
+                    <Eye className="w-4 h-4 text-blue-600" />
+                    <span>{quoteViewTab === "preview" ? "Exit Full Preview" : "View Full Quote Preview"}</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrintQuote}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-100 text-xs"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Preview / Save PDF
+                  </button>
+                  {!isTechnician && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleWhatsappQuote}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700"
+                      >
+                        WhatsApp Quote
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleEmailQuote}
+                        className="flex items-center gap-1.5 px-3 py-2 border border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50"
+                        title="Open your mail app with a draft"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        Email (draft)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendQuoteEmail}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
+                        title="Send the quote to the customer automatically"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        Send Quote
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSaveQuote}
+                    className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900"
+                  >
+                    {isTechnician ? "Save Scope" : "Save Quote"}
                   </button>
                   <button
                     type="button"
-                    onClick={handleEmailQuote}
-                    className="flex items-center gap-1.5 px-3 py-2 border border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50"
-                    title="Open your mail app with a draft"
+                    onClick={handleMarkQuoteSent}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
                   >
-                    <Mail className="w-3.5 h-3.5" />
-                    Email (draft)
+                    Mark Quote Sent
                   </button>
                   <button
                     type="button"
-                    onClick={handleSendQuoteEmail}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
-                    title="Send the quote to the customer automatically"
+                    onClick={handleMarkNegotiation}
+                    className="px-4 py-2 border-2 border-purple-600 text-purple-700 bg-purple-50 rounded-xl font-bold hover:bg-purple-100"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    Send Quote
+                    Mark Negotiation
                   </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={handleSaveQuote}
-                className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900"
-              >
-                {isTechnician ? "Save Scope" : "Save Quote"}
-              </button>
-              <button
-                type="button"
-                onClick={handleMarkQuoteSent}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
-              >
-                Mark Quote Sent
-              </button>
-              <button
-                type="button"
-                onClick={handleMarkNegotiation}
-                className="px-4 py-2 border-2 border-purple-600 text-purple-700 bg-purple-50 rounded-xl font-bold hover:bg-purple-100"
-              >
-                Mark Negotiation
-              </button>
-            </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Address autocomplete dropdown — rendered outside any overflow container */}
-      {addressSuggestionsOpen && addressSuggestions.length > 0 && (
-        <ul
-          className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto text-sm"
-          style={{ top: addressDropdownStyle.top + 4, left: addressDropdownStyle.left, width: addressDropdownStyle.width }}
-        >
-          {addressSuggestions.map((s, i) => (
-            <li
-              key={i}
-              onMouseDown={(e) => { e.preventDefault(); setEditingLead((prev) => prev ? { ...prev, address: s } : prev); setAddressSuggestionsOpen(false); setAddressSuggestions([]); }}
-              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 hover:text-blue-600 text-slate-700 border-b border-slate-100 last:border-0"
-            >
-              {s}
-            </li>
-          ))}
-        </ul>
-      )}
+        {/* Address autocomplete dropdown — rendered outside any overflow container */}
+        {addressSuggestionsOpen && addressSuggestions.length > 0 && (
+          <ul
+            className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto text-sm"
+            style={{ top: addressDropdownStyle.top + 4, left: addressDropdownStyle.left, width: addressDropdownStyle.width }}
+          >
+            {addressSuggestions.map((s, i) => (
+              <li
+                key={i}
+                onMouseDown={(e) => { e.preventDefault(); setEditingLead((prev) => prev ? { ...prev, address: s } : prev); setAddressSuggestionsOpen(false); setAddressSuggestions([]); }}
+                className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 hover:text-blue-600 text-slate-700 border-b border-slate-100 last:border-0"
+              >
+                {s}
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {/* =========================================================================
+        {/* =========================================================================
           MODAL: CUSTOMER PHOTOS
          ========================================================================= */}
-      {photosModalOpen && activePhotoLead && (
-        <PhotosModal
-          lead={activePhotoLead}
-          uploadingPhotos={uploadingPhotos}
-          loadingPhotos={loadingPhotos}
-          deletingPhotoIndex={deletingPhotoIndex}
-          onClose={() => setPhotosModalOpen(false)}
-          onAddPhotos={handleAddPhotos}
-          onDeletePhoto={handleDeletePhoto}
-          onPreviewPhoto={(photos, index) => setPreviewPhoto({ photos, index })}
-        />
-      )}
-      {/* =========================================================================
+        {photosModalOpen && activePhotoLead && (
+          <PhotosModal
+            lead={activePhotoLead}
+            uploadingPhotos={uploadingPhotos}
+            loadingPhotos={loadingPhotos}
+            deletingPhotoIndex={deletingPhotoIndex}
+            onClose={() => setPhotosModalOpen(false)}
+            onAddPhotos={handleAddPhotos}
+            onDeletePhoto={handleDeletePhoto}
+            onPreviewPhoto={(photos, index) => setPreviewPhoto({ photos, index })}
+          />
+        )}
+        {/* =========================================================================
       {/* =========================================================================
           MODAL: FULLSCREEN PHOTO LIGHTBOX PREVIEW
          ========================================================================= */}
-      {previewPhoto && (
-        <PhotoLightbox
-          photos={previewPhoto.photos}
-          index={previewPhoto.index}
-          onClose={() => setPreviewPhoto(null)}
-          onNavigate={(i) => setPreviewPhoto((prev) => prev ? { ...prev, index: i } : null)}
-        />
-      )}
+        {previewPhoto && (
+          <PhotoLightbox
+            photos={previewPhoto.photos}
+            index={previewPhoto.index}
+            onClose={() => setPreviewPhoto(null)}
+            onNavigate={(i) => setPreviewPhoto((prev) => prev ? { ...prev, index: i } : null)}
+          />
+        )}
 
-      {/* =========================================================================
+        {/* =========================================================================
           MODAL: CUSTOMER CONVERSATION (MESSAGES)
          ========================================================================= */}
-      {messagesModalOpen && activeMessageLead && (
-        <div
-          className={`fixed inset-0 z-50 pointer-events-none bg-slate-900/25 backdrop-blur-[0.5px] ${
-            convFullscreen ? "p-0" : !convPos ? "flex items-center justify-center p-4" : ""
-          }`}
-        >
+        {messagesModalOpen && activeMessageLead && (
           <div
-            ref={convModalRef}
-            className={`bg-white pointer-events-auto flex flex-col gap-4 shadow-2xl border border-slate-200 transition-[border-radius,box-shadow] duration-150 ${
-              convFullscreen
+            className={`fixed inset-0 z-50 pointer-events-none bg-slate-900/25 backdrop-blur-[0.5px] ${convFullscreen ? "p-0" : !convPos ? "flex items-center justify-center p-4" : ""
+              }`}
+          >
+            <div
+              ref={convModalRef}
+              className={`bg-white pointer-events-auto flex flex-col gap-4 shadow-2xl border border-slate-200 transition-[border-radius,box-shadow] duration-150 ${convFullscreen
                 ? "w-full h-full rounded-none shadow-none p-6"
                 : "rounded-2xl w-full max-w-5xl p-6 resize overflow-auto"
-            }`}
-            style={
-              convFullscreen
-                ? { position: "fixed", inset: 0, width: "100vw", height: "100vh", margin: 0 }
-                : convPos
-                ? {
-                    position: "fixed",
-                    left: `${convPos.x}px`,
-                    top: `${convPos.y}px`,
-                    margin: 0,
-                    height: "90vh",
-                    minHeight: "500px",
-                    minWidth: "400px",
-                    maxWidth: "min(96vw, 1024px)",
-                  }
-                : { height: "90vh", minHeight: "500px", minWidth: "400px", maxWidth: "min(96vw, 1024px)" }
-            }
-          >
-            {/* Header: Draggable handle */}
-            <div
-              onPointerDown={handleConvPointerDown}
-              onDoubleClick={() => setConvPos(null)}
-              className={`flex items-center justify-between border-b border-slate-100 pb-3 shrink-0 select-none ${
+                }`}
+              style={
                 convFullscreen
+                  ? { position: "fixed", inset: 0, width: "100vw", height: "100vh", margin: 0 }
+                  : convPos
+                    ? {
+                      position: "fixed",
+                      left: `${convPos.x}px`,
+                      top: `${convPos.y}px`,
+                      margin: 0,
+                      height: "90vh",
+                      minHeight: "500px",
+                      minWidth: "400px",
+                      maxWidth: "min(96vw, 1024px)",
+                    }
+                    : { height: "90vh", minHeight: "500px", minWidth: "400px", maxWidth: "min(96vw, 1024px)" }
+              }
+            >
+              {/* Header: Draggable handle */}
+              <div
+                onPointerDown={handleConvPointerDown}
+                onDoubleClick={() => setConvPos(null)}
+                className={`flex items-center justify-between border-b border-slate-100 pb-3 shrink-0 select-none ${convFullscreen
                   ? ""
                   : "cursor-grab active:cursor-grabbing hover:bg-slate-50/70 -m-2 p-2 rounded-xl transition-colors"
-              }`}
-              title={convFullscreen ? undefined : "Drag to move window anywhere on screen • Double-click to center"}
-            >
-              <div className="flex items-center gap-2.5">
-                {!convFullscreen && (
-                  <div className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Drag to move">
-                    <GripHorizontal className="w-4 h-4" />
-                  </div>
-                )}
-                <div>
-                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <span>Customer Conversation</span>
-                    {!convFullscreen && (
-                      <span className="text-[10px] font-medium text-slate-400 hidden sm:inline">
-                        (Movable window)
-                      </span>
-                    )}
-                  </h2>
-                  <div className="text-xs text-slate-500">
-                    {activeMessageLeadLive?.name} • {activeMessageLeadLive?.phone || "No phone"} • {activeMessageLeadLive?.email || "No email"}
+                  }`}
+                title={convFullscreen ? undefined : "Drag to move window anywhere on screen • Double-click to center"}
+              >
+                <div className="flex items-center gap-2.5">
+                  {!convFullscreen && (
+                    <div className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Drag to move">
+                      <GripHorizontal className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <span>Customer Conversation</span>
+                      {!convFullscreen && (
+                        <span className="text-[10px] font-medium text-slate-400 hidden sm:inline">
+                          (Movable window)
+                        </span>
+                      )}
+                    </h2>
+                    <div className="text-xs text-slate-500">
+                      {activeMessageLeadLive?.name} • {activeMessageLeadLive?.phone || "No phone"} • {activeMessageLeadLive?.email || "No email"}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1">
-                {convPos && !convFullscreen && (
+                <div className="flex items-center gap-1">
+                  {convPos && !convFullscreen && (
+                    <button
+                      type="button"
+                      onClick={() => setConvPos(null)}
+                      title="Center window on screen"
+                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-xs font-semibold transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline text-[11px]">Center</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setConvPos(null)}
-                    title="Center window on screen"
-                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-xs font-semibold transition-colors"
+                    onClick={() => setConvFullscreen((f) => !f)}
+                    title={convFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline text-[11px]">Center</span>
+                    {convFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setConvFullscreen((f) => !f)}
-                  title={convFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                >
-                  {convFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setMessagesModalOpen(false); setConvFullscreen(false); }}
-                  title="Close conversation (Esc)"
-                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMessagesModalOpen(false); setConvFullscreen(false); }}
+                    title="Close conversation (Esc)"
+                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Conversation Messages Box — with channel filter pills and WhatsApp-style scroll */}
-            <div className="relative flex flex-col shrink-0" style={{ minHeight: "240px" }}>
-              {/* Thread Channel Filter Pills Bar */}
-              {(() => {
-                const allMsgs = getConversation(activeMessageLeadLive || activeMessageLead);
-                const countAll = allMsgs.length;
-                const countEmail = allMsgs.filter((m) => m.channel !== "sms").length;
-                const countSms = allMsgs.filter((m) => m.channel === "sms").length;
-                return (
-                  <div className="flex items-center justify-between gap-2 pb-2">
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setConvFilter("all")}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
-                          convFilter === "all"
-                            ? "bg-white text-slate-900 shadow-2xs"
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        <span>All Messages</span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            convFilter === "all"
-                              ? "bg-slate-200 text-slate-800"
-                              : "bg-slate-200/60 text-slate-500"
-                          }`}
-                        >
-                          {countAll}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConvFilter("email")}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
-                          convFilter === "email"
-                            ? "bg-white text-blue-600 shadow-2xs"
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                        <span>Email</span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            convFilter === "email"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-200/60 text-slate-500"
-                          }`}
-                        >
-                          {countEmail}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConvFilter("sms")}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
-                          convFilter === "sms"
-                            ? "bg-white text-emerald-700 shadow-2xs"
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        <Smartphone className="w-3.5 h-3.5" />
-                        <span>SMS / Dispatch</span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            convFilter === "sms"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-200/60 text-slate-500"
-                          }`}
-                        >
-                          {countSms}
-                        </span>
-                      </button>
-                    </div>
-                    <div className="text-[11px] font-medium text-slate-400 hidden sm:flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Live Thread</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div
-                ref={convScrollRef}
-                onScroll={handleConvScroll}
-                className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
-                style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}
-              >
+              {/* Conversation Messages Box — with channel filter pills and WhatsApp-style scroll */}
+              <div className="relative flex flex-col shrink-0" style={{ minHeight: "240px" }}>
+                {/* Thread Channel Filter Pills Bar */}
                 {(() => {
                   const allMsgs = getConversation(activeMessageLeadLive || activeMessageLead);
-                  const filtered = allMsgs.filter((msg) => {
-                    if (convFilter === "all") return true;
-                    if (convFilter === "sms") return msg.channel === "sms";
-                    return msg.channel !== "sms";
-                  });
-
-                  if (filtered.length === 0) {
-                    return (
-                      <div className="py-12 text-center text-slate-400 space-y-2">
-                        <MessageSquare className="w-8 h-8 mx-auto text-slate-300 opacity-60" />
-                        <p className="text-xs font-semibold text-slate-600">
-                          No {convFilter === "all" ? "" : convFilter.toUpperCase() + " "}messages in this thread.
-                        </p>
-                        {convFilter !== "all" && (
-                          <button
-                            type="button"
-                            onClick={() => setConvFilter("all")}
-                            className="text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
+                  const countAll = allMsgs.length;
+                  const countEmail = allMsgs.filter((m) => m.channel !== "sms").length;
+                  const countSms = allMsgs.filter((m) => m.channel === "sms").length;
+                  return (
+                    <div className="flex items-center justify-between gap-2 pb-2">
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setConvFilter("all")}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${convFilter === "all"
+                            ? "bg-white text-slate-900 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                          <span>All Messages</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${convFilter === "all"
+                              ? "bg-slate-200 text-slate-800"
+                              : "bg-slate-200/60 text-slate-500"
+                              }`}
                           >
-                            View all thread messages ({allMsgs.length})
-                          </button>
-                        )}
+                            {countAll}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConvFilter("email")}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${convFilter === "email"
+                            ? "bg-white text-blue-600 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>Email</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${convFilter === "email"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-slate-200/60 text-slate-500"
+                              }`}
+                          >
+                            {countEmail}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConvFilter("sms")}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${convFilter === "sms"
+                            ? "bg-white text-emerald-700 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                          <Smartphone className="w-3.5 h-3.5" />
+                          <span>SMS / Dispatch</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${convFilter === "sms"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-slate-200/60 text-slate-500"
+                              }`}
+                          >
+                            {countSms}
+                          </span>
+                        </button>
                       </div>
-                    );
-                  }
+                      <div className="text-[11px] font-medium text-slate-400 hidden sm:flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Live Thread</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
-                  return filtered.map((msg) => {
-                    const isCustomer = msg.from === "customer";
-                    const isOtw = Boolean(
-                      msg.id?.startsWith("otw_") ||
-                      (msg.subject && /on the way|specialist arrived|we're here/i.test(msg.subject))
-                    );
-                    const isEnRoute = Boolean(msg.subject && /on the way/i.test(msg.subject));
-                    const isSms = msg.channel === "sms";
+                <div
+                  ref={convScrollRef}
+                  onScroll={handleConvScroll}
+                  className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
+                  style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}
+                >
+                  {(() => {
+                    const allMsgs = getConversation(activeMessageLeadLive || activeMessageLead);
+                    const filtered = allMsgs.filter((msg) => {
+                      if (convFilter === "all") return true;
+                      if (convFilter === "sms") return msg.channel === "sms";
+                      return msg.channel !== "sms";
+                    });
 
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`p-3.5 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1.5 transition-all ${
-                          isCustomer
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-slate-400 space-y-2">
+                          <MessageSquare className="w-8 h-8 mx-auto text-slate-300 opacity-60" />
+                          <p className="text-xs font-semibold text-slate-600">
+                            No {convFilter === "all" ? "" : convFilter.toUpperCase() + " "}messages in this thread.
+                          </p>
+                          {convFilter !== "all" && (
+                            <button
+                              type="button"
+                              onClick={() => setConvFilter("all")}
+                              className="text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
+                            >
+                              View all thread messages ({allMsgs.length})
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((msg) => {
+                      const isCustomer = msg.from === "customer";
+                      const isOtw = Boolean(
+                        msg.id?.startsWith("otw_") ||
+                        (msg.subject && /on the way|specialist arrived|we're here/i.test(msg.subject))
+                      );
+                      const isEnRoute = Boolean(msg.subject && /on the way/i.test(msg.subject));
+                      const isSms = msg.channel === "sms";
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`p-3.5 rounded-2xl max-w-[96%] text-xs shadow-xs space-y-1.5 transition-all ${isCustomer
                             ? "mr-auto bg-white border border-slate-200 text-slate-800"
                             : isOtw
                               ? isEnRoute
@@ -5739,11 +5773,10 @@ export default function CrmDashboardPage() {
                               : isSms
                                 ? "ml-auto bg-emerald-700 text-white border border-emerald-600"
                                 : "ml-auto bg-blue-600 text-white"
-                        }`}
-                      >
-                        <div
-                          className={`flex items-center justify-between gap-4 text-[10px] font-bold ${
-                            isCustomer
+                            }`}
+                        >
+                          <div
+                            className={`flex items-center justify-between gap-4 text-[10px] font-bold ${isCustomer
                               ? "text-slate-400"
                               : isOtw
                                 ? isEnRoute
@@ -5752,2456 +5785,2434 @@ export default function CrmDashboardPage() {
                                 : isSms
                                   ? "text-emerald-100"
                                   : "text-blue-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {isCustomer ? (
-                              <span>Customer ({msg.channel || "note"})</span>
-                            ) : isOtw ? (
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${
-                                    isEnRoute ? "bg-amber-300 text-amber-950" : "bg-emerald-300 text-emerald-950"
-                                  }`}
-                                >
-                                  {isEnRoute ? "🚗 SPECIALIST ON THE WAY" : "📍 SPECIALIST ARRIVED"}
+                              }`}
+                          >
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {isCustomer ? (
+                                <span>Customer ({msg.channel || "note"})</span>
+                              ) : isOtw ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isEnRoute ? "bg-amber-300 text-amber-950" : "bg-emerald-300 text-emerald-950"
+                                      }`}
+                                  >
+                                    {isEnRoute ? "🚗 SPECIALIST ON THE WAY" : "📍 SPECIALIST ARRIVED"}
+                                  </span>
+                                  <span className="opacity-80 text-[9px] uppercase font-semibold">({msg.channel || "dispatch"})</span>
+                                </div>
+                              ) : isSms ? (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-800/80 text-emerald-100 font-bold text-[9px] flex items-center gap-1">
+                                  <Smartphone className="w-2.5 h-2.5" /> SMS (Texto)
                                 </span>
-                                <span className="opacity-80 text-[9px] uppercase font-semibold">({msg.channel || "dispatch"})</span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded bg-blue-700/80 text-blue-100 font-bold text-[9px] flex items-center gap-1">
+                                  <Mail className="w-2.5 h-2.5" /> Email
+                                </span>
+                              )}
+                            </div>
+                            <span className="shrink-0">{fmtDate(msg.time)}</span>
+                          </div>
+                          {msg.subject && (
+                            <div className={`font-bold ${isOtw ? "text-sm text-white font-black" : ""}`}>
+                              {msg.subject}
+                            </div>
+                          )}
+                          {(() => {
+                            const isCustomerEmail = isCustomer && !msg.initial;
+                            const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
+                            const hasQuoted = isCustomerEmail && cleanText !== msg.text;
+                            return (
+                              <div className="space-y-1">
+                                <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
+                                {hasQuoted && (
+                                  <details className="mt-1 text-[10px] text-slate-400">
+                                    <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
+                                      ••• Show quoted email history
+                                    </summary>
+                                    <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
+                                      {msg.text}
+                                    </div>
+                                  </details>
+                                )}
                               </div>
-                            ) : isSms ? (
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-800/80 text-emerald-100 font-bold text-[9px] flex items-center gap-1">
-                                <Smartphone className="w-2.5 h-2.5" /> SMS (Texto)
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 rounded bg-blue-700/80 text-blue-100 font-bold text-[9px] flex items-center gap-1">
-                                <Mail className="w-2.5 h-2.5" /> Email
-                              </span>
-                            )}
-                          </div>
-                          <span className="shrink-0">{fmtDate(msg.time)}</span>
-                        </div>
-                        {msg.subject && (
-                          <div className={`font-bold ${isOtw ? "text-sm text-white font-black" : ""}`}>
-                            {msg.subject}
-                          </div>
-                        )}
-                        {(() => {
-                          const isCustomerEmail = isCustomer && !msg.initial;
-                          const cleanText = isCustomerEmail ? stripQuotedReply(msg.text) : msg.text;
-                          const hasQuoted = isCustomerEmail && cleanText !== msg.text;
-                          return (
-                            <div className="space-y-1">
-                              <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
-                              {hasQuoted && (
-                                <details className="mt-1 text-[10px] text-slate-400">
-                                  <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
-                                    ••• Show quoted email history
-                                  </summary>
-                                  <div className="mt-1 p-2 bg-slate-100 rounded-lg text-slate-600 whitespace-pre-wrap border border-slate-200 text-[10px] max-h-40 overflow-y-auto">
-                                    {msg.text}
-                                  </div>
-                                </details>
-                              )}
-                            </div>
-                          );
-                        })()}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="space-y-1.5 pt-2 border-t border-slate-200/50 mt-1.5">
-                            <div className={`text-[10px] font-bold flex items-center justify-between ${
-                              isCustomer ? "text-slate-500" : "text-blue-100"
-                            }`}>
-                              <span className="flex items-center gap-1">
-                                <Paperclip className="w-3 h-3" />
-                                <span>Attachments ({msg.attachments.length})</span>
-                              </span>
-                              {msg.attachments.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    msg.attachments?.forEach((att) => {
-                                      const href = att.secureUrl || att.url;
-                                      if (href) {
-                                        const downloadLink = document.createElement("a");
-                                        downloadLink.href = `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}`;
-                                        downloadLink.download = att.name;
-                                        document.body.appendChild(downloadLink);
-                                        downloadLink.click();
-                                        document.body.removeChild(downloadLink);
-                                      }
-                                    });
-                                  }}
-                                  className={`text-[10px] font-bold underline cursor-pointer hover:opacity-80`}
-                                >
-                                  Download All
-                                </button>
-                              )}
-                            </div>
+                            );
+                          })()}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="space-y-1.5 pt-2 border-t border-slate-200/50 mt-1.5">
+                              <div className={`text-[10px] font-bold flex items-center justify-between ${isCustomer ? "text-slate-500" : "text-blue-100"
+                                }`}>
+                                <span className="flex items-center gap-1">
+                                  <Paperclip className="w-3 h-3" />
+                                  <span>Attachments ({msg.attachments.length})</span>
+                                </span>
+                                {msg.attachments.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      msg.attachments?.forEach((att) => {
+                                        const href = att.secureUrl || att.url;
+                                        if (href) {
+                                          const downloadLink = document.createElement("a");
+                                          downloadLink.href = `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}`;
+                                          downloadLink.download = att.name;
+                                          document.body.appendChild(downloadLink);
+                                          downloadLink.click();
+                                          document.body.removeChild(downloadLink);
+                                        }
+                                      });
+                                    }}
+                                    className={`text-[10px] font-bold underline cursor-pointer hover:opacity-80`}
+                                  >
+                                    Download All
+                                  </button>
+                                )}
+                              </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {msg.attachments.map((att, i) => {
-                                const href = att.secureUrl || att.url;
-                                const isImage = att.contentType?.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(att.name || "");
-                                const downloadUrl = href ? `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}` : null;
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {msg.attachments.map((att, i) => {
+                                  const href = att.secureUrl || att.url;
+                                  const isImage = att.contentType?.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(att.name || "");
+                                  const downloadUrl = href ? `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}` : null;
 
-                                if (isImage && href) {
+                                  if (isImage && href) {
+                                    return (
+                                      <div
+                                        key={i}
+                                        className={`group relative rounded-xl border overflow-hidden transition-all shadow-2xs ${isCustomer
+                                          ? "bg-white border-slate-200 hover:border-blue-400"
+                                          : "bg-white/10 border-white/20 hover:bg-white/15"
+                                          }`}
+                                      >
+                                        {/* Image Thumbnail with Click-to-Zoom */}
+                                        <div
+                                          onClick={() => setPreviewPhoto({ photos: [{ url: href, name: att.name }], index: 0 })}
+                                          className="relative h-28 bg-slate-900/5 cursor-pointer overflow-hidden flex items-center justify-center"
+                                          title="Click to zoom photo"
+                                        >
+                                          <img
+                                            src={href}
+                                            alt={att.name}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                          />
+                                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                            <span className="p-1.5 bg-black/60 text-white rounded-full">
+                                              <ZoomIn className="w-3.5 h-3.5" />
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Action footer */}
+                                        <div className={`p-2 flex items-center justify-between gap-1.5 text-xs ${isCustomer ? "bg-slate-50 text-slate-700" : "bg-blue-900/30 text-white"
+                                          }`}>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="truncate font-semibold text-[11px]" title={att.name}>
+                                              {att.name}
+                                            </div>
+                                            {att.size && (
+                                              <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
+                                                {att.size < 1024 * 1024
+                                                  ? `${(att.size / 1024).toFixed(0)} KB`
+                                                  : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={() => setPreviewPhoto({ photos: [{ url: href, name: att.name }], index: 0 })}
+                                              className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${isCustomer
+                                                ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
+                                                : "bg-white/20 hover:bg-white/30 text-white"
+                                                }`}
+                                              title="View photo fullscreen"
+                                            >
+                                              <Eye className="w-3.5 h-3.5" />
+                                            </button>
+                                            <a
+                                              href={downloadUrl!}
+                                              download={att.name}
+                                              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${isCustomer
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
+                                                : "bg-white text-blue-900 hover:bg-blue-50 font-bold"
+                                                }`}
+                                              title={`Download ${att.name}`}
+                                            >
+                                              <Download className="w-3 h-3" />
+                                              <span>Download</span>
+                                            </a>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Non-image document file (PDF, Doc, etc.) or metadata-only
                                   return (
                                     <div
                                       key={i}
-                                      className={`group relative rounded-xl border overflow-hidden transition-all shadow-2xs ${
-                                        isCustomer
-                                          ? "bg-white border-slate-200 hover:border-blue-400"
-                                          : "bg-white/10 border-white/20 hover:bg-white/15"
-                                      }`}
+                                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all shadow-2xs ${isCustomer
+                                        ? "bg-white border-slate-200 hover:border-blue-400 text-slate-800"
+                                        : "bg-white/10 border-white/20 text-white"
+                                        }`}
                                     >
-                                      {/* Image Thumbnail with Click-to-Zoom */}
-                                      <div
-                                        onClick={() => setPreviewPhoto({ photos: [{ url: href, name: att.name }], index: 0 })}
-                                        className="relative h-28 bg-slate-900/5 cursor-pointer overflow-hidden flex items-center justify-center"
-                                        title="Click to zoom photo"
-                                      >
-                                        <img
-                                          src={href}
-                                          alt={att.name}
-                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                        />
-                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                          <span className="p-1.5 bg-black/60 text-white rounded-full">
-                                            <ZoomIn className="w-3.5 h-3.5" />
-                                          </span>
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCustomer ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-white/20 text-white"
+                                          }`}>
+                                          <FileText className="w-4 h-4" />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="font-bold text-[11px] truncate" title={att.name}>
+                                            {att.name}
+                                          </div>
+                                          <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
+                                            {att.size
+                                              ? att.size < 1024 * 1024
+                                                ? `${(att.size / 1024).toFixed(0)} KB`
+                                                : `${(att.size / (1024 * 1024)).toFixed(1)} MB`
+                                              : isImage ? "Image" : "Document"}
+                                          </div>
                                         </div>
                                       </div>
 
-                                      {/* Action footer */}
-                                      <div className={`p-2 flex items-center justify-between gap-1.5 text-xs ${
-                                        isCustomer ? "bg-slate-50 text-slate-700" : "bg-blue-900/30 text-white"
-                                      }`}>
-                                        <div className="min-w-0 flex-1">
-                                          <div className="truncate font-semibold text-[11px]" title={att.name}>
-                                            {att.name}
-                                          </div>
-                                          {att.size && (
-                                            <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
-                                              {att.size < 1024 * 1024
-                                                ? `${(att.size / 1024).toFixed(0)} KB`
-                                                : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          <button
-                                            type="button"
-                                            onClick={() => setPreviewPhoto({ photos: [{ url: href, name: att.name }], index: 0 })}
-                                            className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                              isCustomer
-                                                ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
-                                                : "bg-white/20 hover:bg-white/30 text-white"
-                                            }`}
-                                            title="View photo fullscreen"
-                                          >
-                                            <Eye className="w-3.5 h-3.5" />
-                                          </button>
-                                          <a
-                                            href={downloadUrl!}
-                                            download={att.name}
-                                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                              isCustomer
-                                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                                                : "bg-white text-blue-900 hover:bg-blue-50 font-bold"
-                                            }`}
-                                            title={`Download ${att.name}`}
-                                          >
-                                            <Download className="w-3 h-3" />
-                                            <span>Download</span>
-                                          </a>
-                                        </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {href ? (
+                                          <>
+                                            <a
+                                              href={href}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors ${isCustomer ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-white/20 hover:bg-white/30 text-white"
+                                                }`}
+                                              title="Open original in new tab"
+                                            >
+                                              <ExternalLink className="w-3.5 h-3.5" />
+                                            </a>
+                                            <a
+                                              href={downloadUrl!}
+                                              download={att.name}
+                                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${isCustomer ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white text-blue-900 hover:bg-blue-50"
+                                                }`}
+                                              title={`Download ${att.name}`}
+                                            >
+                                              <Download className="w-3 h-3" />
+                                              <span>Download</span>
+                                            </a>
+                                          </>
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400 italic">Sent via email</span>
+                                        )}
                                       </div>
                                     </div>
                                   );
-                                }
-
-                                // Non-image document file (PDF, Doc, etc.) or metadata-only
-                                return (
-                                  <div
-                                    key={i}
-                                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all shadow-2xs ${
-                                      isCustomer
-                                        ? "bg-white border-slate-200 hover:border-blue-400 text-slate-800"
-                                        : "bg-white/10 border-white/20 text-white"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                        isCustomer ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-white/20 text-white"
-                                      }`}>
-                                        <FileText className="w-4 h-4" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="font-bold text-[11px] truncate" title={att.name}>
-                                          {att.name}
-                                        </div>
-                                        <div className={`text-[9.5px] ${isCustomer ? "text-slate-400" : "text-blue-200"}`}>
-                                          {att.size
-                                            ? att.size < 1024 * 1024
-                                              ? `${(att.size / 1024).toFixed(0)} KB`
-                                              : `${(att.size / (1024 * 1024)).toFixed(1)} MB`
-                                            : isImage ? "Image" : "Document"}
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      {href ? (
-                                        <>
-                                          <a
-                                            href={href}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                                              isCustomer ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-white/20 hover:bg-white/30 text-white"
-                                            }`}
-                                            title="Open original in new tab"
-                                          >
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                          </a>
-                                          <a
-                                            href={downloadUrl!}
-                                            download={att.name}
-                                            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
-                                              isCustomer ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white text-blue-900 hover:bg-blue-50"
-                                            }`}
-                                            title={`Download ${att.name}`}
-                                          >
-                                            <Download className="w-3 h-3" />
-                                            <span>Download</span>
-                                          </a>
-                                        </>
-                                      ) : (
-                                        <span className="text-[10px] text-slate-400 italic">Sent via email</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
 
-              {/* WhatsApp-style floating "Latest messages" jump button */}
-              {isConvScrolledUp && (
-                <button
-                  type="button"
-                  onClick={() => scrollToLatestMessage(true)}
-                  className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg hover:bg-blue-700 transition-all animate-bounce cursor-pointer z-20"
-                  title="Jump to latest conversation"
-                >
-                  <ArrowDown className="w-3.5 h-3.5" />
-                  <span>Latest messages</span>
-                </button>
-              )}
-            </div>
-
-            {/* Reply Composer */}
-            <div className="space-y-3 pt-2 border-t border-slate-200 flex-1 min-h-0 overflow-y-auto">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-xl border border-slate-200">
+                {/* WhatsApp-style floating "Latest messages" jump button */}
+                {isConvScrolledUp && (
                   <button
                     type="button"
-                    onClick={() => setMessageChannel("email")}
-                    className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      messageChannel === "email"
+                    onClick={() => scrollToLatestMessage(true)}
+                    className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg hover:bg-blue-700 transition-all animate-bounce cursor-pointer z-20"
+                    title="Jump to latest conversation"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                    <span>Latest messages</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Reply Composer */}
+              <div className="space-y-3 pt-2 border-t border-slate-200 flex-1 min-h-0 overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setMessageChannel("email")}
+                      className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${messageChannel === "email"
                         ? "bg-white text-blue-600 shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Email</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMessageChannel("sms")}
-                    className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      messageChannel === "sms"
+                        }`}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Email</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMessageChannel("sms")}
+                      className={`flex items-center gap-1.5 py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${messageChannel === "sms"
                         ? "bg-emerald-600 text-white shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
-                    }`}
+                        }`}
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>SMS (Texto)</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddCustomerDemoReply}
+                    className="text-[11px] text-blue-600 font-semibold hover:underline"
                   >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>SMS (Texto)</span>
+                    + Add Customer Message Note
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddCustomerDemoReply}
-                  className="text-[11px] text-blue-600 font-semibold hover:underline"
-                >
-                  + Add Customer Message Note
-                </button>
-              </div>
 
-              {messageChannel === "sms" ? (
-                <div className="space-y-3">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-emerald-600" />
-                        <span>Send SMS to:</span>
-                        <span className="font-black text-slate-900">
-                          {activeMessageLeadLive?.phone || activeMessageLead?.phone || "No phone number available"}
-                        </span>
-                      </span>
-                      {(() => {
-                        const preview = smsText.toLowerCase().includes("groutix") ? smsText.trim() : `Groutix: ${smsText.trim()}`;
-                        const charCount = preview.length;
-                        const isUnder160 = charCount <= 160;
-                        return (
-                          <span className={`text-[11px] font-semibold flex items-center gap-1.5 ${isUnder160 ? "text-emerald-700" : "text-amber-700"}`}>
-                            <span>{charCount}/160 chars</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isUnder160 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                              {isUnder160 ? "1 Credit" : "Trimmed to 1 Credit"}
-                            </span>
+                {messageChannel === "sms" ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                          <Smartphone className="w-4 h-4 text-emerald-600" />
+                          <span>Send SMS to:</span>
+                          <span className="font-black text-slate-900">
+                            {activeMessageLeadLive?.phone || activeMessageLead?.phone || "No phone number available"}
                           </span>
-                        );
-                      })()}
+                        </span>
+                        {(() => {
+                          const preview = smsText.toLowerCase().includes("groutix") ? smsText.trim() : `Groutix: ${smsText.trim()}`;
+                          const charCount = preview.length;
+                          const isUnder160 = charCount <= 160;
+                          return (
+                            <span className={`text-[11px] font-semibold flex items-center gap-1.5 ${isUnder160 ? "text-emerald-700" : "text-amber-700"}`}>
+                              <span>{charCount}/160 chars</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isUnder160 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                                {isUnder160 ? "1 Credit" : "Trimmed to 1 Credit"}
+                              </span>
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {!Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone) && (
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                          ⚠️ This customer does not have a phone number recorded. Please add a phone number before sending an SMS.
+                        </div>
+                      )}
                     </div>
 
-                    {!Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone) && (
-                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-                        ⚠️ This customer does not have a phone number recorded. Please add a phone number before sending an SMS.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* SMS Quick Variables */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] font-bold text-slate-500 mr-1">Insert:</span>
-                    <button
-                      type="button"
-                      onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.name ? activeMessageLeadLive.name.split(" ")[0] : "there"))}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                    >
-                      + Name
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.service || "grouting service"))}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                    >
-                      + Service
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.address || "your property"))}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
-                    >
-                      + Address
-                    </button>
-                    {activeMessageLeadLive?.technician && (
+                    {/* SMS Quick Variables */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-500 mr-1">Insert:</span>
                       <button
                         type="button"
-                        onClick={() => setSmsText(prev => prev + activeMessageLeadLive.technician)}
+                        onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.name ? activeMessageLeadLive.name.split(" ")[0] : "there"))}
                         className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
                       >
-                        + Specialist
-                      </button>
-                    )}
-                  </div>
-
-                  {/* SMS Body */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">SMS Text Message:</label>
-                    <textarea
-                      rows={5}
-                      placeholder="Type your SMS message to send via Texto API..."
-                      value={smsText}
-                      onChange={(e) => setSmsText(e.target.value)}
-                      className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[80px]"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <div className="text-[11px] text-slate-400">
-                      ⚡ Direct gateway via <b>Texto SMS API</b>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleSendSmsReply}
-                      disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
-                      className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
-                    >
-                      {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      <span>{sendingSms ? "Sending SMS…" : "Send SMS"}</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-
-              {/* Quick Action: Send Inspection Booking Link */}
-              <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-100 rounded-xl">
-                <span className="text-[11px] font-bold text-slate-600 shrink-0">Quick Send:</span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const lead = activeMessageLeadLive || activeMessageLead;
-                    if (!lead?.id) return;
-                    try {
-                      const res = await fetch(`/api/admin/booking-link/${lead.id}`);
-                      const data = await res.json();
-                      if (data.inspectionUrl) {
-                        const firstName = (lead.name || "there").trim().split(/\s+/)[0];
-                        setReplySubject(`Book Your Free Groutix Inspection — ${lead.name || "Customer"}`);
-                        setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
-                      }
-                    } catch { /* silently fail */ }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 transition cursor-pointer"
-                >
-                  <CalendarDays className="w-3 h-3" />
-                  <span>Inspection Booking</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const lead = activeMessageLeadLive || activeMessageLead;
-                    if (!lead?.id) return;
-                    try {
-                      const res = await fetch(`/api/admin/booking-link/${lead.id}`);
-                      const data = await res.json();
-                      if (data.jobUrl) {
-                        const firstName = (lead.name || "there").trim().split(/\s+/)[0];
-                        setReplySubject(`Confirm Your Job Booking — ${lead.name || "Customer"}`);
-                        setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
-                      }
-                    } catch { /* silently fail */ }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-[11px] font-bold rounded-lg hover:bg-violet-700 transition cursor-pointer"
-                >
-                  <Wrench className="w-3 h-3" />
-                  <span>Job Booking</span>
-                </button>
-              </div>
-
-              {/* Template Picker Dropdown */}
-              <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Choose Predefined Template:</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManageTemplatesModalOpen(true);
-                        handleOpenCreateTemplate();
-                      }}
-                      className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Template</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setManageTemplatesModalOpen(true)}
-                      className="text-[11px] text-slate-600 hover:text-slate-900 underline font-semibold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Edit3 className="w-3 h-3" />
-                      <span>Manage / Remove</span>
-                    </button>
-                    {selectedTemplateId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedTemplateId("");
-                          setReplyText("");
-                          setReplySubject(
-                            `Re: Groutix Enquiry - ${activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}`
-                          );
-                        }}
-                        className="text-[11px] text-slate-400 hover:text-slate-700 underline font-medium ml-1 cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => handleSelectEmailTemplate(e.target.value)}
-                  className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs cursor-pointer"
-                >
-                  <option value="">-- Select an Email Template (or write custom) --</option>
-                  {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => (
-                    <optgroup key={cat} label={cat}>
-                      {emailTemplates.filter((t) => t.category === cat).map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-
-                {selectedTemplateId && (
-                  <p className="text-[11px] text-slate-500 italic">
-                    {emailTemplates.find((t) => t.id === selectedTemplateId)?.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Subject Input */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Email Subject:</label>
-                <input
-                  type="text"
-                  value={replySubject}
-                  onChange={(e) => setReplySubject(e.target.value)}
-                  placeholder="Enter email subject line..."
-                  className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Email Body */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setReplyPreviewMode(false)}
-                      className={`px-2.5 py-0.5 text-[10px] font-bold rounded transition cursor-pointer ${
-                        !replyPreviewMode ? "bg-white text-blue-700 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                      }`}
-                    >
-                      ✍️ Compose
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReplyPreviewMode(true)}
-                      className={`px-2.5 py-0.5 text-[10px] font-bold rounded transition cursor-pointer flex items-center gap-1 ${
-                        replyPreviewMode ? "bg-white text-blue-700 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                      }`}
-                    >
-                      <Eye className="w-3 h-3 text-blue-600" />
-                      <span>Preview Branded Email</span>
-                    </button>
-                  </div>
-                </div>
-
-                {!replyPreviewMode ? (
-                  <div>
-                    {/* Formatting Toolbar */}
-                    <div className="flex items-center gap-1 p-1.5 bg-slate-100 border border-slate-200 rounded-t-xl text-xs flex-wrap">
-                      <span className="text-[10px] font-bold text-slate-500 px-1">Style:</span>
-                      <button
-                        type="button"
-                        onClick={() => applyTextFormatting("bold", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Bold (**text**)"
-                      >
-                        <Bold className="w-3.5 h-3.5" />
+                        + Name
                       </button>
                       <button
                         type="button"
-                        onClick={() => applyTextFormatting("italic", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Italic (*text*)"
+                        onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.service || "grouting service"))}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
                       >
-                        <Italic className="w-3.5 h-3.5" />
+                        + Service
                       </button>
                       <button
                         type="button"
-                        onClick={() => applyTextFormatting("underline", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Underline (<u>text</u>)"
+                        onClick={() => setSmsText(prev => prev + (activeMessageLeadLive?.address || "your property"))}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
                       >
-                        <Underline className="w-3.5 h-3.5" />
+                        + Address
                       </button>
-                      <span className="text-slate-300">|</span>
+                      {activeMessageLeadLive?.technician && (
+                        <button
+                          type="button"
+                          onClick={() => setSmsText(prev => prev + activeMessageLeadLive.technician)}
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
+                        >
+                          + Specialist
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => applyTextFormatting("h2", "reply")}
-                        className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
-                        title="Heading 2 (## Heading)"
+                        onClick={() => handleInsertSmsBookingLink(activeMessageLeadLive?.jobAt ? "job" : "inspection")}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 text-slate-600 rounded-md text-[10px] font-semibold transition cursor-pointer"
                       >
-                        H2
+                        + Booking Link
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTextFormatting("h3", "reply")}
-                        className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
-                        title="Heading 3 (### Heading)"
-                      >
-                        H3
-                      </button>
-                      <span className="text-slate-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => applyTextFormatting("bullet", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Bullet list (• Item)"
-                      >
-                        <List className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTextFormatting("number", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Numbered list (1. Item)"
-                      >
-                        <ListOrdered className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTextFormatting("link", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Insert Link ([Text](https://...))"
-                      >
-                        <Link2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyTextFormatting("hr", "reply")}
-                        className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                        title="Horizontal line (---)"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="ml-auto text-[10px] text-slate-400 font-medium hidden sm:inline">
-                        Header &amp; footer auto-included
-                      </span>
                     </div>
 
-                    <textarea
-                      ref={replyBodyRef}
-                      rows={6}
-                      placeholder="Type your email message or pick a template from the dropdown above..."
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      className="w-full p-3 text-xs border border-slate-200 rounded-b-xl border-t-0 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y min-h-[100px]"
-                    />
+                    {/* SMS Body */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600">SMS Text Message:</label>
+                      <textarea
+                        rows={5}
+                        placeholder="Type your SMS message to send via Texto API..."
+                        value={smsText}
+                        onChange={(e) => setSmsText(e.target.value)}
+                        className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="text-[11px] text-slate-400">
+                        ⚡ Direct gateway via <b>Texto SMS API</b>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSendSmsReply}
+                        disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
+                        className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
+                      >
+                        {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        <span>{sendingSms ? "Sending SMS…" : "Send SMS"}</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  /* Lead drawer Branded email preview */
-                  <div className="bg-slate-100/90 p-3 sm:p-4 rounded-xl border border-slate-200 space-y-2">
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold">
-                      <span>PREVIEW FOR: {activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}</span>
-                      <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Branded Groutix Template</span>
-                    </div>
-                    <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden text-xs">
-                      {/* Logo Header */}
-                      <div className="p-4 text-center border-b border-slate-100 bg-white">
-                        <img src={siteLogoUrl || "/new_logo.jpeg"} alt="Groutix" className="h-8 mx-auto object-contain" />
-                      </div>
-                      {/* Body */}
-                      <div className="p-4 text-slate-700 leading-relaxed min-h-[90px]">
-                        {replyText.trim() ? (
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: formatEmailContentToHtml(replyText),
-                            }}
-                          />
-                        ) : (
-                          <span className="text-slate-400 italic">No message written yet</span>
-                        )}
-                      </div>
-                      {/* Footer */}
-                      <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-1.5">
-                        <div className="font-bold text-[11px] text-[#001f97]">Stay Sealed. Stay Smiling.</div>
-                        <div className="text-[10px] text-slate-500">
-                          📞 7023 8094 &nbsp;•&nbsp; ✉️ info@groutix.com &nbsp;•&nbsp; 🌐 www.groutix.com
-                        </div>
-                        <div className="text-[9px] text-slate-400">
-                          &copy; {new Date().getFullYear()} Groutix. All rights reserved.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Staged attachments */}
-              {replyAttachments.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {replyAttachments.map((att, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700"
-                    >
-                      <Paperclip className="w-3 h-3 text-slate-400" />
-                      <span className="max-w-[160px] truncate">{att.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeReplyAttachment(i)}
-                        className="text-slate-400 hover:text-rose-600"
-                        title="Remove attachment"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <input
-                ref={replyFileRef}
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => handleAttachReplyFiles(e.target.files)}
-              />
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => replyFileRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
-                    title="Attach files to email"
-                  >
-                    <Paperclip className="w-3.5 h-3.5" />
-                    <span>Attach Files</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenMailApp}
-                    className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
-                    title="Open your default desktop email client with this draft"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Open in Mail App</span>
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSendReply}
-                  disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
-                >
-                  {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  <span>{sendingReply ? "Sending…" : "Save & Send Email"}</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          MODAL: MANAGE EMAIL TEMPLATES (ADD / EDIT / REMOVE / RESET)
-         ========================================================================= */}
-      {manageTemplatesModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-8 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-5 border border-slate-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-black text-slate-900">Email Templates Manager</h2>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                      {emailTemplates.length} templates
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Add, customize, or remove email templates used across the CRM dashboard.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {!templateFormOpen && (
                   <>
-                    <button
-                      type="button"
-                      onClick={handleResetTemplates}
-                      className="px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-                      title="Reset all templates back to standard Groutix defaults"
-                    >
-                      <RefreshCcw className="w-3.5 h-3.5" />
-                      <span>Reset Defaults</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenCreateTemplate}
-                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Template</span>
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setManageTemplatesModalOpen(false);
-                    setTemplateFormOpen(false);
-                  }}
-                  className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
-                  title="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
 
-            {/* Add / Edit Form */}
-            {templateFormOpen ? (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                {/* Form Header with Tabs */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
-                      <Edit3 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900">
-                        {editingTemplate ? "Edit Template" : "Create New Email Template"}
-                      </h3>
-                      <p className="text-[11px] text-slate-500">
-                        {editingTemplate
-                          ? `Editing "${editingTemplate.name}"`
-                          : "Configure template message with dynamic customer & job tags"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex p-0.5 bg-slate-200/80 rounded-xl border border-slate-300">
+                    {/* Quick Action: Send Inspection Booking Link */}
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-100 rounded-xl">
+                      <span className="text-[11px] font-bold text-slate-600 shrink-0">Quick Send:</span>
                       <button
                         type="button"
-                        onClick={() => setTemplatePreviewMode(false)}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
-                          !templatePreviewMode
-                            ? "bg-white text-slate-900 shadow-xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
+                        onClick={async () => {
+                          const lead = activeMessageLeadLive || activeMessageLead;
+                          if (!lead?.id) return;
+                          try {
+                            const res = await fetch(`/api/admin/booking-link/${lead.id}`);
+                            const data = await res.json();
+                            if (data.inspectionUrl) {
+                              const firstName = (lead.name || "there").trim().split(/\s+/)[0];
+                              setReplySubject(`Book Your Free Groutix Inspection — ${lead.name || "Customer"}`);
+                              setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
+                            }
+                          } catch { /* silently fail */ }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 transition cursor-pointer"
                       >
-                        <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Editor</span>
+                        <CalendarDays className="w-3 h-3" />
+                        <span>Inspection Booking</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => setTemplatePreviewMode(true)}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
-                          templatePreviewMode
-                            ? "bg-blue-600 text-white shadow-xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
+                        onClick={async () => {
+                          const lead = activeMessageLeadLive || activeMessageLead;
+                          if (!lead?.id) return;
+                          try {
+                            const res = await fetch(`/api/admin/booking-link/${lead.id}`);
+                            const data = await res.json();
+                            if (data.jobUrl) {
+                              const firstName = (lead.name || "there").trim().split(/\s+/)[0];
+                              setReplySubject(`Confirm Your Job Booking — ${lead.name || "Customer"}`);
+                              setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
+                            }
+                          } catch { /* silently fail */ }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-[11px] font-bold rounded-lg hover:bg-violet-700 transition cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Live Preview</span>
+                        <Wrench className="w-3 h-3" />
+                        <span>Job Booking</span>
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setTemplateFormOpen(false)}
-                      className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline ml-1 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-
-                {templatePreviewMode ? (
-                  /* ================= LIVE PREVIEW MODE ================= */
-                  <div className="space-y-4 py-1">
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <div className="font-bold">Live Dynamic Tags Preview</div>
-                        <div className="text-[11px] text-emerald-800">
-                          Sample Customer: <span className="font-semibold">Sarah Jenkins</span> • Job:{" "}
-                          <span className="font-semibold">Job No-1248</span> • Suburb:{" "}
-                          <span className="font-semibold">Hawthorn VIC</span> • Specialist:{" "}
-                          <span className="font-semibold">Marco Rossi</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
-                      <div className="space-y-1 pb-3 border-b border-slate-100">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                          Subject Line
-                        </span>
-                        <div className="text-sm font-bold text-slate-900">
-                          {previewTemplateRendered.subject || (
-                            <span className="text-slate-400 italic">No subject line entered</span>
+                    {/* Template Picker Dropdown */}
+                    <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Choose Predefined Template:</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManageTemplatesModalOpen(true);
+                              handleOpenCreateTemplate();
+                            }}
+                            className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Template</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setManageTemplatesModalOpen(true)}
+                            className="text-[11px] text-slate-600 hover:text-slate-900 underline font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Manage / Remove</span>
+                          </button>
+                          {selectedTemplateId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedTemplateId("");
+                                setReplyText("");
+                                setReplySubject(
+                                  `Re: Groutix Enquiry - ${activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}`
+                                );
+                              }}
+                              className="text-[11px] text-slate-400 hover:text-slate-700 underline font-medium ml-1 cursor-pointer"
+                            >
+                              Clear
+                            </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Branded Email Inbox Preview */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                            Client Email Rendering (Default Branded Template)
-                          </span>
-                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
-                            Official Logo Header &amp; Footer Included
-                          </span>
-                        </div>
-
-                        <div className="max-w-[580px] mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden font-sans">
-                          {/* Logo Header */}
-                          <div className="p-6 text-center bg-white border-b-2 border-slate-100">
-                            <img
-                              src={siteLogoUrl || "/new_logo.jpeg"}
-                              alt="Groutix"
-                              className="h-10 mx-auto object-contain"
-                            />
-                          </div>
-
-                          {/* Formatted Body Content */}
-                          <div className="p-6 text-sm text-slate-700 leading-relaxed min-h-[140px]">
-                            {previewTemplateRendered.body ? (
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: formatEmailContentToHtml(previewTemplateRendered.body),
-                                }}
-                              />
-                            ) : (
-                              <span className="text-slate-400 italic">No message body entered</span>
-                            )}
-                          </div>
-
-                          {/* Branded Contact Footer */}
-                          <div className="p-6 bg-slate-50 border-t border-slate-200 text-center space-y-3">
-                            <p className="font-bold text-sm text-[#001f97]">Stay Sealed. Stay Smiling.</p>
-                            <p className="text-[11px] text-slate-500 leading-relaxed max-w-sm mx-auto">
-                              You are receiving this email regarding your Groutix service inquiry. If you have any questions, simply reply directly to this email.
-                            </p>
-                            <div className="flex items-center justify-center gap-4 text-xs font-semibold text-[#001f97] flex-wrap">
-                              <a href="tel:70238094" className="hover:underline">📞 7023 8094</a>
-                              <span>•</span>
-                              <a href="mailto:info@groutix.com" className="hover:underline">✉️ info@groutix.com</a>
-                              <span>•</span>
-                              <a href="https://groutix.com" target="_blank" rel="noreferrer" className="hover:underline">🌐 www.groutix.com</a>
-                            </div>
-                            <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-400">
-                              &copy; {new Date().getFullYear()} Groutix. All rights reserved.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                      <span>
-                        {detectedTemplateTags.length > 0 ? (
-                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                            <Check className="w-3.5 h-3.5" /> {detectedTemplateTags.length} dynamic tags successfully
-                            resolved
-                          </span>
-                        ) : (
-                          "No dynamic tags found in this template yet."
-                        )}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setTemplatePreviewMode(false)}
-                        className="text-blue-600 hover:underline font-bold cursor-pointer"
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => handleSelectEmailTemplate(e.target.value)}
+                        className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs cursor-pointer"
                       >
-                        Return to Editor
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* ================= TEMPLATE EDITOR MODE ================= */
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700">Template Name *</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Booking Deposit Request"
-                          value={formName}
-                          onChange={(e) => setFormName(e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      </div>
+                        <option value="">-- Select an Email Template (or write custom) --</option>
+                        {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => (
+                          <optgroup key={cat} label={cat}>
+                            {emailTemplates.filter((t) => t.category === cat).map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
 
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700">Category *</label>
-                        <select
-                          value={formCategory}
-                          onChange={(e) => setFormCategory(e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        >
-                          <option value="Enquiries & Leads">Enquiries & Leads</option>
-                          <option value="Inspections">Inspections</option>
-                          <option value="Quotations">Quotations</option>
-                          <option value="Bookings">Bookings</option>
-                          <option value="Job Completion & Care">Job Completion & Care</option>
-                          <option value="Billing">Billing</option>
-                          <option value="General">General</option>
-                          <option value="Promotions">Promotions</option>
-                        </select>
-                      </div>
+                      {selectedTemplateId && (
+                        <p className="text-[11px] text-slate-500 italic">
+                          {emailTemplates.find((t) => t.id === selectedTemplateId)?.description}
+                        </p>
+                      )}
                     </div>
 
+                    {/* Subject Input */}
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Short Description</label>
+                      <label className="text-[11px] font-bold text-slate-600">Email Subject:</label>
                       <input
                         type="text"
-                        placeholder="Brief note on when staff should use this template"
-                        value={formDescription}
-                        onChange={(e) => setFormDescription(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        value={replySubject}
+                        onChange={(e) => setReplySubject(e.target.value)}
+                        placeholder="Enter email subject line..."
+                        className="w-full px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     </div>
 
-                    {/* Email Subject Line with Ref & Focus tracking */}
-                    <div className="space-y-1">
+                    {/* Email Body */}
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-700">Email Subject Line *</label>
-                        {templateInsertTarget === "subject" && (
-                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-blue-200">
-                            <Sparkles className="w-3 h-3 text-blue-600" /> Active Insertion Target
-                          </span>
-                        )}
+                        <label className="text-[11px] font-bold text-slate-600">Email Message:</label>
+                        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setReplyPreviewMode(false)}
+                            className={`px-2.5 py-0.5 text-[10px] font-bold rounded transition cursor-pointer ${!replyPreviewMode ? "bg-white text-blue-700 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                              }`}
+                          >
+                            ✍️ Compose
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReplyPreviewMode(true)}
+                            className={`px-2.5 py-0.5 text-[10px] font-bold rounded transition cursor-pointer flex items-center gap-1 ${replyPreviewMode ? "bg-white text-blue-700 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                              }`}
+                          >
+                            <Eye className="w-3 h-3 text-blue-600" />
+                            <span>Preview Branded Email</span>
+                          </button>
+                        </div>
                       </div>
-                      <input
-                        ref={templateSubjectRef}
-                        type="text"
-                        placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
-                        value={formSubject}
-                        onChange={(e) => setFormSubject(e.target.value)}
-                        onFocus={() => setTemplateInsertTarget("subject")}
-                        onClick={() => setTemplateInsertTarget("subject")}
-                        onKeyUp={() => setTemplateInsertTarget("subject")}
-                        className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition ${
-                          templateInsertTarget === "subject" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
-                        }`}
-                      />
-                    </div>
 
-                    {/* Variable helper chips with Target Selector & Caret insertion */}
-                    <div className="p-3 bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border border-blue-200 rounded-xl space-y-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 pb-2">
-                        {/* Target Switcher */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                            Insert Tag Into:
-                          </span>
-                          <div className="inline-flex p-0.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
+                      {!replyPreviewMode ? (
+                        <div>
+                          {/* Formatting Toolbar */}
+                          <div className="flex items-center gap-1 p-1.5 bg-slate-100 border border-slate-200 rounded-t-xl text-xs flex-wrap">
+                            <span className="text-[10px] font-bold text-slate-500 px-1">Style:</span>
                             <button
                               type="button"
-                              onClick={() => {
-                                setTemplateInsertTarget("subject");
-                                templateSubjectRef.current?.focus();
-                              }}
-                              className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
-                                templateInsertTarget === "subject"
-                                  ? "bg-blue-600 text-white shadow-xs"
-                                  : "text-slate-600 hover:text-blue-700"
-                              }`}
+                              onClick={() => applyTextFormatting("bold", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Bold (**text**)"
                             >
-                              {templateInsertTarget === "subject" && <Check className="w-3 h-3" />}
-                              <span>Subject Line</span>
+                              <Bold className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                setTemplateInsertTarget("body");
-                                templateBodyRef.current?.focus();
-                              }}
-                              className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
-                                templateInsertTarget === "body"
-                                  ? "bg-blue-600 text-white shadow-xs"
-                                  : "text-slate-600 hover:text-blue-700"
-                              }`}
+                              onClick={() => applyTextFormatting("italic", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Italic (*text*)"
                             >
-                              {templateInsertTarget === "body" && <Check className="w-3 h-3" />}
-                              <span>Message Body</span>
+                              <Italic className="w-3.5 h-3.5" />
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("underline", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Underline (<u>text</u>)"
+                            >
+                              <Underline className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("h2", "reply")}
+                              className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
+                              title="Heading 2 (## Heading)"
+                            >
+                              H2
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("h3", "reply")}
+                              className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
+                              title="Heading 3 (### Heading)"
+                            >
+                              H3
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("bullet", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Bullet list (• Item)"
+                            >
+                              <List className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("number", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Numbered list (1. Item)"
+                            >
+                              <ListOrdered className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("link", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Insert Link ([Text](https://...))"
+                            >
+                              <Link2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyTextFormatting("hr", "reply")}
+                              className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                              title="Horizontal line (---)"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="ml-auto text-[10px] text-slate-400 font-medium hidden sm:inline">
+                              Header &amp; footer auto-included
+                            </span>
+                          </div>
+
+                          <textarea
+                            ref={replyBodyRef}
+                            rows={6}
+                            placeholder="Type your email message or pick a template from the dropdown above..."
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            className="w-full p-3 text-xs border border-slate-200 rounded-b-xl border-t-0 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y min-h-[100px]"
+                          />
+                        </div>
+                      ) : (
+                        /* Lead drawer Branded email preview */
+                        <div className="bg-slate-100/90 p-3 sm:p-4 rounded-xl border border-slate-200 space-y-2">
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold">
+                            <span>PREVIEW FOR: {activeMessageLeadLive?.name || activeMessageLead?.name || "Customer"}</span>
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Branded Groutix Template</span>
+                          </div>
+                          <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden text-xs">
+                            {/* Logo Header */}
+                            <div className="p-4 text-center border-b border-slate-100 bg-white">
+                              <img src={siteLogoUrl || "/new_logo.jpeg"} alt="Groutix" className="h-8 mx-auto object-contain" />
+                            </div>
+                            {/* Body */}
+                            <div className="p-4 text-slate-700 leading-relaxed min-h-[90px]">
+                              {replyText.trim() ? (
+                                <div
+                                  dangerouslySetInnerHTML={{
+                                    __html: formatEmailContentToHtml(replyText),
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-slate-400 italic">No message written yet</span>
+                              )}
+                            </div>
+                            {/* Footer */}
+                            <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-1.5">
+                              <div className="font-bold text-[11px] text-[#001f97]">Stay Sealed. Stay Smiling.</div>
+                              <div className="text-[10px] text-slate-500">
+                                📞 7023 8094 &nbsp;•&nbsp; ✉️ info@groutix.com &nbsp;•&nbsp; 🌐 www.groutix.com
+                              </div>
+                              <div className="text-[9px] text-slate-400">
+                                &copy; {new Date().getFullYear()} Groutix. All rights reserved.
+                              </div>
+                            </div>
                           </div>
                         </div>
+                      )}
+                    </div>
 
-                        {/* Category filter pills */}
-                        <div className="flex items-center gap-1 flex-wrap text-[10px]">
-                          {["All", "Customer", "Job & Location", "Schedule", "Billing", "Company"].map((cat) => (
-                            <button
-                              key={cat}
-                              type="button"
-                              onClick={() => setSelectedTagCategory(cat)}
-                              className={`px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
-                                selectedTagCategory === cat
-                                  ? "bg-blue-700 text-white shadow-2xs"
-                                  : "bg-white text-slate-600 border border-blue-200/70 hover:bg-blue-100"
-                              }`}
-                            >
-                              {cat}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tag Chips */}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {DYNAMIC_EMAIL_TAGS.filter(
-                          (t) => selectedTagCategory === "All" || t.category === selectedTagCategory
-                        ).map((chip) => (
-                          <button
-                            key={chip.tag}
-                            type="button"
-                            onClick={() => handleInsertDynamicTag(chip.tag)}
-                            title={`${chip.description} (e.g. ${chip.example}) — Click to insert at cursor in ${
-                              templateInsertTarget === "subject" ? "Subject Line" : "Message Body"
-                            }`}
-                            className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 rounded-lg text-slate-800 text-xs font-semibold shadow-2xs transition cursor-pointer"
+                    {/* Staged attachments */}
+                    {replyAttachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {replyAttachments.map((att, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700"
                           >
-                            <span className="text-blue-600 group-hover:text-white font-bold">+</span>
-                            <span>{chip.label}</span>
-                            <code className="text-[10px] text-blue-700 group-hover:text-blue-100 bg-blue-50 group-hover:bg-blue-700/60 px-1 py-0.5 rounded font-mono font-normal">
-                              {chip.tag}
-                            </code>
-                          </button>
+                            <Paperclip className="w-3 h-3 text-slate-400" />
+                            <span className="max-w-[160px] truncate">{att.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeReplyAttachment(i)}
+                              className="text-slate-400 hover:text-rose-600"
+                              title="Remove attachment"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
                         ))}
                       </div>
+                    )}
 
-                      <div className="text-[10px] text-slate-500 pt-0.5 flex items-center justify-between">
-                        <span>
-                          💡 Click any tag to insert directly at your cursor in{" "}
-                          <span className="font-bold text-blue-700">
-                            {templateInsertTarget === "subject" ? "Email Subject Line" : "Message Body"}
-                          </span>
-                          .
-                        </span>
-                        <span className="font-mono text-slate-400">Supports &#123;tag&#125; &amp; &#123;&#123;tag&#125;&#125;</span>
-                      </div>
-                    </div>
+                    <input
+                      ref={replyFileRef}
+                      type="file"
+                      multiple
+                      hidden
+                      onChange={(e) => handleAttachReplyFiles(e.target.files)}
+                    />
 
-                    {/* Message Body with Ref & Focus tracking */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-700">Message Body *</label>
-                        {templateInsertTarget === "body" && (
-                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-blue-200">
-                            <Sparkles className="w-3 h-3 text-blue-600" /> Active Insertion Target
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => replyFileRef.current?.click()}
+                          className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                          title="Attach files to email"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          <span>Attach Files</span>
+                        </button>
 
-                      {/* Text Formatting Toolbar */}
-                      <div className="flex items-center gap-1 p-1.5 bg-slate-100 border border-slate-200 rounded-t-xl text-xs flex-wrap">
-                        <span className="text-[10px] font-bold text-slate-500 px-1">Style:</span>
                         <button
                           type="button"
-                          onClick={() => applyTextFormatting("bold", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Bold (**text**)"
+                          onClick={handleOpenMailApp}
+                          className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                          title="Open your default desktop email client with this draft"
                         >
-                          <Bold className="w-3.5 h-3.5" />
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Open in Mail App</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("italic", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Italic (*text*)"
-                        >
-                          <Italic className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("underline", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Underline (<u>text</u>)"
-                        >
-                          <Underline className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-slate-300">|</span>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("h2", "template")}
-                          className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
-                          title="Heading 2 (## Heading)"
-                        >
-                          H2
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("h3", "template")}
-                          className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
-                          title="Heading 3 (### Heading)"
-                        >
-                          H3
-                        </button>
-                        <span className="text-slate-300">|</span>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("bullet", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Bullet list (• Item)"
-                        >
-                          <List className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("number", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Numbered list (1. Item)"
-                        >
-                          <ListOrdered className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("link", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Insert Link ([Text](https://...))"
-                        >
-                          <Link2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyTextFormatting("hr", "template")}
-                          className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
-                          title="Horizontal line (---)"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="ml-auto text-[10px] text-slate-400 font-medium hidden sm:inline">
-                          Logo header &amp; footer auto-included
-                        </span>
-                      </div>
-
-                      <textarea
-                        ref={templateBodyRef}
-                        rows={8}
-                        placeholder="Write your email body here... Click any dynamic tag above to insert it at your cursor, or use formatting buttons above."
-                        value={formBody}
-                        onChange={(e) => setFormBody(e.target.value)}
-                        onFocus={() => setTemplateInsertTarget("body")}
-                        onClick={() => setTemplateInsertTarget("body")}
-                        onKeyUp={() => setTemplateInsertTarget("body")}
-                        className={`w-full p-3 text-xs border rounded-b-xl border-t-0 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y transition ${
-                          templateInsertTarget === "body" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
-                        }`}
-                      />
-                    </div>
-
-                    {/* Detected Tags Live Feedback */}
-                    <div className="p-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-slate-700 text-[11px]">Tags active in template:</span>
-                        {detectedTemplateTags.length > 0 ? (
-                          detectedTemplateTags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md font-mono text-[10px] font-semibold"
-                            >
-                              &#123;{tag}&#125;
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-slate-400 text-[11px] italic">None added yet</span>
-                        )}
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => setTemplatePreviewMode(true)}
-                        className="text-blue-600 hover:underline font-bold text-[11px] flex items-center gap-1 cursor-pointer ml-auto"
+                        onClick={handleSendReply}
+                        disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
+                        className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
                       >
-                        <Eye className="w-3 h-3" />
-                        <span>Preview Resolution</span>
+                        {sendingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        <span>{sendingReply ? "Sending…" : "Save & Send Email"}</span>
                       </button>
                     </div>
-                  </div>
+                  </>
                 )}
-
-                {/* Form Footer Action Buttons */}
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setTemplateFormOpen(false)}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveTemplate}
-                    disabled={savingTemplate || !formName.trim() || !formBody.trim()}
-                    className="px-5 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    {savingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    <span>{savingTemplate ? "Saving..." : editingTemplate ? "Update Template" : "Create Template"}</span>
-                  </button>
-                </div>
               </div>
-            ) : null}
-
-            {/* Template List Cards */}
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => {
-                const group = emailTemplates.filter((t) => t.category === cat);
-                return (
-                  <div key={cat} className="space-y-2">
-                    <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-                      <span className="text-xs font-black uppercase tracking-wider text-slate-500">{cat}</span>
-                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
-                        {group.length}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {group.map((t) => (
-                        <div
-                          key={t.id}
-                          className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-3.5 space-y-2.5 transition shadow-2xs flex flex-col justify-between"
-                        >
-                          <div className="space-y-1.5">
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-xs font-black text-slate-800 line-clamp-1">{t.name}</h4>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditTemplate(t)}
-                                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                                  title="Edit this template"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteTemplate(t.id)}
-                                  className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                                  title="Delete this template"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {t.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-1">{t.description}</p>
-                            )}
-
-                            <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-[11px] text-slate-600 space-y-1">
-                              <div className="font-semibold text-slate-700 truncate">
-                                Subject: <span className="font-normal text-slate-600">{t.subject}</span>
-                              </div>
-                              <div className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
-                                {t.body}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-1 text-[11px]">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleSelectEmailTemplate(t.id);
-                                setManageTemplatesModalOpen(false);
-                              }}
-                              className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-center transition cursor-pointer"
-                            >
-                              Use in Composer →
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {emailTemplates.length === 0 && (
-                <div className="text-center py-12 text-slate-400 space-y-2">
-                  <FileText className="w-8 h-8 mx-auto text-slate-300" />
-                  <p className="text-xs font-semibold">No templates found.</p>
-                  <button
-                    type="button"
-                    onClick={handleResetTemplates}
-                    className="text-xs text-blue-600 underline font-bold cursor-pointer"
-                  >
-                    Click here to load standard default templates
-                  </button>
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      )}
-      {/* =========================================================================
-      {/* =========================================================================
-          MODAL: INSPECTION GPS
-         ========================================================================= */}
-      {gpsModalOpen && activeGpsLead && (
-        <GpsModal
-          lead={activeGpsLead}
-          statusMessage={gpsStatusMessage}
-          onClose={() => setGpsModalOpen(false)}
-          onCapture={handleCaptureGps}
-        />
-      )}
+        )}
 
-      {/* =========================================================================
-          MODAL: 10-YEAR WARRANTY CARD (HTML5 Canvas)
+        {/* =========================================================================
+          MODAL: MANAGE EMAIL TEMPLATES (ADD / EDIT / REMOVE / RESET)
          ========================================================================= */}
-      {warrantyModalOpen && activeWarrantyLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 my-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">10-Year Waterproof Warranty Certificate</h2>
-                <div className="text-xs text-slate-500">Customer: {activeWarrantyLead.name}</div>
-              </div>
-              <button
-                onClick={() => setWarrantyModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Warranty ON / OFF Slider Switch */}
-            <div className={`p-4 rounded-xl border transition-all ${
-              warrantyProvided
-                ? "bg-emerald-50/80 border-emerald-300 shadow-2xs"
-                : "bg-rose-50/90 border-rose-300 shadow-2xs"
-            }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start sm:items-center gap-3 min-w-0">
-                  <div className={`p-2.5 rounded-xl shrink-0 ${
-                    warrantyProvided ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                  }`}>
-                    {warrantyProvided ? (
-                      <ShieldCheck className="w-5 h-5" />
-                    ) : (
-                      <ShieldAlert className="w-5 h-5" />
-                    )}
+        {manageTemplatesModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-8 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-5 border border-slate-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                    <FileText className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-black text-slate-900">
-                        10-Year Waterproof Warranty:
-                      </span>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide ${
-                        warrantyProvided
-                          ? "bg-emerald-600 text-white"
-                          : "bg-rose-600 text-white"
-                      }`}>
-                        {warrantyProvided ? "Warranty Provided (ON)" : "Warranty Not Provided (OFF)"}
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-black text-slate-900">Email Templates Manager</h2>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+                        {emailTemplates.length} templates
                       </span>
                     </div>
-                    <div className="text-xs text-slate-600 mt-0.5">
-                      {warrantyProvided
-                        ? "Warranty is active for this inquiry. Official certificate will be generated and marked 'Warranty Provided'."
-                        : "Warranty is turned OFF. Groutix is NOT providing warranty for this job. Marked as 'Warranty Not Provided'."}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Interactive Slider Switch */}
-                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center bg-white/80 px-3 py-1.5 rounded-xl border border-slate-200">
-                  <span className={`text-xs font-bold transition-colors ${!warrantyProvided ? "text-rose-700 font-black" : "text-slate-400"}`}>
-                    OFF
-                  </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={warrantyProvided}
-                    onClick={() => {
-                      const nextVal = !warrantyProvided;
-                      setWarrantyProvided(nextVal);
-                      if (activeWarrantyLead) {
-                        updateLeadField(activeWarrantyLead.id, {
-                          warrantyProvided: nextVal,
-                          warranty: {
-                            ...(activeWarrantyLead.warranty || {}),
-                            provided: nextVal,
-                          },
-                        });
-                        setActiveWarrantyLead({
-                          ...activeWarrantyLead,
-                          warrantyProvided: nextVal,
-                          warranty: {
-                            ...(activeWarrantyLead.warranty || {}),
-                            provided: nextVal,
-                          },
-                        });
-                      }
-                    }}
-                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      warrantyProvided ? "bg-emerald-600" : "bg-slate-300"
-                    }`}
-                    title={warrantyProvided ? "Click slider to Turn OFF Warranty" : "Click slider to Turn ON Warranty"}
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
-                        warrantyProvided ? "translate-x-8" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                  <span className={`text-xs font-bold transition-colors ${warrantyProvided ? "text-emerald-700 font-black" : "text-slate-400"}`}>
-                    ON
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* When Warranty is turned OFF */}
-            {!warrantyProvided ? (
-              <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-xl space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-rose-100 rounded-lg shrink-0 text-rose-700 mt-0.5">
-                    <ShieldAlert className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-rose-900">Warranty Coverage Disabled For This Inquiry</h3>
-                    <p className="text-xs text-rose-700 mt-1 leading-relaxed">
-                      You have set this query to <strong>Warranty Not Provided</strong>. No 10-year waterproof warranty certificate will be emailed to the customer. When completed, this query will be explicitly stamped with <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-rose-200 text-rose-900 font-black text-[10px]">⚠️ Warranty Not Provided</span> across all reports, client cards, and achievements.
+                    <p className="text-xs text-slate-500">
+                      Add, customize, or remove email templates used across the CRM dashboard.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-rose-200">
-                  <div className="text-xs text-rose-600 font-medium">
-                    To re-enable warranty, click the slider switch above to <strong>ON</strong>.
+                <div className="flex items-center gap-2">
+                  {!templateFormOpen && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleResetTemplates}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                        title="Reset all templates back to standard Groutix defaults"
+                      >
+                        <RefreshCcw className="w-3.5 h-3.5" />
+                        <span>Reset Defaults</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleOpenCreateTemplate}
+                        className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Template</span>
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManageTemplatesModalOpen(false);
+                      setTemplateFormOpen(false);
+                    }}
+                    className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+                    title="Close modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Add / Edit Form */}
+              {templateFormOpen ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
+                  {/* Form Header with Tabs */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                        <Edit3 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">
+                          {editingTemplate ? "Edit Template" : "Create New Email Template"}
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          {editingTemplate
+                            ? `Editing "${editingTemplate.name}"`
+                            : "Configure template message with dynamic customer & job tags"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex p-0.5 bg-slate-200/80 rounded-xl border border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => setTemplatePreviewMode(false)}
+                          className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5 ${!templatePreviewMode
+                            ? "bg-white text-slate-900 shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                            }`}
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Editor</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTemplatePreviewMode(true)}
+                          className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5 ${templatePreviewMode
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                            }`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Live Preview</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setTemplateFormOpen(false)}
+                        className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline ml-1 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  {templatePreviewMode ? (
+                    /* ================= LIVE PREVIEW MODE ================= */
+                    <div className="space-y-4 py-1">
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="font-bold">Live Dynamic Tags Preview</div>
+                          <div className="text-[11px] text-emerald-800">
+                            Sample Customer: <span className="font-semibold">Sarah Jenkins</span> • Job:{" "}
+                            <span className="font-semibold">Job No-1248</span> • Suburb:{" "}
+                            <span className="font-semibold">Hawthorn VIC</span> • Specialist:{" "}
+                            <span className="font-semibold">Marco Rossi</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
+                        <div className="space-y-1 pb-3 border-b border-slate-100">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            Subject Line
+                          </span>
+                          <div className="text-sm font-bold text-slate-900">
+                            {previewTemplateRendered.subject || (
+                              <span className="text-slate-400 italic">No subject line entered</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Branded Email Inbox Preview */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                              Client Email Rendering (Default Branded Template)
+                            </span>
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
+                              Official Logo Header &amp; Footer Included
+                            </span>
+                          </div>
+
+                          <div className="max-w-[580px] mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden font-sans">
+                            {/* Logo Header */}
+                            <div className="p-6 text-center bg-white border-b-2 border-slate-100">
+                              <img
+                                src={siteLogoUrl || "/new_logo.jpeg"}
+                                alt="Groutix"
+                                className="h-10 mx-auto object-contain"
+                              />
+                            </div>
+
+                            {/* Formatted Body Content */}
+                            <div className="p-6 text-sm text-slate-700 leading-relaxed min-h-[140px]">
+                              {previewTemplateRendered.body ? (
+                                <div
+                                  dangerouslySetInnerHTML={{
+                                    __html: formatEmailContentToHtml(previewTemplateRendered.body),
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-slate-400 italic">No message body entered</span>
+                              )}
+                            </div>
+
+                            {/* Branded Contact Footer */}
+                            <div className="p-6 bg-slate-50 border-t border-slate-200 text-center space-y-3">
+                              <p className="font-bold text-sm text-[#001f97]">Stay Sealed. Stay Smiling.</p>
+                              <p className="text-[11px] text-slate-500 leading-relaxed max-w-sm mx-auto">
+                                You are receiving this email regarding your Groutix service inquiry. If you have any questions, simply reply directly to this email.
+                              </p>
+                              <div className="flex items-center justify-center gap-4 text-xs font-semibold text-[#001f97] flex-wrap">
+                                <a href="tel:70238094" className="hover:underline">📞 7023 8094</a>
+                                <span>•</span>
+                                <a href="mailto:info@groutix.com" className="hover:underline">✉️ info@groutix.com</a>
+                                <span>•</span>
+                                <a href="https://groutix.com" target="_blank" rel="noreferrer" className="hover:underline">🌐 www.groutix.com</a>
+                              </div>
+                              <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-400">
+                                &copy; {new Date().getFullYear()} Groutix. All rights reserved.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                        <span>
+                          {detectedTemplateTags.length > 0 ? (
+                            <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                              <Check className="w-3.5 h-3.5" /> {detectedTemplateTags.length} dynamic tags successfully
+                              resolved
+                            </span>
+                          ) : (
+                            "No dynamic tags found in this template yet."
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setTemplatePreviewMode(false)}
+                          className="text-blue-600 hover:underline font-bold cursor-pointer"
+                        >
+                          Return to Editor
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ================= TEMPLATE EDITOR MODE ================= */
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700">Template Name *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Booking Deposit Request"
+                            value={formName}
+                            onChange={(e) => setFormName(e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700">Category *</label>
+                          <select
+                            value={formCategory}
+                            onChange={(e) => setFormCategory(e.target.value)}
+                            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          >
+                            <option value="Enquiries & Leads">Enquiries & Leads</option>
+                            <option value="Inspections">Inspections</option>
+                            <option value="Quotations">Quotations</option>
+                            <option value="Bookings">Bookings</option>
+                            <option value="Job Completion & Care">Job Completion & Care</option>
+                            <option value="Billing">Billing</option>
+                            <option value="General">General</option>
+                            <option value="Promotions">Promotions</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Short Description</label>
+                        <input
+                          type="text"
+                          placeholder="Brief note on when staff should use this template"
+                          value={formDescription}
+                          onChange={(e) => setFormDescription(e.target.value)}
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
+                      </div>
+
+                      {/* Email Subject Line with Ref & Focus tracking */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">Email Subject Line *</label>
+                          {templateInsertTarget === "subject" && (
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-blue-200">
+                              <Sparkles className="w-3 h-3 text-blue-600" /> Active Insertion Target
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          ref={templateSubjectRef}
+                          type="text"
+                          placeholder="e.g. Your Groutix Booking Confirmation - {first_name}"
+                          value={formSubject}
+                          onChange={(e) => setFormSubject(e.target.value)}
+                          onFocus={() => setTemplateInsertTarget("subject")}
+                          onClick={() => setTemplateInsertTarget("subject")}
+                          onKeyUp={() => setTemplateInsertTarget("subject")}
+                          className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition ${templateInsertTarget === "subject" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
+                            }`}
+                        />
+                      </div>
+
+                      {/* Variable helper chips with Target Selector & Caret insertion */}
+                      <div className="p-3 bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border border-blue-200 rounded-xl space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 pb-2">
+                          {/* Target Switcher */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-800 flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                              Insert Tag Into:
+                            </span>
+                            <div className="inline-flex p-0.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTemplateInsertTarget("subject");
+                                  templateSubjectRef.current?.focus();
+                                }}
+                                className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${templateInsertTarget === "subject"
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "text-slate-600 hover:text-blue-700"
+                                  }`}
+                              >
+                                {templateInsertTarget === "subject" && <Check className="w-3 h-3" />}
+                                <span>Subject Line</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTemplateInsertTarget("body");
+                                  templateBodyRef.current?.focus();
+                                }}
+                                className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${templateInsertTarget === "body"
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "text-slate-600 hover:text-blue-700"
+                                  }`}
+                              >
+                                {templateInsertTarget === "body" && <Check className="w-3 h-3" />}
+                                <span>Message Body</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Category filter pills */}
+                          <div className="flex items-center gap-1 flex-wrap text-[10px]">
+                            {["All", "Customer", "Job & Location", "Schedule", "Billing", "Company"].map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setSelectedTagCategory(cat)}
+                                className={`px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${selectedTagCategory === cat
+                                  ? "bg-blue-700 text-white shadow-2xs"
+                                  : "bg-white text-slate-600 border border-blue-200/70 hover:bg-blue-100"
+                                  }`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tag Chips */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {DYNAMIC_EMAIL_TAGS.filter(
+                            (t) => selectedTagCategory === "All" || t.category === selectedTagCategory
+                          ).map((chip) => (
+                            <button
+                              key={chip.tag}
+                              type="button"
+                              onClick={() => handleInsertDynamicTag(chip.tag)}
+                              title={`${chip.description} (e.g. ${chip.example}) — Click to insert at cursor in ${templateInsertTarget === "subject" ? "Subject Line" : "Message Body"
+                                }`}
+                              className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 rounded-lg text-slate-800 text-xs font-semibold shadow-2xs transition cursor-pointer"
+                            >
+                              <span className="text-blue-600 group-hover:text-white font-bold">+</span>
+                              <span>{chip.label}</span>
+                              <code className="text-[10px] text-blue-700 group-hover:text-blue-100 bg-blue-50 group-hover:bg-blue-700/60 px-1 py-0.5 rounded font-mono font-normal">
+                                {chip.tag}
+                              </code>
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="text-[10px] text-slate-500 pt-0.5 flex items-center justify-between">
+                          <span>
+                            💡 Click any tag to insert directly at your cursor in{" "}
+                            <span className="font-bold text-blue-700">
+                              {templateInsertTarget === "subject" ? "Email Subject Line" : "Message Body"}
+                            </span>
+                            .
+                          </span>
+                          <span className="font-mono text-slate-400">Supports &#123;tag&#125; &amp; &#123;&#123;tag&#125;&#125;</span>
+                        </div>
+                      </div>
+
+                      {/* Message Body with Ref & Focus tracking */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">Message Body *</label>
+                          {templateInsertTarget === "body" && (
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-blue-200">
+                              <Sparkles className="w-3 h-3 text-blue-600" /> Active Insertion Target
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Text Formatting Toolbar */}
+                        <div className="flex items-center gap-1 p-1.5 bg-slate-100 border border-slate-200 rounded-t-xl text-xs flex-wrap">
+                          <span className="text-[10px] font-bold text-slate-500 px-1">Style:</span>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("bold", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Bold (**text**)"
+                          >
+                            <Bold className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("italic", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Italic (*text*)"
+                          >
+                            <Italic className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("underline", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Underline (<u>text</u>)"
+                          >
+                            <Underline className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-slate-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("h2", "template")}
+                            className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-black text-slate-800 text-[11px] transition cursor-pointer"
+                            title="Heading 2 (## Heading)"
+                          >
+                            H2
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("h3", "template")}
+                            className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-200 rounded font-bold text-slate-800 text-[11px] transition cursor-pointer"
+                            title="Heading 3 (### Heading)"
+                          >
+                            H3
+                          </button>
+                          <span className="text-slate-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("bullet", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Bullet list (• Item)"
+                          >
+                            <List className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("number", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Numbered list (1. Item)"
+                          >
+                            <ListOrdered className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("link", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Insert Link ([Text](https://...))"
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTextFormatting("hr", "template")}
+                            className="p-1.5 bg-white hover:bg-slate-200 border border-slate-200 rounded text-slate-800 transition cursor-pointer"
+                            title="Horizontal line (---)"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="ml-auto text-[10px] text-slate-400 font-medium hidden sm:inline">
+                            Logo header &amp; footer auto-included
+                          </span>
+                        </div>
+
+                        <textarea
+                          ref={templateBodyRef}
+                          rows={8}
+                          placeholder="Write your email body here... Click any dynamic tag above to insert it at your cursor, or use formatting buttons above."
+                          value={formBody}
+                          onChange={(e) => setFormBody(e.target.value)}
+                          onFocus={() => setTemplateInsertTarget("body")}
+                          onClick={() => setTemplateInsertTarget("body")}
+                          onKeyUp={() => setTemplateInsertTarget("body")}
+                          className={`w-full p-3 text-xs border rounded-b-xl border-t-0 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed font-sans resize-y transition ${templateInsertTarget === "body" ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-300"
+                            }`}
+                        />
+                      </div>
+
+                      {/* Detected Tags Live Feedback */}
+                      <div className="p-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-700 text-[11px]">Tags active in template:</span>
+                          {detectedTemplateTags.length > 0 ? (
+                            detectedTemplateTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md font-mono text-[10px] font-semibold"
+                              >
+                                &#123;{tag}&#125;
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-400 text-[11px] italic">None added yet</span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setTemplatePreviewMode(true)}
+                          className="text-blue-600 hover:underline font-bold text-[11px] flex items-center gap-1 cursor-pointer ml-auto"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Preview Resolution</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Form Footer Action Buttons */}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
                     <button
                       type="button"
-                      onClick={() => setWarrantyModalOpen(false)}
-                      className="px-4 py-2 border border-slate-300 bg-white rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                      onClick={() => setTemplateFormOpen(false)}
+                      className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition cursor-pointer"
                     >
-                      Close
+                      Cancel
                     </button>
                     <button
                       type="button"
+                      onClick={handleSaveTemplate}
+                      disabled={savingTemplate || !formName.trim() || !formBody.trim()}
+                      className="px-5 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      {savingTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span>{savingTemplate ? "Saving..." : editingTemplate ? "Update Template" : "Create Template"}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Template List Cards */}
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                {Array.from(new Set(emailTemplates.map((t) => t.category))).map((cat) => {
+                  const group = emailTemplates.filter((t) => t.category === cat);
+                  return (
+                    <div key={cat} className="space-y-2">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-500">{cat}</span>
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
+                          {group.length}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {group.map((t) => (
+                          <div
+                            key={t.id}
+                            className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-3.5 space-y-2.5 transition shadow-2xs flex flex-col justify-between"
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-xs font-black text-slate-800 line-clamp-1">{t.name}</h4>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTemplate(t)}
+                                    className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                                    title="Edit this template"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTemplate(t.id)}
+                                    className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                    title="Delete this template"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {t.description && (
+                                <p className="text-[11px] text-slate-500 line-clamp-1">{t.description}</p>
+                              )}
+
+                              <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-[11px] text-slate-600 space-y-1">
+                                <div className="font-semibold text-slate-700 truncate">
+                                  Subject: <span className="font-normal text-slate-600">{t.subject}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                                  {t.body}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 text-[11px]">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSelectEmailTemplate(t.id);
+                                  setManageTemplatesModalOpen(false);
+                                }}
+                                className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-center transition cursor-pointer"
+                              >
+                                Use in Composer →
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {emailTemplates.length === 0 && (
+                  <div className="text-center py-12 text-slate-400 space-y-2">
+                    <FileText className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="text-xs font-semibold">No templates found.</p>
+                    <button
+                      type="button"
+                      onClick={handleResetTemplates}
+                      className="text-xs text-blue-600 underline font-bold cursor-pointer"
+                    >
+                      Click here to load standard default templates
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* =========================================================================
+      {/* =========================================================================
+          MODAL: INSPECTION GPS
+         ========================================================================= */}
+        {gpsModalOpen && activeGpsLead && (
+          <GpsModal
+            lead={activeGpsLead}
+            statusMessage={gpsStatusMessage}
+            onClose={() => setGpsModalOpen(false)}
+            onCapture={handleCaptureGps}
+          />
+        )}
+
+        {/* =========================================================================
+          MODAL: 10-YEAR WARRANTY CARD (HTML5 Canvas)
+         ========================================================================= */}
+        {warrantyModalOpen && activeWarrantyLead && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 my-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">10-Year Waterproof Warranty Certificate</h2>
+                  <div className="text-xs text-slate-500">Customer: {activeWarrantyLead.name}</div>
+                </div>
+                <button
+                  onClick={() => setWarrantyModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Warranty ON / OFF Slider Switch */}
+              <div className={`p-4 rounded-xl border transition-all ${warrantyProvided
+                ? "bg-emerald-50/80 border-emerald-300 shadow-2xs"
+                : "bg-rose-50/90 border-rose-300 shadow-2xs"
+                }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div className={`p-2.5 rounded-xl shrink-0 ${warrantyProvided ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                      }`}>
+                      {warrantyProvided ? (
+                        <ShieldCheck className="w-5 h-5" />
+                      ) : (
+                        <ShieldAlert className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black text-slate-900">
+                          10-Year Waterproof Warranty:
+                        </span>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide ${warrantyProvided
+                          ? "bg-emerald-600 text-white"
+                          : "bg-rose-600 text-white"
+                          }`}>
+                          {warrantyProvided ? "Warranty Provided (ON)" : "Warranty Not Provided (OFF)"}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 mt-0.5">
+                        {warrantyProvided
+                          ? "Warranty is active for this inquiry. Official certificate will be generated and marked 'Warranty Provided'."
+                          : "Warranty is turned OFF. Groutix is NOT providing warranty for this job. Marked as 'Warranty Not Provided'."}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Interactive Slider Switch */}
+                  <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center bg-white/80 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <span className={`text-xs font-bold transition-colors ${!warrantyProvided ? "text-rose-700 font-black" : "text-slate-400"}`}>
+                      OFF
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={warrantyProvided}
                       onClick={() => {
+                        const nextVal = !warrantyProvided;
+                        setWarrantyProvided(nextVal);
                         if (activeWarrantyLead) {
                           updateLeadField(activeWarrantyLead.id, {
-                            warrantyProvided: false,
+                            warrantyProvided: nextVal,
                             warranty: {
                               ...(activeWarrantyLead.warranty || {}),
-                              provided: false,
+                              provided: nextVal,
+                            },
+                          });
+                          setActiveWarrantyLead({
+                            ...activeWarrantyLead,
+                            warrantyProvided: nextVal,
+                            warranty: {
+                              ...(activeWarrantyLead.warranty || {}),
+                              provided: nextVal,
                             },
                           });
                         }
-                        setWarrantyModalOpen(false);
                       }}
-                      className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
+                      className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${warrantyProvided ? "bg-emerald-600" : "bg-slate-300"
+                        }`}
+                      title={warrantyProvided ? "Click slider to Turn OFF Warranty" : "Click slider to Turn ON Warranty"}
                     >
-                      Save &amp; Confirm (Warranty Not Provided)
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${warrantyProvided ? "translate-x-8" : "translate-x-1"
+                          }`}
+                      />
                     </button>
+                    <span className={`text-xs font-bold transition-colors ${warrantyProvided ? "text-emerald-700 font-black" : "text-slate-400"}`}>
+                      ON
+                    </span>
                   </div>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Warranty Form Controls */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
-                    <input
-                      type="text"
-                      value={warrantyJobNo}
-                      onChange={(e) => setWarrantyJobNo(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg font-bold"
-                    />
+
+              {/* When Warranty is turned OFF */}
+              {!warrantyProvided ? (
+                <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-xl space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-rose-100 rounded-lg shrink-0 text-rose-700 mt-0.5">
+                      <ShieldAlert className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-rose-900">Warranty Coverage Disabled For This Inquiry</h3>
+                      <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                        You have set this query to <strong>Warranty Not Provided</strong>. No 10-year waterproof warranty certificate will be emailed to the customer. When completed, this query will be explicitly stamped with <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-rose-200 text-rose-900 font-black text-[10px]">⚠️ Warranty Not Provided</span> across all reports, client cards, and achievements.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Completion Date</label>
-                    <input
-                      type="date"
-                      value={warrantyCompletion}
-                      onChange={(e) => {
-                        setWarrantyCompletion(e.target.value);
-                        const d = new Date(e.target.value);
-                        if (!isNaN(d.getTime())) {
-                          d.setFullYear(d.getFullYear() + 10);
-                          setWarrantyExpiry(d.toISOString().slice(0, 10));
-                        }
-                      }}
-                      className="w-full p-2 border border-slate-200 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Warranty Expiry (10 Yrs)</label>
-                    <input
-                      type="date"
-                      value={warrantyExpiry}
-                      readOnly
-                      className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-emerald-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
-                    <input
-                      type="date"
-                      value={warrantyIssued}
-                      onChange={(e) => setWarrantyIssued(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
-                    <input
-                      type="text"
-                      value={warrantyCustomer}
-                      onChange={(e) => setWarrantyCustomer(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
-                    <input
-                      type="text"
-                      value={warrantyAuthorised}
-                      onChange={(e) => setWarrantyAuthorised(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="font-bold text-slate-700 block mb-1">Property Address</label>
-                    <input
-                      type="text"
-                      value={warrantyAddress}
-                      onChange={(e) => setWarrantyAddress(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg"
-                    />
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-rose-200">
+                    <div className="text-xs text-rose-600 font-medium">
+                      To re-enable warranty, click the slider switch above to <strong>ON</strong>.
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWarrantyModalOpen(false)}
+                        className="px-4 py-2 border border-slate-300 bg-white rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (activeWarrantyLead) {
+                            updateLeadField(activeWarrantyLead.id, {
+                              warrantyProvided: false,
+                              warranty: {
+                                ...(activeWarrantyLead.warranty || {}),
+                                provided: false,
+                              },
+                            });
+                          }
+                          setWarrantyModalOpen(false);
+                        }}
+                        className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
+                      >
+                        Save &amp; Confirm (Warranty Not Provided)
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <>
+                  {/* Warranty Form Controls */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Job / Certificate No.</label>
+                      <input
+                        type="text"
+                        value={warrantyJobNo}
+                        onChange={(e) => setWarrantyJobNo(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Completion Date</label>
+                      <input
+                        type="date"
+                        value={warrantyCompletion}
+                        onChange={(e) => {
+                          setWarrantyCompletion(e.target.value);
+                          const d = new Date(e.target.value);
+                          if (!isNaN(d.getTime())) {
+                            d.setFullYear(d.getFullYear() + 10);
+                            setWarrantyExpiry(d.toISOString().slice(0, 10));
+                          }
+                        }}
+                        className="w-full p-2 border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Warranty Expiry (10 Yrs)</label>
+                      <input
+                        type="date"
+                        value={warrantyExpiry}
+                        readOnly
+                        className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-emerald-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Date Issued</label>
+                      <input
+                        type="date"
+                        value={warrantyIssued}
+                        onChange={(e) => setWarrantyIssued(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Customer Name</label>
+                      <input
+                        type="text"
+                        value={warrantyCustomer}
+                        onChange={(e) => setWarrantyCustomer(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Authorised By</label>
+                      <input
+                        type="text"
+                        value={warrantyAuthorised}
+                        onChange={(e) => setWarrantyAuthorised(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="font-bold text-slate-700 block mb-1">Property Address</label>
+                      <input
+                        type="text"
+                        value={warrantyAddress}
+                        onChange={(e) => setWarrantyAddress(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
 
-                {/* Tab Switcher */}
-                <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setWarrantyTab("page1")}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        warrantyTab === "page1"
+                  {/* Tab Switcher */}
+                  <div className="flex items-center justify-between border-b border-slate-200 pt-2 pb-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWarrantyTab("page1")}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${warrantyTab === "page1"
                           ? "bg-[#071c4d] text-white shadow-xs"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      Page 1: Warranty Certificate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWarrantyTab("page2")}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        warrantyTab === "page2"
+                          }`}
+                      >
+                        Page 1: Warranty Certificate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWarrantyTab("page2")}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${warrantyTab === "page2"
                           ? "bg-[#071c4d] text-white shadow-xs"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      Page 2: Terms &amp; Conditions
-                    </button>
+                          }`}
+                      >
+                        Page 2: Terms &amp; Conditions
+                      </button>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                      Official 2-Page Executive Template
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-                    Official 2-Page Executive Template
-                  </span>
-                </div>
 
-                {/* Canvas Preview */}
-                <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
-                  <canvas
-                    ref={canvasRef}
-                    width={1000}
-                    height={630}
-                    className="w-full max-w-[780px] h-auto shadow-md rounded bg-white block"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
-                  <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
-                  <a
-                    href="/terms-conditions"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline font-bold inline-flex items-center gap-1 hover:text-blue-800"
-                  >
-                    <span>View Full Terms &amp; Conditions</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                  <div className="text-[11px] text-slate-500">
-                    <span>Both pages are included in the official PDF &amp; customer email.</span>
+                  {/* Canvas Preview */}
+                  <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
+                    <canvas
+                      ref={canvasRef}
+                      width={1000}
+                      height={630}
+                      className="w-full max-w-[780px] h-auto shadow-md rounded bg-white block"
+                    />
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const q = new URLSearchParams({
-                          jobNo: warrantyJobNo,
-                          completion: warrantyCompletion,
-                          expiry: warrantyExpiry,
-                          customer: warrantyCustomer,
-                          address: warrantyAddress,
-                          authorised: warrantyAuthorised,
-                          issued: warrantyIssued,
-                          t: String(Date.now()),
-                        });
-                        window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
-                      }}
-                      className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
-                      title="Print or view official 2-page PDF warranty certificate"
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 gap-1 px-1">
+                    <span>Warranty governed by Australian Consumer Law &amp; Groutix 10-Year Shower Warranty Terms</span>
+                    <a
+                      href="/terms-conditions"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline font-bold inline-flex items-center gap-1 hover:text-blue-800"
                     >
-                      <Printer className="w-3.5 h-3.5" />
-                      Print / View PDF
-                    </button>
-                    <button
-                      type="button"
-                      onClick={downloadWarrantyCard}
-                      className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download PNG
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSendWarranty}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
-                      title="Email the official 2-page warranty certificate to the customer and mark it sent"
-                    >
-                      <Send className="w-4 h-4" />
-                      Email to Customer
-                    </button>
+                      <span>View Full Terms &amp; Conditions</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </div>
-                </div>
-              </>
-            )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <div className="text-[11px] text-slate-500">
+                      <span>Both pages are included in the official PDF &amp; customer email.</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const q = new URLSearchParams({
+                            jobNo: warrantyJobNo,
+                            completion: warrantyCompletion,
+                            expiry: warrantyExpiry,
+                            customer: warrantyCustomer,
+                            address: warrantyAddress,
+                            authorised: warrantyAuthorised,
+                            issued: warrantyIssued,
+                            t: String(Date.now()),
+                          });
+                          window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                        title="Print or view official 2-page PDF warranty certificate"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Print / View PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={downloadWarrantyCard}
+                        className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download PNG
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendWarranty}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
+                        title="Email the official 2-page warranty certificate to the customer and mark it sent"
+                      >
+                        <Send className="w-4 h-4" />
+                        Email to Customer
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* =========================================================================
+        {/* =========================================================================
       {/* =========================================================================
           MODAL: CLIENT JOB CARD (Manager workflow)
          ========================================================================= */}
-      {jobCardLead && (
-        <JobCardModal lead={jobCardLead} onClose={() => setJobCardLead(null)} />
-      )}
-      {/* =========================================================================
+        {jobCardLead && (
+          <JobCardModal lead={jobCardLead} onClose={() => setJobCardLead(null)} />
+        )}
+        {/* =========================================================================
           MODAL: AUTO INVOICE
          ========================================================================= */}
-      {invoiceModalOpen && activeInvoiceLead && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 space-y-4 my-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        {invoiceModalOpen && activeInvoiceLead && (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-4 sm:pt-10 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 space-y-4 my-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
+                  {activeInvoiceLead.invoiceOpenedAt && (
+                    <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 mt-0.5">
+                      <Eye className="w-3 h-3 text-emerald-600" />
+                      Customer opened invoice email
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setInvoiceModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                <div className="space-y-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Customer</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={activeInvoiceLead.name || ""}
+                      className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Service</label>
+                    <input
+                      type="text"
+                      value={invoiceService}
+                      onChange={(e) => setInvoiceService(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Description</label>
+                    <textarea
+                      rows={4}
+                      value={invoiceDescription}
+                      onChange={(e) => setInvoiceDescription(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Optional)</label>
+                      {(activeInvoiceLead.technicianNotes || activeInvoiceLead.scopeNotes) && (
+                        <span className="text-[9.5px] font-black text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                          From Technician Notes
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Additional silicone replacement in second bathroom"
+                      value={invoiceExtraWork}
+                      onChange={(e) => setInvoiceExtraWork(e.target.value)}
+                      className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="font-bold text-slate-600 text-xs whitespace-nowrap">Extra Charge ($):</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder="0"
+                        value={invoiceExtraCharge || ""}
+                        onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
+                        className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
+                      />
+                      {invoiceExtraCharge > 0 && (
+                        <span className="text-xs text-amber-700 font-semibold">
+                          New total: ${(invoicePrice + invoiceExtraCharge).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Total (incl GST)</label>
+                      <input
+                        type="number"
+                        value={invoicePrice || ""}
+                        placeholder="0.00"
+                        onChange={(e) => setInvoicePrice(parseFloat(e.target.value) || 0)}
+                        className="w-full p-2 border border-slate-200 rounded-lg font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Payment Status</label>
+                      <select
+                        value={invoiceStatus}
+                        onChange={(e) => setInvoiceStatus(e.target.value)}
+                        className="w-full p-2 border border-slate-200 rounded-lg"
+                      >
+                        <option value="Unpaid">Unpaid</option>
+                        <option value="Paid">Paid</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Editable Payment Information Box */}
+                  <div className="pt-2.5 border-t border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                        💳 Payment &amp; Bank Details
+                      </label>
+                      <span className="text-[10px] text-slate-400">Shown in payment box</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Bank Name</label>
+                        <input
+                          type="text"
+                          value={invoiceBankName}
+                          onChange={(e) => {
+                            setInvoiceBankName(e.target.value);
+                            try { localStorage.setItem("groutix_inv_bank", e.target.value); } catch { }
+                          }}
+                          placeholder="ANZ"
+                          className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">BSB</label>
+                        <input
+                          type="text"
+                          value={invoiceBsb}
+                          onChange={(e) => {
+                            setInvoiceBsb(e.target.value);
+                            try { localStorage.setItem("groutix_inv_bsb", e.target.value); } catch { }
+                          }}
+                          placeholder="013442"
+                          className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Name</label>
+                        <input
+                          type="text"
+                          value={invoiceAccountName}
+                          onChange={(e) => {
+                            setInvoiceAccountName(e.target.value);
+                            try { localStorage.setItem("groutix_inv_acc_name", e.target.value); } catch { }
+                          }}
+                          placeholder="Groutix Pty Ltd"
+                          className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Number</label>
+                        <input
+                          type="text"
+                          value={invoiceAccountNumber}
+                          onChange={(e) => {
+                            setInvoiceAccountNumber(e.target.value);
+                            try { localStorage.setItem("groutix_inv_acc_num", e.target.value); } catch { }
+                          }}
+                          placeholder="123456789"
+                          className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Payment Due Date Note</label>
+                      <input
+                        type="text"
+                        value={invoiceDueDate}
+                        onChange={(e) => {
+                          setInvoiceDueDate(e.target.value);
+                          try { localStorage.setItem("groutix_inv_due_date", e.target.value); } catch { }
+                        }}
+                        placeholder="Within 7 days of invoice date"
+                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invoice Preview (Matches official Groutix Tax Invoice layout) */}
+                <div className="border border-slate-300 rounded-xl p-5 bg-white space-y-3 font-sans shadow-sm text-slate-800 max-h-[70vh] overflow-y-auto">
+                  {/* 1. Header: Logo & Right Column */}
+                  <div className="flex items-start justify-between gap-4 pb-1">
+                    <div>
+                      <img src={siteLogoUrl} alt="Groutix" className="h-10 object-contain" />
+                    </div>
+                    <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
+                      <div>Melbourne</div>
+                      <div>VIC</div>
+                      <div>7023 8094</div>
+                      <div>info@groutix.com</div>
+                      <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
+                      <div className="font-bold text-slate-900">ACN: 687 415 005</div>
+                      <div className="pt-1.5 text-slate-900">Invoice # {activeInvoiceLead.invoiceNumber || `INV-${activeInvoiceLead.id.slice(-6).toUpperCase()}`}</div>
+                      <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
+                    </div>
+                  </div>
+
+                  {/* 2. Customer / Billing Address */}
+                  <div className="text-[11px] leading-relaxed text-slate-800">
+                    <div className="font-bold text-slate-900">{activeInvoiceLead.name}</div>
+                    {activeInvoiceLead.address && <div>{activeInvoiceLead.address}</div>}
+                    {(activeInvoiceLead.phone || activeInvoiceLead.email) && (
+                      <div className="text-slate-500 text-[10px]">
+                        {[activeInvoiceLead.phone, activeInvoiceLead.email].filter(Boolean).join(" • ")}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. WORK COMPLETED */}
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">WORK COMPLETED</div>
+                    {(() => {
+                      const workText = invoiceDescription || invoiceService || "Full shower epoxy regrouting, deep clean, and perimeter silicone reseal.";
+                      const lines = workText.split("\n").filter((l) => l.trim());
+                      if (lines.length <= 1) {
+                        return <div className="text-[11px] text-slate-700">{workText}</div>;
+                      }
+                      return (
+                        <ul className="space-y-0.5">
+                          {lines.map((line, i) => (
+                            <li key={i} className="flex items-start gap-1 text-[11px] text-slate-700 leading-snug">
+                              <span className="text-[#e5a910] font-bold shrink-0 mt-px">•</span>
+                              <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 4. Table */}
+                  {(() => {
+                    const effectiveTotal = (invoicePrice || 0) + (invoiceExtraCharge || 0);
+                    const subtotal = effectiveTotal / 1.1;
+                    const gst = effectiveTotal - subtotal;
+                    return (
+                      <>
+                        <div>
+                          <div className="grid grid-cols-12 text-[10px] font-bold text-[#e5a910] uppercase pb-1 border-b border-slate-200">
+                            <div className="col-span-6">DESCRIPTION</div>
+                            <div className="col-span-2 text-right">QUANTITY</div>
+                            <div className="col-span-2 text-right">PRICE</div>
+                            <div className="col-span-2 text-right">TOTAL</div>
+                          </div>
+                          <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
+                            <div className="col-span-6">
+                              <div className="font-semibold">{invoiceService || "Shower Cubicle Regrouting"}</div>
+                              {invoiceDescription && (
+                                <ul className="mt-1 space-y-0.5">
+                                  {invoiceDescription.split("\n").filter((l) => l.trim()).map((line, li) => (
+                                    <li key={li} className="flex items-start gap-1 text-[10px] text-slate-500 leading-snug">
+                                      <span className="text-blue-600 font-bold shrink-0 mt-px">•</span>
+                                      <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                            <div className="col-span-2 text-right">1</div>
+                            <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
+                            <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
+                          </div>
+                          {invoiceExtraWork && invoiceExtraCharge > 0 && (
+                            <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
+                              <div className="col-span-6">
+                                <div className="font-semibold text-amber-700">Additional Work</div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">{invoiceExtraWork}</div>
+                              </div>
+                              <div className="col-span-2 text-right">1</div>
+                              <div className="col-span-2 text-right">${invoiceExtraCharge.toFixed(2)}</div>
+                              <div className="col-span-2 text-right font-bold">${invoiceExtraCharge.toFixed(2)}</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 5. Financial Summary */}
+                        <div className="text-right text-[11px] space-y-1 text-slate-800">
+                          <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${subtotal.toFixed(2)}</span></div>
+                          <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${gst.toFixed(2)}</span></div>
+                          <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${effectiveTotal.toFixed(2)}</span></div>
+                          <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? effectiveTotal.toFixed(2) : "0.00"}</span></div>
+                          <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : effectiveTotal.toFixed(2)}</span></div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
+                  {/* 6. HOW TO PAY: */}
+                  <div className="space-y-1 pt-1">
+                    <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">HOW TO PAY:</div>
+                    <div className="text-[10px] text-slate-700">We accept payment by: Deposit</div>
+
+                    {/* Coral/red payment box with dynamic values */}
+                    <div className="border border-red-300 rounded-lg p-2.5 bg-red-50/20 max-w-sm text-[10px] space-y-0.5">
+                      <div className="font-black text-[11px] text-slate-900 pb-0.5">PAYMENT INFORMATION</div>
+                      <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">{invoiceBankName || "ANZ"}</span></div>
+                      <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">{invoiceAccountName || "Groutix Pty Ltd"}</span></div>
+                      <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">{invoiceAccountNumber || "123456789"}</span></div>
+                      <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">{invoiceBsb || "013442"}</span></div>
+                    </div>
+                  </div>
+
+                  {/* 7. TERMS & CONDITIONS */}
+                  <div className="text-center pt-2 space-y-0.5">
+                    <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">TERMS &amp; CONDITIONS</div>
+                    <div className="text-[10px] text-slate-600 space-y-0.5">
+                      <div>• Payment is due {invoiceDueDate || "within 7 days of invoice date"}</div>
+                      <div>• Access our Terms &amp; Conditions</div>
+                      <a
+                        href="https://groutix.com/terms-and-conditions/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline font-medium"
+                      >
+                        https://groutix.com/terms-and-conditions/
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = new URLSearchParams({
+                      bankName: invoiceBankName,
+                      accountName: invoiceAccountName,
+                      accountNumber: invoiceAccountNumber,
+                      bsb: invoiceBsb,
+                      dueDate: invoiceDueDate,
+                      price: String(invoicePrice),
+                      status: invoiceStatus,
+                      service: invoiceService,
+                      description: invoiceDescription,
+                    });
+                    window.open(`/api/admin/invoice/pdf/${activeInvoiceLead.id}?${q.toString()}`, "_blank");
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
+                  title="Print or view official PDF invoice with current payment information"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print / View PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateLeadField(activeInvoiceLead.id, {
+                      quoteAmount: invoicePrice,
+                      status: invoiceStatus === "Paid" ? "Payment Received" : activeInvoiceLead.status
+                    });
+                    setInvoiceModalOpen(false);
+                  }}
+                  className="px-5 py-2 bg-white border border-teal-700 text-teal-700 rounded-xl text-xs font-bold hover:bg-teal-50"
+                >
+                  Save Invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendInvoice}
+                  disabled={sendingInvoice || !activeInvoiceLead.email}
+                  title={!activeInvoiceLead.email ? "No email address saved for this customer" : "Email this invoice to the customer"}
+                  className="flex items-center gap-1.5 px-5 py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  {sendingInvoice ? "Sending…" : "Send Invoice"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+          MODAL: GROUTIX FIELD INSPECTION REPORT
+         ========================================================================= */}
+        {inspectionModalOpen && activeInspectionLead && (
+          <InspectionModal
+            isOpen={inspectionModalOpen}
+            onClose={() => {
+              setInspectionModalOpen(false);
+              setActiveInspectionLead(null);
+            }}
+            lead={activeInspectionLead}
+            currentUsername={username || undefined}
+            technicians={assignableTechnicians}
+            readOnly={isTechnician}
+            onPhotosChanged={(photos) => {
+              setActiveInspectionLead((prev) =>
+                prev ? { ...prev, photos: photos as any, photosCount: photos.length } : prev
+              );
+              setLeads((prev) =>
+                prev.map((l) =>
+                  l.id === activeInspectionLead.id
+                    ? { ...l, photos: photos as any, photosCount: photos.length }
+                    : l
+                )
+              );
+            }}
+            onSave={async (report, markCompleted) => {
+              const updates: Partial<Lead> = {
+                inspectionReport: report,
+              };
+              if (markCompleted) {
+                updates.status = "Inspection Completed";
+              }
+              if (report.suggestedTechnician) {
+                const tech = assignableTechnicians.find((t) => t.name === report.suggestedTechnician);
+                updates.technician = report.suggestedTechnician;
+                updates.technicianId = tech?.id || "";
+              }
+              // Propagate inspector's warranty selection to the finance-stage fields
+              if (report.warrantyEligible === "NO") {
+                updates.warrantyProvided = false;
+                updates.warranty = { ...(activeInspectionLead.warranty || {}), provided: false };
+              } else if (report.warrantyEligible === "YES") {
+                updates.warrantyProvided = true;
+                updates.warranty = { ...(activeInspectionLead.warranty || {}), provided: true };
+              }
+              const ok = await updateLeadField(activeInspectionLead.id, updates);
+              if (ok) {
+                setActiveInspectionLead((prev) => (prev ? { ...prev, ...updates } : null));
+              }
+              return ok;
+            }}
+          />
+        )}
+
+        {/* =========================================================================
+      {/* =========================================================================
+          MODAL: TEAM CHAT (staff-to-staff)
+         ========================================================================= */}
+        {chatWith && (
+          <TeamChatModal
+            chatWith={chatWith}
+            chatMessages={chatMessages}
+            chatText={chatText}
+            chatLoading={chatLoading}
+            chatSending={chatSending}
+            username={username || ""}
+            onClose={() => setChatWith(null)}
+            setChatText={setChatText}
+            onSend={sendChat}
+          />
+        )}
+
+        {/* Start Job — days prompt */}
+        {startJobPrompt && (
+          <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full mx-4 space-y-4">
               <div>
-                <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
-                {activeInvoiceLead.invoiceOpenedAt && (
-                  <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 mt-0.5">
-                    <Eye className="w-3 h-3 text-emerald-600" />
-                    Customer opened invoice email
+                <h3 className="text-base font-black text-slate-900">Start Job</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{startJobPrompt.lead.name || "Customer"} · {startJobPrompt.lead.address || ""}</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600">How many days will this job take?</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStartJobDays((d) => Math.max(1, d - 1))}
+                    className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                  >−</button>
+                  <span className="text-2xl font-black text-blue-600 w-8 text-center">{startJobDays}</span>
+                  <button
+                    type="button"
+                    onClick={() => setStartJobDays((d) => Math.min(14, d + 1))}
+                    className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                  >+</button>
+                  <span className="text-xs text-slate-400 font-semibold">{startJobDays === 1 ? "Single day" : `${startJobDays} days`}</span>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateLeadField(startJobPrompt.lead.id, {
+                      status: "Job In Progress",
+                      jobTotalDays: startJobDays,
+                      jobDaysDone: 1,
+                    });
+                    setStartJobPrompt(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
+                >
+                  Start Job
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStartJobPrompt(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notify customer prompt for On the Way / Reached */}
+        {notifyPrompt && (
+          <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full mx-4">
+              <h3 className="text-base font-black text-slate-900 mb-1">
+                {notifyPrompt.eventType === "en_route" ? "Notify customer you're on the way?" : "Notify customer you've arrived?"}
+              </h3>
+              <p className="text-xs text-slate-500 mb-5">
+                {notifyPrompt.eventType === "en_route"
+                  ? `An SMS with your ETA will be sent to ${notifyPrompt.lead.name || "the customer"}.`
+                  : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => executeOnTheWayNotification(notifyPrompt.lead, notifyPrompt.eventType)}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
+                >
+                  Yes, notify
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotifyPrompt(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Booking Hours (inspection/job days, times, closures) */}
+        {bookingRulesOpen && <BookingRulesModal onClose={() => setBookingRulesOpen(false)} />}
+
+        {/* Service Zones (radii, day-wise zones, coastal skips, suburb overrides) */}
+        {zoneRulesOpen && <ZoneRulesModal onClose={() => setZoneRulesOpen(false)} />}
+
+        {/* Logo Settings Modal */}
+        {logoSettingsOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-slate-900">Logo Settings</h3>
+                <button onClick={() => setLogoSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center min-h-[80px]">
+                <img src={siteLogoUrl} alt="Current logo" className="h-14 w-auto max-w-full object-contain" />
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">Upload a new JPEG or PNG to replace the logo across the website, emails, and PDFs. Changes take effect immediately.</p>
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload New Logo</label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                  className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer shadow-xs"
+                  disabled={logoUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setLogoUploading(true);
+                    const fd = new FormData();
+                    fd.append("logo", file);
+                    fetch("/api/admin/settings/logo", { method: "POST", body: fd })
+                      .then((r) => r.json())
+                      .then((d) => {
+                        if (d.ok) setSiteLogoUrl(`/${d.logoFile}?v=${d.logoVersion}`);
+                      })
+                      .catch(console.error)
+                      .finally(() => setLogoUploading(false));
+                  }}
+                />
+                {logoUploading && (
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Uploading logo…
                   </div>
                 )}
               </div>
               <button
-                onClick={() => setInvoiceModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                onClick={() => setLogoSettingsOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-              <div className="space-y-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Customer</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={activeInvoiceLead.name || ""}
-                    className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Service</label>
-                  <input
-                    type="text"
-                    value={invoiceService}
-                    onChange={(e) => setInvoiceService(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Description</label>
-                  <textarea
-                    rows={4}
-                    value={invoiceDescription}
-                    onChange={(e) => setInvoiceDescription(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Extra / Add-On Work (Optional)</label>
-                    {(activeInvoiceLead.technicianNotes || activeInvoiceLead.scopeNotes) && (
-                      <span className="text-[9.5px] font-black text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
-                        From Technician Notes
-                      </span>
-                    )}
-                  </div>
-                  <textarea
-                    rows={2}
-                    placeholder="e.g. Additional silicone replacement in second bathroom"
-                    value={invoiceExtraWork}
-                    onChange={(e) => setInvoiceExtraWork(e.target.value)}
-                    className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="font-bold text-slate-600 text-xs whitespace-nowrap">Extra Charge ($):</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      placeholder="0"
-                      value={invoiceExtraCharge || ""}
-                      onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
-                      className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
-                    />
-                    {invoiceExtraCharge > 0 && (
-                      <span className="text-xs text-amber-700 font-semibold">
-                        New total: ${(invoicePrice + invoiceExtraCharge).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Total (incl GST)</label>
-                    <input
-                      type="number"
-                      value={invoicePrice || ""}
-                      placeholder="0.00"
-                      onChange={(e) => setInvoicePrice(parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 border border-slate-200 rounded-lg font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Payment Status</label>
-                    <select
-                      value={invoiceStatus}
-                      onChange={(e) => setInvoiceStatus(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg"
-                    >
-                      <option value="Unpaid">Unpaid</option>
-                      <option value="Paid">Paid</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Editable Payment Information Box */}
-                <div className="pt-2.5 border-t border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                      💳 Payment &amp; Bank Details
-                    </label>
-                    <span className="text-[10px] text-slate-400">Shown in payment box</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Bank Name</label>
-                      <input
-                        type="text"
-                        value={invoiceBankName}
-                        onChange={(e) => {
-                          setInvoiceBankName(e.target.value);
-                          try { localStorage.setItem("groutix_inv_bank", e.target.value); } catch {}
-                        }}
-                        placeholder="ANZ"
-                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">BSB</label>
-                      <input
-                        type="text"
-                        value={invoiceBsb}
-                        onChange={(e) => {
-                          setInvoiceBsb(e.target.value);
-                          try { localStorage.setItem("groutix_inv_bsb", e.target.value); } catch {}
-                        }}
-                        placeholder="013442"
-                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Name</label>
-                      <input
-                        type="text"
-                        value={invoiceAccountName}
-                        onChange={(e) => {
-                          setInvoiceAccountName(e.target.value);
-                          try { localStorage.setItem("groutix_inv_acc_name", e.target.value); } catch {}
-                        }}
-                        placeholder="Groutix Pty Ltd"
-                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Account Number</label>
-                      <input
-                        type="text"
-                        value={invoiceAccountNumber}
-                        onChange={(e) => {
-                          setInvoiceAccountNumber(e.target.value);
-                          try { localStorage.setItem("groutix_inv_acc_num", e.target.value); } catch {}
-                        }}
-                        placeholder="123456789"
-                        className="w-full p-2 text-xs border border-slate-200 rounded-lg"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Payment Due Date Note</label>
-                    <input
-                      type="text"
-                      value={invoiceDueDate}
-                      onChange={(e) => {
-                        setInvoiceDueDate(e.target.value);
-                        try { localStorage.setItem("groutix_inv_due_date", e.target.value); } catch {}
-                      }}
-                      placeholder="Within 7 days of invoice date"
-                      className="w-full p-2 text-xs border border-slate-200 rounded-lg"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Invoice Preview (Matches official Groutix Tax Invoice layout) */}
-              <div className="border border-slate-300 rounded-xl p-5 bg-white space-y-3 font-sans shadow-sm text-slate-800 max-h-[70vh] overflow-y-auto">
-                {/* 1. Header: Logo & Right Column */}
-                <div className="flex items-start justify-between gap-4 pb-1">
-                  <div>
-                    <img src={siteLogoUrl} alt="Groutix" className="h-10 object-contain" />
-                  </div>
-                  <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
-                    <div>Melbourne</div>
-                    <div>VIC</div>
-                    <div>7023 8094</div>
-                    <div>info@groutix.com</div>
-                    <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
-                    <div className="font-bold text-slate-900">ACN: 687 415 005</div>
-                    <div className="pt-1.5 text-slate-900">Invoice # {activeInvoiceLead.invoiceNumber || `INV-${activeInvoiceLead.id.slice(-6).toUpperCase()}`}</div>
-                    <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
-                  </div>
-                </div>
-
-                {/* 2. Customer / Billing Address */}
-                <div className="text-[11px] leading-relaxed text-slate-800">
-                  <div className="font-bold text-slate-900">{activeInvoiceLead.name}</div>
-                  {activeInvoiceLead.address && <div>{activeInvoiceLead.address}</div>}
-                  {(activeInvoiceLead.phone || activeInvoiceLead.email) && (
-                    <div className="text-slate-500 text-[10px]">
-                      {[activeInvoiceLead.phone, activeInvoiceLead.email].filter(Boolean).join(" • ")}
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. WORK COMPLETED */}
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">WORK COMPLETED</div>
-                  {(() => {
-                    const workText = invoiceDescription || invoiceService || "Full shower epoxy regrouting, deep clean, and perimeter silicone reseal.";
-                    const lines = workText.split("\n").filter((l) => l.trim());
-                    if (lines.length <= 1) {
-                      return <div className="text-[11px] text-slate-700">{workText}</div>;
-                    }
-                    return (
-                      <ul className="space-y-0.5">
-                        {lines.map((line, i) => (
-                          <li key={i} className="flex items-start gap-1 text-[11px] text-slate-700 leading-snug">
-                            <span className="text-[#e5a910] font-bold shrink-0 mt-px">•</span>
-                            <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    );
-                  })()}
-                </div>
-
-                {/* 4. Table */}
-                {(() => {
-                  const effectiveTotal = (invoicePrice || 0) + (invoiceExtraCharge || 0);
-                  const subtotal = effectiveTotal / 1.1;
-                  const gst = effectiveTotal - subtotal;
-                  return (
-                    <>
-                      <div>
-                        <div className="grid grid-cols-12 text-[10px] font-bold text-[#e5a910] uppercase pb-1 border-b border-slate-200">
-                          <div className="col-span-6">DESCRIPTION</div>
-                          <div className="col-span-2 text-right">QUANTITY</div>
-                          <div className="col-span-2 text-right">PRICE</div>
-                          <div className="col-span-2 text-right">TOTAL</div>
-                        </div>
-                        <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
-                          <div className="col-span-6">
-                            <div className="font-semibold">{invoiceService || "Shower Cubicle Regrouting"}</div>
-                            {invoiceDescription && (
-                              <ul className="mt-1 space-y-0.5">
-                                {invoiceDescription.split("\n").filter((l) => l.trim()).map((line, li) => (
-                                  <li key={li} className="flex items-start gap-1 text-[10px] text-slate-500 leading-snug">
-                                    <span className="text-blue-600 font-bold shrink-0 mt-px">•</span>
-                                    <span>{line.replace(/^[•o]\s*/, "").trim()}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                          <div className="col-span-2 text-right">1</div>
-                          <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
-                          <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
-                        </div>
-                        {invoiceExtraWork && invoiceExtraCharge > 0 && (
-                          <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
-                            <div className="col-span-6">
-                              <div className="font-semibold text-amber-700">Additional Work</div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">{invoiceExtraWork}</div>
-                            </div>
-                            <div className="col-span-2 text-right">1</div>
-                            <div className="col-span-2 text-right">${invoiceExtraCharge.toFixed(2)}</div>
-                            <div className="col-span-2 text-right font-bold">${invoiceExtraCharge.toFixed(2)}</div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 5. Financial Summary */}
-                      <div className="text-right text-[11px] space-y-1 text-slate-800">
-                        <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${subtotal.toFixed(2)}</span></div>
-                        <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${gst.toFixed(2)}</span></div>
-                        <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${effectiveTotal.toFixed(2)}</span></div>
-                        <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? effectiveTotal.toFixed(2) : "0.00"}</span></div>
-                        <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : effectiveTotal.toFixed(2)}</span></div>
-                      </div>
-                    </>
-                  );
-                })()}
-
-                {/* 6. HOW TO PAY: */}
-                <div className="space-y-1 pt-1">
-                  <div className="text-xs font-bold text-[#e5a910] uppercase tracking-wide">HOW TO PAY:</div>
-                  <div className="text-[10px] text-slate-700">We accept payment by: Deposit</div>
-                  
-                  {/* Coral/red payment box with dynamic values */}
-                  <div className="border border-red-300 rounded-lg p-2.5 bg-red-50/20 max-w-sm text-[10px] space-y-0.5">
-                    <div className="font-black text-[11px] text-slate-900 pb-0.5">PAYMENT INFORMATION</div>
-                    <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">{invoiceBankName || "ANZ"}</span></div>
-                    <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">{invoiceAccountName || "Groutix Pty Ltd"}</span></div>
-                    <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">{invoiceAccountNumber || "123456789"}</span></div>
-                    <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">{invoiceBsb || "013442"}</span></div>
-                  </div>
-                </div>
-
-                {/* 7. TERMS & CONDITIONS */}
-                <div className="text-center pt-2 space-y-0.5">
-                  <div className="text-xs font-black text-[#1e4e8c] tracking-wide uppercase">TERMS &amp; CONDITIONS</div>
-                  <div className="text-[10px] text-slate-600 space-y-0.5">
-                    <div>• Payment is due {invoiceDueDate || "within 7 days of invoice date"}</div>
-                    <div>• Access our Terms &amp; Conditions</div>
-                    <a
-                      href="https://groutix.com/terms-and-conditions/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline font-medium"
-                    >
-                      https://groutix.com/terms-and-conditions/
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  const q = new URLSearchParams({
-                    bankName: invoiceBankName,
-                    accountName: invoiceAccountName,
-                    accountNumber: invoiceAccountNumber,
-                    bsb: invoiceBsb,
-                    dueDate: invoiceDueDate,
-                    price: String(invoicePrice),
-                    status: invoiceStatus,
-                    service: invoiceService,
-                    description: invoiceDescription,
-                  });
-                  window.open(`/api/admin/invoice/pdf/${activeInvoiceLead.id}?${q.toString()}`, "_blank");
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
-                title="Print or view official PDF invoice with current payment information"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                Print / View PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  updateLeadField(activeInvoiceLead.id, {
-                    quoteAmount: invoicePrice,
-                    status: invoiceStatus === "Paid" ? "Payment Received" : activeInvoiceLead.status
-                  });
-                  setInvoiceModalOpen(false);
-                }}
-                className="px-5 py-2 bg-white border border-teal-700 text-teal-700 rounded-xl text-xs font-bold hover:bg-teal-50"
-              >
-                Save Invoice
-              </button>
-              <button
-                type="button"
-                onClick={handleSendInvoice}
-                disabled={sendingInvoice || !activeInvoiceLead.email}
-                title={!activeInvoiceLead.email ? "No email address saved for this customer" : "Email this invoice to the customer"}
-                className="flex items-center gap-1.5 px-5 py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                {sendingInvoice ? "Sending…" : "Send Invoice"}
+                Close
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* =========================================================================
-          MODAL: GROUTIX FIELD INSPECTION REPORT
-         ========================================================================= */}
-      {inspectionModalOpen && activeInspectionLead && (
-        <InspectionModal
-          isOpen={inspectionModalOpen}
-          onClose={() => {
-            setInspectionModalOpen(false);
-            setActiveInspectionLead(null);
-          }}
-          lead={activeInspectionLead}
-          currentUsername={username || undefined}
-          technicians={assignableTechnicians}
-          readOnly={isTechnician}
-          onPhotosChanged={(photos) => {
-            setActiveInspectionLead((prev) =>
-              prev ? { ...prev, photos: photos as any, photosCount: photos.length } : prev
-            );
-            setLeads((prev) =>
-              prev.map((l) =>
-                l.id === activeInspectionLead.id
-                  ? { ...l, photos: photos as any, photosCount: photos.length }
-                  : l
-              )
-            );
-          }}
-          onSave={async (report, markCompleted) => {
-            const updates: Partial<Lead> = {
-              inspectionReport: report,
-            };
-            if (markCompleted) {
-              updates.status = "Inspection Completed";
-            }
-            if (report.suggestedTechnician) {
-              const tech = assignableTechnicians.find((t) => t.name === report.suggestedTechnician);
-              updates.technician = report.suggestedTechnician;
-              updates.technicianId = tech?.id || "";
-            }
-            // Propagate inspector's warranty selection to the finance-stage fields
-            if (report.warrantyEligible === "NO") {
-              updates.warrantyProvided = false;
-              updates.warranty = { ...(activeInspectionLead.warranty || {}), provided: false };
-            } else if (report.warrantyEligible === "YES") {
-              updates.warrantyProvided = true;
-              updates.warranty = { ...(activeInspectionLead.warranty || {}), provided: true };
-            }
-            const ok = await updateLeadField(activeInspectionLead.id, updates);
-            if (ok) {
-              setActiveInspectionLead((prev) => (prev ? { ...prev, ...updates } : null));
-            }
-            return ok;
-          }}
-        />
-      )}
-
-      {/* =========================================================================
-      {/* =========================================================================
-          MODAL: TEAM CHAT (staff-to-staff)
-         ========================================================================= */}
-      {chatWith && (
-        <TeamChatModal
-          chatWith={chatWith}
-          chatMessages={chatMessages}
-          chatText={chatText}
-          chatLoading={chatLoading}
-          chatSending={chatSending}
-          username={username || ""}
-          onClose={() => setChatWith(null)}
-          setChatText={setChatText}
-          onSend={sendChat}
-        />
-      )}
-
-      {/* Start Job — days prompt */}
-      {startJobPrompt && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full mx-4 space-y-4">
-            <div>
-              <h3 className="text-base font-black text-slate-900">Start Job</h3>
-              <p className="text-xs text-slate-500 mt-0.5">{startJobPrompt.lead.name || "Customer"} · {startJobPrompt.lead.address || ""}</p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-600">How many days will this job take?</label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStartJobDays((d) => Math.max(1, d - 1))}
-                  className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
-                >−</button>
-                <span className="text-2xl font-black text-blue-600 w-8 text-center">{startJobDays}</span>
-                <button
-                  type="button"
-                  onClick={() => setStartJobDays((d) => Math.min(14, d + 1))}
-                  className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
-                >+</button>
-                <span className="text-xs text-slate-400 font-semibold">{startJobDays === 1 ? "Single day" : `${startJobDays} days`}</span>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  updateLeadField(startJobPrompt.lead.id, {
-                    status: "Job In Progress",
-                    jobTotalDays: startJobDays,
-                    jobDaysDone: 1,
-                  });
-                  setStartJobPrompt(null);
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
-              >
-                Start Job
-              </button>
-              <button
-                type="button"
-                onClick={() => setStartJobPrompt(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notify customer prompt for On the Way / Reached */}
-      {notifyPrompt && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full mx-4">
-            <h3 className="text-base font-black text-slate-900 mb-1">
-              {notifyPrompt.eventType === "en_route" ? "Notify customer you're on the way?" : "Notify customer you've arrived?"}
-            </h3>
-            <p className="text-xs text-slate-500 mb-5">
-              {notifyPrompt.eventType === "en_route"
-                ? `An SMS with your ETA will be sent to ${notifyPrompt.lead.name || "the customer"}.`
-                : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => executeOnTheWayNotification(notifyPrompt.lead, notifyPrompt.eventType)}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
-              >
-                Yes, notify
-              </button>
-              <button
-                type="button"
-                onClick={() => setNotifyPrompt(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition-colors"
-              >
-                Skip
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Booking Hours (inspection/job days, times, closures) */}
-      {bookingRulesOpen && <BookingRulesModal onClose={() => setBookingRulesOpen(false)} />}
-
-      {/* Service Zones (radii, day-wise zones, coastal skips, suburb overrides) */}
-      {zoneRulesOpen && <ZoneRulesModal onClose={() => setZoneRulesOpen(false)} />}
-
-      {/* Logo Settings Modal */}
-      {logoSettingsOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-slate-900">Logo Settings</h3>
-              <button onClick={() => setLogoSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                <X className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center min-h-[80px]">
-              <img src={siteLogoUrl} alt="Current logo" className="h-14 w-auto max-w-full object-contain" />
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed">Upload a new JPEG or PNG to replace the logo across the website, emails, and PDFs. Changes take effect immediately.</p>
-            <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload New Logo</label>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer shadow-xs"
-                disabled={logoUploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setLogoUploading(true);
-                  const fd = new FormData();
-                  fd.append("logo", file);
-                  fetch("/api/admin/settings/logo", { method: "POST", body: fd })
-                    .then((r) => r.json())
-                    .then((d) => {
-                      if (d.ok) setSiteLogoUrl(`/${d.logoFile}?v=${d.logoVersion}`);
-                    })
-                    .catch(console.error)
-                    .finally(() => setLogoUploading(false));
-                }}
-              />
-              {logoUploading && (
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Uploading logo…
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => setLogoSettingsOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* QuickBooks Settings Modal */}
-      {qboSettingsOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-slate-900">QuickBooks Integration</h3>
-              <button onClick={() => setQboSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                <X className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-
-            {!qboStatus?.configured ? (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-1">
-                <p className="font-bold">Environment variables not set</p>
-                <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
-                <pre className="mt-2 bg-amber-100 rounded p-2 text-[10px] leading-5 overflow-x-auto">{`QBO_CLIENT_ID=your_client_id\nQBO_CLIENT_SECRET=your_client_secret`}</pre>
-                <p className="pt-1">Get these from <span className="font-semibold">developer.intuit.com</span> → My Apps → your app → Keys &amp; OAuth.</p>
-              </div>
-            ) : qboStatus.connected ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2.5 text-xs text-green-800">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
-                  <div>
-                    <p className="font-bold">Connected to QuickBooks</p>
-                    {qboStatus.connectedAt && (
-                      <p className="text-green-700 mt-0.5">
-                        Since {new Date(qboStatus.connectedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
-                      </p>
-                    )}
-                    {qboStatus.realmId && (
-                      <p className="text-green-700 mt-0.5">Company ID: {qboStatus.realmId}</p>
-                    )}
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">Invoices sent from Groutix are automatically pushed to your QuickBooks company. Customers are created in QBO if they don&apos;t already exist.</p>
-                <button
-                  type="button"
-                  disabled={qboDisconnecting}
-                  onClick={() => {
-                    setQboDisconnecting(true);
-                    fetch("/api/admin/qbo/disconnect", { method: "POST" })
-                      .then(() => {
-                        setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined } : s);
-                      })
-                      .catch(console.error)
-                      .finally(() => setQboDisconnecting(false));
-                  }}
-                  className="w-full py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  {qboDisconnecting ? "Disconnecting…" : "Disconnect QuickBooks"}
+        {/* QuickBooks Settings Modal */}
+        {qboSettingsOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-slate-900">QuickBooks Integration</h3>
+                <button onClick={() => setQboSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                  <X className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
-                  <p className="font-semibold text-slate-700">Setup checklist</p>
-                  {qboStatus?.environment === "sandbox" && (
-                    <p className="text-amber-700">Using <span className="font-semibold">sandbox</span> keys — you&apos;ll be asked to connect a sandbox company, not your real one. Create one under Sandboxes at developer.intuit.com, or switch to Production keys and remove QBO_ENVIRONMENT.</p>
-                  )}
-                  <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
-                  <p>2. Set Redirect URI to:</p>
-                  <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>
-                  {qboStatus?.redirectUri && typeof window !== "undefined" && !qboStatus.redirectUri.startsWith(window.location.origin) && (
-                    <p className="pt-1 text-amber-700">Heads up: this differs from the page you&apos;re on ({window.location.origin}), so Intuit will send you back to the address above. Connect from that host, or register this URI at Intuit.</p>
-                  )}
-                  <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
-                </div>
-                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- an API route that redirects to Intuit's OAuth consent screen, not a page; <Link> would client-side navigate and break the handshake */}
-                <a
-                  href="/api/admin/qbo/connect"
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"
-                >
-                  Connect QuickBooks
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            )}
 
+              {!qboStatus?.configured ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-1">
+                  <p className="font-bold">Environment variables not set</p>
+                  <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
+                  <pre className="mt-2 bg-amber-100 rounded p-2 text-[10px] leading-5 overflow-x-auto">{`QBO_CLIENT_ID=your_client_id\nQBO_CLIENT_SECRET=your_client_secret`}</pre>
+                  <p className="pt-1">Get these from <span className="font-semibold">developer.intuit.com</span> → My Apps → your app → Keys &amp; OAuth.</p>
+                </div>
+              ) : qboStatus.connected ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2.5 text-xs text-green-800">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+                    <div>
+                      <p className="font-bold">Connected to QuickBooks</p>
+                      {qboStatus.connectedAt && (
+                        <p className="text-green-700 mt-0.5">
+                          Since {new Date(qboStatus.connectedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                      {qboStatus.realmId && (
+                        <p className="text-green-700 mt-0.5">Company ID: {qboStatus.realmId}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">Invoices sent from Groutix are automatically pushed to your QuickBooks company. Customers are created in QBO if they don&apos;t already exist.</p>
+                  <button
+                    type="button"
+                    disabled={qboDisconnecting}
+                    onClick={() => {
+                      setQboDisconnecting(true);
+                      fetch("/api/admin/qbo/disconnect", { method: "POST" })
+                        .then(() => {
+                          setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined } : s);
+                        })
+                        .catch(console.error)
+                        .finally(() => setQboDisconnecting(false));
+                    }}
+                    className="w-full py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {qboDisconnecting ? "Disconnecting…" : "Disconnect QuickBooks"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
+                    <p className="font-semibold text-slate-700">Setup checklist</p>
+                    {qboStatus?.environment === "sandbox" && (
+                      <p className="text-amber-700">Using <span className="font-semibold">sandbox</span> keys — you&apos;ll be asked to connect a sandbox company, not your real one. Create one under Sandboxes at developer.intuit.com, or switch to Production keys and remove QBO_ENVIRONMENT.</p>
+                    )}
+                    <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
+                    <p>2. Set Redirect URI to:</p>
+                    <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>
+                    {qboStatus?.redirectUri && typeof window !== "undefined" && !qboStatus.redirectUri.startsWith(window.location.origin) && (
+                      <p className="pt-1 text-amber-700">Heads up: this differs from the page you&apos;re on ({window.location.origin}), so Intuit will send you back to the address above. Connect from that host, or register this URI at Intuit.</p>
+                    )}
+                    <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- an API route that redirects to Intuit's OAuth consent screen, not a page; <Link> would client-side navigate and break the handshake */}
+                  <a
+                    href="/api/admin/qbo/connect"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"
+                  >
+                    Connect QuickBooks
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+
+              <button
+                onClick={() => setQboSettingsOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ETA / notification toast */}
+        {etaToast && (
+          <div className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold flex items-center gap-3 animate-in slide-in-from-bottom-4">
+            <span>{etaToast.msg}</span>
             <button
-              onClick={() => setQboSettingsOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
+              onClick={() => setEtaToast(null)}
+              className="text-slate-400 hover:text-white ml-2"
             >
-              Close
+              ✕
             </button>
           </div>
-        </div>
-      )}
-
-      {/* ETA / notification toast */}
-      {etaToast && (
-        <div className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold flex items-center gap-3 animate-in slide-in-from-bottom-4">
-          <span>{etaToast.msg}</span>
-          <button
-            onClick={() => setEtaToast(null)}
-            className="text-slate-400 hover:text-white ml-2"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </AdminPageProvider>
   );
 }

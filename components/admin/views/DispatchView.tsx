@@ -297,6 +297,19 @@ export function DispatchView({
     return Array.from(s).sort();
   }, [allDateItems, assignableTechnicians, inspectionStaff]);
 
+  const unassignedItems = useMemo(() => {
+    return allDateItems.filter((item) => item.tech === "Unassigned");
+  }, [allDateItems]);
+
+  const [assignTo, setAssignTo] = useState<string>("Unassigned");
+
+  async function assignFromDispatch(item: (typeof allDateItems)[number]) {
+    const target = assignTo.trim();
+    if (!target || target === "Unassigned") return;
+    const updates = item.type === "job" ? { technician: target } : { assigned: target };
+    await updateLeadField(item.lead.id, updates);
+  }
+
   // Selected lead helpers
   const sl = selectedItem?.lead;
   const slArea = sl ? resolveArea(sl.address || sl.city) : null;
@@ -380,11 +393,10 @@ export function DispatchView({
             key={tab.key}
             type="button"
             onClick={() => setViewTab(tab.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold border-b-2 transition-colors cursor-pointer ${
-              viewTab === tab.key
+            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold border-b-2 transition-colors cursor-pointer ${viewTab === tab.key
                 ? "border-blue-600 text-blue-700"
                 : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
+              }`}
           >
             {tab.icon}
             {tab.label}
@@ -448,180 +460,180 @@ export function DispatchView({
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Timeline grid */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/60 min-w-0">
-            {filteredItems.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <Calendar className="w-10 h-10 text-slate-200 mx-auto" />
-                <div className="text-sm font-bold text-slate-400">No appointments in the next 14 days</div>
-                <div className="text-xs text-slate-300">Set an inspectionAt or jobAt date on any lead to see it here.</div>
-              </div>
-            ) : (
-              <div className="bg-white shadow-sm rounded-b-xl w-full">
-                {/* Time header */}
-                <div className="flex sticky top-0 z-20 bg-white border-b-2 border-slate-200 shadow-sm rounded-tl-xl">
-                  <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
-                    className="shrink-0 px-2 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 flex items-end">
-                    DATE
-                  </div>
-                  <div className="flex flex-1 min-w-0">
-                    {TIME_SLOTS.map((slot, i) => (
-                      <div key={slot}
-                        className={`flex-1 min-w-0 text-center py-1 border-r relative ${i % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50/40"}`}>
-                        {slot.endsWith(":00") ? (
-                          <span className="text-[9px] font-black text-slate-600 block">{fmtTime(slot)}</span>
-                        ) : (
-                          <span className="text-[7px] text-slate-300 block">:30</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+              {filteredItems.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <Calendar className="w-10 h-10 text-slate-200 mx-auto" />
+                  <div className="text-sm font-bold text-slate-400">No appointments in the next 14 days</div>
+                  <div className="text-xs text-slate-300">Set an inspectionAt or jobAt date on any lead to see it here.</div>
                 </div>
+              ) : (
+                <div className="bg-white shadow-sm rounded-b-xl w-full">
+                  {/* Time header */}
+                  <div className="flex sticky top-0 z-20 bg-white border-b-2 border-slate-200 shadow-sm rounded-tl-xl">
+                    <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
+                      className="shrink-0 px-2 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 flex items-end">
+                      DATE
+                    </div>
+                    <div className="flex flex-1 min-w-0">
+                      {TIME_SLOTS.map((slot, i) => (
+                        <div key={slot}
+                          className={`flex-1 min-w-0 text-center py-1 border-r relative ${i % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50/40"}`}>
+                          {slot.endsWith(":00") ? (
+                            <span className="text-[9px] font-black text-slate-600 block">{fmtTime(slot)}</span>
+                          ) : (
+                            <span className="text-[7px] text-slate-300 block">:30</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                {/* Day rows — 7 days at a time, empty rows shown too */}
-                {allDatesInWindow.map((date) => {
-                  const items = groupedByDate.find(([d]) => d === date)?.[1] ?? [];
-                  const isToday = date === todayStr;
-                  const d = new Date(date + "T00:00:00");
-                  const weekday = d.toLocaleDateString("en-AU", { weekday: "short" });
-                  const dateShort = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+                  {/* Day rows — 7 days at a time, empty rows shown too */}
+                  {allDatesInWindow.map((date) => {
+                    const items = groupedByDate.find(([d]) => d === date)?.[1] ?? [];
+                    const isToday = date === todayStr;
+                    const d = new Date(date + "T00:00:00");
+                    const weekday = d.toLocaleDateString("en-AU", { weekday: "short" });
+                    const dateShort = d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 
-                  // Compute each block's time span (incl. travel), then greedily
-                  // assign non-overlapping "lanes" so appointments whose windows
-                  // intersect stack into extra rows instead of drawing on top of
-                  // each other.
-                  const metrics = items
-                    .map((item) => {
-                      const startMins = parseMinutes(item.time);
-                      const offsetFromGrid = Math.max(0, startMins - GRID_START);
-                      const suburb = resolveArea(item.lead.address || item.lead.city).suburb || "Melbourne";
-                      const travelMins = calculateTravel("Tullamarine", suburb).durationMinutes;
-                      const coreMins = item.type === "inspection" ? 30 : 120;
-                      const totalMins = travelMins + coreMins + travelMins;
-                      const endMins = startMins + totalMins;
-                      return { item, startMins, offsetFromGrid, travelMins, coreMins, totalMins, endMins };
-                    })
-                    .sort((a, b) => a.startMins - b.startMins);
+                    // Compute each block's time span (incl. travel), then greedily
+                    // assign non-overlapping "lanes" so appointments whose windows
+                    // intersect stack into extra rows instead of drawing on top of
+                    // each other.
+                    const metrics = items
+                      .map((item) => {
+                        const startMins = parseMinutes(item.time);
+                        const offsetFromGrid = Math.max(0, startMins - GRID_START);
+                        const suburb = resolveArea(item.lead.address || item.lead.city).suburb || "Melbourne";
+                        const travelMins = calculateTravel("Tullamarine", suburb).durationMinutes;
+                        const coreMins = item.type === "inspection" ? 30 : 120;
+                        const totalMins = travelMins + coreMins + travelMins;
+                        const endMins = startMins + totalMins;
+                        return { item, startMins, offsetFromGrid, travelMins, coreMins, totalMins, endMins };
+                      })
+                      .sort((a, b) => a.startMins - b.startMins);
 
-                  const laneEnds: number[] = [];
-                  const laidOut = metrics.map((m) => {
-                    let lane = laneEnds.findIndex((end) => end <= m.startMins);
-                    if (lane === -1) {
-                      lane = laneEnds.length;
-                      laneEnds.push(m.endMins);
-                    } else {
-                      laneEnds[lane] = m.endMins;
-                    }
-                    return { ...m, lane };
-                  });
+                    const laneEnds: number[] = [];
+                    const laidOut = metrics.map((m) => {
+                      let lane = laneEnds.findIndex((end) => end <= m.startMins);
+                      if (lane === -1) {
+                        lane = laneEnds.length;
+                        laneEnds.push(m.endMins);
+                      } else {
+                        laneEnds[lane] = m.endMins;
+                      }
+                      return { ...m, lane };
+                    });
 
-                  const LANE_HEIGHT = 44; // 40px box + 4px gap
-                  const laneCount = Math.max(1, laneEnds.length);
-                  const rowHeight = Math.max(50, 10 + laneCount * LANE_HEIGHT);
+                    const LANE_HEIGHT = 44; // 40px box + 4px gap
+                    const laneCount = Math.max(1, laneEnds.length);
+                    const rowHeight = Math.max(50, 10 + laneCount * LANE_HEIGHT);
 
-                  return (
-                    <div key={date} className={`flex border-b border-slate-200 ${isToday ? "bg-blue-50/20" : ""}`} style={{ minHeight: rowHeight }}>
-                      {/* Day label */}
-                      <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
-                        className={`shrink-0 px-2 py-1 border-r border-slate-200 flex flex-col justify-center ${isToday ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}>
-                        <div className={`text-[10px] font-extrabold leading-tight ${isToday ? "text-white" : "text-slate-800"}`}>{weekday}</div>
-                        <div className={`text-[9px] leading-tight ${isToday ? "text-blue-200" : "text-slate-400"}`}>{dateShort}</div>
-                        {isToday && <div className="text-[7px] font-black text-blue-200 uppercase tracking-widest">Today</div>}
-                      </div>
-
-                      {/* Timeline slots area */}
-                      <div className="flex-1 min-w-0 relative" style={{ height: rowHeight }}>
-                        {/* Slot grid background */}
-                        <div className="absolute inset-0 flex pointer-events-none">
-                          {TIME_SLOTS.map((slot, i) => (
-                            <div key={slot}
-                              className={`flex-1 min-w-0 h-full border-r ${i % 2 === 0 ? "border-slate-200" : "border-slate-100"} ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}
-                            />
-                          ))}
+                    return (
+                      <div key={date} className={`flex border-b border-slate-200 ${isToday ? "bg-blue-50/20" : ""}`} style={{ minHeight: rowHeight }}>
+                        {/* Day label */}
+                        <div style={{ width: DAY_LABEL_W, minWidth: DAY_LABEL_W }}
+                          className={`shrink-0 px-2 py-1 border-r border-slate-200 flex flex-col justify-center ${isToday ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-700"}`}>
+                          <div className={`text-[10px] font-extrabold leading-tight ${isToday ? "text-white" : "text-slate-800"}`}>{weekday}</div>
+                          <div className={`text-[9px] leading-tight ${isToday ? "text-blue-200" : "text-slate-400"}`}>{dateShort}</div>
+                          {isToday && <div className="text-[7px] font-black text-blue-200 uppercase tracking-widest">Today</div>}
                         </div>
 
-                        {/* Appointment blocks */}
-                        {laidOut.map(({ item, offsetFromGrid, travelMins, coreMins, totalMins, endMins, lane }) => {
-                          const leftPct = minsToPercent(offsetFromGrid);
-                          const totalPct = minsToPercent(totalMins);
+                        {/* Timeline slots area */}
+                        <div className="flex-1 min-w-0 relative" style={{ height: rowHeight }}>
+                          {/* Slot grid background */}
+                          <div className="absolute inset-0 flex pointer-events-none">
+                            {TIME_SLOTS.map((slot, i) => (
+                              <div key={slot}
+                                className={`flex-1 min-w-0 h-full border-r ${i % 2 === 0 ? "border-slate-200" : "border-slate-100"} ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}
+                              />
+                            ))}
+                          </div>
 
-                          const isInsp = item.type === "inspection";
-                          const isSelected = item.lead.id === selectedLeadId;
+                          {/* Appointment blocks */}
+                          {laidOut.map(({ item, offsetFromGrid, travelMins, coreMins, totalMins, endMins, lane }) => {
+                            const leftPct = minsToPercent(offsetFromGrid);
+                            const totalPct = minsToPercent(totalMins);
 
-                          const coreColor = isInsp ? "#2563EB" : "#059669";
-                          const travelColor = isInsp ? "#BFDBFE" : "#A7F3D0";
-                          const coreBg = isInsp ? "#DBEAFE" : "#D1FAE5";
+                            const isInsp = item.type === "inspection";
+                            const isSelected = item.lead.id === selectedLeadId;
 
-                          return (
-                            <button
-                              key={`${item.lead.id}-${item.time}`}
-                              type="button"
-                              onClick={() => setSelectedLeadId(isSelected ? null : item.lead.id)}
-                              title={`${item.lead.name} · ${fmtTime(item.time)} – ${fmtMinutesAsTime(endMins)} · Travel: ${travelMins}min each way · ${isInsp ? "Inspection" : "Job"}: ${coreMins}min`}
-                              className="absolute cursor-pointer group focus:outline-none"
-                              style={{
-                                left: `${leftPct}%`,
-                                width: `${totalPct}%`,
-                                top: 5 + lane * LANE_HEIGHT,
-                                height: 40,
-                                zIndex: isSelected ? 20 : 10,
-                              }}
-                            >
-                              <div className={`h-full flex rounded-lg overflow-hidden transition-all shadow-sm ${isSelected ? "ring-2 ring-offset-1 shadow-md" : "hover:shadow-md"}`}
-                                style={{ outlineColor: coreColor }}>
+                            const coreColor = isInsp ? "#2563EB" : "#059669";
+                            const travelColor = isInsp ? "#BFDBFE" : "#A7F3D0";
+                            const coreBg = isInsp ? "#DBEAFE" : "#D1FAE5";
 
-                                {/* Travel TO segment */}
-                                <div className="h-full flex items-center justify-center min-w-0"
-                                  style={{ flex: `${travelMins} ${travelMins} 0%`, backgroundColor: travelColor, borderRight: `1px dashed ${coreColor}` }}>
-                                  {travelMins / totalMins > 0.12 && (
-                                    <span className="text-[7px] font-black whitespace-nowrap" style={{ color: coreColor }}>
-                                      {travelMins}m↗
-                                    </span>
-                                  )}
-                                </div>
+                            return (
+                              <button
+                                key={`${item.lead.id}-${item.time}`}
+                                type="button"
+                                onClick={() => setSelectedLeadId(isSelected ? null : item.lead.id)}
+                                title={`${item.lead.name} · ${fmtTime(item.time)} – ${fmtMinutesAsTime(endMins)} · Travel: ${travelMins}min each way · ${isInsp ? "Inspection" : "Job"}: ${coreMins}min`}
+                                className="absolute cursor-pointer group focus:outline-none"
+                                style={{
+                                  left: `${leftPct}%`,
+                                  width: `${totalPct}%`,
+                                  top: 5 + lane * LANE_HEIGHT,
+                                  height: 40,
+                                  zIndex: isSelected ? 20 : 10,
+                                }}
+                              >
+                                <div className={`h-full flex rounded-lg overflow-hidden transition-all shadow-sm ${isSelected ? "ring-2 ring-offset-1 shadow-md" : "hover:shadow-md"}`}
+                                  style={{ outlineColor: coreColor }}>
 
-                                {/* Core appointment segment */}
-                                <div className="h-full flex flex-col justify-center px-1.5 overflow-hidden min-w-0"
-                                  style={{ flex: `${coreMins} ${coreMins} 0%`, backgroundColor: coreBg }}>
-                                  <div className="text-[9px] font-black text-slate-900 truncate leading-tight">
-                                    {item.lead.name || "Customer"}
+                                  {/* Travel TO segment */}
+                                  <div className="h-full flex items-center justify-center min-w-0"
+                                    style={{ flex: `${travelMins} ${travelMins} 0%`, backgroundColor: travelColor, borderRight: `1px dashed ${coreColor}` }}>
+                                    {travelMins / totalMins > 0.12 && (
+                                      <span className="text-[7px] font-black whitespace-nowrap" style={{ color: coreColor }}>
+                                        {travelMins}m↗
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className="text-[8px] font-bold truncate leading-none mt-0.5" style={{ color: coreColor }}>
-                                    {isInsp ? "Insp" : "Job"} · {coreMins}m
+
+                                  {/* Core appointment segment */}
+                                  <div className="h-full flex flex-col justify-center px-1.5 overflow-hidden min-w-0"
+                                    style={{ flex: `${coreMins} ${coreMins} 0%`, backgroundColor: coreBg }}>
+                                    <div className="text-[9px] font-black text-slate-900 truncate leading-tight">
+                                      {item.lead.name || "Customer"}
+                                    </div>
+                                    <div className="text-[8px] font-bold truncate leading-none mt-0.5" style={{ color: coreColor }}>
+                                      {isInsp ? "Insp" : "Job"} · {coreMins}m
+                                    </div>
+                                  </div>
+
+                                  {/* Travel RETURN segment */}
+                                  <div className="h-full flex items-center justify-center min-w-0"
+                                    style={{ flex: `${travelMins} ${travelMins} 0%`, backgroundColor: travelColor, borderLeft: `1px dashed ${coreColor}` }}>
+                                    {travelMins / totalMins > 0.12 && (
+                                      <span className="text-[7px] font-black" style={{ color: coreColor }}>
+                                        ↙{travelMins}m
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-
-                                {/* Travel RETURN segment */}
-                                <div className="h-full flex items-center justify-center min-w-0"
-                                  style={{ flex: `${travelMins} ${travelMins} 0%`, backgroundColor: travelColor, borderLeft: `1px dashed ${coreColor}` }}>
-                                  {travelMins / totalMins > 0.12 && (
-                                    <span className="text-[7px] font-black" style={{ color: coreColor }}>
-                                      ↙{travelMins}m
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
-                {/* Legend */}
-                <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center gap-4 text-[9px] text-slate-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-blue-200 border border-dashed border-blue-500 inline-block" />Travel (each way)
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-600 inline-block" />Inspection (30 min)
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-600 inline-block" />Job (2 hr)
-                  </span>
-                  <span className="text-slate-400 ml-auto italic">Block = travel ↗ + work + return ↙</span>
+                  {/* Legend */}
+                  <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center gap-4 text-[9px] text-slate-500">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-sm bg-blue-200 border border-dashed border-blue-500 inline-block" />Travel (each way)
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-600 inline-block" />Inspection (30 min)
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-600 inline-block" />Job (2 hr)
+                    </span>
+                    <span className="text-slate-400 ml-auto italic">Block = travel ↗ + work + return ↙</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
           </div>
         )}
@@ -715,6 +727,60 @@ export function DispatchView({
                     <span className="font-bold text-slate-800">{value}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="border-t border-slate-200 bg-white p-3 space-y-2 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">
+                    <UserPlus className="w-3 h-3 text-blue-600" />Unassigned
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500">{unassignedItems.length} open</span>
+                </div>
+                <select
+                  value={assignTo}
+                  onChange={(e) => setAssignTo(e.target.value)}
+                  className="w-full text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none cursor-pointer hover:bg-slate-100"
+                >
+                  <option value="Unassigned">Choose assignee</option>
+                  {assignableTechnicians.map((t) => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+
+                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                  {unassignedItems.length === 0 ? (
+                    <div className="text-[11px] text-slate-400 italic">No unassigned items in the current window.</div>
+                  ) : (
+                    unassignedItems.map((item) => (
+                      <div key={`${item.lead.id}-${item.type}-${item.date}`} className="rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLeadId(item.lead.id)}
+                            className="text-left min-w-0"
+                          >
+                            <div className="text-[11px] font-bold text-slate-900 truncate">{item.lead.name || "Customer"}</div>
+                            <div className="text-[10px] text-slate-500 truncate">{item.lead.address || item.lead.city || "No address"}</div>
+                          </button>
+                          <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            {item.type === "inspection" ? "Inspection" : "Job"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-slate-500">{item.lead.status || "Unassigned"}</span>
+                          <button
+                            type="button"
+                            onClick={() => assignFromDispatch(item)}
+                            disabled={assignTo === "Unassigned"}
+                            className="px-2 py-1 rounded-md text-[10px] font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Assign
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 

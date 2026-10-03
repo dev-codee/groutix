@@ -96,6 +96,7 @@ export function ManagerDashboard() {
   const [unassignedTab, setUnassignedTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
 
   const bookingRules = useBookingRules();
+  const _now = useMemo(() => new Date(), []);
   // All "today/tomorrow" references must use Australian Eastern Time so the
   // dashboard rolls over at AU midnight, not UTC midnight.
   const _dayKey = (v?: string) => formatApptDate(v, { year: "numeric", month: "2-digit", day: "2-digit" });

@@ -247,6 +247,36 @@ async function taskCollection(): Promise<Collection<TaskDoc>> {
   return db.collection<TaskDoc>("crm_tasks");
 }
 
+// ── Recycle Bin ────────────────────────────────────────────────────────────────
+
+export interface RecycleBinDoc extends SubmissionDoc {
+  deletedAt: Date;
+  deletedBy?: string;
+  /** The original status the lead had before it was deleted. */
+  originalStatus?: string;
+}
+
+export type RecycleBinJSON = Omit<RecycleBinDoc, "_id" | "createdAt" | "deletedAt"> & {
+  id: string;
+  createdAt: string;
+  deletedAt: string;
+};
+
+function recycleBinToJSON(doc: RecycleBinDoc): RecycleBinJSON {
+  const { _id, createdAt, deletedAt, ...rest } = doc;
+  return {
+    ...rest,
+    id: _id ? _id.toString() : "",
+    createdAt: (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString(),
+    deletedAt: (deletedAt instanceof Date ? deletedAt : new Date(deletedAt)).toISOString(),
+  };
+}
+
+async function recycleBinCollection(): Promise<Collection<RecycleBinDoc>> {
+  const db = await getDb();
+  return db.collection<RecycleBinDoc>("recycle_bin");
+}
+
 /**
  * Atomically increment and return a named counter (e.g. "quote", "warranty").
  * Used to mint sequential, human-friendly document numbers.
@@ -664,11 +694,23 @@ export async function updateSubmission(
   return res.matchedCount > 0;
 }
 
-export async function deleteSubmission(id: string): Promise<boolean> {
+export async function deleteSubmission(id: string, deletedBy?: string): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection();
-  const res = await col.deleteOne({ _id: new ObjectId(id) });
-  return res.deletedCount > 0;
+  const doc = await col.findOne({ _id: new ObjectId(id) });
+  if (!doc) return false;
+
+  // Move to recycle bin instead of permanently deleting
+  const bin = await recycleBinCollection();
+  const recycleBinDoc: RecycleBinDoc = {
+    ...doc,
+    deletedAt: new Date(),
+    deletedBy: deletedBy || "system",
+    originalStatus: doc.status,
+  };
+  await bin.insertOne(recycleBinDoc);
+  await col.deleteOne({ _id: new ObjectId(id) });
+  return true;
 }
 
 export async function updateEmailDelivered(
@@ -879,4 +921,82 @@ function buildTimeline(
     }
   }
   return Array.from(map.entries()).map(([date, v]) => ({ date, ...v }));
+}
+
+// ── Recycle Bin Operations ─────────────────────────────────────────────────────
+
+/** List all soft-deleted leads, newest deletions first. */
+export async function listRecycleBin(
+  params?: { search?: string; page?: number; pageSize?: number }
+): Promise<{ items: RecycleBinJSON[]; total: number }> {
+  const bin = await recycleBinCollection();
+  const page = Math.max(1, params?.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, params?.pageSize ?? 50));
+
+  let filter: Filter<RecycleBinDoc> = {};
+  if (params?.search) {
+    const esc = escapeRegex(params.search);
+    const rx = { $regex: esc, $options: "i" };
+    filter = {
+      $or: [
+        { name: rx },
+        { email: rx },
+        { phone: rx },
+        { jobNo: rx },
+        { address: rx },
+        { service: rx },
+      ],
+    };
+  }
+
+  const [docs, total] = await Promise.all([
+    bin
+      .find(filter, { projection: { "photos.dataUrl": 0 } })
+      .sort({ deletedAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .toArray(),
+    bin.countDocuments(filter),
+  ]);
+
+  return { items: docs.map(recycleBinToJSON), total };
+}
+
+/** Restore a lead from the recycle bin back to the submissions collection. */
+export async function restoreFromRecycleBin(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const bin = await recycleBinCollection();
+  const doc = await bin.findOne({ _id: new ObjectId(id) });
+  if (!doc) return false;
+
+  // Remove recycle-bin metadata and restore the original document
+  const { deletedAt, deletedBy, originalStatus, ...original } = doc;
+  // Restore the status to what it was before deletion
+  if (originalStatus) original.status = originalStatus;
+
+  const col = await collection();
+  await col.insertOne(original as SubmissionDoc);
+  await bin.deleteOne({ _id: new ObjectId(id) });
+  return true;
+}
+
+/** Permanently delete a single lead from the recycle bin. */
+export async function permanentlyDeleteFromRecycleBin(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const bin = await recycleBinCollection();
+  const res = await bin.deleteOne({ _id: new ObjectId(id) });
+  return res.deletedCount > 0;
+}
+
+/** Empty the entire recycle bin (permanent deletion of all trashed leads). */
+export async function emptyRecycleBin(): Promise<number> {
+  const bin = await recycleBinCollection();
+  const res = await bin.deleteMany({});
+  return res.deletedCount;
+}
+
+/** Get the count of items in the recycle bin. */
+export async function getRecycleBinCount(): Promise<number> {
+  const bin = await recycleBinCollection();
+  return bin.countDocuments({});
 }
