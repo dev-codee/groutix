@@ -295,6 +295,9 @@ export default function CrmDashboardPage() {
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const [liveGpsCoords, setLiveGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
+  // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter
+  const [dispatchInitialTab, setDispatchInitialTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
+  const [dispatchInitialTechFilter, setDispatchInitialTechFilter] = useState<string>("all");
 
   // Live AUS clock — updates every second.
   // Both states start as "" so the server and first client render agree (no
@@ -3677,6 +3680,16 @@ export default function CrmDashboardPage() {
     [navigateTo]
   );
 
+  /** Open the Dispatch view pre-filtered to a specific tab and optional tech filter (e.g. "Unassigned"). */
+  const openDispatch = useCallback(
+    (tab: "all" | "leads" | "inspections" | "jobs" = "all", techFilter: string = "all") => {
+      setDispatchInitialTab(tab);
+      setDispatchInitialTechFilter(techFilter);
+      navigateTo("dispatch");
+    },
+    [navigateTo]
+  );
+
   // Open the "inbox": the leads table filtered to conversations that have an
   // unread customer reply. Used by the header bell and the hero's Open Inbox.
   const openInbox = useCallback(() => {
@@ -3728,7 +3741,7 @@ export default function CrmDashboardPage() {
     // Assignee helpers
     rowAssigneeOptions, isTechnicianName,
     // Navigation
-    setCurrentView: navigateTo, openLeadsFiltered, openInbox, startNewLead,
+    setCurrentView: navigateTo, openLeadsFiltered, openDispatch, openInbox, startNewLead,
     openJobCard: setJobCardLead,
     // Manager dashboard extras
     staffLocations, leads, loading, filteredLeads,
@@ -4376,13 +4389,17 @@ export default function CrmDashboardPage() {
               VIEW: DISPATCH
              ========================================================================= */}
             {currentView === "dispatch" && (
-              <DispatchView onOpenLead={(id: string) => {
-                const lead = leads.find((l) => l.id === id);
-                if (lead) {
-                  setEditingLead(lead);
-                  setLeadModalOpen(true);
-                }
-              }} />
+              <DispatchView
+                initialTab={dispatchInitialTab}
+                initialTechFilter={dispatchInitialTechFilter}
+                onOpenLead={(id: string) => {
+                  const lead = leads.find((l) => l.id === id);
+                  if (lead) {
+                    setEditingLead(lead);
+                    setLeadModalOpen(true);
+                  }
+                }}
+              />
             )}
 
             {/* =========================================================================
@@ -4910,14 +4927,14 @@ export default function CrmDashboardPage() {
 
                       {/* Spreadsheet-style items table (Item Code | Item Name | Qty | Price | Total) */}
                       <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 900 }}>
+                        <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 820 }}>
                           <colgroup>
                             <col style={{ width: 36 }} />
-                            <col style={{ width: 260 }} />
+                            <col style={{ width: 160 }} />
                             <col />
-                            <col style={{ width: 60 }} />
-                            <col style={{ width: 100 }} />
-                            <col style={{ width: 100 }} />
+                            <col style={{ width: 56 }} />
+                            <col style={{ width: 80 }} />
+                            <col style={{ width: 80 }} />
                             <col style={{ width: 40 }} />
                           </colgroup>
                           <thead>

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate, fmtDateOnly, getLeadQuoteTotal } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs, todayAU, tomorrowAU } from "@/lib/scheduling";
 import { calculateTravel } from "@/lib/dispatch";
 import { dayHours, formatHHmm, toMinutes, WEEKDAY_NAMES, type BookingType } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
@@ -65,6 +65,7 @@ export function ManagerDashboard() {
     unreadReplyCount,
     setCurrentView,
     openLeadsFiltered,
+    openDispatch,
     openJobCard,
     openInbox,
     startNewLead,
@@ -95,18 +96,18 @@ export function ManagerDashboard() {
   const [unassignedTab, setUnassignedTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
 
   const bookingRules = useBookingRules();
-  const _now = new Date();
-  const _tomDate = new Date(_now);
-  _tomDate.setDate(_tomDate.getDate() + 1);
+  const _now = useMemo(() => new Date(), []);
+  // All "today/tomorrow" references must use Australian Eastern Time so the
+  // dashboard rolls over at AU midnight, not UTC midnight.
   const _dayKey = (v?: string) => formatApptDate(v, { year: "numeric", month: "2-digit", day: "2-digit" });
-  const _todayStr = _dayKey(_now.toISOString());
+  const _todayStr = _dayKey(todayAU() + "T12:00");   // noon avoids any DST edge
   // Booking rules are keyed by ISO date (YYYY-MM-DD) so scheduled changeovers
   // resolve correctly; day keys above are the en-AU "DD/MM/YYYY" display form.
   const _ymd = (dayKey: string) => {
     const [d, m, y] = dayKey.split("/");
     return y && m && d ? `${y}-${m}-${d}` : "";
   };
-  const _tomStr = _dayKey(_tomDate.toISOString());
+  const _tomStr = _dayKey(tomorrowAU() + "T12:00");
   const _apptMs = (l: Lead) => apptInstantMs(l.inspectionAt || l.jobAt) || 0;
 
   const fmtScheduleDate = (d: Date) =>
@@ -138,7 +139,8 @@ export function ManagerDashboard() {
     );
   }, [scopedLeads, searchQuery]);
 
-  // 1. TODAY & TOMORROW SCHEDULE — only jobs/inspections with a scheduled date
+  // 1. TODAY & TOMORROW SCHEDULE — only jobs/inspections with a scheduled date.
+  // Completed/done leads stay visible with a "Completed" badge; only Lost/Cancelled are hidden.
   const todayLeadsList = useMemo(() => {
     return matchedLeads
       .filter((l) => {
@@ -1118,18 +1120,37 @@ export function ManagerDashboard() {
                     : (l.technician || (isTechnicianName(l.assigned) ? l.assigned : "") || "None");
                   const typeLabel = isInsp ? "Inspection" : "Job";
                   const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+                  // Determine if this inspection/job has been completed
+                  const isDone =
+                    l.status === "Inspection Completed" ||
+                    l.status === "Job Done" ||
+                    l.status === "Completed" ||
+                    l.inspectionReport?.status === "completed";
+
                   return (
                     <div
                       key={l.id}
                       onClick={() => openJobCard(l)}
-                      className="p-2 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-blue-50/50 transition-colors cursor-pointer shadow-2xs space-y-1 text-left"
+                      className={`p-2 rounded-xl border transition-colors cursor-pointer shadow-2xs space-y-1 text-left ${
+                        isDone
+                          ? "border-emerald-200/80 bg-emerald-50/40 hover:bg-emerald-50/70 opacity-80"
+                          : "border-slate-200/80 bg-slate-50/50 hover:bg-blue-50/50"
+                      }`}
                       title={`View Lead #${l.jobNo || l.id} (${l.name || "Customer"})`}
                     >
                       <div className="flex items-center justify-between gap-1 text-[10px]">
                         <span className="font-extrabold text-blue-700 tabular-nums truncate">{timeStr}</span>
-                        <span className={`px-1.5 py-0.2 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>{typeLabel}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isDone && (
+                            <span className="px-1.5 py-0.5 rounded-md font-bold border text-[9px] bg-emerald-100 text-emerald-700 border-emerald-300">
+                              ✓ Completed
+                            </span>
+                          )}
+                          <span className={`px-1.5 py-0.2 rounded-md font-bold border text-[9px] ${typeColor}`}>{typeLabel}</span>
+                        </div>
                       </div>
-                      <div className="font-bold text-xs text-slate-900 truncate">
+                      <div className={`font-bold text-xs truncate ${isDone ? "text-slate-500 line-through decoration-emerald-400" : "text-slate-900"}`}>
                         #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
                       </div>
                       <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 pt-0.5 border-t border-slate-200/40 font-medium">
@@ -1190,11 +1211,12 @@ export function ManagerDashboard() {
                 <div
                   key={idx}
                   onClick={() => {
-                    setEditingLead(act.lead);
-                    setLeadModalOpen(true);
+                    setStatusFilter("");
+                    setGlobalSearch(act.lead.jobNo || act.lead.id);
+                    setCurrentView("leads");
                   }}
                   className="flex items-center justify-between gap-2 text-xs p-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200/60"
-                  title={`Open Lead #${act.lead.jobNo || act.lead.id}`}
+                  title={`View Lead #${act.lead.jobNo || act.lead.id} in Leads`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div className={`w-6 h-6 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
@@ -1401,7 +1423,7 @@ export function ManagerDashboard() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => openLeadsFiltered(["New", "Contacted", "Waiting for Info", "Job Booked", "Scheduled", "Job Confirmed", "Won", "Inspection Booked"])}
+                  onClick={() => openDispatch("all", "Unassigned")}
                   className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
                 >
                   View All
@@ -1469,21 +1491,23 @@ export function ManagerDashboard() {
                   return (
                     <div
                       key={l.id}
-                      className="p-2 rounded-xl border border-amber-100 bg-amber-50/40 hover:bg-amber-50 transition-colors shadow-2xs space-y-1"
+                      className="p-2 rounded-xl border border-amber-100 bg-amber-50/40 hover:bg-amber-50 transition-colors shadow-2xs space-y-1 cursor-pointer"
+                      onClick={() => {
+                        const tab = isNewLead ? "leads" : isInsp ? "inspections" : "jobs";
+                        openDispatch(tab, "Unassigned");
+                      }}
                     >
                       <div className="flex items-center justify-between gap-1 text-[10px]">
                         <span className="font-extrabold text-amber-700 tabular-nums truncate">{timeLabel}</span>
                         <span className={`px-1.5 rounded-md font-bold border shrink-0 text-[9px] ${typeColor}`}>{typeLabel}</span>
                       </div>
                       <div className="flex items-center justify-between gap-1">
-                        <button
-                          type="button"
-                          onClick={() => { setEditingLead(l); setLeadModalOpen(true); }}
-                          className="font-bold text-xs text-slate-900 truncate text-left hover:text-blue-700 cursor-pointer"
-                          title={`Open lead #${l.jobNo || l.id}`}
+                        <span
+                          className="font-bold text-xs text-slate-900 truncate text-left hover:text-blue-700"
+                          title={`Open dispatch for #${l.jobNo || l.id}`}
                         >
                           #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
-                        </button>
+                        </span>
                         {mapsUrl && (
                           <a
                             href={mapsUrl}
@@ -1524,7 +1548,7 @@ export function ManagerDashboard() {
               </div>
               <button
                 type="button"
-                onClick={() => setCurrentView("dispatch")}
+                onClick={() => openDispatch("all")}
                 className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
               >
                 View All
@@ -1540,13 +1564,14 @@ export function ManagerDashboard() {
               {activeStaffRosterList.map((member, idx) => {
                 const status = getStaffRealtimeStatus(member);
                 const initials = getStaffBadgeInitials(member.name, member.isInspector, idx);
+                const tab = member.isInspector ? "inspections" : "jobs";
 
                 return (
                   <div
                     key={member.id}
-                    onClick={() => setCurrentView("dispatch")}
+                    onClick={() => openDispatch(tab, member.name)}
                     className="bg-white rounded-xl border border-slate-200/80 p-2.5 shadow-2xs hover:shadow-xs hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between space-y-1.5"
-                    title={`View ${member.name}'s schedule in Dispatch`}
+                    title={`View ${member.name}'s ${member.isInspector ? "inspections" : "jobs"} in Dispatch`}
                   >
                     {/* Top: Avatar + Name + Role */}
                     <div className="flex items-center gap-2">
@@ -1757,7 +1782,7 @@ export function ManagerDashboard() {
                                   {slot.label}
                                 </span>
                                 <div
-                                  onClick={() => setCurrentView("dispatch")}
+                                  onClick={() => openDispatch(member.isInspector ? "inspections" : "jobs", member.name)}
                                   className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
                                     slotInfo.status === "booked"
                                       ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
@@ -1765,7 +1790,7 @@ export function ManagerDashboard() {
                                       ? "bg-slate-200 hover:bg-slate-300"
                                       : "bg-[#4ade80] hover:bg-emerald-500"
                                   }`}
-                                  title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to open in Dispatch`}
+                                  title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to view ${member.name}'s ${member.isInspector ? "inspections" : "jobs"} in Dispatch`}
                                 />
                               </div>
                             );

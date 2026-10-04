@@ -10,6 +10,7 @@ import {
   isOuterZone,
   zoneWeekday,
   DEFAULT_ZONE_RULES,
+  todayAU,
   type AreaInfo,
   type ZoneRules,
 } from "@/lib/scheduling";
@@ -219,9 +220,9 @@ export function suggestBestDispatchSlots(params: {
     }
   }
 
-  // 4. Candidate dates starting from the configured earliest booking date (or today)
+  // 4. Candidate dates starting from the configured earliest booking date (or today in AU time)
   const suggestions: DispatchSlot[] = [];
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayAU();
   const minDate = new Date((rules.minDate && rules.minDate > todayStr ? rules.minDate : todayStr) + "T00:00:00");
 
   // Test across the upcoming 28 days

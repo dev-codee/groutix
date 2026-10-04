@@ -499,9 +499,16 @@ export default function HeroQuoteForm() {
     setDamagedTileError(hasDamagedTileError);
     setLeakingError(hasLeakingError);
 
-    // Inspection booking validation: if the section is open, both date AND time are required
+    // Inspection booking validation. Picking a slot is OPTIONAL and only possible
+    // when we actually have slots to offer, so only require date+time when the
+    // section is open AND there is something bookable in it. Without the second
+    // condition an out-of-area or coastal address — where the slot list is empty
+    // by design — could never submit the form at all: it would demand a date that
+    // the picker had no way to supply. Everyone can always send us a lead; the
+    // 50 km / coastal rules gate the self-service BOOKING, not the enquiry.
+    const canBookInspection = inspectionSectionOpen && !isOutsideServiceArea && inspectionDays.length > 0;
     let hasInspectionError = false;
-    if (inspectionSectionOpen) {
+    if (canBookInspection) {
       if (!inspectionDate) {
         setInspectionError("Please select a date for your free inspection.");
         hasInspectionError = true;
@@ -892,8 +899,17 @@ export default function HeroQuoteForm() {
                     value={data.address}
                     onChange={(e) => {
                       handleChange(e);
+                      const next = e.target.value;
                       if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
-                      addressDebounceRef.current = setTimeout(() => fetchAddressSuggestions(e.target.value), 350);
+                      addressDebounceRef.current = setTimeout(() => {
+                        fetchAddressSuggestions(next);
+                        // Re-check availability for the typed address too, not just
+                        // for one picked from the suggestion list. Otherwise editing
+                        // "Brunswick" to "Geelong" by hand leaves the previously
+                        // chosen slot on screen, and the customer thinks they hold a
+                        // time the server will (correctly) refuse to book.
+                        if (inspectionSectionOpen && next.length >= 5) fetchInspectionAvailability(next);
+                      }, 350);
                     }}
                     onBlur={(e) => {
                       handleBlur(e);

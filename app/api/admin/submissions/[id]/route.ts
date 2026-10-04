@@ -259,9 +259,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 (err) => console.error("Reschedule SMS failed (non-fatal):", err)
               );
             }
+          } else {
+            // Brand-new inspection booking — log it
+            await appendActivity(id, {
+              time: now,
+              actor,
+              action: "Inspection booked",
+              detail: formatAppt(body.inspectionAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body.inspectionAt,
+            });
           }
-        } else if (!body.inspectionAt) {
+        } else if (body.inspectionAt === "" || !body.inspectionAt) {
           await deleteBooking(id, "inspection");
+          if (before.inspectionAt) {
+            await appendActivity(id, { time: now, actor, action: "Inspection booking cleared", detail: before.inspectionAt });
+          }
         }
       }
       if (typeof body.jobAt === "string" && body.jobAt !== before.jobAt) {
@@ -277,8 +288,67 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             suburb: area.suburb || undefined,
             reference: `GX-ADM-${id.slice(-6)}`,
           });
-        } else if (!body.jobAt) {
+
+          // Reschedule: notify customer and log activity when an existing job booking is moved.
+          if (before.jobAt) {
+            await appendActivity(id, {
+              time: now,
+              actor,
+              action: "Job rescheduled",
+              detail: `${formatAppt(before.jobAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || before.jobAt} → ${formatAppt(body.jobAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body.jobAt}`,
+            });
+
+            const newJobDateLabel = formatAppt(body.jobAt, {
+              weekday: "long", day: "2-digit", month: "short",
+              year: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+            }) || body.jobAt;
+            const firstName = before.name?.trim().split(/\s+/)[0] || "there";
+            const propertyAddress = before.address || "your property";
+
+            if (isEmailConfigured() && before.email) {
+              const logoUrl = await getEmailLogoUrl();
+              await sendEmail({
+                toEmail: before.email,
+                subject: "Your Groutix Job Has Been Rescheduled",
+                html: wrapEmailHtml(
+                  `<h2 style="margin:0 0 12px">Job Rescheduled</h2>
+                   <p>Hi ${firstName},</p>
+                   <p>Your grouting job at <strong>${propertyAddress}</strong> has been rescheduled to:</p>
+                   <p style="font-size:16px;font-weight:bold;color:#001f97;margin:12px 0">&#128197; ${newJobDateLabel}</p>
+                   <p>If you have any questions or need to reschedule again, please reply to this email, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>
+                   <p>Kind regards,<br>Groutix Team</p>`,
+                  "Your Groutix job has been rescheduled",
+                  logoUrl
+                ),
+              }).catch((err) => console.error("Job reschedule email failed (non-fatal):", err));
+            }
+
+            if (isSmsConfigured() && before.phone) {
+              const shortJobLabel = formatAppt(body.jobAt, {
+                weekday: "short", day: "numeric", month: "short",
+                hour: "numeric", minute: "2-digit", hour12: true,
+              }) || body.jobAt;
+              const smsBody = prepareSinglePartSms(
+                `Your Groutix job has been rescheduled to ${shortJobLabel}. Call 7023 8094 for questions.`
+              );
+              await sendSms({ to: before.phone, body: smsBody, campaign: "job_reschedule" }).catch(
+                (err) => console.error("Job reschedule SMS failed (non-fatal):", err)
+              );
+            }
+          } else {
+            // Brand-new job booking (no previous jobAt) — log it
+            await appendActivity(id, {
+              time: now,
+              actor,
+              action: "Job booked",
+              detail: formatAppt(body.jobAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body.jobAt,
+            });
+          }
+        } else if (body.jobAt === "" || !body.jobAt) {
           await deleteBooking(id, "job");
+          if (before.jobAt) {
+            await appendActivity(id, { time: now, actor, action: "Job booking cleared", detail: before.jobAt });
+          }
         }
       }
     }
