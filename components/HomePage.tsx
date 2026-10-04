@@ -1362,7 +1362,6 @@ export default function HomePage({
             {/* Group photo */}
             <div className="max-w-4xl mx-auto">
               <ImgBox
-                src="/team_group.jpg"
                 label="Group photo of Johnny and the team"
                 aspect="aspect-[16/9] md:aspect-[21/9]"
                 className="rounded-sm"
@@ -1372,8 +1371,8 @@ export default function HomePage({
             {/* Team members */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {[
-                { name: "Johnny", role: "Technician", avatar: "/team_johnny.jpg" },
-                { name: "Max", role: "Technician", avatar: "/team_member2.jpg" },
+                { name: "Johnny", role: "Technician", avatar: "" },
+                { name: "Max", role: "Technician", avatar: "" },
               ].map((member, i) => (
                 <motion.div
                   key={i}
@@ -1383,13 +1382,17 @@ export default function HomePage({
                   transition={{ delay: i * 0.1, duration: 0.4 }}
                   className="bg-neutral-50 border border-neutral-200 rounded-sm p-6 flex items-center gap-5"
                 >
-                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border-2 border-accent shadow-sm">
-                    <Image
-                      src={member.avatar}
-                      alt={member.name}
-                      fill
-                      className="object-cover"
-                    />
+                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border-2 border-accent shadow-sm bg-neutral-100 flex items-center justify-center">
+                    {member.avatar ? (
+                      <Image
+                        src={member.avatar}
+                        alt={member.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <Users className="w-8 h-8 text-neutral-300" />
+                    )}
                   </div>
                   <div>
                     <h3 className="font-bold text-neutral-900 text-xl">{member.name}</h3>
@@ -1473,7 +1476,7 @@ export default function HomePage({
               </div>
               <Link
                 href="/real-estate-property-services"
-                className="bg-accent hover:bg-accent/90 text-primary font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95 flex-shrink-0" style={{ background: "#FBBC04 !important " }}
+                className="bg-[#FBBC04] hover:bg-white text-primary font-bold px-6 py-3 rounded-sm text-base transition-colors duration-200 active:scale-95 flex-shrink-0 shadow-sm"
               >
                 Discuss a Property Job
               </Link>
