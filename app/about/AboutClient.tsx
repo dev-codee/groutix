@@ -116,7 +116,7 @@ export default function AboutClient() {
   const stats = aboutData.stats;
 
   return (
-    <main className="pt-[73px]">
+    <main className="pt-[110px] lg:pt-[125px]">
       {/* Hero Section */}
       <motion.section
         initial={{ opacity: 0 }}

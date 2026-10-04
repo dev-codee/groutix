@@ -1,56 +1,29 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Phone, Mail, Clock } from "lucide-react";
 import { useContact } from "@/components/SiteContentProvider";
-import { motion } from "framer-motion";
 import Image from "next/image";
-
-const SocialIcons = {
-  Facebook: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
-  ),
-  Instagram: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current strokeWidth-2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" /></svg>
-  ),
-  Twitter: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></svg>
-  ),
-  Linkedin: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg>
-  ),
-};
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { phone, tel, email, mailto } = useContact();
   const [logoSrc, setLogoSrc] = useState("/new_logo.jpeg");
+
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
-      .then((d) => { if (d.logoUrl) setLogoSrc(d.logoUrl); })
+      .then((d) => {
+        if (d.logoUrl) setLogoSrc(d.logoUrl);
+      })
       .catch(() => {});
   }, []);
 
   return (
-    <motion.footer
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.8 }}
-      className="bg-[#001F97] text-white pt-16 pb-8 border-t border-[#001579] relative overflow-hidden"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(47,99,204,0.18),_transparent_55%)]" />
+    <footer className="bg-[#0b1a53] text-white pt-14 pb-8 border-t border-[#091544] relative overflow-hidden font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-12 border-b border-white/20">
-          {/* Company Column */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.0 }}
-            className="space-y-6"
-          >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10 pb-12 border-b border-white/10">
+          {/* Column 1: Brand / Description / Reviews / Socials */}
+          <div className="space-y-4">
             <Link href="/" className="flex items-center group">
               <Image
                 src={logoSrc}
@@ -59,211 +32,249 @@ export default function Footer() {
                 height={80}
                 priority
                 unoptimized
-                className="h-12 sm:h-14 md:h-16 w-auto object-contain transition-opacity duration-200 hover:opacity-95 rounded-md"
+                className="h-10 sm:h-12 w-auto object-contain rounded-md"
               />
             </Link>
-            <p className="text-base text-white/90 leading-relaxed font-normal">
-              Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.
+            <p className="text-sm text-white/80 leading-relaxed font-normal">
+              Shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Melbourne.
             </p>
+            <div className="pt-1">
+              <div className="flex items-center gap-1.5 text-xs text-white">
+                <span className="text-amber-400 font-bold tracking-widest text-xs">★★★★★</span>
+                <span className="font-semibold text-white/90">5.0 · 290+ Google reviews</span>
+              </div>
+            </div>
+            {/* Social Icons: circular dark buttons 'f' and 'ig' */}
+            <div className="flex items-center space-x-2.5 pt-2">
+              <a
+                href="https://www.facebook.com/profile.php?id=61582570358855"
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white text-xs font-bold transition-colors"
+                aria-label="Facebook"
+              >
+                f
+              </a>
+              <a
+                href="https://www.instagram.com/groutix.au/"
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white text-xs font-bold transition-colors"
+                aria-label="Instagram"
+              >
+                ig
+              </a>
+            </div>
+          </div>
 
-            <div className="flex space-x-4 pt-1">
-              {[
-                { name: "Facebook", href: "https://www.facebook.com/profile.php?id=61582570358855" },
-                { name: "Instagram", href: "https://www.instagram.com/groutix.au/" },
-                { name: "Twitter", href: "https://twitter.com" },
-                { name: "Linkedin", href: "https://linkedin.com" },
-              ].map((social, i) => (
-                <motion.a
-                  key={social.name}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 + i * 0.05 }}
-                  href={social.href}
+          {/* Column 2: SERVICES */}
+          <div>
+            <h3 className="text-white font-bold text-xs tracking-wider uppercase mb-5">
+              SERVICES
+            </h3>
+            <ul className="space-y-2.5 text-sm text-white/80">
+              <li>
+                <Link href="/shower-regrouting" className="hover:text-white transition-colors">
+                  Shower Regrouting
+                </Link>
+              </li>
+              <li>
+                <Link href="/leaking-shower-repair" className="hover:text-white transition-colors">
+                  Leaking Shower Repair
+                </Link>
+              </li>
+              <li>
+                <Link href="/balcony-leak-repairs" className="hover:text-white transition-colors">
+                  Balcony Leak Repairs
+                </Link>
+              </li>
+              <li>
+                <Link href="/tile-regrouting" className="hover:text-white transition-colors">
+                  Tile Regrouting
+                </Link>
+              </li>
+              <li>
+                <Link href="/shower-base-repair" className="hover:text-white transition-colors">
+                  Shower Base Repair
+                </Link>
+              </li>
+              <li>
+                <Link href="/shower-screens" className="hover:text-white transition-colors">
+                  Shower Screens
+                </Link>
+              </li>
+              <li>
+                <Link href="/silicone-recaulking" className="hover:text-white transition-colors">
+                  Silicone &amp; Recaulking
+                </Link>
+              </li>
+              <li>
+                <Link href="/epoxy-grout" className="hover:text-white transition-colors">
+                  Epoxy Grout
+                </Link>
+              </li>
+              <li>
+                <Link href="/small-tiling-jobs" className="hover:text-white transition-colors">
+                  Small Tiling Jobs
+                </Link>
+              </li>
+              <li>
+                <Link href="/real-estate-property-services" className="hover:text-white transition-colors">
+                  Real Estate &amp; Property Services
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: SERVICE AREAS */}
+          <div>
+            <h3 className="text-white font-bold text-xs tracking-wider uppercase mb-5">
+              SERVICE AREAS
+            </h3>
+            <ul className="space-y-2.5 text-sm text-white/80">
+              <li>
+                <Link href="/locations/melbourne" className="hover:text-white transition-colors">
+                  Melbourne
+                </Link>
+              </li>
+              <li>
+                <Link href="/locations/geelong" className="hover:text-white transition-colors">
+                  Geelong
+                </Link>
+              </li>
+              <li>
+                <Link href="/locations/ballarat" className="hover:text-white transition-colors">
+                  Ballarat
+                </Link>
+              </li>
+              <li>
+                <Link href="/locations/frankston" className="hover:text-white transition-colors">
+                  Frankston
+                </Link>
+              </li>
+              <li>
+                <Link href="/locations/lilydale" className="hover:text-white transition-colors">
+                  Lilydale
+                </Link>
+              </li>
+              <li>
+                <Link href="/locations/yarra-glen" className="hover:text-white transition-colors">
+                  Yarra Glen
+                </Link>
+              </li>
+              <li>
+                <Link href="/locations/kilmore" className="hover:text-white transition-colors">
+                  Kilmore
+                </Link>
+              </li>
+            </ul>
+            <div className="pt-4 text-xs text-white/60 leading-relaxed">
+              <Link href="/locations" className="hover:text-white/90 transition-colors">
+                → /locations hub. Regions only — the 176 suburbs stay in the header mega menu.
+              </Link>
+            </div>
+          </div>
+
+          {/* Column 4: CONTACT */}
+          <div>
+            <h3 className="text-white font-bold text-xs tracking-wider uppercase mb-5">
+              CONTACT
+            </h3>
+            <div className="space-y-3 text-sm text-white/80">
+              <div>
+                <p className="font-bold text-white">Groutix</p>
+                <p className="text-white/80">82A Marigold Cres,</p>
+                <p className="text-white/80">Gowanbrae VIC 3043</p>
+                <a
+                  href="https://maps.google.com/?q=82A+Marigold+Cres+Gowanbrae+VIC+3043"
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2.5 bg-white/15 hover:bg-white text-white hover:text-[#001F97] rounded-full transition-all duration-200"
-                  aria-label={social.name}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="text-xs text-blue-300 hover:underline block pt-1"
                 >
-                  {social.name === "Facebook" && <SocialIcons.Facebook />}
-                  {social.name === "Instagram" && <SocialIcons.Instagram />}
-                  {social.name === "Twitter" && <SocialIcons.Twitter />}
-                  {social.name === "Linkedin" && <SocialIcons.Linkedin />}
-                </motion.a>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Services Column */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-2"
-          >
-            <h3 className="text-white font-bold text-base tracking-wider uppercase mb-6 text-center">Services</h3>
-            <ul className="grid grid-cols-2 gap-y-3.5 gap-x-2 text-base text-white/90">
-              {[
-                { href: "/shower-regrouting", label: "Shower Regrouting" },
-                { href: "/shower-base-repair", label: "Shower Base Repair" },
-                { href: "/shower-screens", label: "Shower Screens" },
-                { href: "/tile-regrouting", label: "Tile Regrouting" },
-                { href: "/balcony-leak-repairs", label: "Balcony Leak Repairs" },
-                { href: "/silicone-recaulking", label: "Silicone & Recaulking" },
-                { href: "/epoxy-grout", label: "Epoxy Grout" },
-                { href: "/leaking-shower-repair", label: "Leaking Shower Repair" },
-                { href: "/small-tiling-jobs", label: "Small Tiling Jobs" },
-                { href: "/real-estate-property-services", label: "Real Estate & Property Services" },
-              ].map((item, i) => (
-                <motion.li
-                  key={item.href}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 + i * 0.05 }}
-                >
-                  <Link href={item.href} className="text-white hover:text-white/80 font-medium transition-colors duration-200 whitespace-nowrap">
-                    {item.label}
-                  </Link>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* Locations Column */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <h3 className="text-white font-bold text-base tracking-wider uppercase mb-6">Service Areas</h3>
-            <ul className="space-y-3.5 text-base text-white/90">
-              {[
-                { name: "Melbourne", href: "/locations/melbourne" },
-                { name: "Geelong", href: "/locations/geelong" },
-                { name: "Ballarat", href: "/locations/ballarat" },
-                { name: "Frankston", href: "/locations/frankston" },
-                { name: "Lilydale", href: "/locations/lilydale" },
-                { name: "Yarra Glen", href: "/locations/yarra-glen" },
-                { name: "Kilmore", href: "/locations/kilmore" },
-              ].map((item, i) => (
-                <motion.li
-                  key={item.href}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 + i * 0.05 }}
-                >
-                  <Link href={item.href} className="text-white hover:text-white/80 font-medium transition-colors duration-200">
-                    {item.name}
-                  </Link>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* Contact Column */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <h3 className="text-white font-bold text-base tracking-wider uppercase mb-6">Contact Us</h3>
-            <ul className="space-y-4 text-base">
-              <motion.li
-                initial={{ opacity: 0, x: 10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.4 }}
-              >
-                <a
-                  href={tel}
-                  className="flex items-start space-x-3 text-white hover:text-white/80 transition-colors duration-200"
-                >
-                  <Phone className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span className="block font-bold text-white text-base">{phone}</span>
-                    <span className="text-sm text-white/80">Talk through your repair</span>
-                  </div>
+                  Find us on Google Maps →
                 </a>
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: 10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.45 }}
-                className="flex items-start space-x-3"
-              >
-                <Mail className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
-                <div>
-                  <a href={mailto} className="block font-bold text-white text-base hover:text-white/80 transition-colors">{email}</a>
-                  <span className="text-sm text-white/80 font-normal">Request a quote or send shower photos</span>
-                </div>
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: 10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.5 }}
-                className="flex items-start space-x-3"
-              >
-                <Clock className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="block font-bold text-white text-base">Office Hours</span>
-                  <span className="block text-sm text-white/80">Mon – Fri: 9am – 5pm</span>
-                  <span className="block text-sm text-white/80">Sat – Sun: 10am – 3pm</span>
-                </div>
-              </motion.li>
+              </div>
+
+              <div>
+                <a
+                  href={tel || "tel:+61370238094"}
+                  className="block text-lg font-bold text-white hover:text-white/90 transition-colors"
+                >
+                  (03) 7023 8094
+                </a>
+                <a
+                  href={mailto || "mailto:info@groutix.com"}
+                  className="text-sm text-white/80 hover:underline block pt-0.5"
+                >
+                  info@groutix.com
+                </a>
+              </div>
+
+              <div className="pt-1 text-xs text-white/70 space-y-0.5">
+                <p>Mon–Sat: 9:00 AM – 6:30 PM</p>
+                <p>Sun: 11:00 AM – 10:00 PM</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 5: COMPANY */}
+          <div>
+            <h3 className="text-white font-bold text-xs tracking-wider uppercase mb-5">
+              COMPANY
+            </h3>
+            <ul className="space-y-2.5 text-sm text-white/80">
+              <li>
+                <Link href="/about" className="hover:text-white transition-colors">
+                  About Groutix
+                </Link>
+              </li>
+              <li>
+                <Link href="/about#team" className="hover:text-white transition-colors">
+                  Meet the Team
+                </Link>
+              </li>
+              <li>
+                <Link href="/#reviews" className="hover:text-white transition-colors">
+                  Reviews
+                </Link>
+              </li>
+              <li>
+                <Link href="/faq" className="hover:text-white transition-colors">
+                  FAQs
+                </Link>
+              </li>
+              <li>
+                <Link href="/careers" className="hover:text-white transition-colors">
+                  Careers
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="hover:text-white transition-colors">
+                  Contact
+                </Link>
+              </li>
             </ul>
-          </motion.div>
+          </div>
         </div>
 
-        {/* Footer Bottom */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-white/80 space-y-4 md:space-y-0"
-        >
-          <div className="text-white/50 font-normal">
-            &copy; {currentYear} Groutix. All rights reserved. Made by developer <a href="http://faizan-portfolio-tawny.vercel.app/" className="underline hover:text-white text-white/50 transition-colors">Faizan Ahmad</a>
+        {/* Footer Bottom Bar */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-white/60 gap-4">
+          <div>
+            © {currentYear} Groutix. All rights reserved.
           </div>
-          <div className="flex space-x-6">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.55 }}
-            >
-              <Link href="/faq" className="text-white hover:text-white/80 font-medium transition-colors">
-                FAQs
-              </Link>
-            </motion.div>
-            {["Privacy Policy", "Terms & Conditions", "Sitemap"].map((item, i) => (
-              <motion.div
-                key={item}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.6 + i * 0.05 }}
-              >
-                <Link
-                  href={`/${item.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-")}`}
-                  className="text-white hover:text-white/80 font-medium transition-colors"
-                >
-                  {item}
-                </Link>
-              </motion.div>
-            ))}
+          <div className="flex items-center space-x-6">
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms-conditions" className="hover:text-white transition-colors">
+              Terms &amp; Conditions
+            </Link>
+            <Link href="/sitemap.xml" className="hover:text-white transition-colors">
+              Sitemap
+            </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
-    </motion.footer>
+    </footer>
   );
 }

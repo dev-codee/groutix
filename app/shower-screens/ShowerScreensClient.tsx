@@ -78,7 +78,7 @@ export default function ShowerScreensClient() {
       : models.filter((m) => m.category === filterCategory);
 
   return (
-    <main className="pt-[73px] bg-neutral-50 text-neutral-900 min-h-screen">
+    <main className="pt-[110px] lg:pt-[125px] bg-neutral-50 text-neutral-900 min-h-screen">
       {/* ────── Hero Section ────── */}
       <section className="relative bg-primary text-white py-20 lg:py-28 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,214,79,0.15),_transparent_50%)] pointer-events-none" />

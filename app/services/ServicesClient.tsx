@@ -6,7 +6,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 
 export default function ServicesClient() {
   return (
-    <main className="pt-[73px]">
+    <main className="pt-[110px] lg:pt-[125px]">
       {/* Page Header */}
       <motion.section
         initial={{ opacity: 0 }}

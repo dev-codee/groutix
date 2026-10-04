@@ -48,7 +48,7 @@ export default function FaqPageClient() {
   const activeCategory = faqCategories[activeIndex];
 
   return (
-    <main className="pt-[73px]">
+    <main className="pt-[110px] lg:pt-[125px]">
       {/* Hero */}
       <motion.section
         initial={{ opacity: 0 }}

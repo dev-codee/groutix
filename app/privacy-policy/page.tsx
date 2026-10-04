@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-[73px]">
+      <main className="pt-[110px] lg:pt-[125px]">
         {/* Header Section */}
         <section className="bg-[#001F97] text-white py-16 lg:py-24">
           <div className="max-w-[1000px] mx-auto px-6 lg:px-10">

@@ -308,7 +308,7 @@ export default function CityPageClient({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="relative bg-primary pt-[73px]"
+        className="relative bg-primary pt-[110px] lg:pt-[125px]"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,214,79,0.25),transparent_55%)]" />
         <div className="max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2 pb-28">

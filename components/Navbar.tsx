@@ -193,24 +193,53 @@ export default function Navbar() {
   ];
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/95 backdrop-blur-md shadow-md" : "bg-white"
-        }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between min-h-[76px] py-1.5">
-          {/* Logo */}
-          <Link href="/" className="flex items-center group py-1">
-            <Logo />
+    <header className="fixed top-0 left-0 right-0 z-50 pt-2 sm:pt-3 px-2 sm:px-4 lg:px-6 pointer-events-none transition-all duration-300">
+      <div className="max-w-[1440px] mx-auto rounded-2xl overflow-hidden border border-slate-200/90 shadow-lg bg-white pointer-events-auto">
+        {/* Top Dark Blue Bar */}
+        <div className="bg-[#001f97] text-white px-4 sm:px-6 py-1.5 flex flex-wrap items-center justify-between text-xs sm:text-[13px] font-medium tracking-tight">
+          {/* Left: Location Pin & Address */}
+          <div className="flex items-center gap-1.5 text-white/95 truncate">
+            <span className="text-sm select-none">📍</span>
+            <a
+              href="https://maps.google.com/?q=82A+Marigold+Cres+Gowanbrae+VIC+3043"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline hover:text-white"
+            >
+              82A Marigold Cres, Gowanbrae VIC 3043 · Serving Melbourne &amp; Surrounds
+            </a>
+          </div>
+
+          {/* Right: Email & Google Reviews */}
+          <div className="hidden md:flex items-center gap-4 lg:gap-6 text-white/95">
+            <a
+              href="mailto:info@groutix.com"
+              className="flex items-center gap-1.5 hover:underline hover:text-white"
+            >
+              <span className="text-sm select-none">✉️</span>
+              <span>info@groutix.com</span>
+            </a>
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-400 font-bold tracking-widest text-xs">★★★★★</span>
+              <span className="font-semibold">5.0 · 290+ Google Reviews</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Main White Nav Bar */}
+        <div className="bg-white px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
+          {/* Logo (preserved original logo picture) */}
+          <Link href="/" className="flex items-center group py-0.5">
+            <Logo imageClassName="h-8 sm:h-9 md:h-10 w-auto object-contain" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-6 items-center">
+          <nav className="hidden lg:flex items-center space-x-6 xl:space-x-7">
             {/* Services Dropdown */}
             <div className="relative group/menu">
-              <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
+              <button className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer">
                 <span>Services</span>
-                <ChevronDown className="h-4 w-4 transform transition-transform duration-200 group-hover/menu:rotate-180" />
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover/menu:text-[#001f97] transform transition-transform duration-200 group-hover/menu:rotate-180" />
               </button>
 
               <div
@@ -232,9 +261,9 @@ export default function Navbar() {
 
             {/* Locations Dropdown */}
             <div className="relative group/menu">
-              <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
-                <span>Area of Service</span>
-                <ChevronDown className="h-4 w-4 transform transition-transform duration-200 group-hover/menu:rotate-180" />
+              <button className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer">
+                <span>Locations</span>
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover/menu:text-[#001f97] transform transition-transform duration-200 group-hover/menu:rotate-180" />
               </button>
 
               <div
@@ -304,11 +333,27 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* About Dropdown */}
+            {/* Our Process */}
+            <Link
+              href="/#how-it-works"
+              className="text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1"
+            >
+              Our Process
+            </Link>
+
+            {/* Gallery */}
+            <Link
+              href="/#gallery"
+              className="text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1"
+            >
+              Gallery
+            </Link>
+
+            {/* About Us Dropdown */}
             <div className="relative group/menu">
-              <button className="relative flex items-center space-x-1 text-neutral-700 hover:text-accent font-medium text-base transition-colors duration-200 py-2">
+              <button className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer">
                 <span>About Us</span>
-                <ChevronDown className="h-4 w-4 transform transition-transform duration-200 group-hover/menu:rotate-180" />
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover/menu:text-[#001f97] transform transition-transform duration-200 group-hover/menu:rotate-180" />
               </button>
 
               <div
@@ -322,52 +367,68 @@ export default function Navbar() {
                     About Groutix
                   </Link>
                   <Link
+                    href="/about#team"
+                    className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
+                  >
+                    Meet the Team
+                  </Link>
+                  <Link
                     href="/careers"
                     className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                   >
                     Careers
                   </Link>
+                  <Link
+                    href="/terms-conditions"
+                    className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
+                  >
+                    10-Year Warranty
+                  </Link>
                 </div>
               </div>
             </div>
-            <NavLink href="/faq">FAQs</NavLink>
-            <NavLink href="/contact">Get a Quote</NavLink>
+
+            {/* FAQs */}
+            <Link
+              href="/faq"
+              className="text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1"
+            >
+              FAQs
+            </Link>
           </nav>
 
-          {/* CTAs */}
-          <div className="hidden md:flex items-center space-x-6">
+          {/* Right Action Buttons */}
+          <div className="hidden sm:flex items-center gap-3">
+            {/* Phone outlined pill */}
             <a
               href={tel}
-              className="flex items-center space-x-2 text-primary font-bold hover:text-accent transition-colors duration-200"
+              className="hidden md:flex items-center gap-2 border border-blue-200/90 hover:border-blue-400 bg-white hover:bg-blue-50/50 rounded-xl px-4 py-2 text-[#001f97] font-bold text-[15px] shadow-2xs transition-all whitespace-nowrap"
             >
-              <div className="p-2 bg-accent/15 rounded-full">
-                <Phone className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[12px] text-neutral-500 font-semibold leading-none">Call Today</span>
-                <span className="text-base">{phone}</span>
-              </div>
+              <Phone className="h-4 w-4 text-[#001f97]" strokeWidth={2.2} />
+              <span>+61 3 7023 8094</span>
             </a>
+
+            {/* Solid CTA Button */}
             <Link
               href="/contact"
-              className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded font-bold text-base tracking-wide shadow-md hover:shadow-lg transform active:scale-95 transition-all duration-200"
+              className="inline-flex items-center justify-center bg-[#001f97] hover:bg-[#001773] text-white font-bold text-[15px] px-5 py-2.5 rounded-xl shadow-sm hover:shadow transition-all whitespace-nowrap"
             >
               Get a Free Quote
             </Link>
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-4">
+          <div className="lg:hidden flex items-center space-x-3">
             <a
               href={tel}
-              className="p-2 text-primary hover:text-accent transition-colors"
+              className="p-2 text-[#001f97] hover:bg-blue-50 rounded-lg transition-colors"
               aria-label="Call Us"
             >
               <Phone className="h-5 w-5" />
             </a>
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-neutral-500 hover:text-accent hover:bg-accent/10 focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-lg text-slate-700 hover:text-[#001f97] hover:bg-blue-50 focus:outline-none cursor-pointer"
               aria-expanded={isOpen}
             >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -458,7 +519,7 @@ export default function Navbar() {
                     className="flex w-full items-center justify-between rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10"
                     aria-expanded={activeSubmenu === "locations"}
                   >
-                    <span>Area of Service</span>
+                    <span>Locations</span>
                     <ChevronDown className={`h-4 w-4 transform transition-transform duration-200 ${activeSubmenu === "locations" ? "rotate-180" : ""}`} />
                   </button>
                   <AnimatePresence initial={false}>
@@ -510,6 +571,22 @@ export default function Navbar() {
                   </AnimatePresence>
                 </div>
 
+                <Link
+                  href="/#how-it-works"
+                  onClick={closeMenu}
+                  className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
+                >
+                  Our Process
+                </Link>
+
+                <Link
+                  href="/#gallery"
+                  onClick={closeMenu}
+                  className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
+                >
+                  Gallery
+                </Link>
+
                 {/* Mobile About Us */}
                 <div>
                   <button
@@ -537,11 +614,25 @@ export default function Navbar() {
                             About Groutix
                           </Link>
                           <Link
+                            href="/about#team"
+                            onClick={closeMenu}
+                            className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
+                          >
+                            Meet the Team
+                          </Link>
+                          <Link
                             href="/careers"
                             onClick={closeMenu}
                             className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
                           >
                             Careers
+                          </Link>
+                          <Link
+                            href="/terms-conditions"
+                            onClick={closeMenu}
+                            className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
+                          >
+                            10-Year Warranty
                           </Link>
                         </div>
                       </motion.div>
@@ -560,7 +651,7 @@ export default function Navbar() {
                   onClick={closeMenu}
                   className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
-                  Get a Quote
+                  Get a Free Quote
                 </Link>
               </div>
 

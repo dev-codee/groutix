@@ -21,7 +21,7 @@ export default function CareersPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-[73px]">
+      <main className="pt-[110px] lg:pt-[125px]">
         {/* Hero Section */}
         <section className="bg-[#001F97] text-white relative py-20 lg:py-28 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_6px,transparent_6px),linear-gradient(90deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_6px,transparent_6px)] bg-[size:150px_150px]" />

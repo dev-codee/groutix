@@ -68,7 +68,7 @@ export default function ModelDetailClient({
   ];
 
   return (
-    <main className="pt-[73px] bg-neutral-50 text-neutral-900 min-h-screen">
+    <main className="pt-[110px] lg:pt-[125px] bg-neutral-50 text-neutral-900 min-h-screen">
       {/* ────── Breadcrumb Header ────── */}
       <div className="bg-neutral-900 text-neutral-300 py-3.5 border-b border-neutral-800">
         <div className="max-w-[1460px] mx-auto px-6 lg:px-10 flex items-center flex-wrap gap-2 text-xs sm:text-sm">

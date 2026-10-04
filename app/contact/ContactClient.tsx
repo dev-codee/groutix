@@ -110,7 +110,7 @@ export default function ContactClient() {
   ];
 
   return (
-    <main className="pt-[73px]">
+    <main className="pt-[110px] lg:pt-[125px]">
       {/* Header */}
       <motion.section
         initial={{ opacity: 0 }}

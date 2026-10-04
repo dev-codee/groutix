@@ -183,7 +183,7 @@ export default function LocationsClient({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="relative bg-primary pt-[73px]"
+        className="relative bg-primary pt-[110px] lg:pt-[125px]"
       >
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:40px_40px] z-0" />
         <div className="relative z-10 max-w-[1460px] mx-auto">

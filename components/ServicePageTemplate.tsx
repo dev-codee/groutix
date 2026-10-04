@@ -487,7 +487,7 @@ export default function ServicePageTemplate({
   return (
     <>
       <Navbar />
-      <main className="pt-[73px]">
+      <main className="pt-[110px] lg:pt-[125px]">
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -655,14 +655,14 @@ export default function HomePage({
             SECTION 1 — HERO
             Two-column: copy left, form right
         ══════════════════════════════════════ */}
-        <section className="relative overflow-hidden pt-[73px]" id="quote-form">
+        <section className="relative overflow-hidden pt-[110px] lg:pt-[125px]" id="quote-form">
           {/* Background image */}
           <div className="absolute inset-0">
             <Image src="/img101.jpeg" alt="Hero background" fill className="object-cover" priority />
             <div className="absolute inset-0 bg-black/40" />
           </div>
 
-          <div className="relative z-10 flex min-h-[calc(100vh-73px)] flex-col">
+          <div className="relative z-10 flex min-h-[calc(100vh-110px)] lg:min-h-[calc(100vh-125px)] flex-col">
             <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
               <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 {/* Left: headline + paragraph + badges */}
