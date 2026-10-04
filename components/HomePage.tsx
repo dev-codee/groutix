@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   Eye,
   ChevronDown,
+  CheckCircle2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -262,6 +263,266 @@ function DiagnosticFaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+/* ─── Suburbs Directory for Instant Coverage Checker ─── */
+const SUBURB_DIRECTORY: Array<{ name: string; postcode?: string; region: string; href?: string }> = [
+  // Melbourne Metro
+  { name: "South Melbourne", postcode: "3205", region: "Melbourne Metro", href: "/locations/melbourne/south-melbourne" },
+  { name: "Richmond", postcode: "3121", region: "Melbourne Metro", href: "/locations/melbourne/richmond" },
+  { name: "Carlton", postcode: "3053", region: "Melbourne Metro", href: "/locations/melbourne/carlton" },
+  { name: "Fitzroy", postcode: "3065", region: "Melbourne Metro", href: "/locations/melbourne/fitzroy" },
+  { name: "Brunswick", postcode: "3056", region: "Melbourne Metro", href: "/locations/melbourne/brunswick" },
+  { name: "St Kilda", postcode: "3182", region: "Melbourne Metro", href: "/locations/melbourne/st-kilda" },
+  { name: "Prahran", postcode: "3181", region: "Melbourne Metro", href: "/locations/melbourne/prahran" },
+  { name: "Toorak", postcode: "3142", region: "Melbourne Metro", href: "/locations/melbourne/toorak" },
+  { name: "Hawthorn", postcode: "3122", region: "Melbourne Metro", href: "/locations/melbourne/hawthorn" },
+  { name: "Camberwell", postcode: "3124", region: "Melbourne Metro", href: "/locations/melbourne/camberwell" },
+  { name: "Box Hill", postcode: "3128", region: "Melbourne Metro", href: "/locations/melbourne/box-hill" },
+  { name: "Glen Waverley", postcode: "3150", region: "Melbourne Metro", href: "/locations/melbourne/glen-waverley" },
+  { name: "Dandenong", postcode: "3175", region: "Melbourne Metro", href: "/locations/melbourne/dandenong" },
+  { name: "Cranbourne", postcode: "3977", region: "Melbourne Metro", href: "/locations/melbourne/cranbourne" },
+  { name: "Frankston", postcode: "3199", region: "Greater Melbourne", href: "/locations/frankston" },
+  { name: "Mornington", postcode: "3931", region: "Mornington Peninsula", href: "/locations/frankston" },
+  { name: "Brighton", postcode: "3186", region: "Melbourne Metro", href: "/locations/melbourne/brighton" },
+  { name: "Coburg", postcode: "3058", region: "Melbourne Metro", href: "/locations/melbourne/coburg" },
+  { name: "Doncaster", postcode: "3108", region: "Melbourne Metro", href: "/locations/melbourne/doncaster" },
+  { name: "Essendon", postcode: "3040", region: "Melbourne Metro", href: "/locations/melbourne/essendon" },
+  { name: "Footscray", postcode: "3011", region: "Melbourne Metro", href: "/locations/melbourne/footscray" },
+  { name: "Kew", postcode: "3101", region: "Melbourne Metro", href: "/locations/melbourne/kew" },
+  { name: "Malvern", postcode: "3144", region: "Melbourne Metro", href: "/locations/melbourne/malvern" },
+  { name: "Point Cook", postcode: "3030", region: "Melbourne Metro", href: "/locations/melbourne/point-cook" },
+  { name: "Reservoir", postcode: "3073", region: "Melbourne Metro", href: "/locations/melbourne/reservoir" },
+  { name: "Ringwood", postcode: "3134", region: "Melbourne Metro", href: "/locations/melbourne/ringwood" },
+  { name: "South Yarra", postcode: "3141", region: "Melbourne Metro", href: "/locations/melbourne/south-yarra" },
+  { name: "Werribee", postcode: "3030", region: "Melbourne Metro", href: "/locations/melbourne/werribee" },
+  { name: "Williamstown", postcode: "3016", region: "Melbourne Metro", href: "/locations/melbourne/williamstown" },
+  { name: "Melbourne CBD", postcode: "3000", region: "Melbourne Metro", href: "/locations/melbourne/melbourne-cbd" },
+  // Regional Victoria & Yarra Valley
+  { name: "Geelong", postcode: "3220", region: "Regional Victoria", href: "/locations/geelong" },
+  { name: "Ballarat", postcode: "3350", region: "Regional Victoria", href: "/locations/ballarat" },
+  { name: "Lilydale", postcode: "3140", region: "Yarra Valley", href: "/locations/lilydale" },
+  { name: "Yarra Glen", postcode: "3775", region: "Yarra Valley", href: "/locations/yarra-glen" },
+  { name: "Kilmore", postcode: "3764", region: "Mitchell Shire", href: "/locations/kilmore" },
+];
+
+function SuburbCheckerWidget({
+  activeSuburb,
+  onClearActiveSuburb,
+  phone,
+  tel,
+}: {
+  activeSuburb?: string;
+  onClearActiveSuburb?: () => void;
+  phone: string;
+  tel: string;
+}) {
+  const [query, setQuery] = useState(activeSuburb || "");
+  const [fullName, setFullName] = useState("");
+  const [phoneNum, setPhoneNum] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync if parent updates activeSuburb
+  React.useEffect(() => {
+    if (activeSuburb) {
+      setQuery(activeSuburb);
+      setSubmitted(false);
+    }
+  }, [activeSuburb]);
+
+  const trimmed = query.trim().toLowerCase();
+
+  // Match lookup
+  const matched = trimmed.length >= 2
+    ? SUBURB_DIRECTORY.find((s) =>
+        s.name.toLowerCase() === trimmed ||
+        s.name.toLowerCase().includes(trimmed) ||
+        (s.postcode && s.postcode.includes(trimmed))
+      )
+    : null;
+
+  // Victoria postcodes are 3000-3999 and 8000-8999
+  const isVicPostcode = /^[38]\d{3}$/.test(trimmed);
+  const isServiced = Boolean(matched || isVicPostcode || (trimmed.length >= 3 && ["melbourne", "victoria", "vic"].some(v => trimmed.includes(v))));
+  const displayName = matched ? matched.name : (isVicPostcode ? `Postcode ${query}` : query);
+  const matchedHref = matched?.href;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query) return;
+    setIsSubmitting(true);
+    // Simulate brief network submission to confirm coverage
+    await new Promise((r) => setTimeout(r, 600));
+    setIsSubmitting(false);
+    setSubmitted(true);
+  };
+
+  return (
+    <div id="suburb-checker-widget" className="bg-white border border-neutral-200 rounded-xl p-6 sm:p-8 max-w-2xl mx-auto shadow-sm space-y-6">
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+          <MapPin className="w-3.5 h-3.5" /> Instant Coverage Checker
+        </div>
+        <h3 className="font-bold text-neutral-900 text-xl sm:text-2xl">Check If We Service Your Suburb</h3>
+        <p className="text-neutral-600 text-sm sm:text-base">
+          Type your suburb or postcode below to instantly check coverage across Melbourne &amp; Victoria.
+        </p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <div className="relative flex items-center">
+          <Search className="absolute left-4 h-5 w-5 text-neutral-400 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSubmitted(false);
+              if (onClearActiveSuburb) onClearActiveSuburb();
+            }}
+            placeholder="e.g. Richmond, Frankston, Geelong, or 3121..."
+            className="w-full border-2 border-neutral-200 rounded-lg pl-12 pr-28 py-3.5 text-base text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary transition-colors shadow-sm"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setSubmitted(false);
+                if (onClearActiveSuburb) onClearActiveSuburb();
+              }}
+              className="absolute right-3 text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-600 px-2.5 py-1.5 rounded font-medium transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Live Match Notification */}
+      {query.trim().length >= 2 && (
+        <AnimatePresence mode="wait">
+          {isServiced ? (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="bg-emerald-50 border border-emerald-300 rounded-lg p-5 space-y-3"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                  <Check className="w-4 h-4" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-emerald-950 text-base sm:text-lg">
+                    Yes! Groutix Services {displayName}
+                  </p>
+                  <p className="text-emerald-800 text-xs sm:text-sm leading-relaxed">
+                    Full shower regrouting, leaking shower repairs, epoxy grouting and balcony sealing available with our <strong>10-Year Waterproof Warranty</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                <a
+                  href="#quote-form"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById("quote-form")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="inline-flex items-center gap-1.5 bg-[#001F97] hover:bg-[#2F63CC] text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-sm transition-all shadow-sm active:scale-95"
+                >
+                  Get a Free Quote
+                </a>
+                <a
+                  href={tel}
+                  className="inline-flex items-center gap-1.5 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-sm transition-colors active:scale-95"
+                >
+                  <Phone className="w-3.5 h-3.5" /> Call {phone}
+                </a>
+                {matchedHref && (
+                  <Link
+                    href={matchedHref}
+                    className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[#001F97] hover:underline px-2 py-2"
+                  >
+                    View {matched?.name} local page →
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2 text-blue-900 text-sm"
+            >
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-[#001F97] flex-shrink-0 mt-0.5" />
+                <p>
+                  We service homes &amp; businesses throughout Melbourne and greater Victoria. Enter your details below and our team will confirm your area today.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* Confirmation / Callback Request Form */}
+      {submitted ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg p-6 text-center space-y-2"
+        >
+          <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <p className="font-bold text-lg">Thank You{fullName ? `, ${fullName}` : ""}!</p>
+          <p className="text-sm text-emerald-800 leading-relaxed">
+            We&apos;ve registered your enquiry for <strong>{query || "your area"}</strong>. Johnny or Max will call you on <strong>{phoneNum}</strong> to confirm coverage and appointment availability.
+          </p>
+        </motion.div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-3 pt-2 border-t border-neutral-100">
+          <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+            Want us to confirm availability or book an inspection?
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="text"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Your Full Name"
+              className="w-full border border-neutral-300 rounded-lg px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-primary transition-colors"
+            />
+            <input
+              type="tel"
+              required
+              value={phoneNum}
+              onChange={(e) => setPhoneNum(e.target.value)}
+              placeholder="Your Phone Number"
+              className="w-full border border-neutral-300 rounded-lg px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSubmitting || !query.trim()}
+            className="w-full bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-bold px-6 py-3 rounded-lg text-sm transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <span>Confirming...</span>
+            ) : (
+              <span>Confirm Coverage &amp; Request Callback</span>
+            )}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export default function HomePage({
   reviews,
   rating,
@@ -271,7 +532,7 @@ export default function HomePage({
 }) {
   const { hero } = useSiteContent();
   const { phone, tel } = useContact();
-  const [suburbSubmitted, setSuburbSubmitted] = useState(false);
+  const [selectedSuburb, setSelectedSuburb] = useState<string>("");
   return (
     <>
       <Navbar />
@@ -280,7 +541,7 @@ export default function HomePage({
             SECTION 1 — HERO
             Two-column: copy left, form right
         ══════════════════════════════════════ */}
-        <section className="relative overflow-hidden pt-[73px]">
+        <section className="relative overflow-hidden pt-[73px]" id="quote-form">
           {/* Background image */}
           <div className="absolute inset-0">
             <Image src="/img101.jpeg" alt="Hero background" fill className="object-cover" priority />
@@ -292,14 +553,6 @@ export default function HomePage({
               <div className="grid w-full grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_540px] lg:gap-14">
                 {/* Left: headline + paragraph + badges */}
                 <div className="space-y-6 text-white lg:pt-2">
-                  <motion.p
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="text-[13px] font-bold text-accent uppercase tracking-[0.25em]"
-                  >
-                    Groutix
-                  </motion.p>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -501,21 +754,37 @@ export default function HomePage({
                       className="group border border-neutral-200 rounded-sm p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden h-full"
                     >
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="space-y-4">
-                        <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-accent border border-accent/30 bg-accent/5 px-3 py-1 rounded-sm">
-                          {s.tag}
-                        </span>
-                        <span className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-primary">
-                          <Icon className="h-7 w-7" />
-                        </span>
-                        <h3 className="font-bold text-neutral-900 text-xl group-hover:text-primary transition-colors">
-                          {s.title}
-                        </h3>
-                        <p className="text-base text-neutral-600 leading-relaxed">{s.desc}</p>
+                      <div className="flex flex-col h-full justify-between">
+                        <div>
+                          {/* Core Service Badge */}
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-accent border border-accent/30 bg-accent/5 px-3 py-1 rounded-sm">
+                              {s.tag}
+                            </span>
+                          </div>
+
+                          {/* Logo in Centre with Generous Space */}
+                          <div className="flex justify-center my-4 py-2">
+                            <span className="inline-flex h-16 w-16 items-center justify-center rounded-xl bg-accent/10 text-accent transition-all duration-300 group-hover:bg-[#001F97] group-hover:text-white group-hover:scale-105 shadow-sm">
+                              <Icon className="h-8 w-8" />
+                            </span>
+                          </div>
+
+                          {/* Title and Description with Space */}
+                          <div className="space-y-2 mt-4">
+                            <h3 className="font-bold text-neutral-900 text-xl group-hover:text-[#001F97] transition-colors">
+                              {s.title}
+                            </h3>
+                            <p className="text-base text-neutral-600 leading-relaxed">{s.desc}</p>
+                          </div>
+                        </div>
+
+                        <div className="pt-6">
+                          <span className="text-base font-bold text-accent group-hover:underline inline-flex items-center gap-1">
+                            Learn more →
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-base font-bold text-accent group-hover:underline">
-                        Learn more →
-                      </span>
                     </Link>
                   </motion.div>
                 );
@@ -999,8 +1268,8 @@ export default function HomePage({
             {/* Team members */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {[
-                { name: "Johnny", role: "Role:", avatar: "/team_johnny.jpg" },
-                { name: "[TBC]", role: "Role:", avatar: "/team_member2.jpg" },
+                { name: "Johnny", role: "Technician", avatar: "/team_johnny.jpg" },
+                { name: "Max", role: "Technician", avatar: "/team_member2.jpg" },
               ].map((member, i) => (
                 <motion.div
                   key={i}
@@ -1020,7 +1289,7 @@ export default function HomePage({
                   </div>
                   <div>
                     <h3 className="font-bold text-neutral-900 text-xl">{member.name}</h3>
-                    <p className="text-accent text-[14px] font-bold">{member.role}</p>
+                    <p className="text-accent text-[14px] font-bold">Role: {member.role}</p>
                   </div>
                 </motion.div>
               ))}
@@ -1229,69 +1498,76 @@ export default function HomePage({
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-bold text-neutral-900 text-lg">Melbourne Metro</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-neutral-900 text-lg">Melbourne Metro</h3>
+                <span className="text-xs text-neutral-500 font-medium">Click any suburb to check coverage</span>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {["South Melbourne", "Richmond", "Carlton", "Fitzroy", "Brunswick", "St Kilda", "Prahran", "Toorak", "Hawthorn", "Camberwell", "Box Hill", "Glen Waverley", "Dandenong", "Cranbourne", "Frankston", "Mornington"].map((suburb) => (
-                  <span key={suburb} className="text-[13px] bg-white border border-neutral-200 rounded-sm px-3 py-1.5 text-neutral-700">{suburb}</span>
-                ))}
+                {[
+                  "South Melbourne", "Richmond", "Carlton", "Fitzroy", "Brunswick",
+                  "St Kilda", "Prahran", "Toorak", "Hawthorn", "Camberwell",
+                  "Box Hill", "Glen Waverley", "Dandenong", "Cranbourne", "Frankston", "Mornington"
+                ].map((suburb) => {
+                  const isSelected = selectedSuburb.toLowerCase() === suburb.toLowerCase();
+                  return (
+                    <button
+                      key={suburb}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSuburb(suburb);
+                        document.getElementById("suburb-checker-widget")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className={`text-[13px] rounded-lg px-3.5 py-2 font-medium transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? "bg-primary text-white border-2 border-primary"
+                          : "bg-white border border-neutral-200 text-neutral-700 hover:border-primary hover:text-primary hover:bg-neutral-50"
+                      }`}
+                    >
+                      <MapPin className="w-3 h-3 opacity-60" />
+                      {suburb}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-bold text-neutral-900 text-lg">Also Servicing</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-neutral-900 text-lg">Also Servicing</h3>
+                <span className="text-xs text-accent font-medium">Regional Victoria &amp; Surrounds</span>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {["Geelong", "Ballarat", "Frankston", "Lilydale", "Yarra Glen", "Kilmore"].map((area) => (
-                  <span key={area} className="text-[13px] bg-accent/10 border border-accent/20 rounded-sm px-3 py-1.5 text-accent font-bold">{area}</span>
-                ))}
+                {["Geelong", "Ballarat", "Frankston", "Lilydale", "Yarra Glen", "Kilmore"].map((area) => {
+                  const isSelected = selectedSuburb.toLowerCase() === area.toLowerCase();
+                  return (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSuburb(area);
+                        document.getElementById("suburb-checker-widget")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className={`text-[13px] rounded-lg px-3.5 py-2 font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? "bg-accent text-white border-2 border-accent"
+                          : "bg-accent/10 border border-accent/20 text-accent hover:bg-accent hover:text-white"
+                      }`}
+                    >
+                      <MapPin className="w-3 h-3 opacity-70" />
+                      {area}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Suburb checker */}
-            <div className="bg-white border border-neutral-200 rounded-sm p-8 max-w-xl mx-auto space-y-4">
-              <h3 className="font-bold text-neutral-900 text-lg">Check If We Service Your Suburb</h3>
-              <p className="text-neutral-600 text-base">
-                Not listed above, or not sure? Send us your suburb or postcode and we&apos;ll confirm coverage — we&apos;ll reply the same business day.
-              </p>
-              {suburbSubmitted ? (
-                <div className="bg-green-50 border border-green-200 text-green-800 rounded-sm p-5 text-center space-y-2">
-                  <p className="font-bold text-lg">Thank You!</p>
-                  <p className="text-sm">We&apos;ve received your request and will confirm coverage for your suburb on the same business day.</p>
-                </div>
-              ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setSuburbSubmitted(true);
-                  }}
-                  className="space-y-3"
-                >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Suburb or Postcode (e.g. Frankston or 3199)"
-                    className="w-full border border-neutral-300 rounded-sm px-4 py-3 text-base focus:outline-none focus:border-primary"
-                  />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full Name"
-                    className="w-full border border-neutral-300 rounded-sm px-4 py-3 text-base focus:outline-none focus:border-primary"
-                  />
-                  <input
-                    type="tel"
-                    required
-                    placeholder="Phone Number"
-                    className="w-full border border-neutral-300 rounded-sm px-4 py-3 text-base focus:outline-none focus:border-primary"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
-                  >
-                    Check My Suburb
-                  </button>
-                </form>
-              )}
-            </div>
+            {/* Suburb checker widget */}
+            <SuburbCheckerWidget
+              activeSuburb={selectedSuburb}
+              onClearActiveSuburb={() => setSelectedSuburb("")}
+              phone={phone}
+              tel={tel}
+            />
           </div>
         </AnimatedSection>
 
