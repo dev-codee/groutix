@@ -23,7 +23,16 @@ export function verifyQuoteToken(id: string, token: string | null | undefined): 
   const expected = signQuoteToken(id);
   const a = Buffer.from(expected);
   const b = Buffer.from(token);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+    return true;
+  }
+  // Also accept the short token variant (e.g. from SMS or redirect)
+  const expectedShort = signQuoteTokenShort(id);
+  const aShort = Buffer.from(expectedShort);
+  if (aShort.length === b.length && crypto.timingSafeEqual(aShort, b)) {
+    return true;
+  }
+  return false;
 }
 
 /** Absolute base URL used to build the links inside the email. */
@@ -63,8 +72,8 @@ export function verifyQuoteTokenShort(id: string, token: string | null | undefin
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Build the short SMS-friendly link that redirects to the full sign URL. */
+/** Build the SMS link for a quote. Uses the direct quote sign URL so the customer can open it immediately just like in email. */
 export function buildQuoteSmsUrl(id: string): string {
-  return `${siteBaseUrl()}/s/${id}?t=${signQuoteTokenShort(id)}`;
+  return buildQuoteSignUrl(id);
 }
 

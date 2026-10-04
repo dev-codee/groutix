@@ -7,7 +7,7 @@ import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceT
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const token = req.nextUrl.searchParams.get("token");
+  const token = req.nextUrl.searchParams.get("token") || req.nextUrl.searchParams.get("t");
   const { id } = await params;
   if (!verifyQuoteToken(id, token)) {
     return new NextResponse("Unauthorized", { status: 401 });

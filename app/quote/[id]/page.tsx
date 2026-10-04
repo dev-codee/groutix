@@ -57,7 +57,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const token = searchParams.get("token") || searchParams.get("t") || "";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
