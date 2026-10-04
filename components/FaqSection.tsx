@@ -45,24 +45,40 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function FaqSection() {
   const faqs = [
     {
-      question: "How Do I Know If My Shower Needs Regrouting or Recaulking?",
-      answer: "If you notice cracked, missing or discoloured shower grout, peeling or mouldy silicone, water leaking outside the shower, damp walls, or a musty smell, it may be time for shower regrouting or recaulking. Addressing these issues early can help prevent water damage and costly repairs.",
+      question: "How Do I Know If I Need Regrouting or Recaulking?",
+      answer: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both — catching it early saves money.",
     },
     {
-      question: "Can a Leaking Shower Be Repaired Without Removing the Tiles?",
-      answer: "Yes, in many cases. If your leaking shower is caused by failed grout or silicone, we can often repair it without removing the tiles, saving you the cost and disruption of a bathroom renovation. An inspection will determine the exact cause of the leak.",
+      question: "How Do I Fix Shower Grout Mould?",
+      answer: "Cleaning it only masks the smell for a while. If mould keeps coming back in the same spot, the grout underneath has usually failed and needs replacing, not just scrubbing.",
     },
     {
-      question: "How Long Does Shower Regrouting Take?",
-      answer: "Most shower regrouting jobs are completed within one day. Before work begins, your technician will inspect the shower, explain the repair process and expected timeframe, then complete the repairs to restore a watertight, long-lasting finish.",
+      question: "Will You Need to Remove My Tiles to Regrout a Shower?",
+      answer: "No, in most cases. Standard regrouting works around your existing tiles, so there's no full tear out.",
     },
     {
-      question: "How Much Does Shower Regrouting Cost?",
-      answer: "The cost of shower regrouting depends on the size of your shower, its condition, and the repairs required. We provide a detailed quote after inspecting your shower, so you know exactly what's included before any work begins.",
+      question: "How Long Does Shower Regrouting Last?",
+      answer: "Done properly, it holds up for years of daily use. That's exactly why we back every complete job with a 10 year warranty instead of just saying \"it'll be fine.\"",
     },
     {
-      question: "How Long Before I Can Use My Shower Again?",
-      answer: "Most showers are ready to use 24 hours after regrouting and recaulking. If epoxy grout is installed, we recommend allowing 72 hours for full curing before using the shower. Your technician will confirm the required curing time based on the materials used.",
+      question: "Can You Repair a Shower While Tenants Are Living There?",
+      answer: "Yes. Most jobs are completed in a single visit with minimal disruption, which works well for occupied rentals, agents, and strata managers. We work around your timelines.",
+    },
+    {
+      question: "Which Suburbs and Regions Do We Service Across Victoria?",
+      answer: "Melbourne and surrounding suburbs, plus regional Victoria. Not sure we cover your area? Contact us to confirm.",
+    },
+    {
+      question: "Do I Have to Stop Using My Shower Afterward?",
+      answer: "Yes, for a short period while the grout and silicone cure. We'll tell you exactly how long before we start.",
+    },
+    {
+      question: "Do You Work on Showers, Kitchens, and Balconies?",
+      answer: "Yes. We handle grout and silicone repairs across bathrooms, kitchens, laundries, and balconies.",
+    },
+    {
+      question: "Worried About Regrouting Cost Before You Call?",
+      answer: "Most shower regrouting jobs are competitively priced. See our full pricing guide for details, or request a free, no-obligation quote.",
     },
   ];
 
