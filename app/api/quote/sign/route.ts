@@ -21,7 +21,7 @@ function getClientIp(req: NextRequest): string {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const id = searchParams.get("id") || "";
-  const token = searchParams.get("token");
+  const token = searchParams.get("token") || searchParams.get("t");
 
   if (!id || !verifyQuoteToken(id, token)) {
     return NextResponse.json({ error: "Invalid or expired link." }, { status: 401 });
@@ -79,7 +79,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, token, signatureDataUrl, signerName } = body || {};
+    const { id, signatureDataUrl, signerName } = body || {};
+    const token = body?.token || body?.t;
 
     if (!id || !verifyQuoteToken(id, token)) {
       return NextResponse.json({ error: "Invalid or expired quote link." }, { status: 401 });

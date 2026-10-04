@@ -71,7 +71,8 @@ import {
   Heading2,
   Heading3,
   Link2,
-  Minus
+  Minus,
+  BookmarkPlus
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -365,7 +366,7 @@ export default function CrmDashboardPage() {
   }
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
-  const [quoteFullscreen, setQuoteFullscreen] = useState(false);
+  const [quoteFullscreen, setQuoteFullscreen] = useState(true);
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
@@ -375,6 +376,8 @@ export default function CrmDashboardPage() {
     "Final scope is subject to the details stated in this quotation. Any additional work not listed will require approval before proceeding."
   );
   const [quoteScope, setQuoteScope] = useState<string>("");
+  const [savingTemplateIndex, setSavingTemplateIndex] = useState<number | null>(null);
+  const [templateSaveFeedback, setTemplateSaveFeedback] = useState<{ idx: number; message: string; ok: boolean } | null>(null);
 
   const [photosModalOpen, setPhotosModalOpen] = useState(false);
   const [activePhotoLead, setActivePhotoLead] = useState<Lead | null>(null);
@@ -1607,6 +1610,7 @@ export default function CrmDashboardPage() {
     setQuoteTerms(!existingTerms || isFullTermsDump ? DEFAULT_QUOTE_CONDITIONS : existingTerms);
     const initialScope = lead.quoteScope || lead.message || lead.enquiry || "Tile regrouting and waterproof resealing works as specified.";
     setQuoteScope(initialScope);
+    setQuoteFullscreen(true);
     setQuoteModalOpen(true);
   }
 
@@ -1718,6 +1722,53 @@ export default function CrmDashboardPage() {
       const nextItems = [...quoteItems];
       nextItems[idx] = { ...nextItems[idx], scope: `${current} ${addition}` };
       setQuoteItems(nextItems);
+    }
+  }
+
+  // Save an item from the quote builder directly to the template library for future reuse
+  async function handleSaveQuoteItemToLibrary(idx: number) {
+    const item = quoteItems[idx];
+    if (!item) return;
+
+    const service = (item.service || "").trim();
+    if (!service) {
+      alert("Please provide a Service Title before saving this item to the template library.");
+      return;
+    }
+
+    const code =
+      (item.code || "").trim() ||
+      service.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, "") ||
+      `CUST-${Date.now().toString().slice(-4)}`;
+    const scope = (item.scope || "").trim();
+    const price = Number(item.price) || 0;
+
+    setSavingTemplateIndex(idx);
+    setTemplateSaveFeedback(null);
+    try {
+      const res = await fetch("/api/admin/quote-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, service, scope, price })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.template) {
+        const updated = [...quoteItems];
+        updated[idx] = {
+          ...updated[idx],
+          code: data.template.code,
+          templateNo: data.template.no
+        };
+        setQuoteItems(updated);
+        setTemplateSaveFeedback({ idx, message: "Saved to Library!", ok: true });
+        setTimeout(() => setTemplateSaveFeedback(null), 3000);
+      } else {
+        setTemplateSaveFeedback({ idx, message: data.error || "Failed to save", ok: false });
+      }
+    } catch (err: any) {
+      setTemplateSaveFeedback({ idx, message: err?.message || "Error saving", ok: false });
+    } finally {
+      setSavingTemplateIndex(null);
     }
   }
 
@@ -1889,7 +1940,10 @@ export default function CrmDashboardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return alert(data.error || "Could not send the quote.");
-      alert(`Quote ${data.quoteNumber} emailed to ${activeQuoteLead.email}.`);
+      const destMsg = activeQuoteLead.phone
+        ? `emailed to ${activeQuoteLead.email} & sent via SMS to ${activeQuoteLead.phone}`
+        : `emailed to ${activeQuoteLead.email}`;
+      alert(`Quote ${data.quoteNumber} ${destMsg}.`);
       setQuoteModalOpen(false);
       loadData();
     } catch {
@@ -4490,8 +4544,8 @@ export default function CrmDashboardPage() {
           MODAL: QUOTE BUILDER & DOCUMENT PREVIEW
          ========================================================================= */}
         {quoteModalOpen && activeQuoteLead && (
-          <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${quoteFullscreen ? "p-0" : "items-start justify-center p-4 sm:pt-10 overflow-y-auto"}`}>
-            <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-full h-full rounded-none p-4 sm:p-6 space-y-3" : "rounded-2xl max-w-7xl w-full p-6 space-y-4 my-6"}`}>
+          <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${quoteFullscreen ? "p-0" : "items-center justify-center p-2 sm:p-4 overflow-hidden"}`}>
+            <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-screen h-screen rounded-none p-4 sm:p-5 space-y-2.5 overflow-hidden" : "rounded-2xl max-w-7xl w-full h-[94vh] p-4 sm:p-5 space-y-2.5 my-auto overflow-hidden"}`}>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                 <div>
                   <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
@@ -4560,13 +4614,13 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
-              <div className={`grid gap-6 text-xs p-1 ${quoteViewTab === "split"
+              <div className={`grid gap-6 text-xs p-1 flex-1 min-h-0 overflow-hidden ${quoteViewTab === "split"
                 ? "grid-cols-1 md:grid-cols-2"
                 : "grid-cols-1"
-                } ${quoteFullscreen ? "flex-1 min-h-0 overflow-hidden" : "max-h-[78vh] overflow-hidden"}`}>
+                }`}>
                 {/* Left Column: Quote Form Controls */}
                 {(quoteViewTab === "split" || quoteViewTab === "form") && (
-                  <div className={`space-y-4 min-w-0 pr-1 ${quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"}`}>
+                  <div className="space-y-4 min-w-0 pr-1 h-full overflow-y-auto">
                     {/* Customer Request & Selected Services Details Card */}
                     <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -4935,7 +4989,7 @@ export default function CrmDashboardPage() {
                             <col style={{ width: 56 }} />
                             <col style={{ width: 80 }} />
                             <col style={{ width: 80 }} />
-                            <col style={{ width: 40 }} />
+                            <col style={{ width: 68 }} />
                           </colgroup>
                           <thead>
                             <tr className="bg-slate-100 text-slate-700 text-left">
@@ -4953,7 +5007,7 @@ export default function CrmDashboardPage() {
                                   </th>
                                 </>
                               )}
-                              <th className="py-2 px-2" />
+                              <th className="py-2 px-2 text-center font-bold text-slate-500">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
@@ -5111,15 +5165,39 @@ export default function CrmDashboardPage() {
 
                                 {/* Remove */}
                                 <td className="py-2 px-2 text-center">
-                                  {quoteItems.length > 1 && (
+                                  <div className="flex items-center justify-center gap-1">
                                     <button
                                       type="button"
-                                      onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
-                                      className="text-rose-400 hover:text-rose-600 cursor-pointer"
-                                      title="Remove item"
+                                      onClick={() => handleSaveQuoteItemToLibrary(idx)}
+                                      disabled={savingTemplateIndex === idx}
+                                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                                      title="Save this item to Template Library for future quotes"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      {savingTemplateIndex === idx ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                                      ) : (
+                                        <BookmarkPlus className="w-3.5 h-3.5" />
+                                      )}
                                     </button>
+                                    {quoteItems.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
+                                        className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer shadow-2xs"
+                                        title="Remove item"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {templateSaveFeedback?.idx === idx && (
+                                    <div
+                                      className={`mt-1 text-[9px] font-bold leading-tight ${
+                                        templateSaveFeedback.ok ? "text-emerald-600" : "text-rose-600"
+                                      }`}
+                                    >
+                                      {templateSaveFeedback.message}
+                                    </div>
                                   )}
                                 </td>
                               </tr>
@@ -5251,8 +5329,7 @@ export default function CrmDashboardPage() {
 
                 {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
                 {(quoteViewTab === "split" || quoteViewTab === "preview") && (
-                  <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 ${quoteFullscreen ? "h-full overflow-y-auto" : "max-h-[78vh] overflow-y-auto"
-                    } ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
+                  <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 h-full overflow-y-auto ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
                     {/* Live Document Preview Header Bar */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
                       <div className="flex items-center gap-2">
@@ -5427,7 +5504,7 @@ export default function CrmDashboardPage() {
               </div>
 
               {/* Bottom Actions Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 shrink-0 bg-white z-10">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

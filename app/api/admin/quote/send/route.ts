@@ -189,14 +189,14 @@ export async function POST(req: NextRequest) {
     detail: `${quoteNumber} to ${lead.email}`,
   });
 
-  // Text customer that their quote is ready, with a short link straight to
-  // the online accept page (strictly 1 credit GSM-7 — see buildQuoteSmsUrl).
+  // Text customer that their quote is ready, with the direct review & sign link
+  // (identical to email) so they can open and accept the quote directly on their phone.
   if (lead.phone) {
     const firstName = (lead.name || "there").trim().split(/\s+/)[0];
-    const smsUrl = buildQuoteSmsUrl(body.id);
+    const quoteUrl = buildQuoteSignUrl(body.id);
     await sendSms({
       to: lead.phone,
-      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) is ready. Accept here: ${smsUrl}`,
+      body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) is ready. View & accept your quote here: ${quoteUrl}`,
     });
   }
 
