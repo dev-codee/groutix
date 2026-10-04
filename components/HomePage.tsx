@@ -644,15 +644,15 @@ export default function HomePage({
           </div>
 
           <div className="relative z-10 flex min-h-[calc(100vh-73px)] flex-col">
-            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-8 pb-24 lg:px-10 lg:py-12 lg:pb-32">
-              <div className="grid w-full grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_540px] lg:gap-14">
+            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
+              <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 {/* Left: headline + paragraph + badges */}
-                <div className="space-y-6 text-white lg:pt-2">
+                <div className="space-y-4 text-white lg:pt-2">
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-                    className="max-w-3xl text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-[72px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
+                    className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
                   >
                     Shower Regrouting and Balcony Regrouting in Melbourne | Groutix
                   </motion.h1>
@@ -660,7 +660,7 @@ export default function HomePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-                    className="max-w-2xl text-lg leading-relaxed text-white/85 sm:text-[22px]"
+                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg"
                   >
                     We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria — without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
                   </motion.p>
@@ -670,7 +670,7 @@ export default function HomePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
-                    className="flex flex-wrap items-center gap-4 pt-2"
+                    className="flex flex-wrap items-center gap-3 pt-1"
                   >
                     <a
                       href="https://www.google.com/maps/place/Groutix"
@@ -1065,17 +1065,7 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 7 — Before & After Gallery
         ══════════════════════════════════════ */}
-        <AnimatedSection
-          className="py-16 lg:py-24 relative overflow-hidden"
-          style={{
-            backgroundColor: "#EDEBE6",
-            backgroundImage: `
-              linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px"
-          }}
-        >
+        <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 relative z-10 space-y-8">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Real Work</p>
