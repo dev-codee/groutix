@@ -25,6 +25,8 @@ import {
   Eye,
   ChevronDown,
   CheckCircle2,
+  Mail,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -44,11 +46,13 @@ function ImgBox({
   aspect = "aspect-[4/3]",
   className = "",
   src,
+  objectFit = "cover",
 }: {
   label: string;
   aspect?: string;
   className?: string;
   src?: string;
+  objectFit?: "cover" | "contain";
 }) {
   return (
     <div
@@ -62,7 +66,12 @@ function ImgBox({
       <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#F5A623] z-10 pointer-events-none" />
 
       {src ? (
-        <Image src={src} alt={label} fill className="object-cover transition-transform duration-500 hover:scale-105" />
+        <Image
+          src={src}
+          alt={label}
+          fill
+          className={`${objectFit === "contain" ? "object-contain p-2" : "object-cover"} transition-transform duration-500 hover:scale-105`}
+        />
       ) : (
         <>
           <div className="absolute inset-0 bg-neutral-100 border border-neutral-200" />
@@ -76,6 +85,29 @@ function ImgBox({
         </>
       )}
     </div>
+  );
+}
+
+function GoogleIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
+    </svg>
   );
 }
 
@@ -309,17 +341,30 @@ function SuburbCheckerWidget({
   onClearActiveSuburb,
   phone,
   tel,
+  email,
+  mailto,
 }: {
   activeSuburb?: string;
   onClearActiveSuburb?: () => void;
   phone: string;
   tel: string;
+  email: string;
+  mailto: string;
 }) {
   const [query, setQuery] = useState(activeSuburb || "");
   const [fullName, setFullName] = useState("");
   const [phoneNum, setPhoneNum] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<{
+    checkedQuery: string;
+    available: boolean;
+    suburb: string;
+    zone?: string;
+    message?: string;
+    label?: string;
+  } | null>(null);
 
   // Sync if parent updates activeSuburb
   React.useEffect(() => {
@@ -329,22 +374,46 @@ function SuburbCheckerWidget({
     }
   }, [activeSuburb]);
 
-  const trimmed = query.trim().toLowerCase();
+  // Check suburb availability directly against CRM / DB API
+  React.useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setCheckResult(null);
+      setChecking(false);
+      return;
+    }
 
-  // Match lookup
-  const matched = trimmed.length >= 2
-    ? SUBURB_DIRECTORY.find((s) =>
-        s.name.toLowerCase() === trimmed ||
-        s.name.toLowerCase().includes(trimmed) ||
-        (s.postcode && s.postcode.includes(trimmed))
-      )
-    : null;
+    let isMounted = true;
+    setChecking(true);
 
-  // Victoria postcodes are 3000-3999 and 8000-8999
-  const isVicPostcode = /^[38]\d{3}$/.test(trimmed);
-  const isServiced = Boolean(matched || isVicPostcode || (trimmed.length >= 3 && ["melbourne", "victoria", "vic"].some(v => trimmed.includes(v))));
-  const displayName = matched ? matched.name : (isVicPostcode ? `Postcode ${query}` : query);
-  const matchedHref = matched?.href;
+    const timer = setTimeout(() => {
+      fetch(`/api/suburb-check?q=${encodeURIComponent(trimmed)}`)
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (isMounted) {
+            setCheckResult({
+              checkedQuery: trimmed,
+              available: Boolean(data.available),
+              suburb: data.suburb || trimmed,
+              zone: data.zone,
+              message: data.message,
+              label: data.label,
+            });
+            setChecking(false);
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setChecking(false);
+          }
+        });
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -364,7 +433,7 @@ function SuburbCheckerWidget({
         </div>
         <h3 className="font-bold text-neutral-900 text-xl sm:text-2xl">Check If We Service Your Suburb</h3>
         <p className="text-neutral-600 text-sm sm:text-base">
-          Type your suburb or postcode below to instantly check coverage across Melbourne &amp; Victoria.
+          Type your suburb or postcode below to instantly check coverage across Melbourne &amp; Victoria from our live dispatch system.
         </p>
       </div>
 
@@ -383,27 +452,33 @@ function SuburbCheckerWidget({
             placeholder="e.g. Richmond, Frankston, Geelong, or 3121..."
             className="w-full border-2 border-neutral-200 rounded-lg pl-12 pr-28 py-3.5 text-base text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary transition-colors shadow-sm"
           />
-          {query && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setSubmitted(false);
-                if (onClearActiveSuburb) onClearActiveSuburb();
-              }}
-              className="absolute right-3 text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-600 px-2.5 py-1.5 rounded font-medium transition-colors"
-            >
-              Clear
-            </button>
-          )}
+          <div className="absolute right-3 flex items-center gap-2">
+            {checking && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setCheckResult(null);
+                  setSubmitted(false);
+                  if (onClearActiveSuburb) onClearActiveSuburb();
+                }}
+                className="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-600 px-2.5 py-1.5 rounded font-medium transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Live Match Notification */}
-      {query.trim().length >= 2 && (
+      {/* Live CRM / DB Check Notification */}
+      {checkResult && (
         <AnimatePresence mode="wait">
-          {isServiced ? (
+          {checkResult.available ? (
+            /* ── SUBURB IS AVAILABLE ── */
             <motion.div
+              key="available"
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -415,10 +490,10 @@ function SuburbCheckerWidget({
                 </div>
                 <div className="space-y-1">
                   <p className="font-bold text-emerald-950 text-base sm:text-lg">
-                    Yes! Groutix Services {displayName}
+                    Yes! Groutix Services {checkResult.suburb}
                   </p>
                   <p className="text-emerald-800 text-xs sm:text-sm leading-relaxed">
-                    Full shower regrouting, leaking shower repairs, epoxy grouting and balcony sealing available with our <strong>10-Year Waterproof Warranty</strong>.
+                    Full shower regrouting, leaking shower repairs, epoxy grouting and balcony sealing available in your area backed by our <strong>10-Year Waterproof Warranty</strong>.
                   </p>
                 </div>
               </div>
@@ -440,28 +515,44 @@ function SuburbCheckerWidget({
                 >
                   <Phone className="w-3.5 h-3.5" /> Call {phone}
                 </a>
-                {matchedHref && (
-                  <Link
-                    href={matchedHref}
-                    className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[#001F97] hover:underline px-2 py-2"
-                  >
-                    View {matched?.name} local page →
-                  </Link>
-                )}
               </div>
             </motion.div>
           ) : (
+            /* ── SUBURB IS NOT CURRENTLY AVAILABLE ── */
             <motion.div
+              key="unavailable"
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2 text-blue-900 text-sm"
+              className="bg-amber-50 border border-amber-300 rounded-lg p-5 space-y-3"
             >
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-[#001F97] flex-shrink-0 mt-0.5" />
-                <p>
-                  We service homes &amp; businesses throughout Melbourne and greater Victoria. Enter your details below and our team will confirm your area today.
-                </p>
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-amber-950 text-base sm:text-lg">
+                    {checkResult.suburb} is Not in Our Standard Booking Area
+                  </p>
+                  <p className="text-amber-900 text-xs sm:text-sm leading-relaxed">
+                    We frequently accommodate locations outside our automated zones by custom arrangement. <strong>Please mail or contact us directly to find out if we can service your area!</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                <a
+                  href={mailto || `mailto:${email}?subject=Service%20Inquiry%20for%20${encodeURIComponent(checkResult.suburb)}`}
+                  className="inline-flex items-center gap-1.5 bg-[#001F97] hover:bg-[#2F63CC] text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-sm transition-all shadow-sm active:scale-95"
+                >
+                  <Mail className="w-3.5 h-3.5" /> Mail Us: {email}
+                </a>
+                <a
+                  href={tel}
+                  className="inline-flex items-center gap-1.5 bg-white border border-amber-300 hover:bg-amber-100 text-amber-950 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-sm transition-colors active:scale-95"
+                >
+                  <Phone className="w-3.5 h-3.5" /> Call: {phone}
+                </a>
               </div>
             </motion.div>
           )}
@@ -480,13 +571,15 @@ function SuburbCheckerWidget({
           </div>
           <p className="font-bold text-lg">Thank You{fullName ? `, ${fullName}` : ""}!</p>
           <p className="text-sm text-emerald-800 leading-relaxed">
-            We&apos;ve registered your enquiry for <strong>{query || "your area"}</strong>. Johnny or Max will call you on <strong>{phoneNum}</strong> to confirm coverage and appointment availability.
+            We&apos;ve registered your enquiry for <strong>{checkResult?.suburb || query || "your area"}</strong>. Johnny or Max will mail or call you on <strong>{phoneNum}</strong> to discuss scheduling for your location.
           </p>
         </motion.div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3 pt-2 border-t border-neutral-100">
           <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-            Want us to confirm availability or book an inspection?
+            {checkResult && !checkResult.available
+              ? `Leave your details below and we will confirm if we can come to ${checkResult.suburb}:`
+              : "Want us to confirm availability or book an inspection?"}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
@@ -513,6 +606,8 @@ function SuburbCheckerWidget({
           >
             {isSubmitting ? (
               <span>Confirming...</span>
+            ) : checkResult && !checkResult.available ? (
+              <span>Ask Us About Servicing {checkResult.suburb}</span>
             ) : (
               <span>Confirm Coverage &amp; Request Callback</span>
             )}
@@ -531,7 +626,7 @@ export default function HomePage({
   rating: BusinessRating;
 }) {
   const { hero } = useSiteContent();
-  const { phone, tel } = useContact();
+  const { phone, tel, email, mailto } = useContact();
   const [selectedSuburb, setSelectedSuburb] = useState<string>("");
   return (
     <>
@@ -605,7 +700,7 @@ export default function HomePage({
                       <div className="flex flex-col">
                         <div className="flex gap-0.5">
                           {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 text-accent fill-accent" />
+                            <Star key={i} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
                           ))}
                         </div>
                         <span className="text-[13px] text-white/80">{rating.count}+ Google Reviews</span>
@@ -655,14 +750,15 @@ export default function HomePage({
                   label: "Bathrooms Restored",
                   sublabel: "Across Melbourne & regional Victoria",
                   color: "text-secondary",
+                  showStars: false,
                 },
                 {
-                  Icon: Star,
+                  Icon: GoogleIcon,
                   value: "5.0/5",
                   label: "Google Rating",
                   sublabel: `Based on ${rating.count}+ Google reviews`,
-                  color: "text-accent",
-                  fill: true,
+                  color: "",
+                  showStars: true,
                   linked: true,
                 },
                 {
@@ -671,8 +767,9 @@ export default function HomePage({
                   label: "Waterproof Warranty",
                   sublabel: "On every complete shower regrout",
                   color: "text-secondary",
+                  showStars: false,
                 },
-              ].map(({ Icon, value, label, sublabel, color, fill, linked }, i) => {
+              ].map(({ Icon, value, label, sublabel, color, showStars, linked }, i) => {
                 const content = (
                   <motion.div
                     key={label}
@@ -682,14 +779,14 @@ export default function HomePage({
                     transition={{ delay: i * 0.1, duration: 0.4 }}
                     className="flex flex-col items-center text-center gap-3 px-6 py-8 rounded-xl border border-neutral-200 bg-neutral-50"
                   >
-                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 ${color}`}>
-                      <Icon className="h-6 w-6" {...(fill ? { fill: "currentColor" } : {})} />
+                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 ${color || ""}`}>
+                      <Icon className="h-6 w-6" />
                     </span>
                     <p className="text-3xl font-black leading-none text-neutral-900">{value}</p>
-                    {fill && (
+                    {showStars && (
                       <div className="flex gap-0.5">
                         {[...Array(5)].map((_, j) => (
-                          <Star key={j} className="h-4 w-4 text-accent fill-accent" />
+                          <Star key={j} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
                         ))}
                       </div>
                     )}
@@ -713,6 +810,7 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 4 — Credentials strip
         ══════════════════════════════════════ */}
+        {/*
         <div className="bg-primary py-3">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 flex flex-wrap items-center justify-center gap-6 text-[13px] text-white/90">
             <span className="font-bold text-accent">Licensed &amp; Insured</span>
@@ -721,6 +819,7 @@ export default function HomePage({
             <span>[CONFIRM years] years in business</span>
           </div>
         </div>
+        */}
 
         {/* ══════════════════════════════════════
             SECTION 5 — What We Do — Services
@@ -982,7 +1081,7 @@ export default function HomePage({
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Real Work</p>
               <h2 className="text-3xl lg:text-[48px] font-black leading-tight">
                 <span className="text-[#1B2A5E]">Before and After:</span>{" "}
-                <span className="text-[#F5A623]">Real Regrouting Results</span>
+                <span className="text-[#F5A623]" style={{color:"var(--accent)"}}>Real Regrouting Results</span>
               </h2>
               <p className="text-[#4A4A4A] text-base sm:text-lg leading-relaxed max-w-2xl">
                 Real jobs completed across Melbourne homes, not stock photos.
@@ -1011,7 +1110,7 @@ export default function HomePage({
             <div className="flex items-center gap-3">
               <div className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-5 w-5 text-accent fill-accent" />
+                  <Star key={i} className="h-5 w-5 text-[#FBBC04] fill-[#FBBC04]" />
                 ))}
               </div>
               <span className="font-bold text-neutral-900">Customer Reviews</span>
@@ -1155,12 +1254,17 @@ export default function HomePage({
               </div>
             </div>
             <AnimatedImage>
-              <ImgBox
-                src="/img43.jpeg"
-                label="Warranty Seal"
-                aspect="aspect-square"
-                className="rounded-sm w-[200px] lg:w-[260px]"
-              />
+              <div className="relative w-[220px] sm:w-[260px] lg:w-[300px] flex items-center justify-center shrink-0">
+                <div className="absolute inset-2 rounded-full bg-amber-400/20 blur-2xl pointer-events-none" />
+                <Image
+                  src="/warranty-seal-10-year.png"
+                  alt="Groutix 10 Year Waterproof Warranty Guaranteed"
+                  width={340}
+                  height={327}
+                  className="relative z-10 w-full h-auto drop-shadow-[0_12px_28px_rgba(0,0,0,0.35)] transition-transform duration-500 hover:scale-105"
+                  priority
+                />
+              </div>
             </AnimatedImage>
           </div>
         </AnimatedSection>
@@ -1369,7 +1473,7 @@ export default function HomePage({
               </div>
               <Link
                 href="/real-estate-property-services"
-                className="bg-accent hover:bg-accent/90 text-primary font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95 flex-shrink-0"
+                className="bg-accent hover:bg-accent/90 text-primary font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95 flex-shrink-0" style={{ background: "#FBBC04 !important " }}
               >
                 Discuss a Property Job
               </Link>
@@ -1567,6 +1671,8 @@ export default function HomePage({
               onClearActiveSuburb={() => setSelectedSuburb("")}
               phone={phone}
               tel={tel}
+              email={email}
+              mailto={mailto}
             />
           </div>
         </AnimatedSection>
@@ -1616,21 +1722,21 @@ export default function HomePage({
             <p className="text-white/70 text-base">
               Open Mon–Sat 9:00 AM–6:30 PM, Sun 11:00 AM–10:00 PM.
             </p>
-            <p className="text-accent text-base font-bold italic">
+            <p className="text-white/80 text-base max-w-2xl mx-auto">
               This is what shower regrouting in Victoria should feel like: honest advice and workmanship you can rely on.
             </p>
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-8 pt-4">
               <Link
                 href="/contact"
-                className="bg-white text-primary hover:bg-accent hover:text-primary font-black px-6 py-3 rounded-sm text-base transition-colors active:scale-95 border-2 border-accent"
+                className="text-white hover:text-white/80 font-bold text-base sm:text-lg transition-colors active:scale-95"
               >
                 Request A Quote
               </Link>
               <a
                 href={tel}
-                className="flex items-center gap-2 bg-secondary hover:bg-secondary-hover text-white font-bold px-6 py-3 rounded-sm text-base transition-colors active:scale-95"
+                className="inline-flex items-center gap-2.5 border-[1.5px] border-white/80 hover:border-white text-white font-bold px-6 py-3 rounded-lg text-base sm:text-lg transition-all active:scale-95"
               >
-                <Phone className="h-4 w-4" /> +61 3 7023 8094
+                <Phone className="h-4 w-4 fill-white text-white" /> +61 3 7023 8094
               </a>
             </div>
           </div>
