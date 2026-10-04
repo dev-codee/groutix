@@ -14,9 +14,9 @@ const roboto = Roboto({
   display: "swap",
 });
 
-const TITLE_DEFAULT = "GROUTIX | VICTORIA’S HIGHEST RATED GROUT SPECIALISTS";
+const TITLE_DEFAULT = "Shower Regrouting & Balcony Regrouting Melbourne | Groutix";
 const DESCRIPTION =
-  "Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.";
+  "Shower regrouting & balcony regrouting in Melbourne — fix leaking showers without costly retiling. 10-year warranty, 5.0-star rated, 290+ reviews. Free quote today.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

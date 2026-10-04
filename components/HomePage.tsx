@@ -47,12 +47,14 @@ function ImgBox({
   className = "",
   src,
   objectFit = "cover",
+  showBeforeAfterBadges = false,
 }: {
   label: string;
   aspect?: string;
   className?: string;
   src?: string;
   objectFit?: "cover" | "contain";
+  showBeforeAfterBadges?: boolean;
 }) {
   return (
     <div
@@ -64,6 +66,22 @@ function ImgBox({
       {/* Decorative corner elements */}
       <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#F5A623] z-10 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#F5A623] z-10 pointer-events-none" />
+
+      {/* Before & After Badges in top corners */}
+      {showBeforeAfterBadges && (
+        <>
+          <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none">
+            <span className="bg-black/75 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow-sm border border-white/10">
+              Before
+            </span>
+          </div>
+          <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none">
+            <span className="bg-[#001F97]/90 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow-sm border border-white/20">
+              After
+            </span>
+          </div>
+        </>
+      )}
 
       {src ? (
         <Image
@@ -130,6 +148,7 @@ function HomePhotoSlider() {
               label={`Before & After Photo ${idx + i + 1}`}
               aspect="aspect-[4/3]"
               className="rounded-sm"
+              showBeforeAfterBadges={true}
             />
           </AnimatedImage>
         ))}
@@ -647,12 +666,12 @@ export default function HomePage({
             <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
               <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 {/* Left: headline + paragraph + badges */}
-                <div className="space-y-4 text-white lg:pt-2">
+                <div className="space-y-4 text-white lg:pt-2 text-center lg:text-left flex flex-col items-center lg:items-start">
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-                    className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]"
+                    className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
                     Shower Regrouting and Balcony Regrouting in Melbourne | Groutix
                   </motion.h1>
@@ -660,7 +679,7 @@ export default function HomePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg"
+                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg text-center lg:text-left mx-auto lg:mx-0"
                   >
                     We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria — without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
                   </motion.p>
@@ -670,7 +689,7 @@ export default function HomePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
-                    className="flex flex-wrap items-center gap-3 pt-1"
+                    className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-1 w-full"
                   >
                     <a
                       href="https://www.google.com/maps/place/Groutix"
