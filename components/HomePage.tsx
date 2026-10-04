@@ -1077,13 +1077,12 @@ export default function HomePage({
           }}
         >
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 relative z-10 space-y-8">
-            <div className="space-y-4">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Real Work</p>
-              <h2 className="text-3xl lg:text-[48px] font-black leading-tight">
-                <span className="text-[#1B2A5E]">Before and After:</span>{" "}
-                <span className="text-[#F5A623]" style={{color:"var(--accent)"}}>Real Regrouting Results</span>
+              <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
+                Before and After: <span className="text-accent">Real Regrouting Results</span>
               </h2>
-              <p className="text-[#4A4A4A] text-base sm:text-lg leading-relaxed max-w-2xl">
+              <p className="text-neutral-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
                 Real jobs completed across Melbourne homes, not stock photos.
               </p>
             </div>
@@ -1096,18 +1095,18 @@ export default function HomePage({
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
-            <div className="space-y-4">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Customer Feedback</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900">
                 What Our Customers <span className="text-accent">Say</span>
               </h2>
-              <p className="text-neutral-600 text-base sm:text-lg leading-relaxed max-w-2xl">
+              <p className="text-neutral-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
                 Real feedback from homeowners we&apos;ve helped across Melbourne and Victoria.
               </p>
             </div>
 
             {/* Review badge */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center gap-3">
               <div className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-5 w-5 text-[#FBBC04] fill-[#FBBC04]" />
@@ -1124,7 +1123,7 @@ export default function HomePage({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
               <a
                 href="https://www.google.com/maps/place/Groutix"
                 target="_blank"
