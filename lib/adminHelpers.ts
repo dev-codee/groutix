@@ -413,7 +413,7 @@ export function getLeadQuoteTotal(l: Lead): number {
   );
 }
 
-export function getWhatsAppLink(phone?: string): string {
+export function getWhatsAppLink(phone?: string, text?: string): string {
   if (!phone) return "#";
   const clean = phone.replace(/[^0-9+]/g, "");
   if (!clean) return "#";
@@ -422,7 +422,8 @@ export function getWhatsAppLink(phone?: string): string {
     : clean.startsWith("0")
     ? "61" + clean.slice(1)
     : clean;
-  return `https://wa.me/${num}`;
+  const query = text ? `?text=${encodeURIComponent(text)}` : "";
+  return `https://wa.me/${num}${query}`;
 }
 
 export function getStepActive(lead: Lead, step: string): boolean {

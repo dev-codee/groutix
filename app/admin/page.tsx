@@ -17,6 +17,7 @@ import {
   Upload,
   Download,
   MessageSquare,
+  MessageCircle,
   Navigation,
   ShieldCheck,
   ShieldAlert,
@@ -2669,7 +2670,7 @@ export default function CrmDashboardPage() {
       const data = await res.json();
       if (!res.ok) {
         setEtaToast({ leadId: activeMessageLead.id, msg: data.error || "Failed to send SMS." });
-        setTimeout(() => setEtaToast(null), 4000);
+        setTimeout(() => setEtaToast(null), 8000);
         return;
       }
 
@@ -2687,7 +2688,7 @@ export default function CrmDashboardPage() {
     } catch (err) {
       console.error(err);
       setEtaToast({ leadId: activeMessageLead.id, msg: "Failed to send SMS. Check server logs." });
-      setTimeout(() => setEtaToast(null), 4000);
+      setTimeout(() => setEtaToast(null), 8000);
     } finally {
       setSendingSms(false);
     }
@@ -2711,6 +2712,42 @@ export default function CrmDashboardPage() {
       console.error(err);
       alert("Could not load the booking link for SMS.");
     }
+  }
+
+  async function handleSendWhatsAppMessage() {
+    const lead = activeMessageLeadLive || activeMessageLead;
+    if (!lead) return;
+    const phone = lead.phone;
+    if (!phone) {
+      setEtaToast({ leadId: lead.id, msg: "No phone number on file for this customer." });
+      setTimeout(() => setEtaToast(null), 4000);
+      return;
+    }
+    const text = smsText.trim();
+    if (!text) {
+      setEtaToast({ leadId: lead.id, msg: "Please type a message before sending." });
+      setTimeout(() => setEtaToast(null), 4000);
+      return;
+    }
+    const waUrl = getWhatsAppLink(phone, text);
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+
+    // Also record it in the customer conversation thread so history is kept
+    const currentMsgs = getConversation(lead);
+    const newMsg: CustomerMessage = {
+      id: `out_wa_${Date.now()}`,
+      from: "groutix",
+      channel: "sms",
+      text: `[WhatsApp] ${text}`,
+      time: new Date().toISOString()
+    };
+    const updated = [...currentMsgs, newMsg];
+    await updateLeadField(lead.id, { messages: updated });
+    setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
+    setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, messages: updated } : l)));
+    setSmsText("");
+    setEtaToast({ leadId: lead.id, msg: "Opened in WhatsApp & saved to history." });
+    setTimeout(() => setEtaToast(null), 4000);
   }
 
   async function handleAddCustomerDemoReply() {
@@ -6229,19 +6266,43 @@ export default function CrmDashboardPage() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-1">
+                    {/* URL Warning Banner if message has URL */}
+                    {/(https?:\/\/|[a-z0-9-]+\.[a-z]{2,})/i.test(smsText) && (
+                      <div className="p-2.5 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex flex-col gap-1">
+                        <div className="font-bold flex items-center gap-1.5 text-amber-800 text-[11px]">
+                          <span>⚠️ Note: Sending links via Texto SMS</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-amber-800">
+                          If your Texto account rejects SMS containing links (carrier anti-scam rule), email <b>support@texto.com.au</b> to enable URL sending on your Texto account, or click <b>Send via WhatsApp</b> for 100% reliable 1-click delivery!
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
                       <div className="text-[11px] text-slate-400">
                         ⚡ Direct gateway via <b>Texto SMS API</b>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleSendSmsReply}
-                        disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
-                        className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
-                      >
-                        {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                        <span>{sendingSms ? "Sending SMS…" : "Send SMS"}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSendWhatsAppMessage}
+                          disabled={!smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
+                          className="flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-300 text-xs font-bold rounded-xl hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
+                          title="Open and send directly via WhatsApp"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Send via WhatsApp</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSendSmsReply}
+                          disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
+                          className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
+                        >
+                          {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                          <span>{sendingSms ? "Sending SMS…" : "Send SMS"}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
