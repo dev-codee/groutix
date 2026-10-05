@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:14px;color:#64748b;">
-      Questions about your quote? Call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or simply reply to this email.
+      Questions about your quote? Call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or simply reply to this email.
     </p>`;
 
   // Automatic step: generate a branded PDF quotation and attach it.

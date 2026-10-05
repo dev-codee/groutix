@@ -32,7 +32,23 @@ export default function Navbar() {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [hoveredLocation, setHoveredLocation] = useState<string>("melbourne");
   const [mobileLocationSubmenu, setMobileLocationSubmenu] = useState<string | null>(null);
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<string | null>(null);
+  const desktopNavRef = React.useRef<HTMLDivElement>(null);
   const { phone, tel } = useContact();
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (desktopNavRef.current && !desktopNavRef.current.contains(e.target as Node)) {
+        setOpenDesktopMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const closeDesktopMenu = () => {
+    setOpenDesktopMenu(null);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -194,9 +210,9 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-2 sm:pt-3 px-2 sm:px-4 lg:px-6 pointer-events-none transition-all duration-300">
-      <div className="max-w-[1440px] mx-auto rounded-2xl overflow-hidden border border-slate-200/90 shadow-lg bg-white pointer-events-auto">
+      <div className="max-w-[1440px] mx-auto rounded-2xl border border-slate-200/90 shadow-lg bg-white pointer-events-auto">
         {/* Top Dark Blue Bar */}
-        <div className="bg-[#001f97] text-white px-4 sm:px-6 py-1.5 flex flex-wrap items-center justify-between text-xs sm:text-[13px] font-medium tracking-tight">
+        <div className="bg-[#001f97] text-white px-4 sm:px-6 py-1.5 flex flex-wrap items-center justify-between text-xs sm:text-[13px] font-medium tracking-tight rounded-t-2xl overflow-hidden">
           {/* Left: Location Pin & Address */}
           <div className="flex items-center gap-1.5 text-white/95 truncate">
             <span className="text-sm select-none">📍</span>
@@ -234,22 +250,36 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-6 xl:space-x-7">
+          <nav ref={desktopNavRef} className="hidden lg:flex items-center space-x-6 xl:space-x-7">
             {/* Services Dropdown */}
-            <div className="relative group/menu">
-              <button className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer">
+            <div
+              className="relative"
+              onMouseEnter={() => setOpenDesktopMenu("services")}
+              onMouseLeave={() => setOpenDesktopMenu(null)}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenDesktopMenu(openDesktopMenu === "services" ? null : "services")}
+                className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer"
+                aria-expanded={openDesktopMenu === "services"}
+              >
                 <span>Services</span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover/menu:text-[#001f97] transform transition-transform duration-200 group-hover/menu:rotate-180" />
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transform transition-transform duration-200 ${openDesktopMenu === "services" ? "rotate-180 text-[#001f97]" : ""}`} />
               </button>
 
               <div
-                className="absolute top-full left-0 w-64 pt-2 opacity-0 translate-y-2 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:translate-y-0 group-hover/menu:pointer-events-auto transition-all duration-200 ease-out z-50"
+                className={`absolute top-full left-0 w-64 pt-2 transition-all duration-200 ease-out z-50 ${
+                  openDesktopMenu === "services"
+                    ? "opacity-100 translate-y-0 pointer-events-auto visible"
+                    : "opacity-0 translate-y-2 pointer-events-none invisible"
+                }`}
               >
                 <div className="bg-white rounded-xl shadow-xl border border-neutral-100 p-2 space-y-1">
                   {services.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={closeDesktopMenu}
                       className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                     >
                       {item.name}
@@ -260,14 +290,27 @@ export default function Navbar() {
             </div>
 
             {/* Locations Dropdown */}
-            <div className="relative group/menu">
-              <button className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer">
+            <div
+              className="relative"
+              onMouseEnter={() => setOpenDesktopMenu("locations")}
+              onMouseLeave={() => setOpenDesktopMenu(null)}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenDesktopMenu(openDesktopMenu === "locations" ? null : "locations")}
+                className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer"
+                aria-expanded={openDesktopMenu === "locations"}
+              >
                 <span>Locations</span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover/menu:text-[#001f97] transform transition-transform duration-200 group-hover/menu:rotate-180" />
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transform transition-transform duration-200 ${openDesktopMenu === "locations" ? "rotate-180 text-[#001f97]" : ""}`} />
               </button>
 
               <div
-                className="absolute top-full left-0 w-[540px] pt-2 opacity-0 translate-y-2 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:translate-y-0 group-hover/menu:pointer-events-auto transition-all duration-200 ease-out z-50"
+                className={`absolute top-full left-0 w-[540px] pt-2 transition-all duration-200 ease-out z-50 ${
+                  openDesktopMenu === "locations"
+                    ? "opacity-100 translate-y-0 pointer-events-auto visible"
+                    : "opacity-0 translate-y-2 pointer-events-none invisible"
+                }`}
               >
                 <div className="bg-white rounded-xl shadow-xl border border-neutral-100 p-4 grid grid-cols-5 gap-4">
                   {/* Left Column: Regions */}
@@ -286,7 +329,7 @@ export default function Navbar() {
                             : "text-neutral-700 hover:bg-neutral-100 hover:text-primary"
                             }`}
                         >
-                          <Link href={loc.href} className="flex-1">
+                          <Link href={loc.href} onClick={closeDesktopMenu} className="flex-1">
                             {loc.name}
                           </Link>
                           <ChevronRight className={`h-3.5 w-3.5 ${isActive ? "text-white" : "text-neutral-400"}`} />
@@ -308,6 +351,7 @@ export default function Navbar() {
                             </span>
                             <Link
                               href={currentLoc.href}
+                              onClick={closeDesktopMenu}
                               className="text-[11px] font-bold text-accent hover:underline"
                             >
                               All {currentLoc.name} →
@@ -319,6 +363,7 @@ export default function Navbar() {
                               <Link
                                 key={sub.slug}
                                 href={`/locations/${currentLoc.slug}/${sub.slug}`}
+                                onClick={closeDesktopMenu}
                                 className="block px-2 py-1.5 text-xs font-medium text-neutral-600 hover:bg-accent/10 hover:text-accent rounded transition-colors"
                               >
                                 {sub.name}
@@ -350,36 +395,53 @@ export default function Navbar() {
             </Link>
 
             {/* About Us Dropdown */}
-            <div className="relative group/menu">
-              <button className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer">
+            <div
+              className="relative"
+              onMouseEnter={() => setOpenDesktopMenu("about")}
+              onMouseLeave={() => setOpenDesktopMenu(null)}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenDesktopMenu(openDesktopMenu === "about" ? null : "about")}
+                className="flex items-center gap-1 text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1 cursor-pointer"
+                aria-expanded={openDesktopMenu === "about"}
+              >
                 <span>About Us</span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover/menu:text-[#001f97] transform transition-transform duration-200 group-hover/menu:rotate-180" />
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transform transition-transform duration-200 ${openDesktopMenu === "about" ? "rotate-180 text-[#001f97]" : ""}`} />
               </button>
 
               <div
-                className="absolute top-full left-0 w-48 pt-2 opacity-0 translate-y-2 pointer-events-none group-hover/menu:opacity-100 group-hover/menu:translate-y-0 group-hover/menu:pointer-events-auto transition-all duration-200 ease-out z-50"
+                className={`absolute top-full left-0 w-48 pt-2 transition-all duration-200 ease-out z-50 ${
+                  openDesktopMenu === "about"
+                    ? "opacity-100 translate-y-0 pointer-events-auto visible"
+                    : "opacity-0 translate-y-2 pointer-events-none invisible"
+                }`}
               >
                 <div className="bg-white rounded-xl shadow-xl border border-neutral-100 p-2 space-y-1">
                   <Link
                     href="/about"
+                    onClick={closeDesktopMenu}
                     className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                   >
                     About Groutix
                   </Link>
                   <Link
                     href="/about#team"
+                    onClick={closeDesktopMenu}
                     className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                   >
                     Meet the Team
                   </Link>
                   <Link
                     href="/careers"
+                    onClick={closeDesktopMenu}
                     className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                   >
                     Careers
                   </Link>
                   <Link
                     href="/terms-conditions"
+                    onClick={closeDesktopMenu}
                     className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                   >
                     10-Year Warranty
@@ -401,7 +463,7 @@ export default function Navbar() {
           <div className="hidden sm:flex items-center gap-3">
             {/* Phone outlined pill */}
             <a
-              href={tel}
+              href="tel:+61370238094"
               className="hidden md:flex items-center gap-2 border border-blue-200/90 hover:border-blue-400 bg-white hover:bg-blue-50/50 rounded-xl px-4 py-2 text-[#001f97] font-bold text-[15px] shadow-2xs transition-all whitespace-nowrap"
             >
               <Phone className="h-4 w-4 text-[#001f97]" strokeWidth={2.2} />

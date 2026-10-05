@@ -695,9 +695,9 @@ export default function HomePage({
                       href="https://www.google.com/maps/place/Groutix"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
+                      className="flex items-center justify-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/15 transition-all w-full sm:w-[270px] h-[64px] shrink-0"
                     >
-                      <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24">
+                      <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24">
                         <path
                           fill="#4285F4"
                           d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.18 3.665-9.15z"
@@ -715,21 +715,22 @@ export default function HomePage({
                           d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.68 1.27 6.59l4.01 3.14c.95-2.83 3.6-4.98 6.72-4.98z"
                         />
                       </svg>
-                      <span className="text-2xl font-black text-white">5.0</span>
-                      <div className="flex flex-col">
+                      <span className="text-2xl font-black text-white leading-none">5.0</span>
+                      <div className="flex flex-col justify-center">
                         <div className="flex gap-0.5">
                           {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
+                            <Star key={i} className="h-3.5 w-3.5 text-[#FBBC04] fill-[#FBBC04]" />
                           ))}
                         </div>
-                        <span className="text-[13px] text-white/80">{rating.count}+ Google Reviews</span>
+                        <span className="text-[12px] text-white/90 font-medium whitespace-nowrap mt-0.5">{rating.count}+ Google Reviews</span>
                       </div>
                     </a>
                     <a
-                      href={tel}
-                      className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
+                      href="tel:+61370238094"
+                      className="flex items-center justify-center gap-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/15 transition-all text-white font-extrabold w-full sm:w-[270px] h-[64px] shrink-0"
                     >
-                      <Phone className="h-4 w-4" /> +61 3 7023 8094
+                      <Phone className="h-5 w-5 shrink-0 text-white" strokeWidth={2.2} />
+                      <span className="text-[18px] sm:text-[19px] tracking-tight whitespace-nowrap">+61 3 7023 8094</span>
                     </a>
                   </motion.div>
                 </div>
@@ -1744,7 +1745,7 @@ export default function HomePage({
                 Request A Quote
               </Link>
               <a
-                href={tel}
+                href="tel:+61370238094"
                 className="inline-flex items-center gap-2.5 border-[1.5px] border-white/80 hover:border-white text-white font-bold px-6 py-3 rounded-lg text-base sm:text-lg transition-all active:scale-95"
               >
                 <Phone className="h-4 w-4 fill-white text-white" /> +61 3 7023 8094

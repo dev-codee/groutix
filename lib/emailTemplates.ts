@@ -562,7 +562,7 @@ export function formatEmailContentToHtml(text: string): string {
   // 1d. Auto-link phone number 7023 8094
   str = str.replace(
     /(^|[\s(>])(7023\s*8094)(?=[^\d]|$)/gi,
-    '$1<a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a>'
+    '$1<a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a>'
   );
 
   // 2. Bold: **text**, <b>text</b>, <strong>text</strong>
@@ -667,7 +667,7 @@ export function buildBrandedEmailHtml(contentHtml: string, logoUrl = "/new_logo.
           If you have any questions, simply reply directly to this email or call us.
         </p>
         <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:14px;line-height:1.8;color:#001f97;font-weight:600;">
-          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></span>
+          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></span>
           <span style="display:inline-block;margin:0 8px;">✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></span>
           <span style="display:inline-block;margin:0 8px;">🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></span>
         </div>

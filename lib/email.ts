@@ -87,8 +87,8 @@ export function cleanEmailText(content: string): string {
   text = text.replace(/1300\s*476\s*884/gi, "7023 8094");
   text = text.replace(/\(03\)\s*7023\s*8094/gi, "7023 8094");
   text = text.replace(/1300476884/gi, "70238094");
-  text = text.replace(/tel:1300476884/gi, "tel:70238094");
-  text = text.replace(/tel:\(03\)70238094/gi, "tel:70238094");
+  text = text.replace(/tel:1300476884/gi, "tel:+61370238094");
+  text = text.replace(/tel:\(03\)70238094/gi, "tel:+61370238094");
 
   // 3. Normalize website references to groutix.com
   text = text.replace(/https?:\/\/(?:www\.)?groutix\.com\.au/gi, "https://groutix.com");
@@ -119,7 +119,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
     const contactFooter = `
       <div style="margin-top:24px;padding:16px 20px;background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.9;color:#001f97;text-align:center;">
         <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">Groutix Customer Care</div>
-        <div>📞 Phone: <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
+        <div>📞 Phone: <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
         <div>✉️ Email: <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
         <div>🌐 Website: <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
       </div>
@@ -346,7 +346,7 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
                 If you have any questions, simply reply to this email or call us.
               </p>
               <div style="font-size:14px;line-height:2.0;color:#001f97;font-weight:600;">
-                <div>📞 <a href="tel:70238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
+                <div>📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
                 <div>✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
                 <div>🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
               </div>

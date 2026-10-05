@@ -536,7 +536,7 @@ export async function POST(req: NextRequest) {
         If you selected a preferred inspection date and time, we'll keep that booking wherever possible and will only contact you if an alternative needs to be arranged.
       </p>
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-        If you have any questions, simply reply to this email or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
+        If you have any questions, simply reply to this email or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
       </p>
 
       ${

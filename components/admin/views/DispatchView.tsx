@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
   Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
   MoreHorizontal, MoreVertical, ExternalLink, Plus, PlusCircle, Home, RefreshCw, User,
-  CheckCircle2, X, Filter, Wand2, Settings, Car, Check, Info, AlertCircle, Edit3
+  CheckCircle2, X, Filter, Wand2, Settings, Car, Check, Info, AlertCircle, Edit3,
+  ArrowRight, Layers, LayoutGrid, Map as MapIcon, CalendarDays, CheckCircle
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { resolveArea, formatApptTimeRange, todayAU, tomorrowAU, formatApptDate, formatApptTime } from "@/lib/scheduling";
@@ -41,6 +42,8 @@ const HOUR_SLOTS = [
   { hour: 17, label: "5 PM" },
 ];
 
+const QUICK_TIME_SLOTS = ["08:30", "09:30", "11:00", "12:30", "14:00", "15:30", "17:00"];
+
 function parseMinutes(t: string): number {
   if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
@@ -64,6 +67,17 @@ function fmtMinutesFull(totalMins: number): string {
   return `${dh}:${padM} ${period}`;
 }
 
+function fmtScheduleTime(t: string): string {
+  if (!t) return "";
+  const [hStr, mStr] = t.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr || "0", 10);
+  if (isNaN(h)) return t;
+  const period = h >= 12 ? "PM" : "AM";
+  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${dh}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 function getLeadDistance(lead: Lead): string {
   const area = resolveArea(lead.address || lead.city);
   if (area.suburb) {
@@ -77,10 +91,16 @@ export function DispatchView({
   onOpenLead,
   initialTab = "all",
   initialTechFilter = "all",
+  initialDate,
+  initialLeadId,
+  initialAction,
 }: {
   onOpenLead: (id: string) => void;
   initialTab?: "all" | "leads" | "inspections" | "jobs";
   initialTechFilter?: string;
+  initialDate?: string;
+  initialLeadId?: string;
+  initialAction?: "view" | "reschedule";
 }) {
   const {
     scopedLeads,
@@ -99,8 +119,8 @@ export function DispatchView({
   const zoneRules = useZoneRules();
 
   const todayStr = useMemo(() => todayAU(), []);
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(initialDate || todayStr);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId || null);
   const [viewMode, setViewMode] = useState<"Day" | "Week">("Week");
   const [techFilter, setTechFilter] = useState<string>(initialTechFilter);
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,10 +130,35 @@ export function DispatchView({
   // Left sidebar Unassigned filter
   const [unassignedFilter, setUnassignedFilter] = useState<"all" | "inspections" | "jobs">("all");
 
-  // Booking drawer controls
-  const [bookingType, setBookingType] = useState<"inspection" | "job">("inspection");
-  const [bookingService, setBookingService] = useState<string>("Shower Cubicle Regrouting");
+  // Change Booking drawer
+  const [isChangeBookingOpen, setIsChangeBookingOpen] = useState<boolean>(
+    Boolean(initialAction === "reschedule" && initialLeadId)
+  );
+  const [changeBookingDate, setChangeBookingDate] = useState<string>(initialDate || todayStr);
+  const [changeBookingTime, setChangeBookingTime] = useState<string>("09:00");
+  const [changeBookingType, setChangeBookingType] = useState<"inspection" | "job">("inspection");
+  const [changeBookingTech, setChangeBookingTech] = useState<string>("");
+  const [changeBookingService, setChangeBookingService] = useState<string>("Shower Cubicle Regrouting");
+  const [isSavingBooking, setIsSavingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
+
+  // Show the map panel when coming from Schedule
+  const [showMapPanel, setShowMapPanel] = useState<boolean>(Boolean(initialDate && initialLeadId));
+
+  // Sync props changes (deep link navigation from Schedule)
+  useEffect(() => {
+    if (initialDate) {
+      setSelectedDate(initialDate);
+      setChangeBookingDate(initialDate);
+    }
+    if (initialLeadId) {
+      setSelectedLeadId(initialLeadId);
+      setShowMapPanel(true);
+      if (initialAction === "reschedule") {
+        setIsChangeBookingOpen(true);
+      }
+    }
+  }, [initialDate, initialLeadId, initialAction]);
 
   // ── Build field staff list for dropdown ─────────────────────────────────────
   const staffOptions = useMemo(() => {
@@ -127,21 +172,22 @@ export function DispatchView({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [assignableTechnicians, inspectionStaff]);
 
-  // ── 1. Unassigned Leads list ───────────────────────────────────────────────
+  // ── 1. Unassigned Leads list — ONLY NOT BOOKED (no inspectionAt AND no jobAt) ──
   const unassignedLeads = useMemo(() => {
     return scopedLeads.filter((l) => {
       if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed") return false;
-      const isBooked = Boolean(l.inspectionAt || l.jobAt);
-      const isUnassignedTech = !l.technician || l.technician.toLowerCase() === "unassigned";
-      const isUnassignedInsp = !l.inspectorId && (!l.assigned || l.assigned.toLowerCase() === "unassigned");
-      const isUnassignedGeneral = (!l.assigned || l.assigned.toLowerCase() === "unassigned") && isUnassignedTech;
-      return !isBooked || isUnassignedGeneral || isUnassignedTech || isUnassignedInsp;
+      // Only show leads that have NO booking at all
+      const hasInspectionBooking = Boolean(l.inspectionAt);
+      const hasJobBooking = Boolean(l.jobAt);
+      if (hasInspectionBooking || hasJobBooking) return false;
+      return true;
     });
   }, [scopedLeads]);
 
   const filteredUnassignedLeads = useMemo(() => {
     return unassignedLeads.filter((l) => {
-      const isJobType = Boolean(l.jobAt) || /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo && !l.inspectionAt);
+      // Classify by whether it looks like a job lead or inspection lead
+      const isJobType = /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo);
       const isInspType = !isJobType;
 
       if (unassignedFilter === "inspections" && !isInspType) return false;
@@ -160,7 +206,7 @@ export function DispatchView({
     let insp = 0;
     let jobs = 0;
     for (const l of unassignedLeads) {
-      const isJobType = Boolean(l.jobAt) || /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo && !l.inspectionAt);
+      const isJobType = /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo);
       if (isJobType) {
         jobs++;
       } else {
@@ -310,13 +356,12 @@ export function DispatchView({
       }
     }
 
-    // Sort items on each day by start time
-    for (const [date, items] of map.entries()) {
-      items.sort((a, b) => a.startMins - b.startMins);
+    for (const [, list] of map) {
+      list.sort((a, b) => a.startMins - b.startMins);
     }
 
     return map;
-  }, [visibleDates, scopedLeads, techFilter, searchQuery]);
+  }, [scopedLeads, visibleDates, techFilter, searchQuery]);
 
   // ── Currently Selected Lead ────────────────────────────────────────────────
   const activeLead = useMemo(() => {
@@ -329,6 +374,31 @@ export function DispatchView({
     if (!activeLead) return "Melbourne";
     return resolveArea(activeLead.address || activeLead.city).suburb || "Melbourne";
   }, [activeLead]);
+
+  // Sync fields when activeLead changes
+  useEffect(() => {
+    if (activeLead) {
+      if (activeLead.inspectionAt && activeLead.inspectionAt.includes("T")) {
+        const [d, t] = activeLead.inspectionAt.split("T");
+        setChangeBookingDate(d);
+        setChangeBookingTime(t.slice(0, 5));
+        setChangeBookingType("inspection");
+        setChangeBookingTech(activeLead.assigned || "");
+      } else if (activeLead.jobAt && activeLead.jobAt.includes("T")) {
+        const [d, t] = activeLead.jobAt.split("T");
+        setChangeBookingDate(d);
+        setChangeBookingTime(t.slice(0, 5));
+        setChangeBookingType("job");
+        setChangeBookingTech(activeLead.technician || "");
+      } else {
+        setChangeBookingDate(selectedDate);
+        setChangeBookingTime("09:00");
+        setChangeBookingType("inspection");
+        setChangeBookingTech("");
+      }
+      if (activeLead.service) setChangeBookingService(activeLead.service);
+    }
+  }, [activeLead, selectedDate]);
 
   // ── 4. Smart Suggested Slots Computation ────────────────────────────────────
   const suggestedSlots = useMemo(() => {
@@ -365,7 +435,7 @@ export function DispatchView({
         // Suggest an optimal slot after the last appointment of the day
         const lastAppt = items[items.length - 1];
         const nextStartMins = lastAppt.endMins + 20; // 20 min buffer
-        const slotDuration = bookingType === "inspection" ? 50 : 120;
+        const slotDuration = changeBookingType === "inspection" ? 50 : 120;
         const nextEndMins = nextStartMins + slotDuration;
 
         if (nextEndMins <= TIMELINE_END_MINS) {
@@ -392,7 +462,7 @@ export function DispatchView({
       } else {
         // Open day slot (e.g. 10:00 AM)
         const travel = calculateTravel("Tullamarine", targetSuburb);
-        const slotDuration = bookingType === "inspection" ? 50 : 120;
+        const slotDuration = changeBookingType === "inspection" ? 50 : 120;
         const startM = 10 * 60;
         const endM = startM + slotDuration;
         suggestions.push({
@@ -412,14 +482,14 @@ export function DispatchView({
     }
 
     return suggestions;
-  }, [activeLead, selectedDate, appointmentsByDate, bookingType]);
+  }, [activeLead, selectedDate, appointmentsByDate, changeBookingType]);
 
   // ── Book / Schedule Slot Handler ───────────────────────────────────────────
   const handleBookSlot = async (slot: (typeof suggestedSlots)[0]) => {
     if (!activeLead) return;
 
     const updates: Partial<Lead> = {};
-    if (bookingType === "inspection") {
+    if (changeBookingType === "inspection") {
       updates.inspectionAt = slot.startIsoTime;
       updates.status = "Inspection Booked";
       if (!activeLead.assigned || activeLead.assigned.toLowerCase() === "unassigned") {
@@ -433,8 +503,8 @@ export function DispatchView({
       }
     }
 
-    if (bookingService) {
-      updates.service = bookingService;
+    if (changeBookingService) {
+      updates.service = changeBookingService;
     }
 
     const success = await updateLeadField(activeLead.id, updates);
@@ -444,27 +514,65 @@ export function DispatchView({
     }
   };
 
+  // ── Confirm Change Booking Handler ─────────────────────────────────────────
+  const handleConfirmChangeBooking = async () => {
+    if (!activeLead) return;
+    setIsSavingBooking(true);
+    try {
+      const timeFormatted = (changeBookingTime || "09:00").slice(0, 5).padStart(5, "0");
+      const isoDateTime = `${changeBookingDate}T${timeFormatted}`;
+      const updates: Partial<Lead> = {};
+
+      if (changeBookingType === "inspection") {
+        updates.inspectionAt = isoDateTime;
+        updates.status = "Inspection Booked";
+        if (changeBookingTech && changeBookingTech !== "all" && changeBookingTech !== "Unassigned") {
+          updates.assigned = changeBookingTech;
+        }
+      } else {
+        updates.jobAt = isoDateTime;
+        updates.status = "Job Booked";
+        if (changeBookingTech && changeBookingTech !== "all" && changeBookingTech !== "Unassigned") {
+          updates.technician = changeBookingTech;
+        }
+      }
+
+      if (changeBookingService) updates.service = changeBookingService;
+
+      const ok = await updateLeadField(activeLead.id, updates);
+      if (ok) {
+        setSelectedDate(changeBookingDate);
+        setBookingSuccess(`✓ Booking updated for ${activeLead.name || "Customer"} to ${changeBookingDate} at ${fmtMinutesFull(parseMinutes(timeFormatted))}!`);
+        setTimeout(() => setBookingSuccess(null), 5000);
+        setIsChangeBookingOpen(false);
+      }
+    } catch (err) {
+      console.error("Change booking failed:", err);
+    } finally {
+      setIsSavingBooking(false);
+    }
+  };
+
   // ── Auto Route Optimizer ───────────────────────────────────────────────────
   const handleAutoRoute = () => {
     const dayItems = appointmentsByDate.get(selectedDate) || [];
     if (dayItems.length < 2) {
-      setActionNotice("⚡ Auto Route requires at least 2 appointments on the selected day.");
-    } else {
-      setActionNotice(`⚡ Auto Route generated: ${dayItems.length} stops sequenced to minimize total travel time (~16 km saved).`);
+      setActionNotice("Need at least 2 appointments to optimise the route.");
+      return;
     }
-    setTimeout(() => setActionNotice(null), 4500);
+    setActionNotice(`Route optimised for ${dayItems.length} stops on ${selectedDate}. Travel time reduced.`);
+    setTimeout(() => setActionNotice(null), 4000);
   };
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
+  // ── Date Navigation ───────────────────────────────────────────────────────
   const handlePrevDate = () => {
     const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() - (viewMode === "Day" ? 1 : 5));
+    d.setDate(d.getDate() - (viewMode === "Week" ? 7 : 1));
     setSelectedDate(d.toISOString().slice(0, 10));
   };
-
   const handleNextDate = () => {
     const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() + (viewMode === "Day" ? 1 : 5));
+    d.setDate(d.getDate() + (viewMode === "Week" ? 7 : 1));
     setSelectedDate(d.toISOString().slice(0, 10));
   };
 
@@ -483,13 +591,13 @@ export function DispatchView({
     if (activeLead && !items.some((i) => i.lead.id === activeLead.id)) {
       items.push({
         lead: activeLead,
-        type: bookingType,
+        type: changeBookingType,
         time: "New",
         proposed: true,
       });
     }
     return items;
-  }, [appointmentsByDate, selectedDate, activeLead, bookingType]);
+  }, [appointmentsByDate, selectedDate, activeLead, changeBookingType]);
 
   return (
     <div className="flex flex-col bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden font-sans text-slate-800" style={{ height: "calc(100vh - 75px)", minHeight: 650 }}>
@@ -569,6 +677,20 @@ export function DispatchView({
               Week
             </button>
           </div>
+
+          {/* Map toggle */}
+          <button
+            type="button"
+            onClick={() => setShowMapPanel(!showMapPanel)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              showMapPanel
+                ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <MapIcon className="w-3.5 h-3.5" />
+            Map
+          </button>
         </div>
 
         {/* Right: Staff selector dropdown & Settings gear */}
@@ -662,11 +784,11 @@ export function DispatchView({
         </div>
       )}
 
-      {/* ── MAIN 3-COLUMN DISPATCH LAYOUT ──────────────────────────────────────── */}
+      {/* ── MAIN 2-COLUMN DISPATCH LAYOUT ──────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ══ 1. LEFT PANEL: UNASSIGNED LEADS ══════════════════════════════════ */}
-        <div className="w-60 sm:w-68 shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
+        {/* ══ 1. LEFT PANEL: UNASSIGNED LEADS (HALF PAGE) ══════════════════════ */}
+        <div className="w-1/2 shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
           {/* Header */}
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -674,6 +796,7 @@ export function DispatchView({
               <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
                 ({unassignedCounts.all})
               </span>
+              <span className="text-[10px] text-slate-400 ml-1">Not Booked Yet</span>
             </div>
             <button
               type="button"
@@ -721,15 +844,122 @@ export function DispatchView({
             </button>
           </div>
 
+          {/* ── CHANGE BOOKING PANEL (appears when a lead is selected for reschedule) ── */}
+          {activeLead && isChangeBookingOpen && (
+            <div className="bg-amber-50/40 border-b border-amber-200 p-3.5 space-y-2.5 shrink-0 overflow-y-auto max-h-[45%]">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900">{activeLead.name || "Customer"}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                        Change Booking
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                      {activeLead.address || activeLead.city || "Melbourne"} {activeLead.phone ? `· ${activeLead.phone}` : ""}
+                    </div>
+                  </div>
+                </div>
+                <button type="button" onClick={() => { setIsChangeBookingOpen(false); setSelectedLeadId(null); }}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Type + Tech */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Type</label>
+                  <div className="flex gap-1 bg-white p-0.5 rounded-xl border border-slate-200">
+                    <button type="button" onClick={() => setChangeBookingType("inspection")}
+                      className={`flex-1 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${changeBookingType === "inspection" ? "bg-blue-600 text-white" : "text-slate-600"}`}>
+                      Inspection
+                    </button>
+                    <button type="button" onClick={() => setChangeBookingType("job")}
+                      className={`flex-1 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${changeBookingType === "job" ? "bg-emerald-600 text-white" : "text-slate-600"}`}>
+                      Job
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Assign Tech</label>
+                  <select value={changeBookingTech} onChange={(e) => setChangeBookingTech(e.target.value)}
+                    className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer">
+                    <option value="">Unassigned</option>
+                    {staffOptions.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Date + Time */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Date</label>
+                  <input type="date" value={changeBookingDate} onChange={(e) => setChangeBookingDate(e.target.value)}
+                    className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Time</label>
+                  <input type="time" value={changeBookingTime} onChange={(e) => setChangeBookingTime(e.target.value)}
+                    className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer" />
+                </div>
+              </div>
+
+              {/* Quick Slots */}
+              <div className="flex flex-wrap gap-1">
+                {QUICK_TIME_SLOTS.map((t) => (
+                  <button key={t} type="button" onClick={() => setChangeBookingTime(t)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer ${
+                      changeBookingTime === t ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}>{fmtScheduleTime(t)}</button>
+                ))}
+              </div>
+
+              {/* Suggested slots */}
+              {suggestedSlots.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500">Route-Optimised Slots:</span>
+                  {suggestedSlots.map((slot, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-1.5 rounded-xl bg-white border border-slate-200 text-[11px]">
+                      <div>
+                        <span className="font-bold text-slate-900">{slot.formattedDate}</span>
+                        <span className="ml-1.5 font-bold text-blue-600">{slot.timeWindow}</span>
+                        <span className={`ml-1.5 text-[9px] font-bold px-1 py-0.2 rounded border ${slot.qualityColor}`}>{slot.quality}</span>
+                      </div>
+                      <button type="button" onClick={() => handleBookSlot(slot)}
+                        className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer">Apply</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <button type="button" disabled={isSavingBooking} onClick={handleConfirmChangeBooking}
+                  className="flex-1 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer">
+                  {isSavingBooking ? "Saving…" : <><CheckCircle className="w-3.5 h-3.5" /> Confirm Change</>}
+                </button>
+                <button type="button" onClick={() => onOpenLead(activeLead.id)}
+                  className="py-1.5 px-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 cursor-pointer flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" /> Full Lead
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Unassigned Leads Card List */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
             {filteredUnassignedLeads.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-xs">
-                No unassigned leads found.
+                No unassigned / not-booked leads found.
               </div>
             ) : (
               filteredUnassignedLeads.map((lead) => {
-                const isJobType = Boolean(lead.jobAt) || /job|won|scheduled/i.test(lead.status || "") || Boolean(lead.jobNo && !lead.inspectionAt);
+                const isJobType = /job|won|scheduled/i.test(lead.status || "") || Boolean(lead.jobNo);
                 const isInsp = !isJobType;
                 const isSelected = lead.id === selectedLeadId;
                 const distance = getLeadDistance(lead);
@@ -739,8 +969,9 @@ export function DispatchView({
                     key={lead.id}
                     onClick={() => {
                       setSelectedLeadId(lead.id);
-                      setBookingType(isInsp ? "inspection" : "job");
-                      if (lead.service) setBookingService(lead.service);
+                      setChangeBookingType(isInsp ? "inspection" : "job");
+                      if (lead.service) setChangeBookingService(lead.service);
+                      setIsChangeBookingOpen(true);
                     }}
                     className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
@@ -797,498 +1028,257 @@ export function DispatchView({
           </div>
         </div>
 
-        {/* ══ 2. CENTER PANEL: TIMELINE SCHEDULE GRID ══════════════════════════ */}
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-50/40">
-          <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
-            <div className="w-full min-w-[660px] flex flex-col bg-white">
+        {/* ══ 2. RIGHT PANEL: TIMELINE + MAP (HALF PAGE) ═══════════════════════ */}
+        <div className="w-1/2 flex flex-col min-w-0 min-h-0">
 
-              {/* Grid Header Row: Hourly Columns */}
-              <div className="flex border-b border-slate-200 sticky top-0 bg-white z-20 shadow-2xs">
-                {/* Day column header */}
-                <div className="w-20 sm:w-22 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
-                  Day
+          {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
+          <div className={`flex flex-col bg-slate-50/40 ${showMapPanel ? "flex-1 min-h-0" : "flex-1"}`}>
+            <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
+              <div className="w-full min-w-[660px] flex flex-col bg-white">
+
+                {/* Grid Header Row: Hourly Columns */}
+                <div className="flex border-b border-slate-200 sticky top-0 bg-white z-20 shadow-2xs">
+                  {/* Day column header */}
+                  <div className="w-20 sm:w-22 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
+                    Day
+                  </div>
+                  {/* Hourly headers across 9 AM to 5 PM */}
+                  <div className="flex-1 flex">
+                    {HOUR_SLOTS.map((slot) => (
+                      <div
+                        key={slot.hour}
+                        className="flex-1 text-center py-1.5 text-[10.5px] font-bold text-slate-700 border-r border-slate-100 last:border-r-0"
+                      >
+                        {slot.label}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                {/* Hourly headers across 9 AM to 5 PM */}
-                <div className="flex-1 flex">
-                  {HOUR_SLOTS.map((slot) => (
+
+                {/* Day Rows */}
+                {visibleDates.map((date) => {
+                  const isToday = date === todayStr;
+                  const dObj = new Date(date + "T00:00:00");
+                  const dayName = dObj.toLocaleDateString("en-AU", { weekday: "short" });
+                  const dayDate = dObj.toLocaleDateString("en-AU", { day: "2-digit", month: "short" });
+                  const items = appointmentsByDate.get(date) || [];
+
+                  return (
                     <div
-                      key={slot.hour}
-                      className="flex-1 text-center py-1.5 text-[10.5px] font-bold text-slate-700 border-r border-slate-100 last:border-r-0"
+                      key={date}
+                      className="flex border-b border-slate-200/90 min-h-[70px] group transition-colors relative"
                     >
-                      {slot.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Day Rows */}
-              {visibleDates.map((date) => {
-                const isToday = date === todayStr;
-                const dObj = new Date(date + "T00:00:00");
-                const dayName = dObj.toLocaleDateString("en-AU", { weekday: "short" });
-                const dayDate = dObj.toLocaleDateString("en-AU", { day: "2-digit", month: "short" });
-                const items = appointmentsByDate.get(date) || [];
-
-                return (
-                  <div
-                    key={date}
-                    className="flex border-b border-slate-200/90 min-h-[70px] group transition-colors relative"
-                  >
-                    {/* Left Sticky Day Header Cell */}
-                    <div
-                      className={`w-20 sm:w-22 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 ${
-                        isToday
-                          ? "bg-blue-600 text-white rounded-l-xl shadow-xs"
-                          : "bg-slate-50/90 text-slate-800"
-                      }`}
-                    >
-                      <div className="text-[11px] font-extrabold leading-tight">
-                        {dayName}
-                      </div>
-                      <div className={`text-[10.5px] font-bold leading-tight mt-0.5 ${isToday ? "text-blue-100" : "text-slate-900"}`}>
-                        {dayDate}
-                      </div>
-                      <div className={`text-[8.5px] font-medium leading-none mt-1 ${isToday ? "text-blue-200" : "text-slate-400"}`}>
-                        {items.length} item{items.length !== 1 ? "s" : ""}
-                      </div>
-                    </div>
-
-                    {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
-                    <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[70px]">
-                      {/* Vertical Background Grid Lines for each hour */}
-                      <div className="absolute inset-0 flex pointer-events-none">
-                        {HOUR_SLOTS.map((slot) => (
-                          <div
-                            key={slot.hour}
-                            className="flex-1 border-r border-slate-100 last:border-r-0"
-                          />
-                        ))}
+                      {/* Left Sticky Day Header Cell */}
+                      <div
+                        className={`w-20 sm:w-22 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 ${
+                          isToday
+                            ? "bg-blue-600 text-white rounded-l-xl shadow-xs"
+                            : "bg-slate-50/90 text-slate-800"
+                        }`}
+                      >
+                        <div className="text-[11px] font-extrabold leading-tight">
+                          {dayName}
+                        </div>
+                        <div className={`text-[10.5px] font-bold leading-tight mt-0.5 ${isToday ? "text-blue-100" : "text-slate-900"}`}>
+                          {dayDate}
+                        </div>
+                        <div className={`text-[8.5px] font-medium leading-none mt-1 ${isToday ? "text-blue-200" : "text-slate-400"}`}>
+                          {items.length} item{items.length !== 1 ? "s" : ""}
+                        </div>
                       </div>
 
-                      {/* Timeline Items Placed by Exact Time % */}
-                      <div className="relative w-full h-[58px]">
-                        {items.length === 0 ? (
-                          /* Full-Day Available Slot */
-                          <div
-                            onClick={() => {
-                              setSelectedDate(date);
-                              if (activeLead && suggestedSlots.length > 0) {
-                                handleBookSlot(suggestedSlots[0]);
-                              }
-                            }}
-                            style={{ left: "10%", width: "80%" }}
-                            className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400/90 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
-                          >
-                            <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
-                            <div className="text-[11px] font-bold text-emerald-800">Available Slot</div>
-                            <div className="text-[9px] font-semibold text-emerald-700">9:00 AM – 5:00 PM Open</div>
-                          </div>
-                        ) : (
-                          <>
-                            {items.map((item, idx) => {
-                              const isInsp = item.type === "inspection";
-                              const isSelected = item.lead.id === selectedLeadId;
-                              const nextItem = items[idx + 1];
+                      {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
+                      <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[70px]">
+                        {/* Vertical Background Grid Lines for each hour */}
+                        <div className="absolute inset-0 flex pointer-events-none">
+                          {HOUR_SLOTS.map((slot) => (
+                            <div
+                              key={slot.hour}
+                              className="flex-1 border-r border-slate-100 last:border-r-0"
+                            />
+                          ))}
+                        </div>
 
-                              // Calculate travel gap pill placement between this and next appointment
-                              const gapStartPct = item.leftPct + item.widthPct;
-                              const gapWidthPct = nextItem ? Math.max(0, nextItem.leftPct - gapStartPct) : 0;
-                              const gapMins = nextItem ? nextItem.startMins - item.endMins : 0;
+                        {/* Timeline Items Placed by Exact Time % */}
+                        <div className="relative w-full h-[58px]">
+                          {items.length === 0 ? (
+                            /* Full-Day Available Slot */
+                            <div
+                              onClick={() => {
+                                setSelectedDate(date);
+                                if (activeLead && suggestedSlots.length > 0) {
+                                  handleBookSlot(suggestedSlots[0]);
+                                }
+                              }}
+                              style={{ left: "10%", width: "80%" }}
+                              className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400/90 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
+                            >
+                              <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
+                              <div className="text-[11px] font-bold text-emerald-800">Available Slot</div>
+                              <div className="text-[9px] font-semibold text-emerald-700">9:00 AM – 5:00 PM Open</div>
+                            </div>
+                          ) : (
+                            <>
+                              {items.map((item, idx) => {
+                                const isInsp = item.type === "inspection";
+                                const isSelected = item.lead.id === selectedLeadId;
+                                const nextItem = items[idx + 1];
 
-                              return (
-                                <div key={`${item.lead.id}-${idx}`}>
-                                  {/* Appointment Card */}
-                                  <div
-                                    onClick={() => setSelectedLeadId(item.lead.id)}
-                                    style={{
-                                      left: `${item.leftPct}%`,
-                                      width: `${item.widthPct}%`,
-                                    }}
-                                    className={`absolute top-0.5 bottom-0.5 min-w-[95px] p-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
-                                      isInsp
-                                        ? "bg-sky-50/95 border-sky-300 text-sky-950 hover:bg-sky-100"
-                                        : "bg-emerald-50/95 border-emerald-300 text-emerald-950 hover:bg-emerald-100"
-                                    } ${isSelected ? "ring-2 ring-blue-500 shadow-xs z-20" : ""}`}
-                                  >
-                                    <div>
-                                      {/* Top: Time span & Car icon */}
-                                      <div className="flex items-center justify-between text-[9.5px] font-extrabold mb-0.5">
-                                        <span className={isInsp ? "text-blue-700" : "text-emerald-700"}>
-                                          {fmtMinutesTo12h(item.startMins)} – {fmtMinutesTo12h(item.endMins)}
-                                        </span>
-                                        <Car className="w-3 h-3 opacity-60 shrink-0" />
-                                      </div>
-
-                                      {/* Title */}
-                                      <div className={`text-[10.5px] font-extrabold leading-tight truncate ${isInsp ? "text-blue-900" : "text-emerald-900"}`}>
-                                        {item.title}
-                                      </div>
-
-                                      {/* Customer Name or Service */}
-                                      <div className="text-[10px] font-bold text-slate-800 truncate leading-tight">
-                                        {isInsp ? (item.lead.name || "Customer") : (item.serviceLabel || item.lead.name)}
-                                      </div>
-
-                                      {/* Suburb */}
-                                      <div className="text-[9px] text-slate-500 font-medium truncate leading-tight">
-                                        {item.suburb}
-                                      </div>
-                                    </div>
-
-                                    {/* Travel footer */}
-                                    <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-400 pt-0.5 mt-0.5 border-t border-slate-200/40 truncate leading-none">
-                                      <Car className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="truncate">
-                                        {isInsp ? `30m + ${item.travelToMins}m` : `2h + ${item.travelToMins}m`}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Travel Gap Pill (between consecutive appointments) */}
-                                  {nextItem && gapMins > 0 && gapWidthPct > 0 && (
-                                    <div
-                                      style={{
-                                        left: `${gapStartPct}%`,
-                                        width: `${gapWidthPct}%`,
-                                      }}
-                                      className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-[8.5px] font-bold text-slate-400 whitespace-nowrap z-0 pointer-events-none"
-                                    >
-                                      <span>{gapMins}m →</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-
-                            {/* Available Slot at the end of the day */}
-                            {(() => {
-                              const lastItem = items[items.length - 1];
-                              if (lastItem && TIMELINE_END_MINS - lastItem.endMins >= 60) {
-                                const availStartMins = lastItem.endMins + 20;
-                                const availStartPct = ((availStartMins - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
-                                const availWidthPct = Math.max(12, 100 - availStartPct);
+                                // Calculate travel gap pill placement between this and next appointment
+                                const gapStartPct = item.leftPct + item.widthPct;
+                                const gapWidthPct = nextItem ? Math.max(0, nextItem.leftPct - gapStartPct) : 0;
+                                const gapMins = nextItem ? nextItem.startMins - item.endMins : 0;
 
                                 return (
-                                  <div
-                                    onClick={() => {
-                                      setSelectedDate(date);
-                                      if (activeLead && suggestedSlots.length > 0) {
-                                        handleBookSlot(suggestedSlots[0]);
-                                      }
-                                    }}
-                                    style={{
-                                      left: `${availStartPct}%`,
-                                      width: `${availWidthPct}%`,
-                                    }}
-                                    className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
-                                  >
-                                    <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
-                                    <div className="text-[10.5px] font-bold text-emerald-800">Available</div>
-                                    <div className="text-[8.5px] font-semibold text-emerald-700">
-                                      {fmtMinutesTo12h(availStartMins)} – 5:00
+                                  <div key={`${item.lead.id}-${idx}`}>
+                                    {/* Appointment Card */}
+                                    <div
+                                      onClick={() => {
+                                        setSelectedLeadId(item.lead.id);
+                                        setIsChangeBookingOpen(true);
+                                      }}
+                                      style={{
+                                        left: `${item.leftPct}%`,
+                                        width: `${item.widthPct}%`,
+                                      }}
+                                      className={`absolute top-0.5 bottom-0.5 min-w-[95px] p-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
+                                        isInsp
+                                          ? "bg-sky-50/95 border-sky-300 text-sky-950 hover:bg-sky-100"
+                                          : "bg-emerald-50/95 border-emerald-300 text-emerald-950 hover:bg-emerald-100"
+                                      } ${isSelected ? "ring-2 ring-blue-500 shadow-xs z-20" : ""}`}
+                                    >
+                                      <div>
+                                        {/* Top: Time span & Car icon */}
+                                        <div className="flex items-center justify-between text-[9.5px] font-extrabold mb-0.5">
+                                          <span className={isInsp ? "text-blue-700" : "text-emerald-700"}>
+                                            {fmtMinutesTo12h(item.startMins)} – {fmtMinutesTo12h(item.endMins)}
+                                          </span>
+                                          <Car className="w-3 h-3 opacity-60 shrink-0" />
+                                        </div>
+
+                                        {/* Title */}
+                                        <div className={`text-[10.5px] font-extrabold leading-tight truncate ${isInsp ? "text-blue-900" : "text-emerald-900"}`}>
+                                          {item.title}
+                                        </div>
+
+                                        {/* Customer Name or Service */}
+                                        <div className="text-[10px] font-bold text-slate-800 truncate leading-tight">
+                                          {isInsp ? (item.lead.name || "Customer") : (item.serviceLabel || item.lead.name)}
+                                        </div>
+
+                                        {/* Suburb */}
+                                        <div className="text-[9px] text-slate-500 font-medium truncate leading-tight">
+                                          {item.suburb}
+                                        </div>
+                                      </div>
+
+                                      {/* Travel footer */}
+                                      <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-400 pt-0.5 mt-0.5 border-t border-slate-200/40 truncate leading-none">
+                                        <Car className="w-2.5 h-2.5 shrink-0" />
+                                        <span className="truncate">
+                                          {isInsp ? `30m + ${item.travelToMins}m` : `2h + ${item.travelToMins}m`}
+                                        </span>
+                                      </div>
                                     </div>
+
+                                    {/* Travel Gap Pill (between consecutive appointments) */}
+                                    {nextItem && gapMins > 0 && gapWidthPct > 0 && (
+                                      <div
+                                        style={{
+                                          left: `${gapStartPct}%`,
+                                          width: `${gapWidthPct}%`,
+                                        }}
+                                        className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-[8.5px] font-bold text-slate-400 whitespace-nowrap z-0 pointer-events-none"
+                                      >
+                                        <span>{gapMins}m →</span>
+                                      </div>
+                                    )}
                                   </div>
                                 );
-                              }
-                              return null;
-                            })()}
-                          </>
-                        )}
+                              })}
+
+                              {/* Available Slot at the end of the day */}
+                              {(() => {
+                                const lastItem = items[items.length - 1];
+                                if (lastItem && TIMELINE_END_MINS - lastItem.endMins >= 60) {
+                                  const availStartMins = lastItem.endMins + 20;
+                                  const availStartPct = ((availStartMins - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
+                                  const availWidthPct = Math.max(12, 100 - availStartPct);
+
+                                  return (
+                                    <div
+                                      onClick={() => {
+                                        setSelectedDate(date);
+                                        if (activeLead && suggestedSlots.length > 0) {
+                                          handleBookSlot(suggestedSlots[0]);
+                                        }
+                                      }}
+                                      style={{
+                                        left: `${availStartPct}%`,
+                                        width: `${availWidthPct}%`,
+                                      }}
+                                      className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
+                                    >
+                                      <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
+                                      <div className="text-[10.5px] font-bold text-emerald-800">Available</div>
+                                      <div className="text-[8.5px] font-semibold text-emerald-700">
+                                        {fmtMinutesTo12h(availStartMins)} – 5:00
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Swatches Legend Bar */}
+            <div className="bg-white border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-4 text-[10.5px] text-slate-600 font-semibold shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-md bg-sky-200 border border-sky-400 inline-block" />
+                <span>Inspection (30 mins + travel)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-md bg-emerald-200 border border-emerald-400 inline-block" />
+                <span>Job (Exact hours + travel)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-md border-2 border-dashed border-emerald-500 bg-emerald-50 inline-block" />
+                <span>Available Slot</span>
+              </div>
             </div>
           </div>
 
-          {/* Bottom Swatches Legend Bar */}
-          <div className="bg-white border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-4 text-[10.5px] text-slate-600 font-semibold shrink-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-sky-200 border border-sky-400 inline-block" />
-              <span>Inspection (30 mins + travel)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-emerald-200 border border-emerald-400 inline-block" />
-              <span>Job (Exact hours + travel)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-slate-200 border border-slate-300 inline-block" />
-              <span>Travel Time (between jobs)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md border-2 border-dashed border-emerald-500 bg-emerald-50 inline-block" />
-              <span>Available Slot</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ══ 3. RIGHT PANEL: LEAD / JOB DETAILS & SUGGESTED SLOTS ══════════════ */}
-        {activeLead ? (
-          <div className="w-72 sm:w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col min-h-0 overflow-y-auto">
-            {/* Tabs & Close button */}
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRightPanelTab("details")}
-                  className={`text-xs font-bold pb-1 cursor-pointer transition-colors ${
-                    rightPanelTab === "details"
-                      ? "text-blue-700 border-b-2 border-blue-600"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Lead / Job Details
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRightPanelTab("slots")}
-                  className={`text-xs font-bold pb-1 cursor-pointer transition-colors ${
-                    rightPanelTab === "slots"
-                      ? "text-blue-700 border-b-2 border-blue-600"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Suggested Slots
+          {/* ── MAP PANEL (toggleable, shown when coming from Schedule or toggled) ── */}
+          {showMapPanel && (
+            <div className="h-[280px] shrink-0 border-t border-slate-200 relative">
+              {/* Map floating overlay header */}
+              <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 shadow-md text-xs font-bold text-slate-800 flex items-center gap-2">
+                <MapIcon className="w-3.5 h-3.5 text-blue-600" />
+                <span>Day Route — {(appointmentsByDate.get(selectedDate) || []).length} stops</span>
+                <button type="button" onClick={() => setShowMapPanel(false)} className="ml-1 p-0.5 text-slate-400 hover:text-slate-700 cursor-pointer">
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => { setEditingLead(activeLead); setLeadModalOpen(true); }}
-                  className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 cursor-pointer"
-                  title="Edit Lead"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedLeadId(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 space-y-4 flex-1">
-              {/* Customer Profile Card Header */}
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <h3 className="text-sm font-black text-slate-900 truncate">
-                      {activeLead.name || "Customer Name"}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200 shrink-0">
-                      {activeLead.status || "New Lead"}
-                    </span>
-                  </div>
-
-                  {activeLead.phone && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1 font-semibold">
-                      <Phone className="w-3 h-3 text-slate-400" />
-                      <span>{activeLead.phone}</span>
-                      <a
-                        href={getWhatsAppLink(activeLead.phone)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                        title="WhatsApp"
-                      >
-                        WA
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => callCustomer(activeLead)}
-                        className="p-0.5 text-blue-600 hover:text-blue-800 cursor-pointer"
-                        title="Call"
-                      >
-                        <Phone className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-
-                  {activeLead.email && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-0.5 font-medium truncate">
-                      <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="truncate">{activeLead.email}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between gap-1 text-xs text-slate-600 mt-1 pt-1 border-t border-slate-100">
-                    <div className="flex items-center gap-1 truncate font-medium">
-                      <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="truncate">{activeLead.address || activeLead.city || "Melbourne VIC"}</span>
-                    </div>
-                    <span className="text-xs font-bold text-blue-600 shrink-0">
-                      {getLeadDistance(activeLead)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Type Selection */}
-              <div>
-                <div className="text-xs font-bold text-slate-800 mb-1.5">Type</div>
-                <div className="flex items-center gap-4 text-xs font-semibold text-slate-700">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="bookingType"
-                      checked={bookingType === "inspection"}
-                      onChange={() => setBookingType("inspection")}
-                      className="text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span>Inspection (30 mins)</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="bookingType"
-                      checked={bookingType === "job"}
-                      onChange={() => setBookingType("job")}
-                      className="text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span>Job</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Preferred Date */}
-              <div>
-                <div className="text-xs font-bold text-slate-800 mb-1">Preferred Date</div>
-                <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    {activeLead.inspectionAt
-                      ? formatApptDate(activeLead.inspectionAt)
-                      : activeLead.jobAt
-                      ? formatApptDate(activeLead.jobAt)
-                      : "Flexible (User not selected)"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Service Dropdown */}
-              <div>
-                <div className="text-xs font-bold text-slate-800 mb-1">Service</div>
-                <select
-                  value={bookingService}
-                  onChange={(e) => setBookingService(e.target.value)}
-                  className="w-full text-xs font-semibold p-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="Shower Cubicle Regrouting">Shower Cubicle Regrouting</option>
-                  <option value="Shower Base Repair">Shower Base Repair</option>
-                  <option value="Shower Regrout & Clean">Shower Regrout & Clean</option>
-                  <option value="Bathroom Regrouting">Bathroom Regrouting</option>
-                  <option value="Balcony Waterproofing">Balcony Waterproofing</option>
-                  <option value="Custom Tile Works">Custom Tile Works</option>
-                </select>
-              </div>
-
-              {/* Suggested Slots Section */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-bold text-slate-900">
-                    Suggested Slots <span className="text-[10px] text-slate-400 font-normal">(Based on existing schedule)</span>
-                  </h4>
-                </div>
-
-                <div className="space-y-2">
-                  {suggestedSlots.map((slot, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 rounded-xl border border-slate-200/90 bg-slate-50/50 hover:bg-blue-50/30 transition-all flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-start gap-2 min-w-0">
-                        <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                          {idx + 1}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900 truncate">
-                              {slot.formattedDate}
-                            </span>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${slot.qualityColor}`}>
-                              {slot.quality}
-                            </span>
-                          </div>
-                          <div className="text-xs font-bold text-blue-700 mt-0.5">
-                            {slot.timeWindow}
-                          </div>
-                          <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                            {slot.contextText}
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-semibold">
-                            Travel: {slot.travelMins} min ({slot.distanceKm} km)
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleBookSlot(slot)}
-                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition-colors shadow-2xs shrink-0"
-                      >
-                        Book
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Embedded Mini Route Map Preview */}
-              <div className="rounded-xl overflow-hidden border border-slate-200 relative h-36">
-                <DispatchMap
-                  items={mapItems}
-                  hqAddress={HQ_ADDRESS}
-                  selectedLeadId={activeLead.id}
-                  onSelectLead={() => {}}
-                />
-              </div>
-
-              {/* Primary Action Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (suggestedSlots.length > 0) {
-                    handleBookSlot(suggestedSlots[0]);
-                  } else {
-                    setEditingLead(activeLead);
-                    setLeadModalOpen(true);
-                  }
+              <DispatchMap
+                items={mapItems}
+                hqAddress={HQ_ADDRESS}
+                selectedLeadId={selectedLeadId}
+                onSelectLead={(id) => {
+                  setSelectedLeadId(id);
+                  setIsChangeBookingOpen(true);
                 }}
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add to Schedule</span>
-              </button>
-
-              {/* Open full lead link */}
-              <button
-                type="button"
-                onClick={() => onOpenLead(activeLead.id)}
-                className="w-full py-2 text-center text-xs font-bold text-blue-600 hover:underline cursor-pointer flex items-center justify-center gap-1"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>View Full Lead Details</span>
-              </button>
+              />
             </div>
-          </div>
-        ) : (
-          /* Empty Right Drawer Placeholder */
-          <div className="w-60 sm:w-68 shrink-0 bg-white border-l border-slate-200 flex flex-col items-center justify-center p-6 text-center text-slate-400">
-            <User className="w-8 h-8 mb-2 text-slate-300" />
-            <div className="text-xs font-bold text-slate-600">Select a Lead or Appointment</div>
-            <div className="text-[10px] font-medium mt-1 text-slate-400 leading-relaxed">
-              Click an unassigned lead from the left to view suggested slots, or click an appointment on the timeline.
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
