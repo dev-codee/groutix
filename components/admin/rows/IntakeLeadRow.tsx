@@ -5,7 +5,7 @@ import {
   ShieldAlert, ShieldCheck, Check, ChevronRight, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink } from "@/lib/adminHelpers";
+import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import { STATUS_KEYS } from "@/lib/pipeline";
 import type { Lead } from "@/components/admin/types";
@@ -68,7 +68,8 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
   const notesDisplay = l.notes || l.message;
 
-  const sIdx = STATUS_KEYS.indexOf(l.status || "New");
+  const workflowStatus = getEffectiveWorkflowStatus(l);
+  const sIdx = workflowStatus ? STATUS_KEYS.indexOf(workflowStatus) : -1;
   const atOrPast = (s: string) => sIdx >= 0 && sIdx >= STATUS_KEYS.indexOf(s);
 
   const isNewDone = true;
@@ -249,7 +250,14 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </label>
               <select
                 value={l.status || "New"}
-                onChange={(e) => updateLeadField(l.id, { status: e.target.value })}
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  const updates: Record<string, any> = { status: newStatus };
+                  if (isTerminalStatus(newStatus)) {
+                    updates.previousStatus = l.previousStatus || l.status || "New";
+                  }
+                  updateLeadField(l.id, updates);
+                }}
                 className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
               >
                 {statusOptions.map((s) => (

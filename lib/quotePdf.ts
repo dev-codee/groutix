@@ -60,12 +60,13 @@ export function computeQuoteTotals(
   quoteAmount?: number
 ): { subtotal: number; gst: number; total: number } {
   const rawSub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
-  if (mode === "exclusive") {
+  const effectiveMode = (mode === "inclusive" || mode === "none") ? mode : "exclusive";
+  if (effectiveMode === "exclusive") {
     const gst = rawSub * (rate / 100);
     const total = Math.round(rawSub + gst);
     return { subtotal: rawSub, gst, total };
   }
-  if (mode === "none") {
+  if (effectiveMode === "none") {
     return { subtotal: rawSub, gst: 0, total: Math.round(rawSub) };
   }
   // inclusive: entered prices already contain GST.

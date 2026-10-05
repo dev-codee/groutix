@@ -12,7 +12,7 @@ import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, STATUS_LIST, MANAGER_STATUS_FILTER_LIST, fmtDate, getStepActive,
-  INSPECTION_PHASE,
+  INSPECTION_PHASE, isTerminalStatus, getEffectiveWorkflowStatus,
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
@@ -42,6 +42,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     onTheWayLoading,
   } = useAdminPageCtx();
 
+  const workflowStatus = getEffectiveWorkflowStatus(l);
   const isFinanceStage = [
     "Job Done",
     "Invoice Sent",
@@ -51,7 +52,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     "Payment Received",
     "Warranty Sent",
     "Completed",
-  ].includes(l.status);
+  ].includes(workflowStatus);
   const financeAssignee = l.assigned && !isTechnicianName(l.assigned)
     ? l.assigned
     : (staff?.find((s) => s.role === "finance")?.name || "Unassigned");
@@ -74,8 +75,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
   const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
   const remainingAmt = invoiceTotal && amountPaid !== null ? Math.max(0, invoiceTotal - amountPaid) : null;
-  const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(l.status);
-  const isPaymentPending = l.status === "Payment Pending";
+  const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+  const isPaymentPending = workflowStatus === "Payment Pending";
 
   const hasRemainingDues = (() => {
     if (l.paymentType === "full") return false;
@@ -120,7 +121,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               onChange={(e) => {
                 const newStatus = e.target.value;
                 if (newStatus === "Completed" && !confirmCompleteIfDues()) return;
-                updateLeadField(l.id, { status: newStatus });
+                const isTerm = isTerminalStatus(newStatus);
+                const wasTerm = isTerminalStatus(l.status);
+                const updates: Partial<Lead> = { status: newStatus };
+                if (isTerm && !wasTerm) {
+                  updates.previousStatus = l.previousStatus || l.status || "New";
+                }
+                updateLeadField(l.id, updates);
               }}
               className={`text-xs px-2 py-1.5 rounded-lg border font-semibold min-h-[34px] cursor-pointer shadow-2xs transition-colors focus:outline-hidden focus:ring-1 focus:ring-blue-500 ${
                 l.status === "Completed"
@@ -340,8 +347,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               {(() => {
                 const isInspectionBooked =
                   Boolean(l.inspectionAt) ||
-                  l.status === "Inspection Completed" ||
-                  INSPECTION_PHASE.includes(l.status);
+                  workflowStatus === "Inspection Completed" ||
+                  INSPECTION_PHASE.includes(workflowStatus);
                 return (
                   <button
                     type="button"
@@ -395,8 +402,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Inspection Live Visit */}
           {(() => {
             const steps = INSPECTION_STEPS;
-            const s = l.status;
-            const sIdx = STATUS_LIST.indexOf(s || "");
+            const s = workflowStatus;
+            const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
             const currentIdx = (() => {
               if (sIdx >= 7 || l.inspectionReport?.status === "completed" || (s && (s.startsWith("Quote") || s === "Won" || s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed"))) return 3;
               if (s === "Inspection In Progress") return 2;
@@ -483,7 +490,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           {/* Hand-off: Share to Booking Office */}
           <div className="pt-0.5">
-            {l.status === "Inspection Completed" ? (
+            {workflowStatus === "Inspection Completed" ? (
               <div className="w-full px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
                 <Check className="w-4 h-4" />
                 Shared to Booking Office — awaiting quote
@@ -504,7 +511,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Quote quick status */}
           <div className="grid grid-cols-3 gap-1.5 items-center">
             {(() => {
-              const isQuoteSent = Boolean(l.quoteNumber) || l.status === "Quote Sent" || ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
+              const isQuoteSent = Boolean(l.quoteNumber) || workflowStatus === "Quote Sent" || ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "Job Done", "Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
               return (
                 <button
                   onClick={() => openQuoteModal(l)}
@@ -520,8 +527,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               );
             })()}
             {(() => {
-              const s = l.status;
-              const sIdx = STATUS_LIST.indexOf(s || "");
+              const s = workflowStatus;
+              const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
               const isJobBookedDone = (sIdx >= 12 || Boolean(l.jobAt) || Boolean(s && (s.startsWith("Job") || s === "Scheduled" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty") || s === "Completed")));
               return (
                 <button
@@ -579,8 +586,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Job Status */}
           {(() => {
             const steps = JOB_STEPS;
-            const s = l.status;
-            const sIdx = STATUS_LIST.indexOf(s || "");
+            const s = workflowStatus;
+            const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
             const currentIdx = (() => {
               if (sIdx >= 19 || (s && (s === "Job Done" || s === "Completed" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty")))) return 3;
               if (s === "Job Started" || s === "Job In Progress") return 2;
@@ -775,7 +782,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           <div className="grid grid-cols-1 gap-2">
             {/* Invoice Sent Button */}
             {(() => {
-              const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
+              const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
               return (
                 <button
                   type="button"
@@ -794,7 +801,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
             {/* Pending Payment Button */}
             {(() => {
-              const isPaymentPendingDone = ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
+              const isPaymentPendingDone = ["Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
               return (
                 <div className="space-y-1">
                   <button

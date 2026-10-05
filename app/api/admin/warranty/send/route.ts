@@ -7,9 +7,8 @@ import {
   formatDocNumber,
   type WarrantyDoc,
 } from "@/lib/submissions";
-import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifyRequestSession } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
-import { buildWarrantyPdfBase64 } from "@/lib/warrantyPdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -62,28 +61,17 @@ export async function POST(req: NextRequest) {
     provided: true,
   };
 
-  // Generate the official 2-page executive Warranty PDF
+  // Attach the official high-resolution PNG Warranty certificate
   const attachments: EmailAttachment[] = [];
-  try {
-    const pdfBase64 = await buildWarrantyPdfBase64({
-      jobNo: warranty.jobNo || warrantyNo,
-      completionDate: warranty.completionDate || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" }),
-      expiryDate: warranty.expiryDate || "",
-      customerName: warranty.customerName || lead.name || "Customer",
-      address: warranty.address || lead.address || "",
-      authorisedBy: warranty.authorisedBy || "GROUTIX PTY LTD",
-      dateIssued: warranty.dateIssued || new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" }),
-      phone: "70238094",
-      email: "info@groutix.com",
-      website: "www.groutix.com",
-    });
-    attachments.push({
-      name: `Groutix_Warranty_${warrantyNo}.pdf`,
-      content: pdfBase64,
-      contentType: "application/pdf",
-    });
-  } catch (e) {
-    console.error("Could not generate warranty PDF attachment:", e);
+  if (body.imageDataUrl && body.imageDataUrl.includes(",")) {
+    const base64Data = body.imageDataUrl.split(",")[1];
+    if (base64Data) {
+      attachments.push({
+        name: `Groutix_Warranty_${warrantyNo}.png`,
+        content: base64Data,
+        contentType: "image/png",
+      });
+    }
   }
 
 
@@ -108,7 +96,7 @@ export async function POST(req: NextRequest) {
     <div style="margin:20px 0;padding:12px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;line-height:1.5;">
       Your warranty is issued in accordance with Clause 12 of the official <a href="https://groutix.com/terms-conditions" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">Groutix Terms &amp; Conditions</a>. Please retain your certificate and tax invoice for warranty claims.
     </div>
-    <p style="margin:20px 0 0;">Your warranty card is attached. Keep it safe for your records. If you ever have any questions or need warranty support, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a> or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>`;
+    <p style="margin:20px 0 0;">Your warranty card is attached as a high-resolution PNG image. Keep it safe for your records. If you ever have any questions or need warranty support, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a> or call us on <a href="tel:70238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.</p>`;
 
   const logoUrl = await getEmailLogoUrl();
   try {

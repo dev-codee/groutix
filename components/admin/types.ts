@@ -60,6 +60,7 @@ export interface Lead {
   id: string;
   type?: "quote" | "support_ticket" | "lead";
   status: string;
+  previousStatus?: string;
   createdAt: string;
   jobNo?: string;
   name?: string;

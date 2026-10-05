@@ -407,13 +407,14 @@ export function fmtTimeBadge(iso?: string) {
 export function getLeadQuoteTotal(l: Lead): number {
   const items = Array.isArray(l.quoteItems) ? l.quoteItems : [];
   const sub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
+  const isEx = l.quoteTaxMode === "exclusive" || !l.quoteTaxMode;
   return (
     l.quoteAmount ||
-    (l.quoteTaxMode === "exclusive" ? sub * (1 + (l.quoteTaxRate || 10) / 100) : sub)
+    (isEx ? sub * (1 + (l.quoteTaxRate || 10) / 100) : sub)
   );
 }
 
-export function getWhatsAppLink(phone?: string): string {
+export function getWhatsAppLink(phone?: string, text?: string): string {
   if (!phone) return "#";
   const clean = phone.replace(/[^0-9+]/g, "");
   if (!clean) return "#";
@@ -422,11 +423,23 @@ export function getWhatsAppLink(phone?: string): string {
     : clean.startsWith("0")
     ? "61" + clean.slice(1)
     : clean;
-  return `https://wa.me/${num}`;
+  const query = text ? `?text=${encodeURIComponent(text)}` : "";
+  return `https://wa.me/${num}${query}`;
+}
+
+export function isTerminalStatus(s?: string): boolean {
+  return Boolean(s && /^(lost|cancelled|closed|no response)/i.test(s));
+}
+
+export function getEffectiveWorkflowStatus(lead: Lead): string {
+  if (isTerminalStatus(lead.status)) {
+    return lead.previousStatus || "New";
+  }
+  return lead.status || "New";
 }
 
 export function getStepActive(lead: Lead, step: string): boolean {
-  const s = lead.status;
+  const s = getEffectiveWorkflowStatus(lead);
   switch (step) {
     case "New":
       return true;

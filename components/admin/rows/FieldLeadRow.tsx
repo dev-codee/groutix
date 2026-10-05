@@ -5,7 +5,7 @@ import {
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getFollowupPrompt } from "@/lib/adminHelpers";
+import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -45,11 +45,12 @@ export function FieldLeadRow({ l }: { l: Lead }) {
     ? `${l.service} | ${l.notes || l.message}`
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
 
-  const isInspectionBookedDone = Boolean(l.inspectionAt) || (l.status && (l.status.startsWith("Inspection") || l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed"));
-  const isInspectionCompletedDone = l.status === "Inspection Completed" || (l.status && (l.status.startsWith("Quote") || l.status === "Job Booked" || l.status === "Completed")) || l.inspectionReport?.status === "completed";
+  const workflowStatus = getEffectiveWorkflowStatus(l);
+  const isInspectionBookedDone = Boolean(l.inspectionAt) || (workflowStatus && (workflowStatus.startsWith("Inspection") || workflowStatus.startsWith("Quote") || workflowStatus === "Job Booked" || workflowStatus === "Completed"));
+  const isInspectionCompletedDone = workflowStatus === "Inspection Completed" || (workflowStatus && (workflowStatus.startsWith("Quote") || workflowStatus === "Job Booked" || workflowStatus === "Completed")) || l.inspectionReport?.status === "completed";
 
   const inspectionStepIdx = (() => {
-    const s = l.status;
+    const s = workflowStatus;
     if (!s || s === "Inspection Booked") return 0;
     if (s === "Inspection En Route") return 1;
     if (s === "Inspection Arrived") return 2;
