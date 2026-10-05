@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal } from "@/lib/adminHelpers";
+import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -35,13 +35,15 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const waUrl = getWhatsAppLink(l.phone);
   const followupPrompt = getFollowupPrompt(l);
 
-  const isJobDone = l.status === "Job Done" || ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
-  const isInvoiceSent = l.status === "Invoice Sent" || (Boolean(l.invoiceSentAt) && l.status !== "Job Done") || ["Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
-  const isPaymentPending = l.status === "Payment Pending";
-  const isPaymentPendingDone = ["Payment Pending", "Payment Request", "Payment Received", "Warranty Sent", "Completed"].includes(l.status);
-  const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(l.status);
-  const isWarrantySent = l.status === "Warranty Sent" || Boolean(l.warranty?.sentAt) || l.status === "Completed";
-  const isCompleted = l.status === "Completed";
+  const workflowStatus = getEffectiveWorkflowStatus(l);
+
+  const isJobDone = workflowStatus === "Job Done" || ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+  const isInvoiceSent = workflowStatus === "Invoice Sent" || (Boolean(l.invoiceSentAt) && workflowStatus !== "Job Done") || ["Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+  const isPaymentPending = workflowStatus === "Payment Pending";
+  const isPaymentPendingDone = ["Payment Pending", "Payment Request", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+  const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+  const isWarrantySent = workflowStatus === "Warranty Sent" || Boolean(l.warranty?.sentAt) || workflowStatus === "Completed";
+  const isCompleted = workflowStatus === "Completed";
 
   const jobNoDisplay = l.jobNo
     ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)
@@ -261,7 +263,11 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 onChange={(e) => {
                   const newStatus = e.target.value;
                   if (newStatus === "Completed" && !confirmCompleteIfDues()) return;
-                  updateLeadField(l.id, { status: newStatus });
+                  const updates: Record<string, any> = { status: newStatus };
+                  if (isTerminalStatus(newStatus)) {
+                    updates.previousStatus = l.previousStatus || l.status || "Job Done";
+                  }
+                  updateLeadField(l.id, updates);
                 }}
                 className="w-full h-[34px] text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
               >

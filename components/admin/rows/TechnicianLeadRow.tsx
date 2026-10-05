@@ -5,7 +5,7 @@ import {
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getFollowupPrompt } from "@/lib/adminHelpers";
+import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
@@ -52,8 +52,10 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     ? `${l.service} | ${l.notes || l.message}`
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
 
+  const workflowStatus = getEffectiveWorkflowStatus(l);
+
   const techStepIdx = (() => {
-    const s = l.status;
+    const s = workflowStatus;
     if (s === "Job En Route") return 1;
     if (s === "Job Arrived") return 2;
     if (s === "Job Started" || s === "Job In Progress" || s === "In Progress") return 3;
@@ -61,7 +63,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     return 0;
   })();
 
-  const isJobBookedDone = Boolean(l.jobAt) || l.status === "Job Booked" || techStepIdx >= 1;
+  const isJobBookedDone = Boolean(l.jobAt) || workflowStatus === "Job Booked" || techStepIdx >= 1;
   const isOnTheWayDone = techStepIdx >= 1;
   const isReachedDone = techStepIdx >= 2;
   const isStartDone = techStepIdx >= 3;
@@ -371,15 +373,19 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               )}
             </div>
             {[
-              { label: "Job In Progress", status: "Job In Progress", isDone: ["Job Started","Job In Progress","In Progress","Job Done","Completed"].includes(l.status) },
-              { label: "Job Done", status: "Job Done", isDone: l.status === "Job Done" || l.status === "Completed" },
+              { label: "Job In Progress", status: "Job In Progress", isDone: ["Job Started","Job In Progress","In Progress","Job Done","Completed"].includes(workflowStatus) },
+              { label: "Job Done", status: "Job Done", isDone: workflowStatus === "Job Done" || workflowStatus === "Completed" },
             ].map((item) => (
               <div
                 key={item.label}
                 className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${item.isDone ? "bg-[#dcfce7] border-emerald-300 text-slate-900" : "bg-slate-50 border-slate-200 text-slate-600"}`}
               >
                 <span className="truncate">{item.label}</span>
-                <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                {item.isDone ? (
+                  <Check className="w-4 h-4 text-emerald-600 stroke-[3] shrink-0 ml-1" />
+                ) : (
+                  <span className="w-4 h-4 rounded-full border-2 border-slate-300 shrink-0 ml-1" aria-label="Not done yet" />
+                )}
               </div>
             ))}
           </div>

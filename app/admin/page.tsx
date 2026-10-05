@@ -371,7 +371,7 @@ export default function CrmDashboardPage() {
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
-  const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("inclusive");
+  const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("exclusive");
   const [quoteTaxRate, setQuoteTaxRate] = useState<number>(10);
   const [quoteTerms, setQuoteTerms] = useState<string>(
     "Final scope is subject to the details stated in this quotation. Any additional work not listed will require approval before proceeding."
@@ -1478,6 +1478,14 @@ export default function CrmDashboardPage() {
   }
 
   async function updateLeadField(id: string, updates: Partial<Lead>) {
+    const targetLead = leads.find((l) => l.id === id);
+    if (targetLead && typeof updates.status === "string" && updates.status !== targetLead.status) {
+      const isTerminal = /^(lost|cancelled|closed|no response)/i.test(updates.status);
+      const wasTerminal = /^(lost|cancelled|closed|no response)/i.test(targetLead.status || "");
+      if (isTerminal && !wasTerminal) {
+        updates.previousStatus = targetLead.previousStatus || targetLead.status || "New";
+      }
+    }
     try {
       const res = await fetch(`/api/admin/submissions/${id}`, {
         method: "PATCH",
@@ -1604,7 +1612,7 @@ export default function CrmDashboardPage() {
       : getMatchedQuoteItemsForLead(lead);
 
     setQuoteItems(initialItems);
-    setQuoteTaxMode(lead.quoteTaxMode || "inclusive");
+    setQuoteTaxMode(lead.quoteTaxMode === "none" ? "none" : (lead.quoteTaxMode === "inclusive" ? "exclusive" : (lead.quoteTaxMode || "exclusive")));
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
     const existingTerms = (lead.quoteTerms || "").trim();
     const isFullTermsDump = existingTerms.length > 500 || /^Groutix terms and conditions/i.test(existingTerms);
@@ -1980,7 +1988,12 @@ export default function CrmDashboardPage() {
       `Hi ${activeQuoteLead.name || ""},\n\n` +
       `Thank you for your enquiry. We have prepared your quotation for AUD $${total.toFixed(2)}.\n\n` +
       `Items:\n` +
-      quoteItems.map((item, i) => `${i + 1}. ${item.service} - $${Number(item.price || 0).toFixed(2)}`).join("\n") +
+      quoteItems.map((item, i) => {
+        const q = Number(item.qty) || 1;
+        const unitPrice = Number(item.price) || 0;
+        const lineTotal = (unitPrice * q) * (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1);
+        return `${i + 1}. ${item.service}${q > 1 ? ` (Qty: ${q})` : ""} - $${lineTotal.toFixed(2)}${quoteTaxMode === "none" ? "" : " (inc GST)"}`;
+      }).join("\n") +
       `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
       `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`
     );
@@ -1993,7 +2006,12 @@ export default function CrmDashboardPage() {
     const { total } = quoteTotals();
     const text = encodeURIComponent(
       `Hi ${activeQuoteLead.name || ""}, your Groutix quote is ready for AUD $${total.toFixed(2)}.\n\n` +
-      quoteItems.map((item, i) => `• ${item.service}: $${Number(item.price || 0).toFixed(2)}`).join("\n") +
+      quoteItems.map((item, i) => {
+        const q = Number(item.qty) || 1;
+        const unitPrice = Number(item.price) || 0;
+        const lineTotal = (unitPrice * q) * (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1);
+        return `• ${item.service}${q > 1 ? ` (Qty: ${q})` : ""}: $${lineTotal.toFixed(2)}${quoteTaxMode === "none" ? "" : " (inc GST)"}`;
+      }).join("\n") +
       `\n\nOfficial terms and conditions are included directly with your quote document.\n\nStay Sealed. Stay Smiling. - Groutix`
     );
     window.open(`https://wa.me/${phone.startsWith("0") ? "61" + phone.slice(1) : phone}?text=${text}`, "_blank");
@@ -5024,8 +5042,8 @@ export default function CrmDashboardPage() {
                             <col style={{ width: 160 }} />
                             <col />
                             <col style={{ width: 56 }} />
-                            <col style={{ width: 80 }} />
-                            <col style={{ width: 80 }} />
+                            <col style={{ width: 95 }} />
+                            <col style={{ width: 95 }} />
                             <col style={{ width: 68 }} />
                           </colgroup>
                           <thead>
@@ -5037,10 +5055,10 @@ export default function CrmDashboardPage() {
                               {!isTechnician && (
                                 <>
                                   <th className="py-2 px-2 font-bold text-right">
-                                    {quoteTaxMode === "exclusive" ? "Price (ex GST)" : "Price (inc GST)"}
+                                    {quoteTaxMode === "exclusive" ? "Price (ex GST)" : quoteTaxMode === "inclusive" ? "Price (inc GST)" : "Price"}
                                   </th>
                                   <th className="py-2 px-2 font-bold text-right">
-                                    {quoteTaxMode === "exclusive" ? "Total (ex GST)" : "Total (inc GST)"}
+                                    {quoteTaxMode === "none" ? "Total" : "Total (inc GST)"}
                                   </th>
                                 </>
                               )}
@@ -5196,7 +5214,10 @@ export default function CrmDashboardPage() {
                                 {/* Total */}
                                 {!isTechnician && (
                                   <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
-                                    ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                                    ${(
+                                      (Number(item.price || 0) * Number(item.qty || 1)) *
+                                      (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1)
+                                    ).toFixed(2)}
                                   </td>
                                 )}
 
@@ -5251,16 +5272,6 @@ export default function CrmDashboardPage() {
                             <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs">
                               <button
                                 type="button"
-                                onClick={() => setQuoteTaxMode("inclusive")}
-                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "inclusive"
-                                  ? "bg-blue-600 text-white shadow-2xs"
-                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                  }`}
-                              >
-                                Tax Inclusive (GST Inc)
-                              </button>
-                              <button
-                                type="button"
                                 onClick={() => setQuoteTaxMode("exclusive")}
                                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "exclusive"
                                   ? "bg-blue-600 text-white shadow-2xs"
@@ -5269,11 +5280,23 @@ export default function CrmDashboardPage() {
                               >
                                 Tax Exclusive (+10% GST)
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setQuoteTaxMode("inclusive")}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "inclusive"
+                                  ? "bg-blue-600 text-white shadow-2xs"
+                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                  }`}
+                              >
+                                Tax Inclusive (GST Inc)
+                              </button>
                             </div>
                           </div>
                           <div className="text-[11px] font-semibold">
                             {quoteTaxMode === "exclusive" ? (
                               <span className="text-amber-700 font-bold">• Prices are Ex-Tax (+10% GST added on top)</span>
+                            ) : quoteTaxMode === "none" ? (
+                              <span className="text-slate-600 font-bold">• No Tax Applied</span>
                             ) : (
                               <span className="text-emerald-700 font-bold">• Prices are Tax-Inclusive (10% GST included)</span>
                             )}
@@ -5448,8 +5471,12 @@ export default function CrmDashboardPage() {
                           <th className="py-2 px-2.5 text-right">QTY</th>
                           {!isTechnician && (
                             <>
-                              <th className="py-2 px-2.5 text-right">UNIT PRICE</th>
-                              <th className="py-2 px-2.5 text-right">TOTAL PRICE</th>
+                              <th className="py-2 px-2.5 text-right">
+                                {quoteTaxMode === "exclusive" ? "UNIT PRICE (EX GST)" : "UNIT PRICE"}
+                              </th>
+                              <th className="py-2 px-2.5 text-right">
+                                {quoteTaxMode === "none" ? "TOTAL PRICE" : "TOTAL (INC GST)"}
+                              </th>
                             </>
                           )}
                         </tr>
@@ -5479,7 +5506,10 @@ export default function CrmDashboardPage() {
                               <>
                                 <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
                                 <td className="py-2.5 px-2.5 text-right font-bold text-black">
-                                  ${(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}
+                                  ${(
+                                    (Number(item.price || 0) * Number(item.qty || 1)) *
+                                    (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1)
+                                  ).toFixed(2)}
                                 </td>
                               </>
                             )}
@@ -7589,30 +7619,9 @@ export default function CrmDashboardPage() {
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
                     <div className="text-[11px] text-slate-500">
-                      <span>Both pages are included in the official PDF &amp; customer email.</span>
+                      <span>High-resolution PNG warranty certificate ready to download or email to customer.</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const q = new URLSearchParams({
-                            jobNo: warrantyJobNo,
-                            completion: warrantyCompletion,
-                            expiry: warrantyExpiry,
-                            customer: warrantyCustomer,
-                            address: warrantyAddress,
-                            authorised: warrantyAuthorised,
-                            issued: warrantyIssued,
-                            t: String(Date.now()),
-                          });
-                          window.open(`/api/admin/warranty/pdf/${activeWarrantyLead.id}?${q.toString()}`, "_blank");
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100"
-                        title="Print or view official 2-page PDF warranty certificate"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        Print / View PDF
-                      </button>
                       <button
                         type="button"
                         onClick={downloadWarrantyCard}
@@ -7625,7 +7634,7 @@ export default function CrmDashboardPage() {
                         type="button"
                         onClick={handleSendWarranty}
                         className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
-                        title="Email the official 2-page warranty certificate to the customer and mark it sent"
+                        title="Email the warranty PNG certificate to the customer and mark it sent"
                       >
                         <Send className="w-4 h-4" />
                         Email to Customer

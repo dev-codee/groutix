@@ -54,9 +54,10 @@ export function QuotesView() {
             {quoteLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
               const items = Array.isArray(l.quoteItems) ? l.quoteItems : [];
               const sub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
+              const isEx = l.quoteTaxMode === "exclusive" || !l.quoteTaxMode;
               const total =
                 l.quoteAmount ||
-                (l.quoteTaxMode === "exclusive" ? sub * (1 + (l.quoteTaxRate || 10) / 100) : sub);
+                (isEx ? sub * (1 + (l.quoteTaxRate || 10) / 100) : sub);
               return (
                 <tr key={l.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3 px-3">

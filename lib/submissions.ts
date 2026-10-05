@@ -117,6 +117,7 @@ export interface SubmissionDoc {
   _id?: ObjectId;
   type: SubmissionType;
   status: SubmissionStatus;
+  previousStatus?: string;
   jobNo?: string;
   createdAt: Date;
   // Contact / lead fields (subset present depends on type).
@@ -377,7 +378,7 @@ export async function createLead(
       source: doc.source || "Manual Entry",
       notes: doc.notes || "",
       quoteItems: doc.quoteItems || [],
-      quoteTaxMode: doc.quoteTaxMode || "inclusive",
+      quoteTaxMode: doc.quoteTaxMode || "exclusive",
       quoteTaxRate: doc.quoteTaxRate ?? 10,
       quoteTerms: doc.quoteTerms || "",
       photos: doc.photos || [],

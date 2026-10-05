@@ -86,8 +86,18 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // Snapshot the prior state so we can record what actually changed.
   const before = await getSubmission(id);
+  if (!before) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  if (typeof body.status === "string" && body.status !== before.status) {
+    const isTerminal = /^(lost|cancelled|closed|no response)/i.test(body.status);
+    const wasTerminal = /^(lost|cancelled|closed|no response)/i.test(before.status || "");
+    if (isTerminal && !wasTerminal) {
+      body.previousStatus = before.previousStatus || before.status || "New";
+    }
+  }
+
   const ok = await updateSubmission(id, body);
-  if (!ok) return NextResponse.json({ error: "Not found or update failed." }, { status: 404 });
+  if (!ok) return NextResponse.json({ error: "Update failed." }, { status: 400 });
 
   // Automatic step: write an audit-trail entry for meaningful staff changes.
   if (before) {
