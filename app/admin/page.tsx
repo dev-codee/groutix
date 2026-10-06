@@ -4518,7 +4518,7 @@ export default function CrmDashboardPage() {
               VIEW: SCHEDULE
              ========================================================================= */}
             {currentView === "schedule" && (
-              <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
+              <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col" style={{ height: "calc(100vh - 64px)", minHeight: 680 }}>
                 <ScheduleCalendarView
                   leads={leads}
                   onOpenLead={(id: string) => {

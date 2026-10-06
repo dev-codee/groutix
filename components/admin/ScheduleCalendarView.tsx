@@ -306,9 +306,9 @@ function SelectedBookingSidebar({
   onViewDetails: () => void;
 }) {
   return (
-    <div className="bg-white border-l border-slate-200 w-72 shrink-0 flex flex-col overflow-y-auto">
+    <div className="bg-white w-full h-full min-h-0 flex flex-col overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100">
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 shrink-0">
         <span className="text-xs font-bold text-slate-900">Selected Booking ({index + 1})</span>
         <button
           onClick={onClose}
@@ -635,9 +635,9 @@ function JobListPanel({
   };
 
   return (
-    <div className="flex flex-col bg-white border-r border-slate-200 w-[300px] shrink-0 overflow-hidden">
+    <div className="flex flex-col bg-white h-full min-h-0 w-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
         <div>
           <p className="text-[11px] font-bold text-slate-900">Jobs for {fmtDate(dateStr)}</p>
         </div>
@@ -651,7 +651,7 @@ function JobListPanel({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
         {entries.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400 px-4">
             <CalendarDays className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -972,11 +972,11 @@ export function ScheduleCalendarView({
       </div>
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 min-h-0 px-5 pb-0 gap-4">
+      <div className="flex flex-1 min-h-[360px] px-5 pb-0 gap-4">
         {/* Job List */}
-        <div className="rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
+        <div className="rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col h-full min-h-0 w-[310px] shrink-0 bg-white">
           {loading ? (
-            <div className="w-[300px] flex items-center justify-center py-20 bg-white">
+            <div className="w-full flex-1 flex items-center justify-center py-20 bg-white">
               <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
             </div>
           ) : (
@@ -993,7 +993,7 @@ export function ScheduleCalendarView({
         </div>
 
         {/* Map */}
-        <div className="flex-1 rounded-xl overflow-hidden shadow-xs border border-slate-200">
+        <div className="flex-1 min-w-0 h-full min-h-0 rounded-xl overflow-hidden shadow-xs border border-slate-200">
           <RouteMapPanel
             mapItems={mapItems}
             selectedLeadId={selectedId}
@@ -1003,7 +1003,7 @@ export function ScheduleCalendarView({
 
         {/* Selected booking sidebar */}
         {selectedEntry && (
-          <div className="rounded-xl overflow-hidden shadow-xs border border-slate-200">
+          <div className="rounded-xl overflow-hidden shadow-xs border border-slate-200 h-full min-h-0 flex flex-col w-72 shrink-0 bg-white">
             <SelectedBookingSidebar
               entry={selectedEntry}
               index={selectedIndex}
