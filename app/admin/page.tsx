@@ -121,7 +121,7 @@ import {
   getStepActive, getLatestStepIndex, calcResponseTime, isRedundantScope,
   getFollowupPrompt, findJobsGroupForStatus,
 } from "@/lib/adminHelpers";
-import { ScheduleView } from "@/components/admin/ScheduleView";
+import { ScheduleCalendarView } from "@/components/admin/ScheduleCalendarView";
 import { ZonesView } from "@/components/admin/views/ZonesView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
 import { AnalyticsView } from "@/components/admin/views/AnalyticsView";
@@ -297,12 +297,9 @@ export default function CrmDashboardPage() {
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const [liveGpsCoords, setLiveGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
-  // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter/date
+  // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter
   const [dispatchInitialTab, setDispatchInitialTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
   const [dispatchInitialTechFilter, setDispatchInitialTechFilter] = useState<string>("all");
-  const [dispatchInitialDate, setDispatchInitialDate] = useState<string | undefined>(undefined);
-  const [dispatchInitialLeadId, setDispatchInitialLeadId] = useState<string | undefined>(undefined);
-  const [dispatchInitialAction, setDispatchInitialAction] = useState<"view" | "reschedule" | undefined>(undefined);
 
   // Live AUS clock — updates every second.
   // Both states start as "" so the server and first client render agree (no
@@ -3792,20 +3789,11 @@ export default function CrmDashboardPage() {
     [navigateTo]
   );
 
-  /** Open the Dispatch view pre-filtered to a specific tab, optional tech filter, date, leadId, and action (e.g. "reschedule"). */
+  /** Open the Dispatch view pre-filtered to a specific tab and optional tech filter (e.g. "Unassigned"). */
   const openDispatch = useCallback(
-    (
-      tab: "all" | "leads" | "inspections" | "jobs" = "all",
-      techFilter: string = "all",
-      date?: string,
-      leadId?: string,
-      action?: "view" | "reschedule"
-    ) => {
+    (tab: "all" | "leads" | "inspections" | "jobs" = "all", techFilter: string = "all") => {
       setDispatchInitialTab(tab);
       setDispatchInitialTechFilter(techFilter);
-      setDispatchInitialDate(date);
-      setDispatchInitialLeadId(leadId);
-      setDispatchInitialAction(action);
       navigateTo("dispatch");
     },
     [navigateTo]
@@ -4026,7 +4014,10 @@ export default function CrmDashboardPage() {
         >
           <span className="flex items-center gap-2.5">
             <CalendarDays className="w-4 h-4" />
-            Schedule
+            Schedule &amp; Calendar
+          </span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${currentView === "schedule" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"}`}>
+            Today
           </span>
         </button>
       )}
@@ -4513,9 +4504,6 @@ export default function CrmDashboardPage() {
               <DispatchView
                 initialTab={dispatchInitialTab}
                 initialTechFilter={dispatchInitialTechFilter}
-                initialDate={dispatchInitialDate}
-                initialLeadId={dispatchInitialLeadId}
-                initialAction={dispatchInitialAction}
                 onOpenLead={(id: string) => {
                   const lead = leads.find((l) => l.id === id);
                   if (lead) {
@@ -4530,19 +4518,15 @@ export default function CrmDashboardPage() {
               VIEW: SCHEDULE
              ========================================================================= */}
             {currentView === "schedule" && (
-              <ScheduleView
-                onOpenLead={(id: string, date?: string, action?: "view" | "reschedule") => {
-                  if (date) {
-                    openDispatch("all", "all", date, id, action || "reschedule");
-                  } else {
-                    const lead = leads.find((l) => l.id === id);
-                    if (lead) {
-                      setEditingLead(lead);
-                      setLeadModalOpen(true);
-                    }
+              <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
+                <ScheduleCalendarView onOpenLead={(id: string) => {
+                  const lead = leads.find((l) => l.id === id);
+                  if (lead) {
+                    setEditingLead(lead);
+                    setLeadModalOpen(true);
                   }
-                }}
-              />
+                }} />
+              </div>
             )}
 
             {/* =========================================================================
@@ -6902,7 +6886,7 @@ export default function CrmDashboardPage() {
                                 You are receiving this email regarding your Groutix service inquiry. If you have any questions, simply reply directly to this email.
                               </p>
                               <div className="flex items-center justify-center gap-4 text-xs font-semibold text-[#001f97] flex-wrap">
-                                <a href="tel:+61370238094" className="hover:underline">📞 7023 8094</a>
+                                <a href="tel:70238094" className="hover:underline">📞 7023 8094</a>
                                 <span>•</span>
                                 <a href="mailto:info@groutix.com" className="hover:underline">✉️ info@groutix.com</a>
                                 <span>•</span>
