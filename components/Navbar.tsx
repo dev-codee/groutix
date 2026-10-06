@@ -92,14 +92,14 @@ export default function Navbar() {
   const services = [
     { name: "Shower Regrouting", href: "/shower-regrouting" },
     { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
-    { name: "Shower Base Repair", href: "/shower-base-repair" },
+    // { name: "Shower Base Repair", href: "/shower-base-repair" },
     // { name: "Shower Screens", href: "/shower-screens" },
     { name: "Tile Regrouting", href: "/tile-regrouting" },
     { name: "Balcony Leak Repairs", href: "/balcony-leak-repairs" },
     { name: "Silicone & Recaulking", href: "/silicone-recaulking" },
     { name: "Epoxy Grout", href: "/epoxy-grout" },
     { name: "Small Tiling Jobs", href: "/small-tiling-jobs" },
-    { name: "Real Estate & Property Services", href: "/real-estate-property-services" },
+    // { name: "Real Estate & Property Services", href: "/real-estate-property-services" },
   ];
 
   const toSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
