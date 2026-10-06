@@ -1083,6 +1083,154 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
+            SECTION 6B — Cracked Grout Deep-Dive (Balcony-style layout)
+        ══════════════════════════════════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24" id="cracked-grout-deep-dive">
+          <div className="max-w-[1080px] mx-auto px-6 lg:px-10 space-y-10">
+            {/* Header */}
+            <div className="text-center space-y-4">
+              <span className="inline-block text-[11px] font-extrabold uppercase tracking-[0.15em] text-accent bg-accent/10 rounded-full px-4 py-1.5">
+                Shower Specialists
+              </span>
+              <h2 className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight">
+                Shower Regrouting &amp; Leak Repairs in Melbourne
+              </h2>
+              <p className="text-neutral-600 text-base sm:text-[16.5px] leading-relaxed max-w-[820px] mx-auto">
+                Cracked grout and peeling silicone are the most common entry points for water damage in Melbourne
+                bathrooms. Once the seal breaks down, moisture travels behind tiles — causing mould growth, musty
+                odours, wall staining and even structural damage to the framing below. Our shower regrouting removes
+                the failed grout and replaces it with waterproof grout and sealed corner joints — no retiling
+                required.
+              </p>
+            </div>
+
+            {/* Two-card grid: Warning Signs + Fix Steps */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 1 — Warning Signs */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="border border-amber-200 rounded-2xl p-7 bg-[#fffdf5]"
+              >
+                <h3 className="font-bold text-neutral-900 text-[19px] mb-5 font-[Poppins,sans-serif]">
+                  5 Signs Your Shower Needs Regrouting
+                </h3>
+                <ul className="space-y-3.5">
+                  {[
+                    "Cracked, crumbling or missing grout between tiles",
+                    "Persistent black mould that keeps returning after cleaning",
+                    "Peeling, soft or discoloured silicone in corners",
+                    "Damp patches or musty smell near the shower wall",
+                    "Loose or \"drummy\" sounding tiles when tapped",
+                  ].map((sign, i) => (
+                    <li key={i} className="flex gap-3 text-[14.5px] text-neutral-600 items-start">
+                      <span className="flex-shrink-0 w-[22px] h-[22px] rounded-full bg-[#fff3d6] text-[#b07d10] font-extrabold text-[13px] flex items-center justify-center mt-0.5">
+                        !
+                      </span>
+                      {sign}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+
+              {/* Card 2 — Fix Steps */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="border border-neutral-200 rounded-2xl p-7 bg-[#fbfcff]"
+              >
+                <h3 className="font-bold text-neutral-900 text-[19px] mb-5 font-[Poppins,sans-serif]">
+                  How We Fix a Leaking Shower
+                </h3>
+                <ol className="space-y-4 counter-reset-step">
+                  {[
+                    {
+                      title: "Inspect & assess",
+                      desc: "check the shower surface, corners and moisture levels.",
+                    },
+                    {
+                      title: "Remove failed grout",
+                      desc: "grind out old grout and deep-clean the joints.",
+                    },
+                    {
+                      title: "Regrout & reseal",
+                      desc: "waterproof grout colour-matched to your tiles, plus new corner silicone.",
+                    },
+                    {
+                      title: "Cure & warranty",
+                      desc: "allow proper curing, then issue our 10-year waterproof warranty.",
+                    },
+                  ].map((step, i) => (
+                    <li key={i} className="flex gap-3.5 text-[14.5px] text-neutral-600 items-start">
+                      <span className="flex-shrink-0 w-[28px] h-[28px] rounded-full bg-primary text-white font-bold text-[14px] flex items-center justify-center font-[Poppins,sans-serif]">
+                        {i + 1}
+                      </span>
+                      <span>
+                        <b className="text-neutral-900">{step.title}</b> — {step.desc}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </motion.div>
+            </div>
+
+            {/* Before / After Photos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <AnimatedImage>
+                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-br from-neutral-100 to-neutral-200 border border-neutral-200">
+                  <div className="absolute top-3.5 left-3.5 z-20 pointer-events-none">
+                    <span className="bg-black/75 backdrop-blur-sm text-white text-[11px] font-extrabold uppercase tracking-[0.15em] px-3.5 py-1.5 rounded-full shadow-sm">
+                      Before
+                    </span>
+                  </div>
+                </div>
+              </AnimatedImage>
+              <AnimatedImage delay={0.1}>
+                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-br from-neutral-100 to-neutral-200 border border-neutral-200">
+                  <div className="absolute top-3.5 left-3.5 z-20 pointer-events-none">
+                    <span className="bg-primary/90 backdrop-blur-sm text-white text-[11px] font-extrabold uppercase tracking-[0.15em] px-3.5 py-1.5 rounded-full shadow-sm">
+                      After
+                    </span>
+                  </div>
+                </div>
+              </AnimatedImage>
+            </div>
+
+
+            {/* CTA Band */}
+            <div className="bg-primary rounded-2xl p-7 sm:p-8 flex flex-col sm:flex-row items-center gap-5 sm:gap-6">
+              <div className="flex-1 min-w-[240px]">
+                <p className="text-white font-bold text-[19px] font-[Poppins,sans-serif] leading-snug">
+                  Stop shower leaks before they become costly water damage.
+                </p>
+                <p className="text-white/70 text-[13.5px] mt-1.5">
+                  Free assessment · 10-year waterproof warranty · No retiling needed
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                <Link
+                  href="/contact"
+                  className="inline-block bg-white text-primary font-bold text-[15px] px-7 py-3.5 rounded-xl font-[Poppins,sans-serif] transition-colors hover:bg-accent hover:text-primary active:scale-95 text-center w-full sm:w-auto"
+                >
+                  Get My Shower Assessed
+                </Link>
+                <a
+                  href="tel:+61370238094"
+                  className="inline-flex items-center justify-center gap-2.5 text-white font-bold text-[15px] border-[1.5px] border-white/45 px-5 py-3 rounded-xl transition-colors hover:border-white/80 active:scale-95 w-full sm:w-auto"
+                >
+                  <Phone className="h-5 w-5" />
+                  +61 3 7023 8094
+                </a>
+              </div>
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ══════════════════════════════════════
             SECTION 7 — Before & After Gallery
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
