@@ -848,7 +848,7 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">What We Do</p>
-              <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
+              <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
                 Shower Regrouting &amp; <span className="text-accent">Balcony Leak Repair</span> Services
               </h2>
               <p className="text-neutral-600 text-lg leading-relaxed">
@@ -1212,7 +1212,7 @@ export default function HomePage({
                   href="/contact"
                   className="inline-block bg-white text-primary font-bold text-[15px] px-7 py-3.5 rounded-xl font-[Poppins,sans-serif] transition-colors hover:bg-accent hover:text-primary active:scale-95 text-center w-full sm:w-auto"
                 >
-                  Get My Shower Assessed
+                  Get My Balcony Assessed
                 </Link>
                 <a
                   href="tel:+61370238094"
