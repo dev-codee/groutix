@@ -1090,17 +1090,13 @@ export default function HomePage({
             {/* Header */}
             <div className="text-center space-y-4">
               <span className="inline-block text-[11px] font-extrabold uppercase tracking-[0.15em] text-accent bg-accent/10 rounded-full px-4 py-1.5">
-                Shower Specialists
+                Balcony Specialists
               </span>
               <h2 className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight">
-                Shower Regrouting &amp; Leak Repairs in Melbourne
+                Balcony Regrouting &amp; Leak Repairs in Melbourne
               </h2>
               <p className="text-neutral-600 text-base sm:text-[16.5px] leading-relaxed max-w-[820px] mx-auto">
-                Cracked grout and peeling silicone are the most common entry points for water damage in Melbourne
-                bathrooms. Once the seal breaks down, moisture travels behind tiles — causing mould growth, musty
-                odours, wall staining and even structural damage to the framing below. Our shower regrouting removes
-                the failed grout and replaces it with waterproof grout and sealed corner joints — no retiling
-                required.
+                Melbourne's heavy rain and temperature swings are brutal on balcony tiling. Once grout cracks, water seeps through the joints — causing white efflorescence staining, mould growth, tile lifting and even damage to the concrete or framing below. Our balcony regrouting removes the failed grout and replaces it with waterproof epoxy grout and sealed perimeter joints — no retiling required.
               </p>
             </div>
 
@@ -1115,15 +1111,15 @@ export default function HomePage({
                 className="border border-amber-200 rounded-2xl p-7 bg-[#fffdf5]"
               >
                 <h3 className="font-bold text-neutral-900 text-[19px] mb-5 font-[Poppins,sans-serif]">
-                  5 Signs Your Shower Needs Regrouting
+                  5 Signs Your Balcony Needs Regrouting
                 </h3>
                 <ul className="space-y-3.5">
                   {[
-                    "Cracked, crumbling or missing grout between tiles",
-                    "Persistent black mould that keeps returning after cleaning",
-                    "Peeling, soft or discoloured silicone in corners",
-                    "Damp patches or musty smell near the shower wall",
-                    "Loose or \"drummy\" sounding tiles when tapped",
+                    "White chalky staining (efflorescence) on tiles",
+                    "Cracked, crumbling or missing grout",
+                    "Water stains on the ceiling below the balcony",
+                    "Loose or \"drummy\" sounding tiles",
+                    "Persistent mould in grout lines despite cleaning",
                   ].map((sign, i) => (
                     <li key={i} className="flex gap-3 text-[14.5px] text-neutral-600 items-start">
                       <span className="flex-shrink-0 w-[22px] h-[22px] rounded-full bg-[#fff3d6] text-[#b07d10] font-extrabold text-[13px] flex items-center justify-center mt-0.5">
@@ -1144,25 +1140,25 @@ export default function HomePage({
                 className="border border-neutral-200 rounded-2xl p-7 bg-[#fbfcff]"
               >
                 <h3 className="font-bold text-neutral-900 text-[19px] mb-5 font-[Poppins,sans-serif]">
-                  How We Fix a Leaking Shower
+                  How We Fix a Leaking Balcony
                 </h3>
                 <ol className="space-y-4 counter-reset-step">
                   {[
                     {
                       title: "Inspect & assess",
-                      desc: "check the shower surface, corners and moisture levels.",
+                      desc: "check the balcony surface and moisture levels.",
                     },
                     {
                       title: "Remove failed grout",
-                      desc: "grind out old grout and deep-clean the joints.",
+                      desc: "grind out old grout and deep-clean the joints."
                     },
                     {
-                      title: "Regrout & reseal",
-                      desc: "waterproof grout colour-matched to your tiles, plus new corner silicone.",
+                      title: "Epoxy regrout",
+                      desc: "waterproof epoxy grout colour-matched to your tiles."
                     },
                     {
-                      title: "Cure & warranty",
-                      desc: "allow proper curing, then issue our 10-year waterproof warranty.",
+                      title: "Seal perimeters",
+                      desc: "new silicone to perimeters and expansion joints."
                     },
                   ].map((step, i) => (
                     <li key={i} className="flex gap-3.5 text-[14.5px] text-neutral-600 items-start">
