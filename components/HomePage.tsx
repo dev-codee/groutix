@@ -1200,8 +1200,8 @@ export default function HomePage({
             {/* CTA Band */}
             <div className="bg-primary rounded-2xl p-7 sm:p-8 flex flex-col sm:flex-row items-center gap-5 sm:gap-6">
               <div className="flex-1 min-w-[240px]">
-                <p className="text-white font-bold text-[19px] font-[Poppins,sans-serif] leading-snug">
-                  Stop shower leaks before they become costly water damage.
+                <p className="text-white font-bold text-[17px] font-[Poppins,sans-serif] leading-snug">
+                  Stop balcony leaks before they become structural repairs.
                 </p>
                 <p className="text-white/70 text-[13.5px] mt-1.5">
                   Free assessment · 10-year waterproof warranty · No retiling needed
