@@ -673,7 +673,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    Shower Regrouting and Balcony Regrouting in Melbourne | Groutix
+                    Shower Regrouting and Balcony Leak Repair in Melbourne | Groutix
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -849,7 +849,7 @@ export default function HomePage({
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">What We Do</p>
               <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
-                Shower Regrouting &amp; <span className="text-accent">Balcony Regrouting</span> Services
+                Shower Regrouting &amp; <span className="text-accent">Balcony Leak Repair</span> Services
               </h2>
               <p className="text-neutral-600 text-lg leading-relaxed">
                 Groutix handles shower regrouting, leaking shower repairs, and balcony regrouting across Melbourne.
