@@ -39,6 +39,7 @@ import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
 import { useSiteContent, useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
+import BalconyDeepDiveSection from "@/components/BalconyDeepDiveSection";
 
 /* ─── Image placeholder ─── */
 function ImgBox({
@@ -673,7 +674,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    Shower Regrouting and Balcony Leak Repair in Melbourne | Groutix
+                    Shower Regrouting and Balcony Regrouting in Melbourne | Groutix
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -695,9 +696,9 @@ export default function HomePage({
                       href="https://www.google.com/maps/place/Groutix"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/15 transition-all w-full sm:w-[270px] h-[64px] shrink-0"
+                      className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
                     >
-                      <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24">
+                      <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24">
                         <path
                           fill="#4285F4"
                           d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.18 3.665-9.15z"
@@ -715,22 +716,21 @@ export default function HomePage({
                           d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.68 1.27 6.59l4.01 3.14c.95-2.83 3.6-4.98 6.72-4.98z"
                         />
                       </svg>
-                      <span className="text-2xl font-black text-white leading-none">5.0</span>
-                      <div className="flex flex-col justify-center">
+                      <span className="text-2xl font-black text-white">5.0</span>
+                      <div className="flex flex-col">
                         <div className="flex gap-0.5">
                           {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-3.5 w-3.5 text-[#FBBC04] fill-[#FBBC04]" />
+                            <Star key={i} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
                           ))}
                         </div>
-                        <span className="text-[12px] text-white/90 font-medium whitespace-nowrap mt-0.5">{rating.count}+ Google Reviews</span>
+                        <span className="text-[13px] text-white/80">{rating.count}+ Google Reviews</span>
                       </div>
                     </a>
                     <a
-                      href="tel:+61370238094"
-                      className="flex items-center justify-center gap-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 hover:bg-white/15 transition-all text-white font-extrabold w-full sm:w-[270px] h-[64px] shrink-0"
+                      href={tel}
+                      className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
                     >
-                      <Phone className="h-5 w-5 shrink-0 text-white" strokeWidth={2.2} />
-                      <span className="text-[18px] sm:text-[19px] tracking-tight whitespace-nowrap">+61 3 7023 8094</span>
+                      <Phone className="h-4 w-4" /> +61 3 7023 8094
                     </a>
                   </motion.div>
                 </div>
@@ -848,8 +848,8 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">What We Do</p>
-              <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                Shower Regrouting &amp; <span className="text-accent">Balcony Leak Repair</span> Services
+              <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
+                Shower Regrouting &amp; <span className="text-accent">Balcony Regrouting</span> Services
               </h2>
               <p className="text-neutral-600 text-lg leading-relaxed">
                 Groutix handles shower regrouting, leaking shower repairs, and balcony regrouting across Melbourne.
@@ -1083,148 +1083,9 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 6B — Cracked Grout Deep-Dive (Balcony-style layout)
+            SECTION 6.5 — Balcony Deep-Dive
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24" id="cracked-grout-deep-dive">
-          <div className="max-w-[1080px] mx-auto px-6 lg:px-10 space-y-10">
-            {/* Header */}
-            <div className="text-center space-y-4">
-              <span className="inline-block text-[11px] font-extrabold uppercase tracking-[0.15em] text-accent bg-accent/10 rounded-full px-4 py-1.5">
-                Balcony Specialists
-              </span>
-              <h2 className="text-3xl lg:text-[38px] font-bold text-neutral-900 leading-tight">
-                Balcony Regrouting &amp; Leak Repairs in Melbourne
-              </h2>
-              <p className="text-neutral-600 text-base sm:text-[16.5px] leading-relaxed max-w-[820px] mx-auto">
-                Melbourne's heavy rain and temperature swings are brutal on balcony tiling. Once grout cracks, water seeps through the joints — causing white efflorescence staining, mould growth, tile lifting and even damage to the concrete or framing below. Our balcony regrouting removes the failed grout and replaces it with waterproof epoxy grout and sealed perimeter joints — no retiling required.
-              </p>
-            </div>
-
-            {/* Two-card grid: Warning Signs + Fix Steps */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Card 1 — Warning Signs */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-                className="border border-amber-200 rounded-2xl p-7 bg-[#fffdf5]"
-              >
-                <h3 className="font-bold text-neutral-900 text-[19px] mb-5 font-[Poppins,sans-serif]">
-                  5 Signs Your Balcony Needs Regrouting
-                </h3>
-                <ul className="space-y-3.5">
-                  {[
-                    "White chalky staining (efflorescence) on tiles",
-                    "Cracked, crumbling or missing grout",
-                    "Water stains on the ceiling below the balcony",
-                    "Loose or \"drummy\" sounding tiles",
-                    "Persistent mould in grout lines despite cleaning",
-                  ].map((sign, i) => (
-                    <li key={i} className="flex gap-3 text-[14.5px] text-neutral-600 items-start">
-                      <span className="flex-shrink-0 w-[22px] h-[22px] rounded-full bg-[#fff3d6] text-[#b07d10] font-extrabold text-[13px] flex items-center justify-center mt-0.5">
-                        !
-                      </span>
-                      {sign}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-
-              {/* Card 2 — Fix Steps */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="border border-neutral-200 rounded-2xl p-7 bg-[#fbfcff]"
-              >
-                <h3 className="font-bold text-neutral-900 text-[19px] mb-5 font-[Poppins,sans-serif]">
-                  How We Fix a Leaking Balcony
-                </h3>
-                <ol className="space-y-4 counter-reset-step">
-                  {[
-                    {
-                      title: "Inspect & assess",
-                      desc: "check the balcony surface and moisture levels.",
-                    },
-                    {
-                      title: "Remove failed grout",
-                      desc: "grind out old grout and deep-clean the joints."
-                    },
-                    {
-                      title: "Epoxy regrout",
-                      desc: "waterproof epoxy grout colour-matched to your tiles."
-                    },
-                    {
-                      title: "Seal perimeters",
-                      desc: "new silicone to perimeters and expansion joints."
-                    },
-                  ].map((step, i) => (
-                    <li key={i} className="flex gap-3.5 text-[14.5px] text-neutral-600 items-start">
-                      <span className="flex-shrink-0 w-[28px] h-[28px] rounded-full bg-primary text-white font-bold text-[14px] flex items-center justify-center font-[Poppins,sans-serif]">
-                        {i + 1}
-                      </span>
-                      <span>
-                        <b className="text-neutral-900">{step.title}</b> — {step.desc}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </motion.div>
-            </div>
-
-            {/* Before / After Photos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AnimatedImage>
-                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-br from-neutral-100 to-neutral-200 border border-neutral-200">
-                  <div className="absolute top-3.5 left-3.5 z-20 pointer-events-none">
-                    <span className="bg-black/75 backdrop-blur-sm text-white text-[11px] font-extrabold uppercase tracking-[0.15em] px-3.5 py-1.5 rounded-full shadow-sm">
-                      Before
-                    </span>
-                  </div>
-                </div>
-              </AnimatedImage>
-              <AnimatedImage delay={0.1}>
-                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-br from-neutral-100 to-neutral-200 border border-neutral-200">
-                  <div className="absolute top-3.5 left-3.5 z-20 pointer-events-none">
-                    <span className="bg-primary/90 backdrop-blur-sm text-white text-[11px] font-extrabold uppercase tracking-[0.15em] px-3.5 py-1.5 rounded-full shadow-sm">
-                      After
-                    </span>
-                  </div>
-                </div>
-              </AnimatedImage>
-            </div>
-
-
-            {/* CTA Band */}
-            <div className="bg-primary rounded-2xl p-7 sm:p-8 flex flex-col sm:flex-row items-center gap-5 sm:gap-6">
-              <div className="flex-1 min-w-[240px]">
-                <p className="text-white font-bold text-[17px] font-[Poppins,sans-serif] leading-snug">
-                  Stop balcony leaks before they become structural repairs.
-                </p>
-                <p className="text-white/70 text-[13.5px] mt-1.5">
-                  Free assessment · 10-year waterproof warranty · No retiling needed
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-                <Link
-                  href="/contact"
-                  className="inline-block bg-white text-primary font-bold text-[15px] px-7 py-3.5 rounded-xl font-[Poppins,sans-serif] transition-colors hover:bg-accent hover:text-primary active:scale-95 text-center w-full sm:w-auto"
-                >
-                  Get My Balcony Assessed
-                </Link>
-                <a
-                  href="tel:+61370238094"
-                  className="inline-flex items-center justify-center gap-2.5 text-white font-bold text-[15px] border-[1.5px] border-white/45 px-5 py-3 rounded-xl transition-colors hover:border-white/80 active:scale-95 w-full sm:w-auto"
-                >
-                  <Phone className="h-5 w-5" />
-                  +61 3 7023 8094
-                </a>
-              </div>
-            </div>
-          </div>
-        </AnimatedSection>
+        <BalconyDeepDiveSection />
 
         {/* ══════════════════════════════════════
             SECTION 7 — Before & After Gallery
@@ -1889,7 +1750,7 @@ export default function HomePage({
                 Request A Quote
               </Link>
               <a
-                href="tel:+61370238094"
+                href={tel}
                 className="inline-flex items-center gap-2.5 border-[1.5px] border-white/80 hover:border-white text-white font-bold px-6 py-3 rounded-lg text-base sm:text-lg transition-all active:scale-95"
               >
                 <Phone className="h-4 w-4 fill-white text-white" /> +61 3 7023 8094

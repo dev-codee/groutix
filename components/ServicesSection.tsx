@@ -58,6 +58,13 @@ export default function ServicesSection() {
       imageSrc: "/img40.jpeg"
     },
     {
+      id: "cracked-grout-or-a-leaking-shower",
+      title: "Cracked Grout or a Leaking Shower",
+      description: "Stop leaks, white efflorescence, and substrate damage with waterproof epoxy regrouting and sealed perimeter joints.",
+      imageLabel: "Cracked Grout or a Leaking Shower Image",
+      imageSrc: "/img77.jpeg"
+    },
+    {
       id: "leaking-shower-repair",
       title: "Leaking Shower Repair",
       description: "Track leaky shower issues to faulty grout lines and seals, then properly restore the wet area instead of just hiding the problem.",
