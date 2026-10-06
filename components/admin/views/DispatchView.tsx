@@ -788,7 +788,7 @@ export function DispatchView({
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* ══ 1. LEFT PANEL: UNASSIGNED LEADS (HALF PAGE) ══════════════════════ */}
-        <div className="w-1/2 shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
+        <div className="w-[20%] shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
           {/* Header */}
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -1029,7 +1029,7 @@ export function DispatchView({
         </div>
 
         {/* ══ 2. RIGHT PANEL: TIMELINE + MAP (HALF PAGE) ═══════════════════════ */}
-        <div className="w-1/2 flex flex-col min-w-0 min-h-0">
+        <div className="w-[80%] flex flex-col min-w-0 min-h-0">
 
           {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
           <div className={`flex flex-col bg-slate-50/40 ${showMapPanel ? "flex-1 min-h-0" : "flex-1"}`}>

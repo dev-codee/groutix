@@ -36,6 +36,8 @@ import {
   Save,
   AlertCircle,
 } from "lucide-react";
+import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
+import type { Lead } from "@/components/admin/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -565,159 +567,25 @@ function RouteSummaryFooter({
   );
 }
 
-// ─── Map Placeholder ──────────────────────────────────────────────────────────
+// ─── Map Panel (real Google Maps via DispatchMap) ────────────────────────────
 
 function RouteMapPanel({
-  entries,
-  selectedId,
-  showRoute,
-  mapType,
-  onToggleRoute,
-  onToggleMapType,
+  mapItems,
+  selectedLeadId,
+  onSelectLead,
 }: {
-  entries: ScheduleEntry[];
-  selectedId: string | null;
-  showRoute: boolean;
-  mapType: "map" | "satellite";
-  onToggleRoute: () => void;
-  onToggleMapType: (t: "map" | "satellite") => void;
+  mapItems: DispatchMapItem[];
+  selectedLeadId: string | null;
+  onSelectLead: (id: string) => void;
 }) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [gmLoaded, setGmLoaded] = useState(false);
-  const [mapExpanded, setMapExpanded] = useState(false);
-
-  // Load and render Google Map
-  useEffect(() => {
-    const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || process.env.NEXT_PUBLIC_MAPS_API_KEY || "");
-    if (!apiKey || !mapRef.current || gmLoaded) return;
-
-    const loader = new Promise<void>((resolve) => {
-      if (typeof window !== "undefined" && (window as any).google?.maps) {
-        resolve(); return;
-      }
-      const existing = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existing) { existing.addEventListener("load", () => resolve(), { once: true }); return; }
-      const s = document.createElement("script");
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=maps,marker`;
-      s.async = true;
-      s.defer = true;
-      s.onload = () => resolve();
-      document.head.appendChild(s);
-    });
-
-    loader.then(() => setGmLoaded(true));
-  }, [gmLoaded]);
-
   return (
-    <div className={`relative flex flex-col bg-slate-100 border border-slate-200 rounded-xl overflow-hidden transition-all ${mapExpanded ? "h-full" : "h-full"}`}>
-      {/* Toolbar */}
-      <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 flex-wrap">
-        <div className="flex rounded-xl overflow-hidden border border-slate-300 bg-white shadow-sm">
-          <button
-            onClick={() => onToggleMapType("map")}
-            className={`px-3 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer ${mapType === "map" ? "bg-white text-slate-900" : "text-slate-500 hover:bg-slate-50"}`}
-          >
-            Map
-          </button>
-          <button
-            onClick={() => onToggleMapType("satellite")}
-            className={`px-3 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer ${mapType === "satellite" ? "bg-white text-slate-900" : "text-slate-500 hover:bg-slate-50"}`}
-          >
-            Satellite
-          </button>
-        </div>
-
-        <label className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showRoute}
-            onChange={onToggleRoute}
-            className="w-3.5 h-3.5 accent-blue-600 cursor-pointer"
-          />
-          <span className="text-[11px] font-semibold text-slate-700">Show Route</span>
-        </label>
-
-        <button
-          onClick={() => setMapExpanded((v) => !v)}
-          className="ml-auto bg-white border border-slate-300 rounded-lg p-1.5 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
-          title={mapExpanded ? "Collapse" : "Expand"}
-        >
-          {mapExpanded ? <Minimize2 className="w-3.5 h-3.5 text-slate-600" /> : <Maximize2 className="w-3.5 h-3.5 text-slate-600" />}
-        </button>
-      </div>
-
-      {/* Map surface — visual placeholder with numbered markers */}
-      <div ref={mapRef} className="flex-1 w-full relative bg-slate-200">
-        {/* SVG placeholder map */}
-        <svg
-          className="w-full h-full"
-          viewBox="0 0 600 400"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="xMidYMid slice"
-        >
-          {/* Background */}
-          <rect width="600" height="400" fill="#e5e7eb" />
-          {/* Streets (simplified Melbourne grid) */}
-          {[50, 120, 200, 280, 360, 440, 520].map((y) => (
-            <line key={`h${y}`} x1="0" y1={y} x2="600" y2={y} stroke="#d1d5db" strokeWidth="1.5" />
-          ))}
-          {[60, 140, 220, 300, 380, 460, 540].map((x) => (
-            <line key={`v${x}`} x1={x} y1="0" x2={x} y2="400" stroke="#d1d5db" strokeWidth="1.5" />
-          ))}
-          {/* Main roads */}
-          <line x1="0" y1="200" x2="600" y2="200" stroke="#cbd5e1" strokeWidth="3" />
-          <line x1="300" y1="0" x2="300" y2="400" stroke="#cbd5e1" strokeWidth="3" />
-          {/* Water body (Port Phillip Bay approximation) */}
-          <ellipse cx="280" cy="350" rx="120" ry="60" fill="#bfdbfe" opacity="0.7" />
-          <text x="280" y="355" textAnchor="middle" fill="#93c5fd" fontSize="10" fontWeight="bold">Port Phillip Bay</text>
-
-          {/* Route lines */}
-          {showRoute && entries.length > 1 && (() => {
-            const pts = entries.map((_, i) => ({
-              x: 80 + (i * 90) % 480,
-              y: 60 + (i * 55) % 260,
-            }));
-            const d = pts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(" ");
-            return (
-              <>
-                <path d={d} fill="none" stroke="#16a34a" strokeWidth="3" strokeDasharray="6 3" opacity="0.8" />
-              </>
-            );
-          })()}
-
-          {/* Stop markers */}
-          {entries.map((e, i) => {
-            const x = 80 + (i * 90) % 480;
-            const y = 60 + (i * 55) % 260;
-            const isSelected = e.id === selectedId;
-            const colors = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4", "#f97316", "#14b8a6", "#6366f1"];
-            const c = colors[i % colors.length];
-            return (
-              <g key={e.id}>
-                <circle cx={x} cy={y} r={isSelected ? 18 : 14} fill={c} opacity={isSelected ? 1 : 0.85} />
-                <circle cx={x} cy={y} r={isSelected ? 14 : 10} fill="white" />
-                <text x={x} y={y + 4} textAnchor="middle" fill={c} fontSize="11" fontWeight="bold">{i + 1}</text>
-                {isSelected && (
-                  <circle cx={x} cy={y} r={22} fill="none" stroke={c} strokeWidth="2" strokeDasharray="4 2" opacity="0.6" />
-                )}
-              </g>
-            );
-          })}
-
-          {/* Melbourne label */}
-          <text x="295" y="185" textAnchor="middle" fill="#475569" fontSize="16" fontWeight="bold" opacity="0.6">Melbourne</text>
-        </svg>
-
-        {/* Zoom controls */}
-        <div className="absolute bottom-4 right-4 flex flex-col gap-1.5">
-          <button className="w-8 h-8 bg-white border border-slate-300 rounded-lg shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer font-bold text-lg">
-            +
-          </button>
-          <button className="w-8 h-8 bg-white border border-slate-300 rounded-lg shadow-sm flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer font-bold text-lg">
-            −
-          </button>
-        </div>
-      </div>
+    <div className="relative flex flex-col bg-slate-100 overflow-hidden h-full w-full">
+      <DispatchMap
+        items={mapItems}
+        hqAddress="82A Marigold Cres, Gowanbrae VIC 3043, Australia"
+        selectedLeadId={selectedLeadId}
+        onSelectLead={onSelectLead}
+      />
     </div>
   );
 }
@@ -887,15 +755,15 @@ function JobListPanel({
 
 export function ScheduleCalendarView({
   onOpenLead,
+  leads = [],
 }: {
   onOpenLead: (id: string) => void;
+  leads?: Lead[];
 }) {
   const [currentDate, setCurrentDate] = useState(todayStr);
   const [allBookings, setAllBookings] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showRoute, setShowRoute] = useState(true);
-  const [mapType, setMapType] = useState<"map" | "satellite">("map");
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [originalEntries, setOriginalEntries] = useState<ScheduleEntry[]>([]);
   const [rescheduleModal, setRescheduleModal] = useState<RescheduleModal | null>(null);
@@ -940,6 +808,17 @@ export function ScheduleCalendarView({
   // Selected entry
   const selectedEntry = useMemo(() => entries.find((e) => e.id === selectedId) || null, [entries, selectedId]);
   const selectedIndex = useMemo(() => entries.findIndex((e) => e.id === selectedId), [entries, selectedId]);
+
+  // Map items: convert ScheduleEntry[] → DispatchMapItem[] using leads lookup
+  const mapItems = useMemo<DispatchMapItem[]>(() =>
+    entries
+      .map((e) => {
+        const lead = leads.find((l) => l.id === e.leadId);
+        if (!lead) return null;
+        return { lead, type: e.type, time: e.time } as DispatchMapItem;
+      })
+      .filter((x): x is DispatchMapItem => x !== null),
+  [entries, leads]);
 
   // Navigation
   const prevDay = () => setCurrentDate((d) => offsetDate(d, -1));
@@ -1116,12 +995,9 @@ export function ScheduleCalendarView({
         {/* Map */}
         <div className="flex-1 rounded-xl overflow-hidden shadow-xs border border-slate-200">
           <RouteMapPanel
-            entries={entries}
-            selectedId={selectedId}
-            showRoute={showRoute}
-            mapType={mapType}
-            onToggleRoute={() => setShowRoute((v) => !v)}
-            onToggleMapType={setMapType}
+            mapItems={mapItems}
+            selectedLeadId={selectedId}
+            onSelectLead={(id) => setSelectedId(id)}
           />
         </div>
 

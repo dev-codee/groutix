@@ -4519,7 +4519,9 @@ export default function CrmDashboardPage() {
              ========================================================================= */}
             {currentView === "schedule" && (
               <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
-                <ScheduleCalendarView onOpenLead={(id: string) => {
+                <ScheduleCalendarView
+                  leads={leads}
+                  onOpenLead={(id: string) => {
                   const lead = leads.find((l) => l.id === id);
                   if (lead) {
                     setEditingLead(lead);
