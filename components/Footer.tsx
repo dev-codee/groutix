@@ -50,7 +50,7 @@ export default function Footer() {
                 href="https://www.facebook.com/profile.php?id=61582570358855"
                 target="_blank"
                 rel="noreferrer"
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#1877F2] text-white flex items-center justify-center transition-all duration-200 shadow-sm hover:scale-105"
+                className="w-10 h-10 rounded-full bg-[#1877F2] hover:bg-[#1565d8] text-white flex items-center justify-center transition-all duration-200 shadow-sm hover:scale-105"
                 aria-label="Facebook"
               >
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
@@ -61,7 +61,7 @@ export default function Footer() {
                 href="https://www.instagram.com/groutix.au/"
                 target="_blank"
                 rel="noreferrer"
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-gradient-to-tr hover:from-[#f09433] hover:via-[#dc2743] hover:to-[#bc1888] text-white flex items-center justify-center transition-all duration-200 shadow-sm hover:scale-105"
+                className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-85 text-white flex items-center justify-center transition-all duration-200 shadow-sm hover:scale-105"
                 aria-label="Instagram"
               >
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
