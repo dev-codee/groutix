@@ -35,7 +35,8 @@ import {
 } from "lucide-react";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import { buildPlanningMapItems, type UnassignedPlanningLead } from "@/lib/unassignedLeads";
-import { MAX_PLANNING_DAYS, addPlanningDate, colorPlanningMapItems, consecutivePlanningDates, offsetPlanningDate, planningDateRanges, planningDayColor, shiftPlanningDates } from "@/lib/scheduleDays";
+import { MAX_PLANNING_DAYS, addPlanningDate, colorPlanningMapItems, offsetPlanningDate, planningDateRanges, planningDayColor, shiftPlanningDates } from "@/lib/scheduleDays";
+import { planScheduleDrop, suggestedPlanningTime, type ScheduleDragItem } from "@/lib/scheduleDrag";
 import type { DayAppointment } from "@/lib/bookings";
 import type { Lead } from "@/components/admin/types";
 import { applyRouteOrders, appointmentKey, estimateRoute, optimizeRouteStops } from "@/lib/scheduleRoutes";
@@ -161,11 +162,11 @@ function TypeBadge({ type }: { type: JobType }) {
   );
 }
 
-function StopCircle({ n, size = "md" }: { n: number; type: JobType; size?: "sm" | "md" }) {
+function StopCircle({ n, size = "md", color }: { n: number; type: JobType; size?: "sm" | "md"; color?: string }) {
   const bg = STOP_COLORS[n % STOP_COLORS.length];
   const sz = size === "sm" ? "w-5 h-5 text-[10px]" : "w-7 h-7 text-xs";
   return (
-    <div className={`${bg} ${sz} rounded-full flex items-center justify-center text-white font-bold shrink-0`}>
+    <div style={color ? { backgroundColor: color } : undefined} className={`${bg} ${sz} rounded-full flex items-center justify-center text-white font-bold shrink-0`}>
       {n + 1}
     </div>
   );
@@ -283,6 +284,7 @@ function RescheduleDialog({
           </div>
 
           {warning && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">{warning} Staff may override these hours.</p>}
+          <p className="text-xs text-slate-600">Move this {modal.entry.type} to <strong>{fmtDate(date)} · {fmtTime(time)}</strong>? The booking changes only after you confirm.</p>
           {modal.error && (
             <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -313,10 +315,12 @@ function RescheduleDialog({
   );
 }
 
-function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved }: {
+function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onBeforeSave, onClose, onSaved }: {
   leads: Lead[];
   initialDate: string;
   initialBooking?: { leadId: string; type: JobType };
+  initialTime?: string;
+  onBeforeSave: () => boolean;
   onClose: () => void;
   onSaved: (date: string) => void;
 }) {
@@ -324,6 +328,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved
   const [type, setType] = useState<JobType>(initialBooking?.type || "inspection");
   const [date, setDate] = useState(initialDate < todayStr() ? todayStr() : initialDate);
   const [time, setTime] = useState(() => {
+    if (initialTime) return initialTime;
     const lead = leads.find((entry) => entry.id === initialBooking?.leadId);
     const appointment = initialBooking?.type === "job" ? lead?.jobAt : lead?.inspectionAt;
     return appointment?.split("T")[1]?.slice(0, 5) || "09:00";
@@ -338,7 +343,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (saving) return;
+    if (saving || !onBeforeSave()) return;
     setSaving(true);
     setError("");
     try {
@@ -362,7 +367,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <form onSubmit={save} role="dialog" aria-modal="true" aria-labelledby="add-booking-title" className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 id="add-booking-title" className="text-sm font-bold text-slate-900">Add Booking</h3>
+          <h3 id="add-booking-title" className="text-sm font-bold text-slate-900">{existing ? "Confirm Reschedule" : "Confirm Booking"}</h3>
           <button type="button" aria-label="Close booking form" onClick={onClose} disabled={saving} className="p-1.5 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-5 space-y-4 text-xs text-slate-700">
@@ -384,11 +389,12 @@ function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved
           </div>
           {existing && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">This customer already has this booking type scheduled. Saving will reschedule it and may notify the customer.</p>}
           {warning && <p className="rounded-lg bg-amber-50 p-3 text-amber-800">{warning} Staff may override these hours.</p>}
+          {selectedLead && <p className="rounded-lg bg-blue-50 p-3 text-blue-800">{existing ? "Reschedule" : "Book"} <strong>{selectedLead.name || "Customer"}</strong> for <strong>{fmtDate(date)} · {fmtTime(time)}</strong>? Confirm below to save.</p>}
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-600">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 p-4">
           <button type="button" onClick={onClose} disabled={saving} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Cancel</button>
-          <button disabled={saving || !leadId} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{saving ? "Saving…" : "Save Booking"}</button>
+          <button disabled={saving || !leadId || !date || !time || date < todayStr()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{saving ? "Saving…" : existing ? "Confirm Reschedule" : "Confirm Booking"}</button>
         </div>
       </form>
     </div>
@@ -729,48 +735,33 @@ function JobListPanel({
   entries,
   selectedId,
   onSelect,
-  onReorder,
+  onDragStart,
+  onDragEnd,
+  onDropBooking,
   onReschedule,
   onRemove,
   onAddBooking,
   dateStr,
+  color,
+  disabled,
 }: {
   entries: ScheduleEntry[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onReorder: (from: number, to: number) => void;
+  onDragStart: (event: React.DragEvent, item: ScheduleDragItem) => void;
+  onDragEnd: () => void;
+  onDropBooking: (event: React.DragEvent, date: string, targetId?: string) => void;
   onReschedule: (entry: ScheduleEntry) => void;
   onRemove: (entry: ScheduleEntry) => void;
   onAddBooking: () => void;
   dateStr: string;
+  color: string;
+  disabled: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const dragFrom = useRef<number | null>(null);
-  const dragOver = useRef<number | null>(null);
-  const [dragging, setDragging] = useState<number | null>(null);
-  const [dropTarget, setDropTarget] = useState<number | null>(null);
-
-  const handleDragStart = (i: number) => {
-    dragFrom.current = i;
-    setDragging(i);
-  };
-  const handleDragOver = (e: React.DragEvent, i: number) => {
-    e.preventDefault();
-    dragOver.current = i;
-    setDropTarget(i);
-  };
-  const handleDrop = () => {
-    if (dragFrom.current !== null && dragOver.current !== null && dragFrom.current !== dragOver.current) {
-      onReorder(dragFrom.current, dragOver.current);
-    }
-    dragFrom.current = null;
-    dragOver.current = null;
-    setDragging(null);
-    setDropTarget(null);
-  };
 
   return (
-    <div className="flex flex-col bg-white h-full min-h-0 w-full overflow-hidden">
+    <div className="flex flex-col bg-white w-full">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 shrink-0">
         <div>
@@ -778,6 +769,7 @@ function JobListPanel({
         </div>
         <button
           onClick={onAddBooking}
+          disabled={disabled}
           className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
         >
           <Plus className="w-3 h-3" />
@@ -786,7 +778,7 @@ function JobListPanel({
       </div>
 
       {/* List */}
-      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
+      <div className="divide-y divide-slate-100">
         {entries.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400 px-4">
             <CalendarDays className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -796,24 +788,20 @@ function JobListPanel({
           entries.map((entry, i) => (
             <div
               key={entry.id}
-              draggable
-              onDragStart={() => handleDragStart(i)}
-              onDragOver={(e) => handleDragOver(e, i)}
-              onDrop={handleDrop}
-              onDragEnd={() => { dragFrom.current = null; dragOver.current = null; setDragging(null); setDropTarget(null); }}
+              draggable={!disabled}
+              onDragStart={(event) => onDragStart(event, { kind: "booking", id: entry.id })}
+              onDrop={(event) => onDropBooking(event, dateStr, entry.id)}
+              onDragEnd={onDragEnd}
               onClick={() => onSelect(selectedId === entry.id ? null : entry.id)}
               className={`group flex items-start gap-2.5 px-3 py-3 transition-all cursor-pointer relative ${
                 selectedId === entry.id
                   ? "bg-amber-50 border-l-2 border-amber-400"
-                  : dropTarget === i
-                  ? "bg-blue-50 border-l-2 border-blue-400"
-                  : dragging === i
-                  ? "opacity-40"
                   : "hover:bg-slate-50 border-l-2 border-transparent"
               }`}
             >
               {/* Drag handle */}
               <button
+                aria-label={`Drag ${entry.customer?.name || "booking"} to another day or reorder`}
                 className="mt-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
                 onMouseDown={(e) => e.stopPropagation()}
               >
@@ -821,7 +809,7 @@ function JobListPanel({
               </button>
 
               {/* Stop number */}
-              <StopCircle n={i} type={entry.type} />
+              <StopCircle n={i} type={entry.type} color={color} />
 
               {/* Content */}
               <div className="flex-1 min-w-0">
@@ -830,7 +818,7 @@ function JobListPanel({
                     {fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, entry.durationMinutes))}
                   </span>
                   <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
-                    ← drag to reorder
+                    Drag to another day or reorder
                   </span>
                 </div>
                 <p className="text-xs font-semibold text-slate-900 mt-0.5">{entry.customer?.name || "Customer"}</p>
@@ -924,12 +912,16 @@ export function ScheduleCalendarView({
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   const [bookingDate, setBookingDate] = useState<string | null>(null);
+  const [bookingTime, setBookingTime] = useState<string | undefined>();
   const [selectedPlanningLeadId, setSelectedPlanningLeadId] = useState<string | null>(initialBooking?.leadId || null);
   const [planningFilter, setPlanningFilter] = useState<"all" | JobType>("all");
   const [planningSearch, setPlanningSearch] = useState("");
   const [showUnassigned, setShowUnassigned] = useState(true);
   const [showUnassignedOnMap, setShowUnassignedOnMap] = useState(true);
-  const [addDayPickerOpen, setAddDayPickerOpen] = useState(false);
+  const dragItem = useRef<ScheduleDragItem | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [dropDate, setDropDate] = useState<string | null>(null);
+  const [pendingReorder, setPendingReorder] = useState<{ fromId: string; toId: string } | null>(null);
   const [bookingPreset, setBookingPreset] = useState(initialBooking);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -1001,7 +993,7 @@ export function ScheduleCalendarView({
     return () => { active = false; loadRequest.current += 1; };
   }, [load]);
 
-  const selectedPlanningLead = unassignedLeads.find(({ lead }) => lead.id === selectedPlanningLeadId) || null;
+  const selectedPlanningLead = showUnassigned ? unassignedLeads.find(({ lead }) => lead.id === selectedPlanningLeadId) || null : null;
   const visiblePlanningLeads = unassignedLeads.filter(({ lead, type }) =>
     (planningFilter === "all" || type === planningFilter) &&
     `${lead.name || ""} ${lead.address || ""} ${lead.city || ""} ${lead.jobNo || ""}`.toLowerCase().includes(planningSearch.trim().toLowerCase()),
@@ -1038,11 +1030,12 @@ export function ScheduleCalendarView({
       })
       .filter((x): x is DispatchMapItem => x !== null),
   [entries, leads]);
-  const mapItems = useMemo(() => buildPlanningMapItems(colorPlanningMapItems(bookedMapItems, visibleDates), showUnassignedOnMap ? unassignedLeads : []), [bookedMapItems, visibleDates, unassignedLeads, showUnassignedOnMap]);
+  const mapItems = useMemo(() => buildPlanningMapItems(colorPlanningMapItems(bookedMapItems, visibleDates), showUnassigned && showUnassignedOnMap ? unassignedLeads : []), [bookedMapItems, visibleDates, unassignedLeads, showUnassigned, showUnassignedOnMap]);
   const bookPlanningLead = () => {
     if (!selectedPlanningLead) return;
     if (!discardChanges()) return;
     setBookingPreset({ leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type });
+    setBookingTime(suggestedPlanningTime(rules, selectedPlanningLead.type, activeMapDate, entries));
     setBookingDate(activeMapDate);
   };
 
@@ -1053,13 +1046,56 @@ export function ScheduleCalendarView({
 
   // Reorder entries (drag & drop)
   const handleReorder = (from: number, to: number) => {
-    if (routeSaving || loading || !entries[from] || !entries[to] || entries[from].date !== entries[to].date) return;
+    if (routeSaving || loading || from === to || !entries[from] || !entries[to] || entries[from].date !== entries[to].date) return;
+    setPendingReorder({ fromId: entries[from].id, toId: entries[to].id });
+  };
+  const confirmReorder = () => {
+    if (!pendingReorder || routeSaving || loading) return;
     setEntries((prev) => {
+      const from = prev.findIndex((entry) => entry.id === pendingReorder.fromId);
+      const to = prev.findIndex((entry) => entry.id === pendingReorder.toId);
+      if (from < 0 || to < 0 || prev[from].date !== prev[to].date) return prev;
       const next = [...prev];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
       return next;
     });
+    setPendingReorder(null);
+  };
+
+  const startDrag = (event: React.DragEvent, item: ScheduleDragItem) => {
+    if (loading || routeSaving) { event.preventDefault(); return; }
+    dragItem.current = item;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", item.kind === "booking" ? item.id : item.leadId);
+    setDragging(true);
+  };
+  const endDrag = () => {
+    dragItem.current = null;
+    setDragging(false);
+    setDropDate(null);
+  };
+  const dropBooking = (event: React.DragEvent, date: string, targetId?: string) => {
+    if (!dragItem.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const item = dragItem.current;
+    endDrag();
+    if (loading || loadError || routeSaving) return;
+    const proposal = planScheduleDrop(item, date, entries, targetId);
+    if (!proposal) return;
+    if (proposal.kind === "reorder") { handleReorder(proposal.from, proposal.to); return; }
+    if (date < todayStr()) { showToast("Choose today or a future day for booking.", false); return; }
+    setMapDate(date);
+    if (proposal.kind === "reschedule") {
+      const entry = entries.find((entry) => entry.id === proposal.entry.id)!;
+      setRescheduleModal({ entry, newDate: date, newTime: suggestedPlanningTime(rules, entry.type, date, entries, entry.time), saving: false, error: "" });
+    } else {
+      if (!unassignedLeads.some(({ lead, type }) => lead.id === proposal.leadId && type === proposal.type)) return;
+      setBookingPreset({ leadId: proposal.leadId, type: proposal.type });
+      setBookingTime(suggestedPlanningTime(rules, proposal.type, date, entries));
+      setBookingDate(date);
+    }
   };
 
   // Move entry up/down
@@ -1078,7 +1114,7 @@ export function ScheduleCalendarView({
   };
 
   const saveReschedule = async (newDate: string, newTime: string) => {
-    if (!rescheduleModal) return;
+    if (!rescheduleModal || rescheduleModal.saving || routeSaving) return;
     if (!newDate || !newTime || newDate < todayStr()) return;
     if (!discardChanges()) return;
     setRescheduleModal((m) => m ? { ...m, saving: true, error: "" } : m);
@@ -1202,6 +1238,8 @@ export function ScheduleCalendarView({
           </button>
         </div>
 
+        <button type="button" disabled={dayCount >= MAX_PLANNING_DAYS || loading || routeSaving} onClick={() => changeVisibleDates(addPlanningDate(visibleDates, offsetPlanningDate(endDate, 1)))} title={`Show ${fmtDate(offsetPlanningDate(endDate, 1))}`} className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-40 cursor-pointer"><Plus className="w-3.5 h-3.5" />Add next day</button>
+
         <button
           onClick={goToday}
           className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
@@ -1210,18 +1248,8 @@ export function ScheduleCalendarView({
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          {/* View selector */}
-          <select
-            aria-label="Calendar view"
-            value={dayCount}
-            onChange={(e) => changeVisibleDates(consecutivePlanningDates(currentDate, Number(e.target.value)))}
-            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
-          >
-            {Array.from({ length: MAX_PLANNING_DAYS }, (_, index) => index + 1).map((count) => <option key={count} value={count}>{count === 1 ? "1 Day View" : count === 7 ? "7 Days (Week View)" : `${count} Days View`}</option>)}
-          </select>
-
           <button type="button" aria-pressed={showUnassigned} onClick={() => { setShowUnassigned((show) => !show); setSelectedPlanningLeadId(null); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
-            {showUnassigned ? "Hide" : "Show"} unassigned list ({unassignedLeads.length})
+            {showUnassigned ? "Hide" : "Show"} unassigned leads ({unassignedLeads.length})
           </button>
           {/* Optimize Route */}
           <button
@@ -1250,11 +1278,8 @@ export function ScheduleCalendarView({
           <button type="button" onClick={() => setMapDate(date)} aria-pressed={activeMapDate === date} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer" style={{ color: planningDayColor(dayIndex), backgroundColor: activeMapDate === date ? `color-mix(in srgb, ${planningDayColor(dayIndex)} 10%, white)` : undefined }}><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(dayIndex) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</button>
           {dayCount > 1 && <button type="button" aria-label={`Remove ${date} from view`} onClick={() => changeVisibleDates(visibleDates.filter((day) => day !== date))} className="p-2 text-slate-400 hover:text-rose-600 cursor-pointer"><X className="w-3 h-3" /></button>}
         </div>)}
-        <div className="relative">
-          <button type="button" disabled={dayCount >= MAX_PLANNING_DAYS} onClick={() => setAddDayPickerOpen((open) => !open)} className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-blue-600 disabled:opacity-40 cursor-pointer"><Plus className="w-3.5 h-3.5" />Add day</button>
-          {addDayPickerOpen && <ScheduleDatePicker value={offsetPlanningDate(endDate, 1)} onChange={(date) => { changeVisibleDates(addPlanningDate(visibleDates, date)); setAddDayPickerOpen(false); }} onClose={() => setAddDayPickerOpen(false)} />}
-        </div>
-        <label className="ml-auto flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>
+        <span className="ml-auto text-xs text-slate-500">{dayCount} {dayCount === 1 ? "day" : "days"} shown · One color per day</span>
+        {showUnassigned && <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>}
       </div>
 
       {/* ── Stats Bar ─────────────────────────────────────────────────────── */}
@@ -1263,8 +1288,9 @@ export function ScheduleCalendarView({
       </div>
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
-      <div className={`flex flex-1 ${selectedPlanningLead ? "min-h-[480px]" : "min-h-[360px]"} px-5 pb-0 gap-4 overflow-x-auto`}>
-        {showUnassigned && <div className="w-[260px] shrink-0 min-h-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
+      <div className={`grid grid-cols-1 items-start px-5 gap-4 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(260px,1fr)_minmax(300px,1.1fr)]" : "lg:grid-cols-2"}`}>
+
+        {showUnassigned && <div className="max-h-[280px] xl:max-h-none xl:h-[560px] min-w-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
           <div className="shrink-0 border-b border-amber-100 bg-amber-50 p-3 space-y-2">
             <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900">Unassigned leads</h3><span className="text-xs font-bold text-amber-700">{unassignedLeads.length}</span></div>
             <div className="flex gap-1">
@@ -1273,21 +1299,34 @@ export function ScheduleCalendarView({
             <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5"><Search className="w-3.5 h-3.5 text-slate-400" /><input aria-label="Search unassigned leads" placeholder="Search name or address" value={planningSearch} onChange={(event) => setPlanningSearch(event.target.value)} className="min-w-0 w-full text-xs outline-none" /></label>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
-            {visiblePlanningLeads.map(({ lead, type }) => <button key={lead.id} type="button" onClick={() => selectPlanningLead(lead.id)} aria-pressed={selectedPlanningLeadId === lead.id} className={`w-full text-left rounded-xl border p-3 space-y-1 cursor-pointer ${selectedPlanningLeadId === lead.id ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" : "border-slate-200 hover:bg-slate-50"}`}>
+            {visiblePlanningLeads.map(({ lead, type }) => <button key={`${lead.id}:${type}`} type="button" draggable={!loading && !routeSaving} onDragStart={(event) => startDrag(event, { kind: "unassigned", leadId: lead.id, type })} onDragEnd={endDrag} onClick={() => selectPlanningLead(lead.id)} aria-pressed={selectedPlanningLeadId === lead.id} className={`w-full text-left rounded-xl border p-3 space-y-1 cursor-pointer ${selectedPlanningLeadId === lead.id ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" : "border-slate-200 hover:bg-slate-50"}`}>
               <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-900 truncate">{lead.name || "Customer"}</span><TypeBadge type={type} /></div>
               <p className="text-[10px] font-semibold text-slate-500">{lead.status}</p>
               <p className="text-[11px] text-slate-600">{lead.address || lead.city || "Address needed to show on map"}</p>
+              <p className="flex items-center gap-1 text-[10px] text-slate-400"><GripVertical className="w-3 h-3" />Drag into a day to book</p>
               {selectedPlanningLeadId === lead.id && <p className="text-[10px] font-bold text-violet-700">Selected for planning</p>}
             </button>)}
             {!visiblePlanningLeads.length && <p className="p-4 text-center text-xs text-slate-400">No unassigned leads match these filters.</p>}
           </div>
         </div>}
-        {/* Each visible day has its own booking column. */}
-        <div data-testid="schedule-day-columns" className="min-w-[260px] flex-1 min-h-0 overflow-x-auto pb-2" style={{ display: "grid", gridAutoFlow: "column", gridAutoColumns: dayCount === 1 ? "minmax(260px, 1fr)" : "minmax(230px, 1fr)", gap: 12, alignItems: "stretch" }}>
+        {/* Days remain in one vertical list while the map stays visible. */}
+        <div data-testid="schedule-day-stack" className="min-w-0 h-[560px] overflow-y-auto space-y-3 pr-1 pb-2" onDragOver={(event) => {
+          if (!dragItem.current) return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (event.clientY < bounds.top + 60) event.currentTarget.scrollTop -= 16;
+          else if (event.clientY > bounds.bottom - 60) event.currentTarget.scrollTop += 16;
+        }}>
+          <p className="text-[11px] text-slate-500 px-1">Drag a lead into a day to book, or move a booking to another day. Review and confirm before saving.</p>
           {visibleDates.map((date, dayIndex) => {
             const dayEntries = entries.filter((entry) => entry.date === date);
             return (
-              <div key={date} data-schedule-date={date} className="rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col min-h-0 bg-white">
+              <div key={date} data-schedule-date={date} onDragOver={(event) => {
+                if (!dragItem.current || loading || routeSaving) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDropDate(date);
+              }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropDate(null); }} onDrop={(event) => dropBooking(event, date)} className={`rounded-xl shadow-xs border bg-white transition-shadow ${dropDate === date ? "border-blue-500 ring-2 ring-blue-200" : "border-slate-200"}`}>
+
                 <div className="px-4 py-3 border-b bg-white shrink-0" style={{ borderTop: `4px solid ${planningDayColor(dayIndex)}` }}>
                   <p className="text-sm font-bold" style={{ color: planningDayColor(dayIndex) }}>{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long" })}</p>
                   <p className="text-xs mt-1 text-slate-600">{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short" })} · {dayEntries.length} bookings</p>
@@ -1297,19 +1336,24 @@ export function ScheduleCalendarView({
                   entries={dayEntries}
                   selectedId={selectedId}
                   onSelect={selectBooking}
-                  onReorder={(from, to) => handleReorder(entries.indexOf(dayEntries[from]), entries.indexOf(dayEntries[to]))}
+                  onDragStart={startDrag}
+                  onDragEnd={endDrag}
+                  onDropBooking={dropBooking}
+                  color={planningDayColor(dayIndex)}
+                  disabled={routeSaving || !!loadError}
                   onReschedule={openReschedule}
                   onRemove={openRemove}
-                  onAddBooking={() => { if (!discardChanges()) return; setBookingPreset(undefined); setBookingDate(date); }}
+                  onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestedPlanningTime(rules, selectedPlanningLead?.type || "inspection", date, entries)); setBookingDate(date); }}
                   dateStr={date}
                 />}
+                {!loading && <div className={`m-3 rounded-lg border border-dashed p-3 text-center text-[11px] ${dragging ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"}`}>{date < todayStr() ? "Past day · Drag bookings to a future day" : "Drop a lead or booking here · Confirm date and time before saving"}</div>}
               </div>
             );
           })}
         </div>
 
         {/* Map */}
-        <div className="w-[42%] shrink-0 min-w-[320px] min-h-0 rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
+        <div className="min-w-0 h-[560px] rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
           {selectedPlanningLead && <div className="shrink-0 border-b border-violet-200 bg-violet-50 p-3 space-y-2">
             <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-semibold text-violet-700">Selected for {selectedPlanningLead.type === "inspection" ? "inspection" : "job"}</p><p className="text-sm font-bold text-slate-900">{selectedPlanningLead.lead.name || "Customer"}</p></div><button type="button" onClick={() => setSelectedPlanningLeadId(null)} aria-label="Clear selected lead" className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
             <p className="text-xs text-slate-600">{selectedPlanningLead.lead.address || selectedPlanningLead.lead.city || "Add an address to place this lead on the map."}</p>
@@ -1319,7 +1363,7 @@ export function ScheduleCalendarView({
           <div className="flex shrink-0 flex-wrap gap-3 border-b border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600">
             <span className="font-semibold">All {dayCount} selected {dayCount === 1 ? "day" : "days"} on map</span>
             {visibleDates.map((date, index) => <span key={date} className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(index) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</span>)}
-            {showUnassignedOnMap && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" />Unassigned</span>}
+            {showUnassigned && showUnassignedOnMap && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" />Unassigned</span>}
           </div>
           <div className="flex-1 min-h-0">
           <RouteMapPanel
@@ -1328,7 +1372,7 @@ export function ScheduleCalendarView({
             selectedItemId={selectedPlanningLead ? null : selectedId}
             onSelectItem={selectBooking}
             onSelectLead={(id) => {
-              if (showUnassignedOnMap && unassignedLeads.some(({ lead }) => lead.id === id)) selectPlanningLead(id);
+              if (showUnassigned && showUnassignedOnMap && unassignedLeads.some(({ lead }) => lead.id === id)) selectPlanningLead(id);
               else selectBooking(entries.find((entry) => entry.leadId === id)?.id || null);
             }}
           />
@@ -1337,7 +1381,7 @@ export function ScheduleCalendarView({
 
         {/* Selected booking sidebar */}
         {selectedEntry && (
-          <div className="rounded-xl overflow-hidden shadow-xs border border-slate-200 h-full min-h-0 flex flex-col w-72 shrink-0 bg-white">
+          <div className="col-span-full rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col bg-white">
             <SelectedBookingSidebar
               entry={selectedEntry}
               index={entries.filter((entry) => entry.date === selectedEntry.date).findIndex((entry) => entry.id === selectedId)}
@@ -1376,8 +1420,9 @@ export function ScheduleCalendarView({
         />
       </div>
 
-      {bookingDate && <AddBookingDialog leads={leads} initialDate={bookingDate} initialBooking={bookingPreset} onClose={() => { setBookingDate(null); onBookingRequestHandled?.(); }} onSaved={(date) => {
+      {bookingDate && <AddBookingDialog leads={leads} initialDate={bookingDate} initialBooking={bookingPreset} initialTime={bookingTime} onBeforeSave={() => !routeSaving && discardChanges()} onClose={() => { setBookingDate(null); onBookingRequestHandled?.(); }} onSaved={(date) => {
         setBookingDate(null);
+        setSelectedPlanningLeadId(null);
         onBookingRequestHandled?.();
         showToast("Booking saved successfully!", true);
         setMapDate(date);
@@ -1385,6 +1430,15 @@ export function ScheduleCalendarView({
         else setCurrentDate(date);
         onBookingsChanged?.();
       }} />}
+
+      {pendingReorder && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="reorder-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+          <h3 id="reorder-title" className="text-sm font-bold text-slate-900">Confirm stop order</h3>
+          <p className="mt-3 text-xs text-slate-600">Move <strong>{entries.find((entry) => entry.id === pendingReorder.fromId)?.customer?.name || "this booking"}</strong> to stop {entries.filter((entry) => entry.date === entries.find((stop) => stop.id === pendingReorder.toId)?.date).findIndex((entry) => entry.id === pendingReorder.toId) + 1}?</p>
+          <p className="mt-2 text-xs text-slate-500">Booking times stay the same. Review and save the route to keep the new driving order.</p>
+          <div className="mt-4 flex justify-end gap-2"><button type="button" autoFocus onClick={() => setPendingReorder(null)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Cancel</button><button type="button" onClick={confirmReorder} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white cursor-pointer">Confirm order</button></div>
+        </div>
+      </div>}
 
       {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
         <div role="dialog" aria-modal="true" aria-labelledby="route-preview-title" className="w-full max-w-lg rounded-2xl bg-white shadow-xl max-h-[85vh] flex flex-col">
