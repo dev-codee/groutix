@@ -17,6 +17,7 @@ import { calculateTravel } from "@/lib/dispatch";
 import { dayHours, formatHHmm, toMinutes, WEEKDAY_NAMES, type BookingType } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { QuoteResponseBadge } from "@/components/admin/QuoteResponseBadge";
+import { getUnassignedSchedulingType } from "@/lib/unassignedLeads";
 import type { Lead } from "@/components/admin/types";
 
 declare global {
@@ -66,6 +67,7 @@ export function ManagerDashboard() {
     setCurrentView,
     openLeadsFiltered,
     openDispatch,
+    openSchedule,
     openJobCard,
     openInbox,
     startNewLead,
@@ -93,7 +95,7 @@ export function ManagerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
-  const [unassignedTab, setUnassignedTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
+  const [unassignedTab, setUnassignedTab] = useState<"all" | "inspections" | "jobs">("inspections");
 
   const bookingRules = useBookingRules();
   const _now = useMemo(() => new Date(), []);
@@ -1350,63 +1352,14 @@ export function ManagerDashboard() {
 
         {/* 4. Unassigned */}
         {(() => {
-          // "assigned" is a generic field that's auto-populated with an intake
-          // rep's name when a lead is created, and that name sticks around even
-          // after the lead reaches the inspection stage. So a non-empty
-          // "assigned" value alone doesn't mean an inspector has actually picked
-          // this up — only count it if that name belongs to inspection/field staff.
-          const isInspectorName = (name?: string) => {
-            if (!name) return false;
-            const lower = name.trim().toLowerCase();
-            return inspectionStaff.some(
-              (s) => s.name.trim().toLowerCase() === lower || (s.username && s.username.toLowerCase() === lower)
-            );
-          };
-
-          const hasInspectorAssignee = (l: Lead) =>
-            Boolean(l.inspectorId) ||
-            Boolean(l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned" && isInspectorName(l.assigned));
-
-          const hasTechnicianAssignee = (l: Lead) =>
-            Boolean((l.technician && l.technician.trim()) || (l.assigned && l.assigned.trim() && l.assigned.toLowerCase() !== "unassigned" && isTechnicianName(l.assigned)));
-
-          // A brand-new lead nobody has picked up yet: no assignee of any kind
-          // and still at a pre-inspection stage. These now arrive Unassigned
-          // (auto round-robin was removed), so they belong in this box until a
-          // staffer takes them.
-          const hasAnyAssignee = (l: Lead) =>
-            Boolean(l.inspectorId) ||
-            Boolean(l.technicianId) ||
-            Boolean(l.technician && l.technician.trim()) ||
-            Boolean(l.assigned && l.assigned.trim() && l.assigned.trim().toLowerCase() !== "unassigned");
-
-          const allUnassignedNew = scopedLeads.filter((l) =>
-            ["New", "Contacted", "Waiting for Info"].includes(l.status || "New") && !hasAnyAssignee(l)
-          ).sort((a, b) => new Date(b.received || 0).getTime() - new Date(a.received || 0).getTime());
-
-          const allUnassignedInsp = scopedLeads.filter((l) =>
-            l.status !== "Lost" && l.status !== "Cancelled" && l.status !== "Completed" && l.status !== "Job Done" &&
-            /inspection.booked/i.test(l.status || "") && !hasInspectorAssignee(l)
-          ).sort((a, b) => new Date(a.inspectionAt || a.received || 0).getTime() - new Date(b.inspectionAt || b.received || 0).getTime());
-
-          const allUnassignedJobs = scopedLeads.filter((l) =>
-            l.status !== "Lost" && l.status !== "Cancelled" && l.status !== "Completed" && l.status !== "Job Done" &&
-            /job.booked|scheduled|job.confirmed|won/i.test(l.status || "") && !hasTechnicianAssignee(l)
-          ).sort((a, b) => new Date(a.jobAt || a.received || 0).getTime() - new Date(b.jobAt || b.received || 0).getTime());
-
-          const visibleLeads =
-            unassignedTab === "leads" ? allUnassignedNew :
-            unassignedTab === "inspections" ? allUnassignedInsp :
-            unassignedTab === "jobs" ? allUnassignedJobs :
-            // New leads have no appointment yet, so they sit above the dated
-            // inspection/job rows rather than being sorted in among them.
-            [...allUnassignedNew, ...[...allUnassignedInsp, ...allUnassignedJobs].sort((a, b) => {
-              const da = new Date(a.inspectionAt || a.jobAt || a.received || 0).getTime();
-              const db = new Date(b.inspectionAt || b.jobAt || b.received || 0).getTime();
-              return da - db;
-            })];
-
-          const totalCount = allUnassignedNew.length + allUnassignedInsp.length + allUnassignedJobs.length;
+          const schedulingType = (lead: Lead) => getUnassignedSchedulingType(lead, inspectionStaff, assignableTechnicians);
+          const allUnassignedInsp = scopedLeads.filter((lead) => schedulingType(lead) === "inspection")
+            .sort((a, b) => new Date(b.received || b.createdAt).getTime() - new Date(a.received || a.createdAt).getTime());
+          const allUnassignedJobs = scopedLeads.filter((lead) => schedulingType(lead) === "job")
+            .sort((a, b) => new Date(b.received || b.createdAt).getTime() - new Date(a.received || a.createdAt).getTime());
+          const visibleLeads = unassignedTab === "inspections" ? allUnassignedInsp :
+            unassignedTab === "jobs" ? allUnassignedJobs : [...allUnassignedInsp, ...allUnassignedJobs];
+          const totalCount = allUnassignedInsp.length + allUnassignedJobs.length;
 
           return (
             <div className="bg-white rounded-2xl border border-amber-200/80 shadow-2xs p-3.5 sm:p-4 flex flex-col h-full min-h-[380px]">
@@ -1434,7 +1387,6 @@ export function ManagerDashboard() {
               <div className="flex gap-0.5 mb-2 shrink-0">
                 {([
                   { key: "all", label: "All", count: totalCount },
-                  { key: "leads", label: "Leads", count: allUnassignedNew.length },
                   { key: "inspections", label: "Inspections", count: allUnassignedInsp.length },
                   { key: "jobs", label: "Jobs", count: allUnassignedJobs.length },
                 ] as const).map((t) => (
@@ -1462,39 +1414,32 @@ export function ManagerDashboard() {
               <div className="max-h-[310px] overflow-y-auto space-y-1.5 pr-0.5">
                 {visibleLeads.length === 0 && (
                   <div className="py-12 text-center text-slate-400 text-xs font-medium">
-                    {unassignedTab === "leads" ? "All new leads are assigned" :
-                     unassignedTab === "inspections" ? "All inspections are assigned" :
-                     unassignedTab === "jobs" ? "All jobs are assigned" :
-                     "All leads are assigned"}
+                    {unassignedTab === "inspections" ? "No unassigned inspections in these statuses" :
+                     unassignedTab === "jobs" ? "No unassigned jobs in these statuses" :
+                     "No unassigned leads in these statuses"}
                   </div>
                 )}
                 {visibleLeads.map((l) => {
-                  const isNewLead = ["New", "Contacted", "Waiting for Info"].includes(l.status || "New") && !hasAnyAssignee(l);
-                  const isInsp = !isNewLead && /inspection.booked/i.test(l.status || "");
-                  const apptDateStr = isNewLead ? l.received : isInsp ? l.inspectionAt : l.jobAt;
+                  const isInsp = schedulingType(l) === "inspection";
+                  const apptDateStr = isInsp ? l.inspectionAt : l.jobAt;
                   const suburb = getSuburb(l.address) || l.city || "";
                   const timeLabel = apptDateStr
-                    ? `${isNewLead ? "Received " : ""}${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
-                    : isNewLead
-                      ? "New lead"
-                      : "No date set";
+                    ? `${formatApptDate(apptDateStr, { day: "numeric", month: "short" })} ${formatApptTime(apptDateStr) || ""}`.trim()
+                    : "No date set";
                   const mapsUrl = l.address
                     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`
                     : null;
-                  const typeColor = isNewLead
-                    ? "bg-violet-50 text-violet-700 border-violet-200"
-                    : isInsp
+                  const typeColor = isInsp
                       ? "bg-sky-50 text-sky-700 border-sky-200"
                       : "bg-amber-50 text-amber-700 border-amber-200";
-                  const typeLabel = isNewLead ? "New Lead" : isInsp ? "Inspection" : "Job";
+                  const typeLabel = isInsp ? "Inspection" : "Job";
 
                   return (
                     <div
                       key={l.id}
                       className="p-2 rounded-xl border border-amber-100 bg-amber-50/40 hover:bg-amber-50 transition-colors shadow-2xs space-y-1 cursor-pointer"
                       onClick={() => {
-                        const tab = isNewLead ? "leads" : isInsp ? "inspections" : "jobs";
-                        openDispatch(tab, "Unassigned");
+                        openSchedule(l.id, isInsp ? "inspection" : "job");
                       }}
                     >
                       <div className="flex items-center justify-between gap-1 text-[10px]">
@@ -1504,7 +1449,7 @@ export function ManagerDashboard() {
                       <div className="flex items-center justify-between gap-1">
                         <span
                           className="font-bold text-xs text-slate-900 truncate text-left hover:text-blue-700"
-                          title={`Open dispatch for #${l.jobNo || l.id}`}
+                          title={`Schedule ${isInsp ? "inspection" : "job"} for #${l.jobNo || l.id}`}
                         >
                           #{l.jobNo || l.id.slice(-4)} {l.name || "Customer"}
                         </span>

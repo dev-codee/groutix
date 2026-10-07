@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { RefreshCcw, Loader2, CalendarDays, ExternalLink, MapPin, Edit3 } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { RefreshCcw, Loader2, CalendarDays, ExternalLink, MapPin, Edit3, Search } from "lucide-react";
 
 type BookingEntry = {
   id: string;
@@ -32,7 +32,6 @@ const ZONE_LABELS: Record<string, string> = {
 function fmtScheduleDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-AU", {
-    timeZone: "Australia/Sydney",
     weekday: "long",
     day: "2-digit",
     month: "short",
@@ -54,31 +53,49 @@ export function ScheduleView({
 }) {
   const [bookings, setBookings] = useState<BookingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState<"all" | "inspection" | "job">("all");
+  const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++loadRequest.current;
     setLoading(true);
+    setError("");
     try {
-      const res = await fetch("/api/admin/bookings");
+      const res = await fetch("/api/admin/bookings", { cache: "no-store" });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load bookings.");
+      if (request !== loadRequest.current) return;
       setBookings(data.bookings || []);
-    } catch {
-      setBookings([]);
+    } catch (err) {
+      if (request !== loadRequest.current) return;
+      setError(err instanceof Error ? err.message : "Could not load bookings.");
     } finally {
-      setLoading(false);
+      if (request === loadRequest.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(() => { if (active) return load(); });
+    return () => { active = false; };
+  }, [load]);
+
+  const filteredBookings = useMemo(() => bookings.filter((booking) =>
+    (type === "all" || booking.type === type) &&
+    `${booking.customer?.name || ""} ${booking.customer?.address || ""} ${booking.reference} ${booking.customer?.phone || ""}`.toLowerCase().includes(search.trim().toLowerCase()),
+  ), [bookings, type, search]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, BookingEntry[]>();
-    for (const b of bookings) {
+    for (const b of filteredBookings) {
       const arr = map.get(b.date) || [];
       arr.push(b);
       map.set(b.date, arr);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [bookings]);
+  }, [filteredBookings]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
@@ -91,19 +108,26 @@ export function ScheduleView({
         </h2>
         <button
           onClick={load}
+          disabled={loading}
           className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
         >
           <RefreshCcw className="w-3 h-3" /> Refresh
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 flex-1 min-w-[180px]"><Search className="w-4 h-4 text-slate-400" /><input aria-label="Search upcoming bookings" placeholder="Search customer, address or reference" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full text-xs outline-none" /></label>
+        <select aria-label="Filter booking type" value={type} onChange={(event) => setType(event.target.value as typeof type)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white"><option value="all">All bookings</option><option value="inspection">Inspections</option><option value="job">Jobs</option></select>
+      </div>
+      {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{error} Use Refresh to try again.</p>}
+
       {loading ? (
         <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading schedule…
         </div>
-      ) : bookings.length === 0 ? (
+      ) : error && bookings.length === 0 ? null : filteredBookings.length === 0 ? (
         <div className="py-12 text-center text-slate-400 text-xs">
-          No upcoming bookings. Bookings from customer self-service and admin scheduling will appear here.
+          {bookings.length ? "No bookings match these filters." : "No upcoming bookings. Bookings from customer self-service and admin scheduling will appear here."}
         </div>
       ) : (
         <div className="space-y-6">

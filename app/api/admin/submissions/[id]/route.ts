@@ -11,8 +11,9 @@ import { autoSendInvoice } from "@/lib/automations";
 import { sendInternalAlert, sendEmail, wrapEmailHtml, getEmailLogoUrl, isEmailConfigured } from "@/lib/email";
 import { sendSms, isSmsConfigured, prepareSinglePartSms } from "@/lib/sms";
 import { formatAppt } from "@/lib/scheduling";
-import { createBooking, deleteBooking } from "@/lib/bookings";
-import { resolveArea } from "@/lib/scheduling";
+import { createBooking, deleteBooking, releaseBookingSlot, listAppointmentsOnDate } from "@/lib/bookings";
+import { resolveArea, normalizeApptString } from "@/lib/scheduling";
+import { validScheduleDate } from "@/lib/scheduleRoutes";
 import { getZoneRules } from "@/lib/zoneRulesServer";
 import { getTechnician } from "@/lib/technicians";
 import { getStaffMemberByUsername } from "@/lib/users";
@@ -96,8 +97,55 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  const ok = await updateSubmission(id, body);
-  if (!ok) return NextResponse.json({ error: "Update failed." }, { status: 400 });
+  // Acquire new slot locks before changing the lead. A conflict must never
+  // overwrite the prior appointment or trigger a reschedule notification.
+  const reserved: { type: "inspection" | "job"; date: string; time: string }[] = [];
+  const rollback = async () => {
+    await Promise.all(reserved.map((slot) => releaseBookingSlot(id, slot.type, slot.date, slot.time)));
+  };
+  try {
+    for (const type of ["inspection", "job"] as const) {
+      const field = type === "inspection" ? "inspectionAt" : "jobAt";
+      if (!(field in body)) continue;
+      if (typeof body[field] !== "string") {
+        await rollback();
+        return NextResponse.json({ error: "Invalid appointment." }, { status: 400 });
+      }
+      if (!body[field]) continue;
+      const value = normalizeApptString(body[field]);
+      const match = /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):([0-5]\d)/.exec(value || "");
+      if (!match || !validScheduleDate(match[1])) {
+        await rollback();
+        return NextResponse.json({ error: "Invalid appointment date or time." }, { status: 400 });
+      }
+      body[field] = value;
+      if (value === before[field] || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
+      const date = match[1];
+      const time = `${match[2]}:${match[3]}`;
+      const appointments = await listAppointmentsOnDate(date);
+      if (appointments.some((entry) => entry.time === time && (entry.leadId !== id || entry.type !== type))) {
+        await rollback();
+        return NextResponse.json({ error: "This time is already booked. Please choose another time." }, { status: 409 });
+      }
+      const area = resolveArea(before.address || before.city, await getZoneRules());
+      const result = await createBooking({ leadId: id, type, date, time, zone: area.zone,
+        suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true });
+      if (!result.ok) {
+        await rollback();
+        return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
+      }
+      if (result.acquired) reserved.push({ type, date, time });
+    }
+    const ok = await updateSubmission(id, body);
+    if (!ok) {
+      await rollback();
+      return NextResponse.json({ error: "Update failed." }, { status: 400 });
+    }
+  } catch (err) {
+    await rollback();
+    console.error("Update appointment failed:", err);
+    return NextResponse.json({ error: "Could not save changes." }, { status: 500 });
+  }
 
   // Automatic step: write an audit-trail entry for meaningful staff changes.
   if (before) {
