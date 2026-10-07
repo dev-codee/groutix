@@ -19,6 +19,7 @@ import {
   MessageSquare,
   MessageCircle,
   Navigation,
+  Route,
   ShieldCheck,
   ShieldAlert,
   Edit3,
@@ -121,6 +122,7 @@ import {
   getStepActive, getLatestStepIndex, calcResponseTime, isRedundantScope,
   getFollowupPrompt, findJobsGroupForStatus,
 } from "@/lib/adminHelpers";
+import { ScheduleView } from "@/components/admin/ScheduleView";
 import { ScheduleCalendarView } from "@/components/admin/ScheduleCalendarView";
 import { ZonesView } from "@/components/admin/views/ZonesView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
@@ -297,9 +299,14 @@ export default function CrmDashboardPage() {
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const [liveGpsCoords, setLiveGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
-  // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter
+  // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter/date
   const [dispatchInitialTab, setDispatchInitialTab] = useState<"all" | "leads" | "inspections" | "jobs">("all");
   const [dispatchInitialTechFilter, setDispatchInitialTechFilter] = useState<string>("all");
+  const [dispatchInitialDate, setDispatchInitialDate] = useState<string | undefined>(undefined);
+  const [dispatchInitialLeadId, setDispatchInitialLeadId] = useState<string | undefined>(undefined);
+  const [dispatchInitialAction, setDispatchInitialAction] = useState<"view" | "reschedule" | undefined>(undefined);
+  // Schedule view tab switcher: "upcoming" (Upcoming Bookings List) vs. "calendar" (Day Calendar & Route)
+  const [scheduleTab, setScheduleTab] = useState<"upcoming" | "calendar">("upcoming");
 
   // Live AUS clock — updates every second.
   // Both states start as "" so the server and first client render agree (no
@@ -3789,11 +3796,20 @@ export default function CrmDashboardPage() {
     [navigateTo]
   );
 
-  /** Open the Dispatch view pre-filtered to a specific tab and optional tech filter (e.g. "Unassigned"). */
+  /** Open the Dispatch view pre-filtered to a specific tab, optional tech filter, date, leadId, and action (e.g. "reschedule"). */
   const openDispatch = useCallback(
-    (tab: "all" | "leads" | "inspections" | "jobs" = "all", techFilter: string = "all") => {
+    (
+      tab: "all" | "leads" | "inspections" | "jobs" = "all",
+      techFilter: string = "all",
+      date?: string,
+      leadId?: string,
+      action?: "view" | "reschedule"
+    ) => {
       setDispatchInitialTab(tab);
       setDispatchInitialTechFilter(techFilter);
+      setDispatchInitialDate(date);
+      setDispatchInitialLeadId(leadId);
+      setDispatchInitialAction(action);
       navigateTo("dispatch");
     },
     [navigateTo]
@@ -4504,6 +4520,9 @@ export default function CrmDashboardPage() {
               <DispatchView
                 initialTab={dispatchInitialTab}
                 initialTechFilter={dispatchInitialTechFilter}
+                initialDate={dispatchInitialDate}
+                initialLeadId={dispatchInitialLeadId}
+                initialAction={dispatchInitialAction}
                 onOpenLead={(id: string) => {
                   const lead = leads.find((l) => l.id === id);
                   if (lead) {
@@ -4518,16 +4537,81 @@ export default function CrmDashboardPage() {
               VIEW: SCHEDULE
              ========================================================================= */}
             {currentView === "schedule" && (
-              <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col" style={{ height: "calc(100vh - 64px)", minHeight: 680 }}>
-                <ScheduleCalendarView
-                  leads={leads}
-                  onOpenLead={(id: string) => {
-                  const lead = leads.find((l) => l.id === id);
-                  if (lead) {
-                    setEditingLead(lead);
-                    setLeadModalOpen(true);
-                  }
-                }} />
+              <div className="space-y-4">
+                {/* View Mode Tabs: Upcoming Schedule List vs Day Calendar & Route */}
+                <div className="flex items-center justify-between gap-3 flex-wrap bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <CalendarDays className="w-5 h-5 text-[#001f97]" />
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-900 leading-tight">Schedule &amp; Calendar</h2>
+                      <p className="text-[11px] text-slate-500">
+                        {scheduleTab === "upcoming"
+                          ? "Upcoming inspection and job bookings grouped by date"
+                          : "Interactive day calendar, route optimization & map"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/90 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setScheduleTab("upcoming")}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        scheduleTab === "upcoming"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                      }`}
+                    >
+                      <CalendarDays className="w-3.5 h-3.5 text-[#001f97]" />
+                      Upcoming Schedule (List)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScheduleTab("calendar")}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        scheduleTab === "calendar"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                      }`}
+                    >
+                      <Route className="w-3.5 h-3.5 text-emerald-600" />
+                      Day Calendar &amp; Route
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tab 1: Old Schedule View (Upcoming bookings list grouped by date) */}
+                {scheduleTab === "upcoming" && (
+                  <ScheduleView
+                    onOpenLead={(id: string, date?: string, action?: "view" | "reschedule") => {
+                      if (date) {
+                        openDispatch("all", "all", date, id, action || "reschedule");
+                      } else {
+                        const lead = leads.find((l) => l.id === id);
+                        if (lead) {
+                          setEditingLead(lead);
+                          setLeadModalOpen(true);
+                        }
+                      }
+                    }}
+                  />
+                )}
+
+                {/* Tab 2: New Schedule Calendar View (Interactive day calendar & map) */}
+                {scheduleTab === "calendar" && (
+                  <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs" style={{ height: "calc(100vh - 175px)", minHeight: 650 }}>
+                    <ScheduleCalendarView
+                      leads={leads}
+                      onOpenLead={(id: string) => {
+                        const lead = leads.find((l) => l.id === id);
+                        if (lead) {
+                          setEditingLead(lead);
+                          setLeadModalOpen(true);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
