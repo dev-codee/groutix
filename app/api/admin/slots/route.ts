@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { listAppointmentsBetween } from "@/lib/bookings";
+import { getScheduleRouteOrders } from "@/lib/scheduleRoutesServer";
+import { validScheduleDate } from "@/lib/scheduleRoutes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_RANGE_DAYS = 45;
 
 // Who holds which slot, and where (inspections and jobs share one calendar).
@@ -20,13 +21,20 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
   const from = q.get("date") || q.get("from") || "";
   const to = q.get("date") || q.get("to") || "";
-  if (!YMD.test(from) || !YMD.test(to) || to < from) {
+  if (!validScheduleDate(from) || !validScheduleDate(to) || to < from) {
     return NextResponse.json({ error: "Invalid date range." }, { status: 400 });
   }
   const spanDays = (Date.parse(to) - Date.parse(from)) / 86400000;
   if (spanDays > MAX_RANGE_DAYS) {
     return NextResponse.json({ error: `Range too long (max ${MAX_RANGE_DAYS} days).` }, { status: 400 });
   }
-  const appointments = await listAppointmentsBetween(from, to);
-  return NextResponse.json({ from, to, appointments }, { headers: { "Cache-Control": "no-store" } });
+  try {
+    const [appointments, routeOrders] = await Promise.all([
+      listAppointmentsBetween(from, to, { strict: true }), getScheduleRouteOrders(from, to),
+    ]);
+    return NextResponse.json({ from, to, appointments, routeOrders }, { headers: { "Cache-Control": "no-store" } });
+  } catch (err) {
+    console.error("Load schedule failed:", err);
+    return NextResponse.json({ error: "Could not load schedule." }, { status: 500 });
+  }
 }

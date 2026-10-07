@@ -6,6 +6,7 @@ import vm from "node:vm";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import { loadTs } from "./test-ts-loader.mjs";
 
 const require = createRequire(import.meta.url);
 let mapProps;
@@ -25,6 +26,10 @@ const load = (relativePath, overrides = {}) => {
 const scheduling = load("../lib/unassignedLeads.ts");
 const { ScheduleCalendarView } = load("../components/admin/ScheduleCalendarView.tsx", {
   "@/lib/unassignedLeads": scheduling,
+  "@/lib/scheduleDays": load("../lib/scheduleDays.ts"),
+  "@/lib/scheduleRoutes": loadTs("lib/scheduleRoutes.ts"),
+  "@/lib/bookingRules": loadTs("lib/bookingRules.ts"),
+  "@/lib/useBookingRules": { useBookingRules: () => loadTs("lib/bookingRules.ts").DEFAULT_BOOKING_RULES },
   "@/components/admin/DispatchMap": {
     DispatchMap: (props) => { mapProps = props; return React.createElement("div", { "data-testid": "planning-map" }); },
   },

@@ -35,8 +35,12 @@ import {
 } from "lucide-react";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import { buildPlanningMapItems, type UnassignedPlanningLead } from "@/lib/unassignedLeads";
+import { MAX_PLANNING_DAYS, addPlanningDate, colorPlanningMapItems, consecutivePlanningDates, offsetPlanningDate, planningDateRanges, planningDayColor, shiftPlanningDates } from "@/lib/scheduleDays";
 import type { DayAppointment } from "@/lib/bookings";
 import type { Lead } from "@/components/admin/types";
+import { applyRouteOrders, appointmentKey, estimateRoute, optimizeRouteStops } from "@/lib/scheduleRoutes";
+import { useBookingRules } from "@/lib/useBookingRules";
+import { explainOutsideRules } from "@/lib/bookingRules";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +53,7 @@ interface ScheduleEntry {
   date: string;         // YYYY-MM-DD
   time: string;         // HH:mm
   endTime?: string;     // HH:mm (derived)
+  durationMinutes: number;
   customer: {
     name: string;
     phone: string;
@@ -70,8 +75,6 @@ interface RescheduleModal {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const SLOT_DURATION = 60; // minutes per slot
 
 // Number-circle colours per position
 const STOP_COLORS = [
@@ -131,6 +134,15 @@ function isToday(dateStr: string): boolean {
 
 function inputDateToday(): string {
   return todayStr();
+}
+
+async function checkBookingAvailability(leadId: string, type: JobType, date: string, time: string) {
+  const response = await fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not check availability.");
+  if ((result.appointments as DayAppointment[]).some((entry) => entry.time === time && (entry.leadId !== leadId || entry.type !== type))) {
+    throw new Error("This time is already booked. Please choose another time.");
+  }
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -208,10 +220,12 @@ function RescheduleDialog({
 }) {
   const [date, setDate] = useState(modal.newDate);
   const [time, setTime] = useState(modal.newTime);
+  const rules = useBookingRules();
+  const warning = explainOutsideRules(rules, modal.entry.type, `${date}T${time}`);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div role="dialog" aria-modal="true" aria-label="Reschedule booking" className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <CalendarClock className="w-4 h-4 text-blue-600" />
@@ -219,6 +233,8 @@ function RescheduleDialog({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close reschedule form"
+            disabled={modal.saving}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -266,6 +282,7 @@ function RescheduleDialog({
             </div>
           </div>
 
+          {warning && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">{warning} Staff may override these hours.</p>}
           {modal.error && (
             <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -277,13 +294,14 @@ function RescheduleDialog({
         <div className="flex items-center justify-end gap-2.5 px-5 py-4 border-t border-slate-100 bg-slate-50/60">
           <button
             onClick={onClose}
+            disabled={modal.saving}
             className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={() => onSave(date, time)}
-            disabled={modal.saving || !date || !time}
+            disabled={modal.saving || !date || !time || date < todayStr()}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
           >
             {modal.saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -312,21 +330,19 @@ function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const rules = useBookingRules();
+  const warning = explainOutsideRules(rules, type, `${date}T${time}`);
   const availableLeads = leads.filter((lead) => !["Lost", "Cancelled"].includes(lead.status));
   const selectedLead = leads.find((lead) => lead.id === leadId);
   const existing = type === "inspection" ? selectedLead?.inspectionAt : selectedLead?.jobAt;
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setError("");
     try {
-      const slotsResponse = await fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" });
-      const slots = await slotsResponse.json();
-      if (!slotsResponse.ok) throw new Error(slots.error || "Could not check availability.");
-      if ((slots.appointments as DayAppointment[]).some((entry) => entry.time === time && (entry.leadId !== leadId || entry.type !== type))) {
-        throw new Error("This time is already booked. Please choose another time.");
-      }
+      await checkBookingAvailability(leadId, type, date, time);
       const response = await fetch(`/api/admin/submissions/${leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -367,6 +383,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, onClose, onSaved
             <label className="block font-semibold">Time<input required type="time" value={time} onChange={(event) => setTime(event.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 p-2.5" /></label>
           </div>
           {existing && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">This customer already has this booking type scheduled. Saving will reschedule it and may notify the customer.</p>}
+          {warning && <p className="rounded-lg bg-amber-50 p-3 text-amber-800">{warning} Staff may override these hours.</p>}
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-600">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 p-4">
@@ -390,6 +407,8 @@ function SelectedBookingSidebar({
   onMoveToAnotherDay,
   onRemoveFromRoute,
   onViewDetails,
+  onUpdateRoute,
+  hasChanges,
 }: {
   entry: ScheduleEntry;
   index: number;
@@ -400,6 +419,8 @@ function SelectedBookingSidebar({
   onMoveToAnotherDay: () => void;
   onRemoveFromRoute: () => void;
   onViewDetails: () => void;
+  onUpdateRoute: () => void;
+  hasChanges: boolean;
 }) {
   return (
     <div className="bg-white w-full h-full min-h-0 flex flex-col overflow-y-auto">
@@ -433,7 +454,7 @@ function SelectedBookingSidebar({
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-600">
             <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span>{fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, SLOT_DURATION))}</span>
+            <span>{fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, entry.durationMinutes))}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-600">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -492,7 +513,7 @@ function SelectedBookingSidebar({
 
       {/* Update route button */}
       <div className="p-4">
-        <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-sm">
+        <button onClick={onUpdateRoute} disabled={!hasChanges} className="disabled:opacity-40 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-sm">
           <Route className="w-4 h-4" />
           Update Route
         </button>
@@ -508,12 +529,15 @@ function RouteTimeline({
   selectedId,
   onSelect,
   dateStr,
+  onReorder,
 }: {
   entries: ScheduleEntry[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   dateStr: string;
+  onReorder: (from: number, to: number) => void;
 }) {
+  const dragFrom = useRef<number | null>(null);
   return (
     <div className="bg-white border-t border-slate-200/80 px-4 py-3">
       <div className="flex items-center gap-2 mb-2.5">
@@ -527,6 +551,11 @@ function RouteTimeline({
         {entries.map((e, i) => (
           <div key={e.id} className="flex items-center gap-2 shrink-0">
             <button
+              draggable
+              onDragStart={() => { dragFrom.current = i; }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => { if (dragFrom.current !== null) onReorder(dragFrom.current, i); dragFrom.current = null; }}
+              onDragEnd={() => { dragFrom.current = null; }}
               onClick={() => onSelect(e.id)}
               className={`flex flex-col items-center justify-between p-2.5 rounded-xl border min-w-[120px] transition-all cursor-pointer ${
                 selectedId === e.id
@@ -542,7 +571,7 @@ function RouteTimeline({
                 <MoreVertical className="w-3 h-3 text-slate-400 ml-auto shrink-0" />
               </div>
               <span className="text-[10px] text-slate-500 mt-1 self-start pl-0.5">
-                {fmtTime(e.time)} – {fmtTime(addMinutes(e.time, SLOT_DURATION))}
+                {fmtTime(e.time)} – {fmtTime(addMinutes(e.time, e.durationMinutes))}
               </span>
             </button>
 
@@ -568,24 +597,22 @@ function RouteTimeline({
 
 // ─── Stats Bar ────────────────────────────────────────────────────────────────
 
-function DayStatsBar({ entries }: { entries: ScheduleEntry[]; isUpdated: boolean }) {
+function DayStatsBar({ entries }: { entries: ScheduleEntry[] }) {
   const jobs = entries.length;
-  // Estimate 30km per booking and 20 min travel + 60 min service
-  const totalKm = jobs * 13;
-  const totalTravel = jobs > 0 ? Math.round((jobs - 1) * 20) : 0;
-  const h = Math.floor(totalTravel / 60);
-  const m = totalTravel % 60;
-  const travelStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  const estimate = estimateRoute(entries);
+  const h = Math.floor(estimate.minutes / 60);
+  const m = estimate.minutes % 60;
+  const travelStr = estimate.missing === entries.length && jobs > 0 ? "Unavailable" : h > 0 ? `${h}h ${m}m` : `${m}m`;
 
   const stats = [
     { icon: CalendarDays, value: jobs, label: "Bookings", color: "text-blue-600", bg: "bg-blue-50" },
-    { icon: Navigation, value: `${totalKm} km`, label: "Est. Distance", color: "text-sky-600", bg: "bg-sky-50" },
-    { icon: Clock, value: travelStr, label: "Travel Time", color: "text-emerald-600", bg: "bg-emerald-50" },
+    { icon: Navigation, value: estimate.missing === jobs && jobs > 0 ? "Unavailable" : `${estimate.km} km`, label: "Est. Distance", color: "text-sky-600", bg: "bg-sky-50" },
+    { icon: Clock, value: travelStr, label: "Est. Travel Time", color: "text-emerald-600", bg: "bg-emerald-50" },
     { icon: MapPin, value: "Melbourne Metro", label: "Service Area", color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
       {stats.map((s) => (
         <div key={s.label} className={`flex items-center gap-3 ${s.bg} rounded-xl px-4 py-3 border border-slate-200/60`}>
           <s.icon className={`w-5 h-5 ${s.color} shrink-0`} />
@@ -603,19 +630,21 @@ function DayStatsBar({ entries }: { entries: ScheduleEntry[]; isUpdated: boolean
 
 function RouteSummaryFooter({
   entries,
-  originalCount,
+  originalEntries,
+  hasChanges,
   onPreviewSave,
 }: {
   entries: ScheduleEntry[];
-  originalCount: number;
+  originalEntries: ScheduleEntry[];
+  hasChanges: boolean;
   onPreviewSave: () => void;
 }) {
-  const km = entries.length * 13;
-  const origKm = originalCount * 13;
-  const diff = km - origKm;
-  const travelMin = entries.length > 0 ? (entries.length - 1) * 20 : 0;
-  const origTravel = originalCount > 0 ? (originalCount - 1) * 20 : 0;
-  const tDiff = travelMin - origTravel;
+  const estimate = estimateRoute(entries);
+  const original = estimateRoute(originalEntries);
+  const km = estimate.km;
+  const diff = Math.round((km - original.km) * 10) / 10;
+  const travelMin = estimate.minutes;
+  const tDiff = travelMin - original.minutes;
   const h = Math.floor(travelMin / 60);
   const m = travelMin % 60;
   const travelStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -624,12 +653,12 @@ function RouteSummaryFooter({
     <div className="flex items-center gap-4 px-5 py-3 bg-white border-t border-slate-200/80 flex-wrap">
       <div className="flex items-center gap-2 text-xs text-slate-700">
         <Navigation className="w-4 h-4 text-blue-500" />
-        <span className="font-semibold">Updated Route Summary (After Reorder)</span>
+        <span className="font-semibold">{hasChanges ? "Unsaved Route Changes" : "Saved Route Summary"}</span>
       </div>
 
       <div className="flex items-center gap-1.5 text-xs text-slate-600">
         <CalendarDays className="w-3.5 h-3.5 text-blue-400" />
-        <span>Total Distance: <b className="text-slate-900">{km} km</b></span>
+        <span>Est. Distance: <b className="text-slate-900">{km} km</b></span>
         {diff !== 0 && (
           <span className={`font-semibold ${diff < 0 ? "text-emerald-600" : "text-rose-600"}`}>
             ({diff > 0 ? "+" : ""}{diff} km)
@@ -639,7 +668,7 @@ function RouteSummaryFooter({
 
       <div className="flex items-center gap-1.5 text-xs text-slate-600">
         <Clock className="w-3.5 h-3.5 text-emerald-400" />
-        <span>Travel Time: <b className="text-slate-900">{travelStr}</b></span>
+        <span>Est. Travel Time: <b className="text-slate-900">{travelStr}</b></span>
         {tDiff !== 0 && (
           <span className={`font-semibold ${tDiff < 0 ? "text-emerald-600" : "text-rose-600"}`}>
             ({tDiff > 0 ? "+" : ""}{tDiff}m)
@@ -652,9 +681,11 @@ function RouteSummaryFooter({
         <span>Jobs: <b className="text-slate-900">{entries.length}</b></span>
       </div>
 
+      {estimate.missing > 0 && <span className="text-[10px] text-amber-700">{estimate.missing} stops have no known suburb; estimates exclude them.</span>}
       <button
         onClick={onPreviewSave}
-        className="ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
+        disabled={!hasChanges}
+        className="disabled:opacity-40 ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
       >
         <CheckCircle2 className="w-3.5 h-3.5" />
         Preview & Save Changes
@@ -668,10 +699,14 @@ function RouteSummaryFooter({
 function RouteMapPanel({
   mapItems,
   selectedLeadId,
+  selectedItemId,
+  onSelectItem,
   onSelectLead,
 }: {
   mapItems: DispatchMapItem[];
   selectedLeadId: string | null;
+  selectedItemId?: string | null;
+  onSelectItem?: (id: string) => void;
   onSelectLead: (id: string) => void;
 }) {
   return (
@@ -680,6 +715,8 @@ function RouteMapPanel({
         items={mapItems}
         hqAddress="82A Marigold Cres, Gowanbrae VIC 3043, Australia"
         selectedLeadId={selectedLeadId}
+        selectedItemId={selectedItemId}
+        onSelectItem={onSelectItem}
         onSelectLead={onSelectLead}
       />
     </div>
@@ -694,6 +731,7 @@ function JobListPanel({
   onSelect,
   onReorder,
   onReschedule,
+  onRemove,
   onAddBooking,
   dateStr,
 }: {
@@ -702,6 +740,7 @@ function JobListPanel({
   onSelect: (id: string | null) => void;
   onReorder: (from: number, to: number) => void;
   onReschedule: (entry: ScheduleEntry) => void;
+  onRemove: (entry: ScheduleEntry) => void;
   onAddBooking: () => void;
   dateStr: string;
 }) {
@@ -761,7 +800,7 @@ function JobListPanel({
               onDragStart={() => handleDragStart(i)}
               onDragOver={(e) => handleDragOver(e, i)}
               onDrop={handleDrop}
-              onDragEnd={() => { setDragging(null); setDropTarget(null); }}
+              onDragEnd={() => { dragFrom.current = null; dragOver.current = null; setDragging(null); setDropTarget(null); }}
               onClick={() => onSelect(selectedId === entry.id ? null : entry.id)}
               className={`group flex items-start gap-2.5 px-3 py-3 transition-all cursor-pointer relative ${
                 selectedId === entry.id
@@ -788,7 +827,7 @@ function JobListPanel({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] font-bold text-blue-600 tabular-nums">
-                    {fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, SLOT_DURATION))}
+                    {fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, entry.durationMinutes))}
                   </span>
                   <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
                     ← drag to reorder
@@ -830,7 +869,7 @@ function JobListPanel({
                     </button>
                     <div className="h-px bg-slate-100 mx-2 my-1" />
                     <button
-                      onClick={() => { setMenuOpen(null); }}
+                      onClick={() => { setMenuOpen(null); onRemove(entry); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -864,29 +903,38 @@ export function ScheduleCalendarView({
   initialBooking?: { leadId: string; type: JobType; date?: string };
   unassignedLeads?: UnassignedPlanningLead[];
 }) {
-  const [currentDate, setCurrentDate] = useState(initialBooking?.date || todayStr);
+  const [visibleDates, setVisibleDates] = useState(() => [initialBooking?.date || todayStr()]);
+  const currentDate = visibleDates[0];
+  const endDate = visibleDates[visibleDates.length - 1];
+  const dayCount = visibleDates.length;
+  const setCurrentDate = (date: string) => changeVisibleDates(shiftPlanningDates(visibleDates, date));
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [originalEntries, setOriginalEntries] = useState<ScheduleEntry[]>([]);
+  const hasChanges = entries.some((entry, index) => entry.id !== originalEntries[index]?.id) || entries.length !== originalEntries.length;
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [routeSaving, setRouteSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [removingEntry, setRemovingEntry] = useState<ScheduleEntry | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  const rules = useBookingRules();
   const [rescheduleModal, setRescheduleModal] = useState<RescheduleModal | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [viewMode, setViewMode] = useState<"1day" | "3day" | "week">("1day");
 
   const [bookingDate, setBookingDate] = useState<string | null>(null);
   const [selectedPlanningLeadId, setSelectedPlanningLeadId] = useState<string | null>(initialBooking?.leadId || null);
   const [planningFilter, setPlanningFilter] = useState<"all" | JobType>("all");
   const [planningSearch, setPlanningSearch] = useState("");
   const [showUnassigned, setShowUnassigned] = useState(true);
+  const [showUnassignedOnMap, setShowUnassignedOnMap] = useState(true);
+  const [addDayPickerOpen, setAddDayPickerOpen] = useState(false);
   const [bookingPreset, setBookingPreset] = useState(initialBooking);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loadError, setLoadError] = useState("");
   const loadRequest = useRef(0);
   const [mapDate, setMapDate] = useState<string | null>(null);
-  const dayCount = viewMode === "week" ? 7 : viewMode === "3day" ? 3 : 1;
-  const endDate = offsetDate(currentDate, dayCount - 1);
-  const visibleDates = Array.from({ length: dayCount }, (_, index) => offsetDate(currentDate, index));
-
   // Toast auto-dismiss
   useEffect(() => {
     if (!toast) return;
@@ -895,6 +943,16 @@ export function ScheduleCalendarView({
   }, [toast]);
 
   const showToast = (msg: string, ok: boolean) => setToast({ msg, ok });
+  const discardChanges = () => !hasChanges || window.confirm("Discard unsaved route changes?");
+  const changeVisibleDates = (dates: string[]) => {
+    if (!routeSaving && discardChanges()) setVisibleDates(dates);
+  };
+  useEffect(() => {
+    if (!hasChanges) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasChanges]);
 
   // Load the selected range, including past dates, from the shared calendar.
   const load = useCallback(async () => {
@@ -905,30 +963,36 @@ export function ScheduleCalendarView({
     setOriginalEntries([]);
     setSelectedId(null);
     try {
-      const res = await fetch(`/api/admin/slots?from=${currentDate}&to=${endDate}`, { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not load schedule.");
+      const responses = await Promise.all(planningDateRanges(visibleDates).map(async ({ from, to }) => {
+        const res = await fetch(`/api/admin/slots?from=${from}&to=${to}`, { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not load schedule.");
+        return { appointments: data.appointments as DayAppointment[], routeOrders: data.routeOrders || {} };
+      }));
       if (request !== loadRequest.current) return;
-      const bookings: ScheduleEntry[] = (data.appointments as DayAppointment[]).map((entry) => ({
-        id: `${entry.leadId}:${entry.type}:${entry.date}:${entry.time}`,
+      const orders = Object.assign({}, ...responses.map((response) => response.routeOrders));
+      const bookings: ScheduleEntry[] = responses.flatMap((response) => response.appointments).filter((entry) => visibleDates.includes(entry.date)).map((entry) => ({
+        id: appointmentKey(entry),
         leadId: entry.leadId,
         type: entry.type,
         date: entry.date,
         time: entry.time,
+        durationMinutes: rules[entry.type].slotMinutes,
         customer: { name: entry.name, address: entry.address || "", phone: "", email: "", status: entry.status || "" },
         zone: "flexible",
         suburb: entry.suburb || null,
         reference: entry.jobNo || "",
       }));
-      setEntries(bookings);
-      setOriginalEntries(bookings);
+      const ordered = applyRouteOrders(bookings, orders);
+      setEntries(ordered);
+      setOriginalEntries(ordered);
     } catch (err) {
       if (request !== loadRequest.current) return;
       setLoadError(err instanceof Error ? err.message : "Could not load schedule.");
     } finally {
       if (request === loadRequest.current) setLoading(false);
     }
-  }, [currentDate, endDate]);
+  }, [visibleDates, rules]);
 
   useEffect(() => {
     let active = true;
@@ -955,7 +1019,7 @@ export function ScheduleCalendarView({
   const selectedEntry = useMemo(() => entries.find((e) => e.id === selectedId) || null, [entries, selectedId]);
   const selectedIndex = useMemo(() => entries.findIndex((e) => e.id === selectedId), [entries, selectedId]);
 
-  const activeMapDate = mapDate && mapDate >= currentDate && mapDate <= endDate ? mapDate : currentDate;
+  const activeMapDate = mapDate && visibleDates.includes(mapDate) ? mapDate : currentDate;
   const mapEntries = useMemo(() => entries.filter((entry) => entry.date === activeMapDate), [entries, activeMapDate]);
   const selectBooking = (id: string | null) => {
     setSelectedId(id);
@@ -966,28 +1030,30 @@ export function ScheduleCalendarView({
 
   // Map items: convert ScheduleEntry[] → DispatchMapItem[] using leads lookup
   const bookedMapItems = useMemo<DispatchMapItem[]>(() =>
-    mapEntries
+    entries
       .map((e) => {
         const lead = leads.find((l) => l.id === e.leadId);
         const mapLead = lead || { id: e.leadId, status: e.customer?.status || "", createdAt: "", name: e.customer?.name, address: e.customer?.address };
-        return { lead: mapLead, type: e.type, time: e.time } as DispatchMapItem;
+        return { lead: mapLead, type: e.type, time: e.time, date: e.date, appointmentId: e.id } as DispatchMapItem;
       })
       .filter((x): x is DispatchMapItem => x !== null),
-  [mapEntries, leads]);
-  const mapItems = useMemo(() => buildPlanningMapItems(bookedMapItems, showUnassigned ? unassignedLeads : []), [bookedMapItems, unassignedLeads, showUnassigned]);
+  [entries, leads]);
+  const mapItems = useMemo(() => buildPlanningMapItems(colorPlanningMapItems(bookedMapItems, visibleDates), showUnassignedOnMap ? unassignedLeads : []), [bookedMapItems, visibleDates, unassignedLeads, showUnassignedOnMap]);
   const bookPlanningLead = () => {
     if (!selectedPlanningLead) return;
+    if (!discardChanges()) return;
     setBookingPreset({ leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type });
     setBookingDate(activeMapDate);
   };
 
   // Navigation
-  const prevDay = () => setCurrentDate((d) => offsetDate(d, -dayCount));
-  const nextDay = () => setCurrentDate((d) => offsetDate(d, dayCount));
+  const prevDay = () => setCurrentDate(offsetPlanningDate(currentDate, -dayCount));
+  const nextDay = () => setCurrentDate(offsetPlanningDate(currentDate, dayCount));
   const goToday = () => setCurrentDate(todayStr());
 
   // Reorder entries (drag & drop)
   const handleReorder = (from: number, to: number) => {
+    if (routeSaving || loading || !entries[from] || !entries[to] || entries[from].date !== entries[to].date) return;
     setEntries((prev) => {
       const next = [...prev];
       const [moved] = next.splice(from, 1);
@@ -1013,8 +1079,11 @@ export function ScheduleCalendarView({
 
   const saveReschedule = async (newDate: string, newTime: string) => {
     if (!rescheduleModal) return;
+    if (!newDate || !newTime || newDate < todayStr()) return;
+    if (!discardChanges()) return;
     setRescheduleModal((m) => m ? { ...m, saving: true, error: "" } : m);
     try {
+      await checkBookingAvailability(rescheduleModal.entry.leadId, rescheduleModal.entry.type, newDate, newTime);
       const res = await fetch(`/api/admin/submissions/${rescheduleModal.entry.leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1022,33 +1091,79 @@ export function ScheduleCalendarView({
           [rescheduleModal.entry.type === "inspection" ? "inspectionAt" : "jobAt"]: `${newDate}T${newTime}:00`,
         }),
       });
-      if (!res.ok) throw new Error("Failed to reschedule");
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to reschedule");
       showToast("Booking rescheduled successfully!", true);
       setRescheduleModal(null);
       void load();
       onBookingsChanged?.();
-    } catch {
-      setRescheduleModal((m) => m ? { ...m, saving: false, error: "Could not reschedule. Please try again." } : m);
+    } catch (err) {
+      setRescheduleModal((m) => m ? { ...m, saving: false, error: err instanceof Error ? err.message : "Could not reschedule. Please try again." } : m);
     }
   };
 
-  // Optimize route (dummy: sort by address stub)
+  // Route planning changes visit order without changing customer appointments.
   const optimizeRoute = () => {
-    showToast("Route optimized!", true);
+    if (loading || routeSaving) return;
+    const optimized = optimizeRouteStops(entries);
+    const changed = optimized.some((entry, index) => entry.id !== entries[index]?.id);
+    setEntries(optimized);
+    showToast(changed ? "Suggested driving order ready. Review and save the changes." : "No shorter route found for the known suburbs.", true);
   };
 
-  // Preview & save changes (just shows a toast for now)
   const previewSave = () => {
-    showToast("Route order saved!", true);
-    setOriginalEntries(entries);
+    if (!hasChanges || routeSaving) return;
+    setSaveError("");
+    setPreviewOpen(true);
   };
-
-  // Remove from route (just removes from local list; real implementation would update DB)
-  const removeFromRoute = () => {
-    if (!selectedId) return;
-    setEntries((prev) => prev.filter((e) => e.id !== selectedId));
-    setSelectedId(null);
-    showToast("Removed from today's route.", false);
+  const saveRoute = async () => {
+    if (routeSaving) return;
+    setRouteSaving(true);
+    setSaveError("");
+    try {
+      const response = await fetch("/api/admin/schedule-routes", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routes: visibleDates.filter((date) => {
+          const current = entries.filter((entry) => entry.date === date).map((entry) => entry.id);
+          const original = originalEntries.filter((entry) => entry.date === date).map((entry) => entry.id);
+          return current.join("|") !== original.join("|");
+        }).map((date) => ({ date, order: entries.filter((entry) => entry.date === date).map((entry) => entry.id) })) }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not save route order.");
+      setOriginalEntries(entries);
+      setPreviewOpen(false);
+      showToast("Route order saved.", true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save route order.");
+    } finally { setRouteSaving(false); }
+  };
+  const openRemove = (entry: ScheduleEntry) => {
+    setRemoveError("");
+    setRemovingEntry(entry);
+  };
+  const removeFromRoute = async () => {
+    if (!removingEntry || removing) return;
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      const response = await fetch(`/api/admin/submissions/${removingEntry.leadId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [removingEntry.type === "inspection" ? "inspectionAt" : "jobAt"]: "" }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not remove booking.");
+      // Clear the entire appointment type, including any legacy duplicate rows.
+      const keep = (entry: ScheduleEntry) => entry.leadId !== removingEntry.leadId || entry.type !== removingEntry.type;
+      setEntries((prev) => prev.filter(keep));
+      setOriginalEntries((prev) => prev.filter(keep));
+      setSelectedId(null);
+      setRemovingEntry(null);
+      showToast("Booking removed and its time released.", true);
+      onBookingsChanged?.();
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : "Could not remove booking.");
+    } finally { setRemoving(false); }
   };
 
   return (
@@ -1098,17 +1213,15 @@ export function ScheduleCalendarView({
           {/* View selector */}
           <select
             aria-label="Calendar view"
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as "1day" | "3day" | "week")}
+            value={dayCount}
+            onChange={(e) => changeVisibleDates(consecutivePlanningDates(currentDate, Number(e.target.value)))}
             className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
           >
-            <option value="1day">1 Day (Single Day View)</option>
-            <option value="3day">3 Day View</option>
-            <option value="week">Week View</option>
+            {Array.from({ length: MAX_PLANNING_DAYS }, (_, index) => index + 1).map((count) => <option key={count} value={count}>{count === 1 ? "1 Day View" : count === 7 ? "7 Days (Week View)" : `${count} Days View`}</option>)}
           </select>
 
           <button type="button" aria-pressed={showUnassigned} onClick={() => { setShowUnassigned((show) => !show); setSelectedPlanningLeadId(null); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
-            {showUnassigned ? "Hide" : "Show"} unassigned ({unassignedLeads.length})
+            {showUnassigned ? "Hide" : "Show"} unassigned list ({unassignedLeads.length})
           </button>
           {/* Optimize Route */}
           <button
@@ -1121,7 +1234,7 @@ export function ScheduleCalendarView({
 
           {/* Refresh */}
           <button
-            onClick={load}
+            onClick={() => { if (discardChanges()) void load(); }}
             disabled={loading}
             className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
             title="Refresh"
@@ -1132,11 +1245,21 @@ export function ScheduleCalendarView({
       </div>
 
       {loadError && <div role="alert" className="mx-5 mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{loadError} Use Refresh to try again.</div>}
-      {dayCount > 1 && <div className="px-5 pt-3 text-xs font-semibold text-slate-600">{dayCount === 3 ? "3-day planning" : "Week planning"} · {fmtDate(currentDate)} – {fmtDate(endDate)} · {entries.length} bookings</div>}
+      <div className="flex flex-wrap items-center gap-2 px-5 pt-3 pb-1 shrink-0">
+        {visibleDates.map((date, dayIndex) => <div key={date} className="inline-flex items-center rounded-lg border bg-white" style={{ borderColor: planningDayColor(dayIndex) }}>
+          <button type="button" onClick={() => setMapDate(date)} aria-pressed={activeMapDate === date} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer" style={{ color: planningDayColor(dayIndex), backgroundColor: activeMapDate === date ? `color-mix(in srgb, ${planningDayColor(dayIndex)} 10%, white)` : undefined }}><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(dayIndex) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</button>
+          {dayCount > 1 && <button type="button" aria-label={`Remove ${date} from view`} onClick={() => changeVisibleDates(visibleDates.filter((day) => day !== date))} className="p-2 text-slate-400 hover:text-rose-600 cursor-pointer"><X className="w-3 h-3" /></button>}
+        </div>)}
+        <div className="relative">
+          <button type="button" disabled={dayCount >= MAX_PLANNING_DAYS} onClick={() => setAddDayPickerOpen((open) => !open)} className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-blue-600 disabled:opacity-40 cursor-pointer"><Plus className="w-3.5 h-3.5" />Add day</button>
+          {addDayPickerOpen && <ScheduleDatePicker value={offsetPlanningDate(endDate, 1)} onChange={(date) => { changeVisibleDates(addPlanningDate(visibleDates, date)); setAddDayPickerOpen(false); }} onClose={() => setAddDayPickerOpen(false)} />}
+        </div>
+        <label className="ml-auto flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>
+      </div>
 
       {/* ── Stats Bar ─────────────────────────────────────────────────────── */}
       <div className="px-5 pt-4 shrink-0">
-        <DayStatsBar entries={entries} isUpdated={false} />
+        <DayStatsBar entries={entries} />
       </div>
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
@@ -1160,22 +1283,24 @@ export function ScheduleCalendarView({
           </div>
         </div>}
         {/* Each visible day has its own booking column. */}
-        <div className={`${dayCount === 1 ? "w-[260px] shrink-0" : showUnassigned ? "w-[40%] min-w-[280px] shrink-0" : "w-[60%] min-w-[280px] shrink-0"} flex min-h-0 overflow-x-auto gap-3 pb-1`}>
+        <div data-testid="schedule-day-columns" className="min-w-[260px] flex-1 min-h-0 overflow-x-auto pb-2" style={{ display: "grid", gridAutoFlow: "column", gridAutoColumns: dayCount === 1 ? "minmax(260px, 1fr)" : "minmax(230px, 1fr)", gap: 12, alignItems: "stretch" }}>
           {visibleDates.map((date, dayIndex) => {
             const dayEntries = entries.filter((entry) => entry.date === date);
             return (
-              <div key={date} className={`${dayCount === 1 ? "w-full" : dayCount === 3 ? "min-w-[180px] flex-1" : "min-w-[230px] flex-1"} rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col min-h-0 bg-white`}>
-                {dayCount > 1 && <div className={`px-4 py-3 border-b ${dayIndex % 3 === 0 ? "bg-blue-50 text-blue-800 border-blue-100" : dayIndex % 3 === 1 ? "bg-emerald-50 text-emerald-800 border-emerald-100" : "bg-orange-50 text-orange-800 border-orange-100"}`}>
-                  <p className="text-sm font-bold">{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long" })}</p>
-                  <p className="text-xs mt-1">{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short" })} · {dayEntries.length} bookings</p>
-                </div>}
+              <div key={date} data-schedule-date={date} className="rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col min-h-0 bg-white">
+                <div className="px-4 py-3 border-b bg-white shrink-0" style={{ borderTop: `4px solid ${planningDayColor(dayIndex)}` }}>
+                  <p className="text-sm font-bold" style={{ color: planningDayColor(dayIndex) }}>{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long" })}</p>
+                  <p className="text-xs mt-1 text-slate-600">{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short" })} · {dayEntries.length} bookings</p>
+                  <button type="button" onClick={() => setMapDate(date)} className="text-[10px] font-semibold text-blue-600 mt-1 cursor-pointer">{activeMapDate === date ? "Booking day selected" : "Use for new booking"}</button>
+                </div>
                 {loading ? <div className="flex-1 flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div> : <JobListPanel
                   entries={dayEntries}
                   selectedId={selectedId}
                   onSelect={selectBooking}
                   onReorder={(from, to) => handleReorder(entries.indexOf(dayEntries[from]), entries.indexOf(dayEntries[to]))}
                   onReschedule={openReschedule}
-                  onAddBooking={() => { setBookingPreset(undefined); setBookingDate(date); }}
+                  onRemove={openRemove}
+                  onAddBooking={() => { if (!discardChanges()) return; setBookingPreset(undefined); setBookingDate(date); }}
                   dateStr={date}
                 />}
               </div>
@@ -1184,26 +1309,27 @@ export function ScheduleCalendarView({
         </div>
 
         {/* Map */}
-        <div className="flex-1 min-w-[280px] min-h-0 rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
+        <div className="w-[42%] shrink-0 min-w-[320px] min-h-0 rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
           {selectedPlanningLead && <div className="shrink-0 border-b border-violet-200 bg-violet-50 p-3 space-y-2">
             <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-semibold text-violet-700">Selected for {selectedPlanningLead.type === "inspection" ? "inspection" : "job"}</p><p className="text-sm font-bold text-slate-900">{selectedPlanningLead.lead.name || "Customer"}</p></div><button type="button" onClick={() => setSelectedPlanningLeadId(null)} aria-label="Clear selected lead" className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
             <p className="text-xs text-slate-600">{selectedPlanningLead.lead.address || selectedPlanningLead.lead.city || "Add an address to place this lead on the map."}</p>
             <p className="text-[11px] text-slate-600">Plan for {fmtDate(activeMapDate)}. Select a date to compare existing bookings.</p>
             <div className="flex gap-2"><button type="button" onClick={bookPlanningLead} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 cursor-pointer">Book this lead</button><button type="button" onClick={() => onOpenLead(selectedPlanningLead.lead.id)} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 cursor-pointer">View details</button></div>
           </div>}
-          <div className="flex shrink-0 flex-wrap gap-3 border-b border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600"><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Unassigned</span><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />Booked inspection</span><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Booked job</span><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-600" />Selected</span></div>
-          {dayCount > 1 && <div className="flex shrink-0 items-center gap-2 overflow-x-auto bg-white p-2 border-b border-slate-200">
-            {visibleDates.map((date) => <button key={date} onClick={() => { setMapDate(date); setSelectedId(null); }} aria-pressed={activeMapDate === date} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold cursor-pointer ${activeMapDate === date ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-blue-50"}`}>
-              {new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
-            </button>)}
-          </div>}
+          <div className="flex shrink-0 flex-wrap gap-3 border-b border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600">
+            <span className="font-semibold">All {dayCount} selected {dayCount === 1 ? "day" : "days"} on map</span>
+            {visibleDates.map((date, index) => <span key={date} className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(index) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</span>)}
+            {showUnassignedOnMap && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" />Unassigned</span>}
+          </div>
           <div className="flex-1 min-h-0">
           <RouteMapPanel
             mapItems={mapItems}
             selectedLeadId={selectedPlanningLead?.lead.id || selectedEntry?.leadId || null}
+            selectedItemId={selectedPlanningLead ? null : selectedId}
+            onSelectItem={selectBooking}
             onSelectLead={(id) => {
-              if (showUnassigned && unassignedLeads.some(({ lead }) => lead.id === id)) selectPlanningLead(id);
-              else selectBooking(mapEntries.find((entry) => entry.leadId === id)?.id || null);
+              if (showUnassignedOnMap && unassignedLeads.some(({ lead }) => lead.id === id)) selectPlanningLead(id);
+              else selectBooking(entries.find((entry) => entry.leadId === id)?.id || null);
             }}
           />
           </div>
@@ -1220,7 +1346,9 @@ export function ScheduleCalendarView({
               onMoveUp={moveUp}
               onMoveDown={moveDown}
               onMoveToAnotherDay={() => openReschedule(selectedEntry)}
-              onRemoveFromRoute={removeFromRoute}
+              onRemoveFromRoute={() => openRemove(selectedEntry)}
+              onUpdateRoute={previewSave}
+              hasChanges={hasChanges}
               onViewDetails={() => onOpenLead(selectedEntry.leadId)}
             />
           </div>
@@ -1234,6 +1362,7 @@ export function ScheduleCalendarView({
           selectedId={selectedId}
           onSelect={selectBooking}
           dateStr={activeMapDate}
+          onReorder={(from, to) => handleReorder(entries.indexOf(mapEntries[from]), entries.indexOf(mapEntries[to]))}
         />
       </div>
 
@@ -1241,7 +1370,8 @@ export function ScheduleCalendarView({
       <div className="shrink-0 mx-5 mb-4 mt-2 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
         <RouteSummaryFooter
           entries={entries}
-          originalCount={originalEntries.length}
+          originalEntries={originalEntries}
+          hasChanges={hasChanges}
           onPreviewSave={previewSave}
         />
       </div>
@@ -1251,10 +1381,30 @@ export function ScheduleCalendarView({
         onBookingRequestHandled?.();
         showToast("Booking saved successfully!", true);
         setMapDate(date);
-        if (date >= currentDate && date <= endDate) void load();
+        if (visibleDates.includes(date)) void load();
         else setCurrentDate(date);
         onBookingsChanged?.();
       }} />}
+
+      {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="route-preview-title" className="w-full max-w-lg rounded-2xl bg-white shadow-xl max-h-[85vh] flex flex-col">
+          <div className="flex items-center justify-between border-b p-4"><h3 id="route-preview-title" className="text-sm font-bold text-slate-900">Review route changes</h3><button type="button" aria-label="Close route preview" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
+          <div className="p-4 space-y-3 overflow-y-auto text-xs">
+            <p className="rounded-lg bg-amber-50 p-3 text-amber-800">This saves the planned driving order. Customer booking times stay as shown. Reschedule individual bookings if the driving order requires different times.</p>
+            {visibleDates.map((date) => <div key={date}><p className="font-bold text-slate-800 mb-2">{fmtDate(date)}</p><ol className="space-y-1.5">{entries.filter((entry) => entry.date === date).map((entry, index) => <li key={entry.id} className="rounded-lg bg-slate-50 p-2 text-slate-700">{index + 1}. {entry.customer?.name || "Customer"} · {fmtTime(entry.time)}<span className="block text-slate-500 mt-1">{entry.customer?.address || "No address"}</span></li>)}</ol></div>)}
+            {saveError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-700">{saveError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 border-t p-4"><button type="button" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Back</button><button type="button" disabled={routeSaving} onClick={() => void saveRoute()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{routeSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{routeSaving ? "Saving…" : "Save Route Order"}</button></div>
+        </div>
+      </div>}
+      {removingEntry && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="remove-booking-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-4">
+          <h3 id="remove-booking-title" className="text-sm font-bold text-slate-900">Remove booking?</h3>
+          <p className="text-xs text-slate-600">Remove the {removingEntry.type} for {removingEntry.customer?.name || "this customer"} on {fmtDate(removingEntry.date)} at {fmtTime(removingEntry.time)}? This clears the appointment and releases its time for another customer.</p>
+          {removeError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{removeError}</p>}
+          <div className="flex justify-end gap-2"><button type="button" disabled={removing} onClick={() => setRemovingEntry(null)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Keep Booking</button><button type="button" disabled={removing} onClick={() => void removeFromRoute()} className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{removing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{removing ? "Removing…" : "Remove Booking"}</button></div>
+        </div>
+      </div>}
 
       {/* ── Reschedule Modal ───────────────────────────────────────────────── */}
       {rescheduleModal && (

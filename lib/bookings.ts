@@ -4,7 +4,7 @@
 // bookings share the calendar (one crew), which is what keeps a day's route
 // tight.
 
-import { ObjectId, type Collection } from "mongodb";
+import { ObjectId, type Collection, type Filter } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
 import { todayAU } from "@/lib/scheduling";
 
@@ -89,7 +89,7 @@ export async function listUpcomingBookings(): Promise<BookingDoc[]> {
                 date: d,
                 time: t,
                 zone: "flexible",
-                reference: (s as any).jobNo || `GX-SUB-${idStr.slice(-6)}`,
+                reference: s.jobNo || `GX-SUB-${idStr.slice(-6)}`,
                 createdAt: new Date(),
               });
             }
@@ -134,7 +134,7 @@ export async function isSlotTaken(
     // 2) Appointments recorded on active submissions (staff-scheduled etc.).
     const db = await getDb();
     const subCol = db.collection("submissions");
-    const query: Record<string, any> = {
+    const query: Record<string, unknown> = {
       status: { $nin: ["Lost", "Cancelled"] },
       $or: [
         { inspectionAt: { $regex: `^${normalizedDate}T${normalizedTime}` } },
@@ -153,7 +153,7 @@ export async function isSlotTaken(
 }
 
 export type CreateBookingResult =
-  | { ok: true; reference: string }
+  | { ok: true; reference: string; acquired?: boolean }
   | { ok: false; conflict?: boolean; error: string };
 
 /**
@@ -164,7 +164,8 @@ export type CreateBookingResult =
  * - Automatically cleans up prior slots when rescheduling.
  */
 export async function createBooking(
-  input: Omit<BookingDoc, "_id" | "createdAt">
+  input: Omit<BookingDoc, "_id" | "createdAt">,
+  options: { retainPrevious?: boolean } = {},
 ): Promise<CreateBookingResult> {
   if (!isMongoConfigured()) return { ok: false, error: "Database not configured." };
   try {
@@ -177,6 +178,10 @@ export async function createBooking(
     if (existingBooking) {
       // If THIS lead already owns this exact slot, re-confirming is safe (not a conflict!)
       if (existingBooking.leadId === input.leadId && existingBooking.type === input.type) {
+        if (!options.retainPrevious) await col.deleteMany({
+          leadId: input.leadId, type: input.type,
+          $or: [{ date: { $ne: normalizedDate } }, { time: { $ne: normalizedTime } }],
+        });
         return { ok: true, reference: existingBooking.reference || input.reference };
       }
       return { ok: false, conflict: true, error: "That time was just taken. Please pick another." };
@@ -190,7 +195,7 @@ export async function createBooking(
       if (ObjectId.isValid(input.leadId)) leadObjId = new ObjectId(input.leadId);
     } catch {}
 
-    const querySub: Record<string, any> = {
+    const querySub: Record<string, unknown> = {
       status: { $nin: ["Lost", "Cancelled"] },
       $or: [
         { inspectionAt: { $regex: `^${normalizedDate}T${normalizedTime}` } },
@@ -222,17 +227,23 @@ export async function createBooking(
     }
 
     // 4. Reschedule cleanup: drop any earlier slot this lead held for this appointment type
-    await col.deleteMany({
+    if (!options.retainPrevious) await col.deleteMany({
       leadId: input.leadId,
       type: input.type,
       $or: [{ date: { $ne: normalizedDate } }, { time: { $ne: normalizedTime } }],
     });
 
-    return { ok: true, reference: input.reference };
+    return { ok: true, reference: input.reference, acquired: true };
   } catch (err) {
     console.error("createBooking failed:", err);
     return { ok: false, error: "Could not lock the slot." };
   }
+}
+
+/** Release one attempted reservation without touching the lead's prior slots. */
+export async function releaseBookingSlot(leadId: string, type: "inspection" | "job", date: string, time: string): Promise<void> {
+  const col = await collection();
+  await col.deleteOne({ leadId, type, date, time });
 }
 
 /** Release slots held by a lead (e.g. when lead is cancelled, lost, or appointment is cleared) */
@@ -240,7 +251,7 @@ export async function deleteBooking(leadId: string, type?: "inspection" | "job")
   if (!isMongoConfigured()) return;
   try {
     const col = await collection();
-    const query: Record<string, any> = { leadId };
+    const query: Filter<BookingDoc> = { leadId };
     if (type) query.type = type;
     await col.deleteMany(query);
   } catch (err) {
@@ -272,7 +283,7 @@ export function listAppointmentsOnDate(date: string): Promise<DayAppointment[]> 
  * scheduling. Includes both slot-lock rows (online bookings) and appointments
  * recorded directly on leads, so a manual or double-booked entry is visible too.
  */
-export async function listAppointmentsBetween(from: string, to: string): Promise<DayAppointment[]> {
+export async function listAppointmentsBetween(from: string, to: string, options: { strict?: boolean } = {}): Promise<DayAppointment[]> {
   const YMD = /^\d{4}-\d{2}-\d{2}$/;
   if (!isMongoConfigured() || !YMD.test(from) || !YMD.test(to) || to < from) return [];
   try {
@@ -350,6 +361,7 @@ export async function listAppointmentsBetween(from: string, to: string): Promise
     return out.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   } catch (err) {
     console.error("listAppointmentsBetween failed:", err);
+    if (options.strict) throw err;
     return [];
   }
 }
