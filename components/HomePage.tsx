@@ -696,7 +696,7 @@ export default function HomePage({
                       href="https://www.google.com/maps/place/Groutix"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
+                      className="flex h-16 items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
                     >
                       <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24">
                         <path
@@ -728,7 +728,7 @@ export default function HomePage({
                     </a>
                     <a
                       href={tel}
-                      className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
+                      className="flex h-16 items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
                     >
                       <Phone className="h-4 w-4" /> +61 3 7023 8094
                     </a>
@@ -848,7 +848,7 @@ export default function HomePage({
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">What We Do</p>
-              <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
+              <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
                 Shower Regrouting &amp; <span className="text-accent">Balcony Regrouting</span> Services
               </h2>
               <p className="text-neutral-600 text-lg leading-relaxed">

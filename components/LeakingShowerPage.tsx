@@ -85,11 +85,11 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">Leaking Shower Repairs Melbourne</h1>
               <p className="mx-auto max-w-xl text-base leading-relaxed text-white/85 sm:text-lg lg:mx-0">Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
-                <a href={googleReviews} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20" aria-label="5.0 stars, 290 plus Google reviews for Groutix">
+                <a href={googleReviews} target="_blank" rel="noopener noreferrer" className="flex h-16 items-center gap-3 rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20" aria-label="5.0 stars, 290 plus Google reviews for Groutix">
                   <Image src="/google-logo.svg" alt="Google" width={24} height={24} /><span className="text-2xl font-black">5.0</span>
                   <span><span className="flex gap-0.5" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <Star key={index} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}</span><span className="text-[13px] text-white/80">290+ Google Reviews</span></span>
                 </a>
-                <a href={phoneHref} className="inline-flex items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />+61 3 7023 8094</a>
+                <a href={phoneHref} className="inline-flex h-16 items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />+61 3 7023 8094</a>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-sm text-white/85 lg:justify-start"><span className="inline-flex items-center gap-2"><Search className="h-4 w-4" />Find the source</span><span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Eligible repairs: 10-year warranty</span></div>
             </div>

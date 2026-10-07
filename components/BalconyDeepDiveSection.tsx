@@ -1,10 +1,8 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Phone } from "lucide-react";
-import { motion } from "framer-motion";
 
 export default function BalconyDeepDiveSection() {
   return (
@@ -73,45 +71,6 @@ export default function BalconyDeepDiveSection() {
                 </li>
               ))}
             </ol>
-          </div>
-        </div>
-
-        {/* Photos Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Before Photo */}
-          <div className="relative rounded-[12px] overflow-hidden aspect-[4/3] bg-gradient-to-br from-[#dfe6fa] via-[#eef1fb] to-[#e4e9f8] shadow-sm group">
-            <Image
-              src="/img102.jpeg"
-              alt="Cracked and efflorescent balcony grout in South Yarra, Melbourne, before epoxy regrouting by Groutix"
-              width={1448}
-              height={1086}
-              loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <span className="absolute top-3.5 left-3.5 bg-[#101d63]/90 backdrop-blur-xs text-white text-[11px] font-extrabold tracking-[1.5px] uppercase px-3.5 py-1.5 rounded-full shadow-sm z-10">
-              Before
-            </span>
-            <span className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-xs text-white text-[12px] font-semibold px-3 py-1 rounded-md shadow-sm z-10">
-              Balcony regrout — South Yarra
-            </span>
-          </div>
-
-          {/* After Photo */}
-          <div className="relative rounded-[12px] overflow-hidden aspect-[4/3] bg-gradient-to-br from-[#dfe6fa] via-[#eef1fb] to-[#e4e9f8] shadow-sm group">
-            <Image
-              src="/img77.jpeg"
-              alt="Balcony after epoxy regrouting in South Yarra, Melbourne, by Groutix"
-              width={1448}
-              height={1086}
-              loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <span className="absolute top-3.5 left-3.5 bg-[#101d63]/90 backdrop-blur-xs text-white text-[11px] font-extrabold tracking-[1.5px] uppercase px-3.5 py-1.5 rounded-full shadow-sm z-10">
-              After
-            </span>
-            <span className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-xs text-white text-[12px] font-semibold px-3 py-1 rounded-md shadow-sm z-10">
-              Balcony regrout — South Yarra
-            </span>
           </div>
         </div>
 
