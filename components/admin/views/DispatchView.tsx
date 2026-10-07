@@ -16,6 +16,7 @@ import { useBookingRules } from "@/lib/useBookingRules";
 import { useZoneRules } from "@/lib/useZoneRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
 import { DispatchMap } from "@/components/admin/DispatchMap";
+import { getLeadSchedulingType, getUnassignedSchedulingType } from "@/lib/unassignedLeads";
 import type { Lead } from "@/components/admin/types";
 
 // ── Timeline Geometry Constants ──────────────────────────────────────────────
@@ -132,6 +133,7 @@ export function DispatchView({
 }) {
   const {
     scopedLeads,
+    openSchedule,
     assignableTechnicians,
     staff = [],
     inspectionStaff = [],
@@ -156,7 +158,7 @@ export function DispatchView({
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "slots">("details");
 
   // Left sidebar Unassigned filter
-  const [unassignedFilter, setUnassignedFilter] = useState<"all" | "inspections" | "jobs">("all");
+  const [unassignedFilter, setUnassignedFilter] = useState<"all" | "inspections" | "jobs">(initialTab === "inspections" || initialTab === "jobs" ? initialTab : "all");
 
   // Change Booking drawer
   const [isChangeBookingOpen, setIsChangeBookingOpen] = useState<boolean>(
@@ -201,22 +203,14 @@ export function DispatchView({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [assignableTechnicians, inspectionStaff]);
 
-  // ── 1. Unassigned Leads list — ONLY NOT BOOKED (no inspectionAt AND no jobAt) ──
-  const unassignedLeads = useMemo(() => {
-    return scopedLeads.filter((l) => {
-      if (l.status === "Lost" || l.status === "Cancelled" || l.status === "Completed") return false;
-      // Only show leads that have NO booking at all
-      const hasInspectionBooking = Boolean(l.inspectionAt);
-      const hasJobBooking = Boolean(l.jobAt);
-      if (hasInspectionBooking || hasJobBooking) return false;
-      return true;
-    });
-  }, [scopedLeads]);
+  // The same status and field-assignment rules apply on the dashboard and Dispatch.
+  const unassignedLeads = useMemo(() => scopedLeads.filter((lead) =>
+    getUnassignedSchedulingType(lead, inspectionStaff, assignableTechnicians) !== null,
+  ), [scopedLeads, inspectionStaff, assignableTechnicians]);
 
   const filteredUnassignedLeads = useMemo(() => {
     return unassignedLeads.filter((l) => {
-      // Classify by whether it looks like a job lead or inspection lead
-      const isJobType = /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo);
+      const isJobType = getLeadSchedulingType(l) === "job";
       const isInspType = !isJobType;
 
       if (unassignedFilter === "inspections" && !isInspType) return false;
@@ -235,7 +229,7 @@ export function DispatchView({
     let insp = 0;
     let jobs = 0;
     for (const l of unassignedLeads) {
-      const isJobType = /job|won|scheduled/i.test(l.status || "") || Boolean(l.jobNo);
+      const isJobType = getLeadSchedulingType(l) === "job";
       if (isJobType) {
         jobs++;
       } else {
@@ -990,11 +984,11 @@ export function DispatchView({
           <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
             {filteredUnassignedLeads.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-xs">
-                No unassigned / not-booked leads found.
+                No unassigned leads in these statuses.
               </div>
             ) : (
               filteredUnassignedLeads.map((lead) => {
-                const isJobType = /job|won|scheduled/i.test(lead.status || "") || Boolean(lead.jobNo);
+                const isJobType = getLeadSchedulingType(lead) === "job";
                 const isInsp = !isJobType;
                 const isSelected = lead.id === selectedLeadId;
                 const distance = getLeadDistance(lead);
@@ -1003,10 +997,7 @@ export function DispatchView({
                   <div
                     key={lead.id}
                     onClick={() => {
-                      setSelectedLeadId(lead.id);
-                      setChangeBookingType(isInsp ? "inspection" : "job");
-                      if (lead.service) setChangeBookingService(lead.service);
-                      setIsChangeBookingOpen(true);
+                      openSchedule(lead.id, isInsp ? "inspection" : "job");
                     }}
                     className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                       isSelected

@@ -306,6 +306,7 @@ export default function CrmDashboardPage() {
   const [dispatchInitialLeadId, setDispatchInitialLeadId] = useState<string | undefined>(undefined);
   const [dispatchInitialAction, setDispatchInitialAction] = useState<"view" | "reschedule" | undefined>(undefined);
   // Schedule view tab switcher: "upcoming" (Upcoming Bookings List) vs. "calendar" (Day Calendar & Route)
+  const [scheduleBookingRequest, setScheduleBookingRequest] = useState<{ leadId: string; type: "inspection" | "job"; date?: string } | null>(null);
   const [scheduleTab, setScheduleTab] = useState<"upcoming" | "calendar">("upcoming");
 
   // Live AUS clock — updates every second.
@@ -3815,6 +3816,14 @@ export default function CrmDashboardPage() {
     [navigateTo]
   );
 
+  const openSchedule = useCallback((leadId?: string, type: "inspection" | "job" = "inspection") => {
+    const lead = leads.find((entry) => entry.id === leadId);
+    const appointment = type === "inspection" ? lead?.inspectionAt : lead?.jobAt;
+    setScheduleBookingRequest(leadId ? { leadId, type, date: appointment?.split("T")[0] } : null);
+    setScheduleTab("calendar");
+    navigateTo("schedule");
+  }, [leads, navigateTo]);
+
   // Open the "inbox": the leads table filtered to conversations that have an
   // unread customer reply. Used by the header bell and the hero's Open Inbox.
   const openInbox = useCallback(() => {
@@ -3866,7 +3875,7 @@ export default function CrmDashboardPage() {
     // Assignee helpers
     rowAssigneeOptions, isTechnicianName,
     // Navigation
-    setCurrentView: navigateTo, openLeadsFiltered, openDispatch, openInbox, startNewLead,
+    setCurrentView: navigateTo, openLeadsFiltered, openDispatch, openSchedule, openInbox, startNewLead,
     openJobCard: setJobCardLead,
     // Manager dashboard extras
     staffLocations, leads, loading, filteredLeads,
@@ -4601,7 +4610,10 @@ export default function CrmDashboardPage() {
                 {scheduleTab === "calendar" && (
                   <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs" style={{ height: "calc(100vh - 175px)", minHeight: 650 }}>
                     <ScheduleCalendarView
+                      initialBooking={scheduleBookingRequest || undefined}
+                      onBookingRequestHandled={() => setScheduleBookingRequest(null)}
                       leads={leads}
+                      onBookingsChanged={() => { void loadData({ silent: true }); }}
                       onOpenLead={(id: string) => {
                         const lead = leads.find((l) => l.id === id);
                         if (lead) {

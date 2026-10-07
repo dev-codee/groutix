@@ -59,6 +59,7 @@ export interface AdminPageCtxType {
   setCurrentView: (view: any) => void;
   openLeadsFiltered: (statuses: string[]) => void;
   openDispatch: (tab?: "all" | "leads" | "inspections" | "jobs", techFilter?: string) => void;
+  openSchedule: (leadId?: string, type?: "inspection" | "job") => void;
   openInbox: () => void;
   startNewLead: () => void;
   /** Open the read-only client job card for a lead (no edit form). */
