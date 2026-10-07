@@ -6,7 +6,7 @@ import {
   Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
   MoreHorizontal, MoreVertical, ExternalLink, Plus, PlusCircle, Home, RefreshCw, User,
   CheckCircle2, X, Filter, Wand2, Settings, Car, Check, Info, AlertCircle, Edit3,
-  ArrowRight, Layers, LayoutGrid, Map as MapIcon, CalendarDays, CheckCircle
+  ArrowRight, Layers, LayoutGrid, Map as MapIcon, CalendarDays, CheckCircle, Loader2, CalendarClock
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { resolveArea, formatApptTimeRange, todayAU, tomorrowAU, formatApptDate, formatApptTime } from "@/lib/scheduling";
@@ -87,6 +87,34 @@ function getLeadDistance(lead: Lead): string {
   return "15.0 km";
 }
 
+function fmtReadableDate(dateStr?: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
+  return d.toLocaleDateString("en-AU", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function parseIsoAppt(isoStr?: string): { dateStr: string; timeStr: string } | null {
+  if (!isoStr || !isoStr.includes("T")) return null;
+  const [d, tRaw] = isoStr.split("T");
+  const timeStr = fmtScheduleTime(tRaw.slice(0, 5));
+  return { dateStr: fmtReadableDate(d), timeStr };
+}
+
+interface RescheduleConfirmData {
+  lead: Lead;
+  type: "inspection" | "job";
+  oldDateTime?: string;
+  newDate: string;
+  newTime: string;
+  technician?: string;
+  service?: string;
+}
+
 export function DispatchView({
   onOpenLead,
   initialTab = "all",
@@ -141,6 +169,7 @@ export function DispatchView({
   const [changeBookingService, setChangeBookingService] = useState<string>("Shower Cubicle Regrouting");
   const [isSavingBooking, setIsSavingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
+  const [confirmRescheduleData, setConfirmRescheduleData] = useState<RescheduleConfirmData | null>(null);
 
   // Show the map panel when coming from Schedule
   const [showMapPanel, setShowMapPanel] = useState<boolean>(Boolean(initialDate && initialLeadId));
@@ -484,67 +513,57 @@ export function DispatchView({
     return suggestions;
   }, [activeLead, selectedDate, appointmentsByDate, changeBookingType]);
 
-  // ── Book / Schedule Slot Handler ───────────────────────────────────────────
+  // ── Book / Schedule Slot Handler (opens confirmation modal) ────────────────
   const handleBookSlot = async (slot: (typeof suggestedSlots)[0]) => {
     if (!activeLead) return;
-
-    const updates: Partial<Lead> = {};
-    if (changeBookingType === "inspection") {
-      updates.inspectionAt = slot.startIsoTime;
-      updates.status = "Inspection Booked";
-      if (!activeLead.assigned || activeLead.assigned.toLowerCase() === "unassigned") {
-        updates.assigned = techFilter !== "all" && techFilter !== "Unassigned" ? techFilter : "Field Inspector";
-      }
-    } else {
-      updates.jobAt = slot.startIsoTime;
-      updates.status = "Job Booked";
-      if (!activeLead.technician || activeLead.technician.toLowerCase() === "unassigned") {
-        updates.technician = techFilter !== "all" && techFilter !== "Unassigned" ? techFilter : "Technician";
-      }
-    }
-
-    if (changeBookingService) {
-      updates.service = changeBookingService;
-    }
-
-    const success = await updateLeadField(activeLead.id, updates);
-    if (success) {
-      setBookingSuccess(`Scheduled ${activeLead.name || "Customer"} for ${slot.formattedDate} (${slot.timeWindow})!`);
-      setTimeout(() => setBookingSuccess(null), 5000);
-    }
+    const [h, m] = slot.timeWindow.split(" ")[0].split(":").map(Number);
+    const newTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const oldDateTime = changeBookingType === "inspection" ? activeLead.inspectionAt : activeLead.jobAt;
+    setConfirmRescheduleData({
+      lead: activeLead,
+      type: changeBookingType,
+      oldDateTime: oldDateTime || undefined,
+      newDate: slot.dateStr,
+      newTime,
+      technician: changeBookingTech && changeBookingTech !== "all" ? changeBookingTech : (changeBookingType === "inspection" ? activeLead.assigned : activeLead.technician),
+      service: changeBookingService || activeLead.service,
+    });
   };
 
-  // ── Confirm Change Booking Handler ─────────────────────────────────────────
-  const handleConfirmChangeBooking = async () => {
-    if (!activeLead) return;
+  // ── Execute Confirmed Reschedule Handler ───────────────────────────────────
+  const executeReschedule = async () => {
+    if (!confirmRescheduleData) return;
     setIsSavingBooking(true);
     try {
-      const timeFormatted = (changeBookingTime || "09:00").slice(0, 5).padStart(5, "0");
-      const isoDateTime = `${changeBookingDate}T${timeFormatted}`;
+      const timeFormatted = (confirmRescheduleData.newTime || "09:00").slice(0, 5).padStart(5, "0");
+      const isoDateTime = `${confirmRescheduleData.newDate}T${timeFormatted}`;
       const updates: Partial<Lead> = {};
 
-      if (changeBookingType === "inspection") {
+      if (confirmRescheduleData.type === "inspection") {
         updates.inspectionAt = isoDateTime;
         updates.status = "Inspection Booked";
-        if (changeBookingTech && changeBookingTech !== "all" && changeBookingTech !== "Unassigned") {
-          updates.assigned = changeBookingTech;
+        if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
+          updates.assigned = confirmRescheduleData.technician;
         }
       } else {
         updates.jobAt = isoDateTime;
         updates.status = "Job Booked";
-        if (changeBookingTech && changeBookingTech !== "all" && changeBookingTech !== "Unassigned") {
-          updates.technician = changeBookingTech;
+        if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
+          updates.technician = confirmRescheduleData.technician;
         }
       }
 
-      if (changeBookingService) updates.service = changeBookingService;
+      if (confirmRescheduleData.service) updates.service = confirmRescheduleData.service;
 
-      const ok = await updateLeadField(activeLead.id, updates);
+      const ok = await updateLeadField(confirmRescheduleData.lead.id, updates);
       if (ok) {
-        setSelectedDate(changeBookingDate);
-        setBookingSuccess(`✓ Booking updated for ${activeLead.name || "Customer"} to ${changeBookingDate} at ${fmtMinutesFull(parseMinutes(timeFormatted))}!`);
+        setSelectedDate(confirmRescheduleData.newDate);
+        setBookingSuccess(
+          `✓ Rescheduled ${confirmRescheduleData.lead.name || "Customer"} to ${fmtReadableDate(confirmRescheduleData.newDate)} at ${fmtScheduleTime(timeFormatted)}!`
+        );
         setTimeout(() => setBookingSuccess(null), 5000);
         setIsChangeBookingOpen(false);
+        setConfirmRescheduleData(null);
       }
     } catch (err) {
       console.error("Change booking failed:", err);
@@ -939,9 +958,25 @@ export function DispatchView({
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                <button type="button" disabled={isSavingBooking} onClick={handleConfirmChangeBooking}
-                  className="flex-1 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer">
-                  {isSavingBooking ? "Saving…" : <><CheckCircle className="w-3.5 h-3.5" /> Confirm Change</>}
+                <button
+                  type="button"
+                  disabled={isSavingBooking}
+                  onClick={() => {
+                    if (!activeLead) return;
+                    const oldDateTime = changeBookingType === "inspection" ? activeLead.inspectionAt : activeLead.jobAt;
+                    setConfirmRescheduleData({
+                      lead: activeLead,
+                      type: changeBookingType,
+                      oldDateTime: oldDateTime || undefined,
+                      newDate: changeBookingDate,
+                      newTime: changeBookingTime,
+                      technician: changeBookingTech && changeBookingTech !== "all" ? changeBookingTech : (changeBookingType === "inspection" ? activeLead.assigned : activeLead.technician),
+                      service: changeBookingService || activeLead.service,
+                    });
+                  }}
+                  className="flex-1 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Confirm Change
                 </button>
                 <button type="button" onClick={() => onOpenLead(activeLead.id)}
                   className="py-1.5 px-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 cursor-pointer flex items-center gap-1">
@@ -1280,6 +1315,177 @@ export function DispatchView({
           )}
         </div>
       </div>
+
+      {/* ── RESCHEDULE CONFIRMATION MODAL ─────────────────────────────────────── */}
+      {confirmRescheduleData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
+                  <CalendarClock className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 leading-tight">Confirm Reschedule</h3>
+                  <p className="text-[11px] text-slate-500">Please verify the appointment timing before saving</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isSavingBooking}
+                onClick={() => setConfirmRescheduleData(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 text-xs">
+              {/* Customer Banner */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-slate-900">{confirmRescheduleData.lead.name || "Customer"}</span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        confirmRescheduleData.type === "inspection"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      }`}
+                    >
+                      {confirmRescheduleData.type === "inspection" ? "Inspection" : "Job"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5 truncate">
+                    {confirmRescheduleData.lead.address || confirmRescheduleData.lead.city || "Melbourne"}
+                  </p>
+                  {confirmRescheduleData.lead.phone && (
+                    <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-400" />
+                      {confirmRescheduleData.lead.phone}
+                    </p>
+                  )}
+                </div>
+                {confirmRescheduleData.lead.jobNo && (
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 shrink-0">
+                    {confirmRescheduleData.lead.jobNo}
+                  </span>
+                )}
+              </div>
+
+              {/* Timing Comparison: Previous vs New */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Previous Timing */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      Previous Schedule
+                    </div>
+                    {(() => {
+                      const prev = parseIsoAppt(confirmRescheduleData.oldDateTime);
+                      if (!prev) {
+                        return <p className="text-xs font-semibold text-slate-500 italic">Not previously scheduled</p>;
+                      }
+                      return (
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-slate-700">{prev.dateStr}</p>
+                          <p className="text-sm font-extrabold text-slate-800 line-through decoration-rose-400 decoration-2">
+                            {prev.timeStr}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-2 block">Original slot</span>
+                </div>
+
+                {/* New Timing */}
+                <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 flex flex-col justify-between shadow-2xs">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1.5">
+                      <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
+                      New Rescheduled Time
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-blue-900">
+                        {fmtReadableDate(confirmRescheduleData.newDate)}
+                      </p>
+                      <p className="text-sm font-extrabold text-blue-700">
+                        {fmtScheduleTime(confirmRescheduleData.newTime)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 mt-2 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-emerald-600" /> Confirmed new timing
+                  </span>
+                </div>
+              </div>
+
+              {/* Technician & Service Details */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-600">Assigned Specialist:</span>
+                  <span className="font-bold text-slate-900">
+                    {confirmRescheduleData.technician && confirmRescheduleData.technician !== "all"
+                      ? confirmRescheduleData.technician
+                      : "Unassigned"}
+                  </span>
+                </div>
+                {confirmRescheduleData.service && (
+                  <span className="text-[11px] text-slate-500 font-medium truncate max-w-[180px]">
+                    {confirmRescheduleData.service}
+                  </span>
+                )}
+              </div>
+
+              {/* Notice */}
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900 text-[11px] leading-relaxed">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  Rescheduling will immediately update the dispatch calendar, route calculation, and customer record.
+                </span>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isSavingBooking}
+                onClick={() => setConfirmRescheduleData(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingBooking}
+                onClick={executeReschedule}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isSavingBooking ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Rescheduling…</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Confirm &amp; Reschedule</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
