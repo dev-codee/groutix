@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
 import { getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
+import ShowerRegroutingPage from "@/components/ShowerRegroutingPage";
 
 const services: Record<string, {
   title: string;
@@ -35,9 +36,9 @@ const services: Record<string, {
 
   "shower-regrouting": {
     title: "Shower Regrouting",
-    metaTitle: "Shower Regrouting Services Victoria | Groutix",
-    metaDesc: "Professional shower regrouting in Victoria. Remove mould, stop leaks and refresh your bathroom without a full renovation. Get a free quote today.",
-    h1Desc: "Tired, cracked or mouldy grout can make even a clean shower look tired and unhygienic. Groutix specialises in professional shower regrouting across Victoria, removing old, deteriorated grout and replacing it with a durable, mould-resistant finish. Our regrouting service restores the look of your shower without the cost or mess of a full renovation, while helping prevent water damage to the walls and subfloor behind your tiles. Whether it's a few problem areas or a full regrout, we deliver a clean, watertight result that lasts.",
+    metaTitle: "Shower Regrouting Melbourne | 10 Year Warranty",
+    metaDesc: "Shower regrouting in Melbourne by grout specialists. Old grout removed, waterproof epoxy applied, tiles stay in place. 10 year warranty. Free quote.",
+    h1Desc: "Groutix removes failed shower grout and rebuilds it with waterproof epoxy. Your tiles stay in place. Every complete shower regrout comes with a 10 year waterproof warranty.",
     failHeading: "When Shower Grout Fails,",
     failHeadingBlue: "Leaks Follow",
     failText: "Cracked, porous or worn grout lets water move beyond the tile surface and into vulnerable parts of the shower. Once moisture gets into wall junctions, corners or floor areas, it can contribute to leaks, mould, odours and damage outside the bathroom.\n\nGrout is part of the shower's protective system. When the joints start failing, the risk is not just cosmetic staining, it is the potential for hidden moisture issues to keep spreading.\n\nSurface coatings and quick touch-ups may improve the appearance for a short time, but they do not solve underlying grout failure. Proper repair starts with removing deteriorated material and rebuilding the grout system correctly.",
@@ -474,6 +475,18 @@ export default async function ServicePage({ params }: Props) {
 
   const reviews = await getReviews();
 
+  if (slug === "shower-regrouting") {
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(s.faqs)) }}
+        />
+        <ShowerRegroutingPage />
+      </>
+    );
+  }
+
   return (
     <>
       <script
@@ -511,4 +524,3 @@ export default async function ServicePage({ params }: Props) {
     </>
   );
 }
-
