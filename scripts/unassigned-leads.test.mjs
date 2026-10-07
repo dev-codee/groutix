@@ -9,7 +9,7 @@ const source = readFileSync(new URL("../lib/unassignedLeads.ts", import.meta.url
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
 }).outputText;
-const { getLeadSchedulingType, getUnassignedSchedulingType } = await import(
+const { getLeadSchedulingType, getUnassignedSchedulingType, buildPlanningMapItems } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
 const inspectors = [{ id: "inspector-1", name: "Inspector One", username: "inspect1" }];
@@ -60,4 +60,24 @@ test("blank and Unassigned values are not real field assignments", () => {
   assert.equal(classify("New", { inspectorId: "  ", assigned: " UNASSIGNED " }), "inspection");
   assert.equal(classify("Quote", { technician: "Unassigned", technicianId: " ", technicianUsername: "unassigned" }), "job");
   assert.equal(getLeadSchedulingType({ status: " quote waiting for approval " }), "job");
+});
+
+test("planning map adds unassigned pins without duplicating the day's booked leads", () => {
+  const booked = { lead: { id: "booked", address: "10 Main Street" }, type: "inspection", time: "09:00" };
+  const planned = { lead: { id: "planned", address: "20 Main Street" }, type: "job" };
+  const items = buildPlanningMapItems([booked], [planned, { lead: booked.lead, type: "inspection" }]);
+  assert.equal(items.length, 2);
+  assert.equal(items[0], booked);
+  assert.equal(items[1].lead.id, "planned");
+  assert.equal(items[1].unassigned, true);
+  assert.equal(items[1].time, "");
+  assert.equal(items.filter((item) => !item.unassigned).length, 1);
+});
+
+test("addressless unassigned leads are not mapped to an invented default location", () => {
+  const items = buildPlanningMapItems([], [
+    { lead: { id: "missing", address: "  " }, type: "inspection" },
+    { lead: { id: "suburb", city: "Reservoir" }, type: "job" },
+  ]);
+  assert.deepEqual(items.map((item) => item.lead.id), ["suburb"]);
 });

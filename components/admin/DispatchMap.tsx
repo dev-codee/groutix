@@ -11,6 +11,8 @@ export interface DispatchMapItem {
   time: string;
   /** The customer currently being scheduled (booking planner) — drawn as a green "NEW" stop. */
   proposed?: boolean;
+  /** A lead being planned; show a pin without adding it to the booked route. */
+  unassigned?: boolean;
 }
 
 interface DispatchMapProps {
@@ -51,16 +53,16 @@ function fmtApptTime(t: string): string {
   return `${dh}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-function pinIcon(g: typeof google, color: string): google.maps.Icon {
+function pinIcon(g: typeof google, color: string, selected = false): google.maps.Icon {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
-    <path d="M15 0C6.7 0 0 6.7 0 15c0 11.2 15 25 15 25s15-13.8 15-25C30 6.7 23.3 0 15 0z" fill="${color}"/>
+    <path d="M15 0C6.7 0 0 6.7 0 15c0 11.2 15 25 15 25s15-13.8 15-25C30 6.7 23.3 0 15 0z" fill="${selected ? "#7C3AED" : color}"/>
     <circle cx="15" cy="15" r="10.5" fill="white"/>
   </svg>`;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new g.maps.Size(30, 40),
-    anchor: new g.maps.Point(15, 40),
-    labelOrigin: new g.maps.Point(15, 15),
+    scaledSize: new g.maps.Size(selected ? 38 : 30, selected ? 50 : 40),
+    anchor: new g.maps.Point(selected ? 19 : 15, selected ? 50 : 40),
+    labelOrigin: new g.maps.Point(selected ? 19 : 15, selected ? 19 : 15),
   };
 }
 
@@ -143,7 +145,9 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
   // flicker. Only rebuild when the actual stop content (ids/type/time/address)
   // changes, and read the latest onSelectLead via a ref so it never forces a
   // rebuild on its own.
-  const itemsKey = items.map((i) => `${i.lead.id}:${i.type}:${i.time}:${i.lead.address || ""}:${i.proposed ? 1 : 0}`).join("|");
+  const itemsKey = items.map((i) => `${i.lead.id}:${i.type}:${i.time}:${i.lead.address || i.lead.city || ""}:${i.proposed ? 1 : 0}:${i.unassigned ? 1 : 0}`).join("|");
+  const selectedLeadIdRef = useRef(selectedLeadId);
+  useEffect(() => { selectedLeadIdRef.current = selectedLeadId; }, [selectedLeadId]);
   const onSelectLeadRef = useRef(onSelectLead);
   useEffect(() => { onSelectLeadRef.current = onSelectLead; }, [onSelectLead]);
 
@@ -227,6 +231,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
     if (!ready || !mapRef.current || !apiKey) return;
     const g = window.google;
     const map = mapRef.current;
+    let cancelled = false;
 
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
@@ -236,23 +241,27 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
     directionsRendererRef.current?.set("directions", null);
 
     const addStopMarker = (position: google.maps.LatLng | google.maps.LatLngLiteral, idx: number, item: DispatchMapItem) => {
-      const color = item.proposed ? "#16A34A" : item.type === "inspection" ? "#EF4444" : "#3B82F6";
+      const color = item.unassigned ? "#F59E0B" : item.proposed ? "#16A34A" : item.type === "inspection" ? "#EF4444" : "#3B82F6";
+      const selected = selectedLeadIdRef.current === item.lead.id;
       const marker = new g.maps.Marker({
         position,
         map,
-        icon: pinIcon(g, color),
-        label: { text: String(idx + 1), color: "#0F172A", fontWeight: "800", fontSize: "12px" },
-        title: `${idx + 1}. ${item.lead.name || "Customer"} · ${fmtApptTime(item.time)}`,
-        zIndex: item.proposed ? 1500 : 100 + idx,
+        icon: pinIcon(g, color, selected),
+        label: { text: item.unassigned ? (item.type === "inspection" ? "I" : "J") : String(idx + 1), color: "#0F172A", fontWeight: "800", fontSize: "12px" },
+        title: `${item.lead.name || "Customer"} · ${item.unassigned ? `Unassigned ${item.type}` : fmtApptTime(item.time)}`,
+        zIndex: selected ? 2200 : item.proposed ? 1500 : 100 + idx,
       });
+      marker.set("stopColor", color);
+      marker.set("stopZIndex", item.proposed ? 1500 : 100 + idx);
       marker.addListener("click", () => onSelectLeadRef.current(item.lead.id));
       markersRef.current.push(marker);
       markerByLeadIdRef.current.set(item.lead.id, marker);
 
+      const customerName = (item.lead.name || "Customer").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character] || character));
       const bubbleHtml = `<div style="display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;background:#fff;border-radius:6px;box-shadow:0 1px 4px rgba(15,23,42,0.22);padding:2px 6px;font:600 10px/1.3 system-ui,sans-serif;color:#0F172A;">
-        <span style="color:${color};font-weight:800;">${idx + 1}.</span>
-        <span>${item.proposed ? "NEW · " : ""}${item.lead.name || "Customer"}</span>
-        <span style="font-weight:500;color:#64748B;font-size:9px;">· ${fmtApptTime(item.time)}</span>
+        <span style="color:${color};font-weight:800;">${item.unassigned ? "Unassigned" : `${idx + 1}.`}</span>
+        <span>${item.proposed ? "NEW · " : ""}${customerName}</span>
+        <span style="font-weight:500;color:#64748B;font-size:9px;">· ${item.unassigned ? (item.type === "inspection" ? "Inspection" : "Job") : fmtApptTime(item.time)}</span>
       </div>`;
       const bubble = createLabelOverlay(g, map, position, bubbleHtml);
       bubblesRef.current.push(bubble);
@@ -301,6 +310,11 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
       });
 
     const geocodeAll = async (addresses: string[]): Promise<(google.maps.LatLngLiteral | null)[]> => {
+      // The server accepts up to 60 addresses per request.
+      if (addresses.length > 60) {
+        const batches = Array.from({ length: Math.ceil(addresses.length / 60) }, (_, index) => addresses.slice(index * 60, (index + 1) * 60));
+        return (await Promise.all(batches.map(geocodeAll))).flat();
+      }
       try {
         const res = await fetch("/api/admin/geocode", {
           method: "POST",
@@ -325,6 +339,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
 
     // Geocode HQ + all stops, then place pins and attempt the route.
     geocodeAll([hqAddress, ...items.map((item) => fullAddress(item.lead))]).then((positions) => {
+      if (cancelled) return;
       const [hqPos, ...stopPositions] = positions;
       const bounds = new g.maps.LatLngBounds();
 
@@ -364,7 +379,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
       // Now try to overlay a driving route on top of the individual pins.
       // If it fails (quota, bad address, too many waypoints) the pins already
       // placed above remain — the map never goes blank.
-      const validStops = stopPositions.filter((p): p is google.maps.LatLngLiteral => p !== null);
+      const validStops = stopPositions.filter((position, index): position is google.maps.LatLngLiteral => position !== null && !items[index].unassigned);
       if (validStops.length === 0) return;
 
       // Route on the coordinates we just resolved rather than the raw address
@@ -382,6 +397,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
           travelMode: g.maps.TravelMode.DRIVING,
         },
         (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+          if (cancelled) return;
           if (status !== "OK" || !result) {
             // Route failed — pins are already on the map, just clear any stale route polyline
             directionsRendererRef.current?.set("directions", null);
@@ -393,22 +409,28 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, onSelectLead, ch
         }
       );
     });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuild is keyed on itemsKey (content), not the items array reference
   }, [ready, itemsKey, hqAddress, apiKey]);
 
-  // Highlight + pan to whichever marker is selected (from a map click or from
-  // the timeline) without rebuilding the route.
+  // Keep selection visible, including a lead selected before geocoding finishes.
   useEffect(() => {
-    if (!ready || !selectedLeadId) return;
+    if (!ready) return;
     const g = window.google;
+    markerByLeadIdRef.current.forEach((marker, id) => {
+      const selected = id === selectedLeadId;
+      marker.setIcon(pinIcon(g, marker.get("stopColor"), selected));
+      marker.setZIndex(selected ? 2200 : marker.get("stopZIndex"));
+      marker.setAnimation(null);
+    });
+    if (!selectedLeadId) return;
     const marker = markerByLeadIdRef.current.get(selectedLeadId);
     if (!marker) return;
     marker.setAnimation(g.maps.Animation.BOUNCE);
-    marker.setZIndex(1000);
     const pos = marker.getPosition();
     if (pos) mapRef.current?.panTo(pos);
     const timer = setTimeout(() => marker.setAnimation(null), 1400);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); marker.setAnimation(null); };
   }, [selectedLeadId, ready]);
 
   if (!apiKey) {

@@ -31,8 +31,10 @@ import {
   CalendarClock,
   Save,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
+import { buildPlanningMapItems, type UnassignedPlanningLead } from "@/lib/unassignedLeads";
 import type { DayAppointment } from "@/lib/bookings";
 import type { Lead } from "@/components/admin/types";
 
@@ -853,12 +855,14 @@ export function ScheduleCalendarView({
   onBookingsChanged,
   onBookingRequestHandled,
   initialBooking,
+  unassignedLeads = [],
 }: {
   onOpenLead: (id: string) => void;
   leads?: Lead[];
   onBookingsChanged?: () => void;
   onBookingRequestHandled?: () => void;
   initialBooking?: { leadId: string; type: JobType; date?: string };
+  unassignedLeads?: UnassignedPlanningLead[];
 }) {
   const [currentDate, setCurrentDate] = useState(initialBooking?.date || todayStr);
   const [loading, setLoading] = useState(true);
@@ -869,7 +873,11 @@ export function ScheduleCalendarView({
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [viewMode, setViewMode] = useState<"1day" | "3day" | "week">("1day");
 
-  const [bookingDate, setBookingDate] = useState<string | null>(initialBooking ? initialBooking.date || todayStr() : null);
+  const [bookingDate, setBookingDate] = useState<string | null>(null);
+  const [selectedPlanningLeadId, setSelectedPlanningLeadId] = useState<string | null>(initialBooking?.leadId || null);
+  const [planningFilter, setPlanningFilter] = useState<"all" | JobType>("all");
+  const [planningSearch, setPlanningSearch] = useState("");
+  const [showUnassigned, setShowUnassigned] = useState(true);
   const [bookingPreset, setBookingPreset] = useState(initialBooking);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -929,6 +937,20 @@ export function ScheduleCalendarView({
     return () => { active = false; loadRequest.current += 1; };
   }, [load]);
 
+  const selectedPlanningLead = unassignedLeads.find(({ lead }) => lead.id === selectedPlanningLeadId) || null;
+  const visiblePlanningLeads = unassignedLeads.filter(({ lead, type }) =>
+    (planningFilter === "all" || type === planningFilter) &&
+    `${lead.name || ""} ${lead.address || ""} ${lead.city || ""} ${lead.jobNo || ""}`.toLowerCase().includes(planningSearch.trim().toLowerCase()),
+  ).sort((a, b) => Number(b.lead.id === selectedPlanningLeadId) - Number(a.lead.id === selectedPlanningLeadId));
+
+  const selectPlanningLead = (id: string) => {
+    setSelectedPlanningLeadId(id);
+    setSelectedId(null);
+    setShowUnassigned(true);
+    setPlanningFilter("all");
+    setPlanningSearch("");
+  };
+
   // Selected entry
   const selectedEntry = useMemo(() => entries.find((e) => e.id === selectedId) || null, [entries, selectedId]);
   const selectedIndex = useMemo(() => entries.findIndex((e) => e.id === selectedId), [entries, selectedId]);
@@ -937,12 +959,13 @@ export function ScheduleCalendarView({
   const mapEntries = useMemo(() => entries.filter((entry) => entry.date === activeMapDate), [entries, activeMapDate]);
   const selectBooking = (id: string | null) => {
     setSelectedId(id);
+    setSelectedPlanningLeadId(null);
     const entry = entries.find((booking) => booking.id === id);
     if (entry) setMapDate(entry.date);
   };
 
   // Map items: convert ScheduleEntry[] → DispatchMapItem[] using leads lookup
-  const mapItems = useMemo<DispatchMapItem[]>(() =>
+  const bookedMapItems = useMemo<DispatchMapItem[]>(() =>
     mapEntries
       .map((e) => {
         const lead = leads.find((l) => l.id === e.leadId);
@@ -951,6 +974,12 @@ export function ScheduleCalendarView({
       })
       .filter((x): x is DispatchMapItem => x !== null),
   [mapEntries, leads]);
+  const mapItems = useMemo(() => buildPlanningMapItems(bookedMapItems, showUnassigned ? unassignedLeads : []), [bookedMapItems, unassignedLeads, showUnassigned]);
+  const bookPlanningLead = () => {
+    if (!selectedPlanningLead) return;
+    setBookingPreset({ leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type });
+    setBookingDate(activeMapDate);
+  };
 
   // Navigation
   const prevDay = () => setCurrentDate((d) => offsetDate(d, -dayCount));
@@ -1078,6 +1107,9 @@ export function ScheduleCalendarView({
             <option value="week">Week View</option>
           </select>
 
+          <button type="button" aria-pressed={showUnassigned} onClick={() => { setShowUnassigned((show) => !show); setSelectedPlanningLeadId(null); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+            {showUnassigned ? "Hide" : "Show"} unassigned ({unassignedLeads.length})
+          </button>
           {/* Optimize Route */}
           <button
             onClick={optimizeRoute}
@@ -1108,9 +1140,27 @@ export function ScheduleCalendarView({
       </div>
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 min-h-[360px] px-5 pb-0 gap-4 overflow-x-auto">
+      <div className={`flex flex-1 ${selectedPlanningLead ? "min-h-[480px]" : "min-h-[360px]"} px-5 pb-0 gap-4 overflow-x-auto`}>
+        {showUnassigned && <div className="w-[260px] shrink-0 min-h-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-amber-100 bg-amber-50 p-3 space-y-2">
+            <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900">Unassigned leads</h3><span className="text-xs font-bold text-amber-700">{unassignedLeads.length}</span></div>
+            <div className="flex gap-1">
+              {(["all", "inspection", "job"] as const).map((type) => <button key={type} type="button" onClick={() => setPlanningFilter(type)} aria-pressed={planningFilter === type} className={`rounded-lg px-2 py-1 text-[10px] font-semibold cursor-pointer ${planningFilter === type ? "bg-amber-500 text-white" : "bg-white text-slate-600"}`}>{type === "all" ? "All" : type === "inspection" ? "Inspections" : "Jobs"}</button>)}
+            </div>
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5"><Search className="w-3.5 h-3.5 text-slate-400" /><input aria-label="Search unassigned leads" placeholder="Search name or address" value={planningSearch} onChange={(event) => setPlanningSearch(event.target.value)} className="min-w-0 w-full text-xs outline-none" /></label>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
+            {visiblePlanningLeads.map(({ lead, type }) => <button key={lead.id} type="button" onClick={() => selectPlanningLead(lead.id)} aria-pressed={selectedPlanningLeadId === lead.id} className={`w-full text-left rounded-xl border p-3 space-y-1 cursor-pointer ${selectedPlanningLeadId === lead.id ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" : "border-slate-200 hover:bg-slate-50"}`}>
+              <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-900 truncate">{lead.name || "Customer"}</span><TypeBadge type={type} /></div>
+              <p className="text-[10px] font-semibold text-slate-500">{lead.status}</p>
+              <p className="text-[11px] text-slate-600">{lead.address || lead.city || "Address needed to show on map"}</p>
+              {selectedPlanningLeadId === lead.id && <p className="text-[10px] font-bold text-violet-700">Selected for planning</p>}
+            </button>)}
+            {!visiblePlanningLeads.length && <p className="p-4 text-center text-xs text-slate-400">No unassigned leads match these filters.</p>}
+          </div>
+        </div>}
         {/* Each visible day has its own booking column. */}
-        <div className={`${dayCount === 1 ? "w-[310px] shrink-0" : "w-[60%] min-w-[280px] shrink-0"} flex min-h-0 overflow-x-auto gap-3 pb-1`}>
+        <div className={`${dayCount === 1 ? "w-[260px] shrink-0" : showUnassigned ? "w-[40%] min-w-[280px] shrink-0" : "w-[60%] min-w-[280px] shrink-0"} flex min-h-0 overflow-x-auto gap-3 pb-1`}>
           {visibleDates.map((date, dayIndex) => {
             const dayEntries = entries.filter((entry) => entry.date === date);
             return (
@@ -1135,6 +1185,13 @@ export function ScheduleCalendarView({
 
         {/* Map */}
         <div className="flex-1 min-w-[280px] min-h-0 rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
+          {selectedPlanningLead && <div className="shrink-0 border-b border-violet-200 bg-violet-50 p-3 space-y-2">
+            <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-semibold text-violet-700">Selected for {selectedPlanningLead.type === "inspection" ? "inspection" : "job"}</p><p className="text-sm font-bold text-slate-900">{selectedPlanningLead.lead.name || "Customer"}</p></div><button type="button" onClick={() => setSelectedPlanningLeadId(null)} aria-label="Clear selected lead" className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
+            <p className="text-xs text-slate-600">{selectedPlanningLead.lead.address || selectedPlanningLead.lead.city || "Add an address to place this lead on the map."}</p>
+            <p className="text-[11px] text-slate-600">Plan for {fmtDate(activeMapDate)}. Select a date to compare existing bookings.</p>
+            <div className="flex gap-2"><button type="button" onClick={bookPlanningLead} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 cursor-pointer">Book this lead</button><button type="button" onClick={() => onOpenLead(selectedPlanningLead.lead.id)} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 cursor-pointer">View details</button></div>
+          </div>}
+          <div className="flex shrink-0 flex-wrap gap-3 border-b border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600"><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Unassigned</span><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />Booked inspection</span><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Booked job</span><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-600" />Selected</span></div>
           {dayCount > 1 && <div className="flex shrink-0 items-center gap-2 overflow-x-auto bg-white p-2 border-b border-slate-200">
             {visibleDates.map((date) => <button key={date} onClick={() => { setMapDate(date); setSelectedId(null); }} aria-pressed={activeMapDate === date} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold cursor-pointer ${activeMapDate === date ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-blue-50"}`}>
               {new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
@@ -1143,8 +1200,11 @@ export function ScheduleCalendarView({
           <div className="flex-1 min-h-0">
           <RouteMapPanel
             mapItems={mapItems}
-            selectedLeadId={selectedEntry?.leadId || null}
-            onSelectLead={(id) => selectBooking(mapEntries.find((entry) => entry.leadId === id)?.id || null)}
+            selectedLeadId={selectedPlanningLead?.lead.id || selectedEntry?.leadId || null}
+            onSelectLead={(id) => {
+              if (showUnassigned && unassignedLeads.some(({ lead }) => lead.id === id)) selectPlanningLead(id);
+              else selectBooking(mapEntries.find((entry) => entry.leadId === id)?.id || null);
+            }}
           />
           </div>
         </div>
@@ -1190,6 +1250,7 @@ export function ScheduleCalendarView({
         setBookingDate(null);
         onBookingRequestHandled?.();
         showToast("Booking saved successfully!", true);
+        setMapDate(date);
         if (date >= currentDate && date <= endDate) void load();
         else setCurrentDate(date);
         onBookingsChanged?.();

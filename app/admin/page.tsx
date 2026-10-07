@@ -123,6 +123,7 @@ import {
   getFollowupPrompt, findJobsGroupForStatus,
 } from "@/lib/adminHelpers";
 import { ScheduleView } from "@/components/admin/ScheduleView";
+import { getUnassignedSchedulingType } from "@/lib/unassignedLeads";
 import { ScheduleCalendarView } from "@/components/admin/ScheduleCalendarView";
 import { ZonesView } from "@/components/admin/views/ZonesView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
@@ -3816,6 +3817,11 @@ export default function CrmDashboardPage() {
     [navigateTo]
   );
 
+  const unassignedPlanningLeads = useMemo(() => scopedLeads.flatMap((lead) => {
+    const type = getUnassignedSchedulingType(lead, inspectionStaff, assignableTechnicians);
+    return type ? [{ lead, type }] : [];
+  }), [scopedLeads, inspectionStaff, assignableTechnicians]);
+
   const openSchedule = useCallback((leadId?: string, type: "inspection" | "job" = "inspection") => {
     const lead = leads.find((entry) => entry.id === leadId);
     const appointment = type === "inspection" ? lead?.inspectionAt : lead?.jobAt;
@@ -4613,6 +4619,7 @@ export default function CrmDashboardPage() {
                       initialBooking={scheduleBookingRequest || undefined}
                       onBookingRequestHandled={() => setScheduleBookingRequest(null)}
                       leads={leads}
+                      unassignedLeads={unassignedPlanningLeads}
                       onBookingsChanged={() => { void loadData({ silent: true }); }}
                       onOpenLead={(id: string) => {
                         const lead = leads.find((l) => l.id === id);

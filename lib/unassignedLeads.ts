@@ -1,6 +1,8 @@
 import type { Lead } from "@/components/admin/types";
+import type { DispatchMapItem } from "@/components/admin/DispatchMap";
 
 export type SchedulingType = "inspection" | "job";
+export type UnassignedPlanningLead = { lead: Lead; type: SchedulingType };
 type Assignee = { id: string; name: string; username?: string };
 
 const normalize = (value?: string) => value?.trim().toLowerCase() || "";
@@ -42,4 +44,14 @@ export function getUnassignedSchedulingType(
     ? assigned(lead.inspectorId)
     : assigned(lead.technicianId) || assigned(lead.technician) || assigned(lead.technicianUsername);
   return fieldAssignment || legacyAssignment ? null : type;
+}
+
+export function buildPlanningMapItems(
+  scheduled: DispatchMapItem[],
+  unassigned: UnassignedPlanningLead[],
+): DispatchMapItem[] {
+  const scheduledIds = new Set(scheduled.map((item) => item.lead.id));
+  return [...scheduled, ...unassigned
+    .filter(({ lead }) => !scheduledIds.has(lead.id) && Boolean(lead.address?.trim() || lead.city?.trim()))
+    .map(({ lead, type }) => ({ lead, type, time: "", unassigned: true }))];
 }
