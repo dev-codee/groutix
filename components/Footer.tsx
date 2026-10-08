@@ -88,6 +88,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/balcony-regrouting" className="hover:text-white transition-colors">
+                  Balcony Leak Repair
+                </Link>
+              </li>
+              <li>
                 <Link href="/cracked-grout-or-a-leaking-shower" className="hover:text-white transition-colors">
                   Cracked Grout or a Leaking Shower
                 </Link>
