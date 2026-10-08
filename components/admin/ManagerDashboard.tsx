@@ -1,5 +1,8 @@
 "use client";
 
+import { technicianWorksOnDate } from "@/lib/technicianAvailability";
+import { estimatedJobMinutes } from "@/lib/bookingDuration";
+
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import {
   CalendarDays, Search, Wrench, Briefcase, Mail, Plus,
@@ -373,10 +376,7 @@ export function ManagerDashboard() {
     }
 
     // 2. All active technicians (from assignableTechnicians & staff with role "technician")
-    const allTechs = [
-      ...assignableTechnicians.filter((t) => t.active !== false),
-      ...(staff || []).filter((s) => s.active !== false && s.role === "technician"),
-    ];
+    const allTechs = assignableTechnicians.filter((t) => t.active !== false);
     for (const t of allTechs) {
       const name = (t.name?.trim() || (t as any).username || "").trim();
       const key = (((t as any).username || name) || "").toLowerCase().trim();
@@ -437,6 +437,10 @@ export function ManagerDashboard() {
       // 1. Closed day or outside this member's configured hours (inspectors follow
       //    inspection hours, technicians follow job hours).
       const hrs = dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey));
+      const technician = assignableTechnicians.find((tech) => tech.id === member.id);
+      if (!member.isInspector && (!technician || !technicianWorksOnDate(technician, _ymd(dateKey)))) {
+        return { status: "closed", detail: "Technician day off" };
+      }
       if (!hrs.open) {
         return { status: "closed", detail: `${WEEKDAY_NAMES[dayOfWeek]} Closed` };
       }
@@ -486,10 +490,10 @@ export function ManagerDashboard() {
         const d = member.isInspector ? (lead.inspectionAt || lead.jobAt) : (lead.jobAt || lead.inspectionAt);
         if (!d) continue;
         const apptDate = new Date(d);
-        const apptH = apptDate.getHours();
-        const durationHours = member.isInspector ? 1 : 2;
+        const apptH = apptDate.getHours() + apptDate.getMinutes() / 60;
+        const durationHours = member.isInspector ? bookingRules.inspection.slotMinutes / 60 : (estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? bookingRules.job.slotMinutes) / 60;
 
-        if (hour >= apptH && hour < apptH + durationHours) {
+        if (hour + 1 > apptH && hour < apptH + durationHours) {
           const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
           const typeStr = member.isInspector ? "Inspection" : "Job";
           return {
@@ -502,7 +506,7 @@ export function ManagerDashboard() {
 
       return { status: "available", detail: "Available (Free for Booking)" };
     },
-    [scopedLeads, isTechnicianName, bookingRules]
+    [scopedLeads, isTechnicianName, bookingRules, assignableTechnicians]
   );
 
   // Compute clean status per staff member (technician or inspector) per day from real booked leads
@@ -512,7 +516,8 @@ export function ManagerDashboard() {
       dateKey: string,
       dayOfWeek: number
     ) => {
-      if (!dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey)).open) {
+      const technician = assignableTechnicians.find((tech) => tech.id === member.id);
+      if ((!member.isInspector && (!technician || !technicianWorksOnDate(technician, _ymd(dateKey)))) || !dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey)).open) {
         return {
           status: "off" as const,
           label: "Day Off",
@@ -627,7 +632,7 @@ export function ManagerDashboard() {
         leads: dayLeads,
       };
     },
-    [scopedLeads, isTechnicianName, bookingRules]
+    [scopedLeads, isTechnicianName, bookingRules, assignableTechnicians]
   );
 
   const getStaffBadgeInitials = (name: string, isInspector: boolean, idx: number) => {

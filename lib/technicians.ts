@@ -1,3 +1,4 @@
+import { validateTechnicianSchedule } from "./technicianAvailability";
 // Lightweight technician roster (name + email) used by the Dispatch board to
 // assign inspections and notify the technician by email. Technicians are NOT
 // login accounts — for CRM logins use lib/users.ts.
@@ -15,6 +16,7 @@ export interface TechnicianDoc {
   createdAt: Date;
   /** Working weekdays: 0=Sun, 1=Mon … 6=Sat. Undefined means all days. */
   workDays?: number[];
+  dateOverrides?: Record<string, boolean>;
   aliases?: string[];
 }
 
@@ -28,6 +30,7 @@ export type TechnicianJSON = {
   hasLogin?: boolean;
   username?: string;
   workDays?: number[];
+  dateOverrides?: Record<string, boolean>;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,6 +48,8 @@ export function toTechnicianJSON(doc: TechnicianDoc): TechnicianJSON {
     active: doc.active,
     createdAt: (doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt)).toISOString(),
     workDays: doc.workDays,
+    dateOverrides: doc.dateOverrides,
+    aliases: doc.aliases,
   };
 }
 
@@ -59,32 +64,35 @@ export async function listTechnicians(options: { strict?: boolean } = {}): Promi
     const db = await getDb();
     const staffTechs = await db
       .collection("admin_users")
-      .find({ role: "technician", active: { $ne: false } })
+      .find({ role: "technician" })
       .toArray();
 
     for (const st of staffTechs) {
       const displayName = (st.name && st.name.trim()) ? st.name.trim() : st.username;
       const lowerName = displayName.toLowerCase();
       const lowerUsername = st.username ? st.username.toLowerCase() : "";
-      const existing = result.find(
-        (r) =>
-          r.id === st._id.toString() ||
-          r.name.trim().toLowerCase() === lowerName ||
-          (lowerUsername.includes("@") && r.email.toLowerCase() === lowerUsername)
-      );
+      const email = typeof st.email === "string" && st.email ? st.email.trim().toLowerCase() : lowerUsername.includes("@") ? lowerUsername : "";
+      let existing = result.find((tech) => tech.id === st._id.toString() || tech.aliases?.includes(st._id.toString()) || (email && tech.email.toLowerCase() === email));
+      if (!existing) {
+        // Support older name-only links, without merging two different people sharing a name.
+        const matches = result.filter((tech) => !tech.hasLogin && tech.name.trim().toLowerCase() === lowerName && (!email || !tech.email || tech.email.toLowerCase() === email));
+        if (matches.length === 1) existing = matches[0];
+      }
       if (existing) {
         existing.hasLogin = true;
+        existing.active = existing.active && st.active !== false;
         existing.username = st.username;
         existing.aliases = [...(existing.aliases || []), st._id.toString()];
       } else {
         result.push({
           id: st._id.toString(),
           name: displayName,
-          email: lowerUsername.includes("@") ? st.username : "",
-          active: st.active !== false,
+          email,
+          active: st.active !== false && st.jobSchedulingActive !== false,
           hasLogin: true,
           username: st.username,
           workDays: Array.isArray(st.workDays) ? st.workDays : undefined,
+          dateOverrides: st.dateOverrides,
           createdAt: (st.createdAt instanceof Date ? st.createdAt : new Date(st.createdAt || Date.now())).toISOString(),
         });
       }
@@ -154,16 +162,20 @@ export async function getTechnician(id: string): Promise<TechnicianDoc | null> {
 
 export async function updateTechnician(
   id: string,
-  updates: { workDays?: number[] | null; active?: boolean }
+  updates: { workDays?: number[] | null; dateOverrides?: Record<string, boolean> | null; active?: boolean }
 ): Promise<{ ok: boolean; error?: string }> {
   if (!ObjectId.isValid(id)) return { ok: false, error: "Invalid id." };
+  const error = validateTechnicianSchedule(updates);
+  if (error) return { ok: false, error };
   const set: Partial<TechnicianDoc> = {};
   const unset: Record<string, "">=  {};
   if (updates.workDays === null) {
     unset.workDays = "";
   } else if (Array.isArray(updates.workDays)) {
-    set.workDays = updates.workDays.filter((d) => d >= 0 && d <= 6);
+    set.workDays = [...new Set(updates.workDays)].sort();
   }
+  if (updates.dateOverrides === null) unset.dateOverrides = "";
+  else if (updates.dateOverrides !== undefined) set.dateOverrides = updates.dateOverrides;
   if (typeof updates.active === "boolean") set.active = updates.active;
   try {
     const col = await collection();
@@ -171,8 +183,23 @@ export async function updateTechnician(
     if (Object.keys(set).length > 0) op.$set = set;
     if (Object.keys(unset).length > 0) op.$unset = unset;
     if (Object.keys(op).length === 0) return { ok: false, error: "Nothing to update." };
-    const res = await col.updateOne({ _id: new ObjectId(id) }, op);
-    return { ok: res.matchedCount > 0 };
+    // Resolve legacy staff IDs to the same roster entry used by capacity checks.
+    const roster = await listTechnicians({ strict: true });
+    const technician = roster.find((tech) => tech.id === id || tech.aliases?.includes(id));
+    if (!technician) return { ok: false, error: "Technician not found." };
+    const rosterDoc = await col.findOne({ _id: new ObjectId(technician.id) });
+    if (rosterDoc) {
+      const res = await col.updateOne({ _id: rosterDoc._id }, op);
+      return { ok: res.matchedCount > 0 };
+    }
+    // Scheduling inactivity must not disable the technician's portal login.
+    if ("active" in set) {
+      (set as Record<string, unknown>).jobSchedulingActive = set.active;
+      delete set.active;
+    }
+    const db = await getDb();
+    const res = await db.collection("admin_users").updateOne({ _id: new ObjectId(technician.id), role: "technician" }, op);
+    return { ok: res.matchedCount > 0, ...(res.matchedCount ? {} : { error: "Technician not found." }) };
   } catch (err) {
     console.error("updateTechnician failed:", err);
     return { ok: false, error: "Could not update technician." };

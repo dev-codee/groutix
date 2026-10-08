@@ -1,5 +1,7 @@
 "use client";
 
+import { estimatedJobMinutes } from "@/lib/bookingDuration";
+
 import { useRef, useState } from "react";
 import { X, Phone, MapPin } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
@@ -56,20 +58,21 @@ export function LeadEditModal({
   const [showBoard, setShowBoard] = useState<{ inspection: boolean; job: boolean }>({ inspection: false, job: false });
   const [plannerFor, setPlannerFor] = useState<"inspection" | "job" | null>(null);
   const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id, "inspection");
-  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id, "job");
+  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id, "job", estimatedJobMinutes(editingLead?.inspectionReport?.estimatedTime), editingLead || {});
   // Times as they were when the form opened — only a CHANGED time needs the double-booking check.
   const original = useRef({ inspectionAt: editingLead?.inspectionAt || "", jobAt: editingLead?.jobAt || "" });
 
   const onSubmit = (e: React.FormEvent) => {
     const clashes = [
       editingLead?.inspectionAt !== original.current.inspectionAt && inspectionConflict
-        ? `Inspection: ${inspectionConflict.time} is already booked by ${inspectionConflict.label}`
+        ? `Inspection: ${inspectionConflict.label}`
         : null,
       editingLead?.jobAt !== original.current.jobAt && jobConflict
-        ? `Job: ${jobConflict.time} is already booked by ${jobConflict.label}`
+        ? `Job: ${jobConflict.label}`
         : null,
     ].filter(Boolean);
-    if (clashes.length && !window.confirm(`Double booking!\n\n${clashes.join("\n")}\n\nSave anyway?`)) {
+    if (clashes.length) {
+      window.alert(clashes.join("\n"));
       e.preventDefault();
       return;
     }
@@ -237,7 +240,7 @@ export function LeadEditModal({
                 <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {inspectionWarning}</p>
               )}
               {inspectionConflict && (
-                <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {inspectionConflict.label}</p>
+                <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ {inspectionConflict.label}</p>
               )}
               <div className="flex items-center gap-3 mt-2">
                 <button
@@ -326,7 +329,7 @@ export function LeadEditModal({
                 <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {jobWarning}</p>
               )}
               {jobConflict && (
-                <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ Already booked: {jobConflict.label}</p>
+                <p className="text-[10px] font-semibold text-red-600 mt-1">⛔ {jobConflict.label}</p>
               )}
               <div className="flex items-center gap-3 mt-2">
                 <button
@@ -348,6 +351,8 @@ export function LeadEditModal({
               {showBoard.job && (
                 <SlotBoard
                   type="job"
+                  durationMinutes={estimatedJobMinutes(editingLead?.inspectionReport?.estimatedTime)}
+                  assignment={editingLead || {}}
                   value={editingLead?.jobAt}
                   leadId={editingLead?.id}
                   address={editingLead?.address || editingLead?.city}

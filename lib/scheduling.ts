@@ -932,6 +932,9 @@ export function addDaysYmd(date: string, days: number): string {
 export interface TimeSlot {
   time: string; // "HH:mm"
   booked: boolean; // already locked by another customer
+  capacity?: number;
+  remaining?: number;
+  reason?: string | null;
 }
 
 export interface DayOption {

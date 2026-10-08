@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     const [appointments, routeOrders, roster] = await Promise.all([
       listAppointmentsBetween(from, to, { strict: true }), getScheduleRouteOrders(from, to), listTechnicians({ strict: true }),
     ]);
-    const technicians = roster.map(({ id, name, username, active, workDays, aliases }) => ({ id, name, username, active, workDays, aliases }));
+    const technicians = roster.map(({ id, name, username, active, workDays, dateOverrides, aliases }) => ({ id, name, username, active, workDays, dateOverrides, aliases }));
     return NextResponse.json({ from, to, appointments, routeOrders, technicians }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("Load schedule failed:", err);

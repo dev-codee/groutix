@@ -19,20 +19,24 @@ import { useZoneRules } from "@/lib/useZoneRules";
 // Inspections and jobs share ONE calendar (see lib/bookings.ts), so every
 // appointment on the day is shown, whatever its type.
 
+import { useTechnicians } from "@/lib/useTechnicians";
+import { bookingAvailability, type BookingTechnician, type TechnicianAssignment } from "@/lib/bookingCapacity";
+import { overlapsSlot } from "@/lib/bookingDuration";
 import type { DayAppointment } from "@/lib/bookings";
 export type { DayAppointment };
 
 // Short-lived per-date cache so both boards (inspection + job) and the conflict
 // check share one request, without showing stale data after a save.
 const CACHE_MS = 20_000;
-const cache = new Map<string, Promise<DayAppointment[]>>();
+type DayData = { appointments: DayAppointment[]; technicians: BookingTechnician[] };
+const cache = new Map<string, Promise<DayData>>();
 const cachedAt = new Map<string, number>();
-function fetchDay(date: string, fresh = false): Promise<DayAppointment[]> {
+function fetchDay(date: string, fresh = false): Promise<DayData> {
   if (fresh || !cache.has(date) || Date.now() - (cachedAt.get(date) || 0) > CACHE_MS) {
     cachedAt.set(date, Date.now());
     const p = fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d) => (d.appointments || []) as DayAppointment[])
+      .then((d) => ({ appointments: d.appointments || [], technicians: d.technicians || [] }))
       .catch((err) => {
         cache.delete(date);
         throw err;
@@ -63,28 +67,31 @@ function describe(a: DayAppointment, leadId?: string): string {
 }
 
 /** Another lead already holding `value`'s date+time on the shared calendar, if any. */
-export function useSlotConflict(value: string | undefined, leadId: string | undefined, type?: BookingType) {
+export function useSlotConflict(value: string | undefined, leadId: string | undefined, type?: BookingType, durationMinutes?: number, assignment: TechnicianAssignment = {}) {
+  const rules = useBookingRules();
+  const { technicians, loading: rosterLoading } = useTechnicians();
   // Result is tagged with the slot it was computed for, so a stale answer for a
   // previous value is never shown.
-  const [result, setResult] = useState<{ key: string; conflict: DayAppointment | null } | null>(null);
+  const [result, setResult] = useState<{ key: string; conflict: { time: string; label: string } | null } | null>(null);
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value || "");
   const date = m?.[1];
   const time = m?.[2];
-  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}` : "";
+  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${assignment.technicianId || assignment.technician || ""}` : "";
   useEffect(() => {
-    if (!date || !time) return;
+    if (!date || !time || rosterLoading) return;
     let alive = true;
     fetchDay(date)
-      .then((appts) => {
-        if (alive) setResult({ key, conflict: appts.find((a) => a.time === time && a.leadId !== leadId && (!type || a.type === type)) ?? null });
+      .then(({ appointments }) => {
+        const availability = bookingAvailability(appointments, { date, time, leadId: leadId || "", type: type || "job", durationMinutes, ...assignment }, rules, technicians);
+        if (alive) setResult({ key, conflict: availability.available ? null : { time, label: availability.reason || "This time is unavailable." } });
       })
       .catch(() => alive && setResult({ key, conflict: null }));
     return () => {
       alive = false;
     };
-  }, [key, date, time, leadId, type]);
+  }, [key, date, time, leadId, type, durationMinutes, assignment.technicianId, assignment.technician, assignment.technicianUsername, rules, technicians, rosterLoading]);
   const conflict = key && result?.key === key ? result.conflict : null;
-  return conflict ? { ...conflict, label: describe(conflict, leadId) } : null;
+  return conflict;
 }
 
 export function SlotBoard({
@@ -93,8 +100,12 @@ export function SlotBoard({
   leadId,
   address,
   onPick,
+  durationMinutes,
+  assignment = {},
 }: {
   type: BookingType;
+  durationMinutes?: number;
+  assignment?: TechnicianAssignment;
   value: string | undefined;
   leadId?: string;
   /** Customer address, so the board can flag days outside their zone. */
@@ -102,6 +113,7 @@ export function SlotBoard({
   onPick: (value: string) => void;
 }) {
   const rules = useBookingRules();
+  const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
   const valueDate = /^(\d{4}-\d{2}-\d{2})/.exec(value || "")?.[1];
@@ -118,13 +130,13 @@ export function SlotBoard({
 
   // Loaded data is tagged with its day + refresh tick; anything else means "loading".
   const [tick, setTick] = useState(0);
-  const [loaded, setLoaded] = useState<{ key: string; appts: DayAppointment[] | null; error: boolean } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; appts: DayAppointment[] | null; technicians: BookingTechnician[]; error: boolean } | null>(null);
   const loadKey = `${day}#${tick}`;
   useEffect(() => {
     let alive = true;
     fetchDay(day, tick > 0)
-      .then((a) => alive && setLoaded({ key: loadKey, appts: a, error: false }))
-      .catch(() => alive && setLoaded({ key: loadKey, appts: null, error: true }));
+      .then((a) => alive && setLoaded({ key: loadKey, appts: a.appointments, technicians: a.technicians, error: false }))
+      .catch(() => alive && setLoaded({ key: loadKey, appts: null, technicians: [], error: true }));
     return () => {
       alive = false;
     };
@@ -150,11 +162,13 @@ export function SlotBoard({
     const map = new Map<string, DayAppointment[]>();
     for (const a of appts || []) {
       if (a.type === type) {
-        map.set(a.time, [...(map.get(a.time) || []), a]);
+        for (const time of gridTimes) {
+          if (overlapsSlot(a, time, durationMinutes || rules[type].slotMinutes, rules)) map.set(time, [...(map.get(time) || []), a]);
+        }
       }
     }
     return map;
-  }, [appts, type]);
+  }, [appts, type, gridTimes.join(","), durationMinutes, rules]);
 
   const otherTypeByTime = useMemo(() => {
     const map = new Map<string, DayAppointment[]>();
@@ -167,7 +181,9 @@ export function SlotBoard({
   }, [appts, type]);
 
   const offGrid = (appts || []).filter((a) => !gridTimes.includes(a.time));
-  const freeCount = gridTimes.filter((t) => !(byTime.get(t) || []).some((a) => a.leadId !== leadId)).length;
+  const availabilityAt = (time: string) => bookingAvailability(appts || [], { date: day, time, type, leadId: leadId || "", durationMinutes, ...assignment }, rules, technicians);
+  const availableAt = (time: string) => availabilityAt(time).available;
+  const freeCount = gridTimes.filter(availableAt).length;
 
   let dayNote: string;
   if (closed) dayNote = `Closed${closed.label ? ` — ${closed.label}` : ""}`;
@@ -217,17 +233,18 @@ export function SlotBoard({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
               {gridTimes.map((t) => {
                 const holders = byTime.get(t) || [];
-                const other = holders.find((a) => a.leadId !== leadId);
+                const availability = availabilityAt(t);
+                const other = (availability.overlapping as DayAppointment[]).find((a) => a.leadId !== leadId);
                 const own = holders.find((a) => a.leadId === leadId);
                 const otherTypeHolders = otherTypeByTime.get(t) || [];
                 const selected = day === valueDate && t === valueTime;
                 const past = day < today || (day === today && t <= nowHHmm);
                 const base = "rounded-lg border px-2 py-1.5 text-left text-[10px] leading-tight transition-colors";
-                if (other) {
+                if (!availableAt(t)) {
                   return (
                     <div key={t} title={holders.map((a) => describe(a, leadId)).join("\n")} className={`${base} ${selected ? "border-red-500 ring-2 ring-red-300" : "border-red-200"} bg-red-50 text-red-700 cursor-not-allowed`}>
-                      <div className="font-bold">{formatHHmm(t)} · Booked</div>
-                      <div className="truncate">{other.name}{other.type === "job" ? " (Job)" : " (Insp.)"}</div>
+                      <div className="font-bold">{formatHHmm(t)} · {availability.capacity === 0 ? "Unavailable" : "Booked"}</div>
+                      <div className="truncate">{other?.name || "Technician unavailable"}{other?.type === "job" ? " (Job)" : ""}</div>
                     </div>
                   );
                 }
@@ -258,7 +275,7 @@ export function SlotBoard({
                     }`}
                   >
                     <div className="font-bold">{formatHHmm(t)}</div>
-                    <div>{selected ? "Selected" : own ? `Saved (${own.type === "job" ? "job" : "insp."})` : past ? "Past" : `Free${otherTypeNote}`}</div>
+                    <div>{selected ? "Selected" : own ? `Saved (${own.type === "job" ? "job" : "insp."})` : past ? "Past" : `Free${type === "job" ? ` · ${availability.remaining} technician${availability.remaining === 1 ? "" : "s"}` : otherTypeNote}`}</div>
                   </button>
                 );
               })}
@@ -280,7 +297,7 @@ export function SlotBoard({
           )}
         </>
       )}
-      <p className="text-[9px] text-slate-400">Inspections and jobs share one calendar — a booked slot is taken for both.</p>
+      <p className="text-[9px] text-slate-400">Jobs reserve the full estimated time for their assigned technician. Inspection availability is separate.</p>
     </div>
   );
 }

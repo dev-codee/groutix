@@ -15,8 +15,12 @@ async function requireSession(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const session = await requireSession(req);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const technicians = await listTechnicians();
-  return NextResponse.json({ technicians });
+  try {
+    const technicians = await listTechnicians({ strict: true });
+    return NextResponse.json({ technicians }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "Could not load technicians." }, { status: 503 });
+  }
 }
 
 export async function POST(req: NextRequest) {

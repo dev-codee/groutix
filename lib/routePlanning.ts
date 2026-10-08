@@ -1,3 +1,4 @@
+import { appointmentDurationMinutes } from "./bookingDuration";
 // Route-aware slot scoring for staff booking. Given the stops already on a day's
 // (shared) calendar and a new customer's location, work out how well each free
 // slot fits the route:
@@ -17,6 +18,7 @@ import { SUBURBS, TULLAMARINE, distanceKm, resolveArea } from "./scheduling";
 import { toMinutes, type BookingRules, type BookingType } from "./bookingRules";
 
 export interface PlannerStop {
+  durationMinutes?: number;
   time: string; // HH:mm
   type: BookingType;
   leadId: string;
@@ -82,7 +84,8 @@ export function scoreSlot(
   time: string,
   stops: PlannerStop[],
   rules: BookingRules,
-  slotType: BookingType = "inspection"
+  slotType: BookingType = "inspection",
+  durationMinutes?: number
 ): SlotFit {
   const located = stops
     .map((s) => ({ s, p: stopPoint(s) }))
@@ -103,11 +106,11 @@ export function scoreSlot(
   // Can the crew get here after the previous visit, and on to the next one in time?
   let tight = false;
   if (prev) {
-    const prevEnds = toMinutes(prev.s.time) + rules[prev.s.type].slotMinutes;
+    const prevEnds = toMinutes(prev.s.time) + appointmentDurationMinutes(prev.s, rules);
     if (prevEnds + driveMinutes(dPrev) > toMinutes(time)) tight = true;
   }
   if (next) {
-    const thisEnds = toMinutes(time) + rules[slotType].slotMinutes;
+    const thisEnds = toMinutes(time) + appointmentDurationMinutes({ type: slotType, durationMinutes }, rules);
     if (thisEnds + driveMinutes(dNext) > toMinutes(next.s.time)) tight = true;
   }
 

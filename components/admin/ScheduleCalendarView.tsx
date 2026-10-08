@@ -1,5 +1,10 @@
 "use client";
 
+import { useTechnicians } from "@/lib/useTechnicians";
+import type { BookingRules } from "@/lib/bookingRules";
+import { bookingAvailability } from "@/lib/bookingCapacity";
+import { appointmentDurationMinutes, estimatedJobMinutes } from "@/lib/bookingDuration";
+
 import {
   useState,
   useCallback,
@@ -55,6 +60,9 @@ interface ScheduleEntry {
   time: string;         // HH:mm
   endTime?: string;     // HH:mm (derived)
   durationMinutes: number;
+  technicianId?: string;
+  technician?: string;
+  technicianUsername?: string;
   customer: {
     name: string;
     phone: string;
@@ -137,13 +145,12 @@ function inputDateToday(): string {
   return todayStr();
 }
 
-async function checkBookingAvailability(leadId: string, type: JobType, date: string, time: string) {
+async function checkBookingAvailability(leadId: string, type: JobType, date: string, time: string, rules: BookingRules, lead?: Lead, durationMinutes?: number) {
   const response = await fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not check availability.");
-  if ((result.appointments as DayAppointment[]).some((entry) => entry.time === time && (entry.leadId !== leadId || entry.type !== type))) {
-    throw new Error("This time is already booked. Please choose another time.");
-  }
+  const availability = bookingAvailability(result.appointments, { leadId, type, date, time, durationMinutes: durationMinutes ?? estimatedJobMinutes(lead?.inspectionReport?.estimatedTime), technicianId: lead?.technicianId, technician: lead?.technician, technicianUsername: lead?.technicianUsername }, rules, result.technicians || []);
+  if (!availability.available) throw new Error(availability.reason || "This time is already booked.");
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -347,7 +354,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onB
     setSaving(true);
     setError("");
     try {
-      await checkBookingAvailability(leadId, type, date, time);
+      await checkBookingAvailability(leadId, type, date, time, rules, selectedLead);
       const response = await fetch(`/api/admin/submissions/${leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -908,6 +915,16 @@ export function ScheduleCalendarView({
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState("");
   const rules = useBookingRules();
+  const { technicians } = useTechnicians();
+  const suggestTime = (type: JobType, date: string, preferred?: string, leadId?: string) => {
+    const lead = leads.find((lead) => lead.id === leadId);
+    const entry = entries.find((entry) => entry.leadId === leadId && entry.type === type);
+    return suggestedPlanningTime(rules, type, date, entries, preferred, technicians, {
+      leadId, durationMinutes: estimatedJobMinutes(lead?.inspectionReport?.estimatedTime) ?? entry?.durationMinutes,
+      technicianId: entry?.technicianId || lead?.technicianId,
+      technician: entry?.technician || lead?.technician, technicianUsername: entry?.technicianUsername || lead?.technicianUsername,
+    });
+  };
   const [rescheduleModal, setRescheduleModal] = useState<RescheduleModal | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -969,7 +986,8 @@ export function ScheduleCalendarView({
         type: entry.type,
         date: entry.date,
         time: entry.time,
-        durationMinutes: rules[entry.type].slotMinutes,
+        durationMinutes: appointmentDurationMinutes(entry, rules),
+        technicianId: entry.technicianId, technician: entry.technician, technicianUsername: entry.technicianUsername,
         customer: { name: entry.name, address: entry.address || "", phone: "", email: "", status: entry.status || "" },
         zone: "flexible",
         suburb: entry.suburb || null,
@@ -1035,7 +1053,7 @@ export function ScheduleCalendarView({
     if (!selectedPlanningLead) return;
     if (!discardChanges()) return;
     setBookingPreset({ leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type });
-    setBookingTime(suggestedPlanningTime(rules, selectedPlanningLead.type, activeMapDate, entries));
+    setBookingTime(suggestTime(selectedPlanningLead.type, activeMapDate, undefined, selectedPlanningLead.lead.id));
     setBookingDate(activeMapDate);
   };
 
@@ -1089,11 +1107,11 @@ export function ScheduleCalendarView({
     setMapDate(date);
     if (proposal.kind === "reschedule") {
       const entry = entries.find((entry) => entry.id === proposal.entry.id)!;
-      setRescheduleModal({ entry, newDate: date, newTime: suggestedPlanningTime(rules, entry.type, date, entries, entry.time), saving: false, error: "" });
+      setRescheduleModal({ entry, newDate: date, newTime: suggestTime(entry.type, date, entry.time, entry.leadId), saving: false, error: "" });
     } else {
       if (!unassignedLeads.some(({ lead, type }) => lead.id === proposal.leadId && type === proposal.type)) return;
       setBookingPreset({ leadId: proposal.leadId, type: proposal.type });
-      setBookingTime(suggestedPlanningTime(rules, proposal.type, date, entries));
+      setBookingTime(suggestTime(proposal.type, date, undefined, proposal.leadId));
       setBookingDate(date);
     }
   };
@@ -1119,7 +1137,7 @@ export function ScheduleCalendarView({
     if (!discardChanges()) return;
     setRescheduleModal((m) => m ? { ...m, saving: true, error: "" } : m);
     try {
-      await checkBookingAvailability(rescheduleModal.entry.leadId, rescheduleModal.entry.type, newDate, newTime);
+      await checkBookingAvailability(rescheduleModal.entry.leadId, rescheduleModal.entry.type, newDate, newTime, rules, leads.find((lead) => lead.id === rescheduleModal.entry.leadId), rescheduleModal.entry.durationMinutes);
       const res = await fetch(`/api/admin/submissions/${rescheduleModal.entry.leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1343,7 +1361,7 @@ export function ScheduleCalendarView({
                   disabled={routeSaving || !!loadError}
                   onReschedule={openReschedule}
                   onRemove={openRemove}
-                  onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestedPlanningTime(rules, selectedPlanningLead?.type || "inspection", date, entries)); setBookingDate(date); }}
+                  onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestTime(selectedPlanningLead?.type || "inspection", date, undefined, selectedPlanningLead?.lead.id)); setBookingDate(date); }}
                   dateStr={date}
                 />}
                 {!loading && <div className={`m-3 rounded-lg border border-dashed p-3 text-center text-[11px] ${dragging ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"}`}>{date < todayStr() ? "Past day · Drag bookings to a future day" : "Drop a lead or booking here · Confirm date and time before saving"}</div>}

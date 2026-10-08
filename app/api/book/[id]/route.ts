@@ -1,3 +1,6 @@
+import { estimatedJobMinutes } from "@/lib/bookingDuration";
+import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
+import { dayHours, toMinutes, weekdayOf } from "@/lib/bookingRules";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getSubmission,
@@ -87,94 +90,13 @@ function resolveLeadArea(
 }
 
 import { listTechnicians } from "@/lib/technicians";
-import { bookingAvailability, techniciansOnDate, type CapacityAppointment } from "@/lib/bookingCapacity";
+
 import type { BookingRules } from "@/lib/bookingRules";
 
 function parseCoord(v: string | null | undefined): number | null {
   if (v == null || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-async function buildMaps(
-  area: AreaInfo,
-  type: "inspection" | "job",
-  currentLeadId?: string,
-  rules?: BookingRules
-) {
-  const [bookings, roster] = await Promise.all([
-    listUpcomingBookings(),
-    listTechnicians(),
-  ]);
-  const bookedByDate = new Map<string, Set<string>>();
-  const sameZoneDates = new Set<string>();
-
-  for (const b of bookings) {
-    if (b.zone === area.zone || (area.inner && b.date)) {
-      sameZoneDates.add(b.date);
-    }
-  }
-
-  // Filter bookings to ONLY those of the matching type (inspections and jobs
-  // are separate pools and never lock each other), excluding this lead's own slot.
-  const relevantBookings = bookings.filter((b) => b.type === type && b.leadId !== currentLeadId);
-
-  if (type === "inspection") {
-    // Single-inspector pool: any inspection on (date, time) locks it.
-    // Job bookings never lock inspection slots.
-    for (const b of relevantBookings) {
-      if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
-      bookedByDate.get(b.date)!.add(b.time);
-    }
-  } else {
-    // Jobs: capacity is determined by active technicians working on that date.
-    // Inspection bookings NEVER lock jobs.
-    const jobsByDate = new Map<string, CapacityAppointment[]>();
-    for (const b of relevantBookings) {
-      if (!jobsByDate.has(b.date)) jobsByDate.set(b.date, []);
-      jobsByDate.get(b.date)!.push(b);
-    }
-
-    if (rules) {
-      for (const [date, dayJobs] of jobsByDate.entries()) {
-        const working = techniciansOnDate(roster, date);
-        if (working.length === 0) {
-          if (!bookedByDate.has(date)) bookedByDate.set(date, new Set());
-          for (const b of dayJobs) bookedByDate.get(date)!.add(b.time);
-        } else {
-          for (const b of dayJobs) {
-            const avail = bookingAvailability(
-              dayJobs,
-              { date, time: b.time, leadId: currentLeadId || "", type: "job" },
-              rules,
-              roster
-            );
-            if (!avail.available) {
-              if (!bookedByDate.has(date)) bookedByDate.set(date, new Set());
-              bookedByDate.get(date)!.add(b.time);
-            }
-          }
-        }
-      }
-    } else {
-      for (const [date, dayJobs] of jobsByDate.entries()) {
-        const working = techniciansOnDate(roster, date);
-        const capacity = working.length;
-        const countByTime = new Map<string, number>();
-        for (const b of dayJobs) {
-          countByTime.set(b.time, (countByTime.get(b.time) || 0) + 1);
-        }
-        for (const [t, count] of countByTime.entries()) {
-          if (count >= capacity) {
-            if (!bookedByDate.has(date)) bookedByDate.set(date, new Set());
-            bookedByDate.get(date)!.add(t);
-          }
-        }
-      }
-    }
-  }
-
-  return { bookedByDate, sameZoneDates };
 }
 
 // ── GET: availability for the customer's area ──────────────────────────────
@@ -199,16 +121,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const lng = parseCoord(req.nextUrl.searchParams.get("lng"));
   const [zoneRules, rules] = await Promise.all([getZoneRules(), getBookingRules()]);
   const area = resolveLeadArea(lead, lat, lng, zoneRules);
-  const { bookedByDate, sameZoneDates } = await buildMaps(area, type, id, rules);
-  // Dedicated booking page — more room than the quote form, so offer a wider
-  // choice, still bounded so an outer-zone customer isn't shown next quarter.
-  const days = shortlistDays(
-    computeAvailability(area, bookedByDate, sameZoneDates, type, rules, zoneRules),
-    { maxOptions: 14, maxDaysAhead: 35 }
-  );
+  let appointments;
+  let technicians;
+  try {
+    [appointments, technicians] = await Promise.all([listUpcomingBookings({ strict: true }), listTechnicians({ strict: true })]);
+  } catch {
+    return NextResponse.json({ error: "Could not load booking availability. Please try again." }, { status: 503 });
+  }
+  const sameZoneDates = new Set(appointments.filter((entry) => entry.zone === area.zone || area.inner).map((entry) => entry.date));
+  const durationMinutes = type === "job" ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes : rules.inspection.slotMinutes;
+  const days = shortlistDays(applyBookingCapacity(
+    computeAvailability(area, new Map(), sameZoneDates, type, rules, zoneRules), appointments,
+    { leadId: id, type, durationMinutes, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername },
+    rules, technicians,
+  ), { maxOptions: 14, maxDaysAhead: 35 });
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
 
   return NextResponse.json({
+    durationMinutes,
     customer: { name: lead.name || "", address: lead.address || "" },
     type,
     area: {
@@ -271,8 +201,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
   const rules = await getBookingRules();
+  const durationMinutes = type === "job" ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes : rules.inspection.slotMinutes;
   if (!isSlotOffered(area, date, time, type, rules, zoneRules)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
+  }
+
+  const hours = dayHours(rules, type, weekdayOf(date), date);
+  if (toMinutes(time) + durationMinutes > toMinutes(hours.end)) {
+    return NextResponse.json({ error: "The full job does not fit before closing. Choose an earlier time." }, { status: 400 });
   }
 
   // Use assigned lead number (e.g. "JOBNO-1201") as the booking reference number.
@@ -306,7 +242,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     day: "2-digit",
     month: "long",
   });
-  const whenLabel = `${dayName} · ${formatSlotRange(time, rules[type].slotMinutes)}`;
+  const whenLabel = `${dayName} · ${formatSlotRange(time, durationMinutes)}`;
   const now = new Date().toISOString();
 
   // Advance the lead + arm the 24h reminder for the fresh appointment.

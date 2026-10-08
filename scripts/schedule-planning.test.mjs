@@ -26,6 +26,9 @@ const load = (relativePath, overrides = {}, globals = {}) => {
 };
 const scheduling = load("../lib/unassignedLeads.ts");
 const calendarDependencies = {
+  "@/lib/useTechnicians": { useTechnicians: () => ({ technicians: [{ id: "tech", name: "Technician", active: true }] }) },
+  "@/lib/bookingCapacity": loadTs("lib/bookingCapacity.ts"),
+  "@/lib/bookingDuration": loadTs("lib/bookingDuration.ts"),
   "@/lib/unassignedLeads": scheduling,
   "@/lib/scheduleDays": load("../lib/scheduleDays.ts"),
   "@/lib/scheduleRoutes": loadTs("lib/scheduleRoutes.ts"),
@@ -93,7 +96,7 @@ function interactiveCalendar() {
     window: { confirm: () => true },
     fetch: async (url, options) => {
       requests.push({ url, ...options });
-      return { ok: true, json: async () => ({ appointments, routeOrders: {} }) };
+      return { ok: true, json: async () => ({ appointments, routeOrders: {}, technicians: [{ id: "tech", name: "Technician", active: true }] }) };
     },
   });
   const props = { initialBooking: { leadId: "chosen", type: "job", date: "2099-10-08" }, unassignedLeads, leads: unassignedLeads.map(({ lead }) => lead), onOpenLead: () => {} };

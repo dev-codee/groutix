@@ -16,6 +16,7 @@ import {
   type DayChangeover,
   type DayHours,
 } from "@/lib/bookingRules";
+import { TechnicianAvailabilityPanel } from "@/components/admin/TechnicianAvailabilityEditor";
 import { publishBookingRules } from "@/lib/useBookingRules";
 
 // Monday-first display order (rules are stored Sunday = 0).
@@ -24,7 +25,7 @@ const SLOT_OPTIONS = [30, 45, 60, 90, 120, 180, 240];
 
 export function BookingRulesModal({ onClose }: { onClose: () => void }) {
   const [rules, setRules] = useState<BookingRules | null>(null);
-  const [tab, setTab] = useState<BookingType>("inspection");
+  const [tab, setTab] = useState<BookingType | "technicians">("inspection");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -37,6 +38,17 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
       .then((d) => setRules(sanitizeBookingRules(d.rules)))
       .catch(() => setError("Couldn't load booking rules."));
   }, []);
+
+  if (tab === "technicians") return (
+    <Shell onClose={onClose}>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button type="button" onClick={() => setTab("inspection")} className="px-3 py-2 rounded-lg border text-xs font-bold">Inspection Hours</button>
+        <button type="button" onClick={() => setTab("job")} className="px-3 py-2 rounded-lg border text-xs font-bold">Job Hours</button>
+        <span className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">Technician Availability</span>
+      </div>
+      <TechnicianAvailabilityPanel />
+    </Shell>
+  );
 
   if (!rules) {
     return (
@@ -118,6 +130,8 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
           </button>
         ))}
       </div>
+
+      <button type="button" onClick={() => setTab("technicians")} className="w-full py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold cursor-pointer">Edit Technician Availability & Job Capacity</button>
 
       {/* Slot length */}
       <div className="flex items-center justify-between gap-3 text-xs">

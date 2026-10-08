@@ -143,6 +143,7 @@ import { PhotosModal } from "@/components/admin/modals/PhotosModal";
 import { TeamChatModal } from "@/components/admin/modals/TeamChatModal";
 import { JobCardModal } from "@/components/admin/modals/JobCardModal";
 import { LeadEditModal } from "@/components/admin/modals/LeadEditModal";
+import { useTechnicians, publishTechnicianChanges } from "@/lib/useTechnicians";
 import { BookingRulesModal } from "@/components/admin/modals/BookingRulesModal";
 import { ZoneRulesModal } from "@/components/admin/modals/ZoneRulesModal";
 
@@ -265,9 +266,7 @@ export default function CrmDashboardPage() {
   >([]);
 
   // Field-technician roster (name + email) and staff technicians.
-  const [technicians, setTechnicians] = useState<
-    { id: string; name: string; email: string; active: boolean; createdAt: string; hasLogin?: boolean; username?: string }[]
-  >([]);
+  const { technicians } = useTechnicians();
   const [techName, setTechName] = useState("");
   const [techEmail, setTechEmail] = useState("");
   const [techBusy, setTechBusy] = useState(false);
@@ -824,21 +823,6 @@ export default function CrmDashboardPage() {
     };
   }, []);
 
-  // Load the field-technician roster (drives the Technicians view and the
-  // dispatch picker on job cards). Only the roles allowed to see it fetch it.
-  const loadTechnicians = useCallback(() => {
-    fetch("/api/admin/technicians", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setTechnicians(data.technicians || []);
-      })
-      .catch(() => { });
-  }, []);
-
-  useEffect(() => {
-    loadTechnicians();
-  }, [loadTechnicians]);
-
   // Poll unread team-chat counts so the Team cards badge new messages, and keep
   // an open conversation live-updating while the chat panel is on screen.
   useEffect(() => {
@@ -1149,61 +1133,8 @@ export default function CrmDashboardPage() {
     [activeMessageLead, leads]
   );
 
-  // Unified technicians list: combines both the dispatch roster (`technicians`) and
-  // staff accounts created with role === "technician" (`staff`).
-  const assignableTechnicians = useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; email?: string; active?: boolean; hasLogin?: boolean; username?: string }
-    >();
-
-    // 1. Add roster technicians (which may already include staff techs from API)
-    for (const t of technicians) {
-      map.set(t.id, {
-        id: t.id,
-        name: t.name,
-        email: t.email,
-        active: t.active !== false,
-        hasLogin: (t as any).hasLogin || false,
-        username: (t as any).username || "",
-      });
-    }
-
-    // 2. Also merge staff accounts with role === "technician"
-    for (const s of staff) {
-      if (s.role === "technician" && s.active !== false) {
-        const displayName = (s.name && s.name.trim()) ? s.name.trim() : s.username;
-        const lowerName = displayName.toLowerCase();
-        const existing = Array.from(map.values()).find(
-          (t) => t.id === s.id || t.name.trim().toLowerCase() === lowerName || (t.username && t.username.toLowerCase() === s.username.toLowerCase())
-        );
-        if (existing) {
-          // Prefer the staff account id (MongoDB _id) so the login filter
-          // (staff.find(s => s.username === username)?.id) matches technicianId.
-          const oldKey = Array.from(map.entries()).find(([, v]) => v === existing)?.[0];
-          if (oldKey && oldKey !== s.id) {
-            map.delete(oldKey);
-            map.set(s.id, existing);
-          }
-          existing.id = s.id;
-          existing.hasLogin = true;
-          existing.username = s.username;
-          if (!existing.name) existing.name = displayName;
-        } else {
-          map.set(s.id, {
-            id: s.id,
-            name: displayName,
-            email: s.username.includes("@") ? s.username : "",
-            active: true,
-            hasLogin: true,
-            username: s.username,
-          });
-        }
-      }
-    }
-
-    return Array.from(map.values());
-  }, [technicians, staff]);
+  // The server merges roster entries and portal accounts with stable IDs/aliases.
+  const assignableTechnicians = technicians;
 
   // Staff accounts with the inspection feature/role
   const inspectionStaff = useMemo(
@@ -1375,7 +1306,7 @@ export default function CrmDashboardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.technician) {
-        setTechnicians((prev) => [data.technician, ...prev]);
+        await publishTechnicianChanges();
         setTechName("");
         setTechEmail("");
       } else {
@@ -1394,7 +1325,7 @@ export default function CrmDashboardPage() {
     try {
       const res = await fetch(`/api/admin/technicians/${t.id}`, { method: "DELETE" });
       if (res.ok) {
-        setTechnicians((prev) => prev.filter((x) => x.id !== t.id));
+        await publishTechnicianChanges();
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Could not remove technician.");
