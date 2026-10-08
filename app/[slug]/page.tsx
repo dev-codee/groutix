@@ -439,7 +439,7 @@ export default async function ServicePage({ params }: Props) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(s.faqs)) }}
         />
-        <ShowerRegroutingPage />
+        <ShowerRegroutingPage reviews={reviews} />
       </>
     );
   }

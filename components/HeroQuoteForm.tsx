@@ -502,8 +502,8 @@ export default function HeroQuoteForm() {
     // Inspection booking validation. Picking a slot is OPTIONAL and only possible
     // when we actually have slots to offer, so only require date+time when the
     // section is open AND there is something bookable in it. Without the second
-    // condition an out-of-area or coastal address — where the slot list is empty
-    // by design — could never submit the form at all: it would demand a date that
+    // condition an out-of-area or coastal address, where the slot list is empty
+    // by design, could never submit the form at all: it would demand a date that
     // the picker had no way to supply. Everyone can always send us a lead; the
     // 50 km / coastal rules gate the self-service BOOKING, not the enquiry.
     const canBookInspection = inspectionSectionOpen && !isOutsideServiceArea && inspectionDays.length > 0;
@@ -1374,7 +1374,7 @@ export default function HeroQuoteForm() {
                 </AnimatePresence>
               </div>
 
-              {/* Book Your Free Inspection — shown at the end, just before the captcha */}
+              {/* Book Your Free Inspection, shown at the end, just before the captcha */}
               <div id="section-inspection" className={`border rounded-sm overflow-hidden ${inspectionError ? "border-red-400" : "border-neutral-200"}`}>
                 <button
                   type="button"
@@ -1428,13 +1428,13 @@ export default function HeroQuoteForm() {
                                 : "More Than 50 km From Our Base"}
                             </p>
                             <p className="text-[12px] text-amber-800 leading-snug">
-                              Online times aren't offered for this address — our team will arrange your inspection
+                              Online times aren't offered for this address, our team will arrange your inspection
                               directly. Submit your details and we'll contact you to organise a suitable time.
                             </p>
                           </div>
                         ) : inspectionDays.length === 0 ? (
                           <p className="text-[13px] text-neutral-500 text-center py-2">
-                            No online slots available right now — our team will contact you to arrange a time.
+                            No online slots available right now, our team will contact you to arrange a time.
                           </p>
                         ) : (
                           <>
@@ -1523,7 +1523,7 @@ export default function HeroQuoteForm() {
                               <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 space-y-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <span className="font-semibold">
-                                    ✓ Preferred inspection time selected — {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {(() => {
+                                    ✓ Preferred inspection time selected, {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {(() => {
                                       const [h] = inspectionTime.split(":").map(Number);
                                       const endH = h + 1;
                                       const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;

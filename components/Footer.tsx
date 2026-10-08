@@ -159,7 +159,7 @@ export default function Footer() {
             </ul>
             <div className="pt-4 text-xs text-white/60 leading-relaxed">
               <Link href="/locations" className="hover:text-white/90 transition-colors">
-                → /locations hub. Regions only — the 176 suburbs stay in the header mega menu.
+                → /locations hub. Regions only, the 176 suburbs stay in the header mega menu.
               </Link>
             </div>
           </div>

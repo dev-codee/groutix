@@ -227,7 +227,7 @@ const STANDARD_SERVICES = [
   {
     slug: "small-tiling-jobs",
     title: "Small Tiling Jobs",
-    desc: "Broken or loose tiles repaired or replaced individually — a practical fix when a full retile isn't needed.",
+    desc: "Broken or loose tiles repaired or replaced individually, a practical fix when a full retile isn't needed.",
   },
 ];
 
@@ -246,7 +246,7 @@ const SERVICE_ICONS: Record<string, React.ComponentType<{ className?: string }>>
 const HOME_FAQS = [
   {
     q: "How Do I Know If I Need Regrouting or Recaulking?",
-    a: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both — catching it early saves money.",
+    a: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both, catching it early saves money.",
   },
   {
     q: "How Do I Fix Shower Grout Mould?",
@@ -653,7 +653,7 @@ export default function HomePage({
       <Navbar />
       <main>
         {/* ══════════════════════════════════════
-            SECTION 1 — HERO
+            SECTION 1, HERO
             Two-column: copy left, form right
         ══════════════════════════════════════ */}
         <section className="relative overflow-hidden pt-[110px] lg:pt-[125px]" id="quote-form">
@@ -682,7 +682,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria — without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
+                    We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria, without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
                   </motion.p>
 
                   {/* Google badge + Call button */}
@@ -750,12 +750,12 @@ export default function HomePage({
         </section>
 
         {/* ══════════════════════════════════════
-            SECTION 2 — Client logo strip (no change)
+            SECTION 2, Client logo strip (no change)
         ══════════════════════════════════════ */}
         <TrustedMarquee />
 
         {/* ══════════════════════════════════════
-            SECTION 3 — Trust Stats (3-column)
+            SECTION 3, Trust Stats (3-column)
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-12 lg:py-16">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
@@ -828,7 +828,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 4 — Credentials strip
+            SECTION 4, Credentials strip
         ══════════════════════════════════════ */}
         {/*
         <div className="bg-primary py-3">
@@ -842,7 +842,7 @@ export default function HomePage({
         */}
 
         {/* ══════════════════════════════════════
-            SECTION 5 — What We Do — Services
+            SECTION 5, What We Do, Services
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -966,7 +966,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 6 — Problem / Diagnostic
+            SECTION 6, Problem / Diagnostic
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-12">
@@ -976,7 +976,7 @@ export default function HomePage({
                 Cracked Grout or a <span className="text-accent">Leaking Shower?</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-lg leading-relaxed">
-                Grout is the visible finish on your shower walls and floor, not the waterproofing membrane underneath it. In Melbourne bathrooms, cracked grout, peeling silicone, or shower grout mould are usually the first signs worth a closer look — here&apos;s how to read them.
+                Grout is the visible finish on your shower walls and floor, not the waterproofing membrane underneath it. In Melbourne bathrooms, cracked grout, peeling silicone, or shower grout mould are usually the first signs worth a closer look, here&apos;s how to read them.
               </p>
             </div>
 
@@ -996,7 +996,7 @@ export default function HomePage({
                 },
                 {
                   see: "Persistent dampness or mould",
-                  mean: "Trapped moisture that isn't drying out — the grout may be part of it, or it could be ventilation or your cleaning routine.",
+                  mean: "Trapped moisture that isn't drying out, the grout may be part of it, or it could be ventilation or your cleaning routine.",
                   todo: "Check ventilation and cleaning first; if it keeps returning, have the grout and silicone assessed.",
                 },
                 {
@@ -1083,12 +1083,12 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 6.5 — Balcony Deep-Dive
+            SECTION 6.5, Balcony Deep-Dive
         ══════════════════════════════════════ */}
         <BalconyDeepDiveSection />
 
         {/* ══════════════════════════════════════
-            SECTION 7 — Before & After Gallery
+            SECTION 7, Before & After Gallery
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 relative z-10 space-y-8">
@@ -1106,7 +1106,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 8 — Client Reviews & Testimonials
+            SECTION 8, Client Reviews & Testimonials
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -1166,7 +1166,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 9 — Our Regrouting Process
+            SECTION 9, Our Regrouting Process
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
@@ -1178,7 +1178,7 @@ export default function HomePage({
                   Our Regrouting Process: <span className="text-accent">Precise Fixes, Not Quick Patches</span>
                 </h2>
                 <p className="text-neutral-600 text-base sm:text-lg leading-relaxed">
-                  Every job starts with understanding what&apos;s actually happening, not a quick surface fix. Here&apos;s how we approach it — the exact work can vary depending on the condition of your shower.
+                  Every job starts with understanding what&apos;s actually happening, not a quick surface fix. Here&apos;s how we approach it, the exact work can vary depending on the condition of your shower.
                 </p>
 
                 <div className="space-y-8 pt-4">
@@ -1191,7 +1191,7 @@ export default function HomePage({
                     {
                       num: "2",
                       title: "Remove and Prepare",
-                      desc: "Damaged grout and old silicone are fully removed and the area is properly prepared — the amount of work here depends on what we find.",
+                      desc: "Damaged grout and old silicone are fully removed and the area is properly prepared, the amount of work here depends on what we find.",
                     },
                     {
                       num: "3",
@@ -1249,7 +1249,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 10 — Warranty
+            SECTION 10, Warranty
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-primary py-14 px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
@@ -1284,7 +1284,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 11 — Why Choose Groutix
+            SECTION 11, Why Choose Groutix
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -1294,7 +1294,7 @@ export default function HomePage({
                 Why Choose <span className="text-accent">Groutix?</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-lg leading-relaxed">
-                We focus only on grout, silicone and wet-area repairs across Melbourne — so every recommendation comes from specialists who see these exact problems every day, not a general renovation crew fitting it in between other jobs.
+                We focus only on grout, silicone and wet-area repairs across Melbourne, so every recommendation comes from specialists who see these exact problems every day, not a general renovation crew fitting it in between other jobs.
               </p>
             </div>
 
@@ -1313,7 +1313,7 @@ export default function HomePage({
                 {
                   Icon: Layers,
                   title: "Materials Selected for the Specific Wet Area",
-                  desc: "Showers, balconies and other wet areas each put different stress on grout and sealant. We choose the material for the job in front of us — not one default product for every surface.",
+                  desc: "Showers, balconies and other wet areas each put different stress on grout and sealant. We choose the material for the job in front of us, not one default product for every surface.",
                 },
               ].map((b, i) => (
                 <motion.div
@@ -1359,7 +1359,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 12 — Meet the Groutix Team
+            SECTION 12, Meet the Groutix Team
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -1369,7 +1369,7 @@ export default function HomePage({
                 Meet the Groutix <span className="text-accent">Team</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-lg leading-relaxed">
-                The same small team handles your job from inspection through to the finished work — here&apos;s who you&apos;ll actually deal with.
+                The same small team handles your job from inspection through to the finished work, here&apos;s who you&apos;ll actually deal with.
               </p>
             </div>
 
@@ -1428,7 +1428,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 13 — Real Estate & Property Services
+            SECTION 13, Real Estate & Property Services
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -1438,7 +1438,7 @@ export default function HomePage({
                 Real Estate &amp; <span className="text-accent">Property Services</span>
               </h2>
               <p className="text-neutral-600 text-base sm:text-lg leading-relaxed">
-                Groutix looks after wet-area repairs for landlords, real estate agents and strata managers across Melbourne — shower regrouting, leak repairs, silicone replacement and balcony work, scheduled around tenants to help minimise disruption.
+                Groutix looks after wet-area repairs for landlords, real estate agents and strata managers across Melbourne, shower regrouting, leak repairs, silicone replacement and balcony work, scheduled around tenants to help minimise disruption.
               </p>
             </div>
 
@@ -1447,17 +1447,17 @@ export default function HomePage({
                 {
                   Icon: Users,
                   title: "Scheduled Around Tenants",
-                  desc: "Most jobs are completed in a single visit with minimal disruption, and we work around tenant timelines — practical for occupied rentals.",
+                  desc: "Most jobs are completed in a single visit with minimal disruption, and we work around tenant timelines, practical for occupied rentals.",
                 },
                 {
                   Icon: ClipboardCheck,
                   title: "Clear Assessments for Agents & Owners",
-                  desc: "We inspect the affected area first and explain what we found in plain terms — full regrout, recaulk, or smaller repair — so you can pass a straight answer on to owners.",
+                  desc: "We inspect the affected area first and explain what we found in plain terms, full regrout, recaulk, or smaller repair, so you can pass a straight answer on to owners.",
                 },
                 {
                   Icon: Home,
                   title: "One Specialist for Every Wet Area",
-                  desc: "Showers, bathrooms, laundries, kitchens and balconies — one call covers the wet areas across your properties instead of chasing multiple trades.",
+                  desc: "Showers, bathrooms, laundries, kitchens and balconies, one call covers the wet areas across your properties instead of chasing multiple trades.",
                 },
               ].map((b, i) => (
                 <motion.div
@@ -1499,7 +1499,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 14 — Specialist vs General CTA band
+            SECTION 14, Specialist vs General CTA band
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-primary py-14 px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
@@ -1520,7 +1520,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 15 — What Happens After You Book
+            SECTION 15, What Happens After You Book
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -1604,7 +1604,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 16 — Service Areas
+            SECTION 16, Service Areas
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
@@ -1695,7 +1695,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 17 — FAQ (Updated questions from doc)
+            SECTION 17, FAQ (Updated questions from doc)
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24" id="faq">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
@@ -1725,7 +1725,7 @@ export default function HomePage({
         </AnimatedSection>
 
         {/* ══════════════════════════════════════
-            SECTION 18 — Final CTA
+            SECTION 18, Final CTA
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-primary py-16 px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />

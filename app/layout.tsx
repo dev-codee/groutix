@@ -16,7 +16,7 @@ const roboto = Roboto({
 
 const TITLE_DEFAULT = "Shower Regrouting & Balcony Leak Repair Melbourne | Groutix";
 const DESCRIPTION =
-  "Shower regrouting & balcony leak repair in Melbourne — fix leaking showers without costly retiling. 10-year warranty, 5.0-star rated, 290+ reviews. Free quote today.";
+  "Shower regrouting & balcony leak repair in Melbourne, fix leaking showers without costly retiling. 10-year warranty, 5.0-star rated, 290+ reviews. Free quote today.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

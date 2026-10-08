@@ -41,7 +41,7 @@ export default function BalconyRegroutingClient() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-white/85 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed"
           >
-            Stop balcony leaks before they cause structural concrete and ceiling damage. Waterproof epoxy regrouting and sealed perimeter joints — no retiling needed.
+            Stop balcony leaks before they cause structural concrete and ceiling damage. Waterproof epoxy regrouting and sealed perimeter joints, no retiling needed.
           </motion.p>
 
           <motion.div
@@ -95,7 +95,7 @@ export default function BalconyRegroutingClient() {
               Why Melbourne Balconies Are Prone to Leaking
             </h2>
             <p className="text-neutral-600 text-base leading-relaxed">
-              Outdoor tiled areas endure extreme seasonal shifts — baking UV heat followed by heavy rainfall. Here is why conventional cement grout fails.
+              Outdoor tiled areas endure extreme seasonal shifts, baking UV heat followed by heavy rainfall. Here is why conventional cement grout fails.
             </p>
           </div>
 

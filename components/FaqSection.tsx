@@ -46,7 +46,7 @@ export default function FaqSection() {
   const faqs = [
     {
       question: "How Do I Know If I Need Regrouting or Recaulking?",
-      answer: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both — catching it early saves money.",
+      answer: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both, catching it early saves money.",
     },
     {
       question: "How Do I Fix Shower Grout Mould?",
