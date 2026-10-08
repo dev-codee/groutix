@@ -55,8 +55,8 @@ export function LeadEditModal({
   // Live view of who holds which slot (inspections + jobs share one calendar).
   const [showBoard, setShowBoard] = useState<{ inspection: boolean; job: boolean }>({ inspection: false, job: false });
   const [plannerFor, setPlannerFor] = useState<"inspection" | "job" | null>(null);
-  const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id);
-  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id);
+  const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id, "inspection");
+  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id, "job");
   // Times as they were when the form opened — only a CHANGED time needs the double-booking check.
   const original = useRef({ inspectionAt: editingLead?.inspectionAt || "", jobAt: editingLead?.jobAt || "" });
 

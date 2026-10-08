@@ -127,7 +127,7 @@ export function BookingPlanner({
       if (!grid.length) continue;
       // This lead's own appointment of the same type is being rescheduled → not an obstacle.
       const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type));
-      const taken = new Set(dayAppts.map((a) => a.time));
+      const taken = new Set(dayAppts.filter((a) => a.type === type).map((a) => a.time));
       const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
       const stops: PlannerStop[] = dayAppts.map((a) => ({
         time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb,

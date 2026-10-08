@@ -44,6 +44,12 @@ const INSPECTION_OK = [
   "Inspection In Progress",
 ];
 const JOB_OK = [
+  // Quote stages — the customer receives the job-booking link in the quote email
+  // before they sign, so allow booking from any quote status onward.
+  "Quote Pending",
+  "Quote Sent",
+  "Negotiation",
+  // Post-acceptance stages
   "Won",
   "Job Booked",
   "Scheduled",
@@ -80,27 +86,94 @@ function resolveLeadArea(
   return resolveArea(lead.address || lead.city, zoneRules);
 }
 
+import { listTechnicians } from "@/lib/technicians";
+import { bookingAvailability, techniciansOnDate, type CapacityAppointment } from "@/lib/bookingCapacity";
+import type { BookingRules } from "@/lib/bookingRules";
+
 function parseCoord(v: string | null | undefined): number | null {
   if (v == null || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-async function buildMaps(area: AreaInfo, currentLeadId?: string) {
-  const bookings = await listUpcomingBookings();
+async function buildMaps(
+  area: AreaInfo,
+  type: "inspection" | "job",
+  currentLeadId?: string,
+  rules?: BookingRules
+) {
+  const [bookings, roster] = await Promise.all([
+    listUpcomingBookings(),
+    listTechnicians(),
+  ]);
   const bookedByDate = new Map<string, Set<string>>();
   const sameZoneDates = new Set<string>();
+
   for (const b of bookings) {
-    // If the booking belongs to this customer, don't block their own slot for them
-    if (b.leadId && b.leadId === currentLeadId) {
-      continue;
-    }
-    if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
-    bookedByDate.get(b.date)!.add(b.time);
     if (b.zone === area.zone || (area.inner && b.date)) {
       sameZoneDates.add(b.date);
     }
   }
+
+  // Filter bookings to ONLY those of the matching type (inspections and jobs
+  // are separate pools and never lock each other), excluding this lead's own slot.
+  const relevantBookings = bookings.filter((b) => b.type === type && b.leadId !== currentLeadId);
+
+  if (type === "inspection") {
+    // Single-inspector pool: any inspection on (date, time) locks it.
+    // Job bookings never lock inspection slots.
+    for (const b of relevantBookings) {
+      if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
+      bookedByDate.get(b.date)!.add(b.time);
+    }
+  } else {
+    // Jobs: capacity is determined by active technicians working on that date.
+    // Inspection bookings NEVER lock jobs.
+    const jobsByDate = new Map<string, CapacityAppointment[]>();
+    for (const b of relevantBookings) {
+      if (!jobsByDate.has(b.date)) jobsByDate.set(b.date, []);
+      jobsByDate.get(b.date)!.push(b);
+    }
+
+    if (rules) {
+      for (const [date, dayJobs] of jobsByDate.entries()) {
+        const working = techniciansOnDate(roster, date);
+        if (working.length === 0) {
+          if (!bookedByDate.has(date)) bookedByDate.set(date, new Set());
+          for (const b of dayJobs) bookedByDate.get(date)!.add(b.time);
+        } else {
+          for (const b of dayJobs) {
+            const avail = bookingAvailability(
+              dayJobs,
+              { date, time: b.time, leadId: currentLeadId || "", type: "job" },
+              rules,
+              roster
+            );
+            if (!avail.available) {
+              if (!bookedByDate.has(date)) bookedByDate.set(date, new Set());
+              bookedByDate.get(date)!.add(b.time);
+            }
+          }
+        }
+      }
+    } else {
+      for (const [date, dayJobs] of jobsByDate.entries()) {
+        const working = techniciansOnDate(roster, date);
+        const capacity = working.length;
+        const countByTime = new Map<string, number>();
+        for (const b of dayJobs) {
+          countByTime.set(b.time, (countByTime.get(b.time) || 0) + 1);
+        }
+        for (const [t, count] of countByTime.entries()) {
+          if (count >= capacity) {
+            if (!bookedByDate.has(date)) bookedByDate.set(date, new Set());
+            bookedByDate.get(date)!.add(t);
+          }
+        }
+      }
+    }
+  }
+
   return { bookedByDate, sameZoneDates };
 }
 
@@ -124,9 +197,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const lat = parseCoord(req.nextUrl.searchParams.get("lat"));
   const lng = parseCoord(req.nextUrl.searchParams.get("lng"));
-  const zoneRules = await getZoneRules();
+  const [zoneRules, rules] = await Promise.all([getZoneRules(), getBookingRules()]);
   const area = resolveLeadArea(lead, lat, lng, zoneRules);
-  const [{ bookedByDate, sameZoneDates }, rules] = await Promise.all([buildMaps(area, id), getBookingRules()]);
+  const { bookedByDate, sameZoneDates } = await buildMaps(area, type, id, rules);
   // Dedicated booking page — more room than the quote form, so offer a wider
   // choice, still bounded so an outer-zone customer isn't shown next quarter.
   const days = shortlistDays(

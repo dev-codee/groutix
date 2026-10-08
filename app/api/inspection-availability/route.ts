@@ -36,8 +36,10 @@ export async function GET(req: NextRequest) {
   try {
     const bookings = await listUpcomingBookings();
     for (const b of bookings) {
-      if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
-      bookedByDate.get(b.date)!.add(b.time);
+      if (b.type === "inspection") {
+        if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
+        bookedByDate.get(b.date)!.add(b.time);
+      }
       if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
     }
   } catch {

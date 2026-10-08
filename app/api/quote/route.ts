@@ -480,8 +480,10 @@ export async function POST(req: NextRequest) {
       const bookedByDate = new Map<string, Set<string>>();
       const sameZoneDates = new Set<string>();
       for (const b of bookings) {
-        if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
-        bookedByDate.get(b.date)!.add(b.time);
+        if (b.type === "inspection") {
+          if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
+          bookedByDate.get(b.date)!.add(b.time);
+        }
         if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
       }
       // Email teaser: a few soon dates, with the booking link for the rest.

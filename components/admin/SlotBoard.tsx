@@ -63,26 +63,26 @@ function describe(a: DayAppointment, leadId?: string): string {
 }
 
 /** Another lead already holding `value`'s date+time on the shared calendar, if any. */
-export function useSlotConflict(value: string | undefined, leadId: string | undefined) {
+export function useSlotConflict(value: string | undefined, leadId: string | undefined, type?: BookingType) {
   // Result is tagged with the slot it was computed for, so a stale answer for a
   // previous value is never shown.
   const [result, setResult] = useState<{ key: string; conflict: DayAppointment | null } | null>(null);
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value || "");
   const date = m?.[1];
   const time = m?.[2];
-  const key = date && time ? `${date}T${time}|${leadId || ""}` : "";
+  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}` : "";
   useEffect(() => {
     if (!date || !time) return;
     let alive = true;
     fetchDay(date)
       .then((appts) => {
-        if (alive) setResult({ key, conflict: appts.find((a) => a.time === time && a.leadId !== leadId) ?? null });
+        if (alive) setResult({ key, conflict: appts.find((a) => a.time === time && a.leadId !== leadId && (!type || a.type === type)) ?? null });
       })
       .catch(() => alive && setResult({ key, conflict: null }));
     return () => {
       alive = false;
     };
-  }, [key, date, time, leadId]);
+  }, [key, date, time, leadId, type]);
   const conflict = key && result?.key === key ? result.conflict : null;
   return conflict ? { ...conflict, label: describe(conflict, leadId) } : null;
 }
@@ -148,9 +148,24 @@ export function SlotBoard({
 
   const byTime = useMemo(() => {
     const map = new Map<string, DayAppointment[]>();
-    for (const a of appts || []) map.set(a.time, [...(map.get(a.time) || []), a]);
+    for (const a of appts || []) {
+      if (a.type === type) {
+        map.set(a.time, [...(map.get(a.time) || []), a]);
+      }
+    }
     return map;
-  }, [appts]);
+  }, [appts, type]);
+
+  const otherTypeByTime = useMemo(() => {
+    const map = new Map<string, DayAppointment[]>();
+    for (const a of appts || []) {
+      if (a.type !== type) {
+        map.set(a.time, [...(map.get(a.time) || []), a]);
+      }
+    }
+    return map;
+  }, [appts, type]);
+
   const offGrid = (appts || []).filter((a) => !gridTimes.includes(a.time));
   const freeCount = gridTimes.filter((t) => !(byTime.get(t) || []).some((a) => a.leadId !== leadId)).length;
 
@@ -204,6 +219,7 @@ export function SlotBoard({
                 const holders = byTime.get(t) || [];
                 const other = holders.find((a) => a.leadId !== leadId);
                 const own = holders.find((a) => a.leadId === leadId);
+                const otherTypeHolders = otherTypeByTime.get(t) || [];
                 const selected = day === valueDate && t === valueTime;
                 const past = day < today || (day === today && t <= nowHHmm);
                 const base = "rounded-lg border px-2 py-1.5 text-left text-[10px] leading-tight transition-colors";
@@ -215,13 +231,22 @@ export function SlotBoard({
                     </div>
                   );
                 }
+                const otherTypeNote = otherTypeHolders.length
+                  ? ` (${otherTypeHolders.map((h) => h.type === "job" ? "Job" : "Insp.").join(", ")})`
+                  : "";
                 return (
                   <button
                     key={t}
                     type="button"
                     disabled={past}
                     onClick={() => onPick(`${day}T${t}`)}
-                    title={own ? `Currently saved for this customer (${own.type})` : "Free — click to use this time"}
+                    title={
+                      own
+                        ? `Currently saved for this customer (${own.type})`
+                        : otherTypeHolders.length
+                        ? `Free for ${type === "job" ? "job" : "inspection"} (${otherTypeHolders.map((h) => describe(h, leadId)).join("; ")})`
+                        : "Free — click to use this time"
+                    }
                     className={`${base} ${
                       selected
                         ? "border-blue-600 bg-blue-600 text-white"
@@ -233,7 +258,7 @@ export function SlotBoard({
                     }`}
                   >
                     <div className="font-bold">{formatHHmm(t)}</div>
-                    <div>{selected ? "Selected" : own ? `Saved (${own.type === "job" ? "job" : "insp."})` : past ? "Past" : "Free"}</div>
+                    <div>{selected ? "Selected" : own ? `Saved (${own.type === "job" ? "job" : "insp."})` : past ? "Past" : `Free${otherTypeNote}`}</div>
                   </button>
                 );
               })}
