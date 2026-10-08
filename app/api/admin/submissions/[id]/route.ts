@@ -11,7 +11,7 @@ import { autoSendInvoice } from "@/lib/automations";
 import { sendInternalAlert, sendEmail, wrapEmailHtml, getEmailLogoUrl, isEmailConfigured } from "@/lib/email";
 import { sendSms, isSmsConfigured, prepareSinglePartSms } from "@/lib/sms";
 import { formatAppt } from "@/lib/scheduling";
-import { createBooking, deleteBooking, releaseBookingSlot, listAppointmentsOnDate } from "@/lib/bookings";
+import { createBooking, deleteBooking, releaseBookingSlot, type BookingDoc } from "@/lib/bookings";
 import { resolveArea, normalizeApptString } from "@/lib/scheduling";
 import { validScheduleDate } from "@/lib/scheduleRoutes";
 import { getZoneRules } from "@/lib/zoneRulesServer";
@@ -99,9 +99,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // Acquire new slot locks before changing the lead. A conflict must never
   // overwrite the prior appointment or trigger a reschedule notification.
-  const reserved: { type: "inspection" | "job"; date: string; time: string }[] = [];
+  const assignmentChanged = ["technicianId", "technician", "technicianUsername"].some((key) => key in body && body[key] !== before[key as keyof typeof before]);
+  if (assignmentChanged && before.jobAt && !("jobAt" in body)) body.jobAt = before.jobAt;
+  const reserved: { type: "inspection" | "job"; date: string; time: string; reservationId?: string; previousBooking?: BookingDoc }[] = [];
   const rollback = async () => {
-    await Promise.all(reserved.map((slot) => releaseBookingSlot(id, slot.type, slot.date, slot.time)));
+    await Promise.all(reserved.map((slot) => releaseBookingSlot(id, slot.type, slot.date, slot.time, slot)));
   };
   try {
     for (const type of ["inspection", "job"] as const) {
@@ -119,22 +121,22 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         return NextResponse.json({ error: "Invalid appointment date or time." }, { status: 400 });
       }
       body[field] = value;
-      if (value === before[field] || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
+      if ((value === before[field] && !(type === "job" && assignmentChanged)) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
-      const appointments = await listAppointmentsOnDate(date);
-      if (appointments.some((entry) => entry.time === time && (entry.leadId !== id || entry.type !== type))) {
-        await rollback();
-        return NextResponse.json({ error: "This time is already booked. Please choose another time." }, { status: 409 });
-      }
       const area = resolveArea(before.address || before.city, await getZoneRules());
       const result = await createBooking({ leadId: id, type, date, time, zone: area.zone,
+        ...(type === "job" ? {
+          technicianId: body.technicianId ?? before.technicianId,
+          technician: body.technician ?? before.technician,
+          technicianUsername: body.technicianUsername ?? before.technicianUsername,
+        } : {}),
         suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true });
       if (!result.ok) {
         await rollback();
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
       }
-      if (result.acquired) reserved.push({ type, date, time });
+      if (result.acquired || result.previousBooking) reserved.push({ type, date, time, reservationId: result.reservationId, previousBooking: result.previousBooking });
     }
     const ok = await updateSubmission(id, body);
     if (!ok) {

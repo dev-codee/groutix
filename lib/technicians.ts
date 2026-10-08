@@ -15,6 +15,7 @@ export interface TechnicianDoc {
   createdAt: Date;
   /** Working weekdays: 0=Sun, 1=Mon … 6=Sat. Undefined means all days. */
   workDays?: number[];
+  aliases?: string[];
 }
 
 export type TechnicianJSON = {
@@ -23,6 +24,7 @@ export type TechnicianJSON = {
   email: string;
   active: boolean;
   createdAt: string;
+  aliases?: string[];
   hasLogin?: boolean;
   username?: string;
   workDays?: number[];
@@ -46,7 +48,7 @@ export function toTechnicianJSON(doc: TechnicianDoc): TechnicianJSON {
   };
 }
 
-export async function listTechnicians(): Promise<TechnicianJSON[]> {
+export async function listTechnicians(options: { strict?: boolean } = {}): Promise<TechnicianJSON[]> {
   if (!isMongoConfigured()) return [];
   try {
     const col = await collection();
@@ -73,6 +75,7 @@ export async function listTechnicians(): Promise<TechnicianJSON[]> {
       if (existing) {
         existing.hasLogin = true;
         existing.username = st.username;
+        existing.aliases = [...(existing.aliases || []), st._id.toString()];
       } else {
         result.push({
           id: st._id.toString(),
@@ -81,6 +84,7 @@ export async function listTechnicians(): Promise<TechnicianJSON[]> {
           active: st.active !== false,
           hasLogin: true,
           username: st.username,
+          workDays: Array.isArray(st.workDays) ? st.workDays : undefined,
           createdAt: (st.createdAt instanceof Date ? st.createdAt : new Date(st.createdAt || Date.now())).toISOString(),
         });
       }
@@ -89,6 +93,7 @@ export async function listTechnicians(): Promise<TechnicianJSON[]> {
     return result;
   } catch (err) {
     console.error("listTechnicians failed:", err);
+    if (options.strict) throw err;
     return [];
   }
 }

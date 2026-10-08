@@ -3,6 +3,7 @@ import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { listAppointmentsBetween } from "@/lib/bookings";
 import { getScheduleRouteOrders } from "@/lib/scheduleRoutesServer";
 import { validScheduleDate } from "@/lib/scheduleRoutes";
+import { listTechnicians } from "@/lib/technicians";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,10 +30,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Range too long (max ${MAX_RANGE_DAYS} days).` }, { status: 400 });
   }
   try {
-    const [appointments, routeOrders] = await Promise.all([
-      listAppointmentsBetween(from, to, { strict: true }), getScheduleRouteOrders(from, to),
+    const [appointments, routeOrders, roster] = await Promise.all([
+      listAppointmentsBetween(from, to, { strict: true }), getScheduleRouteOrders(from, to), listTechnicians({ strict: true }),
     ]);
-    return NextResponse.json({ from, to, appointments, routeOrders }, { headers: { "Cache-Control": "no-store" } });
+    const technicians = roster.map(({ id, name, username, active, workDays, aliases }) => ({ id, name, username, active, workDays, aliases }));
+    return NextResponse.json({ from, to, appointments, routeOrders, technicians }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("Load schedule failed:", err);
     return NextResponse.json({ error: "Could not load schedule." }, { status: 500 });
