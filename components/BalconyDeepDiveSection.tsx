@@ -18,15 +18,15 @@ export default function BalconyDeepDiveSection() {
           </h2>
           <p className="text-neutral-600 text-base sm:text-[16.5px] leading-relaxed max-w-[820px] mx-auto">
             Melbourne&apos;s heavy rain and temperature swings are brutal on balcony tiling. Once grout cracks, water
-            seeps through the joints — causing white efflorescence staining, mould growth, tile lifting and even damage
+            seeps through the joints, causing white efflorescence staining, mould growth, tile lifting and even damage
             to the concrete or framing below. Our balcony regrouting removes the failed grout and replaces it with
-            waterproof epoxy grout and sealed perimeter joints — no retiling required.
+            waterproof epoxy grout and sealed perimeter joints, no retiling required.
           </p>
         </div>
 
         {/* 2-Card Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 1 — Warning Signs */}
+          {/* Card 1, Warning Signs */}
           <div className="border border-[#f0e2b6] rounded-[14px] p-7 bg-[#fffdf5] shadow-xs">
             <h3 className="text-[19px] font-bold text-[#1a2a8c] mb-4">
               5 Signs Your Balcony Needs Regrouting
@@ -49,7 +49,7 @@ export default function BalconyDeepDiveSection() {
             </ul>
           </div>
 
-          {/* Card 2 — Fix Steps */}
+          {/* Card 2, Fix Steps */}
           <div className="border border-[#e2e6f0] rounded-[14px] p-7 bg-[#fbfcff] shadow-xs">
             <h3 className="text-[19px] font-bold text-[#1a2a8c] mb-4">
               How We Fix a Leaking Balcony
@@ -66,7 +66,7 @@ export default function BalconyDeepDiveSection() {
                     {idx + 1}
                   </span>
                   <span className="pt-0.5">
-                    <strong className="text-[#12182b] font-semibold">{step.title}</strong> — {step.desc}
+                    <strong className="text-[#12182b] font-semibold">{step.title}</strong>, {step.desc}
                   </span>
                 </li>
               ))}

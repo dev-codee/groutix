@@ -104,7 +104,7 @@ export default function BookingPage() {
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Could not confirm your booking.");
-        // A taken slot (409) — refresh availability so they can re-pick.
+        // A taken slot (409), refresh availability so they can re-pick.
         if (res.status === 409) {
           setSelectedTime("");
           load();
@@ -215,7 +215,7 @@ export default function BookingPage() {
                     {data.days.map((d) => (
                       <option key={d.date} value={d.date}>
                         {d.label}
-                        {d.recommended ? " — Soonest for your area" : ""}
+                        {d.recommended ? ", Soonest for your area" : ""}
                       </option>
                     ))}
                   </select>

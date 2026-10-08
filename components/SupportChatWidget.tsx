@@ -84,7 +84,7 @@ export default function SupportChatWidget() {
   );
 
   // The .admin-ui probe needs the DOM, so it has to run in an effect. It is
-  // re-evaluated on every navigation and can go back to false — the old code
+  // re-evaluated on every navigation and can go back to false, the old code
   // only ever set it true, which left the widget hidden for the rest of the
   // session once the visitor had been on an admin page.
   const [hasAdminUi, setHasAdminUi] = useState(false);

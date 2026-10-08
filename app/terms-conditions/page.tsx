@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "Terms & Conditions | Groutix Australia",
   description:
-    "Official Terms and Conditions for Groutix Pty Ltd — covering quotations, shower regrouting services, 10-year warranty, payment terms, and cancellation policies.",
+    "Official Terms and Conditions for Groutix Pty Ltd, covering quotations, shower regrouting services, 10-year warranty, payment terms, and cancellation policies.",
   alternates: { canonical: "/terms-conditions" },
 };
 
@@ -156,8 +156,8 @@ export default function TermsConditionsPage() {
                 </p>
                 <p className="font-semibold">7.2 Payment must be treated as made:</p>
                 <ul className="list-none space-y-2 pl-4">
-                  <li>(1) if cash, direct credit or credit card is tendered — on the date it is tendered; and</li>
-                  <li>(2) if a cheque or other negotiable instrument is tendered — on the date upon which the cheque or other negotiable instrument is negotiated and cleared by the Supplier&apos;s bankers.</li>
+                  <li>(1) if cash, direct credit or credit card is tendered, on the date it is tendered; and</li>
+                  <li>(2) if a cheque or other negotiable instrument is tendered, on the date upon which the cheque or other negotiable instrument is negotiated and cleared by the Supplier&apos;s bankers.</li>
                 </ul>
                 <p>
                   <b>7.3</b> Time is of the essence in respect of the Customer&apos;s obligation to make payment for goods and/or services sold by the Supplier to the Customer.

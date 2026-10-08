@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-// Customer booking pages are private, token-gated links — keep them unindexed.
+// Customer booking pages are private, token-gated links, keep them unindexed.
 export const metadata: Metadata = {
-  title: "Book your appointment — Groutix",
+  title: "Book your appointment, Groutix",
   robots: { index: false, follow: false, nocache: true },
 };
 
