@@ -1255,7 +1255,7 @@ export function InspectionModal({ isOpen, onClose, lead, currentUsername, techni
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[9px] font-bold text-[#1a6060] uppercase tracking-widest mb-1">Estimated Time</label>
-                  <p className="text-[10px] text-slate-400 mb-1.5">e.g. "4–6 hrs", "1.5 days"</p>
+                  <p className="text-[10px] text-slate-400 mb-1.5">Enter hours, e.g. "4–6 hrs" or "2.5 hours". Jobs reserve the upper estimate.</p>
                   <input type="text" readOnly={readOnly}
                     value={report.estimatedTime || ""}
                     onChange={(e) => setReport({ ...report, estimatedTime: e.target.value })}

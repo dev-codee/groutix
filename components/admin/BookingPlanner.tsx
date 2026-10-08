@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Loader2, MapPin, Star, AlertTriangle, Home, Navigation, RefreshCw } from "lucide-react";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import type { Lead } from "@/components/admin/types";
+import { estimatedJobMinutes } from "@/lib/bookingDuration";
+import { useTechnicians } from "@/lib/useTechnicians";
+import { bookingAvailability, type BookingTechnician } from "@/lib/bookingCapacity";
 import type { DayAppointment } from "@/lib/bookings";
 import { WEEKDAY_SHORT, formatHHmm, slotsForDate, type BookingType } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
@@ -80,6 +83,7 @@ export function BookingPlanner({
   onClose: () => void;
 }) {
   const rules = useBookingRules();
+  const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
   const firstDay = useMemo(() => {
@@ -103,13 +107,13 @@ export function BookingPlanner({
   // ── Load every appointment in the window (one request) ──
   const [tick, setTick] = useState(0);
   const loadKey = `${firstDay}|${lastDay}|${tick}`;
-  const [loaded, setLoaded] = useState<{ key: string; appts: DayAppointment[] | null; error: string | null } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; appts: DayAppointment[] | null; technicians: BookingTechnician[]; error: string | null } | null>(null);
   useEffect(() => {
     let alive = true;
     fetch(`/api/admin/slots?from=${firstDay}&to=${lastDay}`, { cache: "no-store" })
       .then((r) => r.json().then((d) => (r.ok ? d : Promise.reject(new Error(d.error || `HTTP ${r.status}`)))))
-      .then((d) => alive && setLoaded({ key: loadKey, appts: d.appointments || [], error: null }))
-      .catch((e) => alive && setLoaded({ key: loadKey, appts: null, error: e instanceof Error ? e.message : "Failed to load." }));
+      .then((d) => alive && setLoaded({ key: loadKey, appts: d.appointments || [], technicians: d.technicians || [], error: null }))
+      .catch((e) => alive && setLoaded({ key: loadKey, appts: null, technicians: [], error: e instanceof Error ? e.message : "Failed to load." }));
     return () => {
       alive = false;
     };
@@ -127,15 +131,16 @@ export function BookingPlanner({
       if (!grid.length) continue;
       // This lead's own appointment of the same type is being rescheduled → not an obstacle.
       const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type));
-      const taken = new Set(dayAppts.filter((a) => a.type === type).map((a) => a.time));
+      const duration = type === "job" ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes : rules.inspection.slotMinutes;
+      const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername }, rules, technicians).available));
       const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
       const stops: PlannerStop[] = dayAppts.map((a) => ({
-        time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb,
+        time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb, durationMinutes: a.durationMinutes,
       }));
       let best: SlotFit | null = null;
       if (target) {
         for (const t of free) {
-          const f = scoreSlot(target, t, stops, rules, type);
+          const f = scoreSlot(target, t, stops, rules, type, duration);
           // Prefer slots that are reachable in time, then the smallest detour.
           const better = !best || (f.tight !== best.tight ? !f.tight : f.detourKm < best.detourKm);
           if (better) best = f;
@@ -151,7 +156,7 @@ export function BookingPlanner({
       });
     }
     return out;
-  }, [appts, firstDay, lastDay, rules, type, lead.id, target, today, area.zone, zoneRules]);
+  }, [appts, firstDay, lastDay, rules, type, lead.id, lead.inspectionReport?.estimatedTime, lead.technicianId, lead.technician, lead.technicianUsername, technicians, target, today, area.zone, zoneRules]);
 
   // Top 3 days by route fit (days with existing nearby stops beat empty days).
   const topDays = useMemo(() => {

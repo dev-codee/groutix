@@ -1,3 +1,4 @@
+import { estimatedJobMinutes } from "@/lib/bookingDuration";
 import { NextRequest, NextResponse } from "next/server";
 import { isMongoConfigured } from "@/lib/mongodb";
 import {
@@ -100,7 +101,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   // Acquire new slot locks before changing the lead. A conflict must never
   // overwrite the prior appointment or trigger a reschedule notification.
   const assignmentChanged = ["technicianId", "technician", "technicianUsername"].some((key) => key in body && body[key] !== before[key as keyof typeof before]);
-  if (assignmentChanged && before.jobAt && !("jobAt" in body)) body.jobAt = before.jobAt;
+  const durationChanged = "inspectionReport" in body && estimatedJobMinutes(body.inspectionReport?.estimatedTime) !== estimatedJobMinutes(before.inspectionReport?.estimatedTime);
+  if ((assignmentChanged || durationChanged) && before.jobAt && !("jobAt" in body)) body.jobAt = before.jobAt;
   const reserved: { type: "inspection" | "job"; date: string; time: string; reservationId?: string; previousBooking?: BookingDoc }[] = [];
   const rollback = async () => {
     await Promise.all(reserved.map((slot) => releaseBookingSlot(id, slot.type, slot.date, slot.time, slot)));
@@ -121,12 +123,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         return NextResponse.json({ error: "Invalid appointment date or time." }, { status: 400 });
       }
       body[field] = value;
-      if ((value === before[field] && !(type === "job" && assignmentChanged)) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
+      if ((value === before[field] && !(type === "job" && (assignmentChanged || durationChanged))) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
       const area = resolveArea(before.address || before.city, await getZoneRules());
       const result = await createBooking({ leadId: id, type, date, time, zone: area.zone,
         ...(type === "job" ? {
+          durationMinutes: estimatedJobMinutes(("inspectionReport" in body ? body.inspectionReport : before.inspectionReport)?.estimatedTime) ?? 0,
           technicianId: body.technicianId ?? before.technicianId,
           technician: body.technician ?? before.technician,
           technicianUsername: body.technicianUsername ?? before.technicianUsername,

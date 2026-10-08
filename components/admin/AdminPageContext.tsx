@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { TechnicianJSON } from "@/lib/technicians";
 import type { Lead } from "./types";
 import type { StaffMember } from "./types";
 import type { Role } from "@/lib/roles";
@@ -12,7 +13,7 @@ export interface AdminPageCtxType {
 
   // Core data shared by row components
   staff: StaffMember[];
-  assignableTechnicians: { id: string; name: string; active?: boolean; username?: string; role?: string; workDays?: number[] }[];
+  assignableTechnicians: (TechnicianJSON & { role?: string })[];
   inspectionStaff: StaffMember[];
   scopedLeads: Lead[];
   counts: Record<string, number>;

@@ -1,3 +1,4 @@
+import { estimatedJobMinutes } from "./bookingDuration";
 // Inspection and job pools have independent capacity. Job capacity comes from the technician roster.
 
 import { ObjectId, type Collection, type Filter } from "mongodb";
@@ -15,6 +16,7 @@ export interface BookingDoc extends TechnicianAssignment {
   leadId: string;
   type: "inspection" | "job";
   date: string; // YYYY-MM-DD
+  durationMinutes?: number;
   time: string; // HH:mm
   zone: string;
   suburb?: string;
@@ -51,69 +53,17 @@ async function collection(): Promise<Collection<BookingDoc>> {
  * Checks both the dedicated `bookings` collection and active `submissions` with
  * scheduled appointments to ensure staff-scheduled and customer bookings never collide.
  */
-export async function listUpcomingBookings(): Promise<BookingDoc[]> {
-  if (!isMongoConfigured()) return [];
-  try {
-    const col = await collection();
-    // Use Australian Eastern Time for "today" so the booking window is correct
-    // regardless of where the server is hosted (UTC vs AU).
-    const todayStr = todayAU();
-
-    // 1) All confirmed bookings from the atomic bookings collection
-    const bookings = await col.find({ date: { $gte: todayStr } }).toArray();
-    const bookedMap = new Map<string, BookingDoc>();
-    for (const b of bookings) {
-      const normalizedTime = b.time.slice(0, 5).padStart(5, "0");
-      bookedMap.set(`${b.leadId}:${b.type}:${b.date}T${normalizedTime}`, { ...b, time: normalizedTime });
-    }
-
-    // 2) Also include any upcoming appointments recorded on active submissions
-    //    so manual CRM staff bookings immediately lock the slot online!
-    const db = await getDb();
-    const subCol = db.collection("submissions");
-    const activeSubs = await subCol
-      .find({
-        status: { $nin: ["Lost", "Cancelled"] },
-        $or: [
-          { inspectionAt: { $gte: todayStr } },
-          { jobAt: { $gte: todayStr } },
-        ],
-      })
-      .project({ _id: 1, inspectionAt: 1, jobAt: 1, address: 1, city: 1, name: 1, jobNo: 1, technicianId: 1, technician: 1, technicianUsername: 1 })
-      .toArray();
-
-    for (const s of activeSubs) {
-      const idStr = s._id.toString();
-      for (const [type, when] of [["inspection", s.inspectionAt], ["job", s.jobAt]] as const) {
-        if (typeof when === "string" && when.includes("T")) {
-          const [d, tRaw] = when.split("T");
-          if (d >= todayStr) {
-            const t = tRaw.slice(0, 5).padStart(5, "0");
-            const key = `${idStr}:${type}:${d}T${t}`;
-            if (!bookedMap.has(key)) {
-              bookedMap.set(key, {
-                leadId: idStr,
-                type,
-                date: d,
-                time: t,
-                technicianId: type === "job" ? s.technicianId : undefined,
-                technician: type === "job" ? s.technician : undefined,
-                technicianUsername: type === "job" ? s.technicianUsername : undefined,
-                zone: "flexible",
-                reference: s.jobNo || `GX-SUB-${idStr.slice(-6)}`,
-                createdAt: new Date(),
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return Array.from(bookedMap.values());
-  } catch (err) {
-    console.error("listUpcomingBookings failed:", err);
-    return [];
-  }
+export async function listUpcomingBookings(options: { strict?: boolean } = {}): Promise<BookingDoc[]> {
+  // Public booking pages and CRM slots read the same canonical appointments.
+  // This also excludes cancelled/lost leads consistently and resolves legacy locks.
+  const appointments = await listAppointmentsBetween(todayAU(), "9999-12-31", options);
+  return appointments.map((appointment) => ({
+    leadId: appointment.leadId, type: appointment.type, date: appointment.date, time: appointment.time,
+    durationMinutes: appointment.durationMinutes, technicianId: appointment.technicianId,
+    technician: appointment.technician, technicianUsername: appointment.technicianUsername,
+    zone: appointment.zone || "flexible", suburb: appointment.suburb,
+    reference: appointment.jobNo || `GX-SUB-${appointment.leadId.slice(-6)}`, createdAt: new Date(),
+  }));
 }
 
 /** Compatibility helper for the website's inspection preflight. Errors fail closed. */
@@ -150,10 +100,11 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         technician: input.technician !== undefined ? input.technician : lead?.technician,
         technicianUsername: input.technicianUsername !== undefined ? input.technicianUsername : lead?.technicianUsername,
       } : {};
-      const availability = bookingAvailability(appointments, { ...input, ...assignment, date, time }, rules, technicians);
+      const durationMinutes = input.type === "job" ? (input.durationMinutes === 0 ? rules.job.slotMinutes : input.durationMinutes ?? estimatedJobMinutes(lead?.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes) : rules.inspection.slotMinutes;
+      const availability = bookingAvailability(appointments, { ...input, ...assignment, durationMinutes, date, time }, rules, technicians);
       if (!availability.available) return { ok: false as const, conflict: true, error: availability.reason! };
       const reservationId = randomUUID();
-      const document: BookingDoc = { ...input, ...assignment, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+      const document: BookingDoc = { ...input, ...assignment, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
         date, time, reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);
@@ -193,6 +144,7 @@ export async function deleteBooking(leadId: string, type?: "inspection" | "job")
 
 export interface DayAppointment extends TechnicianAssignment {
   date: string; // YYYY-MM-DD
+  durationMinutes?: number;
   time: string; // HH:mm
   type: "inspection" | "job";
   leadId: string;
@@ -201,6 +153,7 @@ export interface DayAppointment extends TechnicianAssignment {
   address?: string;
   suburb?: string;
   status?: string;
+  zone?: string;
   source: "online" | "staff"; // slot lock row vs. appointment recorded on the lead
 }
 
@@ -232,14 +185,15 @@ export async function listAppointmentsBetween(from: string, to: string, options:
           status: { $nin: ["Lost", "Cancelled"] },
           $or: [{ inspectionAt: range }, { jobAt: range }],
         })
-        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, technicianId: 1, technician: 1, technicianUsername: 1 })
+        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
         .toArray(),
     ]);
 
     const out: DayAppointment[] = [];
     const seen = new Set<string>(); // leadId|type|date|time
-    const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string; technicianId?: string; technician?: string; technicianUsername?: string }>();
+    const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string; technicianId?: string; technician?: string; technicianUsername?: string; durationMinutes?: number }>();
     const describe = (s: Record<string, unknown>) => ({
+      durationMinutes: estimatedJobMinutes((s.inspectionReport as { estimatedTime?: string } | undefined)?.estimatedTime),
       name: String(s.name || "Customer"),
       jobNo: typeof s.jobNo === "string" ? s.jobNo : undefined,
       address: typeof s.address === "string" && s.address ? s.address : undefined,
@@ -261,7 +215,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         const time = tRaw.slice(0, 5).padStart(5, "0");
         seen.add(`${id}|${type}|${date}|${time}`);
         const lock = locks.find((booking) => booking.leadId === id && booking.type === type && booking.date === date && booking.time.slice(0, 5) === time);
-        out.push({ date, time, type, leadId: id, ...info.get(id)!, ...(lock ? { technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), source: "staff" });
+        out.push({ date, time, type, leadId: id, ...info.get(id)!, durationMinutes: info.get(id)?.durationMinutes ?? lock?.durationMinutes, ...(lock ? { technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
       }
     }
 
@@ -272,7 +226,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
     if (missingIds.length) {
       const docs = await subCol
         .find({ _id: { $in: missingIds.map((id) => new ObjectId(id)) } })
-        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, technicianId: 1, technician: 1, technicianUsername: 1 })
+        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
         .toArray();
       for (const d of docs) info.set(d._id.toString(), describe(d));
     }
@@ -293,6 +247,8 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         technicianId: b.technicianId || i?.technicianId,
         technician: b.technician || i?.technician,
         technicianUsername: b.technicianUsername || i?.technicianUsername,
+        durationMinutes: i?.durationMinutes ?? b.durationMinutes,
+        zone: b.zone,
         source: "online",
       });
     }

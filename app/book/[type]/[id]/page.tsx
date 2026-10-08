@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 
-type TimeSlot = { time: string; booked: boolean };
+import { formatSlotRange } from "@/lib/scheduling";
+
+type TimeSlot = { time: string; booked: boolean; remaining?: number; reason?: string | null };
 
 type DayOption = {
   date: string;
@@ -15,6 +17,7 @@ type DayOption = {
 };
 
 type Availability = {
+  durationMinutes?: number;
   customer: { name: string; address: string };
   type: "inspection" | "job";
   area: {
@@ -34,15 +37,8 @@ type Availability = {
 
 const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
-function timeLabel(t: string): string {
-  const [h, m = 0] = t.split(":").map(Number);
-  const endH = h + 1;
-  const startAmpm = h >= 12 ? "PM" : "AM";
-  const endAmpm = endH >= 12 ? "PM" : "AM";
-  const startHr = h % 12 === 0 ? 12 : h % 12;
-  const endHr = endH % 12 === 0 ? 12 : endH % 12;
-  const minStr = m !== 0 ? `:${String(m).padStart(2, "0")}` : ":00";
-  return `${startHr}${minStr} ${startAmpm} – ${endHr}:00 ${endAmpm}`;
+function timeLabel(time: string, durationMinutes = 60): string {
+  return formatSlotRange(time, durationMinutes);
 }
 
 export default function BookingPage() {
@@ -242,12 +238,13 @@ export default function BookingPage() {
                                 ? "bg-[#001f97] text-white border-[#001f97]"
                                 : "bg-white text-slate-700 border-slate-300 hover:border-[#001f97]"
                             }`}
-                            title={s.booked ? "Already booked by another customer" : undefined}
+                            title={s.booked ? s.reason || "This time is unavailable" : undefined}
                           >
-                            <span>{timeLabel(s.time)}</span>
+                            <span>{timeLabel(s.time, data?.durationMinutes)}</span>
+                            {!s.booked && type === "job" && s.remaining !== undefined && <span className="block text-[9px] font-semibold mt-1">{s.remaining} technician{s.remaining === 1 ? "" : "s"} available</span>}
                             {s.booked && (
                               <span className="block text-[9px] font-semibold not-italic no-underline text-rose-400 leading-none mt-1">
-                                Booked
+                                Unavailable
                               </span>
                             )}
                           </button>
@@ -255,7 +252,7 @@ export default function BookingPage() {
                       })}
                     </div>
                     <p className="mt-2 text-[11px] text-slate-400">
-                      Greyed-out times are already booked by other customers.
+                      Greyed-out times have no availability for the full appointment.
                     </p>
                   </div>
                 )}

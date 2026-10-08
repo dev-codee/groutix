@@ -1,3 +1,4 @@
+import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
@@ -476,19 +477,14 @@ export async function POST(req: NextRequest) {
     // agree (inner Tullamarine radius = every day; otherwise the suburb's zone day).
     let availableDays: { label: string; times: string[] }[] = [];
     try {
-      const bookings = await listUpcomingBookings();
-      const bookedByDate = new Map<string, Set<string>>();
+      const bookings = await listUpcomingBookings({ strict: true });
       const sameZoneDates = new Set<string>();
       for (const b of bookings) {
-        if (b.type === "inspection") {
-          if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
-          bookedByDate.get(b.date)!.add(b.time);
-        }
         if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
       }
       // Email teaser: a few soon dates, with the booking link for the rest.
       availableDays = shortlistDays(
-        computeAvailability(area, bookedByDate, sameZoneDates, "inspection", bookingRules, zoneRules),
+        applyBookingCapacity(computeAvailability(area, new Map(), sameZoneDates, "inspection", bookingRules, zoneRules), bookings, { leadId: "", type: "inspection" }, bookingRules, []),
         { maxOptions: 5, maxDaysAhead: 28 }
       ).map((d) => ({ label: d.label, times: d.times }));
     } catch (err) {

@@ -1,3 +1,5 @@
+import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
+import type { BookingDoc } from "@/lib/bookings";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveArea, computeAvailability, shortlistDays, zoneDayName } from "@/lib/scheduling";
 import { listUpcomingBookings } from "@/lib/bookings";
@@ -31,19 +33,16 @@ export async function GET(req: NextRequest) {
     }, { headers: NO_STORE });
   }
 
-  const bookedByDate = new Map<string, Set<string>>();
+  let appointments: BookingDoc[] = [];
   const sameZoneDates = new Set<string>();
   try {
-    const bookings = await listUpcomingBookings();
+    const bookings = await listUpcomingBookings({ strict: true });
+    appointments = bookings;
     for (const b of bookings) {
-      if (b.type === "inspection") {
-        if (!bookedByDate.has(b.date)) bookedByDate.set(b.date, new Set());
-        bookedByDate.get(b.date)!.add(b.time);
-      }
       if (b.zone === area.zone || area.inner) sameZoneDates.add(b.date);
     }
   } catch {
-    // non-fatal — return empty availability
+    return NextResponse.json({ error: "Could not load availability. Please try again." }, { status: 503, headers: NO_STORE });
   }
 
   const rules = await getBookingRules();
@@ -51,7 +50,7 @@ export async function GET(req: NextRequest) {
   // well as a count — an outer-zone address only has one bookable day a week, so a
   // count alone would offer dates two months out.
   const days = shortlistDays(
-    computeAvailability(area, bookedByDate, sameZoneDates, "inspection", rules, zoneRules),
+    applyBookingCapacity(computeAvailability(area, new Map(), sameZoneDates, "inspection", rules, zoneRules), appointments, { leadId: "", type: "inspection" }, rules, []),
     { maxOptions: 7, maxDaysAhead: 28 }
   );
 

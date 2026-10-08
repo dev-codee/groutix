@@ -1,15 +1,18 @@
+import { bookingAvailability, type BookingTechnician, type TechnicianAssignment } from "./bookingCapacity";
+import { overlapsSlot } from "./bookingDuration";
 import { slotsForDate, type BookingRules, type BookingType } from "./bookingRules";
 
 export type ScheduleDragItem =
   | { kind: "booking"; id: string }
   | { kind: "unassigned"; leadId: string; type: BookingType };
 
-interface DropAppointment {
+interface DropAppointment extends TechnicianAssignment {
   id: string;
   leadId: string;
   type: BookingType;
   date: string;
   time: string;
+  durationMinutes?: number;
 }
 
 // Resolve drops without changing appointments. The UI must confirm the returned
@@ -24,9 +27,9 @@ export function planScheduleDrop(item: ScheduleDragItem, date: string, entries: 
   return { kind: "reorder" as const, from: entries.indexOf(entry), to: entries.indexOf(target) };
 }
 
-export function suggestedPlanningTime(rules: BookingRules, type: BookingType, date: string, entries: DropAppointment[], preferred?: string): string {
-  const occupied = new Set(entries.filter((entry) => entry.date === date).map((entry) => entry.time));
+export function suggestedPlanningTime(rules: BookingRules, type: BookingType, date: string, entries: DropAppointment[], preferred?: string, technicians?: BookingTechnician[], candidate?: TechnicianAssignment & { leadId?: string; durationMinutes?: number }): string {
+  const occupied = (time: string) => technicians ? !bookingAvailability(entries, { ...candidate, date, time, type, leadId: candidate?.leadId || "" }, rules, technicians).available : entries.some((entry) => entry.date === date && overlapsSlot(entry, time, rules[type].slotMinutes, rules));
   const slots = slotsForDate(rules, type, date);
-  if (preferred && slots.includes(preferred) && !occupied.has(preferred)) return preferred;
-  return slots.find((time) => !occupied.has(time)) || preferred || "09:00";
+  if (preferred && slots.includes(preferred) && !occupied(preferred)) return preferred;
+  return slots.find((time) => !occupied(time)) || preferred || "09:00";
 }

@@ -1,5 +1,9 @@
 "use client";
 
+import type { DayAppointment } from "@/lib/bookings";
+import { bookingAvailability } from "@/lib/bookingCapacity";
+import { estimatedJobMinutes } from "@/lib/bookingDuration";
+
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
@@ -9,9 +13,9 @@ import {
   ArrowRight, Layers, LayoutGrid, Map as MapIcon, CalendarDays, CheckCircle, Loader2, CalendarClock
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { resolveArea, formatApptTimeRange, todayAU, tomorrowAU, formatApptDate, formatApptTime } from "@/lib/scheduling";
+import { resolveArea, addDaysYmd, formatApptTimeRange, todayAU, tomorrowAU, formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { calculateTravel } from "@/lib/dispatch";
-import { hoursEnvelope, fromMinutes } from "@/lib/bookingRules";
+import { hoursEnvelope, fromMinutes, slotsForDate, dayHours, weekdayOf, toMinutes } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { useZoneRules } from "@/lib/useZoneRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
@@ -22,28 +26,6 @@ import type { Lead } from "@/components/admin/types";
 // ── Timeline Geometry Constants ──────────────────────────────────────────────
 const HQ_ADDRESS = "82A Marigold Cres, Gowanbrae VIC 3043, Australia";
 const HQ_ADDRESS_URL = encodeURIComponent(HQ_ADDRESS);
-
-// 9 AM to 5 PM timeline envelope (8 hours = 480 minutes total span)
-const TIMELINE_START_HOUR = 9;  // 9:00 AM
-const TIMELINE_END_HOUR = 17;   // 5:00 PM
-const TIMELINE_START_MINS = TIMELINE_START_HOUR * 60; // 540 mins
-const TIMELINE_END_MINS = TIMELINE_END_HOUR * 60;     // 1020 mins
-const TOTAL_TIMELINE_MINS = TIMELINE_END_MINS - TIMELINE_START_MINS; // 480 mins
-
-// 9 Hour column markers: 9 AM, 10 AM, 11 AM, 12 PM, 1 PM, 2 PM, 3 PM, 4 PM, 5 PM
-const HOUR_SLOTS = [
-  { hour: 9, label: "9 AM" },
-  { hour: 10, label: "10 AM" },
-  { hour: 11, label: "11 AM" },
-  { hour: 12, label: "12 PM" },
-  { hour: 13, label: "1 PM" },
-  { hour: 14, label: "2 PM" },
-  { hour: 15, label: "3 PM" },
-  { hour: 16, label: "4 PM" },
-  { hour: 17, label: "5 PM" },
-];
-
-const QUICK_TIME_SLOTS = ["08:30", "09:30", "11:00", "12:30", "14:00", "15:30", "17:00"];
 
 function parseMinutes(t: string): number {
   if (!t) return 0;
@@ -195,7 +177,7 @@ export function DispatchView({
   const staffOptions = useMemo(() => {
     const map = new Map<string, { name: string; role: string }>();
     for (const t of assignableTechnicians) {
-      if (t.name) map.set(t.name, { name: t.name, role: "Technician" });
+      if (t.name && t.active) map.set(t.name, { name: t.name, role: "Technician" });
     }
     for (const i of inspectionStaff) {
       if (i.name) map.set(i.name, { name: i.name, role: "Inspector" });
@@ -255,6 +237,15 @@ export function DispatchView({
     return list;
   }, [selectedDate, viewMode]);
 
+  const envelope = hoursEnvelope(bookingRules);
+  const TIMELINE_START_MINS = Math.floor(envelope.start / 60) * 60;
+  const TIMELINE_END_MINS = Math.ceil(envelope.end / 60) * 60;
+  const TOTAL_TIMELINE_MINS = Math.max(60, TIMELINE_END_MINS - TIMELINE_START_MINS);
+  const HOUR_SLOTS = Array.from({ length: TOTAL_TIMELINE_MINS / 60 + 1 }, (_, index) => {
+    const hour = TIMELINE_START_MINS / 60 + index;
+    return { hour, label: `${hour % 12 || 12} ${hour >= 12 ? "PM" : "AM"}` };
+  });
+
   // ── 3. Parse and layout appointments for each date ─────────────────────────
   const appointmentsByDate = useMemo(() => {
     const map = new Map<string, Array<{
@@ -311,7 +302,7 @@ export function DispatchView({
         if (map.has(d)) {
           const t = tRaw.slice(0, 5) || "09:00";
           const startMins = parseMinutes(t);
-          const durationMins = 50; // standard inspection slot window
+          const durationMins = bookingRules.inspection.slotMinutes;
           const endMins = startMins + durationMins;
 
           // Clamp to timeline range (9 AM = 0%, 5 PM = 100%)
@@ -348,7 +339,7 @@ export function DispatchView({
         if (map.has(d)) {
           const t = tRaw.slice(0, 5) || "10:00";
           const startMins = parseMinutes(t);
-          const durationMins = 120; // 2 hrs standard job slot
+          const durationMins = estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? bookingRules.job.slotMinutes;
           const endMins = startMins + durationMins;
 
           const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
@@ -384,7 +375,7 @@ export function DispatchView({
     }
 
     return map;
-  }, [scopedLeads, visibleDates, techFilter, searchQuery]);
+  }, [scopedLeads, visibleDates, techFilter, searchQuery, bookingRules]);
 
   // ── Currently Selected Lead ────────────────────────────────────────────────
   const activeLead = useMemo(() => {
@@ -423,6 +414,16 @@ export function DispatchView({
     }
   }, [activeLead, selectedDate]);
 
+  const [capacityAppointments, setCapacityAppointments] = useState<{ date: string; appointments: DayAppointment[] } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/slots?from=${selectedDate}&to=${addDaysYmd(selectedDate, 6)}`, { cache: "no-store" })
+      .then(async (response) => { if (!response.ok) throw new Error("Availability unavailable"); return response.json(); })
+      .then((data) => { if (alive) setCapacityAppointments({ date: selectedDate, appointments: data.appointments }); })
+      .catch(() => { if (alive) setCapacityAppointments(null); });
+    return () => { alive = false; };
+  }, [selectedDate, assignableTechnicians, scopedLeads]);
+
   // ── 4. Smart Suggested Slots Computation ────────────────────────────────────
   const suggestedSlots = useMemo(() => {
     if (!activeLead) return [];
@@ -441,77 +442,42 @@ export function DispatchView({
       distanceKm: number;
     }> = [];
 
-    const candidateDays: string[] = [];
-    const base = new Date(selectedDate + "T00:00:00");
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(base);
-      d.setDate(d.getDate() + i);
-      candidateDays.push(d.toISOString().slice(0, 10));
-    }
-
-    for (const d of candidateDays) {
-      const items = appointmentsByDate.get(d) || [];
-      const dObj = new Date(d + "T00:00:00");
-      const fullDateStr = dObj.toLocaleDateString("en-AU", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
-
-      if (items.length > 0) {
-        // Suggest an optimal slot after the last appointment of the day
-        const lastAppt = items[items.length - 1];
-        const nextStartMins = lastAppt.endMins + 20; // 20 min buffer
-        const slotDuration = changeBookingType === "inspection" ? 50 : 120;
-        const nextEndMins = nextStartMins + slotDuration;
-
-        if (nextEndMins <= TIMELINE_END_MINS) {
-          const travel = calculateTravel(lastAppt.suburb, targetSuburb);
-          const score = travel.distanceKm < 10 ? "Best Match" : travel.distanceKm < 20 ? "Good" : "Possible";
-          const qualityColor = score === "Best Match"
-            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-            : score === "Good"
-            ? "bg-teal-100 text-teal-800 border-teal-300"
-            : "bg-amber-100 text-amber-800 border-amber-300";
-
-          suggestions.push({
-            dateStr: d,
-            formattedDate: fullDateStr,
-            timeWindow: `${fmtMinutesFull(nextStartMins)} – ${fmtMinutesFull(nextEndMins)}`,
-            startIsoTime: `${d}T${fmtMinutesTo12h(nextStartMins)}`,
-            quality: score,
-            qualityColor,
-            contextText: `After: ${lastAppt.serviceLabel || "Grout & Seal"} (${lastAppt.suburb})`,
-            travelMins: Math.max(10, travel.durationMinutes),
-            distanceKm: Math.max(4, travel.distanceKm),
-          });
-        }
-      } else {
-        // Open day slot (e.g. 10:00 AM)
-        const travel = calculateTravel("Tullamarine", targetSuburb);
-        const slotDuration = changeBookingType === "inspection" ? 50 : 120;
-        const startM = 10 * 60;
-        const endM = startM + slotDuration;
-        suggestions.push({
-          dateStr: d,
-          formattedDate: fullDateStr,
-          timeWindow: `${fmtMinutesFull(startM)} – ${fmtMinutesFull(endM)}`,
-          startIsoTime: `${d}T10:00`,
-          quality: travel.distanceKm < 15 ? "Best Match" : "Good",
-          qualityColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
-          contextText: `First stop of the day from Base`,
-          travelMins: travel.durationMinutes,
-          distanceKm: travel.distanceKm,
-        });
-      }
-
-      if (suggestions.length >= 3) break;
+    if (capacityAppointments?.date !== selectedDate) return [];
+    const duration = changeBookingType === "job" ? estimatedJobMinutes(activeLead.inspectionReport?.estimatedTime) ?? bookingRules.job.slotMinutes : bookingRules.inspection.slotMinutes;
+    for (let offset = 0; offset < 7 && suggestions.length < 3; offset++) {
+      const date = addDaysYmd(selectedDate, offset);
+      const time = slotsForDate(bookingRules, changeBookingType, date).find((time) => bookingAvailability(
+        capacityAppointments.appointments,
+        { leadId: activeLead.id, type: changeBookingType, date, time, durationMinutes: duration,
+          technicianId: changeBookingTech || activeLead.technicianId, technician: changeBookingTech ? undefined : activeLead.technician,
+          technicianUsername: changeBookingTech ? undefined : activeLead.technicianUsername },
+        bookingRules, assignableTechnicians,
+      ).available);
+      if (!time) continue;
+      const start = parseMinutes(time);
+      const hours = dayHours(bookingRules, changeBookingType, weekdayOf(date), date);
+      if (start + duration > toMinutes(hours.end)) continue;
+      const previous = (appointmentsByDate.get(date) || []).filter((entry) => entry.type === changeBookingType && entry.startMins < start).at(-1);
+      const travel = calculateTravel(previous?.suburb || "Tullamarine", targetSuburb);
+      const quality = travel.distanceKm < 15 ? "Best Match" : "Good";
+      suggestions.push({
+        dateStr: date,
+        formattedDate: new Date(`${date}T12:00:00`).toLocaleDateString("en-AU", { weekday: "short", day: "2-digit", month: "short", year: "numeric" }),
+        timeWindow: `${fmtMinutesFull(start)} – ${fmtMinutesFull(start + duration)}`,
+        startIsoTime: `${date}T${time}`,
+        quality, qualityColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
+        contextText: previous ? `After: ${previous.serviceLabel} (${previous.suburb})` : "First stop of the day from Base",
+        travelMins: travel.durationMinutes, distanceKm: travel.distanceKm,
+      });
     }
 
     return suggestions;
-  }, [activeLead, selectedDate, appointmentsByDate, changeBookingType]);
+  }, [activeLead, selectedDate, appointmentsByDate, changeBookingType, changeBookingTech, capacityAppointments, assignableTechnicians, bookingRules]);
 
   // ── Book / Schedule Slot Handler (opens confirmation modal) ────────────────
   const handleBookSlot = async (slot: (typeof suggestedSlots)[0]) => {
     if (!activeLead) return;
-    const [h, m] = slot.timeWindow.split(" ")[0].split(":").map(Number);
-    const newTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const newTime = slot.startIsoTime.split("T")[1];
     const oldDateTime = changeBookingType === "inspection" ? activeLead.inspectionAt : activeLead.jobAt;
     setConfirmRescheduleData({
       lead: activeLead,
@@ -924,7 +890,7 @@ export function DispatchView({
 
               {/* Quick Slots */}
               <div className="flex flex-wrap gap-1">
-                {QUICK_TIME_SLOTS.map((t) => (
+                {slotsForDate(bookingRules, changeBookingType, changeBookingDate).map((t) => (
                   <button key={t} type="button" onClick={() => setChangeBookingTime(t)}
                     className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer ${
                       changeBookingTime === t ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -1202,7 +1168,7 @@ export function DispatchView({
                                       <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-400 pt-0.5 mt-0.5 border-t border-slate-200/40 truncate leading-none">
                                         <Car className="w-2.5 h-2.5 shrink-0" />
                                         <span className="truncate">
-                                          {isInsp ? `30m + ${item.travelToMins}m` : `2h + ${item.travelToMins}m`}
+                                          {`${item.durationMins}m + ${item.travelToMins}m travel`}
                                         </span>
                                       </div>
                                     </div>
@@ -1226,8 +1192,9 @@ export function DispatchView({
                               {/* Available Slot at the end of the day */}
                               {(() => {
                                 const lastItem = items[items.length - 1];
-                                if (lastItem && TIMELINE_END_MINS - lastItem.endMins >= 60) {
-                                  const availStartMins = lastItem.endMins + 20;
+                                const suggestion = activeLead ? suggestedSlots.find((slot) => slot.dateStr === date) : undefined;
+                                const availStartMins = suggestion ? parseMinutes(suggestion.startIsoTime.split("T")[1]) : 0;
+                                if (lastItem && suggestion && availStartMins >= lastItem.endMins) {
                                   const availStartPct = ((availStartMins - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
                                   const availWidthPct = Math.max(12, 100 - availStartPct);
 
@@ -1235,9 +1202,7 @@ export function DispatchView({
                                     <div
                                       onClick={() => {
                                         setSelectedDate(date);
-                                        if (activeLead && suggestedSlots.length > 0) {
-                                          handleBookSlot(suggestedSlots[0]);
-                                        }
+                                        handleBookSlot(suggestion);
                                       }}
                                       style={{
                                         left: `${availStartPct}%`,
@@ -1248,7 +1213,7 @@ export function DispatchView({
                                       <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
                                       <div className="text-[10.5px] font-bold text-emerald-800">Available</div>
                                       <div className="text-[8.5px] font-semibold text-emerald-700">
-                                        {fmtMinutesTo12h(availStartMins)} – 5:00
+                                        {suggestion.timeWindow}
                                       </div>
                                     </div>
                                   );
