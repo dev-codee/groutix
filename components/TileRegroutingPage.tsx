@@ -2,30 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { ArrowRight, Check, ChevronDown, Grid2x2, Droplets, Footprints, Home, ImageIcon, MapPin, Paintbrush, Phone, ShieldCheck, Sparkles, Star, Wrench } from "lucide-react";
+import { Section, Cards, QuoteLink, card, link, text } from "@/components/ServicePageSections";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
-import ServiceSuburbChecker from "@/components/ServiceSuburbChecker";
+import ServiceAreaCoverage from "@/components/ServiceAreaCoverage";
 import ReviewCard from "@/components/ReviewCard";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { BUSINESS } from "@/lib/seo";
 import { tileRegroutingFaqs, tileGroutRows, tilePhotoSlots } from "@/lib/tileRegroutingContent";
 
-const button = "inline-flex items-center justify-center gap-2 rounded-sm bg-primary px-6 py-3 font-bold text-white transition-colors hover:bg-primary-hover";
-const link = "font-bold text-accent underline underline-offset-4 hover:text-primary";
-const card = "rounded-xl border border-neutral-200 bg-white p-6 sm:p-7";
-const text = "text-base leading-relaxed text-neutral-600 sm:text-lg";
-const suburbs = ["South Yarra", "Malvern", "Toorak", "Albert Park", "Armadale", "Prahran", "Hawthorn", "Camberwell", "Brighton", "St Kilda", "Richmond", "Windsor", "Elwood", "Port Melbourne"];
-const regional = ["Geelong", "Ballarat", "Frankston", "Lilydale", "Yarra Glen", "Kilmore"];
-function Section({ eyebrow, title, intro, children, alternate = false, id }: { eyebrow: string; title: string; intro?: string; children: ReactNode; alternate?: boolean; id?: string }) {
-  return <section id={id} className={`py-16 lg:py-20 ${alternate ? "bg-neutral-50" : "bg-white"}`}><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><div className="mx-auto mb-10 max-w-3xl text-center"><p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-accent">{eyebrow}</p><h2 className="text-3xl font-bold leading-tight tracking-tight text-neutral-900 sm:text-4xl">{title}</h2>{intro && <p className={`mt-4 ${text}`}>{intro}</p>}</div>{children}</div></section>;
-}
-function Cards({ items, columns = 3 }: { items: { title: string; body: ReactNode; icon?: typeof Grid2x2 }[]; columns?: 3 | 4 }) {
-  return <div className={`grid gap-5 sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>{items.map(({ title, body, icon: Icon = Grid2x2 }) => <div key={title} className={`${card} transition-all hover:border-accent/40 hover:shadow-md`}><div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-accent-light/60 text-primary"><Icon className="h-5 w-5" /></div><h3 className="text-lg font-bold text-neutral-900">{title}</h3><p className="mt-3 leading-relaxed text-neutral-600">{body}</p></div>)}</div>;
-}
-function QuoteLink({ label = "Get a Free Quote" }: { label?: string }) { return <a href="#quote-form" className={button}>{label}<ArrowRight className="h-4 w-4" /></a>; }
 
 export default function TileRegroutingPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
   return <><Navbar /><main>
@@ -91,14 +78,14 @@ export default function TileRegroutingPage({ rating, reviews }: { rating: Busine
       { title: "10-Year Warranty", body: "On eligible waterproof work. Scope confirmed in your quote.", icon: ShieldCheck },
     ]} /></Section>
     <Section eyebrow="Our work" title="Before and After: Real Tile Regrouting" alternate><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{tilePhotoSlots.map(room => <figure key={room} className="overflow-hidden rounded-xl border border-dashed border-neutral-300 bg-white"><div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 px-5 text-center text-neutral-400"><ImageIcon className="h-8 w-8" /><span className="text-sm">Before & after photos<br />coming soon</span></div><figcaption className="border-t border-neutral-100 px-5 py-4 font-bold text-neutral-900">{room}</figcaption></figure>)}</div></Section>
-    <Section eyebrow="Customer feedback" title="What Customers Say About Tile Regrouting">{reviews.length ? <div className="grid gap-6 md:grid-cols-3">{reviews.map(review => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}</div> : <div className="grid gap-5 md:grid-cols-3">{["Kitchen floors", "Laundries", "Hallways and bathroom floors"].map(room => <div key={room} className={`${card} border-dashed text-center`}><h3 className="font-bold text-neutral-900">{room}</h3><p className="mt-3 text-sm leading-relaxed text-neutral-500">Customer review coming soon.</p></div>)}</div>}<div className="mt-7 text-center"><a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={link}>Read More Reviews on Google →</a></div></Section>
+    <Section eyebrow="Customer feedback" title="What Our Customers Say" intro="Real feedback from homeowners we’ve helped across Melbourne and Victoria."><div className="grid gap-6 md:grid-cols-3">{reviews.map(review => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}</div><div className="mt-7 text-center"><a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={link}>Read More Reviews on Google →</a></div></Section>
     <Section eyebrow="More ways we can help" title="Related Services" alternate><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{[
       ["Shower Regrouting", "/shower-regrouting/", "Worn grout throughout the shower."],
       ["Balcony Leak Repairs", "/balcony-leak-repairs/", "Repair options for leaking balconies."],
       ["Epoxy Grout", "/epoxy-grout/", "Stain resistant grout for wet areas."],
       ["Small Tiling Jobs", "/small-tiling-jobs/", "Individual tiles repaired or replaced."],
     ].map(([title, href, body]) => <Link key={href} href={href} className={`${card} group transition-colors hover:border-accent`}><h3 className="font-bold text-neutral-900">{title}</h3><p className="mt-3 text-sm leading-relaxed text-neutral-600">{body}</p><ArrowRight className="mt-6 h-5 w-5 text-accent transition-transform group-hover:translate-x-1" /></Link>)}</div></Section>
-    <Section eyebrow="Service areas" title="Which Melbourne Suburbs Do We Regrout Tiles In?" intro="Looking for tile regrouting near you? Check your suburb below."><div className="grid items-start gap-10 lg:grid-cols-2"><div><h3 className="mb-5 text-xl font-bold text-neutral-900">Inner & Bayside Melbourne</h3><div className="flex flex-wrap gap-2">{suburbs.map(name => <Link key={name} href={`/locations/melbourne/${name.toLowerCase().replaceAll(" ", "-")}`} className="rounded-sm border border-neutral-200 px-3 py-2 text-sm text-neutral-700 hover:border-primary hover:text-primary">{name}</Link>)}</div><h3 className="mb-4 mt-8 text-xl font-bold text-neutral-900">Also Servicing</h3><div className="flex flex-wrap gap-2">{regional.map(name => <Link key={name} href={`/locations/${name.toLowerCase().replaceAll(" ", "-")}`} className="rounded-sm bg-neutral-50 px-3 py-2 text-sm text-neutral-700 hover:text-primary">{name}</Link>)}</div><Link href="/locations/" className={`${link} mt-7 inline-block`}>Browse all service locations →</Link></div><ServiceSuburbChecker service="Tile Regrouting" sourcePage="/tile-regrouting" subject="your tiles" /></div></Section>
+    <Section eyebrow="Service areas" title="Which Melbourne Suburbs Do We Regrout Tiles In?" intro="Looking for tile regrouting near you? Check your suburb below."><ServiceAreaCoverage service="Tile Regrouting" sourcePage="/tile-regrouting" subject="your tiles" /></Section>
     <Section eyebrow="Your questions, answered" title="Tile Regrouting FAQs" alternate><div className="mx-auto max-w-3xl space-y-3">{tileRegroutingFaqs.map(faq => <details key={faq.q} className="group rounded-xl border border-neutral-200 bg-white open:border-accent/50"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 [&::-webkit-details-marker]:hidden"><h3 className="text-base font-bold text-neutral-900">{faq.q}</h3><ChevronDown className="h-4 w-4 shrink-0 text-accent transition-transform group-open:rotate-180" /></summary><p className="px-5 pb-5 leading-relaxed text-neutral-600">{faq.a}</p></details>)}</div><div className="mt-8 text-center"><QuoteLink label="Still Have Questions? Get a Free Quote" /></div></Section>
     <section className="bg-primary py-16 text-center text-white"><div className="mx-auto max-w-3xl px-6"><h2 className="text-3xl font-bold sm:text-4xl">Get Your Free Quote Today</h2><p className="mt-5 leading-relaxed text-white/85">Call <a className="underline" href="tel:+61370238094">+61 3 7023 8094</a>, email <a className="underline" href="mailto:info@groutix.com">info@groutix.com</a>, or request a quote online.</p><p className="mt-3 text-sm text-white/70">Open Mon to Sat 9:00 AM to 6:30 PM, Sun 11:00 AM to 10:00 PM.</p><p className="mt-3 text-white/80">Honest advice and workmanship you can rely on.</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/contact" className="rounded-sm bg-[#FBBC04] px-6 py-3 font-bold text-primary hover:bg-white">Request A Quote</Link><a href="tel:+61370238094" className="inline-flex items-center gap-2 rounded-sm border border-white/60 px-6 py-3 font-bold hover:bg-white/10"><Phone className="h-4 w-4" />+61 3 7023 8094</a></div></div></section>
   </main><Footer /></>;

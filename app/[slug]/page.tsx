@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
 import { getBusinessRating, getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
+import SiliconeRecaulkingPage from "@/components/SiliconeRecaulkingPage";
+import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingContent";
 import TileRegroutingPage from "@/components/TileRegroutingPage";
 import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
 import { abs, SITE_URL } from "@/lib/seo";
@@ -218,8 +220,8 @@ const services: Record<string, {
 
   "silicone-recaulking": {
     title: "Silicone & Recaulking",
-    metaTitle: "Silicone & Recaulking Services Victoria | Groutix",
-    metaDesc: "Remove mouldy, cracked silicone and reseal your bathroom or kitchen with a durable, mould-resistant finish. Servicing Victoria.",
+    metaTitle: SILICONE_META_TITLE,
+    metaDesc: "Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. Free quote.",
     h1Desc: "Perished, mouldy or peeling silicone around showers, baths, sinks and benchtops isn't just unsightly, making it a common entry point for water damage. Our silicone and recaulking service removes old, failing silicone and applies a fresh, mould-resistant seal to all wet area joints. It's one of the simplest ways to instantly refresh a bathroom or kitchen and protect against leaks, and it pairs perfectly with our regrouting services for a complete wet area refresh.",
     heroCards: [
       { title: "Specialists in tile and bathroom silicone & recaulking", desc: "" },
@@ -415,13 +417,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = services[slug];
   if (!s) return {};
   const canonical = `/${slug}`;
-  const rating = slug === "tile-regrouting" ? await getBusinessRating() : null;
+  const dedicatedService = slug === "tile-regrouting" || slug === "silicone-recaulking";
+  const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
     ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
-    : s.metaDesc;
+    : slug === "silicone-recaulking"
+      ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+      : s.metaDesc;
   return {
-    title: slug === "tile-regrouting" ? { absolute: s.metaTitle } : s.metaTitle,
+    title: dedicatedService ? { absolute: s.metaTitle } : s.metaTitle,
     description,
+    ...(dedicatedService ? { twitter: { card: "summary_large_image" as const, title: s.metaTitle, description } } : {}),
     alternates: { canonical },
     openGraph: {
       title: s.metaTitle,
@@ -437,14 +443,22 @@ export default async function ServicePage({ params }: Props) {
   const s = services[slug];
   if (!s) notFound();
 
-  if (slug === "tile-regrouting") {
+  if (slug === "silicone-recaulking") {
     const [rating, availableReviews] = await Promise.all([getBusinessRating(), getReviews(5)]);
-    // Require relevant room mentions; exclude the site's three fallback homepage reviews.
-    const homepageNames = new Set(availableReviews.slice(0, 3).map(review => review.name));
-    const reviews = availableReviews.filter(review =>
-      /\b(kitchen|laundr(?:y|ies)|hallway|floor)s?\b/i.test(review.review) &&
-      !homepageNames.has(review.name)
-    ).slice(0, 3);
+    const reviews = availableReviews.filter(review => /\b(silicone|recaulk(?:ing|ed)?)\b/i.test(review.review)).slice(0, 3);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/silicone-recaulking/#service"), name: "Silicone Replacement Melbourne", serviceType: "Silicone replacement", url: abs("/silicone-recaulking/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(siliconeFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Silicone & Recaulking", item: abs("/silicone-recaulking/") },
+      ] },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><SiliconeRecaulkingPage rating={rating} reviews={reviews} /></>;
+  }
+
+  if (slug === "tile-regrouting") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
     const schema = [
       { "@context": "https://schema.org", "@type": "Service", "@id": abs("/tile-regrouting/#service"), name: "Tile Regrouting Melbourne", serviceType: "Tile regrouting", url: abs("/tile-regrouting/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
       faqJsonLd(tileRegroutingFaqs),
