@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
-import { getReviews } from "@/lib/reviews";
+import { getBusinessRating, getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
+import TileRegroutingPage from "@/components/TileRegroutingPage";
+import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
+import { abs, SITE_URL } from "@/lib/seo";
 import ShowerRegroutingPage from "@/components/ShowerRegroutingPage";
 
 const services: Record<string, {
@@ -128,8 +131,8 @@ const services: Record<string, {
 
   "tile-regrouting": {
     title: "Tile Regrouting",
-    metaTitle: "Tile Regrouting Victoria | Bathroom & Kitchen Tiles | Groutix",
-    metaDesc: "Restore worn or cracked tiles with professional tile regrouting in Victoria. Colour-matched, mould-resistant, long-lasting results.",
+    metaTitle: "Tile Regrouting Melbourne | Floors, Kitchens & Baths | Groutix",
+    metaDesc: "Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. Free quote.",
     h1Desc: "Old grout doesn't just look dated, crumbling, staining, and letting moisture through to the surfaces underneath. Our tile regrouting service covers bathrooms, kitchens, laundries and any tiled area in your home, giving worn tiles a like-new finish. We carefully remove deteriorated grout lines and apply fresh, colour-matched grout for a clean, uniform result that's easier to keep clean and far more resistant to future cracking.",
     failHeading: "Stained & Cracked Grout",
     failHeadingBlue: "Ruins the Look of Your Tiles",
@@ -412,13 +415,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = services[slug];
   if (!s) return {};
   const canonical = `/${slug}`;
+  const rating = slug === "tile-regrouting" ? await getBusinessRating() : null;
+  const description = slug === "tile-regrouting"
+    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+    : s.metaDesc;
   return {
-    title: s.metaTitle,
-    description: s.metaDesc,
+    title: slug === "tile-regrouting" ? { absolute: s.metaTitle } : s.metaTitle,
+    description,
     alternates: { canonical },
     openGraph: {
       title: s.metaTitle,
-      description: s.metaDesc,
+      description,
       url: canonical,
       type: "website",
     },
@@ -429,6 +436,25 @@ export default async function ServicePage({ params }: Props) {
   const { slug } = await params;
   const s = services[slug];
   if (!s) notFound();
+
+  if (slug === "tile-regrouting") {
+    const [rating, availableReviews] = await Promise.all([getBusinessRating(), getReviews(5)]);
+    // Require relevant room mentions; exclude the site's three fallback homepage reviews.
+    const homepageNames = new Set(availableReviews.slice(0, 3).map(review => review.name));
+    const reviews = availableReviews.filter(review =>
+      /\b(kitchen|laundr(?:y|ies)|hallway|floor)s?\b/i.test(review.review) &&
+      !homepageNames.has(review.name)
+    ).slice(0, 3);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/tile-regrouting/#service"), name: "Tile Regrouting Melbourne", serviceType: "Tile regrouting", url: abs("/tile-regrouting/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(tileRegroutingFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Tile Regrouting", item: abs("/tile-regrouting/") },
+      ] },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><TileRegroutingPage rating={rating} reviews={reviews} /></>;
+  }
 
   const reviews = await getReviews();
 

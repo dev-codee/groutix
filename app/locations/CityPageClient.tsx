@@ -479,6 +479,7 @@ export default function CityPageClient({
                     {para}
                   </p>
                 ))}
+                <p className="text-base leading-relaxed text-neutral-600">For worn grout in kitchens, laundries and floors, see our <Link href="/tile-regrouting/" className="font-bold text-accent underline">kitchen and laundry regrouting</Link> service.</p>
               </motion.div>
               <Link
                 href="#suburbs"

@@ -1,44 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import {
-  ShieldCheck,
-  Ruler,
-  Sparkles,
-  ChevronDown,
-  ChevronRight,
-  Phone,
-  ArrowRight,
-  Sliders,
-  HelpCircle,
-} from "lucide-react";
-import { SHOWER_SCREEN_MODELS, type ShowerScreenModel } from "@/lib/showerScreensData";
-import CtaBanner from "@/components/CtaBanner";
-import AnimatedSection from "@/components/AnimatedSection";
+import { Search, SlidersHorizontal, ArrowRight, Phone, Ruler, ShieldCheck } from "lucide-react";
+import { SHOWER_SCREEN_MODELS } from "@/lib/showerScreensData";
 import { useContact, useSiteContent } from "@/components/SiteContentProvider";
+import { ProductRow } from "@/components/ShowerScreenCatalog";
 
-/* ────── Image Placeholder Component ────── */
-function ImgBox({ label, aspect = "aspect-[4/3]" }: { label: string; aspect?: string }) {
-  return (
-    <div
-      className={`relative ${aspect} w-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center rounded-sm`}
-    >
-      {/* Decorative corner accents */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent z-10 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent z-10 pointer-events-none" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:20px_20px]" />
-      <div className="relative text-center px-4 space-y-1 z-10">
-        <p className="text-[12px] font-bold text-neutral-400 uppercase tracking-widest">{label}</p>
-        <p className="text-[12px] text-neutral-300">Picture space - add manually</p>
-      </div>
-    </div>
-  );
-}
-
-/* ────── FAQ Data ────── */
 const FAQS = [
   {
     q: "How does the custom shower screen process work?",
@@ -64,279 +32,42 @@ const FAQS = [
 
 export default function ShowerScreensClient() {
   const { phone, tel } = useContact();
-  const siteContent = useSiteContent();
-  const models = siteContent.showerScreens && siteContent.showerScreens.length > 0 ? siteContent.showerScreens : SHOWER_SCREEN_MODELS;
-
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
-  const [filterCategory, setFilterCategory] = useState<string>("All");
-
-  const categories = ["All", "Frameless", "Semi-Frameless", "Sliding", "Wardrobes"];
-
-  const filteredModels =
-    filterCategory === "All"
-      ? models
-      : models.filter((m) => m.category === filterCategory);
+  const content = useSiteContent();
+  const models = content.showerScreens?.length ? content.showerScreens : SHOWER_SCREEN_MODELS;
+  const [category, setCategory] = useState("All");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("recommended");
+  const [compare, setCompare] = useState(false);
+  const categories = ["All", ...new Set(models.map(m => m.category))];
+  const filtered = models.filter(m => (category === "All" || category === m.category) && `${m.name} ${m.summary} ${m.highlights.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));
+  if (sort === "name") filtered.sort((a,b) => a.name.localeCompare(b.name));
 
   return (
-    <main className="pt-[110px] lg:pt-[125px] bg-neutral-50 text-neutral-900 min-h-screen">
-      {/* ────── Hero Section ────── */}
-      <section className="relative bg-primary text-white py-20 lg:py-28 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,214,79,0.15),_transparent_50%)] pointer-events-none" />
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-3.5 py-1.5 rounded-full text-xs font-bold text-accent tracking-wide uppercase">
-              <Sparkles className="h-3.5 w-3.5" /> Premium Glass &amp; Installation
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08]">
-              Custom Shower Screens <span className="text-accent">&amp; Enclosures</span>
-            </h1>
-            <p className="text-white/85 text-lg sm:text-xl leading-relaxed max-w-2xl font-normal">
-              Bespoke frameless, semi-frameless, and sliding shower screens custom-measured and installed across Victoria. Built with Australian toughened safety glass for lasting elegance and effortless maintenance.
-            </p>
-            <div className="flex flex-wrap gap-4 pt-2">
-              <a
-                href="#models"
-                className="bg-accent hover:bg-accent/90 text-primary font-black px-8 py-3.5 rounded shadow-md transition-all duration-200 text-base tracking-wide border-2 border-accent"
-              >
-                Explore Screen Models
-              </a>
-              <a
-                href={tel}
-                className="flex items-center gap-2 border-2 border-white/50 hover:border-white text-white font-bold px-7 py-3.5 rounded transition-all duration-200 text-base tracking-wide"
-              >
-                <Phone className="h-4 w-4" />
-                Call {phone}
-              </a>
-            </div>
-          </div>
-
-          <div className="lg:col-span-5">
-            <ImgBox label="Hero Shower Screen Showcase Image" aspect="aspect-[4/3]" />
-          </div>
+    <main className="min-h-screen bg-[#f5f7f9] pt-[110px] text-slate-900 lg:pt-[125px]">
+      <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
+        <nav aria-label="Breadcrumb" className="mb-6 flex gap-2 text-xs text-slate-500"><Link href="/" className="hover:underline">Home</Link><span>/</span><span>Shower screens &amp; wardrobes</span></nav>
+        <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Find your shower screen</h1><p className="mt-2 text-sm text-slate-600">Compare designs, glass and finishes. Custom measured and installed across Victoria.</p></div>
+          <a href={tel} className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><Phone size={16} /> {phone}</a>
         </div>
-      </section>
-
-      {/* ────── Key Value Pillars ────── */}
-      <section className="py-12 bg-white border-b border-neutral-200">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="flex items-start gap-4 p-4 rounded-lg bg-neutral-50 border border-neutral-200/80">
-            <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0">
-              <Ruler className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-neutral-900">Custom On-Site Laser Fits</h3>
-              <p className="text-sm text-neutral-600 mt-1">
-                Every screen is custom-measured on-site by our Melbourne specialists for a guaranteed, flawless alignment.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 p-4 rounded-lg bg-neutral-50 border border-neutral-200/80">
-            <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-neutral-900">AS/NZS Toughened Glass</h3>
-              <p className="text-sm text-neutral-600 mt-1">
-                Crafted from 10mm or 6mm certified Australian toughened safety glass for ultimate strength and peace of mind.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 p-4 rounded-lg bg-neutral-50 border border-neutral-200/80">
-            <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-neutral-900">Optional Nano4-Glass Protection</h3>
-              <p className="text-sm text-neutral-600 mt-1">
-                Optional ceramic coating repels water spots, soap scum, and hard water stains for effortless cleaning.
-              </p>
-            </div>
-          </div>
+        <div className="mb-7 flex flex-wrap gap-x-7 gap-y-3 border-y border-slate-200 py-4 text-xs text-slate-600"><span className="flex items-center gap-2"><Ruler size={16} className="text-primary" /> On-site measurement</span><span className="flex items-center gap-2"><ShieldCheck size={16} className="text-primary" /> Toughened safety glass</span><span>Quotes tailored to your space</span></div>
+        <div className="grid items-start gap-6 lg:grid-cols-[230px_1fr]">
+          <aside className="rounded-xl border border-slate-200 bg-white p-5 lg:sticky lg:top-[140px]">
+            <h2 className="mb-5 flex items-center gap-2 font-semibold"><SlidersHorizontal size={17} /> Filter models</h2>
+            <label htmlFor="model-search" className="mb-2 block text-xs font-semibold text-slate-600">Search the range</label>
+            <div className="relative"><Search size={15} className="absolute left-3 top-3 text-slate-400" /><input id="model-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Name or feature" className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-2 text-sm focus:outline-primary" /></div>
+            <fieldset className="mt-6"><legend className="mb-3 text-sm font-semibold">Screen type</legend><div className="flex flex-wrap gap-2 lg:block lg:space-y-1">{categories.map(c=><label key={c} className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm ${category === c ? "bg-blue-50 text-primary" : "text-slate-600 hover:bg-slate-50"}`}><input type="radio" name="category" checked={category===c} onChange={()=>setCategory(c)} className="accent-primary" />{c === "All" ? "All models" : c}<span className="ml-auto pl-2 text-xs text-slate-400">{c === "All" ? models.length : models.filter(m=>m.category===c).length}</span></label>)}</div></fieldset>
+            {(query || category !== "All") && <button onClick={()=>{setQuery("");setCategory("All");}} className="mt-4 text-xs font-semibold text-primary hover:underline">Clear filters</button>}
+            <div className="mt-6 border-t border-slate-200 pt-5"><p className="text-sm font-semibold">Need help choosing?</p><p className="mt-2 text-xs leading-relaxed text-slate-500">Tell us about your space and we’ll help you find a suitable screen.</p><Link href="/contact?enquiry=Shower%20screens" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary">Ask our team <ArrowRight size={14} /></Link></div>
+          </aside>
+          <section aria-label="Product results" className="min-w-0">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p aria-live="polite" className="text-sm text-slate-600"><strong className="text-slate-900">{filtered.length}</strong> models{category !== "All" ? ` · ${category}` : " in our range"}</p><label className="flex items-center gap-2 text-xs text-slate-500">Sort by<select value={sort} onChange={e=>setSort(e.target.value)} className="rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700"><option value="recommended">Recommended</option><option value="name">Name A–Z</option></select></label></div>
+            <div className="overflow-hidden rounded-xl border border-slate-200">{filtered.map(m=><ProductRow key={m.id} model={m} />)}{!filtered.length && <div className="bg-white p-10 text-center"><h2 className="font-semibold">No matching models</h2><p className="mt-2 text-sm text-slate-500">Try another feature or clear your filters.</p></div>}</div>
+            <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Compare specifications</h2><p className="mt-1 text-xs text-slate-500">Glass, door operation and finishes at a glance.</p></div><button onClick={()=>setCompare(!compare)} aria-expanded={compare} aria-controls="comparison" className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-primary">{compare ? "Hide" : "Compare"}</button></div>{compare && <div id="comparison" className="mt-5 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-xs"><caption className="sr-only">Specifications for the currently filtered models</caption><thead><tr className="border-b border-slate-200 text-slate-500">{["Model", "Glass / material", "Door operation", "Finishes"].map(h=><th key={h} className="p-3 font-medium">{h}</th>)}</tr></thead><tbody>{filtered.map(m=><tr key={m.id} className="border-b border-slate-100"><th scope="row" className="p-3 font-semibold text-primary"><Link href={`/shower-screens/${m.id}`}>{m.name}</Link></th><td className="p-3">{m.specs.glass}</td><td className="p-3">{m.specs.doorAction}</td><td className="p-3">{m.specs.frameFinishes}</td></tr>)}</tbody></table></div>}</section>
+          </section>
         </div>
-      </section>
-
-      {/* ────── 6-Model Product Catalog Grid ────── */}
-      <AnimatedSection className="py-16 lg:py-24" id="models">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <h2 className="text-3xl lg:text-4xl font-black text-neutral-900 tracking-tight">
-                Our Shower Screen <span className="text-accent">Range</span>
-              </h2>
-              <p className="text-neutral-600 text-base mt-2 max-w-2xl">
-                Explore our six distinct screen systems and wardrobe doors. Click any model to view its dedicated specifications page.
-              </p>
-            </div>
-
-            {/* Category Filter Tabs */}
-            <div className="flex flex-wrap gap-2 bg-neutral-200/60 p-1.5 rounded-lg">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
-                    filterCategory === cat
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-neutral-700 hover:bg-white/60"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Catalog Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredModels.map((model) => (
-              <motion.div
-                key={model.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white border border-neutral-200 rounded-lg overflow-hidden flex flex-col group hover:shadow-xl hover:border-primary transition-all duration-300"
-              >
-                {/* Image Placeholder */}
-                <Link href={`/shower-screens/${model.id}`} className="relative block">
-                  <ImgBox label={model.imageLabel} aspect="aspect-[4/3]" />
-                  <span className="absolute top-3 left-3 bg-primary text-white text-[11px] font-extrabold uppercase px-3 py-1 rounded shadow">
-                    {model.category}
-                  </span>
-                </Link>
-
-                {/* Card Content */}
-                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <Link href={`/shower-screens/${model.id}`}>
-                      <h3 className="font-bold text-xl text-neutral-900 group-hover:text-primary transition-colors">
-                        {model.name}
-                      </h3>
-                    </Link>
-                    <p className="text-xs font-semibold text-accent uppercase tracking-wider">
-                      {model.tagline}
-                    </p>
-                    <p className="text-sm text-neutral-600 leading-relaxed pt-1">{model.summary}</p>
-                  </div>
-
-                  {/* Highlight badges */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {model.highlights.map((h, idx) => (
-                      <span
-                        key={idx}
-                        className="bg-neutral-100 text-neutral-700 text-[11px] font-medium px-2.5 py-1 rounded border border-neutral-200"
-                      >
-                        {h}
-                      </span>
-                    ))}
-                  </div>
-
-                  <Link
-                    href={`/shower-screens/${model.id}`}
-                    className="w-full mt-4 bg-neutral-900 hover:bg-primary text-white font-bold py-3 px-4 rounded text-sm tracking-wide transition-colors flex items-center justify-center gap-2 group-hover:shadow"
-                  >
-                    <span>View Specifications &amp; Details</span>
-                    <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </AnimatedSection>
-
-      {/* ────── Side-by-Side Model Comparison Table ────── */}
-      <AnimatedSection className="py-16 bg-white border-t border-b border-neutral-200">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-8">
-          <div className="text-center space-y-3 max-w-3xl mx-auto">
-            <h2 className="text-3xl font-black text-neutral-900">
-              Model <span className="text-accent">Comparison Matrix</span>
-            </h2>
-            <p className="text-neutral-600 text-base">
-              Compare key specifications across our screen models to choose the perfect system for your bathroom project.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-primary text-white text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="p-4 font-bold">Model Series</th>
-                  <th className="p-4 font-bold">Category</th>
-                  <th className="p-4 font-bold">Glass Thickness</th>
-                  <th className="p-4 font-bold">Door Operation</th>
-                  <th className="p-4 font-bold">Nano4 Coating</th>
-                  <th className="p-4 font-bold">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {SHOWER_SCREEN_MODELS.map((m, i) => (
-                  <tr key={m.id} className={i % 2 === 0 ? "bg-white" : "bg-neutral-50"}>
-                    <td className="p-4 font-bold text-neutral-900">
-                      <Link href={`/shower-screens/${m.id}`} className="hover:text-primary hover:underline">
-                        {m.name}
-                      </Link>
-                    </td>
-                    <td className="p-4 font-medium text-neutral-600">{m.category}</td>
-                    <td className="p-4 text-neutral-700">{m.specs.glass.split(" ")[0]}</td>
-                    <td className="p-4 text-neutral-700">{m.specs.doorAction.split(" ")[0]}</td>
-                    <td className="p-4 text-emerald-600 font-semibold">Optional</td>
-                    <td className="p-4">
-                      <Link
-                        href={`/shower-screens/${m.id}`}
-                        className="text-accent font-bold text-xs uppercase tracking-wider hover:underline"
-                      >
-                        View Page &rarr;
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </AnimatedSection>
-
-      {/* ────── FAQs Section ────── */}
-      <AnimatedSection className="py-16 lg:py-24 bg-neutral-50">
-        <div className="max-w-4xl mx-auto px-6 space-y-10">
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-1.5 text-accent font-bold text-xs uppercase tracking-wider">
-              <HelpCircle className="h-4 w-4" /> Got Questions?
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-black text-neutral-900">
-              Shower Screen <span className="text-accent">FAQs</span>
-            </h2>
-          </div>
-
-          <div className="space-y-4">
-            {FAQS.map((faq, index) => {
-              const isOpen = activeFaq === index;
-              return (
-                <div key={index} className="border border-neutral-200 rounded-lg bg-white overflow-hidden shadow-sm">
-                  <button
-                    onClick={() => setActiveFaq(isOpen ? null : index)}
-                    className="w-full p-5 text-left font-bold text-base text-neutral-900 flex items-center justify-between hover:bg-neutral-50 transition-colors"
-                  >
-                    <span>{faq.q}</span>
-                    {isOpen ? <ChevronDown className="h-5 w-5 text-accent shrink-0" /> : <ChevronRight className="h-5 w-5 text-neutral-400 shrink-0" />}
-                  </button>
-                  {isOpen ? (
-                    <div className="px-5 pb-5 text-sm text-neutral-600 leading-relaxed border-t border-neutral-100 pt-3">
-                      {faq.a}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </AnimatedSection>
-
-      {/* ────── CTA Banner ────── */}
-      <CtaBanner />
+        <section className="my-12 max-w-3xl"><h2 className="mb-5 text-xl font-semibold">Before you choose</h2><div className="divide-y divide-slate-200">{FAQS.map(f=><details key={f.q} className="py-4"><summary className="cursor-pointer text-sm font-semibold">{f.q}</summary><p className="mt-3 text-sm leading-relaxed text-slate-600">{f.a}</p></details>)}</div></section>
+      </div>
     </main>
   );
 }

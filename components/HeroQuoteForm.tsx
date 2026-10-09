@@ -21,6 +21,7 @@ const AREA_OPTIONS = [
 ];
 
 const SERVICE_OPTIONS = [
+  "Tile Regrouting",
   "Shower Cubicle Regrouting",
   "Leaking Shower Repair",
   "Shower Base Repair",
@@ -72,7 +73,7 @@ type TenantInfo = {
   email: string;
 };
 
-export default function HeroQuoteForm() {
+export default function HeroQuoteForm({ defaultService = "" }: { defaultService?: string } = {}) {
   const [data, setData] = useState({
     firstName: "",
     lastName: "",
@@ -88,7 +89,7 @@ export default function HeroQuoteForm() {
   const [areas, setAreas] = useState<string[]>([]);
   const [areaError, setAreaError] = useState(false);
 
-  const [services, setServices] = useState<string[]>([]);
+  const [services, setServices] = useState<string[]>(defaultService ? [defaultService] : []);
   const [serviceError, setServiceError] = useState(false);
 
   const [damagedTiles, setDamagedTiles] = useState<string[]>([]);
@@ -712,7 +713,7 @@ export default function HeroQuoteForm() {
                   setSubmitted(false);
                   setPhotos([]);
                   setAreas([]);
-                  setServices([]);
+                  setServices(defaultService ? [defaultService] : []);
                   setDamagedTiles([]);
                   setLeaking("");
                   setIsPropertyManager(false);
