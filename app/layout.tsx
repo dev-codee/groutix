@@ -106,7 +106,10 @@ export default async function RootLayout({
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', 'G-GT047SQJNS');
+              // Private journey links must not be recorded by analytics.
+              if (!window.location.pathname.startsWith('/track/')) {
+                gtag('config', 'G-GT047SQJNS');
+              }
             `,
           }}
         />

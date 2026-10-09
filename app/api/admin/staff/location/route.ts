@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifyRequestSession } from "@/lib/adminAuth";
+import { validCoordinates } from "@/lib/customerTracking";
+import { publishCustomerLocation } from "@/lib/customerTrackingServer";
 
 export const runtime = "nodejs";
 
@@ -15,7 +17,7 @@ interface StaffLocationDoc {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -27,8 +29,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const { lat, lng, leadId } = body;
-  if (typeof lat !== "number" || typeof lng !== "number") {
+  if (!validCoordinates(lat, lng)) {
     return NextResponse.json({ error: "lat and lng are required numbers" }, { status: 400 });
   }
 
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
         { _id: new ObjectId(leadId) },
         { projection: { name: 1 } }
       );
-      leadName = (sub as any)?.name || undefined;
+      leadName = typeof sub?.name === "string" ? sub.name : undefined;
     } catch {
       // non-fatal
     }
@@ -65,11 +68,13 @@ export async function POST(req: NextRequest) {
     { upsert: true }
   );
 
+  await publishCustomerLocation(session.username, lat, lng);
+
   return NextResponse.json({ ok: true });
 }
 
 export async function GET(req: NextRequest) {
-  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifyRequestSession(req);
   if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

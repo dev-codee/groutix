@@ -300,6 +300,7 @@ export default function CrmDashboardPage() {
   const [startJobDays, setStartJobDays] = useState(1);
   const [staffLocations, setStaffLocations] = useState<any[]>([]);
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
+  const [customerTrackingActive, setCustomerTrackingActive] = useState(false);
   const [liveGpsCoords, setLiveGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter/date
@@ -952,6 +953,8 @@ export default function CrmDashboardPage() {
     setNotifyPrompt(null);
 
     const applyNotificationResult = (data: any) => {
+      if (data?.trackingUrl) setCustomerTrackingActive(true);
+      if (eventType === "arrived") setCustomerTrackingActive(false);
       const newMsgs = Array.isArray(data?.messages) ? data.messages : data?.message ? [data.message] : [];
       if (newMsgs.length > 0) {
         setLeads((prev) =>
@@ -990,6 +993,7 @@ export default function CrmDashboardPage() {
           body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not send notification");
         applyNotificationResult(data);
         setEtaToast({
           leadId: lead.id,
@@ -1000,7 +1004,7 @@ export default function CrmDashboardPage() {
                 : `Customer notified! (ETA unavailable)`
               : `Customer notified of your arrival!`,
         });
-        if (lat && lng) {
+        if (lat != null && lng != null) {
           fetch("/api/admin/staff/location", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1008,7 +1012,7 @@ export default function CrmDashboardPage() {
           }).catch(() => { });
         }
       } catch {
-        setEtaToast({ leadId: lead.id, msg: "Notification sent (no ETA)." });
+        setEtaToast({ leadId: lead.id, msg: "Could not send the customer notification. Please try again." });
       } finally {
         setOnTheWayLoading(null);
         setTimeout(() => setEtaToast(null), 6000);
@@ -1016,7 +1020,7 @@ export default function CrmDashboardPage() {
     };
 
     // If real-time continuous GPS already has a lock, dispatch immediately without delay
-    if (liveGpsCoords && liveGpsCoords.lat && liveGpsCoords.lng) {
+    if (liveGpsCoords && Date.now() - new Date(liveGpsCoords.time).getTime() < 30000) {
       setOnTheWayLoading(lead.id);
       sendOnTheWayWithCoords(liveGpsCoords.lat, liveGpsCoords.lng);
       return;
@@ -1037,7 +1041,7 @@ export default function CrmDashboardPage() {
 
   // Auto-share location in real-time for inspector / field / technician roles while dashboard is open
   useEffect(() => {
-    if (role !== "inspection" && role !== "field" && role !== "technician") {
+    if (role !== "inspection" && role !== "field" && role !== "technician" && !customerTrackingActive) {
       setLocationTrackingActive(false);
       return;
     }
@@ -1056,18 +1060,19 @@ export default function CrmDashboardPage() {
       }
     };
 
+    const receivePosition = (pos: GeolocationPosition) => {
+      const coords = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        time: new Date().toISOString(),
+      };
+      setLiveGpsCoords(coords);
+      setLocationTrackingActive(true);
+      sendLocationUpdate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+    };
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const coords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          time: new Date().toISOString(),
-        };
-        setLiveGpsCoords(coords);
-        setLocationTrackingActive(true);
-        sendLocationUpdate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-      },
+      receivePosition,
       (err) => {
         console.warn("Continuous GPS watch warning:", err.message);
         // Fallback snapshot
@@ -1091,14 +1096,19 @@ export default function CrmDashboardPage() {
     );
 
     locationWatchRef.current = watchId;
+    // Refresh GPS while stationary too, so a parked specialist remains live.
+    const heartbeat = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(receivePosition, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    }, 30000);
 
     return () => {
+      clearInterval(heartbeat);
       if (locationWatchRef.current !== null) {
         navigator.geolocation.clearWatch(locationWatchRef.current);
         locationWatchRef.current = null;
       }
     };
-  }, [role]);
+  }, [role, customerTrackingActive]);
 
   // Load staff locations every 30s (managers/super_admin only)
   const loadStaffLocations = useCallback(async () => {
@@ -8215,7 +8225,7 @@ export default function CrmDashboardPage() {
               </h3>
               <p className="text-xs text-slate-500 mb-5">
                 {notifyPrompt.eventType === "en_route"
-                  ? `An SMS with your ETA will be sent to ${notifyPrompt.lead.name || "the customer"}.`
+                  ? `An email and SMS with your ETA and live tracking link will be sent to ${notifyPrompt.lead.name || "the customer"}. Keep this dashboard open and allow location access to share updates.`
                   : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
               </p>
               <div className="flex gap-3">

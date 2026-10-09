@@ -170,6 +170,8 @@ export interface SubmissionDoc {
   photos?: SubmissionPhoto[];
   messages?: CustomerMessage[];
   gps?: GpsCheckin | null;
+  /** Revokes an earlier customer tracking link when the visit leaves en route. */
+  customerTrackingEndedAt?: Date;
   warranty?: WarrantyDoc;
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
@@ -679,7 +681,10 @@ export async function updateStatus(
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection();
-  const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: { status } });
+  const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: {
+    status,
+    ...(!["Inspection En Route", "Job En Route"].includes(status) ? { customerTrackingEndedAt: new Date() } : {}),
+  } });
   return res.matchedCount > 0;
 }
 
@@ -691,6 +696,9 @@ export async function updateSubmission(
   const col = await collection();
   const { _id, ...safeUpdates } = updates;
   normalizeApptFields(safeUpdates);
+  if (safeUpdates.status && !["Inspection En Route", "Job En Route"].includes(safeUpdates.status)) {
+    safeUpdates.customerTrackingEndedAt = new Date();
+  }
   const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: safeUpdates });
   return res.matchedCount > 0;
 }
