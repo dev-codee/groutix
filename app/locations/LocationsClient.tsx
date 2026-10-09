@@ -560,7 +560,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
                 href="tel:+61370238094"
                 className="flex items-center gap-2 bg-primary hover:bg-[#2F63CC] text-white font-bold px-5 py-2.5 rounded-xl text-base transition-all active:scale-95"
               >
-                <Phone className="h-4 w-4" /> +61 3 7023 8094
+                <Phone className="h-4 w-4" /> (03) 7023 8094
               </a>
             </motion.div>
           </div>

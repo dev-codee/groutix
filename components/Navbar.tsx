@@ -467,7 +467,7 @@ export default function Navbar() {
               className="hidden md:flex items-center gap-2 border border-blue-200/90 hover:border-blue-400 bg-white hover:bg-blue-50/50 rounded-xl px-4 py-2 text-[#001f97] font-bold text-[15px] shadow-2xs transition-all whitespace-nowrap"
             >
               <Phone className="h-4 w-4 text-[#001f97]" strokeWidth={2.2} />
-              <span>+61 3 7023 8094</span>
+              <span>(03) 7023 8094</span>
             </a>
 
             {/* Solid CTA Button */}

@@ -28,7 +28,7 @@ import { faqJsonLd } from "@/lib/seo";
 /* ─────────────────────────────────────────────
    Constants
 ───────────────────────────────────────────── */
-const phone = "+61 3 7023 8094";
+const phone = "(03) 7023 8094";
 const tel = "tel:+61370238094";
 const googleReviewsUrl = "https://www.google.com/maps/place/Groutix";
 

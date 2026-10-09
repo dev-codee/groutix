@@ -61,7 +61,7 @@ export default function BalconyRegroutingClient() {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-white hover:bg-white/10 font-bold text-base px-6 py-3.5 rounded-md border border-white/40 transition-all active:scale-95"
             >
               <Phone className="w-4 h-4 shrink-0" />
-              <span>+61 3 7023 8094</span>
+              <span>(03) 7023 8094</span>
             </a>
           </motion.div>
 
