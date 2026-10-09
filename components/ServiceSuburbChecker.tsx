@@ -7,7 +7,7 @@ import { CheckCircle2, Loader2, MapPin } from "lucide-react";
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 const fieldClass = "mt-1.5 w-full rounded-sm border border-neutral-200 bg-white px-3 py-2.5 text-base font-normal text-neutral-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20";
 
-export default function ServiceSuburbChecker() {
+export default function ServiceSuburbChecker({ service = "Leaking Shower Repair", sourcePage = "/leaking-shower-repair", subject = "your shower" }: { service?: string; sourcePage?: string; subject?: string } = {}) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<{ available: boolean; message: string } | null>(null);
   const [checking, setChecking] = useState(false);
@@ -51,9 +51,9 @@ export default function ServiceSuburbChecker() {
     form.set("firstName", names[0]);
     form.set("lastName", names.slice(1).join(" "));
     form.set("city", query.trim());
-    form.set("service", "Leaking Shower Repair");
-    form.set("sourcePage", "/leaking-shower-repair");
-    form.set("message", `Please confirm leaking shower repair coverage and contact me about ${query.trim()}.`);
+    form.set("service", service);
+    form.set("sourcePage", sourcePage);
+    form.set("message", `Please confirm ${service.toLowerCase()} coverage and contact me about ${query.trim()}.`);
     if (token) form.set("cf-turnstile-response", token);
     try {
       const response = await fetch("/api/quote", { method: "POST", body: form });
@@ -74,7 +74,7 @@ export default function ServiceSuburbChecker() {
         <h3 className="text-xl font-bold text-neutral-900">Check If We Service Your Suburb</h3>
         <p className="text-base leading-relaxed text-neutral-600">Not sure? Enter your suburb or postcode to check coverage. Leave your details if you would like us to contact you.</p>
       </div>
-      {saved ? <div role="status" className="mt-6 rounded-lg bg-emerald-50 p-6 text-center text-emerald-900"><CheckCircle2 className="mx-auto mb-3 h-8 w-8" /><p className="font-bold">Your enquiry has been sent.</p><p className="mt-2 text-sm">We will contact you to confirm coverage and discuss your shower.</p></div> : <form onSubmit={submit} className="mt-6 space-y-4">
+      {saved ? <div role="status" className="mt-6 rounded-lg bg-emerald-50 p-6 text-center text-emerald-900"><CheckCircle2 className="mx-auto mb-3 h-8 w-8" /><p className="font-bold">Your enquiry has been sent.</p><p className="mt-2 text-sm">We will contact you to confirm coverage and discuss {subject}.</p></div> : <form onSubmit={submit} className="mt-6 space-y-4">
         <label className="block text-sm font-semibold text-neutral-700">Suburb or Postcode<input name="suburb" required minLength={2} autoComplete="address-level2" value={query} onChange={(event) => { setQuery(event.target.value); setResult(null); setCoverageError(""); }} placeholder="e.g. South Yarra or 3141" className={fieldClass} /></label>
         <div aria-live="polite">
           {checking && <p className="flex items-center gap-2 text-sm text-neutral-500"><Loader2 className="h-4 w-4 animate-spin" />Checking coverage…</p>}

@@ -626,6 +626,8 @@ export default function ServicePageTemplate({
           </div>
         </AnimatedSection>
 
+        {slug === "small-tiling-jobs" && <section className="bg-accent-light/40 py-10"><div className="mx-auto max-w-[1460px] px-6 lg:px-10"><h2 className="text-2xl font-bold text-neutral-900">Tiles sound, grout worn?</h2><p className="mt-3 text-lg text-neutral-600">For worn grout across kitchen, laundry and bathroom floors, explore our <Link href="/tile-regrouting/" className="font-bold text-accent underline">tile regrouting</Link> service. For peeling seals around tile edges and fixtures, see <Link href="/silicone-recaulking/" className="font-bold text-accent underline">silicone replacement</Link>.</p></div></section>}
+
         <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
           <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">

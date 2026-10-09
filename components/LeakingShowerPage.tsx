@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Building2, Camera, ChevronDown, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Star, Wrench } from "lucide-react";
+import GoogleIcon from "@/components/GoogleIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -43,7 +44,6 @@ function QuoteButtons() {
 }
 
 export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
-  const extraReviews = reviews.filter((review) => /leak/i.test(review.review) && !["David Lau", "Jody Lansdowne", "Veronica", "Lars Madsen"].includes(review.name)).slice(0, 2);
   const signs = [
     "Stains or bubbling paint on the wall behind the shower",
     "A damp or musty smell in the bathroom or next room",
@@ -85,11 +85,11 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">Leaking Shower Repairs Melbourne</h1>
               <p className="mx-auto max-w-xl text-base leading-relaxed text-white/85 sm:text-lg lg:mx-0">Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
-                <a href={googleReviews} target="_blank" rel="noopener noreferrer" className="flex h-16 items-center gap-3 rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20" aria-label="5.0 stars, 290 plus Google reviews for Groutix">
+                <a href={googleReviews} target="_blank" rel="noopener noreferrer" className="flex h-16 w-[280px] max-w-full shrink-0 items-center justify-center gap-3 rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20" aria-label="5.0 stars, 290 plus Google reviews for Groutix">
                   <Image src="/google-logo.svg" alt="Google" width={24} height={24} /><span className="text-2xl font-black">5.0</span>
                   <span><span className="flex gap-0.5" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <Star key={index} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}</span><span className="text-[13px] text-white/80">290+ Google Reviews</span></span>
                 </a>
-                <a href={phoneHref} className="inline-flex h-16 items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />(03) 7023 8094</a>
+                <a href={phoneHref} className="inline-flex h-16 w-[280px] max-w-full shrink-0 items-center justify-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />(03) 7023 8094</a>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-sm text-white/85 lg:justify-start"><span className="inline-flex items-center gap-2"><Search className="h-4 w-4" />Find the source</span><span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Eligible repairs: 10-year warranty</span></div>
             </div>
@@ -104,7 +104,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
           <div className="grid gap-6 md:grid-cols-3">
             {[
               { Icon: Droplets, value: "Specialist", label: "Bathroom Repairs", detail: "Focused on grout, silicone and wet areas" },
-              { Icon: Star, value: "5.0/5", label: "Google Rating", detail: "Based on 290+ Google reviews" },
+              { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", detail: "Based on 290+ Google reviews" },
               { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", detail: "On eligible completed repairs" },
             ].map(({ Icon, value, label, detail }) => <div key={label} className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center"><span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-secondary"><Icon className="h-6 w-6" /></span><p className="text-3xl font-black leading-none text-neutral-900">{value}</p><h2 className="text-lg font-bold text-neutral-900">{label}</h2><p className="text-sm text-neutral-500">{detail}</p></div>)}
           </div>
@@ -168,11 +168,9 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">{LEAK_REPAIR_PHOTOS.map((photo) => <figure key={photo.title} className="space-y-3"><PhotoPlaceholder title={photo.title} /><figcaption className="text-sm leading-relaxed text-neutral-500">{photo.caption}</figcaption></figure>)}</div>
       </Section>
 
-      <Section id="customer-feedback" title="What Customers Say About" accent="Leak Repairs" eyebrow="Customer Feedback" alternate>
+      <Section id="customer-feedback" title="What Our Customers" accent="Say" eyebrow="Customer Feedback" intro="Real feedback from homeowners we’ve helped across Melbourne and Victoria." alternate>
         <div className="grid gap-6 md:grid-cols-3">
-          <figure className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-6"><Image src="/google-logo.svg" alt="Google" width={24} height={24} /><blockquote className="mt-5 flex-1 text-base leading-relaxed text-neutral-800">“Our bathroom was leaking into the ceiling downstairs. We had it done with epoxy grout. No more mould and leakage.”</blockquote><figcaption className="mt-6 font-bold text-neutral-900">David Lau<span className="mt-1 block text-sm font-normal text-neutral-500">Google review</span></figcaption></figure>
-          {extraReviews.map((review) => <ReviewCard key={review.name} review={review} />)}
-          {Array.from({ length: 2 - extraReviews.length }, (_, index) => <div key={index} className="flex flex-col justify-center rounded-2xl border border-dashed border-neutral-300 bg-white/60 p-6 text-center"><Image src="/google-logo.svg" alt="Google" width={24} height={24} className="mx-auto" /><p className="mt-4 font-semibold text-neutral-600">Leak repair review to be supplied</p><p className="mt-2 text-sm leading-relaxed text-neutral-500">Reserved for a real Google review about a leaking shower repair.</p></div>)}
+          {reviews.map((review) => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}
         </div>
         <div className="text-center"><a href={googleReviews} target="_blank" rel="noopener noreferrer" className="font-bold text-accent hover:underline">Read More Verified Reviews on Google →</a></div>
       </Section>
@@ -187,6 +185,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
           { Icon: Wrench, need: "Peeling or mouldy silicone", title: "Silicone and Recaulking", href: "/silicone-recaulking" },
           { Icon: House, need: "Balcony leaks", title: "Balcony Leak Repairs and Regrouting", href: "/balcony-leak-repairs" },
           { Icon: Layers, need: "Epoxy grout details", title: "Epoxy Grout", href: "/epoxy-grout" },
+          { Icon: House, need: "Broken or loose tiles", title: "Small Tiling Jobs", href: "/small-tiling-jobs/" },
         ].map(({ Icon, need, title, href }) => <Link key={href} href={href} className="group flex flex-col rounded-xl border border-neutral-200 bg-white p-6 transition-colors hover:border-accent"><Icon className="h-8 w-8 text-primary" /><p className="mt-4 text-sm text-neutral-500">{need}</p><h3 className="mt-2 flex-1 text-lg font-bold text-neutral-900">{title}</h3><span className="mt-5 flex items-center gap-2 border-t border-neutral-200 pt-4 text-sm font-bold text-accent">View service <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></Link>)}</div>
       </Section>
 

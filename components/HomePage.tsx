@@ -1029,7 +1029,7 @@ export default function HomePage({
               <div className="space-y-3">
                 {[
                   { sign: "Cracked or crumbling grout", step: "Grout Repair / Regrouting Assessment" },
-                  { sign: "Peeling silicone", step: "Recaulking Assessment" },
+                  { sign: "Peeling silicone", step: "Recaulking Assessment", href: "/silicone-recaulking/" },
                   { sign: "Recurring mould", step: "Check Ventilation, Cleaning, Grout & Silicone" },
                   { sign: "Loose tiles or water outside the shower", step: "Leak Assessment" },
                 ].map((item, i) => (
@@ -1048,7 +1048,7 @@ export default function HomePage({
                     <div className="text-right">
                       <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-1">Possible Next Step</p>
                       <span className="inline-block text-[13px] font-bold text-accent bg-accent/10 border border-accent/20 px-3 py-1 rounded-sm">
-                        {item.step}
+                        {item.href ? <Link href={item.href} className="hover:underline">{item.step}</Link> : item.step}
                       </span>
                     </div>
                   </motion.div>

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-  const reviews = await getReviews(5);
+  const reviews = await getReviews(3);
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(LEAKING_SHOWER_FAQS)).replace(/</g, "\\u003c") }} />
     <LeakingShowerPage reviews={reviews} />

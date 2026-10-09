@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
-import { getReviews } from "@/lib/reviews";
+import { getBusinessRating, getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
+import SmallTilingJobsPage from "@/components/SmallTilingJobsPage";
+import { SMALL_TILING_META_TITLE, smallTilingFaqs } from "@/lib/smallTilingContent";
+import SiliconeRecaulkingPage from "@/components/SiliconeRecaulkingPage";
+import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingContent";
+import TileRegroutingPage from "@/components/TileRegroutingPage";
+import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
+import { abs, SITE_URL } from "@/lib/seo";
 import ShowerRegroutingPage from "@/components/ShowerRegroutingPage";
 
 const services: Record<string, {
@@ -128,8 +135,8 @@ const services: Record<string, {
 
   "tile-regrouting": {
     title: "Tile Regrouting",
-    metaTitle: "Tile Regrouting Victoria | Bathroom & Kitchen Tiles | Groutix",
-    metaDesc: "Restore worn or cracked tiles with professional tile regrouting in Victoria. Colour-matched, mould-resistant, long-lasting results.",
+    metaTitle: "Tile Regrouting Melbourne | Floors, Kitchens & Baths | Groutix",
+    metaDesc: "Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. Free quote.",
     h1Desc: "Old grout doesn't just look dated, crumbling, staining, and letting moisture through to the surfaces underneath. Our tile regrouting service covers bathrooms, kitchens, laundries and any tiled area in your home, giving worn tiles a like-new finish. We carefully remove deteriorated grout lines and apply fresh, colour-matched grout for a clean, uniform result that's easier to keep clean and far more resistant to future cracking.",
     failHeading: "Stained & Cracked Grout",
     failHeadingBlue: "Ruins the Look of Your Tiles",
@@ -215,8 +222,8 @@ const services: Record<string, {
 
   "silicone-recaulking": {
     title: "Silicone & Recaulking",
-    metaTitle: "Silicone & Recaulking Services Victoria | Groutix",
-    metaDesc: "Remove mouldy, cracked silicone and reseal your bathroom or kitchen with a durable, mould-resistant finish. Servicing Victoria.",
+    metaTitle: SILICONE_META_TITLE,
+    metaDesc: "Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. Free quote.",
     h1Desc: "Perished, mouldy or peeling silicone around showers, baths, sinks and benchtops isn't just unsightly, making it a common entry point for water damage. Our silicone and recaulking service removes old, failing silicone and applies a fresh, mould-resistant seal to all wet area joints. It's one of the simplest ways to instantly refresh a bathroom or kitchen and protect against leaks, and it pairs perfectly with our regrouting services for a complete wet area refresh.",
     heroCards: [
       { title: "Specialists in tile and bathroom silicone & recaulking", desc: "" },
@@ -358,8 +365,8 @@ const services: Record<string, {
 
   "small-tiling-jobs": {
     title: "Small Tiling Jobs",
-    metaTitle: "Small Tiling Jobs & Repairs Victoria | Groutix",
-    metaDesc: "Cracked or missing tiles? Groutix handles small tiling jobs and repairs across Victoria. Fast turnaround, no job too small.",
+    metaTitle: SMALL_TILING_META_TITLE,
+    metaDesc: "Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. Free quote.",
     h1Desc: "Not every tiling job needs a full renovation. Groutix happily takes on small tiling jobs by replacing cracked or broken tiles, patching gaps, and completing minor tiling repairs around the home. It's the ideal service for homeowners who need a quick, tidy fix without waiting on a large-scale renovation booking or paying renovation-sized prices.",
     failHeading: "Damaged Tiles Left Unrepaired",
     failHeadingBlue: "Lead to Bigger Problems",
@@ -412,13 +419,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = services[slug];
   if (!s) return {};
   const canonical = `/${slug}`;
+  const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs"].includes(slug);
+  const rating = dedicatedService ? await getBusinessRating() : null;
+  const description = slug === "tile-regrouting"
+    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+    : slug === "silicone-recaulking"
+      ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+      : slug === "small-tiling-jobs"
+        ? `Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+        : s.metaDesc;
   return {
-    title: s.metaTitle,
-    description: s.metaDesc,
+    title: dedicatedService ? { absolute: s.metaTitle } : s.metaTitle,
+    description,
+    ...(dedicatedService ? { twitter: { card: "summary_large_image" as const, title: s.metaTitle, description } } : {}),
     alternates: { canonical },
     openGraph: {
       title: s.metaTitle,
-      description: s.metaDesc,
+      description,
       url: canonical,
       type: "website",
     },
@@ -430,7 +447,46 @@ export default async function ServicePage({ params }: Props) {
   const s = services[slug];
   if (!s) notFound();
 
-  const reviews = await getReviews();
+  if (slug === "small-tiling-jobs") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/small-tiling-jobs/#service"), name: "Small Tiling Jobs Melbourne", serviceType: "Tile repair", url: abs("/small-tiling-jobs/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(smallTilingFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Small Tiling Jobs", item: abs("/small-tiling-jobs/") },
+      ] },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><SmallTilingJobsPage rating={rating} reviews={reviews} /></>;
+  }
+
+  if (slug === "silicone-recaulking") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/silicone-recaulking/#service"), name: "Silicone Replacement Melbourne", serviceType: "Silicone replacement", url: abs("/silicone-recaulking/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(siliconeFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Silicone & Recaulking", item: abs("/silicone-recaulking/") },
+      ] },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><SiliconeRecaulkingPage rating={rating} reviews={reviews} /></>;
+  }
+
+  if (slug === "tile-regrouting") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/tile-regrouting/#service"), name: "Tile Regrouting Melbourne", serviceType: "Tile regrouting", url: abs("/tile-regrouting/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(tileRegroutingFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Tile Regrouting", item: abs("/tile-regrouting/") },
+      ] },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><TileRegroutingPage rating={rating} reviews={reviews} /></>;
+  }
+
+  const reviews = await getReviews(3);
 
   if (slug === "shower-regrouting") {
     return (
