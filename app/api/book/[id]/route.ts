@@ -307,7 +307,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (lead.phone) {
     await sendSms({
       to: lead.phone,
-      body: `Groutix: Your ${type} is booked for ${whenLabel} (Ref: ${reference}). Call 7023 8094 or reply to reschedule.`,
+      body: `Groutix: Your ${type} is booked for ${whenLabel} (Ref: ${reference}). To reschedule, please email or call us using the contact details below.`,
     });
   }
 

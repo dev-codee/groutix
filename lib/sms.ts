@@ -7,6 +7,9 @@
 // Required env (ClickSend): SMS_PROVIDER=clicksend, CLICKSEND_USERNAME, CLICKSEND_API_KEY.
 // Required env (MessageMedia): SMS_PROVIDER=messagemedia, MESSAGEMEDIA_API_KEY, MESSAGEMEDIA_API_SECRET.
 
+import { prepareCustomerSms, SMS_MAX_CHARS } from "@/lib/smsMessage";
+export { prepareSinglePartSms } from "@/lib/smsMessage";
+
 type SmsProvider = "texto" | "clicksend" | "messagemedia";
 
 function provider(): SmsProvider {
@@ -46,39 +49,9 @@ export type SmsResult = {
   error?: string;
   messageId?: string;
   creditsRemaining?: number;
+  /** Exact formatted text submitted to the provider. */
+  body?: string;
 };
-
-/**
- * Sanitise text to GSM-7 7-bit character set:
- * 1. Replaces smart quotes, em-dashes, and unicode symbols with standard ASCII equivalents.
- * 2. Ensures the text clearly mentions "Groutix" so the customer knows who it is from.
- * 3. Strips emojis and non-GSM characters that would force UCS-2 encoding (costing 2 credits per part).
- * 4. Allows multi-part SMS — no hard 160-char cap by default.
- */
-export function prepareSinglePartSms(text: string, maxChars: number = 1600): string {
-  let cleaned = (text || "")
-    // Normalize unicode punctuation to standard ASCII
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/\u2026/g, "...")
-    .replace(/\u00A0/g, " ")
-    // Remove emojis and non-ASCII / non-GSM characters to prevent 2-credit UCS-2 encoding
-    .replace(/[^\x20-\x7E\r\n]/g, "")
-    .trim();
-
-  // Ensure "Groutix" is mentioned so the customer always knows who it is from
-  if (!cleaned.toLowerCase().includes("groutix")) {
-    cleaned = `Groutix: ${cleaned}`;
-  }
-
-  // Safety cap to avoid runaway messages
-  if (cleaned.length > maxChars) {
-    cleaned = cleaned.slice(0, maxChars).trim();
-  }
-
-  return cleaned;
-}
 
 /**
  * Send a single SMS. Best-effort — returns a result object and never throws, so
@@ -89,24 +62,33 @@ export async function sendSms(args: {
   body: string;
   from?: string;
   campaign?: string;
-  /** Override the default 1600-char safety cap. Multi-part SMS is supported natively. */
+  /** Cap includes the footer. Oversized messages are rejected, never truncated. */
   maxChars?: number;
 }): Promise<SmsResult> {
   const to = normaliseAuNumber(args.to);
-  const body = prepareSinglePartSms(args.body, args.maxChars ?? 1600);
-  if (!to || !body) return { ok: false, error: "missing_to_or_body" };
+  if (!to || !args.body?.trim()) return { ok: false, error: "missing_to_or_body" };
   if (!isSmsConfigured()) return { ok: false, skipped: true };
 
   const from = (args.from || process.env.SMS_FROM || "").trim();
   try {
+    const { getSiteContent } = await import("@/lib/siteContentServer");
+    const content = await getSiteContent().catch(() => null);
+    const body = prepareCustomerSms(args.body, content?.business);
+    if (!body) return { ok: false, error: "missing_to_or_body" };
+    const maxChars = args.maxChars ?? SMS_MAX_CHARS;
+    if (body.length > maxChars) {
+      return { ok: false, error: `SMS exceeds ${maxChars} characters including the contact footer. Please shorten the message; links cannot be truncated.` };
+    }
     const p = provider();
+    let result: SmsResult;
     if (p === "texto") {
-      return await sendViaTexto({ to, from, body, campaign: args.campaign || "Groutix CRM" });
+      result = await sendViaTexto({ to, from, body, campaign: args.campaign || "Groutix CRM" });
+    } else if (p === "messagemedia") {
+      result = await sendViaMessageMedia({ to, from: from || "Groutix", body });
+    } else {
+      result = await sendViaClickSend({ to, from: from || "Groutix", body });
     }
-    if (p === "messagemedia") {
-      return await sendViaMessageMedia({ to, from: from || "Groutix", body });
-    }
-    return await sendViaClickSend({ to, from: from || "Groutix", body });
+    return { ...result, body };
   } catch (err) {
     console.error("sendSms failed (non-fatal):", err);
     return { ok: false, error: "send_failed" };
@@ -122,7 +104,7 @@ async function sendViaTexto(args: {
   const apiKey = (process.env.TEXTO_API_KEY || "").trim();
   if (!apiKey) return { ok: false, error: "missing_texto_api_key" };
 
-  const payload: Record<string, any> = {
+  const payload: Record<string, string> = {
     to: args.to,
     message: args.body,
   };

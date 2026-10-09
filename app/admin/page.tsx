@@ -77,6 +77,8 @@ import {
   BookmarkPlus
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
+import { useSiteContent } from "@/components/SiteContentProvider";
+import { prepareCustomerSms, smsReplyNotice, smsSegmentCount, SMS_MAX_CHARS } from "@/lib/smsMessage";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
 import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
 import {
@@ -167,6 +169,7 @@ type DashboardView =
   | "recyclebin";
 
 export default function CrmDashboardPage() {
+  const { business } = useSiteContent();
   const basePath = useAdminBasePath();
   const realRole = useAdminRole();
   const username = useAdminUsername();
@@ -6262,14 +6265,15 @@ export default function CrmDashboardPage() {
                           </span>
                         </span>
                         {(() => {
-                          const preview = smsText.toLowerCase().includes("groutix") ? smsText.trim() : `Groutix: ${smsText.trim()}`;
+                          const preview = prepareCustomerSms(smsText, business);
                           const charCount = preview.length;
-                          const isUnder160 = charCount <= 160;
+                          const segments = smsSegmentCount(preview);
+                          const isUnder160 = segments === 1;
                           return (
                             <span className={`text-[11px] font-semibold flex items-center gap-1.5 ${isUnder160 ? "text-emerald-700" : "text-amber-700"}`}>
-                              <span>{charCount}/160 chars</span>
+                              <span>{charCount}/{SMS_MAX_CHARS} chars (including footer)</span>
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isUnder160 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                                {isUnder160 ? "1 Credit" : "Trimmed to 1 Credit"}
+                                {segments} SMS {segments === 1 ? "part" : "parts"}
                               </span>
                             </span>
                           );
@@ -6335,19 +6339,13 @@ export default function CrmDashboardPage() {
                         onChange={(e) => setSmsText(e.target.value)}
                         className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[80px]"
                       />
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Added automatically to every SMS: {smsReplyNotice(business)}
+                      </p>
+                      {prepareCustomerSms(smsText, business).length > SMS_MAX_CHARS && (
+                        <p className="text-[11px] text-red-600">Please shorten the message. The SMS and its links will not be truncated.</p>
+                      )}
                     </div>
-
-                    {/* URL Warning Banner if message has URL */}
-                    {/(https?:\/\/|[a-z0-9-]+\.[a-z]{2,})/i.test(smsText) && (
-                      <div className="p-2.5 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex flex-col gap-1">
-                        <div className="font-bold flex items-center gap-1.5 text-amber-800 text-[11px]">
-                          <span>⚠️ Note: Sending links via Texto SMS</span>
-                        </div>
-                        <p className="text-[10px] leading-relaxed text-amber-800">
-                          If your Texto account rejects SMS containing links (carrier anti-scam rule), email <b>support@texto.com.au</b> to enable URL sending on your Texto account, or click <b>Send via WhatsApp</b> for 100% reliable 1-click delivery!
-                        </p>
-                      </div>
-                    )}
 
                     <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
                       <div className="text-[11px] text-slate-400">
@@ -6367,7 +6365,7 @@ export default function CrmDashboardPage() {
                         <button
                           type="button"
                           onClick={handleSendSmsReply}
-                          disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
+                          disabled={sendingSms || !smsText.trim() || prepareCustomerSms(smsText, business).length > SMS_MAX_CHARS || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
                           className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
                         >
                           {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}

@@ -565,8 +565,7 @@ export async function POST(req: NextRequest) {
       logSendError("customer confirmation", err);
     }
 
-    // Acknowledge by SMS — multi-part message. The cap must leave room for the
-    // ~61-char booking link below; sendSms hard-truncates anything longer.
+    // Acknowledge by multipart SMS, preserving the entire signed booking URL.
     if (phone) {
       // Short self-booking link so the customer can pick (or change) their
       // inspection slot straight from the text.
@@ -576,8 +575,8 @@ export async function POST(req: NextRequest) {
       const bookingLine = smsBookingUrl
         ? `\n\nBook or change your free inspection time:\n${smsBookingUrl}`
         : "";
-      const smsBody = `Thanks ${firstName || "there"}!\n\nWe've received your enquiry and any preferred booking date/time you selected. Please note that your selected time is a booking preference and is subject to availability.\nIf we need to make any changes, our team will contact you. Otherwise, we'll proceed with your requested time.${bookingLine}\n\nQuestions?\nCall: ${CONTACT_PHONE}\nEmail: info@groutix.com\n\nGroutix\nStay Sealed. Stay Smiling.`;
-      await sendSms({ to: phone, body: smsBody, maxChars: 560 });
+      const smsBody = `Thanks ${firstName || "there"}!\n\nWe've received your enquiry and any preferred booking date/time you selected. Please note that your selected time is a booking preference and is subject to availability.\nIf we need to make any changes, our team will contact you. Otherwise, we'll proceed with your requested time.${bookingLine}\n\nGroutix\nStay Sealed. Stay Smiling.`;
+      await sendSms({ to: phone, body: smsBody });
     }
   };
 
