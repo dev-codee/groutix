@@ -41,7 +41,7 @@ const cardText = "mt-2 text-base leading-relaxed text-neutral-600";
 const btnPrimary =
   "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover active:scale-95";
 const btnGold =
-  "inline-flex items-center justify-center gap-2 rounded-lg bg-[#FBBC04] px-6 py-3 text-base font-bold text-primary transition-colors hover:bg-white active:scale-95";
+  "inline-flex max-w-full items-center justify-center gap-2 rounded-lg bg-[#FBBC04] px-6 py-3 text-center text-base font-bold text-primary transition-colors hover:bg-white active:scale-95";
 const btnOutline =
   "inline-flex items-center justify-center gap-2 rounded-lg border-[1.5px] border-white/70 px-6 py-3 text-base font-bold text-white transition-all hover:border-white hover:bg-white/10 active:scale-95";
 const inlineLink = "font-bold text-accent underline hover:text-primary";
@@ -405,7 +405,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
           <Image src="/img101.jpeg" alt="Tiled bathroom shower" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative mx-auto max-w-[1460px] px-6 py-8 pb-16 lg:px-10 lg:pb-20">
-            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
+            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_520px] xl:grid-cols-[minmax(0,1fr)_540px] lg:gap-12">
               <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
@@ -530,21 +530,21 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             <p className={lead}>Most showers use one of two grout types. The difference matters.</p>
           </SecHead>
 
-          <div className="w-full max-w-[900px] overflow-x-auto rounded-2xl border border-[#e2e6f0] bg-white shadow-sm">
-            <table className="w-full min-w-[560px] text-left text-base">
-              <thead className="bg-[#eef1f8] text-[12px] font-bold uppercase tracking-widest text-neutral-500">
+          <div className="w-full min-w-0 max-w-[900px] rounded-2xl border border-[#e2e6f0] bg-white shadow-sm">
+            <table className="w-full table-fixed text-left text-sm sm:text-base">
+              <thead className="bg-[#eef1f8] text-[12px] font-bold uppercase tracking-wide text-neutral-500 sm:tracking-widest">
                 <tr>
-                  <th className="px-6 py-4"><span className="sr-only">Feature</span></th>
-                  <th className="px-6 py-4">Cement grout</th>
-                  <th className="px-6 py-4">Epoxy grout</th>
+                  <th className="px-2 py-4 sm:px-6"><span className="sr-only">Feature</span></th>
+                  <th className="px-2 py-4 sm:px-6">Cement grout</th>
+                  <th className="px-2 py-4 sm:px-6">Epoxy grout</th>
                 </tr>
               </thead>
               <tbody>
                 {comparisonRows.map(([label, cement, epoxy]) => (
                   <tr key={label} className="border-t border-[#e2e6f0]">
-                    <th scope="row" className="px-6 py-4 font-bold text-neutral-900">{label}</th>
-                    <td className="px-6 py-4 text-neutral-600">{cement}</td>
-                    <td className="px-6 py-4 font-semibold text-primary">{epoxy}</td>
+                    <th scope="row" className="break-words px-2 py-4 font-bold text-neutral-900 sm:px-6">{label}</th>
+                    <td className="break-words px-2 py-4 text-neutral-600 sm:px-6">{cement}</td>
+                    <td className="break-words px-2 py-4 font-semibold text-primary sm:px-6">{epoxy}</td>
                   </tr>
                 ))}
               </tbody>
@@ -672,7 +672,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
           </SecHead>
 
           <div className="flex w-full max-w-[900px] flex-wrap items-center gap-6 rounded-[20px] bg-primary px-8 py-8 sm:px-10">
-            <div className="min-w-[240px] flex-1 text-left">
+            <div className="min-w-0 flex-1 basis-full text-left sm:basis-0">
               <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-[#FBBC04]">Typical Melbourne range</p>
               <p className="mt-1 text-3xl font-extrabold leading-tight text-white sm:text-4xl">$550 to $1,500</p>
               <p className="mt-2 text-base text-white/75">For a standard single shower. We quote after we see it.</p>
@@ -773,7 +773,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             </div>
             <span className="font-bold text-neutral-900">Customer Reviews</span>
           </div>
-          <div className="review-marquee-wrap -mx-6 overflow-hidden lg:-mx-10">
+          <div className="review-marquee-wrap w-full min-w-0 overflow-hidden">
             <div className="review-marquee flex w-max px-6 lg:px-10">
               {[...reviews, ...reviews].map((review, i) => (
                 <ReviewCard key={`${review.name}-${i}`} review={review} className="mr-6 w-[85vw] shrink-0 sm:w-[360px]" />
@@ -831,7 +831,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             <span className="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-white">
               <Home className="h-6 w-6" />
             </span>
-            <p className="min-w-[220px] flex-1 text-left text-lg font-bold leading-snug text-white">
+            <p className="min-w-0 flex-1 basis-full text-left text-lg font-bold leading-snug text-white sm:basis-0">
               Most jobs are completed in a single visit, scheduled around tenants.
             </p>
             <Link href="/real-estate-property-services" className={`${btnGold} flex-shrink-0`}>
