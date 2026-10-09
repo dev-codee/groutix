@@ -1085,7 +1085,7 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 6.5, Balcony Deep-Dive
         ══════════════════════════════════════ */}
-        <BalconyDeepDiveSection />
+        <BalconyDeepDiveSection rating={rating} />
 
         {/* ══════════════════════════════════════
             SECTION 7, Before & After Gallery

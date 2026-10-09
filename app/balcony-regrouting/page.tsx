@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import BalconyRegroutingClient from "./BalconyRegroutingClient";
+import { getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
   title: "Balcony Regrouting & Leak Repairs Melbourne | Groutix",
@@ -17,12 +17,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BalconyRegroutingPage() {
+export default async function BalconyRegroutingPage() {
+  const rating = await getBusinessRating();
+
   return (
     <>
       <Navbar />
-      <BalconyRegroutingClient />
-      <Footer />
+      <BalconyRegroutingClient rating={rating} />
     </>
   );
 }

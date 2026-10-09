@@ -1,28 +1,33 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import BalconyRegroutingClient from "../balcony-regrouting/BalconyRegroutingClient";
+import LeakingShowerPage from "@/components/LeakingShowerPage";
+import { getReviews } from "@/lib/reviews";
+import { faqJsonLd } from "@/lib/seo";
+import { LEAKING_SHOWER_FAQS, LEAKING_SHOWER_META } from "@/lib/leakingShowerContent";
 
 export const metadata: Metadata = {
-  title: "Cracked Grout or a Leaking Shower | Balcony Regrouting Melbourne | Groutix",
-  description:
-    "Expert balcony regrouting and leak repairs in Melbourne without retiling. Waterproof epoxy grout, perimeter sealing and 10-year warranty. Free quote today.",
+  title: { absolute: LEAKING_SHOWER_META.title },
+  description: LEAKING_SHOWER_META.description,
   alternates: { canonical: "/cracked-grout-or-a-leaking-shower" },
   openGraph: {
-    title: "Cracked Grout or a Leaking Shower | Balcony Regrouting Melbourne | Groutix",
-    description:
-      "Expert balcony regrouting and leak repairs in Melbourne without retiling. Waterproof epoxy grout, perimeter sealing and 10-year warranty.",
+    title: LEAKING_SHOWER_META.title,
+    description: LEAKING_SHOWER_META.description,
     url: "/cracked-grout-or-a-leaking-shower",
     type: "website",
   },
 };
 
-export default function CrackedGroutOrLeakingShowerPage() {
+export default async function CrackedGroutOrLeakingShowerPage() {
+  const reviews = await getReviews(5);
+
   return (
     <>
-      <Navbar />
-      <BalconyRegroutingClient />
-      <Footer />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqJsonLd(LEAKING_SHOWER_FAQS)).replace(/</g, "\\u003c"),
+        }}
+      />
+      <LeakingShowerPage reviews={reviews} />
     </>
   );
 }
