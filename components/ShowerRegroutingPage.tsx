@@ -399,7 +399,8 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
   return (
     <>
       <Navbar />
-      <main>
+      {/* FIX 1: overflow-x-clip stops anything inside from creating a horizontal scrollbar */}
+      <main className="overflow-x-clip">
         {/* ═══ 1. HERO ═══ */}
         <section id="quote-form" className="relative overflow-hidden pt-[110px] lg:pt-[125px]">
           <Image src="/img101.jpeg" alt="Tiled bathroom shower" fill priority sizes="100vw" className="object-cover" />
@@ -530,21 +531,21 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             <p className={lead}>Most showers use one of two grout types. The difference matters.</p>
           </SecHead>
 
-          <div className="w-full max-w-[900px] overflow-x-auto rounded-2xl border border-[#e2e6f0] bg-white shadow-sm">
-            <table className="w-full min-w-[560px] text-left text-base">
+          <div className="w-full max-w-[900px] rounded-2xl border border-[#e2e6f0] bg-white shadow-sm">
+            <table className="w-full table-fixed text-left text-base">
               <thead className="bg-[#eef1f8] text-[12px] font-bold uppercase tracking-widest text-neutral-500">
                 <tr>
-                  <th className="px-6 py-4"><span className="sr-only">Feature</span></th>
-                  <th className="px-6 py-4">Cement grout</th>
-                  <th className="px-6 py-4">Epoxy grout</th>
+                  <th className="break-words px-3 py-4 sm:px-6"><span className="sr-only">Feature</span></th>
+                  <th className="break-words px-3 py-4 sm:px-6">Cement grout</th>
+                  <th className="break-words px-3 py-4 sm:px-6">Epoxy grout</th>
                 </tr>
               </thead>
               <tbody>
                 {comparisonRows.map(([label, cement, epoxy]) => (
                   <tr key={label} className="border-t border-[#e2e6f0]">
-                    <th scope="row" className="px-6 py-4 font-bold text-neutral-900">{label}</th>
-                    <td className="px-6 py-4 text-neutral-600">{cement}</td>
-                    <td className="px-6 py-4 font-semibold text-primary">{epoxy}</td>
+                    <th scope="row" className="break-words px-3 py-4 font-bold text-neutral-900 sm:px-6">{label}</th>
+                    <td className="break-words px-3 py-4 text-neutral-600 sm:px-6">{cement}</td>
+                    <td className="break-words px-3 py-4 font-semibold text-primary sm:px-6">{epoxy}</td>
                   </tr>
                 ))}
               </tbody>
@@ -773,7 +774,10 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             </div>
             <span className="font-bold text-neutral-900">Customer Reviews</span>
           </div>
-          <div className="review-marquee-wrap -mx-6 overflow-hidden lg:-mx-10">
+          {/* FIX 2: explicit width (container + the section's side padding) so the wide
+              marquee track is clipped instead of stretching this flex item past the screen.
+              The old `-mx-6` version let the wrapper grow to the track's width. */}
+          <div className="review-marquee-wrap relative w-[calc(100%+3rem)] max-w-none overflow-hidden lg:w-[calc(100%+5rem)]">
             <div className="review-marquee flex w-max px-6 lg:px-10">
               {[...reviews, ...reviews].map((review, i) => (
                 <ReviewCard key={`${review.name}-${i}`} review={review} className="mr-6 w-[85vw] shrink-0 sm:w-[360px]" />
