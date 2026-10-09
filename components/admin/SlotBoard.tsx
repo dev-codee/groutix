@@ -68,6 +68,7 @@ function describe(a: DayAppointment, leadId?: string): string {
 
 /** Another lead already holding `value`'s date+time on the shared calendar, if any. */
 export function useSlotConflict(value: string | undefined, leadId: string | undefined, type?: BookingType, durationMinutes?: number, assignment: TechnicianAssignment = {}) {
+  const { technicianId, technician, technicianUsername } = assignment;
   const rules = useBookingRules();
   const { technicians, loading: rosterLoading } = useTechnicians();
   // Result is tagged with the slot it was computed for, so a stale answer for a
@@ -76,20 +77,20 @@ export function useSlotConflict(value: string | undefined, leadId: string | unde
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value || "");
   const date = m?.[1];
   const time = m?.[2];
-  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${assignment.technicianId || assignment.technician || ""}` : "";
+  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${technicianId || technician || ""}` : "";
   useEffect(() => {
     if (!date || !time || rosterLoading) return;
     let alive = true;
     fetchDay(date)
       .then(({ appointments }) => {
-        const availability = bookingAvailability(appointments, { date, time, leadId: leadId || "", type: type || "job", durationMinutes, ...assignment }, rules, technicians);
+        const availability = bookingAvailability(appointments, { date, time, leadId: leadId || "", type: type || "job", durationMinutes, technicianId, technician, technicianUsername }, rules, technicians);
         if (alive) setResult({ key, conflict: availability.available ? null : { time, label: availability.reason || "This time is unavailable." } });
       })
       .catch(() => alive && setResult({ key, conflict: null }));
     return () => {
       alive = false;
     };
-  }, [key, date, time, leadId, type, durationMinutes, assignment.technicianId, assignment.technician, assignment.technicianUsername, rules, technicians, rosterLoading]);
+  }, [key, date, time, leadId, type, durationMinutes, technicianId, technician, technicianUsername, rules, technicians, rosterLoading]);
   const conflict = key && result?.key === key ? result.conflict : null;
   return conflict;
 }
@@ -158,17 +159,14 @@ export function SlotBoard({
   const gridTimes = slotsForWeekday(rules, type, wd, day);
   const nowHHmm = nowMelbourneHHmm();
 
-  const byTime = useMemo(() => {
-    const map = new Map<string, DayAppointment[]>();
-    for (const a of appts || []) {
-      if (a.type === type) {
-        for (const time of gridTimes) {
-          if (overlapsSlot(a, time, durationMinutes || rules[type].slotMinutes, rules)) map.set(time, [...(map.get(time) || []), a]);
-        }
+  const byTime = new Map<string, DayAppointment[]>();
+  for (const a of appts || []) {
+    if (a.type === type) {
+      for (const time of gridTimes) {
+        if (overlapsSlot(a, time, durationMinutes || rules[type].slotMinutes, rules)) byTime.set(time, [...(byTime.get(time) || []), a]);
       }
     }
-    return map;
-  }, [appts, type, gridTimes.join(","), durationMinutes, rules]);
+  }
 
   const otherTypeByTime = useMemo(() => {
     const map = new Map<string, DayAppointment[]>();
@@ -181,7 +179,11 @@ export function SlotBoard({
   }, [appts, type]);
 
   const offGrid = (appts || []).filter((a) => !gridTimes.includes(a.time));
-  const availabilityAt = (time: string) => bookingAvailability(appts || [], { date: day, time, type, leadId: leadId || "", durationMinutes, ...assignment }, rules, technicians);
+  // The assignment may be a full lead; its record type must not replace the booking type.
+  const availabilityAt = (time: string) => bookingAvailability(appts || [], {
+    date: day, time, type, leadId: leadId || "", durationMinutes,
+    technicianId: assignment.technicianId, technician: assignment.technician, technicianUsername: assignment.technicianUsername,
+  }, rules, technicians);
   const availableAt = (time: string) => availabilityAt(time).available;
   const freeCount = gridTimes.filter(availableAt).length;
 
