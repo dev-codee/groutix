@@ -1,29 +1,19 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Bath, Camera, Check, ChevronDown, Clock, Droplets, Grid2x2, House, Layers, MapPin, Phone, Ruler, ShieldCheck, Sparkles, Star, Wrench } from "lucide-react";
+import { ArrowRight, Bath, Check, ChevronDown, Clock, Droplets, Grid2x2, House, Layers, MapPin, Phone, Ruler, ShieldCheck, Sparkles, Star, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import HeroQuoteForm from "@/components/HeroQuoteForm";
+import ServicePageHero from "@/components/ServicePageHero";
 import ReviewCard from "@/components/ReviewCard";
 import ServiceAreaCoverage from "@/components/ServiceAreaCoverage";
-import { Section, Cards, QuoteLink, card, link, text } from "@/components/ServicePageSections";
+import { Section, Cards, QuoteLink, PhotoSlot, card, link, text } from "@/components/ServicePageSections";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { BUSINESS } from "@/lib/seo";
 import { siliconeFaqs, siliconePhotoSlots, siliconeSteps, suppliedSiliconeReview } from "@/lib/siliconeRecaulkingContent";
 
 const phone = "(03) 7023 8094";
 const tel = "tel:+61370238094";
-const heroBadge = "flex h-16 w-[280px] max-w-full shrink-0 items-center justify-center rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20";
-
-function PhotoSlot({ title, technician = false }: { title: string; technician?: boolean }) {
-  return <figure className="overflow-hidden rounded-xl border border-dashed border-neutral-300 bg-neutral-50">
-    <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 p-6 text-center text-neutral-400"><Camera className="h-8 w-8" /><p className="text-sm">{technician ? "Technician photo coming soon" : "Before & after photos coming soon"}</p></div>
-    <figcaption className="border-t border-neutral-200 bg-white px-5 py-4 font-bold text-neutral-900">{title}</figcaption>
-  </figure>;
-}
-
 function FaqAnswer({ index }: { index: number }) {
   const answer = siliconeFaqs[index].a;
   const serviceLink = index === 4 ? { phrase: "shower regrouting", href: "/shower-regrouting/" } : index === 5 ? { phrase: "leaking shower repair", href: "/leaking-shower-repair/" } : null;
@@ -36,26 +26,7 @@ export default function SiliconeRecaulkingPage({ rating, reviews }: { rating: Bu
   const isAdelene = (review: Review) => review.name.toLowerCase() === suppliedSiliconeReview.name.toLowerCase();
   const siliconeReviews = [reviews.find(isAdelene) ?? suppliedSiliconeReview, ...reviews.filter(review => !isAdelene(review)).slice(0, 2)];
   return <><Navbar /><main className="overflow-x-clip">
-    <section id="quote-form" className="relative scroll-mt-20 overflow-hidden bg-primary pt-[110px] lg:pt-[125px]">
-      <Image src="/img101.jpeg" alt="Tiled bathroom shower" fill priority sizes="100vw" className="object-cover" />
-      <div className="absolute inset-0 bg-black/55" />
-      <div className="relative mx-auto grid max-w-[1460px] items-start gap-8 px-6 pb-16 pt-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 lg:px-10 lg:pb-20 xl:grid-cols-[minmax(0,1fr)_540px]">
-        <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center justify-center gap-2 text-sm text-white/70 lg:justify-start"><Link href="/" className="hover:text-white">Home</Link><span>/</span><span aria-current="page">Silicone & Recaulking</span></nav>
-          <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
-          <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">Silicone Replacement Melbourne</h1>
-          <p className="mx-auto max-w-xl text-base leading-relaxed text-white/85 sm:text-lg lg:mx-0">Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds.</p>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
-            <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={`${heroBadge} gap-3`} aria-label={`${rating.value.toFixed(1)} stars from ${rating.count} Google reviews for Groutix`}>
-              <Image src="/google-logo.svg" alt="Google" width={24} height={24} /><strong className="text-2xl font-black">{rating.value.toFixed(1)}</strong><span><span className="flex gap-0.5" aria-hidden="true">{Array.from({ length: Math.round(rating.value) }, (_, i) => <Star key={i} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}</span><span className="whitespace-nowrap text-[13px] text-white/80">{rating.count} Google Reviews</span></span>
-            </a>
-            <a href={tel} className={`${heroBadge} gap-2 font-bold`}><Phone className="h-4 w-4" />{phone}</a>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-sm text-white/85 lg:justify-start">{["Full removal of old silicone", "Clear quote first", "Mould resistant finish"].map(item => <span key={item} className="flex items-center gap-2"><Check className="h-4 w-4 text-[#FBBC04]" />{item}</span>)}</div>
-        </div>
-        <div className="w-full"><HeroQuoteForm defaultService="Silicone Replacement" /></div>
-      </div>
-    </section>
+    <ServicePageHero title="Silicone Replacement Melbourne" breadcrumb="Silicone & Recaulking" description="Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds." defaultService="Silicone Replacement" benefits={["Full removal of old silicone", "Clear quote first", "Mould resistant finish"]} rating={rating} />
 
     <section aria-labelledby="silicone-trust" className="border-b border-neutral-200 bg-white py-12"><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><h2 id="silicone-trust" className="mb-8 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Melbourne</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
       { Icon: MapPin, value: "Local", label: "Bathroom & Wet Area Repairs", detail: "Across Melbourne and surrounding service areas" },

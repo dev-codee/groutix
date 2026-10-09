@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
 import { getBusinessRating, getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
+import SmallTilingJobsPage from "@/components/SmallTilingJobsPage";
+import { SMALL_TILING_META_TITLE, smallTilingFaqs } from "@/lib/smallTilingContent";
 import SiliconeRecaulkingPage from "@/components/SiliconeRecaulkingPage";
 import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingContent";
 import TileRegroutingPage from "@/components/TileRegroutingPage";
@@ -363,8 +365,8 @@ const services: Record<string, {
 
   "small-tiling-jobs": {
     title: "Small Tiling Jobs",
-    metaTitle: "Small Tiling Jobs & Repairs Victoria | Groutix",
-    metaDesc: "Cracked or missing tiles? Groutix handles small tiling jobs and repairs across Victoria. Fast turnaround, no job too small.",
+    metaTitle: SMALL_TILING_META_TITLE,
+    metaDesc: "Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. Free quote.",
     h1Desc: "Not every tiling job needs a full renovation. Groutix happily takes on small tiling jobs by replacing cracked or broken tiles, patching gaps, and completing minor tiling repairs around the home. It's the ideal service for homeowners who need a quick, tidy fix without waiting on a large-scale renovation booking or paying renovation-sized prices.",
     failHeading: "Damaged Tiles Left Unrepaired",
     failHeadingBlue: "Lead to Bigger Problems",
@@ -417,13 +419,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = services[slug];
   if (!s) return {};
   const canonical = `/${slug}`;
-  const dedicatedService = slug === "tile-regrouting" || slug === "silicone-recaulking";
+  const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs"].includes(slug);
   const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
     ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
     : slug === "silicone-recaulking"
       ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
-      : s.metaDesc;
+      : slug === "small-tiling-jobs"
+        ? `Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+        : s.metaDesc;
   return {
     title: dedicatedService ? { absolute: s.metaTitle } : s.metaTitle,
     description,
@@ -442,6 +446,19 @@ export default async function ServicePage({ params }: Props) {
   const { slug } = await params;
   const s = services[slug];
   if (!s) notFound();
+
+  if (slug === "small-tiling-jobs") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/small-tiling-jobs/#service"), name: "Small Tiling Jobs Melbourne", serviceType: "Tile repair", url: abs("/small-tiling-jobs/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(smallTilingFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Small Tiling Jobs", item: abs("/small-tiling-jobs/") },
+      ] },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><SmallTilingJobsPage rating={rating} reviews={reviews} /></>;
+  }
 
   if (slug === "silicone-recaulking") {
     const [rating, availableReviews] = await Promise.all([getBusinessRating(), getReviews(5)]);

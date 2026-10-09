@@ -606,6 +606,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
                 </span>
                 <h3 className={cardTitle}>{o.title}</h3>
                 <p className="text-base leading-relaxed text-neutral-600">{o.text}</p>
+                {o.pill === "Retile" && <Link href="/small-tiling-jobs/" className={inlineLink}>Explore small tiling jobs →</Link>}
               </div>
             ))}
           </div>

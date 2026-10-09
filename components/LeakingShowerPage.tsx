@@ -184,6 +184,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
           { Icon: Wrench, need: "Peeling or mouldy silicone", title: "Silicone and Recaulking", href: "/silicone-recaulking" },
           { Icon: House, need: "Balcony leaks", title: "Balcony Leak Repairs and Regrouting", href: "/balcony-leak-repairs" },
           { Icon: Layers, need: "Epoxy grout details", title: "Epoxy Grout", href: "/epoxy-grout" },
+          { Icon: House, need: "Broken or loose tiles", title: "Small Tiling Jobs", href: "/small-tiling-jobs/" },
         ].map(({ Icon, need, title, href }) => <Link key={href} href={href} className="group flex flex-col rounded-xl border border-neutral-200 bg-white p-6 transition-colors hover:border-accent"><Icon className="h-8 w-8 text-primary" /><p className="mt-4 text-sm text-neutral-500">{need}</p><h3 className="mt-2 flex-1 text-lg font-bold text-neutral-900">{title}</h3><span className="mt-5 flex items-center gap-2 border-t border-neutral-200 pt-4 text-sm font-bold text-accent">View service <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></Link>)}</div>
       </Section>
 

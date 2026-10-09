@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight, Grid2x2 } from "lucide-react";
+import { ArrowRight, Camera, Grid2x2 } from "lucide-react";
 
 export const button = "inline-flex items-center justify-center gap-2 rounded-sm bg-primary px-6 py-3 font-bold text-white transition-colors hover:bg-primary-hover";
 export const link = "font-bold text-accent underline underline-offset-4 hover:text-primary";
@@ -12,3 +12,10 @@ export function Cards({ items, columns = 3 }: { items: { title: string; body: Re
   return <div className={`grid gap-5 sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>{items.map(({ title, body, icon: Icon = Grid2x2 }) => <div key={title} className={`${card} transition-all hover:border-accent/40 hover:shadow-md`}><div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-accent-light/60 text-primary"><Icon className="h-5 w-5" /></div><h3 className="text-lg font-bold text-neutral-900">{title}</h3><p className="mt-3 leading-relaxed text-neutral-600">{body}</p></div>)}</div>;
 }
 export function QuoteLink({ label = "Get a Free Quote" }: { label?: string }) { return <a href="#quote-form" className={button}>{label}<ArrowRight className="h-4 w-4" /></a>; }
+
+export function PhotoSlot({ title, technician = false }: { title: string; technician?: boolean }) {
+  return <figure className="overflow-hidden rounded-xl border border-dashed border-neutral-300 bg-neutral-50">
+    <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 p-6 text-center text-neutral-400"><Camera className="h-8 w-8" /><p className="text-sm">{technician ? "Technician photo coming soon" : "Before & after photos coming soon"}</p></div>
+    <figcaption className="border-t border-neutral-200 bg-white px-5 py-4 font-bold text-neutral-900">{title}</figcaption>
+  </figure>;
+}

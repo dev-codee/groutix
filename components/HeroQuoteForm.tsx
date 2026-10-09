@@ -21,6 +21,7 @@ const AREA_OPTIONS = [
 ];
 
 const SERVICE_OPTIONS = [
+  "Small Tiling Job",
   "Tile Regrouting",
   "Shower Cubicle Regrouting",
   "Leaking Shower Repair",
