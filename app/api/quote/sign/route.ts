@@ -220,9 +220,7 @@ export async function POST(req: NextRequest) {
       const firstName = (resolvedSignerName || lead.name || "there").trim().split(/\s+/)[0];
       await sendSms({
         to: lead.phone,
-        // Kept short so it stays within one 160-char GSM-7 segment (1 credit)
-        // even with a long name and quote number — sendSms truncates, and a
-        // truncated link is a dead link.
+        // Multipart SMS keeps the signed booking link and contact footer intact.
         body: `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Book your job time: ${buildBookingSmsUrl(id, "job")}`,
       }).catch((e) => console.error("Customer sign SMS failed:", e));
     }

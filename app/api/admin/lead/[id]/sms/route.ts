@@ -54,12 +54,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
 
     if (!result.ok) {
-      let userError = result.error || "Failed to send SMS.";
-      if (userError.toLowerCase().includes("url") || userError.toLowerCase().includes("domain")) {
-        userError = "Texto API: Sending URLs is disabled for your Texto account tier. Please email support@texto.com.au to enable URL sending, or send via WhatsApp / Email.";
-      }
       return NextResponse.json({
-        error: userError
+        error: result.error || "Failed to send SMS."
       }, { status: 400 });
     }
 
@@ -68,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       id: `out_sms_${Date.now()}`,
       from: "groutix",
       channel: "sms",
-      text: bodyText,
+      text: result.body || bodyText,
       time: new Date().toISOString(),
     };
 

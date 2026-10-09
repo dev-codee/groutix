@@ -39,7 +39,7 @@ function PhotoPlaceholder({ title, tall = false }: { title: string; tall?: boole
 }
 
 function QuoteButtons() {
-  return <div className="flex flex-wrap items-center justify-center gap-4"><Link href="/contact" className={buttonClass}>Get a Free Quote <ArrowRight className="h-4 w-4" /></Link><a href={phoneHref} className="inline-flex items-center gap-2 font-bold text-primary hover:underline"><Phone className="h-4 w-4" />+61 3 7023 8094</a></div>;
+  return <div className="flex flex-wrap items-center justify-center gap-4"><Link href="/contact" className={buttonClass}>Get a Free Quote <ArrowRight className="h-4 w-4" /></Link><a href={phoneHref} className="inline-flex items-center gap-2 font-bold text-primary hover:underline"><Phone className="h-4 w-4" />(03) 7023 8094</a></div>;
 }
 
 export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
@@ -89,7 +89,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
                   <Image src="/google-logo.svg" alt="Google" width={24} height={24} /><span className="text-2xl font-black">5.0</span>
                   <span><span className="flex gap-0.5" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <Star key={index} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}</span><span className="text-[13px] text-white/80">290+ Google Reviews</span></span>
                 </a>
-                <a href={phoneHref} className="inline-flex h-16 items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />+61 3 7023 8094</a>
+                <a href={phoneHref} className="inline-flex h-16 items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />(03) 7023 8094</a>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-sm text-white/85 lg:justify-start"><span className="inline-flex items-center gap-2"><Search className="h-4 w-4" />Find the source</span><span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Eligible repairs: 10-year warranty</span></div>
             </div>
@@ -200,7 +200,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
         <div className="text-center"><Link href="/contact" className={buttonClass}>Still Have Questions? Get a Free Quote</Link></div>
       </Section>
 
-      <section id="final-cta" className="bg-primary px-6 py-16 text-center lg:px-10 lg:py-20"><div className="mx-auto max-w-4xl space-y-5"><h2 className="text-3xl font-bold leading-tight text-white lg:text-[42px]">Get Your Free Quote Today</h2><p className="text-base leading-relaxed text-white/90 sm:text-lg">Call <a href={phoneHref} className="font-semibold underline">+61 3 7023 8094</a>, email <a href="mailto:info@groutix.com" className="font-semibold underline">info@groutix.com</a>, or request a quote online.</p><p className="text-sm text-white/75">Open Mon to Sat 9:00 AM to 6:30 PM, Sun 11:00 AM to 10:00 PM.</p><p className="text-base text-white/85">Honest advice and workmanship you can rely on.</p><div className="flex flex-wrap justify-center gap-4 pt-2"><Link href="/contact" className="rounded-sm bg-white px-6 py-3 text-base font-bold text-primary transition-colors hover:bg-neutral-100">Request A Quote</Link><a href={phoneHref} className="inline-flex items-center gap-2 rounded-sm border border-white/60 px-6 py-3 text-base font-bold text-white transition-colors hover:bg-white/10"><Phone className="h-4 w-4" />+61 3 7023 8094</a></div></div></section>
+      <section id="final-cta" className="bg-primary px-6 py-16 text-center lg:px-10 lg:py-20"><div className="mx-auto max-w-4xl space-y-5"><h2 className="text-3xl font-bold leading-tight text-white lg:text-[42px]">Get Your Free Quote Today</h2><p className="text-base leading-relaxed text-white/90 sm:text-lg">Call <a href={phoneHref} className="font-semibold underline">(03) 7023 8094</a>, email <a href="mailto:info@groutix.com" className="font-semibold underline">info@groutix.com</a>, or request a quote online.</p><p className="text-sm text-white/75">Open Mon to Sat 9:00 AM to 6:30 PM, Sun 11:00 AM to 10:00 PM.</p><p className="text-base text-white/85">Honest advice and workmanship you can rely on.</p><div className="flex flex-wrap justify-center gap-4 pt-2"><Link href="/contact" className="rounded-sm bg-white px-6 py-3 text-base font-bold text-primary transition-colors hover:bg-neutral-100">Request A Quote</Link><a href={phoneHref} className="inline-flex items-center gap-2 rounded-sm border border-white/60 px-6 py-3 text-base font-bold text-white transition-colors hover:bg-white/10"><Phone className="h-4 w-4" />(03) 7023 8094</a></div></div></section>
     </main>
     <Footer />
   </>;

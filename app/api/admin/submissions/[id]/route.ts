@@ -85,6 +85,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  }
 
   // Snapshot the prior state so we can record what actually changed.
   const before = await getSubmission(id);
@@ -111,11 +114,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     for (const type of ["inspection", "job"] as const) {
       const field = type === "inspection" ? "inspectionAt" : "jobAt";
       if (!(field in body)) continue;
+      // An empty date field may arrive as null from older lead records/forms.
+      // Canonicalise it to the same empty string used by the clear-booking UI.
+      if (body[field] == null) body[field] = "";
       if (typeof body[field] !== "string") {
         await rollback();
         return NextResponse.json({ error: "Invalid appointment." }, { status: 400 });
       }
-      if (!body[field]) continue;
+      if (!body[field].trim()) { body[field] = ""; continue; }
       const value = normalizeApptString(body[field]);
       const match = /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):([0-5]\d)/.exec(value || "");
       if (!match || !validScheduleDate(match[1])) {
@@ -123,10 +129,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         return NextResponse.json({ error: "Invalid appointment date or time." }, { status: 400 });
       }
       body[field] = value;
-      if ((value === before[field] && !(type === "job" && (assignmentChanged || durationChanged))) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
+      if ((value === normalizeApptString(before[field]) && !(type === "job" && (assignmentChanged || durationChanged))) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
-      const area = resolveArea(before.address || before.city, await getZoneRules());
+      const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
       const result = await createBooking({ leadId: id, type, date, time, zone: area.zone,
         ...(type === "job" ? {
           durationMinutes: estimatedJobMinutes(("inspectionReport" in body ? body.inspectionReport : before.inspectionReport)?.estimatedTime) ?? 0,
@@ -260,8 +266,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (body.status === "Lost" || body.status === "Cancelled") {
       await deleteBooking(id);
     } else {
-      const area = resolveArea(before.address || before.city, await getZoneRules());
-      if (typeof body.inspectionAt === "string" && body.inspectionAt !== before.inspectionAt) {
+      const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
+      if (typeof body.inspectionAt === "string" && body.inspectionAt !== (normalizeApptString(before.inspectionAt) || "")) {
         if (body.inspectionAt.includes("T")) {
           const [d, tRaw] = body.inspectionAt.split("T");
           const t = tRaw.slice(0, 5).padStart(5, "0");
@@ -338,7 +344,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           }
         }
       }
-      if (typeof body.jobAt === "string" && body.jobAt !== before.jobAt) {
+      if (typeof body.jobAt === "string" && body.jobAt !== (normalizeApptString(before.jobAt) || "")) {
         if (body.jobAt.includes("T")) {
           const [d, tRaw] = body.jobAt.split("T");
           const t = tRaw.slice(0, 5).padStart(5, "0");

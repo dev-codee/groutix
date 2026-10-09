@@ -16,7 +16,7 @@ export const BUSINESS = {
   legalName: "Groutix | Epoxy Regrouting, Shower & Balcony Leak Repairs",
   description:
     "Groutix specialises in shower regrouting, epoxy grouting, silicone replacement and leaking shower repairs across Victoria. We help restore tiled wet areas without the need for unnecessary renovations.",
-  phone: "+61 3 7023 8094",
+  phone: "(03) 7023 8094",
   email: "info@groutix.com",
   address: {
     street: "82A Marigold Cres",

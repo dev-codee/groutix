@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const json = (body, options = {}) => ({ body, status: options.status || 200 });
-function patchApi({ conflict = false, updateFails = false, appointments = [], before = {} } = {}) {
+function patchApi({ conflict = false, conflictType, updateFails = false, appointments = [], before = {} } = {}) {
   const calls = [];
   const lead = { id: "lead", status: "New", name: "Customer", ...before };
   const noop = async () => {};
@@ -17,7 +17,7 @@ function patchApi({ conflict = false, updateFails = false, appointments = [], be
     },
     "@/lib/bookings": {
       listAppointmentsOnDate: async () => appointments,
-      createBooking: async (...args) => { calls.push(["reserve", ...args]); return conflict ? { ok: false, conflict: true, error: "Slot taken" } : { ok: true, acquired: true }; },
+      createBooking: async (...args) => { calls.push(["reserve", ...args]); return conflict || conflictType === args[0].type ? { ok: false, conflict: true, error: "Slot taken" } : { ok: true, acquired: true }; },
       releaseBookingSlot: async (...args) => calls.push(["release", ...args]),
       deleteBooking: async (...args) => calls.push(["delete", ...args]),
     },
@@ -59,11 +59,44 @@ test("booking removal clears the appointment and releases its slot", async () =>
 });
 
 test("invalid appointment dates never update a lead", async () => {
-  for (const value of ["2026-02-30T09:00", "2026-10-08T25:00", null]) {
+  for (const value of ["2026-02-30T09:00", "2026-10-08T25:00", 123, {}, []]) {
     const { patch, calls } = patchApi();
     assert.equal((await patch({ inspectionAt: value })).status, 400);
     assert.equal(calls.length, 0);
   }
+});
+
+test("inspection edits save when the untouched job date is null", async () => {
+  const { patch, calls } = patchApi({ before: { inspectionAt: "2026-10-14T10:00", jobAt: null } });
+  assert.equal((await patch({ inspectionAt: "2026-10-15T11:30", jobAt: null, notes: "Customer requested later time" })).status, 200);
+  const saved = calls.find(([action]) => action === "update")[2];
+  assert.equal(saved.inspectionAt, "2026-10-15T11:30");
+  assert.equal(saved.jobAt, "");
+  assert.equal(saved.notes, "Customer requested later time");
+  assert.equal(calls.some(([action, , type]) => action === "delete" && type === "job"), false);
+});
+
+test("a legacy appointment with seconds is unchanged and does not recheck capacity or notify", async () => {
+  const { patch, calls } = patchApi({ conflict: true, before: { inspectionAt: "2026-10-14T10:00:00", jobAt: "2026-10-15T09:00:00" } });
+  assert.equal((await patch({ inspectionAt: "2026-10-14T10:00", jobAt: "2026-10-15T09:00", notes: "Updated notes" })).status, 200);
+  assert.equal(calls.some(([action]) => action === "reserve"), false);
+  assert.equal(calls.some(([action]) => action === "delete"), false);
+});
+
+test("clearing an appointment using null releases that booking", async () => {
+  const { patch, calls } = patchApi({ before: { inspectionAt: "2026-10-14T10:00" } });
+  assert.equal((await patch({ inspectionAt: null })).status, 200);
+  assert.equal(calls.find(([action]) => action === "update")[2].inspectionAt, "");
+  assert.deepEqual(Array.from(calls.find(([action]) => action === "delete")), ["delete", "lead", "inspection"]);
+});
+
+test("editing both dates does not partially save if the job time is unavailable", async () => {
+  const { patch, calls } = patchApi({ conflictType: "job" });
+  const response = await patch({ inspectionAt: "2026-10-14T11:00", jobAt: "2026-10-15T09:00" });
+  assert.equal(response.status, 409);
+  assert.equal(response.body.error, "Slot taken");
+  assert.equal(calls.some(([action]) => action === "update"), false);
+  assert.deepEqual(Array.from(calls.find(([action]) => action === "release")).slice(0, 5), ["release", "lead", "inspection", "2026-10-14", "11:00"]);
 });
 
 test("booking store retains the prior reservation until the lead write commits", async () => {

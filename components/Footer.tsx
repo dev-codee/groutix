@@ -194,7 +194,7 @@ export default function Footer() {
                   href="tel:+61370238094"
                   className="block text-lg font-bold text-white hover:text-white/90 transition-colors"
                 >
-                  +61 3 7023 8094
+                  (03) 7023 8094
                 </a>
                 <a
                   href={mailto || "mailto:info@groutix.com"}

@@ -77,6 +77,9 @@ import {
   BookmarkPlus
 } from "lucide-react";
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
+import { useSiteContent } from "@/components/SiteContentProvider";
+import { prepareCustomerSms, smsReplyNotice, smsSegmentCount, SMS_MAX_CHARS } from "@/lib/smsMessage";
+import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
 import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
 import {
@@ -167,6 +170,7 @@ type DashboardView =
   | "recyclebin";
 
 export default function CrmDashboardPage() {
+  const { business } = useSiteContent();
   const basePath = useAdminBasePath();
   const realRole = useAdminRole();
   const username = useAdminUsername();
@@ -297,6 +301,7 @@ export default function CrmDashboardPage() {
   const [startJobDays, setStartJobDays] = useState(1);
   const [staffLocations, setStaffLocations] = useState<any[]>([]);
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
+  const [customerTrackingActive, setCustomerTrackingActive] = useState(false);
   const [liveGpsCoords, setLiveGpsCoords] = useState<{ lat: number; lng: number; accuracy?: number; time: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   // Dispatch deep-link state — set by openDispatch() so DispatchView opens on the correct tab/filter/date
@@ -949,6 +954,8 @@ export default function CrmDashboardPage() {
     setNotifyPrompt(null);
 
     const applyNotificationResult = (data: any) => {
+      if (data?.trackingUrl) setCustomerTrackingActive(true);
+      if (eventType === "arrived") setCustomerTrackingActive(false);
       const newMsgs = Array.isArray(data?.messages) ? data.messages : data?.message ? [data.message] : [];
       if (newMsgs.length > 0) {
         setLeads((prev) =>
@@ -987,6 +994,7 @@ export default function CrmDashboardPage() {
           body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not send notification");
         applyNotificationResult(data);
         setEtaToast({
           leadId: lead.id,
@@ -997,7 +1005,7 @@ export default function CrmDashboardPage() {
                 : `Customer notified! (ETA unavailable)`
               : `Customer notified of your arrival!`,
         });
-        if (lat && lng) {
+        if (lat != null && lng != null) {
           fetch("/api/admin/staff/location", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1005,7 +1013,7 @@ export default function CrmDashboardPage() {
           }).catch(() => { });
         }
       } catch {
-        setEtaToast({ leadId: lead.id, msg: "Notification sent (no ETA)." });
+        setEtaToast({ leadId: lead.id, msg: "Could not send the customer notification. Please try again." });
       } finally {
         setOnTheWayLoading(null);
         setTimeout(() => setEtaToast(null), 6000);
@@ -1013,7 +1021,7 @@ export default function CrmDashboardPage() {
     };
 
     // If real-time continuous GPS already has a lock, dispatch immediately without delay
-    if (liveGpsCoords && liveGpsCoords.lat && liveGpsCoords.lng) {
+    if (liveGpsCoords && Date.now() - new Date(liveGpsCoords.time).getTime() < 30000) {
       setOnTheWayLoading(lead.id);
       sendOnTheWayWithCoords(liveGpsCoords.lat, liveGpsCoords.lng);
       return;
@@ -1034,7 +1042,7 @@ export default function CrmDashboardPage() {
 
   // Auto-share location in real-time for inspector / field / technician roles while dashboard is open
   useEffect(() => {
-    if (role !== "inspection" && role !== "field" && role !== "technician") {
+    if (role !== "inspection" && role !== "field" && role !== "technician" && !customerTrackingActive) {
       setLocationTrackingActive(false);
       return;
     }
@@ -1053,18 +1061,19 @@ export default function CrmDashboardPage() {
       }
     };
 
+    const receivePosition = (pos: GeolocationPosition) => {
+      const coords = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        time: new Date().toISOString(),
+      };
+      setLiveGpsCoords(coords);
+      setLocationTrackingActive(true);
+      sendLocationUpdate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+    };
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const coords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          time: new Date().toISOString(),
-        };
-        setLiveGpsCoords(coords);
-        setLocationTrackingActive(true);
-        sendLocationUpdate(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-      },
+      receivePosition,
       (err) => {
         console.warn("Continuous GPS watch warning:", err.message);
         // Fallback snapshot
@@ -1088,14 +1097,19 @@ export default function CrmDashboardPage() {
     );
 
     locationWatchRef.current = watchId;
+    // Refresh GPS while stationary too, so a parked specialist remains live.
+    const heartbeat = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(receivePosition, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    }, 30000);
 
     return () => {
+      clearInterval(heartbeat);
       if (locationWatchRef.current !== null) {
         navigator.geolocation.clearWatch(locationWatchRef.current);
         locationWatchRef.current = null;
       }
     };
-  }, [role]);
+  }, [role, customerTrackingActive]);
 
   // Load staff locations every 30s (managers/super_admin only)
   const loadStaffLocations = useCallback(async () => {
@@ -1338,11 +1352,10 @@ export default function CrmDashboardPage() {
   }
 
   // Lead CRUD Operations
-  async function handleSaveLead(e: React.FormEvent) {
+  async function handleSaveLead(e: React.FormEvent, original: Partial<Lead>) {
     e.preventDefault();
     if (!editingLead?.name?.trim()) {
-      alert("Customer name is required.");
-      return;
+      return "Customer name is required.";
     }
 
     // Booking an appointment here advances the lead the same way a customer
@@ -1350,31 +1363,34 @@ export default function CrmDashboardPage() {
     // intake shouldn't stay on "New" once staff put a time in. Only a newly set
     // or changed time counts, an explicit status edit in the same save wins,
     // and statusAfterBooking never moves a lead backwards.
-    const before = editingLead.id ? leads.find((l) => l.id === editingLead.id) : undefined;
+    const before = editingLead.id ? original : undefined;
     const payload: Partial<Lead> = { ...editingLead };
+    const editedFields = leadEditChanges(payload, before || {});
     if (!before || payload.status === before.status) {
-      if (payload.inspectionAt && payload.inspectionAt !== (before?.inspectionAt || "")) {
+      if (editedFields.inspectionAt) {
         payload.status = statusAfterBooking("inspection", payload.status) ?? payload.status;
       }
-      if (payload.jobAt && payload.jobAt !== (before?.jobAt || "")) {
+      if (editedFields.jobAt) {
         payload.status = statusAfterBooking("job", payload.status) ?? payload.status;
       }
     }
 
     try {
       if (payload.id) {
+        const changes = leadEditChanges(payload, before || {});
         const res = await fetch(`/api/admin/submissions/${payload.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(changes)
         });
         if (res.ok) {
           setLeads((prev) =>
-            prev.map((l) => (l.id === payload.id ? ({ ...l, ...payload } as Lead) : l))
+            prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes } as Lead) : l))
           );
           setLeadModalOpen(false);
         } else {
-          alert("Failed to update lead.");
+          const error = await res.json().catch(() => ({}));
+          return typeof error.error === "string" ? error.error : "Could not update the lead. Please try again.";
         }
       } else {
         let maxN = JOB_NO_START - 1;
@@ -1394,11 +1410,12 @@ export default function CrmDashboardPage() {
           setLeads((prev) => [{ ...item, jobNo: newJobNo }, ...prev]);
           setLeadModalOpen(false);
         } else {
-          alert("Failed to create lead.");
+          const error = await res.json().catch(() => ({}));
+          return typeof error.error === "string" ? error.error : "Could not create the lead. Please try again.";
         }
       }
     } catch {
-      alert("Error saving lead.");
+      return "Could not connect to save the lead. Please try again.";
     }
   }
 
@@ -6262,14 +6279,15 @@ export default function CrmDashboardPage() {
                           </span>
                         </span>
                         {(() => {
-                          const preview = smsText.toLowerCase().includes("groutix") ? smsText.trim() : `Groutix: ${smsText.trim()}`;
+                          const preview = prepareCustomerSms(smsText, business);
                           const charCount = preview.length;
-                          const isUnder160 = charCount <= 160;
+                          const segments = smsSegmentCount(preview);
+                          const isUnder160 = segments === 1;
                           return (
                             <span className={`text-[11px] font-semibold flex items-center gap-1.5 ${isUnder160 ? "text-emerald-700" : "text-amber-700"}`}>
-                              <span>{charCount}/160 chars</span>
+                              <span>{charCount}/{SMS_MAX_CHARS} chars (including footer)</span>
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isUnder160 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                                {isUnder160 ? "1 Credit" : "Trimmed to 1 Credit"}
+                                {segments} SMS {segments === 1 ? "part" : "parts"}
                               </span>
                             </span>
                           );
@@ -6335,19 +6353,13 @@ export default function CrmDashboardPage() {
                         onChange={(e) => setSmsText(e.target.value)}
                         className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 leading-relaxed font-sans resize-y min-h-[80px]"
                       />
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Added automatically to every SMS: {smsReplyNotice(business)}
+                      </p>
+                      {prepareCustomerSms(smsText, business).length > SMS_MAX_CHARS && (
+                        <p className="text-[11px] text-red-600">Please shorten the message. The SMS and its links will not be truncated.</p>
+                      )}
                     </div>
-
-                    {/* URL Warning Banner if message has URL */}
-                    {/(https?:\/\/|[a-z0-9-]+\.[a-z]{2,})/i.test(smsText) && (
-                      <div className="p-2.5 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex flex-col gap-1">
-                        <div className="font-bold flex items-center gap-1.5 text-amber-800 text-[11px]">
-                          <span>⚠️ Note: Sending links via Texto SMS</span>
-                        </div>
-                        <p className="text-[10px] leading-relaxed text-amber-800">
-                          If your Texto account rejects SMS containing links (carrier anti-scam rule), email <b>support@texto.com.au</b> to enable URL sending on your Texto account, or click <b>Send via WhatsApp</b> for 100% reliable 1-click delivery!
-                        </p>
-                      </div>
-                    )}
 
                     <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
                       <div className="text-[11px] text-slate-400">
@@ -6367,7 +6379,7 @@ export default function CrmDashboardPage() {
                         <button
                           type="button"
                           onClick={handleSendSmsReply}
-                          disabled={sendingSms || !smsText.trim() || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
+                          disabled={sendingSms || !smsText.trim() || prepareCustomerSms(smsText, business).length > SMS_MAX_CHARS || !Boolean(activeMessageLeadLive?.phone || activeMessageLead?.phone)}
                           className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm cursor-pointer"
                         >
                           {sendingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
@@ -8217,7 +8229,7 @@ export default function CrmDashboardPage() {
               </h3>
               <p className="text-xs text-slate-500 mb-5">
                 {notifyPrompt.eventType === "en_route"
-                  ? `An SMS with your ETA will be sent to ${notifyPrompt.lead.name || "the customer"}.`
+                  ? `An email and SMS with your ETA and live tracking link will be sent to ${notifyPrompt.lead.name || "the customer"}. Keep this dashboard open and allow location access to share updates.`
                   : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
               </p>
               <div className="flex gap-3">

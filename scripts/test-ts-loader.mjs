@@ -9,18 +9,18 @@ const require = createRequire(import.meta.url);
 const root = fileURLToPath(new URL("../", import.meta.url));
 
 // Exercise the real TypeScript modules with injected database/network boundaries.
-export function loadTs(relativePath, overrides = {}) {
+export function loadTs(relativePath, overrides = {}, globals = {}) {
   const cache = new Map();
   const load = (path) => {
     if (cache.has(path)) return cache.get(path).exports;
     const moduleRecord = { exports: {} };
     cache.set(path, moduleRecord);
     const compiled = ts.transpileModule(readFileSync(path, "utf8"), {
-      compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020 },
+      compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
     }).outputText;
     vm.runInNewContext(compiled, {
       module: moduleRecord, exports: moduleRecord.exports, process, console, Buffer, URL,
-      setTimeout, clearTimeout,
+      setTimeout, clearTimeout, ...globals,
       require: (name) => {
         if (Object.hasOwn(overrides, name)) return overrides[name];
         if (name.startsWith("@/") || name.startsWith(".")) {

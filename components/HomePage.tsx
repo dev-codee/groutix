@@ -730,7 +730,7 @@ export default function HomePage({
                       href={tel}
                       className="flex h-16 items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
                     >
-                      <Phone className="h-4 w-4" /> +61 3 7023 8094
+                      <Phone className="h-4 w-4" /> (03) 7023 8094
                     </a>
                   </motion.div>
                 </div>
@@ -1734,7 +1734,7 @@ export default function HomePage({
               Get Your Free Quote Today
             </h2>
             <p className="text-white/85 text-base sm:text-lg leading-relaxed">
-              Call <a href={tel} className="underline hover:text-accent font-bold">+61 3 7023 8094</a>, email info@groutix.com, or request a quote online.
+              Call <a href={tel} className="underline hover:text-accent font-bold">(03) 7023 8094</a>, email info@groutix.com, or request a quote online.
             </p>
             <p className="text-white/70 text-base">
               Open Mon–Sat 9:00 AM–6:30 PM, Sun 11:00 AM–10:00 PM.
@@ -1753,7 +1753,7 @@ export default function HomePage({
                 href={tel}
                 className="inline-flex items-center gap-2.5 border-[1.5px] border-white/80 hover:border-white text-white font-bold px-6 py-3 rounded-lg text-base sm:text-lg transition-all active:scale-95"
               >
-                <Phone className="h-4 w-4 fill-white text-white" /> +61 3 7023 8094
+                <Phone className="h-4 w-4 fill-white text-white" /> (03) 7023 8094
               </a>
             </div>
           </div>

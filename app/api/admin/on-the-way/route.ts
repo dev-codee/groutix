@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendSms } from "@/lib/sms";
 import { sendEmail, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
-import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifyRequestSession } from "@/lib/adminAuth";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { geocodeAddress } from "@/lib/geocode";
+import { startCustomerTracking, stopCustomerTracking } from "@/lib/customerTrackingServer";
+import { validCoordinates } from "@/lib/customerTracking";
 
 export const runtime = "nodejs";
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]!));
+}
 
 /** Haversine distance in km between two lat/lng points. */
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -107,9 +113,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const { leadId, lat, lng, eventType } = body;
-  if (!leadId || !eventType) {
-    return NextResponse.json({ error: "Missing leadId or eventType" }, { status: 400 });
+  if (typeof leadId !== "string" || !ObjectId.isValid(leadId) || !["en_route", "arrived"].includes(eventType)) {
+    return NextResponse.json({ error: "Invalid leadId or eventType" }, { status: 400 });
+  }
+  if ((lat != null || lng != null) && !validCoordinates(lat, lng)) {
+    return NextResponse.json({ error: "Invalid GPS coordinates" }, { status: 400 });
   }
 
   const lead = await getSubmission(leadId);
@@ -119,6 +129,11 @@ export async function POST(req: NextRequest) {
 
   const firstName = (lead.name || "").split(" ")[0].trim() || "there";
   const customerAddress = lead.address || "";
+  const htmlFirstName = escapeHtml(firstName);
+  const trackingUrl = eventType === "en_route"
+    ? await startCustomerTracking(leadId, session.username, lat, lng)
+    : null;
+  if (eventType === "arrived") await stopCustomerTracking(leadId);
 
   // Calculate ETA if we have staff GPS coords and a destination address
   let etaText = "";
@@ -132,16 +147,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ── SMS ──────────────────────────────────────────────────────────────────
-  const smsBody =
+  let smsBody =
     eventType === "en_route"
       ? etaText
         ? `Hi ${firstName}, your Groutix specialist is on the way and should arrive in approx ${etaText}. See you soon! - Groutix 7023 8094`
         : `Hi ${firstName}, your Groutix specialist is on the way. See you soon! - Groutix 7023 8094`
       : `Hi ${firstName}, your Groutix specialist has arrived at your property. - Groutix 7023 8094`;
-
-  if (lead.phone) {
-    sendSms({ to: lead.phone, body: smsBody, campaign: "Groutix CRM" }).catch(() => {});
-  }
+  if (trackingUrl) smsBody += `\n\nTrack your specialist's live location:\n${trackingUrl}`;
 
   // ── Email ─────────────────────────────────────────────────────────────────
   const emailSubject =
@@ -153,7 +165,7 @@ export async function POST(req: NextRequest) {
     eventType === "en_route"
       ? `
         <h1 style="margin:0 0 16px;font-size:24px;font-weight:900;color:#0f172a;">Your specialist is on the way!</h1>
-        <p style="margin:0 0 16px;font-size:15px;color:#334155;">Hi <strong>${firstName}</strong>,</p>
+        <p style="margin:0 0 16px;font-size:15px;color:#334155;">Hi <strong>${htmlFirstName}</strong>,</p>
         <p style="margin:0 0 24px;font-size:15px;color:#334155;line-height:1.6;">
           Your Groutix specialist is currently heading to your property and will be with you shortly.
         </p>
@@ -165,6 +177,7 @@ export async function POST(req: NextRequest) {
           </div>`
             : ""
         }
+        ${trackingUrl ? `<p style="margin:0 0 24px;text-align:center;"><a href="${escapeHtml(trackingUrl)}" style="display:inline-block;background:#001f97;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:700;">Track your specialist live</a></p><p style="margin:0 0 24px;font-size:13px;color:#64748b;text-align:center;">Location updates automatically while your specialist is on the way.</p>` : ""}
         <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6;">
           If you have any questions, please don't hesitate to call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> or visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>.
         </p>
@@ -172,7 +185,7 @@ export async function POST(req: NextRequest) {
       `
       : `
         <h1 style="margin:0 0 16px;font-size:24px;font-weight:900;color:#0f172a;">Your specialist has arrived!</h1>
-        <p style="margin:0 0 16px;font-size:15px;color:#334155;">Hi <strong>${firstName}</strong>,</p>
+        <p style="margin:0 0 16px;font-size:15px;color:#334155;">Hi <strong>${htmlFirstName}</strong>,</p>
         <p style="margin:0 0 24px;font-size:15px;color:#334155;line-height:1.6;">
           Your Groutix specialist has arrived at your property and is ready to get started.
         </p>
@@ -186,16 +199,17 @@ export async function POST(req: NextRequest) {
         <p style="margin:0;font-size:14px;color:#334155;">Thank you for choosing Groutix!<br/><strong>The Groutix Team</strong></p>
       `;
 
-  if (lead.email) {
-    getEmailLogoUrl().then((logoUrl) =>
-      sendEmail({
+  // Await both channels so serverless shutdown cannot drop the notifications.
+  const [smsResult] = await Promise.allSettled([
+    lead.phone ? sendSms({ to: lead.phone, body: smsBody, campaign: "Groutix CRM" }) : Promise.resolve(null),
+    lead.email ? getEmailLogoUrl().then((logoUrl) => sendEmail({
         fromName: "Groutix",
         toEmail: lead.email!,
         subject: emailSubject,
         html: wrapEmailHtml(emailContentHtml, emailSubject, logoUrl),
-      })
-    ).catch(() => {});
-  }
+      })) : Promise.resolve(null),
+  ]);
+  const sentSmsBody = smsResult.status === "fulfilled" ? smsResult.value?.body || smsBody : smsBody;
 
   // ── Activity log ─────────────────────────────────────────────────────────
   const detail =
@@ -224,7 +238,7 @@ export async function POST(req: NextRequest) {
       from: "groutix",
       channel: "sms",
       subject: eventType === "en_route" ? "🚗 Specialist On The Way" : "📍 Specialist Arrived",
-      text: smsBody,
+      text: sentSmsBody,
       time: new Date().toISOString(),
     });
   }
@@ -237,7 +251,7 @@ export async function POST(req: NextRequest) {
       subject: emailSubject,
       text:
         eventType === "en_route"
-          ? `Your Groutix specialist is on the way!${etaText ? ` Estimated arrival: ${etaText}.` : ""} Heading to ${customerAddress || "your property"}.`
+          ? `Your Groutix specialist is on the way!${etaText ? ` Estimated arrival: ${etaText}.` : ""} Heading to ${customerAddress || "your property"}.${trackingUrl ? `\n\nTrack your specialist live: ${trackingUrl}` : ""}`
           : `Your Groutix specialist has arrived at ${customerAddress || "your property"} and is ready to get started.`,
       time: new Date().toISOString(),
     });
@@ -269,6 +283,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     eta: etaText || null,
     etaMinutes: etaMinutes || null,
+    trackingUrl,
     messages: crmMessages,
     message: crmMessages[0],
   });

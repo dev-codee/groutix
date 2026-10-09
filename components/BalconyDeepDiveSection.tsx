@@ -96,7 +96,7 @@ export default function BalconyDeepDiveSection() {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 text-white hover:bg-white/10 font-bold text-[15px] px-5 py-3 rounded-[10px] border border-white/45 transition-all active:scale-95"
             >
               <Phone className="w-4 h-4 shrink-0" />
-              <span>+61 3 7023 8094</span>
+              <span>(03) 7023 8094</span>
             </a>
           </div>
         </div>
