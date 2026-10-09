@@ -11,12 +11,13 @@ import { explainOutsideRules } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { SlotBoard, useSlotConflict } from "@/components/admin/SlotBoard";
 import { BookingPlanner } from "@/components/admin/BookingPlanner";
+import { normalizeApptString } from "@/lib/scheduling";
 
 interface Props {
   editingLead: Partial<Lead> | null;
   setEditingLead: React.Dispatch<React.SetStateAction<Partial<Lead> | null>>;
   setLeadModalOpen: (v: boolean) => void;
-  handleSaveLead: (e: React.FormEvent) => void;
+  handleSaveLead: (e: React.FormEvent, original: Partial<Lead>) => Promise<string | void>;
   addressInputRef: React.RefObject<HTMLInputElement | null>;
   addressDebounceRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   fetchAddressSuggestions: (q: string) => void;
@@ -57,26 +58,38 @@ export function LeadEditModal({
   // Live view of who holds which slot (inspections + jobs share one calendar).
   const [showBoard, setShowBoard] = useState<{ inspection: boolean; job: boolean }>({ inspection: false, job: false });
   const [plannerFor, setPlannerFor] = useState<"inspection" | "job" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id, "inspection");
   const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id, "job", estimatedJobMinutes(editingLead?.inspectionReport?.estimatedTime), editingLead || {});
-  // Times as they were when the form opened — only a CHANGED time needs the double-booking check.
-  const original = useRef({ inspectionAt: editingLead?.inspectionAt || "", jobAt: editingLead?.jobAt || "" });
+  // Compare against the form's opening snapshot, even if the lead list refreshes.
+  const original = useRef<Partial<Lead>>({ ...editingLead });
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaveError("");
     const clashes = [
-      editingLead?.inspectionAt !== original.current.inspectionAt && inspectionConflict
+      normalizeApptString(editingLead?.inspectionAt) !== normalizeApptString(original.current.inspectionAt) && inspectionConflict
         ? `Inspection: ${inspectionConflict.label}`
         : null,
-      editingLead?.jobAt !== original.current.jobAt && jobConflict
+      normalizeApptString(editingLead?.jobAt) !== normalizeApptString(original.current.jobAt) && jobConflict
         ? `Job: ${jobConflict.label}`
         : null,
     ].filter(Boolean);
     if (clashes.length) {
-      window.alert(clashes.join("\n"));
-      e.preventDefault();
+      setSaveError(clashes.join("\n"));
       return;
     }
-    handleSaveLead(e);
+    setSaving(true);
+    try {
+      const error = await handleSaveLead(e, original.current);
+      if (error) setSaveError(error);
+    } catch {
+      setSaveError("Could not save the lead. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -87,6 +100,7 @@ export function LeadEditModal({
             {editingLead?.id ? "Edit Customer Lead" : "Add New Customer Lead"}
           </h2>
           <button
+            disabled={saving}
             onClick={() => setLeadModalOpen(false)}
             className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
           >
@@ -94,7 +108,8 @@ export function LeadEditModal({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4 text-xs">
+        <form onSubmit={onSubmit} onChange={() => setSaveError("")} className="space-y-4 text-xs">
+          <fieldset disabled={saving} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="font-bold text-slate-700 block mb-1">Customer Name *</label>
@@ -457,6 +472,7 @@ export function LeadEditModal({
             </div>
           )}
 
+          {saveError && <p role="alert" className="whitespace-pre-line rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{saveError}</p>}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
@@ -469,9 +485,10 @@ export function LeadEditModal({
               type="submit"
               className="px-5 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
             >
-              Save Lead
+              {saving ? "Saving…" : "Save Lead"}
             </button>
           </div>
+          </fieldset>
         </form>
       </div>
       {plannerFor && editingLead && (

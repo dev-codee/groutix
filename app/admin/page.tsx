@@ -79,6 +79,7 @@ import {
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { useSiteContent } from "@/components/SiteContentProvider";
 import { prepareCustomerSms, smsReplyNotice, smsSegmentCount, SMS_MAX_CHARS } from "@/lib/smsMessage";
+import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
 import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
 import {
@@ -1351,11 +1352,10 @@ export default function CrmDashboardPage() {
   }
 
   // Lead CRUD Operations
-  async function handleSaveLead(e: React.FormEvent) {
+  async function handleSaveLead(e: React.FormEvent, original: Partial<Lead>) {
     e.preventDefault();
     if (!editingLead?.name?.trim()) {
-      alert("Customer name is required.");
-      return;
+      return "Customer name is required.";
     }
 
     // Booking an appointment here advances the lead the same way a customer
@@ -1363,31 +1363,34 @@ export default function CrmDashboardPage() {
     // intake shouldn't stay on "New" once staff put a time in. Only a newly set
     // or changed time counts, an explicit status edit in the same save wins,
     // and statusAfterBooking never moves a lead backwards.
-    const before = editingLead.id ? leads.find((l) => l.id === editingLead.id) : undefined;
+    const before = editingLead.id ? original : undefined;
     const payload: Partial<Lead> = { ...editingLead };
+    const editedFields = leadEditChanges(payload, before || {});
     if (!before || payload.status === before.status) {
-      if (payload.inspectionAt && payload.inspectionAt !== (before?.inspectionAt || "")) {
+      if (editedFields.inspectionAt) {
         payload.status = statusAfterBooking("inspection", payload.status) ?? payload.status;
       }
-      if (payload.jobAt && payload.jobAt !== (before?.jobAt || "")) {
+      if (editedFields.jobAt) {
         payload.status = statusAfterBooking("job", payload.status) ?? payload.status;
       }
     }
 
     try {
       if (payload.id) {
+        const changes = leadEditChanges(payload, before || {});
         const res = await fetch(`/api/admin/submissions/${payload.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(changes)
         });
         if (res.ok) {
           setLeads((prev) =>
-            prev.map((l) => (l.id === payload.id ? ({ ...l, ...payload } as Lead) : l))
+            prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes } as Lead) : l))
           );
           setLeadModalOpen(false);
         } else {
-          alert("Failed to update lead.");
+          const error = await res.json().catch(() => ({}));
+          return typeof error.error === "string" ? error.error : "Could not update the lead. Please try again.";
         }
       } else {
         let maxN = JOB_NO_START - 1;
@@ -1407,11 +1410,12 @@ export default function CrmDashboardPage() {
           setLeads((prev) => [{ ...item, jobNo: newJobNo }, ...prev]);
           setLeadModalOpen(false);
         } else {
-          alert("Failed to create lead.");
+          const error = await res.json().catch(() => ({}));
+          return typeof error.error === "string" ? error.error : "Could not create the lead. Please try again.";
         }
       }
     } catch {
-      alert("Error saving lead.");
+      return "Could not connect to save the lead. Please try again.";
     }
   }
 
