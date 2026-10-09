@@ -15,14 +15,6 @@ export const siliconeFaqs = [
   { q: "Can you replace silicone around a bath or vanity?", a: "Yes. We replace silicone anywhere two wet area surfaces meet." },
 ];
 
-// Genuine customer quote and five-star rating supplied in the page copy
-// and HTML wireframe. Additional reviews must come from the shared live source.
-export const suppliedSiliconeReview = {
-  name: "Adelene Lee",
-  suburb: "Posted on Google",
-  stars: 5,
-  review: "Epoxy done in both shower cubicles, silicone replaced. Very happy with the results. Looks brand new.",
-};
 export const siliconePhotoSlots = ["Shower corner", "Bath edge", "Screen base", "Vanity"];
 export const siliconeSteps = [
   { title: "Inspect and Mark", body: "We check the joint, the tile edges and the surface, and note any grout or tile problem." },

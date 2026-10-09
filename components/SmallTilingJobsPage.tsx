@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Clock, Grid2x2, Hammer, House, Layers, MapPin, Paintbrush, Phone, Ruler, Search, ShieldCheck, Wrench } from "lucide-react";
+import GoogleIcon from "@/components/GoogleIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ServicePageHero from "@/components/ServicePageHero";
@@ -25,7 +26,7 @@ export default function SmallTilingJobsPage({ rating, reviews }: { rating: Busin
 
     <section aria-labelledby="small-tiling-trust" className="border-b border-neutral-200 bg-white py-12"><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><h2 id="small-tiling-trust" className="mb-8 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Melbourne</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
       { Icon: MapPin, value: "Local", label: "Small Tile Repairs", detail: "Melbourne and surrounding service areas" },
-      { Icon: ShieldCheck, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", detail: `Based on ${rating.count} Google reviews` },
+      { Icon: GoogleIcon, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", detail: `Based on ${rating.count} Google reviews` },
       { Icon: Paintbrush, value: "Matched Finish", label: "Tile & Grout Matching", detail: "A repair that blends with the surrounding tiles" },
     ].map(({ Icon, value, label, detail }) => <div key={label}><Icon className="mx-auto mb-3 h-7 w-7 text-accent" /><p className="text-3xl font-black text-primary">{value}</p><p className="mt-2 font-bold text-neutral-900">{label}</p><p className="mt-2 text-sm text-neutral-500">{detail}</p></div>)}</div></div></section>
 

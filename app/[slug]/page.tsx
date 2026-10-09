@@ -461,8 +461,7 @@ export default async function ServicePage({ params }: Props) {
   }
 
   if (slug === "silicone-recaulking") {
-    const [rating, availableReviews] = await Promise.all([getBusinessRating(), getReviews(5)]);
-    const reviews = availableReviews.filter(review => /\b(silicone|recaulk(?:ing|ed)?)\b/i.test(review.review)).slice(0, 3);
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
     const schema = [
       { "@context": "https://schema.org", "@type": "Service", "@id": abs("/silicone-recaulking/#service"), name: "Silicone Replacement Melbourne", serviceType: "Silicone replacement", url: abs("/silicone-recaulking/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
       faqJsonLd(siliconeFaqs),
@@ -487,7 +486,7 @@ export default async function ServicePage({ params }: Props) {
     return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><TileRegroutingPage rating={rating} reviews={reviews} /></>;
   }
 
-  const reviews = await getReviews();
+  const reviews = await getReviews(3);
 
   if (slug === "shower-regrouting") {
     return (

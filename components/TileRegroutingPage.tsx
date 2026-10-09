@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Grid2x2, Droplets, Footprints, Home, ImageIcon, MapPin, Paintbrush, Phone, ShieldCheck, Sparkles, Star, Wrench } from "lucide-react";
 import { Section, Cards, QuoteLink, card, link, text } from "@/components/ServicePageSections";
+import GoogleIcon from "@/components/GoogleIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -28,7 +29,7 @@ export default function TileRegroutingPage({ rating, reviews }: { rating: Busine
     </section>
     <section aria-labelledby="tile-trust" className="border-b border-neutral-200 bg-white py-10"><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><h2 id="tile-trust" className="mb-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Victoria</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
       { icon: MapPin, value: "Melbourne & Victoria", label: "Local Tile Repairs", sub: "Homes, rentals and commercial properties" },
-      { icon: Star, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", sub: `Based on ${rating.count} Google reviews` },
+      { icon: GoogleIcon, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", sub: `Based on ${rating.count} Google reviews` },
       { icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", sub: "Eligible waterproof work; scope confirmed in your quote" },
     ].map(({ icon: Icon, value, label, sub }) => <div key={label}><Icon className="mx-auto mb-3 h-6 w-6 text-accent" /><p className="text-2xl font-black text-primary">{value}</p><p className="mt-1 font-bold text-neutral-900">{label}</p><p className="mt-2 text-sm text-neutral-500">{sub}</p></div>)}</div></div></section>
     <Section eyebrow="Signs to check" title="Signs Your Tile Grout Needs Regrouting" intro="Grout wears out slowly, so it is easy to miss. Look for these signs." alternate><Cards items={[

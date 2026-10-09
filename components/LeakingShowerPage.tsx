@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Building2, Camera, ChevronDown, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Star, Wrench } from "lucide-react";
+import GoogleIcon from "@/components/GoogleIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -103,7 +104,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
           <div className="grid gap-6 md:grid-cols-3">
             {[
               { Icon: Droplets, value: "Specialist", label: "Bathroom Repairs", detail: "Focused on grout, silicone and wet areas" },
-              { Icon: Star, value: "5.0/5", label: "Google Rating", detail: "Based on 290+ Google reviews" },
+              { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", detail: "Based on 290+ Google reviews" },
               { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", detail: "On eligible completed repairs" },
             ].map(({ Icon, value, label, detail }) => <div key={label} className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center"><span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-secondary"><Icon className="h-6 w-6" /></span><p className="text-3xl font-black leading-none text-neutral-900">{value}</p><h2 className="text-lg font-bold text-neutral-900">{label}</h2><p className="text-sm text-neutral-500">{detail}</p></div>)}
           </div>
@@ -169,7 +170,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
 
       <Section id="customer-feedback" title="What Our Customers" accent="Say" eyebrow="Customer Feedback" intro="Real feedback from homeowners we’ve helped across Melbourne and Victoria." alternate>
         <div className="grid gap-6 md:grid-cols-3">
-          {reviews.slice(0, 3).map((review) => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}
+          {reviews.map((review) => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}
         </div>
         <div className="text-center"><a href={googleReviews} target="_blank" rel="noopener noreferrer" className="font-bold text-accent hover:underline">Read More Verified Reviews on Google →</a></div>
       </Section>

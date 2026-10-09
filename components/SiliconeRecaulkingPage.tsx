@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Bath, Check, ChevronDown, Clock, Droplets, Grid2x2, House, Layers, MapPin, Phone, Ruler, ShieldCheck, Sparkles, Star, Wrench } from "lucide-react";
+import { ArrowRight, Bath, Check, ChevronDown, Clock, Droplets, Grid2x2, House, Layers, MapPin, Phone, Ruler, ShieldCheck, Sparkles, Wrench } from "lucide-react";
+import GoogleIcon from "@/components/GoogleIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ServicePageHero from "@/components/ServicePageHero";
@@ -10,7 +11,7 @@ import ServiceAreaCoverage from "@/components/ServiceAreaCoverage";
 import { Section, Cards, QuoteLink, PhotoSlot, card, link, text } from "@/components/ServicePageSections";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { BUSINESS } from "@/lib/seo";
-import { siliconeFaqs, siliconePhotoSlots, siliconeSteps, suppliedSiliconeReview } from "@/lib/siliconeRecaulkingContent";
+import { siliconeFaqs, siliconePhotoSlots, siliconeSteps } from "@/lib/siliconeRecaulkingContent";
 
 const phone = "(03) 7023 8094";
 const tel = "tel:+61370238094";
@@ -23,14 +24,12 @@ function FaqAnswer({ index }: { index: number }) {
 }
 
 export default function SiliconeRecaulkingPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
-  const isAdelene = (review: Review) => review.name.toLowerCase() === suppliedSiliconeReview.name.toLowerCase();
-  const siliconeReviews = [reviews.find(isAdelene) ?? suppliedSiliconeReview, ...reviews.filter(review => !isAdelene(review)).slice(0, 2)];
   return <><Navbar /><main className="overflow-x-clip">
     <ServicePageHero title="Silicone Replacement Melbourne" breadcrumb="Silicone & Recaulking" description="Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds." defaultService="Silicone Replacement" benefits={["Full removal of old silicone", "Clear quote first", "Mould resistant finish"]} rating={rating} />
 
     <section aria-labelledby="silicone-trust" className="border-b border-neutral-200 bg-white py-12"><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><h2 id="silicone-trust" className="mb-8 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Melbourne</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
       { Icon: MapPin, value: "Local", label: "Bathroom & Wet Area Repairs", detail: "Across Melbourne and surrounding service areas" },
-      { Icon: Star, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", detail: `Based on ${rating.count} Google reviews` },
+      { Icon: GoogleIcon, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", detail: `Based on ${rating.count} Google reviews` },
       { Icon: Layers, value: "Full Removal", label: "A Fresh Seal", detail: "Old silicone and residue removed before resealing" },
     ].map(({ Icon, value, label, detail }) => <div key={label}><Icon className="mx-auto mb-3 h-7 w-7 text-accent" /><p className="text-3xl font-black text-primary">{value}</p><p className="mt-2 font-bold text-neutral-900">{label}</p><p className="mt-2 text-sm text-neutral-500">{detail}</p></div>)}</div></div></section>
 
@@ -99,8 +98,8 @@ export default function SiliconeRecaulkingPage({ rating, reviews }: { rating: Bu
 
     <Section id="before-after" eyebrow="Our work" title="Before and After" alternate><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{siliconePhotoSlots.map(title => <PhotoSlot key={title} title={title} />)}</div></Section>
 
-    <Section id="reviews" eyebrow="Customer feedback" title="What Our Customers Say"><div className={`grid gap-6 ${siliconeReviews.length > 1 ? "md:grid-cols-2 lg:grid-cols-3" : "mx-auto max-w-2xl"}`}>
-      {siliconeReviews.map(review => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}
+    <Section id="reviews" eyebrow="Customer feedback" title="What Our Customers Say"><div className="grid gap-6 md:grid-cols-3">
+      {reviews.map(review => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}
     </div><div className="mt-7 text-center"><a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={link}>Read More Reviews on Google →</a></div></Section>
 
     <Section id="related-services" eyebrow="More ways we can help" title="Related Services" alternate><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{[
