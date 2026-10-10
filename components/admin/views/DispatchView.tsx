@@ -4,7 +4,8 @@ import type { DayAppointment } from "@/lib/bookings";
 import { bookingAvailability } from "@/lib/bookingCapacity";
 import { estimatedJobMinutes } from "@/lib/bookingDuration";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, type DragEvent } from "react";
+import { dispatchDates, dispatchDropMinutes, dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import {
   Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
   Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
@@ -155,6 +156,10 @@ export function DispatchView({
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
   const [confirmRescheduleData, setConfirmRescheduleData] = useState<RescheduleConfirmData | null>(null);
 
+  const [dragBooking, setDragBooking] = useState<{ lead: Lead; type: "inspection" | "job"; duration: number; grabOffset: number } | null>(null);
+  const [dropPreview, setDropPreview] = useState<{ date: string; minutes: number; duration: number } | null>(null);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+
   // Show the map panel when coming from Schedule
   const [showMapPanel, setShowMapPanel] = useState<boolean>(Boolean(initialDate && initialLeadId));
 
@@ -222,20 +227,7 @@ export function DispatchView({
   }, [unassignedLeads]);
 
   // ── 2. Visible Dates in Timeline ────────────────────────────────────────────
-  const visibleDates = useMemo(() => {
-    if (viewMode === "Day") {
-      return [selectedDate];
-    }
-    // Week view: 5 consecutive days starting from selectedDate
-    const list: string[] = [];
-    const base = new Date(selectedDate + "T00:00:00");
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(base);
-      d.setDate(d.getDate() + i);
-      list.push(d.toISOString().slice(0, 10));
-    }
-    return list;
-  }, [selectedDate, viewMode]);
+  const visibleDates = useMemo(() => dispatchDates(selectedDate, viewMode), [selectedDate, viewMode]);
 
   const envelope = hoursEnvelope(bookingRules);
   const TIMELINE_START_MINS = Math.floor(envelope.start / 60) * 60;
@@ -309,7 +301,7 @@ export function DispatchView({
           const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
           const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
           const leftPct = ((clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
-          const widthPct = Math.max(10, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
+          const widthPct = Math.max(1, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
 
           const travel = calculateTravel("Tullamarine", suburb);
 
@@ -345,7 +337,7 @@ export function DispatchView({
           const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
           const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
           const leftPct = ((clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
-          const widthPct = Math.max(16, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
+          const widthPct = Math.max(1, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
 
           const travel = calculateTravel("Tullamarine", suburb);
 
@@ -361,7 +353,7 @@ export function DispatchView({
             suburb,
             travelToMins: travel.durationMinutes,
             travelToKm: travel.distanceKm,
-            title: "Job (2 hrs)",
+            title: `Job (${durationMins / 60} hrs)`,
             serviceLabel: lead.service || "Shower Regrout",
             leftPct,
             widthPct,
@@ -474,12 +466,69 @@ export function DispatchView({
     return suggestions;
   }, [activeLead, selectedDate, appointmentsByDate, changeBookingType, changeBookingTech, capacityAppointments, assignableTechnicians, bookingRules]);
 
+  const bookingDuration = (lead: Lead, type: "inspection" | "job") => type === "job"
+    ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? bookingRules.job.slotMinutes
+    : bookingRules.inspection.slotMinutes;
+
+  const proposalIssue = (proposal: RescheduleConfirmData, appointments: DayAppointment[]) => dispatchBookingIssue({
+    leadId: proposal.lead.id, type: proposal.type, date: proposal.newDate, time: proposal.newTime,
+    durationMinutes: bookingDuration(proposal.lead, proposal.type),
+    technician: proposal.technician || proposal.lead.technician,
+    technicianId: proposal.technician ? undefined : proposal.lead.technicianId,
+    technicianUsername: proposal.technician ? undefined : proposal.lead.technicianUsername,
+  }, appointments, bookingRules, assignableTechnicians);
+
+  const stageReschedule = (proposal: RescheduleConfirmData) => {
+    if (proposal.oldDateTime?.slice(0, 16) === `${proposal.newDate}T${proposal.newTime}` &&
+      proposal.technician === (proposal.type === "job" ? proposal.lead.technician : proposal.lead.assigned) &&
+      proposal.service === proposal.lead.service) return;
+    if (capacityAppointments?.date !== selectedDate) {
+      setActionNotice("Availability is still loading. Please try again shortly.");
+      return;
+    }
+    const issue = proposalIssue(proposal, capacityAppointments.appointments);
+    if (issue) { setActionNotice(issue); return; }
+    setRescheduleError(null);
+    setConfirmRescheduleData(proposal);
+  };
+
+  const startBookingDrag = (event: DragEvent<HTMLDivElement>, lead: Lead, type: "inspection" | "job", fromTimeline = true) => {
+    const duration = bookingDuration(lead, type);
+    const rect = event.currentTarget.getBoundingClientRect();
+    const grabOffset = fromTimeline ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * duration : 0;
+    event.dataTransfer.setData("application/x-groutix-booking", `${lead.id}:${type}`);
+    event.dataTransfer.effectAllowed = "move";
+    setDragBooking({ lead, type, duration, grabOffset });
+    setSelectedLeadId(lead.id);
+  };
+
+  const previewBookingDrop = (event: DragEvent<HTMLDivElement>, date: string) => {
+    if (!dragBooking || isSavingBooking || confirmRescheduleData) return null;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const rect = event.currentTarget.getBoundingClientRect();
+    const minutes = dispatchDropMinutes((event.clientX - rect.left) / rect.width,
+      TIMELINE_START_MINS, TIMELINE_END_MINS, dragBooking.duration, dragBooking.grabOffset);
+    return { date, minutes, duration: dragBooking.duration };
+  };
+
+  const dropBooking = (event: DragEvent<HTMLDivElement>, date: string) => {
+    const preview = previewBookingDrop(event, date);
+    if (!dragBooking || !preview) return;
+    const { lead, type } = dragBooking;
+    stageReschedule({ lead, type, oldDateTime: type === "job" ? lead.jobAt : lead.inspectionAt,
+      newDate: date, newTime: fromMinutes(preview.minutes),
+      technician: type === "job" ? lead.technician : lead.assigned, service: lead.service });
+    setDragBooking(null);
+    setDropPreview(null);
+  };
+
   // ── Book / Schedule Slot Handler (opens confirmation modal) ────────────────
   const handleBookSlot = async (slot: (typeof suggestedSlots)[0]) => {
     if (!activeLead) return;
     const newTime = slot.startIsoTime.split("T")[1];
     const oldDateTime = changeBookingType === "inspection" ? activeLead.inspectionAt : activeLead.jobAt;
-    setConfirmRescheduleData({
+    stageReschedule({
       lead: activeLead,
       type: changeBookingType,
       oldDateTime: oldDateTime || undefined,
@@ -493,21 +542,28 @@ export function DispatchView({
   // ── Execute Confirmed Reschedule Handler ───────────────────────────────────
   const executeReschedule = async () => {
     if (!confirmRescheduleData) return;
+    setRescheduleError(null);
     setIsSavingBooking(true);
     try {
+      // Fetch fresh capacity: another dispatcher may have booked the slot while the popup was open.
+      const response = await fetch(`/api/admin/slots?from=${confirmRescheduleData.newDate}&to=${confirmRescheduleData.newDate}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not check availability. Please try again.");
+      const availability = await response.json();
+      const issue = proposalIssue(confirmRescheduleData, availability.appointments);
+      if (issue) { setRescheduleError(issue); return; }
       const timeFormatted = (confirmRescheduleData.newTime || "09:00").slice(0, 5).padStart(5, "0");
       const isoDateTime = `${confirmRescheduleData.newDate}T${timeFormatted}`;
       const updates: Partial<Lead> = {};
 
       if (confirmRescheduleData.type === "inspection") {
         updates.inspectionAt = isoDateTime;
-        updates.status = "Inspection Booked";
+        if (!confirmRescheduleData.oldDateTime) updates.status = "Inspection Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.assigned = confirmRescheduleData.technician;
         }
       } else {
         updates.jobAt = isoDateTime;
-        updates.status = "Job Booked";
+        if (!confirmRescheduleData.oldDateTime) updates.status = "Job Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.technician = confirmRescheduleData.technician;
         }
@@ -524,9 +580,11 @@ export function DispatchView({
         setTimeout(() => setBookingSuccess(null), 5000);
         setIsChangeBookingOpen(false);
         setConfirmRescheduleData(null);
+      } else {
+        setRescheduleError("The booking could not be saved. The slot may have changed. Please choose another time or try again.");
       }
     } catch (err) {
-      console.error("Change booking failed:", err);
+      setRescheduleError(err instanceof Error ? err.message : "Could not save the booking. Please try again.");
     } finally {
       setIsSavingBooking(false);
     }
@@ -544,16 +602,8 @@ export function DispatchView({
   };
 
   // ── Date Navigation ───────────────────────────────────────────────────────
-  const handlePrevDate = () => {
-    const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() - (viewMode === "Week" ? 7 : 1));
-    setSelectedDate(d.toISOString().slice(0, 10));
-  };
-  const handleNextDate = () => {
-    const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() + (viewMode === "Week" ? 7 : 1));
-    setSelectedDate(d.toISOString().slice(0, 10));
-  };
+  const handlePrevDate = () => setSelectedDate(addDaysYmd(selectedDate, viewMode === "Week" ? -7 : -1));
+  const handleNextDate = () => setSelectedDate(addDaysYmd(selectedDate, viewMode === "Week" ? 7 : 1));
 
   const formattedHeaderDate = useMemo(() => {
     const d = new Date(selectedDate + "T00:00:00");
@@ -924,7 +974,7 @@ export function DispatchView({
                   onClick={() => {
                     if (!activeLead) return;
                     const oldDateTime = changeBookingType === "inspection" ? activeLead.inspectionAt : activeLead.jobAt;
-                    setConfirmRescheduleData({
+                    stageReschedule({
                       lead: activeLead,
                       type: changeBookingType,
                       oldDateTime: oldDateTime || undefined,
@@ -962,6 +1012,9 @@ export function DispatchView({
                 return (
                   <div
                     key={lead.id}
+                    draggable={!isSavingBooking && !confirmRescheduleData}
+                    onDragStart={(event) => startBookingDrag(event, lead, isJobType ? "job" : "inspection", false)}
+                    onDragEnd={() => { setDragBooking(null); setDropPreview(null); }}
                     onClick={() => {
                       openSchedule(lead.id, isInsp ? "inspection" : "job");
                     }}
@@ -1035,11 +1088,12 @@ export function DispatchView({
                     Day
                   </div>
                   {/* Hourly headers across 9 AM to 5 PM */}
-                  <div className="flex-1 flex">
+                  <div className="flex-1 relative h-8 mx-1 sm:mx-1.5">
                     {HOUR_SLOTS.map((slot) => (
                       <div
                         key={slot.hour}
-                        className="flex-1 text-center py-1.5 text-[10.5px] font-bold text-slate-700 border-r border-slate-100 last:border-r-0"
+                        style={{ left: `${((slot.hour * 60 - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100}%`, transform: slot.hour * 60 === TIMELINE_START_MINS ? "none" : slot.hour * 60 === TIMELINE_END_MINS ? "translateX(-100%)" : "translateX(-50%)" }}
+                        className="absolute whitespace-nowrap py-1.5 text-[10.5px] font-bold text-slate-700"
                       >
                         {slot.label}
                       </div>
@@ -1054,6 +1108,13 @@ export function DispatchView({
                   const dayName = dObj.toLocaleDateString("en-AU", { weekday: "short" });
                   const dayDate = dObj.toLocaleDateString("en-AU", { day: "2-digit", month: "short" });
                   const items = appointmentsByDate.get(date) || [];
+                  const laneEnds: number[] = [];
+                  const lanes = items.map(item => {
+                    let lane = laneEnds.findIndex(end => end <= item.startMins);
+                    if (lane < 0) lane = laneEnds.length;
+                    laneEnds[lane] = item.endMins;
+                    return lane;
+                  });
 
                   return (
                     <div
@@ -1081,33 +1142,31 @@ export function DispatchView({
 
                       {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
                       <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[70px]">
-                        {/* Vertical Background Grid Lines for each hour */}
-                        <div className="absolute inset-0 flex pointer-events-none">
-                          {HOUR_SLOTS.map((slot) => (
-                            <div
-                              key={slot.hour}
-                              className="flex-1 border-r border-slate-100 last:border-r-0"
-                            />
-                          ))}
-                        </div>
-
-                        {/* Timeline Items Placed by Exact Time % */}
-                        <div className="relative w-full h-[58px]">
+                        {/* Each row uses the same time coordinates for grid, cards and drops. */}
+                        <div className="relative w-full" style={{ height: Math.max(90, laneEnds.length * 90) }}
+                          onDragOver={(event) => { const preview = previewBookingDrop(event, date); if (preview) setDropPreview(preview); }}
+                          onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropPreview(null); }}
+                          onDrop={(event) => dropBooking(event, date)}>
+                          {HOUR_SLOTS.map(slot => <div key={slot.hour} className="absolute inset-y-0 border-l border-slate-100 pointer-events-none"
+                            style={{ left: `${((slot.hour * 60 - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100}%` }} />)}
+                          {dropPreview?.date === date && <div className="absolute inset-y-0 rounded-lg border-2 border-dashed border-blue-500 bg-blue-100/80 z-30 pointer-events-none text-[10px] font-bold text-blue-900 p-1"
+                            style={{ left: `${(dropPreview.minutes - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100}%`, width: `${dropPreview.duration / TOTAL_TIMELINE_MINS * 100}%` }}>
+                            {fmtMinutesFull(dropPreview.minutes)} – {fmtMinutesFull(dropPreview.minutes + dropPreview.duration)}
+                          </div>}
                           {items.length === 0 ? (
                             /* Full-Day Available Slot */
                             <div
                               onClick={() => {
                                 setSelectedDate(date);
-                                if (activeLead && suggestedSlots.length > 0) {
-                                  handleBookSlot(suggestedSlots[0]);
-                                }
+                                const suggestion = suggestedSlots.find(slot => slot.dateStr === date);
+                                if (activeLead && suggestion) handleBookSlot(suggestion);
                               }}
                               style={{ left: "10%", width: "80%" }}
                               className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400/90 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
                             >
                               <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
-                              <div className="text-[11px] font-bold text-emerald-800">Available Slot</div>
-                              <div className="text-[9px] font-semibold text-emerald-700">9:00 AM – 5:00 PM Open</div>
+                              <div className="text-[11px] font-bold text-emerald-800">No bookings</div>
+                              <div className="text-[9px] font-semibold text-emerald-700">Drag a booking here to choose a time</div>
                             </div>
                           ) : (
                             <>
@@ -1125,6 +1184,10 @@ export function DispatchView({
                                   <div key={`${item.lead.id}-${idx}`}>
                                     {/* Appointment Card */}
                                     <div
+                                      draggable={!isSavingBooking && !confirmRescheduleData}
+                                      onDragStart={(event) => startBookingDrag(event, item.lead, item.type)}
+                                      onDragEnd={() => { setDragBooking(null); setDropPreview(null); }}
+                                      title={`${item.lead.name || "Customer"}: ${fmtMinutesFull(item.startMins)} – ${fmtMinutesFull(item.endMins)}. Drag to reschedule.`}
                                       onClick={() => {
                                         setSelectedLeadId(item.lead.id);
                                         setIsChangeBookingOpen(true);
@@ -1132,8 +1195,9 @@ export function DispatchView({
                                       style={{
                                         left: `${item.leftPct}%`,
                                         width: `${item.widthPct}%`,
+                                        top: lanes[idx] * 90 + 2, height: 86,
                                       }}
-                                      className={`absolute top-0.5 bottom-0.5 min-w-[95px] p-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
+                                      className={`absolute min-w-0 p-1.5 rounded-xl border transition-colors cursor-grab active:cursor-grabbing shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
                                         isInsp
                                           ? "bg-sky-50/95 border-sky-300 text-sky-950 hover:bg-sky-100"
                                           : "bg-emerald-50/95 border-emerald-300 text-emerald-950 hover:bg-emerald-100"
@@ -1276,6 +1340,7 @@ export function DispatchView({
       {confirmRescheduleData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div
+            role="dialog" aria-modal="true" aria-labelledby="dispatch-reschedule-title"
             className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1286,7 +1351,7 @@ export function DispatchView({
                   <CalendarClock className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 leading-tight">Confirm Reschedule</h3>
+                  <h3 id="dispatch-reschedule-title" className="text-sm font-bold text-slate-900 leading-tight">Confirm Reschedule</h3>
                   <p className="text-[11px] text-slate-500">Please verify the appointment timing before saving</p>
                 </div>
               </div>
@@ -1373,12 +1438,12 @@ export function DispatchView({
                         {fmtReadableDate(confirmRescheduleData.newDate)}
                       </p>
                       <p className="text-sm font-extrabold text-blue-700">
-                        {fmtScheduleTime(confirmRescheduleData.newTime)}
+                        {fmtScheduleTime(confirmRescheduleData.newTime)} – {fmtMinutesFull(parseMinutes(confirmRescheduleData.newTime) + bookingDuration(confirmRescheduleData.lead, confirmRescheduleData.type))}
                       </p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-700 mt-2 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-emerald-600" /> Confirmed new timing
+                    <CheckCircle className="w-3 h-3 text-emerald-600" /> Proposed timing
                   </span>
                 </div>
               </div>
@@ -1401,6 +1466,7 @@ export function DispatchView({
                 )}
               </div>
 
+              {rescheduleError && <p role="alert" className="rounded-xl bg-red-50 border border-red-200 p-3 text-red-700">{rescheduleError}</p>}
               {/* Notice */}
               <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900 text-[11px] leading-relaxed">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />

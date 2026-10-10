@@ -5,6 +5,7 @@ import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
 import { Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -501,6 +502,7 @@ export default function ServicePageTemplate({
               transition={{ duration: 0.6, delay: 0.2 }}
               className="space-y-6 pt-2"
             >
+              <ServiceBreadcrumb service={title} />
               <div className="w-12 h-12 flex items-center justify-center bg-white rounded-sm">
                 {icons[0]}
               </div>

@@ -568,22 +568,39 @@ export function getBadgeColor(status: string) {
 }
 
 export function getFollowupPrompt(lead: Lead): string {
-  const steps = [
-    { step: "New", label: "New" },
-    { step: "Inspection Booked", label: "Inspection Booked" },
-    { step: "Inspection Completed", label: "Inspection Completed" },
-    { step: "Quote Sent", label: "Quote Sent" },
-    { step: "Job Booked", label: "Job Booked" },
-    { step: "Job Done", label: "Job Done" },
-    { step: "Invoice Sent", label: "Invoice Sent" },
-    { step: "Payment Pending", label: "Payment Pending" },
-    { step: "Payment Received", label: "Payment Received" },
-    { step: "Warranty Sent", label: "Warranty Sent" },
-    { step: "Completed", label: "Completed" },
-  ];
-  let latest = "New";
-  for (const s of steps) {
-    if (getStepActive(lead, s.step)) latest = s.label;
-  }
-  return latest;
+  const status = lead.status || "New";
+  if (isTerminalStatus(status)) return `${status} — No follow-up required`;
+  if (status === "Completed") return "Completed — No follow-up required";
+  const actions: Record<string, string> = {
+    "New": "Contact customer",
+    "Contacted": "Arrange inspection",
+    "Waiting for Info": "Request missing information",
+    "Inspection Booked": "Confirm inspection and property access",
+    "Inspection En Route": "Inspector on the way",
+    "Inspection Arrived": "Start inspection",
+    "Inspection In Progress": "Complete inspection report",
+    "Inspection Completed": "Prepare and send quote",
+    "Quote Pending": "Prepare and send quote",
+    "Quote Sent": lead.quoteAcceptedAt || lead.quoteSignedAt ? "Quote accepted — Book job" : lead.quoteDeclinedAt ? "Quote declined — Review with customer" : lead.quoteOpenedAt ? "Quote opened — Follow up for approval" : "Follow up for quote approval",
+    "Negotiation": "Discuss quote and confirm approval",
+    "Won": "Book job",
+    "Job Booked": "Confirm job and property access",
+    "Scheduled": "Confirm job and property access",
+    "Job Confirmed": "Attend scheduled job",
+    "Job En Route": "Technician on the way",
+    "Job Arrived": "Start job",
+    "Job Started": "Complete job",
+    "Job In Progress": "Complete job",
+    "Job Done": "Prepare and send invoice",
+    "Invoice Sent": lead.invoiceOpenedAt ? "Invoice opened — Follow up payment" : "Awaiting payment",
+    "Payment Request": "Follow up payment",
+    "Payment Pending": "Follow up payment",
+    "Partial Payment": "Follow up remaining balance",
+    "Payment Received": lead.warrantyProvided === false || lead.warranty?.provided === false ? "Mark job completed — No warranty required" : lead.warranty?.sentAt ? "Mark job completed" : "Issue warranty",
+    "Warranty Sent": "Mark job completed",
+  };
+  let text = `${status} — ${actions[status] || "Review next action"}`;
+  const scheduled = lead.follow || (status === "Quote Sent" ? lead.followUpNext : undefined);
+  if (scheduled) text += ` • Follow up: ${fmtDate(scheduled)}`;
+  return text;
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import { Search, SlidersHorizontal, ArrowRight, Phone, Ruler, ShieldCheck } from "lucide-react";
 import { SHOWER_SCREEN_MODELS } from "@/lib/showerScreensData";
 import { useContact, useSiteContent } from "@/components/SiteContentProvider";
@@ -45,7 +46,7 @@ export default function ShowerScreensClient() {
   return (
     <main className="min-h-screen bg-[#f5f7f9] pt-[110px] text-slate-900 lg:pt-[125px]">
       <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
-        <nav aria-label="Breadcrumb" className="mb-6 flex gap-2 text-xs text-slate-500"><Link href="/" className="hover:underline">Home</Link><span>/</span><span>Shower screens &amp; wardrobes</span></nav>
+        <ServiceBreadcrumb service="Shower Screens & Wardrobes" theme="light" className="mb-6" />
         <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Find your shower screen</h1><p className="mt-2 text-sm text-slate-600">Compare designs, glass and finishes. Custom measured and installed across Victoria.</p></div>
           <a href={tel} className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><Phone size={16} /> {phone}</a>

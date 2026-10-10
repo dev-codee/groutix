@@ -38,6 +38,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "dashboard",
     "analytics",
     "leads",
+    "inbox",
     "quotes",
     "jobs",
     "completed",
@@ -53,6 +54,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "dashboard",
     "analytics",
     "leads",
+    "inbox",
     "quotes",
     "jobs",
     "completed",
@@ -101,6 +103,7 @@ export function canOpenPage(role: Role, page: string): boolean {
 // tasks, export) is available to any authenticated role; the pipeline step
 // tightens per-field write access later.
 const MANAGER_ONLY_API = [
+  "/api/admin/manager-notes",
   "/api/admin/users",
   "/api/admin/content",
   "/api/admin/stats",

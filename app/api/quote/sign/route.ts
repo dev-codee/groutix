@@ -1,3 +1,4 @@
+import { recordQuoteOpen } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
 import { verifyQuoteToken } from "@/lib/quoteToken";
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
     lead.issue ||
     (items[0]?.scope || items[0]?.description || "");
 
+  await recordQuoteOpen(id).catch(error => console.error("Quote open tracking failed:", error));
   const bookingUrl = buildBookingUrl(id, "job");
 
   return NextResponse.json({

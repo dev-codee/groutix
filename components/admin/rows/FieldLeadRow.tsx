@@ -311,7 +311,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
         <div className="col-span-12 lg:col-span-3 min-w-0 space-y-1.5 pt-4 lg:pt-0">
           <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
             <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
-            <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+            <span title={followupPrompt} className="font-semibold text-slate-700 break-words whitespace-normal leading-tight text-[11px] min-w-0">
               {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
             </span>
           </div>

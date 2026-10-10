@@ -13,6 +13,8 @@ import {
   TrendingUp, TrendingDown, MapPin, Layers, Bell, HelpCircle,
   ChevronDown, User, DollarSign, Check, Menu, Globe, ExternalLink, Eye
 } from "lucide-react";
+import { ManagerNotesCard } from "@/components/admin/ManagerNotesCard";
+import { LeadsView } from "@/components/admin/views/LeadsView";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getBadgeColor, fmtDate, fmtDateOnly, getLeadQuoteTotal } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs, todayAU, tomorrowAU } from "@/lib/scheduling";
@@ -84,18 +86,17 @@ export function ManagerDashboard() {
     staffLocations,
     leads,
     loading,
-    filteredLeads,
     username,
     staff,
     inspectionStaff = [],
     isTechnicianName,
-    setGlobalSearch,
+    globalSearch: searchQuery,
+    setGlobalSearch: setSearchQuery,
     setStatusFilter,
   } = useAdminPageCtx();
 
   const ribbonRef = useRef<HTMLDivElement>(null);
   const [statsPeriod, setStatsPeriod] = useState("This Month");
-  const [searchQuery, setSearchQuery] = useState("");
   const [rosterWeekOffset, setRosterWeekOffset] = useState(0);
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
   const [unassignedTab, setUnassignedTab] = useState<"all" | "inspections" | "jobs">("inspections");
@@ -128,26 +129,10 @@ export function ManagerDashboard() {
 
   const isInspLead = (l: Lead) => Boolean(l.inspectionAt) || /inspection/i.test(l.status || "");
 
-  // Dynamic filter for search bar in header
-  const matchedLeads = useMemo(() => {
-    if (!searchQuery.trim()) return scopedLeads;
-    const q = searchQuery.toLowerCase().trim();
-    return scopedLeads.filter(
-      (l) =>
-        (l.name || "").toLowerCase().includes(q) ||
-        (l.phone || "").toLowerCase().includes(q) ||
-        (l.email || "").toLowerCase().includes(q) ||
-        (l.address || "").toLowerCase().includes(q) ||
-        (l.jobNo || "").toLowerCase().includes(q) ||
-        (l.status || "").toLowerCase().includes(q) ||
-        (l.service || "").toLowerCase().includes(q)
-    );
-  }, [scopedLeads, searchQuery]);
-
   // 1. TODAY & TOMORROW SCHEDULE — only jobs/inspections with a scheduled date.
   // Completed/done leads stay visible with a "Completed" badge; only Lost/Cancelled are hidden.
   const todayLeadsList = useMemo(() => {
-    return matchedLeads
+    return scopedLeads
       .filter((l) => {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
         const d = l.inspectionAt || l.jobAt;
@@ -156,7 +141,7 @@ export function ManagerDashboard() {
         return dk === _todayStr || dk === _tomStr;
       })
       .sort((a, b) => _apptMs(a) - _apptMs(b));
-  }, [matchedLeads, _todayStr, _tomStr]);
+  }, [scopedLeads, _todayStr, _tomStr]);
 
   // Hourly slots for Today, spanning the configured booking hours (Settings → Booking Hours)
   const todayHourlySlots = useMemo(() => {
@@ -967,7 +952,7 @@ export function ManagerDashboard() {
             onSubmit={(e) => {
               e.preventDefault();
               if (searchQuery.trim()) {
-                setGlobalSearch(searchQuery.trim());
+                setSearchQuery(searchQuery.trim());
                 setCurrentView("leads");
               }
             }}
@@ -976,7 +961,7 @@ export function ManagerDashboard() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by job #, customer name, phone or address..."
+              placeholder="Search job #, name, phone, email, service..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50/90 border border-slate-200/90 rounded-xl focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400"
@@ -1018,6 +1003,8 @@ export function ManagerDashboard() {
         </div>
       </div>
 
+      {searchQuery.trim() ? <LeadsView /> : <>
+      {(role === "manager" || role === "super_admin") && <ManagerNotesCard key={username} />}
       {/* 2. Today at a Glance Container */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-4">
         {/* Top Header Row */}
@@ -1219,7 +1206,7 @@ export function ManagerDashboard() {
                   key={idx}
                   onClick={() => {
                     setStatusFilter("");
-                    setGlobalSearch(act.lead.jobNo || act.lead.id);
+                    setSearchQuery(act.lead.jobNo || act.lead.id);
                     setCurrentView("leads");
                   }}
                   className="flex items-center justify-between gap-2 text-xs p-1.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200/60"
@@ -1761,6 +1748,7 @@ export function ManagerDashboard() {
         <div>© {new Date().getFullYear()} Groutix. All rights reserved.</div>
         <div className="text-blue-600 font-semibold">Cleaner Spaces, Healthier Homes.</div>
       </div>
+      </>}
     </div>
   );
 }

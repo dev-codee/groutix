@@ -1,5 +1,8 @@
 "use client";
 
+import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
+import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
+
 import {
   Phone, Mail, MapPin, Wrench, MessageSquare, Send,
   ShieldAlert, ShieldCheck, Check, ChevronRight, ClipboardList,
@@ -450,7 +453,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
         <div className="col-span-12 lg:col-span-3 min-w-0 space-y-1.5 pt-4 lg:pt-0">
           <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2 py-0.5 rounded-lg flex items-center gap-1.5 min-w-0">
             <span className="font-black text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
-            <span className="font-semibold text-slate-700 truncate text-[11px] min-w-0">
+            <span title={followupPrompt} className="font-semibold text-slate-700 break-words whitespace-normal leading-tight text-[11px] min-w-0">
               {followupPrompt || l.followUpNext || "New enquiry – Contact customer"}
               {isFinanceStage && ` • Assigned to: ${financeAssignee}`}
             </span>
@@ -523,6 +526,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 <span className="truncate">Quote Sent</span>
                 {isQuoteSentDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
               </div>
+              <DocumentDeliveryStatus label="Quote" {...quoteDeliveryTimes(l)} />
             </div>
           </div>
         </div>

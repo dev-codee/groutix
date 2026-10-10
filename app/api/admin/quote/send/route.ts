@@ -1,3 +1,4 @@
+import { quoteTrackingPixel } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getSubmission,
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix Quotation ${quoteNumber} — AUD $${total.toFixed(2)}`,
-      html: wrapEmailHtml(html, `Your Groutix quotation ${quoteNumber} is ready.`, logoUrl),
+      html: wrapEmailHtml(html + quoteTrackingPixel(body.id), `Your Groutix quotation ${quoteNumber} is ready.`, logoUrl),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {
@@ -179,6 +180,7 @@ export async function POST(req: NextRequest) {
     quoteNumber,
     quoteAmount: total,
     quoteUpdated: now.toISOString(),
+    quoteSentAt: now.toISOString(),
     followUpStage: 0,
     followUpNext,
   });

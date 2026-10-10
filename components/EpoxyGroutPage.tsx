@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -360,6 +361,7 @@ export default function EpoxyGroutPage({
             <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
               <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 <div className="space-y-4 text-white lg:pt-2 text-center lg:text-left flex flex-col items-center lg:items-start">
+                  <ServiceBreadcrumb service="Epoxy Grout" />
                   <p className="text-[13px] font-bold text-[#FBBC04] uppercase tracking-[0.2em]">Groutix</p>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}

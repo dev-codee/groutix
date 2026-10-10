@@ -21,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
+import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -399,6 +400,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
           <div className="relative mx-auto max-w-[1460px] px-6 py-8 pb-16 lg:px-10 lg:pb-20">
             <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_520px] xl:grid-cols-[minmax(0,1fr)_540px] lg:gap-12">
               <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
+              <ServiceBreadcrumb service="Shower Regrouting" />
               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
                 Shower Regrouting Melbourne

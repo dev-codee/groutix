@@ -176,6 +176,8 @@ export interface SubmissionDoc {
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
+  quoteSentAt?: string;
+  quoteOpenedAt?: string;
   quoteAcceptedAt?: string; // ISO time the customer accepted the quote online
   quoteDeclinedAt?: string; // ISO time the customer declined the quote online
   quoteSignature?: string; // Base64 data URL of the customer's signature

@@ -1,5 +1,8 @@
 "use client";
 
+import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
+import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
+
 import { useState } from "react";
 import {
   Camera, Phone, Mail, MessageSquare, Trash2, Check,
@@ -717,29 +720,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         {/* COLUMN 3: FINANCE SUMMARY */}
         <div className="space-y-2.5 min-w-0 pt-5 lg:pt-0">
           <div className="p-2 space-y-1.5">
-            {l.invoiceSentAt && (
-              <div className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50/80 text-blue-700 border border-blue-200/80 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 shrink-0" />
-                <span>Invoice Sent — {fmtDate(l.invoiceSentAt)}</span>
-              </div>
-            )}
-            {l.invoiceOpenedAt ? (
-              <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-3 h-3 text-emerald-600 shrink-0" />
-                  <span>Invoice Opened</span>
-                </span>
-                <span className="text-[9.5px] font-black text-emerald-700">{fmtDate(l.invoiceOpenedAt)}</span>
-              </div>
-            ) : l.invoiceSentAt ? (
-              <div className="text-[10px] font-medium px-2 py-1 rounded-lg bg-slate-50 text-slate-500 border border-slate-200 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-3 h-3 text-slate-400 shrink-0 opacity-40" />
-                  <span>Invoice Opened</span>
-                </span>
-                <span className="text-[9px] text-amber-600 font-semibold">Not opened yet</span>
-              </div>
-            ) : null}
+            <DocumentDeliveryStatus label="Invoice" sentAt={l.invoiceSentAt} openedAt={l.invoiceOpenedAt} />
+            <DocumentDeliveryStatus label="Quote" {...quoteDeliveryTimes(l)} />
             {l.quoteAcceptedAt && (
               <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 shrink-0" />

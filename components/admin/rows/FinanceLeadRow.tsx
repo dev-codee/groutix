@@ -546,7 +546,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
         <div className="col-span-12 lg:col-span-3 min-w-0 space-y-1.5 pt-4 lg:pt-0">
           <div className="bg-[#ffe4e6] border border-rose-200 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 min-w-0">
             <span className="font-bold text-rose-600 uppercase tracking-wider text-[10px] shrink-0">FOLLOW-UP</span>
-            <span className="font-medium text-slate-700 truncate text-[11px] min-w-0">
+            <span title={followupPrompt} className="font-medium text-slate-700 break-words whitespace-normal leading-tight text-[11px] min-w-0">
               {followupPrompt || l.followUpNext || (l.status === "Payment Received" ? (l.warrantyProvided === false || l.warranty?.provided === false ? "Payment Received — No Warranty Required" : "Payment Received — Issue Warranty") : l.status === "Payment Pending" ? "Payment Pending — Follow up" : "Invoice Sent — Awaiting payment")}
             </span>
           </div>

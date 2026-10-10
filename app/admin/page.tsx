@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { QuoteLeadDetailsForm } from "@/components/admin/QuoteLeadDetailsForm";
+import { quoteLeadDetails } from "@/lib/quoteLeadDetails";
+import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
+import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
+import { reorderItems } from "@/lib/reorderItems";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -79,6 +84,8 @@ import {
 import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/admin/AdminProvider";
 import { useSiteContent } from "@/components/SiteContentProvider";
 import { prepareCustomerSms, smsReplyNotice, smsSegmentCount, SMS_MAX_CHARS } from "@/lib/smsMessage";
+import { InboxView } from "@/components/admin/views/InboxView";
+import { getLeadConversation as getConversation } from "@/lib/customerInbox";
 import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
 import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
@@ -158,6 +165,7 @@ type DashboardView =
   | "dashboard"
   | "analytics"
   | "leads"
+  | "inbox"
   | "quotes"
   | "jobs"
   | "completed"
@@ -384,6 +392,19 @@ export default function CrmDashboardPage() {
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const quoteDragFrom = useRef<number | null>(null);
+  const [quoteDropIndex, setQuoteDropIndex] = useState<number | null>(null);
+  const [quoteOrderNotice, setQuoteOrderNotice] = useState("");
+  function moveQuoteItem(from: number, to: number) {
+    if (savingTemplateIndex !== null || from === to) return;
+    setQuoteItems(items => reorderItems(items, from, to));
+    setTemplateSaveFeedback(null);
+    setQuoteOrderNotice(`Item ${from + 1} moved to position ${to + 1}.`);
+  }
+  function clearQuoteDrag() {
+    quoteDragFrom.current = null;
+    setQuoteDropIndex(null);
+  }
   const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("exclusive");
   const [quoteTaxRate, setQuoteTaxRate] = useState<number>(10);
   const [quoteTerms, setQuoteTerms] = useState<string>(
@@ -405,6 +426,7 @@ export default function CrmDashboardPage() {
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [activeMessageLead, setActiveMessageLead] = useState<Lead | null>(null);
   const [convFullscreen, setConvFullscreen] = useState(false);
+  const [convSize, setConvSize] = useState<"small" | "large">("large");
   const [convPos, setConvPos] = useState<{ x: number; y: number } | null>(null);
   const convModalRef = useRef<HTMLDivElement>(null);
   const convScrollRef = useRef<HTMLDivElement>(null);
@@ -1147,6 +1169,16 @@ export default function CrmDashboardPage() {
     [activeMessageLead, leads]
   );
 
+  const activeConversationVersion = activeMessageLeadLive
+    ? getConversation(activeMessageLeadLive).map((message) => `${message.id}:${message.time}`).join("|")
+    : "";
+
+  useEffect(() => {
+    if (!messagesModalOpen || isConvScrolledUp) return;
+    const timer = setTimeout(() => scrollToLatestMessage(true), 50);
+    return () => clearTimeout(timer);
+  }, [activeConversationVersion, messagesModalOpen, isConvScrolledUp, scrollToLatestMessage]);
+
   // The server merges roster entries and portal accounts with stable IDs/aliases.
   const assignableTechnicians = technicians;
 
@@ -1554,6 +1586,8 @@ export default function CrmDashboardPage() {
 
   // Quote Builder Logic
   function openQuoteModal(lead: Lead) {
+    clearQuoteDrag();
+    setQuoteOrderNotice("");
     setActiveQuoteLead(lead);
 
     // If existing quote items were saved, use them; otherwise auto-match templates based on customer choices
@@ -1836,6 +1870,7 @@ export default function CrmDashboardPage() {
     if (!activeQuoteLead) return;
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
+      ...quoteLeadDetails(activeQuoteLead),
       quoteScope,
       quoteItems,
       quoteTaxMode,
@@ -1844,14 +1879,15 @@ export default function CrmDashboardPage() {
       quoteAmount: total,
       quoteUpdated: new Date().toISOString()
     };
-    await updateLeadField(activeQuoteLead.id, updates);
-    setQuoteModalOpen(false);
+    const saved = await updateLeadField(activeQuoteLead.id, updates);
+    if (saved) setQuoteModalOpen(false);
   }
 
   async function handleMarkQuoteSent() {
     if (!activeQuoteLead) return;
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
+      ...quoteLeadDetails(activeQuoteLead),
       quoteScope,
       quoteItems,
       quoteTaxMode,
@@ -1859,16 +1895,18 @@ export default function CrmDashboardPage() {
       quoteTerms,
       quoteAmount: total,
       status: "Quote Sent",
+      quoteSentAt: new Date().toISOString(),
       quoteUpdated: new Date().toISOString()
     };
-    await updateLeadField(activeQuoteLead.id, updates);
-    setQuoteModalOpen(false);
+    const saved = await updateLeadField(activeQuoteLead.id, updates);
+    if (saved) setQuoteModalOpen(false);
   }
 
   async function handleMarkNegotiation() {
     if (!activeQuoteLead) return;
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
+      ...quoteLeadDetails(activeQuoteLead),
       quoteScope,
       quoteItems,
       quoteTaxMode,
@@ -1878,8 +1916,8 @@ export default function CrmDashboardPage() {
       status: "Negotiation",
       quoteUpdated: new Date().toISOString()
     };
-    await updateLeadField(activeQuoteLead.id, updates);
-    setQuoteModalOpen(false);
+    const saved = await updateLeadField(activeQuoteLead.id, updates);
+    if (saved) setQuoteModalOpen(false);
   }
 
   // Server-side send: emails the customer via Brevo, mints a quote number,
@@ -1889,7 +1927,8 @@ export default function CrmDashboardPage() {
     if (!activeQuoteLead.email) return alert("No email address saved for this customer.");
     // Persist the latest edits first so the emailed quote matches the screen.
     const { total } = quoteTotals();
-    await updateLeadField(activeQuoteLead.id, {
+    const saved = await updateLeadField(activeQuoteLead.id, {
+      ...quoteLeadDetails(activeQuoteLead),
       quoteScope,
       quoteItems,
       quoteTaxMode,
@@ -1898,6 +1937,7 @@ export default function CrmDashboardPage() {
       quoteAmount: total,
       quoteUpdated: new Date().toISOString(),
     });
+    if (!saved) return alert("Could not save quote details. Please try again before sending.");
     try {
       const res = await fetch("/api/admin/quote/send", {
         method: "POST",
@@ -1921,7 +1961,8 @@ export default function CrmDashboardPage() {
   async function handlePrintQuote() {
     if (!activeQuoteLead) return window.print();
     const { total } = quoteTotals();
-    await updateLeadField(activeQuoteLead.id, {
+    const saved = await updateLeadField(activeQuoteLead.id, {
+      ...quoteLeadDetails(activeQuoteLead),
       quoteScope,
       quoteItems,
       quoteTaxMode,
@@ -1930,6 +1971,7 @@ export default function CrmDashboardPage() {
       quoteAmount: total,
       quoteUpdated: new Date().toISOString(),
     });
+    if (!saved) return alert("Could not save quote details. Please try again before printing.");
     const itemsParam = encodeURIComponent(JSON.stringify(quoteItems));
     const notesParam = encodeURIComponent(quoteTerms || "");
     const scopeParam = encodeURIComponent(quoteScope || "");
@@ -2101,6 +2143,7 @@ export default function CrmDashboardPage() {
     }
 
     setActiveMessageLead(currentLead);
+    setIsConvScrolledUp(false);
     setConvFilter("all");
     setMessageChannel(initialChannel);
     setSelectedTemplateId("");
@@ -2113,75 +2156,6 @@ export default function CrmDashboardPage() {
     setTimeout(() => {
       scrollToLatestMessage(false);
     }, 60);
-  }
-
-  function getConversation(lead: Lead): CustomerMessage[] {
-    const list = Array.isArray(lead.messages) ? [...lead.messages] : [];
-
-    // Synthesize past On The Way / Arrived dispatch notifications from lead.activity if not yet in messages
-    if (Array.isArray(lead.activity)) {
-      lead.activity.forEach((act, idx) => {
-        if (
-          act.action === "On The Way notification sent" ||
-          act.action === "Arrived notification sent"
-        ) {
-          const isEnRoute = act.action === "On The Way notification sent";
-          const alreadyInList = list.some(
-            (m) =>
-              (m.id && (m.id.includes(`act_${idx}`) || m.id.includes(act.time))) ||
-              (m.subject && (
-                (isEnRoute && /on the way/i.test(m.subject)) ||
-                (!isEnRoute && /arrived/i.test(m.subject))
-              ) && Math.abs(new Date(m.time).getTime() - new Date(act.time).getTime()) < 120000)
-          );
-
-          if (!alreadyInList) {
-            list.push({
-              id: `otw_act_${lead.id}_${idx}_${new Date(act.time).getTime() || idx}`,
-              from: "groutix",
-              channel: "sms",
-              subject: isEnRoute ? "🚗 Specialist On The Way" : "📍 Specialist Arrived",
-              text: act.detail || (isEnRoute ? "Specialist is on the way." : "Specialist has arrived."),
-              time: act.time,
-            });
-          }
-        }
-      });
-    }
-
-    const initialExists = list.some((m) => m.initial);
-    if (!initialExists && (lead.service || lead.notes || lead.message || (lead.photos && lead.photos.length > 0))) {
-      const initialAttachments = (lead.photos || []).map((p, idx) => ({
-        name: p.name || `Customer_Photo_${idx + 1}.jpg`,
-        url: p.secureUrl || p.url || p.dataUrl,
-        secureUrl: p.secureUrl || p.url,
-        contentType: p.contentType || "image/jpeg",
-      }));
-      list.unshift({
-        id: `initial_${lead.id}`,
-        from: "customer",
-        channel: "lead",
-        subject: "Original Enquiry",
-        text: [
-          lead.service ? `Service: ${lead.service}` : "",
-          lead.notes ? `Notes: ${lead.notes}` : "",
-          lead.message ? `Customer Message: ${lead.message}` : "",
-          lead.source ? `Source: ${lead.source}` : ""
-        ].filter(Boolean).join("\n"),
-        time: lead.received || lead.createdAt,
-        initial: true,
-        ...(initialAttachments.length > 0 ? { attachments: initialAttachments } : {}),
-      });
-    }
-
-    // Sort chronologically so all messages and notifications appear in exact timeline sequence
-    list.sort((a, b) => {
-      const ta = new Date(a.time).getTime() || 0;
-      const tb = new Date(b.time).getTime() || 0;
-      return ta - tb;
-    });
-
-    return list;
   }
 
   // Read picked files into base64 so they can be posted as JSON and forwarded as
@@ -3717,7 +3691,7 @@ export default function CrmDashboardPage() {
   // deleted while paging), so we don't get stuck on an empty page.
   useEffect(() => {
     const total =
-      currentView === "leads"
+      currentView === "leads" || (currentView === "dashboard" && globalSearch.trim())
         ? filteredLeads.length
         : currentView === "quotes"
           ? quoteLeads.length
@@ -3730,7 +3704,7 @@ export default function CrmDashboardPage() {
                 : 0;
     const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
     if (page > maxPage) setPage(maxPage);
-  }, [currentView, page, filteredLeads.length, quoteLeads.length, jobLeads.length, completedLeads.length, scopedLeads.length]);
+  }, [currentView, globalSearch, page, filteredLeads.length, quoteLeads.length, jobLeads.length, completedLeads.length, scopedLeads.length]);
 
   // Clicking a dashboard KPI card drops the user into the full leads table with
   // that stage (or group of stages) pre-filtered. Groups are passed as several
@@ -3778,14 +3752,14 @@ export default function CrmDashboardPage() {
     navigateTo("schedule");
   }, [leads, navigateTo]);
 
-  // Open the "inbox": the leads table filtered to conversations that have an
-  // unread customer reply. Used by the header bell and the hero's Open Inbox.
+  // Keep the mailbox separate from unread-only lead filters so opening a
+  // conversation does not remove it from the inbox.
   const openInbox = useCallback(() => {
     setPriorityFilter("");
     setGlobalSearch("");
     setStatusFilter("");
-    setOnlyUnread(true);
-    navigateTo("leads");
+    setOnlyUnread(false);
+    navigateTo("inbox");
     if (
       typeof window !== "undefined" &&
       "Notification" in window &&
@@ -3853,6 +3827,13 @@ export default function CrmDashboardPage() {
             <LayoutDashboard className="w-4 h-4" />
             CRM Dashboard
           </span>
+        </button>
+      )}
+
+      {canSee("inbox") && (
+        <button type="button" onClick={() => { openInbox(); onItemClick?.(); }} className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "inbox" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"}`}>
+          <span className="flex items-center gap-2.5"><Mail className="w-4 h-4" />Conversation Inbox</span>
+          {unreadReplyCount > 0 && <span className={`min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${currentView === "inbox" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>{unreadReplyCount}</span>}
         </button>
       )}
 
@@ -4249,6 +4230,8 @@ export default function CrmDashboardPage() {
               <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
                 {currentView === "dashboard"
                   ? "Manager Dashboard"
+                  : currentView === "inbox"
+                    ? "Conversation Inbox"
                   : currentView === "analytics"
                     ? "Analytics & Performance"
                     : currentView === "leads"
@@ -4455,6 +4438,7 @@ export default function CrmDashboardPage() {
               VIEW: LEADS
              ========================================================================= */}
             {currentView === "leads" && <LeadsView />}
+            {currentView === "inbox" && <InboxView />}
 
             {/* =========================================================================
               VIEW: QUOTES
@@ -4933,40 +4917,7 @@ export default function CrmDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Customer Details Form */}
-                    <div className="space-y-2">
-                      <div className="font-bold text-slate-800 text-sm">Customer Details</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Customer Name"
-                          value={activeQuoteLead.name || ""}
-                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, name: e.target.value })}
-                          className="p-2 border border-slate-200 rounded-lg text-xs"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Phone"
-                          value={activeQuoteLead.phone || ""}
-                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, phone: e.target.value })}
-                          className="p-2 border border-slate-200 rounded-lg text-xs"
-                        />
-                        <input
-                          type="email"
-                          placeholder="Email"
-                          value={activeQuoteLead.email || ""}
-                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, email: e.target.value })}
-                          className="p-2 border border-slate-200 rounded-lg text-xs"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Property Address"
-                          value={activeQuoteLead.address || ""}
-                          onChange={(e) => setActiveQuoteLead({ ...activeQuoteLead, address: e.target.value })}
-                          className="p-2 border border-slate-200 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
+                    <QuoteLeadDetailsForm lead={activeQuoteLead} onChange={setActiveQuoteLead} />
 
                     {/* Overarching Job Description / Scope Overview (Editable with formatting) */}
                     <div className="space-y-1.5 p-3 rounded-xl border border-slate-200 bg-white shadow-2xs">
@@ -5032,7 +4983,12 @@ export default function CrmDashboardPage() {
                     {/* Items */}
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="font-bold text-slate-800 text-sm">Quote Items ({quoteItems.length})</div>
+                        <div>
+                          <div className="font-bold text-slate-800 text-sm">Quote Items ({quoteItems.length})</div>
+                          {activeQuoteLead && <DocumentDeliveryStatus label="Quote" {...quoteDeliveryTimes(leads.find(lead => lead.id === activeQuoteLead.id) || activeQuoteLead)} />}
+                          <p className="text-[10px] text-slate-500">Drag the handle to reorder items. Use ↑ / ↓ on the handle with a keyboard.</p>
+                          <span role="status" className="sr-only">{quoteOrderNotice}</span>
+                        </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           <TemplatePicker
                             onSelectTemplate={(t) => {
@@ -5125,8 +5081,48 @@ export default function CrmDashboardPage() {
                           </thead>
                           <tbody className="divide-y divide-slate-200">
                             {quoteItems.map((item, idx) => (
-                              <tr key={idx} className="bg-white hover:bg-slate-50/70 align-top">
-                                <td className="py-2 px-2 text-center font-black text-slate-400">{idx + 1}</td>
+                              <tr key={idx}
+                                onDragOver={(event) => {
+                                  if (quoteDragFrom.current === null || savingTemplateIndex !== null) return;
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = "move";
+                                  setQuoteDropIndex(idx);
+                                }}
+                                onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setQuoteDropIndex(null); }}
+                                onDrop={(event) => {
+                                  if (quoteDragFrom.current === null) return;
+                                  event.preventDefault();
+                                  moveQuoteItem(quoteDragFrom.current, idx);
+                                  clearQuoteDrag();
+                                }}
+                                className={`align-top transition-colors ${quoteDropIndex === idx ? "bg-blue-50 outline-2 outline-blue-400 -outline-offset-2" : "bg-white hover:bg-slate-50/70"}`}>
+                                <td className="py-2 px-1 text-center font-black text-slate-400">
+                                  <button type="button" draggable={quoteItems.length > 1 && savingTemplateIndex === null}
+                                    disabled={quoteItems.length < 2 || savingTemplateIndex !== null}
+                                    aria-label={`Move quote item ${idx + 1}`}
+                                    title="Drag to another item position, or use arrow keys"
+                                    onDragStart={(event) => {
+                                      quoteDragFrom.current = idx;
+                                      event.dataTransfer.setData("application/x-groutix-quote-item", String(idx));
+                                      event.dataTransfer.effectAllowed = "move";
+                                      const row = event.currentTarget.closest("tr");
+                                      if (row) event.dataTransfer.setDragImage(row, 15, 15);
+                                    }}
+                                    onDragEnd={clearQuoteDrag}
+                                    onKeyDown={(event) => {
+                                      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                                      event.preventDefault();
+                                      const to = idx + (event.key === "ArrowUp" ? -1 : 1);
+                                      if (to < 0 || to >= quoteItems.length) return;
+                                      moveQuoteItem(idx, to);
+                                      const tbody = event.currentTarget.closest("tbody");
+                                      requestAnimationFrame(() => (tbody?.rows[to]?.querySelector('[aria-label^="Move quote item"]') as HTMLButtonElement | null)?.focus());
+                                    }}
+                                    className="inline-flex flex-col items-center gap-0.5 p-1 rounded hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-500 cursor-grab active:cursor-grabbing disabled:opacity-40 disabled:cursor-default">
+                                    <GripHorizontal className="w-3.5 h-3.5" />
+                                    <span>{idx + 1}</span>
+                                  </button>
+                                </td>
 
                                 {/* Item Code — template picker */}
                                 <td className="py-2 px-2">
@@ -5764,7 +5760,7 @@ export default function CrmDashboardPage() {
               ref={convModalRef}
               className={`bg-white pointer-events-auto flex flex-col gap-4 shadow-2xl border border-slate-200 transition-[border-radius,box-shadow] duration-150 ${convFullscreen
                 ? "w-full h-full rounded-none shadow-none p-6"
-                : "rounded-2xl w-full max-w-5xl p-6 resize overflow-auto"
+                : `rounded-2xl w-full ${convSize === "small" ? "max-w-xl p-4" : "max-w-5xl p-6"} resize overflow-auto`
                 }`}
               style={
                 convFullscreen
@@ -5775,19 +5771,19 @@ export default function CrmDashboardPage() {
                       left: `${convPos.x}px`,
                       top: `${convPos.y}px`,
                       margin: 0,
-                      height: "90vh",
-                      minHeight: "500px",
-                      minWidth: "400px",
-                      maxWidth: "min(96vw, 1024px)",
+                      height: convSize === "small" ? "72vh" : "90vh",
+                      minHeight: "min(500px, 90vh)",
+                      minWidth: "min(400px, 96vw)",
+                      maxWidth: convSize === "small" ? "min(96vw, 576px)" : "min(96vw, 1024px)",
                     }
-                    : { height: "90vh", minHeight: "500px", minWidth: "400px", maxWidth: "min(96vw, 1024px)" }
+                    : { height: convSize === "small" ? "72vh" : "90vh", minHeight: "min(500px, 90vh)", minWidth: "min(400px, 96vw)", maxWidth: convSize === "small" ? "min(96vw, 576px)" : "min(96vw, 1024px)" }
               }
             >
               {/* Header: Draggable handle */}
               <div
                 onPointerDown={handleConvPointerDown}
                 onDoubleClick={() => setConvPos(null)}
-                className={`flex items-center justify-between border-b border-slate-100 pb-3 shrink-0 select-none ${convFullscreen
+                className={`flex flex-wrap gap-2 items-center justify-between border-b border-slate-100 pb-3 shrink-0 select-none ${convFullscreen
                   ? ""
                   : "cursor-grab active:cursor-grabbing hover:bg-slate-50/70 -m-2 p-2 rounded-xl transition-colors"
                   }`}
@@ -5825,6 +5821,14 @@ export default function CrmDashboardPage() {
                       <span className="hidden sm:inline text-[11px]">Center</span>
                     </button>
                   )}
+                  <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-0.5" role="group" aria-label="Conversation window size">
+                    {(["small", "large"] as const).map(size => <button key={size} type="button"
+                      aria-pressed={!convFullscreen && convSize === size}
+                      onClick={() => { setConvSize(size); setConvFullscreen(false); setConvPos(null); }}
+                      className={`px-2 py-1 text-[11px] rounded-md font-semibold cursor-pointer ${!convFullscreen && convSize === size ? "bg-white text-blue-700 shadow-xs" : "text-slate-500 hover:text-slate-900"}`}>
+                      {size === "small" ? "Small" : "Large"}
+                    </button>)}
+                  </div>
                   <button
                     type="button"
                     onClick={() => setConvFullscreen((f) => !f)}
@@ -5924,7 +5928,7 @@ export default function CrmDashboardPage() {
                   ref={convScrollRef}
                   onScroll={handleConvScroll}
                   className="overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
-                  style={{ flex: "0 0 auto", minHeight: "240px", height: "clamp(240px, 38vh, 480px)" }}
+                  style={{ flex: "0 0 auto", minHeight: "240px", height: convSize === "small" && !convFullscreen ? "clamp(240px, 28vh, 320px)" : "clamp(240px, 38vh, 480px)" }}
                 >
                   {(() => {
                     const allMsgs = getConversation(activeMessageLeadLive || activeMessageLead);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Building2, Camera, ChevronDown, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Star, Wrench } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
+import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -81,6 +82,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
         <div className="relative mx-auto max-w-[1460px] px-6 py-8 pb-16 lg:px-10 lg:pb-20">
           <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
             <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
+              <ServiceBreadcrumb service="Leaking Shower Repair" />
               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">Leaking Shower Repairs Melbourne</h1>
               <p className="mx-auto max-w-xl text-base leading-relaxed text-white/85 sm:text-lg lg:mx-0">Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>

@@ -86,6 +86,8 @@ export interface Lead {
   technicianNotes?: string;
   scopeNotes?: string;
   customerType?: string;
+  agency?: string;
+  tenants?: { name: string; phone: string; email?: string }[];
   areas?: string;
   leaking?: string;
   damagedTiles?: string;
@@ -117,6 +119,8 @@ export interface Lead {
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
+  quoteSentAt?: string;
+  quoteOpenedAt?: string;
   quoteAcceptedAt?: string;
   quoteDeclinedAt?: string;
   quoteSignature?: string;

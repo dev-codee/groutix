@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import { Check, Phone, Star } from "lucide-react";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import type { BusinessRating } from "@/lib/reviews";
@@ -17,7 +17,7 @@ export default function ServicePageHero({ title, breadcrumb, description, descri
     <div className="absolute inset-0 bg-black/55" />
     <div className="relative mx-auto grid max-w-[1460px] items-start gap-8 px-6 pb-16 pt-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 lg:px-10 lg:pb-20 xl:grid-cols-[minmax(0,1fr)_540px]">
       <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
-        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center justify-center gap-2 text-sm text-white/70 lg:justify-start"><Link href="/" className="hover:text-white">Home</Link><span>/</span><span aria-current="page">{breadcrumb}</span></nav>
+        <ServiceBreadcrumb service={breadcrumb} />
         <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
         <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">{title}</h1>
         <p id={descriptionId} className="mx-auto max-w-xl text-base leading-relaxed text-white/85 sm:text-lg lg:mx-0">{description}</p>
