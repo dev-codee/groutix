@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/Navbar";
 import BalconyRegroutingClient from "./BalconyRegroutingClient";
 import { getBusinessRating } from "@/lib/reviews";
 
@@ -20,10 +19,5 @@ export const metadata: Metadata = {
 export default async function BalconyRegroutingPage() {
   const rating = await getBusinessRating();
 
-  return (
-    <>
-      <Navbar />
-      <BalconyRegroutingClient rating={rating} />
-    </>
-  );
+  return <BalconyRegroutingClient rating={rating} />;
 }
