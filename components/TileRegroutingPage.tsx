@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Grid2x2, Droplets, Footprints, Home, ImageIcon, MapPin, Paintbrush, Phone, ShieldCheck, Sparkles, Star, Wrench } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Grid2x2, Droplets, Footprints, Home, ImageIcon, MapPin, Paintbrush, Phone, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 import { Section, Cards, QuoteLink, card, link, text } from "@/components/ServicePageSections";
 import GoogleIcon from "@/components/GoogleIcon";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import HeroQuoteForm from "@/components/HeroQuoteForm";
+import ServicePageHero from "@/components/ServicePageHero";
 import ServiceAreaCoverage from "@/components/ServiceAreaCoverage";
 import ReviewCard from "@/components/ReviewCard";
 import type { BusinessRating, Review } from "@/lib/reviews";
@@ -17,16 +16,14 @@ import { tileRegroutingFaqs, tileGroutRows, tilePhotoSlots } from "@/lib/tileReg
 
 export default function TileRegroutingPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
   return <><Navbar /><main>
-    <section id="quote-form" className="relative scroll-mt-20 overflow-hidden bg-primary pt-[115px] lg:pt-[130px]">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.07] bg-[linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] bg-[size:72px_72px]" />
-      <div className="relative mx-auto grid max-w-[1460px] items-start gap-10 px-6 pb-16 pt-6 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-16 lg:px-10 lg:pb-20">
-        <div className="text-white"><nav aria-label="Breadcrumb" className="mb-7 flex items-center gap-2 text-sm text-white/70"><Link href="/" className="hover:text-white">Home</Link><span>/</span><span aria-current="page">Tile Regrouting</span></nav><p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[#FBBC04]">Groutix</p><h1 className="max-w-2xl text-4xl font-black leading-[1.12] tracking-tight sm:text-5xl xl:text-6xl">Tile Regrouting{" "}<br /><span className="text-[#FBBC04]">Melbourne</span></h1><p className="mt-6 max-w-xl text-lg leading-relaxed text-white/85">Groutix removes worn grout from floors, kitchens, laundries and bathrooms and rebuilds the joints. Your tiles look clean and keep water out. Your tiles stay in place. We tell you honestly when a clean is enough.</p>
-          <div className="my-7 flex flex-wrap items-center gap-4"><a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-sm border border-white/20 bg-white/10 px-4 py-3"><Image src="/google-logo.svg" alt="Google" width={25} height={25} /><strong className="text-2xl">{rating.value.toFixed(1)}</strong><span><span className="flex gap-0.5" aria-hidden="true">{Array.from({ length: Math.round(rating.value) }, (_, i) => <Star key={i} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}</span><span className="mt-1 block text-xs text-white/80">{rating.count} Google reviews</span></span></a><a href="tel:+61370238094" className="inline-flex items-center gap-2 font-bold hover:text-[#FBBC04]"><Phone className="h-4 w-4" />+61 3 7023 8094</a></div>
-          <div className="relative overflow-hidden rounded-xl border border-white/20"><Image src="/img10.jpeg" alt="Existing tile grout restoration comparison" width={1395} height={752} sizes="(max-width: 1023px) 100vw, 600px" priority className="aspect-[2.4/1] w-full object-cover" /><div className="absolute inset-x-0 bottom-0 flex justify-between bg-primary/85 px-4 py-2 text-xs font-bold uppercase tracking-wider"><span>Worn grout</span><span>A fresh finish</span></div></div>
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/80">{["Tiles stay in place", "Clear quote first", "Honest advice"].map(item => <span key={item} className="flex items-center gap-2"><Check className="h-4 w-4 text-[#FBBC04]" />{item}</span>)}</div>
-        </div><div className="rounded-xl bg-white p-5 text-neutral-900 shadow-xl sm:p-7"><HeroQuoteForm defaultService="Tile Regrouting" /></div>
-      </div>
-    </section>
+    <ServicePageHero
+      title="Tile Regrouting Melbourne"
+      breadcrumb="Tile Regrouting"
+      description="Groutix removes worn grout from floors, kitchens, laundries and bathrooms and rebuilds the joints. Your tiles look clean and keep water out. Your tiles stay in place. We tell you honestly when a clean is enough."
+      defaultService="Tile Regrouting"
+      benefits={["Tiles stay in place", "Clear quote first", "Honest advice"]}
+      rating={rating}
+    />
     <section aria-labelledby="tile-trust" className="border-b border-neutral-200 bg-white py-10"><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><h2 id="tile-trust" className="mb-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Victoria</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
       { icon: MapPin, value: "Melbourne & Victoria", label: "Local Tile Repairs", sub: "Homes, rentals and commercial properties" },
       { icon: GoogleIcon, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", sub: `Based on ${rating.count} Google reviews` },
@@ -88,6 +85,6 @@ export default function TileRegroutingPage({ rating, reviews }: { rating: Busine
     ].map(([title, href, body]) => <Link key={href} href={href} className={`${card} group transition-colors hover:border-accent`}><h3 className="font-bold text-neutral-900">{title}</h3><p className="mt-3 text-sm leading-relaxed text-neutral-600">{body}</p><ArrowRight className="mt-6 h-5 w-5 text-accent transition-transform group-hover:translate-x-1" /></Link>)}</div></Section>
     <Section eyebrow="Service areas" title="Which Melbourne Suburbs Do We Regrout Tiles In?" intro="Looking for tile regrouting near you? Check your suburb below."><ServiceAreaCoverage service="Tile Regrouting" sourcePage="/tile-regrouting" subject="your tiles" /></Section>
     <Section eyebrow="Your questions, answered" title="Tile Regrouting FAQs" alternate><div className="mx-auto max-w-3xl space-y-3">{tileRegroutingFaqs.map(faq => <details key={faq.q} className="group rounded-xl border border-neutral-200 bg-white open:border-accent/50"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 [&::-webkit-details-marker]:hidden"><h3 className="text-base font-bold text-neutral-900">{faq.q}</h3><ChevronDown className="h-4 w-4 shrink-0 text-accent transition-transform group-open:rotate-180" /></summary><p className="px-5 pb-5 leading-relaxed text-neutral-600">{faq.a}</p></details>)}</div><div className="mt-8 text-center"><QuoteLink label="Still Have Questions? Get a Free Quote" /></div></Section>
-    <section className="bg-primary py-16 text-center text-white"><div className="mx-auto max-w-3xl px-6"><h2 className="text-3xl font-bold sm:text-4xl">Get Your Free Quote Today</h2><p className="mt-5 leading-relaxed text-white/85">Call <a className="underline" href="tel:+61370238094">+61 3 7023 8094</a>, email <a className="underline" href="mailto:info@groutix.com">info@groutix.com</a>, or request a quote online.</p><p className="mt-3 text-sm text-white/70">Open Mon to Sat 9:00 AM to 6:30 PM, Sun 11:00 AM to 10:00 PM.</p><p className="mt-3 text-white/80">Honest advice and workmanship you can rely on.</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/contact" className="rounded-sm bg-[#FBBC04] px-6 py-3 font-bold text-primary hover:bg-white">Request A Quote</Link><a href="tel:+61370238094" className="inline-flex items-center gap-2 rounded-sm border border-white/60 px-6 py-3 font-bold hover:bg-white/10"><Phone className="h-4 w-4" />+61 3 7023 8094</a></div></div></section>
+    <section className="bg-primary py-16 text-center text-white"><div className="mx-auto max-w-3xl px-6"><h2 className="text-3xl font-bold sm:text-4xl">Get Your Free Quote Today</h2><p className="mt-5 leading-relaxed text-white/85">Call <a className="underline" href="tel:+61370238094">(03) 7023 8094</a>, email <a className="underline" href="mailto:info@groutix.com">info@groutix.com</a>, or request a quote online.</p><p className="mt-3 text-sm text-white/70">Open Mon to Sat 9:00 AM to 6:30 PM, Sun 11:00 AM to 10:00 PM.</p><p className="mt-3 text-white/80">Honest advice and workmanship you can rely on.</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/contact" className="rounded-sm bg-[#FBBC04] px-6 py-3 font-bold text-primary hover:bg-white">Request A Quote</Link><a href="tel:+61370238094" className="inline-flex items-center gap-2 rounded-sm border border-white/60 px-6 py-3 font-bold hover:bg-white/10"><Phone className="h-4 w-4" />(03) 7023 8094</a></div></div></section>
   </main><Footer /></>;
 }

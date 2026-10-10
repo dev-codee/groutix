@@ -10,6 +10,8 @@ import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingConte
 import TileRegroutingPage from "@/components/TileRegroutingPage";
 import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
 import { abs, SITE_URL } from "@/lib/seo";
+import BalconyLeakRepairsPage from "@/components/BalconyLeakRepairsPage";
+import { BALCONY_META_TITLE, BALCONY_META_DESCRIPTION, balconyFaqs } from "@/lib/balconyLeakContent";
 import ShowerRegroutingPage from "@/components/ShowerRegroutingPage";
 
 const services: Record<string, {
@@ -178,8 +180,8 @@ const services: Record<string, {
 
   "balcony-leak-repairs": {
     title: "Balcony Leak Repairs",
-    metaTitle: "Balcony Leak Repairs Victoria | Stop Water Damage | Groutix",
-    metaDesc: "Leaking balcony? Groutix locates and repairs the cause of balcony leaks in Victoria, protecting your property from further damage.",
+    metaTitle: BALCONY_META_TITLE,
+    metaDesc: BALCONY_META_DESCRIPTION,
     h1Desc: "Balcony leaks are one of the most common and costly problems in Australian homes and apartments, often caused by failed waterproofing membranes, cracked grout or deteriorated silicone joints. Groutix diagnoses the source of the leak and carries out targeted repairs to stop water ingress before it damages walls, ceilings or the property below. Our balcony leak repair service is a practical solution for homeowners, landlords and body corporates looking to avoid expensive structural repairs down the track.",
     failHeading: "A Leaking Balcony Can Cause",
     failHeadingBlue: "Costly Structural Damage",
@@ -419,7 +421,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = services[slug];
   if (!s) return {};
   const canonical = `/${slug}`;
-  const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs"].includes(slug);
+  const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs", "balcony-leak-repairs"].includes(slug);
   const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
     ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
@@ -446,6 +448,20 @@ export default async function ServicePage({ params }: Props) {
   const { slug } = await params;
   const s = services[slug];
   if (!s) notFound();
+
+  if (slug === "balcony-leak-repairs") {
+    const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(5)]);
+    const schema = [
+      { "@context": "https://schema.org", "@type": "Service", "@id": abs("/balcony-leak-repairs/#service"), name: "Balcony Leak Repair", serviceType: "Balcony leak repair", url: abs("/balcony-leak-repairs/"), areaServed: { "@type": "City", name: "Melbourne VIC" }, provider: { "@id": `${SITE_URL}/#business` } },
+      faqJsonLd(balconyFaqs),
+      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
+        { "@type": "ListItem", position: 2, name: "Balcony Leak Repairs", item: abs("/balcony-leak-repairs/") },
+      ] },
+      { "@context": "https://schema.org", "@type": "WebPage", "@id": abs("/balcony-leak-repairs/#webpage"), url: abs("/balcony-leak-repairs/"), name: BALCONY_META_TITLE, speakable: { "@type": "SpeakableSpecification", cssSelector: ["#balcony-intro", ".balcony-faq-answer"] } },
+    ];
+    return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><BalconyLeakRepairsPage rating={rating} reviews={reviews} /></>;
+  }
 
   if (slug === "small-tiling-jobs") {
     const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(3)]);
