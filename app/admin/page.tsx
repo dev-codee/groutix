@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { saveLeadChanges } from "@/lib/saveLeadChanges";
 import { QuoteLeadDetailsForm } from "@/components/admin/QuoteLeadDetailsForm";
 import { quoteLeadDetails } from "@/lib/quoteLeadDetails";
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
@@ -388,6 +389,8 @@ export default function CrmDashboardPage() {
   }
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [quoteSaving, setQuoteSaving] = useState(false);
+  const [quoteSaveError, setQuoteSaveError] = useState("");
   const [quoteFullscreen, setQuoteFullscreen] = useState(true);
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
@@ -1466,7 +1469,7 @@ export default function CrmDashboardPage() {
     }
   }
 
-  async function updateLeadField(id: string, updates: Partial<Lead>) {
+  async function updateLeadField(id: string, updates: Partial<Lead>, onError?: (message: string) => void) {
     const targetLead = leads.find((l) => l.id === id);
     if (targetLead && typeof updates.status === "string" && updates.status !== targetLead.status) {
       const isTerminal = /^(lost|cancelled|closed|no response)/i.test(updates.status);
@@ -1476,12 +1479,9 @@ export default function CrmDashboardPage() {
       }
     }
     try {
-      const res = await fetch(`/api/admin/submissions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates)
-      });
-      if (res.ok) {
+      const result = await saveLeadChanges(id, updates);
+      if (!result.ok) { onError?.(result.error); return false; }
+      if (result.ok) {
         setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
         // If a lead's status changes while a Jobs-view filter tab is active, and the
         // new status no longer belongs to that tab, follow the lead to whichever tab
@@ -1586,6 +1586,7 @@ export default function CrmDashboardPage() {
 
   // Quote Builder Logic
   function openQuoteModal(lead: Lead) {
+    setQuoteSaveError("");
     clearQuoteDrag();
     setQuoteOrderNotice("");
     setActiveQuoteLead(lead);
@@ -1867,7 +1868,9 @@ export default function CrmDashboardPage() {
   }
 
   async function handleSaveQuote() {
-    if (!activeQuoteLead) return;
+    if (!activeQuoteLead || quoteSaving) return;
+    setQuoteSaving(true);
+    setQuoteSaveError("");
     const { total } = quoteTotals();
     const updates: Partial<Lead> = {
       ...quoteLeadDetails(activeQuoteLead),
@@ -1879,8 +1882,10 @@ export default function CrmDashboardPage() {
       quoteAmount: total,
       quoteUpdated: new Date().toISOString()
     };
-    const saved = await updateLeadField(activeQuoteLead.id, updates);
-    if (saved) setQuoteModalOpen(false);
+    try {
+      const saved = await updateLeadField(activeQuoteLead.id, updates, setQuoteSaveError);
+      if (saved) setQuoteModalOpen(false);
+    } finally { setQuoteSaving(false); }
   }
 
   async function handleMarkQuoteSent() {
@@ -5635,6 +5640,7 @@ export default function CrmDashboardPage() {
                     <Eye className="w-4 h-4 text-blue-600" />
                     <span>{quoteViewTab === "preview" ? "Exit Full Preview" : "View Full Quote Preview"}</span>
                   </button>
+                  {quoteSaveError && <p role="alert" className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 max-w-lg">{quoteSaveError}</p>}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -5678,9 +5684,10 @@ export default function CrmDashboardPage() {
                   <button
                     type="button"
                     onClick={handleSaveQuote}
-                    className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900"
+                    disabled={quoteSaving}
+                    className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 disabled:opacity-50 disabled:cursor-wait"
                   >
-                    {isTechnician ? "Save Scope" : "Save Quote"}
+                    {quoteSaving ? "Saving…" : isTechnician ? "Save Scope" : "Save Quote"}
                   </button>
                   <button
                     type="button"

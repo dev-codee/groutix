@@ -1,3 +1,4 @@
+import { inspectionConfirmationHtml } from "@/lib/inspectionConfirmation";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
@@ -410,13 +411,14 @@ export async function POST(req: NextRequest) {
           reference: jobNo,
         });
         if (lock.ok) {
-          inspectionSelfBooked = true;
           // Store the NAIVE Melbourne wall-clock the customer picked (e.g.
           // "2026-09-16T12:00"), matching the /api/book flow. Never run it through
           // new Date().toISOString() — on a UTC server that reinterprets the local
           // time as UTC and shifts the appointment by the Melbourne offset.
           const inspectionAt = `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}`;
-          await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
+          const saved = await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
+          if (!saved) throw new Error("Could not save inspection booking.");
+          inspectionSelfBooked = true;
           // Hand it to the inspection team, or it never reaches their dashboard.
           await assignInspectorOnBooking(submissionId);
           await appendActivity(submissionId, {
@@ -530,9 +532,7 @@ export async function POST(req: NextRequest) {
       <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
         We've received your request and our team will review your details shortly.
       </p>
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
-        If you selected a preferred inspection date and time, we'll keep that booking wherever possible and will only contact you if an alternative needs to be arranged.
-      </p>
+      ${inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked)}
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
         If you have any questions, simply reply to this email or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
       </p>
