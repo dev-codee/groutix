@@ -44,6 +44,7 @@ import { useSiteContent, useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
 import ImgBox from "@/components/ServiceImageBox";
 import TeamSection from "@/components/TeamSection";
+import HomeBalconySection from "@/components/HomeBalconySection";
 
 const coverageSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -1009,6 +1010,11 @@ export default function HomePage({
             </div>
           </div>
         </section>
+
+        {/* ══════════════════════════════════════
+            SECTION 6.5, Balcony Regrouting & Leak Repair
+        ══════════════════════════════════════ */}
+        <HomeBalconySection />
 
         {/* ══════════════════════════════════════
             SECTION 7, Before & After Gallery
