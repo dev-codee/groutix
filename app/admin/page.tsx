@@ -390,6 +390,8 @@ export default function CrmDashboardPage() {
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [quoteSaving, setQuoteSaving] = useState(false);
+  const quoteSaveSession = useRef(0);
+  const quoteSaveInFlight = useRef<number | null>(null);
   const [quoteSaveError, setQuoteSaveError] = useState("");
   const [quoteFullscreen, setQuoteFullscreen] = useState(true);
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
@@ -1586,6 +1588,9 @@ export default function CrmDashboardPage() {
 
   // Quote Builder Logic
   function openQuoteModal(lead: Lead) {
+    quoteSaveSession.current += 1;
+    quoteSaveInFlight.current = null;
+    setQuoteSaving(false);
     setQuoteSaveError("");
     clearQuoteDrag();
     setQuoteOrderNotice("");
@@ -1613,6 +1618,13 @@ export default function CrmDashboardPage() {
     setQuoteScope(initialScope);
     setQuoteFullscreen(true);
     setQuoteModalOpen(true);
+  }
+
+  function closeQuoteModal() {
+    quoteSaveSession.current += 1;
+    quoteSaveInFlight.current = null;
+    setQuoteSaving(false);
+    setQuoteModalOpen(false);
   }
 
   function quoteTotals() {
@@ -1868,9 +1880,14 @@ export default function CrmDashboardPage() {
   }
 
   async function handleSaveQuote() {
-    if (!activeQuoteLead || quoteSaving) return;
+    const session = quoteSaveSession.current;
+    if (!activeQuoteLead || quoteSaveInFlight.current === session) return;
+    quoteSaveInFlight.current = session;
     setQuoteSaving(true);
     setQuoteSaveError("");
+    const showError = (message: string) => {
+      if (quoteSaveSession.current === session) setQuoteSaveError(message);
+    };
     try {
       const { total } = quoteTotals();
       const updates: Partial<Lead> = {
@@ -1883,11 +1900,16 @@ export default function CrmDashboardPage() {
         quoteAmount: total,
         quoteUpdated: new Date().toISOString()
       };
-      const saved = await updateLeadField(activeQuoteLead.id, updates, setQuoteSaveError);
-      if (saved) setQuoteModalOpen(false);
+      const saved = await updateLeadField(activeQuoteLead.id, updates, showError);
+      if (saved && quoteSaveSession.current === session) closeQuoteModal();
     } catch (error) {
-      setQuoteSaveError(error instanceof Error ? error.message : "Could not save the quote. Please try again.");
-    } finally { setQuoteSaving(false); }
+      showError(error instanceof Error ? error.message : "Could not save the quote. Please try again.");
+    } finally {
+      if (quoteSaveSession.current === session) {
+        quoteSaveInFlight.current = null;
+        setQuoteSaving(false);
+      }
+    }
   }
 
   async function handleMarkQuoteSent() {
@@ -4710,7 +4732,7 @@ export default function CrmDashboardPage() {
                     {quoteFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                   </button>
                   <button
-                    onClick={() => setQuoteModalOpen(false)}
+                    onClick={closeQuoteModal}
                     className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
