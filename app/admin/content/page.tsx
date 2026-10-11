@@ -323,6 +323,30 @@ export default function ContentPage() {
                       }
                     />
                   </Labeled>
+                  <Labeled label="Hero background color (all pages)">
+  <div className="flex items-center gap-3">
+    <input
+      type="color"
+      className="h-10 w-14 cursor-pointer rounded border border-slate-300"
+      value={content.hero.backgroundColor || "#000f5c"}
+      onChange={(e) =>
+        setContent((c) =>
+          c ? { ...c, hero: { ...c.hero, backgroundColor: e.target.value } } : c
+        )
+      }
+    />
+    <input
+      className={inputCls}
+      value={content.hero.backgroundColor || "#000f5c"}
+      onChange={(e) =>
+        setContent((c) =>
+          c ? { ...c, hero: { ...c.hero, backgroundColor: e.target.value } } : c
+        )
+      }
+      placeholder="#000f5c"
+    />
+  </div>
+</Labeled>
                 </div>
               </Panel>
 
