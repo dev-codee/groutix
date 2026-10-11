@@ -3,7 +3,7 @@
 import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Phone, Menu, X, ChevronDown, ChevronRight, MapPin } from "lucide-react";
+import { Phone, Menu, X, ChevronDown, ChevronRight, MapPin, Facebook, Instagram } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 import { useContact } from "@/components/SiteContentProvider";
@@ -124,7 +124,6 @@ export default function Navbar() {
     // { name: "Shower Base Repair", href: "/shower-base-repair" },
     // { name: "Shower Screens", href: "/shower-screens" },
     { name: "Tile Regrouting", href: "/tile-regrouting" },
-    { name: "Cracked Grout or a Leaking Shower", href: "/cracked-grout-or-a-leaking-shower" },
     { name: "Silicone & Recaulking", href: "/silicone-recaulking" },
     { name: "Epoxy Grout", href: "/epoxy-grout" },
     { name: "Small Tiling Jobs", href: "/small-tiling-jobs" },
@@ -238,10 +237,10 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 pt-2 sm:pt-3 px-2 sm:px-4 lg:px-6 pointer-events-none transition-all duration-300">
-      <div className="max-w-[1440px] mx-auto rounded-2xl border border-slate-200/90 shadow-lg bg-white pointer-events-auto">
+    <header className="fixed top-0 left-0 right-0 z-50 pointer-events-none transition-all duration-300">
+      <div className="w-full bg-white shadow-lg pointer-events-auto">
         {/* Top Dark Blue Bar */}
-        <div className="bg-[#001f97] text-white px-4 sm:px-6 py-1.5 flex flex-wrap items-center justify-between text-xs sm:text-[13px] font-medium tracking-tight rounded-t-2xl overflow-hidden">
+        <div className="bg-[#001f97] text-white px-4 sm:px-6 py-1.5 flex flex-wrap items-center justify-between text-xs sm:text-[13px] font-medium tracking-tight overflow-hidden">
           {/* Left: Location Pin & Address */}
           <div className="flex items-center gap-1.5 text-white/95 truncate">
             <span className="text-sm select-none">📍</span>
@@ -268,6 +267,24 @@ export default function Navbar() {
               <span className="text-amber-400 font-bold tracking-widest text-xs">★★★★★</span>
               <span className="font-semibold">5.0 · {GOOGLE_REVIEW_COUNT_LABEL} Google Reviews</span>
             </div>
+            <a
+  href="https://www.facebook.com/profile.php?id=61582570358855"
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label="Groutix on Facebook"
+  className="text-white/85 hover:text-white transition-colors"
+>
+  <Facebook className="h-4 w-4" />
+</a>
+<a
+  href="https://www.instagram.com/groutix.au/"
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label="Groutix on Instagram"
+  className="text-white/85 hover:text-white transition-colors"
+>
+  <Instagram className="h-4 w-4" />
+</a>
           </div>
         </div>
 
@@ -275,7 +292,7 @@ export default function Navbar() {
         <div className="bg-white px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
           {/* Logo (preserved original logo picture) */}
           <Link href="/" className="flex items-center group py-0.5">
-            <Logo imageClassName="h-8 sm:h-9 md:h-10 w-auto object-contain" />
+            <Logo imageClassName="h-11 sm:h-12 md:h-14 w-auto object-contain" />
           </Link>
 
           {/* Desktop Navigation */}
