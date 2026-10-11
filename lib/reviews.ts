@@ -10,6 +10,8 @@
 // This module must only be imported from server components / route handlers so
 // the API key is never shipped to the browser.
 
+import { BUSINESS } from "@/lib/seo";
+
 export type Review = {
   name: string;
   suburb: string;
@@ -23,7 +25,7 @@ export type BusinessRating = { value: number; count: number };
 
 // Shown when Google data isn't configured yet or the API call fails. Keep these
 // in sync with the live Google Business Profile figures.
-export const FALLBACK_RATING: BusinessRating = { value: 5, count: 236 };
+export const FALLBACK_RATING: BusinessRating = { ...BUSINESS.rating };
 
 // Shown when Google reviews aren't configured yet or the API call fails.
 export const FALLBACK_REVIEWS: Review[] = [

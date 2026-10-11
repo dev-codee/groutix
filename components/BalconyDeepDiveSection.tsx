@@ -1,5 +1,6 @@
 "use client";
 
+import HeroContactBadges from "@/components/HeroContactBadges";
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,13 +24,11 @@ import {
   UserCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import AnimatedSection from "@/components/AnimatedSection";
 import ReviewCard from "@/components/ReviewCard";
-import { useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
 
@@ -327,11 +326,14 @@ export default function BalconyLeakRepairPage({
   reviews = [],
   rating,
 }: {
-  /** Only pass genuine Google reviews that are about balcony work. */
+  /** Google customer reviews shared with the other service pages. */
   reviews?: Review[];
   rating: BusinessRating;
 }) {
-  const { tel, phone } = useContact();
+  const visibleReviews = [
+    ...reviews.filter(review => /balcon(?:y|ies)/i.test(review.review)),
+    ...reviews.filter(review => !/balcon(?:y|ies)/i.test(review.review)),
+  ].slice(0, 3);
 
   const serviceJsonLd = {
     "@context": "https://schema.org",
@@ -342,14 +344,6 @@ export default function BalconyLeakRepairPage({
     url: "/balcony-leak-repairs/",
   };
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "/" },
-      { "@type": "ListItem", position: 2, name: "Balcony Leak Repairs", item: "/balcony-leak-repairs/" },
-    ],
-  };
 
   const speakableJsonLd = {
     "@context": "https://schema.org",
@@ -364,9 +358,8 @@ export default function BalconyLeakRepairPage({
   return (
     <>
       <Navbar />
-      <main>
+      <main className="public-page">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(speakableJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(BALCONY_FAQS)) }} />
 
@@ -378,10 +371,9 @@ export default function BalconyLeakRepairPage({
           </div>
 
           <div className="relative z-10 flex min-h-[calc(100vh-110px)] lg:min-h-[calc(100vh-125px)] flex-col">
-            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
+            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-4 sm:px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
             <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
               <div className="space-y-5 text-white lg:pt-2 text-center lg:text-left flex flex-col items-center lg:items-start">
-                <ServiceBreadcrumb service="Balcony Leak Repairs" />
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -416,34 +408,7 @@ export default function BalconyLeakRepairPage({
                   transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
                   className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-1 w-full"
                 >
-                  <a
-                    href="https://www.google.com/maps/place/Groutix"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-16 items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
-                  >
-                    <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.18 3.665-9.15z" />
-                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.14C3.25 21.32 7.31 24 12 24z" />
-                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.59H1.27C.46 8.21 0 10.05 0 12s.46 3.79 1.27 5.41l4.01-3.14z" />
-                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.68 1.27 6.59l4.01 3.14c.95-2.83 3.6-4.98 6.72-4.98z" />
-                    </svg>
-                    <span className="text-2xl font-black text-white">5.0</span>
-                    <div className="flex flex-col">
-                      <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
-                        ))}
-                      </div>
-                      <span className="text-[13px] text-white/80">{rating.count}+ Google Reviews</span>
-                    </div>
-                  </a>
-                  <a
-                    href={tel}
-                    className="flex h-16 items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
-                  >
-                    <Phone className="h-4 w-4" /> {phone || "+61 3 7023 8094"}
-                  </a>
+                    <HeroContactBadges rating={rating} />
                 </motion.div>
               </div>
 
@@ -462,8 +427,8 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 2. STATS STRIP (3 cards) ══ */}
         <AnimatedSection className="bg-white py-12 lg:py-16 border-b border-neutral-200">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               <a
                 href="https://www.google.com/maps/place/Groutix"
                 target="_blank"
@@ -496,11 +461,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 3. SIGNS ══ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead intro="Balconies rarely fail overnight. They warn you first. Here is what to look for.">
               Signs Your Balcony Needs <span className="text-accent">Leak Repair</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
               {SIGNS.map((s, i) => (
                 <InfoCard key={s.title} index={i} Icon={s.Icon} title={s.title} desc={s.desc} />
               ))}
@@ -511,11 +476,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 4. CAUSES ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead intro="Melbourne weather punishes outdoor tiles. Summer sun bakes them. Winter rain soaks them. Bay winds drive water into every gap.">
               What Causes Balconies to <span className="text-accent">Leak in Melbourne</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
               {CAUSES.map((c, i) => (
                 <InfoCard key={c.title} index={i} title={c.title} desc={c.desc} />
               ))}
@@ -526,12 +491,12 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 5. GROUT OR MEMBRANE ══ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead intro="This question decides your repair. Get it wrong and the leak returns.">
               Is It the Grout or the Membrane? <span className="text-accent">How We Diagnose the Real Cause</span>
             </SectionHead>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-[900px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-6 max-w-[900px] mx-auto">
               <Callout title="Failed grout">Needs regrouting.</Callout>
               <Callout title="Failed membrane">Needs a rebuild. Grout alone cannot fix a dead membrane.</Callout>
             </div>
@@ -565,11 +530,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 6. REPAIR OPTIONS ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead intro="One size never fits all. We match the repair to the cause we found.">
               Balcony Leak Repair Options: <span className="text-accent">Choose the Right Fix</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
               {REPAIR_OPTIONS.map((o, i) => (
                 <motion.div
                   key={o.title}
@@ -596,11 +561,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 7. BUILT FOR MELBOURNE WEATHER ══ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead intro="Indoor products die outdoors. A balcony faces full sun, cold snaps and salty bay air in one year.">
               Built for Melbourne Weather: <span className="text-accent">UV, Heat and Movement</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
               {WEATHER_CARDS.map((c, i) => (
                 <InfoCard key={c.title} index={i} Icon={AlertTriangle} title={c.title} desc={c.desc} />
               ))}
@@ -621,8 +586,8 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 8. PROCESS (steps left, photo right) ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
+            <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
               <div className="space-y-6">
                 <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Our Process</p>
                 <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -672,11 +637,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 9. COST ══ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead intro="No two balconies cost the same. Your price depends on:">
               Balcony Leak Repair Cost <span className="text-accent">in Melbourne</span>
             </SectionHead>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1080px] mx-auto">
               {COST_FACTORS.map((c, i) => (
                 <InfoCard key={c.title} index={i} title={c.title} desc={c.desc} />
               ))}
@@ -694,7 +659,7 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 10. STRATA ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="For Property Professionals"
               intro="Apartment balcony leaks raise a tough question. Who pays for the repair?"
@@ -714,7 +679,7 @@ export default function BalconyLeakRepairPage({
               We work with strata managers, committees and agents
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-[900px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-6 max-w-[900px] mx-auto">
               {STRATA_POINTS.map((p, i) => (
                 <InfoCard key={p.title} index={i} Icon={p.Icon} title={p.title} desc={p.desc} />
               ))}
@@ -742,11 +707,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 11. WITHOUT REMOVING TILES ══ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead>
               Can a Leaking Balcony Be Fixed <span className="text-accent">Without Removing Tiles?</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-[900px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-6 max-w-[900px] mx-auto">
               <div className="bg-white border border-neutral-200 border-t-4 border-t-[#001F97] rounded-sm p-6 space-y-4">
                 <span className="inline-block text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-sm bg-[#001F97]/10 text-[#001F97]">
                   Yes, in many cases
@@ -772,11 +737,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 12. WHY GROUTIX ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Why Groutix">
               Why Melbourne Homeowners <span className="text-accent">Choose Groutix</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
               {WHY_POINTS.map((w, i) => (
                 <motion.div
                   key={w.title}
@@ -804,17 +769,17 @@ export default function BalconyLeakRepairPage({
           </div>
         </AnimatedSection>
 
-        {/* ══ 13. REVIEWS (only genuine balcony reviews) ══ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        {/* ══ 13. GOOGLE CUSTOMER REVIEWS ══ */}
+        <AnimatedSection id="reviews" className="bg-white py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead>
-              What Melbourne Customers Say <span className="text-accent">About Our Balcony Work</span>
+              What Our <span className="text-accent">Customers Say</span>
             </SectionHead>
 
-            {reviews.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-[720px] mx-auto">
-                {reviews.slice(0, 2).map((r, i) => (
-                  <ReviewCard key={i} review={r} />
+            {visibleReviews.length > 0 ? (
+              <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
+                {visibleReviews.map((review) => (
+                  <ReviewCard key={`${review.name}-${review.review}`} review={review} />
                 ))}
               </div>
             ) : null}
@@ -834,7 +799,7 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 14. TEAM ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="The People Behind The Work"
               intro="Our technicians are licensed and insured. They are Melbourne locals who repair balconies every day."
@@ -846,7 +811,7 @@ export default function BalconyLeakRepairPage({
               <PhotoBox label="Team photo" aspect="aspect-[16/9] md:aspect-[21/9]" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {[
                 { name: "Johnny", role: "Technician" },
                 { name: "Max", role: "Technician" },
@@ -874,11 +839,11 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 15. RELATED ISSUES ══ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead>
               Related Issues <span className="text-accent">We Fix</span>
             </SectionHead>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6 max-w-[1080px] mx-auto">
               {RELATED.map((r, i) => {
                 const body = (
                   <>
@@ -924,7 +889,7 @@ export default function BalconyLeakRepairPage({
 
         {/* ══ 16. FAQ ══ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24" id="faq">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
             <div className="space-y-6 max-w-3xl mx-auto" data-speakable-faq>
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight text-center">
                 Balcony Leak Repair <span className="text-accent">FAQs</span>
@@ -939,7 +904,7 @@ export default function BalconyLeakRepairPage({
         </AnimatedSection>
 
         {/* ══ 17. FINAL CTA ══ */}
-        <AnimatedSection className="bg-primary py-16 px-6 lg:px-10 relative overflow-hidden">
+        <AnimatedSection className="bg-primary py-16 px-4 sm:px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto text-center space-y-6 relative z-10">
             <h2 className="text-3xl lg:text-[42px] font-black text-white leading-tight">
@@ -948,7 +913,7 @@ export default function BalconyLeakRepairPage({
             <p className="text-white/85 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
               For balcony leak repairs across Melbourne, call{" "}
               <a href="tel:+61370238094" className="underline hover:text-accent font-bold">
-                +61 3 7023 8094
+                (03) 7023 8094
               </a>{" "}
               now. Or request a quote online.
             </p>
@@ -964,7 +929,7 @@ export default function BalconyLeakRepairPage({
                 href="tel:+61370238094"
                 className="inline-flex items-center gap-2.5 border-[1.5px] border-white/80 hover:border-white text-white font-bold px-6 py-3 rounded-lg text-base sm:text-lg transition-all active:scale-95"
               >
-                <Phone className="h-4 w-4 fill-white text-white" /> +61 3 7023 8094
+                <Phone className="h-4 w-4 fill-white text-white" /> (03) 7023 8094
               </a>
             </div>
           </div>

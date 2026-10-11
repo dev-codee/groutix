@@ -1,11 +1,11 @@
 "use client";
+import HeroContactBadges from "@/components/HeroContactBadges";
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
 import { Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -54,7 +54,7 @@ function MiniFixCarousel({ images }: { images: string[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+      <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
@@ -253,7 +253,7 @@ function PhotoSlider({ serviceTitle }: { serviceTitle: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+      <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
@@ -488,21 +488,20 @@ export default function ServicePageTemplate({
   return (
     <>
       <Navbar />
-      <main className="pt-[110px] lg:pt-[125px]">
+      <main className="public-page pt-[110px] lg:pt-[125px]">
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
           className="bg-[#001F97] text-white relative"
         >
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 pt-16 pb-28 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 pt-16 pb-28 grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               className="space-y-6 pt-2"
             >
-              <ServiceBreadcrumb service={title} />
               <div className="w-12 h-12 flex items-center justify-center bg-white rounded-sm">
                 {icons[0]}
               </div>
@@ -512,14 +511,8 @@ export default function ServicePageTemplate({
               <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-xl">
                 {h1Desc}
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <a
-                  href={tel}
-                  className="inline-flex items-center justify-center gap-2 bg-white text-[#001F97] hover:bg-accent hover:text-[#001F97] font-black px-6 py-3.5 rounded-sm text-base transition-all active:scale-95 border-2 border-accent"
-                >
-                  <Phone className="h-4 w-4" />
-                  {phone}
-                </a>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <HeroContactBadges />
                 <a
                   href="#quote-form"
                   className="inline-flex items-center justify-center bg-accent text-[#001F97] hover:bg-white hover:text-[#001F97] font-black px-6 py-3.5 rounded-sm text-base transition-all active:scale-95 border-2 border-accent"
@@ -533,8 +526,8 @@ export default function ServicePageTemplate({
             </AnimatedImage>
           </div>
 
-          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10 pointer-events-none">
-            <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
+          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-4 sm:px-6 lg:px-10 z-10 pointer-events-none">
+            <div className="max-w-[1460px] mx-auto grid min-w-0 grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
               {(heroCards ? heroCards.map((c, i) => ({ title: c.title, desc: c.desc, icon: icons[i] ?? icons[0] })) : [
                 { title: `Specialists in tile and bathroom ${title.toLowerCase()}`, desc: "", icon: icons[0] },
                 { title: "Long-lasting solutions for worn or damaged areas", desc: "", icon: icons[1] },
@@ -565,7 +558,7 @@ export default function ServicePageTemplate({
         <TrustedMarquee />
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <AnimatedImage className="relative w-full">
               {serviceImageMap[slug]?.fail ? (
                 <div className={`img-glow relative w-full overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent rounded-sm" : " rounded-xl border-2 border-transparent hover:border-accent"}` }>
@@ -628,11 +621,11 @@ export default function ServicePageTemplate({
           </div>
         </AnimatedSection>
 
-        {slug === "small-tiling-jobs" && <section className="bg-accent-light/40 py-10"><div className="mx-auto max-w-[1460px] px-6 lg:px-10"><h2 className="text-2xl font-bold text-neutral-900">Tiles sound, grout worn?</h2><p className="mt-3 text-lg text-neutral-600">For worn grout across kitchen, laundry and bathroom floors, explore our <Link href="/tile-regrouting/" className="font-bold text-accent underline">tile regrouting</Link> service. For peeling seals around tile edges and fixtures, see <Link href="/silicone-recaulking/" className="font-bold text-accent underline">silicone replacement</Link>.</p></div></section>}
+        {slug === "small-tiling-jobs" && <section className="bg-accent-light/40 py-10"><div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10"><h2 className="text-2xl font-bold text-neutral-900">Tiles sound, grout worn?</h2><p className="mt-3 text-lg text-neutral-600">For worn grout across kitchen, laundry and bathroom floors, explore our <Link href="/tile-regrouting/" className="font-bold text-accent underline">tile regrouting</Link> service. For peeling seals around tile edges and fixtures, see <Link href="/silicone-recaulking/" className="font-bold text-accent underline">silicone replacement</Link>.</p></div></section>}
 
         <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-12">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-12">
+            <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -670,7 +663,7 @@ export default function ServicePageTemplate({
           </div>
         </AnimatedSection>
 
-        <AnimatedSection className="bg-[#3D68D8] py-8 px-6 lg:px-10">
+        <AnimatedSection className="bg-[#3D68D8] py-8 px-4 sm:px-6 lg:px-10">
           <div className="max-w-[1460px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <motion.h2
               initial={{ opacity: 0, x: -20 }}
@@ -697,9 +690,9 @@ export default function ServicePageTemplate({
           </div>
         </AnimatedSection>
 
-        <AnimatedSection className="bg-[#F3F4F6] pb-16 px-6 lg:px-10">
+        <AnimatedSection className="bg-[#F3F4F6] pb-16 px-4 sm:px-6 lg:px-10">
           <div className="max-w-[1460px] mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6 pt-8">
               {pillars.map((p, i) => (
                 <motion.div
                   key={i}
@@ -724,7 +717,7 @@ export default function ServicePageTemplate({
         </AnimatedSection>
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-14">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-14">
             <div className="flex flex-col gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -743,7 +736,7 @@ export default function ServicePageTemplate({
                 </p>
               </motion.div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-8">
               {steps.map((step, i) => (
                 <motion.div
                   key={i}
@@ -832,7 +825,7 @@ export default function ServicePageTemplate({
         </AnimatedSection>
 
         <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -841,7 +834,7 @@ export default function ServicePageTemplate({
             >
               Client Reviews <span className="text-accent">& Testimonials</span>
             </motion.h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {reviews.map((r, i) => (
                 <motion.div
                   key={i}
@@ -858,7 +851,7 @@ export default function ServicePageTemplate({
         </AnimatedSection>
 
         <AnimatedSection className="bg-white text-neutral-800 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <AnimatedImage className="relative group">
               <ImgBox src={slug === "leaking-shower-repair" ? "/img99.jpeg" : "/img6.avif"} label="What You Get Image" aspect="aspect-[4/3]" className={`img-glow rounded-sm${slug === "leaking-shower-repair" ? " border-4 border-transparent hover:border-accent transition-all duration-300" : ""}`} />
               <motion.div
@@ -887,7 +880,7 @@ export default function ServicePageTemplate({
                 )}
               </h2>
               <p className="text-neutral-600 text-base sm:text-base leading-relaxed">{workWithUsText}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 {workWithUsBullets.map((bullet, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <DropletIcon />
@@ -900,7 +893,7 @@ export default function ServicePageTemplate({
         </AnimatedSection>
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -978,7 +971,7 @@ export default function ServicePageTemplate({
         </AnimatedSection>
 
         <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-20">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-8">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-8">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
@@ -1009,7 +1002,7 @@ export default function ServicePageTemplate({
         </AnimatedSection>
 
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
             <div className="space-y-6 max-w-3xl mx-auto">
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
@@ -1032,7 +1025,7 @@ export default function ServicePageTemplate({
           <div className="absolute inset-0">
             <Image src="/img75.jpeg" alt="Request Quote Background" fill className="object-cover" />
           </div>
-          <div className="relative z-10 max-w-[1460px] mx-auto grid grid-cols-1 lg:grid-cols-2">
+          <div className="relative z-10 max-w-[1460px] mx-auto grid min-w-0 grid-cols-1 lg:grid-cols-2">
             <motion.div
               initial={{ opacity: 0, x: -40 }}
               whileInView={{ opacity: 1, x: 0 }}

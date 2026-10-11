@@ -4,6 +4,7 @@
 // timeout and automatic retries.
 
 import nodemailer from "nodemailer";
+import { normalizeBusinessPhoneText } from "@/lib/phone";
 
 export type EmailAttachment = {
   name: string;
@@ -54,7 +55,7 @@ function getTransporter(): nodemailer.Transporter {
 
 /**
  * Sanitizes any outgoing email subject, text, or HTML to enforce correct branding:
- * Phone: 7023 8094
+ * Phone: (03) 7023 8094
  * Email: info@groutix.com (on second line)
  * Website: www.groutix.com (strictly .com, on third line)
  */
@@ -67,9 +68,9 @@ export function cleanEmailText(content: string): string {
     /📞\s*(?:1300\s*476\s*884|\(03\)\s*7023\s*8094|7023\s*8094)\s*(?:&nbsp;|\s)*\|(?:&nbsp;|\s)*✉️\s*info@groutix\.com(?:\.au)?/gi,
     () => {
       if (text.includes("<body") || text.includes("<p") || text.includes("<div") || text.includes("<br")) {
-        return "📞 7023 8094<br/>✉️ info@groutix.com";
+        return "📞 (03) 7023 8094<br/>✉️ info@groutix.com";
       }
-      return "📞 7023 8094\n✉️ info@groutix.com";
+      return "📞 (03) 7023 8094\n✉️ info@groutix.com";
     }
   );
 
@@ -77,18 +78,15 @@ export function cleanEmailText(content: string): string {
     /(?:1300\s*476\s*884|\(03\)\s*7023\s*8094|7023\s*8094)\s*(?:&nbsp;|\s)*\|(?:&nbsp;|\s)*info@groutix\.com(?:\.au)?/gi,
     () => {
       if (text.includes("<body") || text.includes("<p") || text.includes("<div") || text.includes("<br")) {
-        return "7023 8094<br/>info@groutix.com";
+        return "(03) 7023 8094<br/>info@groutix.com";
       }
-      return "7023 8094\ninfo@groutix.com";
+      return "(03) 7023 8094\ninfo@groutix.com";
     }
   );
 
-  // 2. Normalize old phone numbers to 7023 8094
-  text = text.replace(/1300\s*476\s*884/gi, "7023 8094");
-  text = text.replace(/\(03\)\s*7023\s*8094/gi, "7023 8094");
-  text = text.replace(/1300476884/gi, "70238094");
-  text = text.replace(/tel:1300476884/gi, "tel:+61370238094");
-  text = text.replace(/tel:\(03\)70238094/gi, "tel:+61370238094");
+  // 2. Preserve clickable numbers and normalize the visible contact format.
+  text = text.replace(/tel:(?:1300476884|70238094|\(03\)70238094)/gi, "tel:+61370238094");
+  text = normalizeBusinessPhoneText(text);
 
   // 3. Normalize website references to groutix.com
   text = text.replace(/https?:\/\/(?:www\.)?groutix\.com\.au/gi, "https://groutix.com");
@@ -110,7 +108,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const cleanedSubject = cleanEmailText(args.subject);
   let cleanedHtml = cleanEmailText(args.html);
 
-  // Guarantee that every outgoing email contains the official contact number (7023 8094)
+  // Guarantee that every outgoing email contains the official contact number ((03) 7023 8094)
   // and a clickable link to groutix.com
   const hasPhone = /7023\s*8094/.test(cleanedHtml);
   const hasWebsiteLink = /href=["']https?:\/\/(?:www\.)?groutix\.com(?:\/|["'#?])/i.test(cleanedHtml);
@@ -119,7 +117,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
     const contactFooter = `
       <div style="margin-top:24px;padding:16px 20px;background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.9;color:#001f97;text-align:center;">
         <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">Groutix Customer Care</div>
-        <div>📞 Phone: <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
+        <div>📞 Phone: <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">(03) 7023 8094</a></div>
         <div>✉️ Email: <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
         <div>🌐 Website: <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
       </div>
@@ -346,7 +344,7 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
                 If you have any questions, simply reply to this email or call us.
               </p>
               <div style="font-size:14px;line-height:2.0;color:#001f97;font-weight:600;">
-                <div>📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></div>
+                <div>📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">(03) 7023 8094</a></div>
                 <div>✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></div>
                 <div>🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></div>
               </div>

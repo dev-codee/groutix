@@ -1,3 +1,4 @@
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
@@ -424,11 +425,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs", "balcony-leak-repairs"].includes(slug);
   const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
-    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote.`
     : slug === "silicone-recaulking"
-      ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+      ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote.`
       : slug === "small-tiling-jobs"
-        ? `Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. ${rating!.value.toFixed(1)} stars, ${rating!.count} reviews. Free quote.`
+        ? `Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. ${rating!.value.toFixed(1)} stars, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote.`
         : s.metaDesc;
   return {
     title: dedicatedService ? { absolute: s.metaTitle } : s.metaTitle,
@@ -454,10 +455,6 @@ export default async function ServicePage({ params }: Props) {
     const schema = [
       { "@context": "https://schema.org", "@type": "Service", "@id": abs("/balcony-leak-repairs/#service"), name: "Balcony Leak Repair", serviceType: "Balcony leak repair", url: abs("/balcony-leak-repairs/"), areaServed: { "@type": "City", name: "Melbourne VIC" }, provider: { "@id": `${SITE_URL}/#business` } },
       faqJsonLd(balconyFaqs),
-      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
-        { "@type": "ListItem", position: 2, name: "Balcony Leak Repairs", item: abs("/balcony-leak-repairs/") },
-      ] },
       { "@context": "https://schema.org", "@type": "WebPage", "@id": abs("/balcony-leak-repairs/#webpage"), url: abs("/balcony-leak-repairs/"), name: BALCONY_META_TITLE, speakable: { "@type": "SpeakableSpecification", cssSelector: ["#balcony-intro", ".balcony-faq-answer"] } },
     ];
     return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><BalconyLeakRepairsPage rating={rating} reviews={reviews} /></>;
@@ -468,10 +465,6 @@ export default async function ServicePage({ params }: Props) {
     const schema = [
       { "@context": "https://schema.org", "@type": "Service", "@id": abs("/small-tiling-jobs/#service"), name: "Small Tiling Jobs Melbourne", serviceType: "Tile repair", url: abs("/small-tiling-jobs/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
       faqJsonLd(smallTilingFaqs),
-      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
-        { "@type": "ListItem", position: 2, name: "Small Tiling Jobs", item: abs("/small-tiling-jobs/") },
-      ] },
     ];
     return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><SmallTilingJobsPage rating={rating} reviews={reviews} /></>;
   }
@@ -481,10 +474,6 @@ export default async function ServicePage({ params }: Props) {
     const schema = [
       { "@context": "https://schema.org", "@type": "Service", "@id": abs("/silicone-recaulking/#service"), name: "Silicone Replacement Melbourne", serviceType: "Silicone replacement", url: abs("/silicone-recaulking/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
       faqJsonLd(siliconeFaqs),
-      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
-        { "@type": "ListItem", position: 2, name: "Silicone & Recaulking", item: abs("/silicone-recaulking/") },
-      ] },
     ];
     return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><SiliconeRecaulkingPage rating={rating} reviews={reviews} /></>;
   }
@@ -494,10 +483,6 @@ export default async function ServicePage({ params }: Props) {
     const schema = [
       { "@context": "https://schema.org", "@type": "Service", "@id": abs("/tile-regrouting/#service"), name: "Tile Regrouting Melbourne", serviceType: "Tile regrouting", url: abs("/tile-regrouting/"), areaServed: { "@type": "City", name: "Melbourne" }, provider: { "@id": `${SITE_URL}/#business` } },
       faqJsonLd(tileRegroutingFaqs),
-      { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: abs("/") },
-        { "@type": "ListItem", position: 2, name: "Tile Regrouting", item: abs("/tile-regrouting/") },
-      ] },
     ];
     return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} /><TileRegroutingPage rating={rating} reviews={reviews} /></>;
   }

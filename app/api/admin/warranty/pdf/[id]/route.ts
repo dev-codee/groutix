@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     address,
     authorisedBy,
     dateIssued,
-    phone: "70238094",
+    phone: "(03) 7023 8094",
     email: "info@groutix.com",
     website: "www.groutix.com",
   });

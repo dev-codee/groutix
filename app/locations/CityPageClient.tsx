@@ -1,4 +1,6 @@
 "use client";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -302,7 +304,7 @@ export default function CityPageClient({
   const [mapQuery, setMapQuery] = useState(`${cityName}, VIC, Australia`);
   const parent = parentSlug || getRegionSlug(cityName, heroSubtitle, suburbGroups);
   return (
-    <main className="min-h-screen">
+    <main className="public-page min-h-screen">
       {/* ── Hero ── */}
       <motion.section
         initial={{ opacity: 0 }}
@@ -324,13 +326,8 @@ export default function CityPageClient({
             <p className="text-white/80 text-base sm:text-lg leading-relaxed">
               {heroSubtitle}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <a
-                href={tel}
-                className="inline-flex items-center justify-center gap-2 bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
-              >
-                <Phone className="h-4 w-4 text-primary" /> {phone}
-              </a>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <HeroContactBadges rating={rating} />
               <Link
                 href="#quote-form"
                 className="inline-flex items-center justify-center bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
@@ -350,7 +347,7 @@ export default function CityPageClient({
           </AnimatedImage>
         </div>
         {/* Bottom Badges - floating white cards matching service page style */}
-        <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10 pointer-events-none">
+        <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-4 sm:px-6 lg:px-10 z-10 pointer-events-none">
           <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
             {[
               { label: `${cityName}-based shower regrouting specialists`, Icon: LocationIcon },
@@ -383,7 +380,7 @@ export default function CityPageClient({
       {/* ── Section 2: Services (for Suburb) or Service Area (for City) ── */}
       {locationExplanation ? (
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
                 What <span className="text-accent">We Do</span>
@@ -444,7 +441,7 @@ export default function CityPageClient({
         </AnimatedSection>
       ) : (
         <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <AnimatedImage className="relative">
               <ImgBox
                 src={serviceAreaMapImage}
@@ -494,7 +491,7 @@ export default function CityPageClient({
 
       {/* ── Suburb Categories Accordion or Location Explanation ── */}
       <AnimatedSection id="suburbs" className="bg-white py-16 lg:py-24">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
           {locationExplanation ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
               {/* Map Column */}
@@ -621,7 +618,7 @@ export default function CityPageClient({
       {/* ── Our Services (only for City pages, hidden on Suburb pages) ── */}
       {!locationExplanation && (
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
                 What <span className="text-accent">We Do</span>
@@ -686,7 +683,7 @@ export default function CityPageClient({
 
       {/* ── Testimonials ── */}
       <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
           <div className="space-y-4">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -725,7 +722,7 @@ export default function CityPageClient({
                 ))}
               </div>
               <span className="text-sm text-neutral-400 font-bold">
-                {rating.value} | {rating.count} reviews
+                {rating.value} | {GOOGLE_REVIEW_COUNT_LABEL} reviews
               </span>
             </div>
             <a
@@ -780,7 +777,7 @@ export default function CityPageClient({
 
       {/* ── CTA Slider Section ── */}
       <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-20">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-8">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -819,7 +816,7 @@ export default function CityPageClient({
       <FaqSection />
 
       {/* ── CTA Banner ── */}
-      <AnimatedSection className="bg-[#3D68D8] py-14 px-6 lg:px-10">
+      <AnimatedSection className="bg-[#3D68D8] py-14 px-4 sm:px-6 lg:px-10">
         <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
           <motion.h2
             initial={{ opacity: 0, x: -20 }}

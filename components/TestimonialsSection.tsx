@@ -1,5 +1,6 @@
 "use client";
 
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import React from "react";
 import { Star, ShieldCheck } from "lucide-react";
 import ProductReviewWidget from "@/components/ProductReviewWidget";
@@ -30,7 +31,7 @@ export default function TestimonialsSection() {
                 ))}
               </div>
               <span className="text-base font-bold text-neutral-800">
-                {rating.value.toFixed(1)}/5 Average Rating ({rating.count}+ Reviews)
+                {rating.value.toFixed(1)}/5 Average Rating ({GOOGLE_REVIEW_COUNT_LABEL} Reviews)
               </span>
             </div>
             

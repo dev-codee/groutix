@@ -150,9 +150,9 @@ export async function POST(req: NextRequest) {
   let smsBody =
     eventType === "en_route"
       ? etaText
-        ? `Hi ${firstName}, your Groutix specialist is on the way and should arrive in approx ${etaText}. See you soon! - Groutix 7023 8094`
-        : `Hi ${firstName}, your Groutix specialist is on the way. See you soon! - Groutix 7023 8094`
-      : `Hi ${firstName}, your Groutix specialist has arrived at your property. - Groutix 7023 8094`;
+        ? `Hi ${firstName}, your Groutix specialist is on the way and should arrive in approx ${etaText}. See you soon! - Groutix (03) 7023 8094`
+        : `Hi ${firstName}, your Groutix specialist is on the way. See you soon! - Groutix (03) 7023 8094`
+      : `Hi ${firstName}, your Groutix specialist has arrived at your property. - Groutix (03) 7023 8094`;
   if (trackingUrl) smsBody += `\n\nTrack your specialist's live location:\n${trackingUrl}`;
 
   // ── Email ─────────────────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
         }
         ${trackingUrl ? `<p style="margin:0 0 24px;text-align:center;"><a href="${escapeHtml(trackingUrl)}" style="display:inline-block;background:#001f97;color:#fff;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:700;">Track your specialist live</a></p><p style="margin:0 0 24px;font-size:13px;color:#64748b;text-align:center;">Location updates automatically while your specialist is on the way.</p>` : ""}
         <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6;">
-          If you have any questions, please don't hesitate to call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a> or visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>.
+          If you have any questions, please don't hesitate to call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">(03) 7023 8094</a> or visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>.
         </p>
         <p style="margin:0;font-size:14px;color:#334155;">See you soon!<br/><strong>The Groutix Team</strong></p>
       `
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
           <div style="font-size:24px;font-weight:900;color:#15803d;">We're here!</div>
         </div>
         <p style="margin:0 0 16px;font-size:14px;color:#64748b;line-height:1.6;">
-          If you have any questions or concerns, please speak directly with our specialist, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">7023 8094</a>.
+          If you have any questions or concerns, please speak directly with our specialist, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">(03) 7023 8094</a>.
         </p>
         <p style="margin:0;font-size:14px;color:#334155;">Thank you for choosing Groutix!<br/><strong>The Groutix Team</strong></p>
       `;

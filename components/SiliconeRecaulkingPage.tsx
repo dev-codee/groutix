@@ -1,5 +1,6 @@
 "use client";
 
+import ResponsiveTable from "@/components/ResponsiveTable";
 import Link from "next/link";
 import { ArrowRight, Bath, Check, ChevronDown, Clock, Droplets, Grid2x2, House, Layers, Phone, Ruler, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 import ServiceTrustStrip from "@/components/ServiceTrustStrip";
@@ -24,8 +25,8 @@ function FaqAnswer({ index }: { index: number }) {
 }
 
 export default function SiliconeRecaulkingPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
-  return <><Navbar /><main className="overflow-x-clip">
-    <ServicePageHero title="Silicone Replacement Melbourne" breadcrumb="Silicone & Recaulking" description="Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds." defaultService="Silicone Replacement" benefits={["Full removal of old silicone", "Clear quote first", "Mould resistant finish"]} rating={rating} />
+  return <><Navbar /><main className="public-page overflow-x-clip">
+    <ServicePageHero title="Silicone Replacement Melbourne" description="Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds." defaultService="Silicone Replacement" benefits={["Full removal of old silicone", "Clear quote first", "Mould resistant finish"]} rating={rating} />
 
     <ServiceTrustStrip id="silicone-trust" rating={rating} first={{ value: "8,000+", label: "Bathrooms Restored", detail: "Across Melbourne & regional Victoria" }} />
 
@@ -48,14 +49,14 @@ export default function SiliconeRecaulkingPage({ rating, reviews }: { rating: Bu
     ]} /></Section>
 
     <Section id="silicone-or-grout" eyebrow="The right material" title="Silicone or Grout? Which Joint Gets Which" intro="Both seal your bathroom, but they do different jobs." alternate>
-      <div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[640px] text-left text-sm sm:text-base"><caption className="sr-only">The right material for each type of tile and fixture joint.</caption><thead className="bg-primary text-white"><tr>{["Joint", "Why", "What it needs"].map(heading => <th key={heading} scope="col" className="px-6 py-5 font-bold">{heading}</th>)}</tr></thead><tbody>
+      <ResponsiveTable label="Service comparison table"><table className="w-full min-w-[640px] text-left text-sm sm:text-base"><caption className="sr-only">The right material for each type of tile and fixture joint.</caption><thead className="bg-primary text-white"><tr>{["Joint", "Why", "What it needs"].map(heading => <th key={heading} scope="col" className="px-6 py-5 font-bold">{heading}</th>)}</tr></thead><tbody>
         <tr className="bg-white"><th scope="row" className="px-6 py-5 font-bold text-neutral-900">Flat tile to tile joints</th><td className="px-6 py-5 text-neutral-600">The joint does not move much</td><td className="px-6 py-5 text-neutral-600">Grout. See <Link href="/shower-regrouting/" className={link}>shower regrouting</Link> or <Link href="/tile-regrouting/" className={link}>tile regrouting</Link>.</td></tr>
         {[
           ["Inside corners and wall to wall", "Walls move and shrink"],
           ["Wall to floor, base to wall", "Different materials move at different rates"],
           ["Tile to bath, basin, benchtop or screen", "Two surfaces that expand differently"],
         ].map(([joint, why], i) => <tr key={joint} className={i % 2 ? "bg-white" : "bg-neutral-50"}><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">{joint}</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{why}</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">Silicone.</td></tr>)}
-      </tbody></table></div><p className={`mx-auto mt-7 max-w-3xl text-center ${text}`}>Grout in a corner cracks. Silicone on a flat joint peels. We use the right one in the right place.</p>
+      </tbody></table></ResponsiveTable><p className={`mx-auto mt-7 max-w-3xl text-center ${text}`}>Grout in a corner cracks. Silicone on a flat joint peels. We use the right one in the right place.</p>
     </Section>
 
     <Section id="why-silicone-fails" eyebrow="The cause" title="Why Silicone Fails"><Cards columns={4} items={[

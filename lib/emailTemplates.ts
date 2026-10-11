@@ -73,7 +73,7 @@ export const DYNAMIC_EMAIL_TAGS: DynamicTagInfo[] = [
 
   // Company Contact & Branding
   { tag: "{company_name}", label: "Company Name", category: "Company", description: "Business name", example: "Groutix" },
-  { tag: "{company_phone}", label: "Company Phone", category: "Company", description: "Main office / dispatch phone number", example: "7023 8094" },
+  { tag: "{company_phone}", label: "Company Phone", category: "Company", description: "Main office / dispatch phone number", example: "(03) 7023 8094" },
   { tag: "{company_email}", label: "Company Email", category: "Company", description: "General enquiries & support email", example: "info@groutix.com" },
   { tag: "{company_website}", label: "Website", category: "Company", description: "Company website domain", example: "groutix.com" },
 ];
@@ -100,7 +100,7 @@ export const SAMPLE_TEMPLATE_CONTEXT: TemplateContext = {
   inspectionAt: new Date(Date.now() + 86400000 * 2).toISOString(),
   jobAt: new Date(Date.now() + 86400000 * 5).toISOString(),
   companyName: "Groutix",
-  companyPhone: "7023 8094",
+  companyPhone: "(03) 7023 8094",
   companyEmail: "info@groutix.com",
   companyWebsite: "groutix.com",
 };
@@ -127,7 +127,7 @@ Looking forward to hearing from you.
 
 Warm regards,
 Groutix Customer Care
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -152,7 +152,7 @@ Once received, our technical team will review the photos and send through your t
 
 Thank you,
 Groutix Estimations Team
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -175,11 +175,11 @@ During the inspection, our specialist will:
 • Check for moisture ingress or underlying dampness
 • Provide a clear explanation of options and a transparent quotation on the spot
 
-If you need to reschedule or have any questions beforehand, please reply to this email or call us on 7023 8094.
+If you need to reschedule or have any questions beforehand, please reply to this email or call us on (03) 7023 8094.
 
 Kind regards,
 Groutix Team
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -206,7 +206,7 @@ Looking forward to assisting you!
 
 Warm regards,
 Groutix Estimations Team
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -234,7 +234,7 @@ If you have any questions before our arrival, please don't hesitate to reach out
 
 Kind regards,
 Groutix Operations
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -259,7 +259,7 @@ Thank you again for your business!
 
 Best regards,
 Groutix Team
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -285,7 +285,7 @@ Thank you again for trusting Groutix!
 
 Warm regards,
 The Groutix Team
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -310,13 +310,13 @@ Payment Options:
   BSB: 063-000 | Account: 1234 5678
   Reference: {invoice_number} or {customer_name}
 
-• Credit Card: Please call us on 7023 8094 to pay securely over the phone.
+• Credit Card: Please call us on (03) 7023 8094 to pay securely over the phone.
 
 If you have already processed this payment, please disregard this reminder with our sincere thanks.
 
 Kind regards,
 Groutix Accounts
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -332,7 +332,7 @@ Groutix Accounts
 
 Kind regards,
 Groutix Team
-📞 7023 8094
+📞 (03) 7023 8094
 ✉️ info@groutix.com
 🌐 groutix.com`,
   },
@@ -418,7 +418,7 @@ export function renderEmailTemplate(
       : "as stated on your invoice";
 
   const companyName = ctx.companyName || "Groutix";
-  const companyPhone = ctx.companyPhone || "7023 8094";
+  const companyPhone = ctx.companyPhone || "(03) 7023 8094";
   const companyEmail = ctx.companyEmail || "info@groutix.com";
   const companyWebsite = ctx.companyWebsite || "www.groutix.com";
 
@@ -559,10 +559,10 @@ export function formatEmailContentToHtml(text: string): string {
     '$1<a href="https://groutix.com" style="color:#001f97;text-decoration:underline;font-weight:700;" target="_blank">groutix.com</a>'
   );
 
-  // 1d. Auto-link phone number 7023 8094
+  // 1d. Auto-link phone number (03) 7023 8094
   str = str.replace(
-    /(^|[\s(>])(7023\s*8094)(?=[^\d]|$)/gi,
-    '$1<a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a>'
+    /(^|[\s>])((?:\(03\)\s*)?7023\s*8094)(?=[^\d]|$)/gi,
+    '$1<a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">(03) 7023 8094</a>'
   );
 
   // 2. Bold: **text**, <b>text</b>, <strong>text</strong>
@@ -667,7 +667,7 @@ export function buildBrandedEmailHtml(contentHtml: string, logoUrl = "/new_logo.
           If you have any questions, simply reply directly to this email or call us.
         </p>
         <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:14px;line-height:1.8;color:#001f97;font-weight:600;">
-          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">7023 8094</a></span>
+          <span style="display:inline-block;margin:0 8px;">📞 <a href="tel:+61370238094" style="color:#001f97;text-decoration:none;font-weight:700;">(03) 7023 8094</a></span>
           <span style="display:inline-block;margin:0 8px;">✉️ <a href="mailto:info@groutix.com" style="color:#001f97;text-decoration:none;font-weight:600;">info@groutix.com</a></span>
           <span style="display:inline-block;margin:0 8px;">🌐 <a href="https://groutix.com" target="_blank" style="color:#001f97;text-decoration:underline;font-weight:700;">groutix.com</a></span>
         </div>

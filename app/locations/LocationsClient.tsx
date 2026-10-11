@@ -1,4 +1,6 @@
 "use client";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -200,13 +202,8 @@ export default function LocationsClient({
               <p className="text-white/80 text-base sm:text-lg leading-relaxed">
                 Groutix provides specialist shower regrouting, grout repair and leaking shower services across Victoria, restoring failed wet areas without unnecessary tile removal or full bathroom demolition.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <a
-                  href={tel}
-                  className="inline-flex items-center justify-center gap-2 bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
-                >
-                  <Phone className="h-4 w-4 text-primary" /> {phone}
-                </a>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <HeroContactBadges rating={rating} />
                 <Link
                   href="#quote-form"
                   className="inline-flex items-center justify-center bg-white text-primary font-black px-7 py-3.5 rounded-xl text-base hover:bg-accent hover:text-primary transition-all active:scale-95 border-2 border-accent"
@@ -227,7 +224,7 @@ export default function LocationsClient({
           </div>
 
           {/* Bottom Badges - floating white cards matching service page style */}
-          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-6 lg:px-10 z-10 pointer-events-none">
+          <div className="absolute left-0 right-0 bottom-0 transform translate-y-1/2 px-4 sm:px-6 lg:px-10 z-10 pointer-events-none">
             <div className="max-w-[1460px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 pointer-events-none">
               {[
                 { label: "Victoria-based shower regrouting specialists", Icon: LocationIcon },
@@ -259,7 +256,7 @@ export default function LocationsClient({
 
       {/* Service Area */}
       <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <AnimatedImage className="relative">
               <ImgBox src="/img45.webp" label="Victoria Service Area Map" aspect="aspect-[4/3]" className="rounded-xl" />
             <div className="relative mt-4 mx-4 lg:mx-0 lg:absolute lg:bottom-4 lg:left-4 lg:right-4 bg-accent text-primary-dark p-6 rounded-xl shadow-xl z-10">
@@ -376,7 +373,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
 
       {/* Services Section */}
       <AnimatedSection className="bg-white py-16 lg:py-24">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
           <div className="mx-auto max-w-3xl space-y-4 text-center">
             <h2 className="text-4xl lg:text-[52px] font-bold text-neutral-900 leading-tight">
               What <span className="text-accent">We Do</span>
@@ -438,7 +435,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
 
       {/* Testimonials Section */}
       <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-24">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
           <div className="space-y-4">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -476,7 +473,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
                 ))}
               </div>
               <span className="text-sm text-neutral-400 font-bold">
-                {rating.value} | {rating.count} reviews
+                {rating.value} | {GOOGLE_REVIEW_COUNT_LABEL} reviews
               </span>
             </div>
             <a
@@ -533,7 +530,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
 
       {/* CTA Slider Section */}
       <AnimatedSection className="bg-[#F3F4F6] py-16 lg:py-20">
-        <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-8">
+        <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -572,7 +569,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
       <FaqSection />
 
       {/* CTA Banner */}
-      <AnimatedSection className="bg-[#3D68D8] py-14 px-6 lg:px-10">
+      <AnimatedSection className="bg-[#3D68D8] py-14 px-4 sm:px-6 lg:px-10">
         <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
           <motion.h2
             initial={{ opacity: 0, x: -20 }}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import BalconyRegroutingClient from "./BalconyRegroutingClient";
-import { getBusinessRating } from "@/lib/reviews";
+import { getBusinessRating, getReviews } from "@/lib/reviews";
 
 export const metadata: Metadata = {
   title: "Balcony Regrouting & Leak Repairs Melbourne | Groutix",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BalconyRegroutingPage() {
-  const rating = await getBusinessRating();
+  const [rating, reviews] = await Promise.all([getBusinessRating(), getReviews(5)]);
 
-  return <BalconyRegroutingClient rating={rating} />;
+  return <BalconyRegroutingClient rating={rating} reviews={reviews} />;
 }

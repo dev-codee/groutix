@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { normalizeBusinessPhoneText } from "@/lib/phone";
 import { QuoteSaveButton } from "@/components/admin/QuoteSaveButton";
 import { jobNumberChanges } from "@/lib/jobNumberChanges";
 import { saveLeadChanges } from "@/lib/saveLeadChanges";
@@ -870,17 +871,17 @@ export default function CrmDashboardPage() {
     const sanitizeTpls = (list: any[]) =>
       list.map((t) => ({
         ...t,
-        subject: (t.subject || "")
-          .replace(/1300\s*476\s*884/gi, "7023 8094")
-          .replace(/\(03\)\s*7023\s*8094/gi, "7023 8094")
+        subject: normalizeBusinessPhoneText(t.subject || "")
+          .replace(/1300\s*476\s*884/gi, "(03) 7023 8094")
+          .replace(/\(03\)\s*7023\s*8094/gi, "(03) 7023 8094")
           .replace(/groutix\.com\.au/gi, "groutix.com"),
-        body: (t.body || "")
+        body: normalizeBusinessPhoneText(t.body || "")
           .replace(
             /📞\s*(?:1300\s*476\s*884|\(03\)\s*7023\s*8094|7023\s*8094)\s*\|\s*✉️\s*info@groutix\.com(?:\.au)?/gi,
-            "📞 7023 8094\n✉️ info@groutix.com"
+            "📞 (03) 7023 8094\n✉️ info@groutix.com"
           )
-          .replace(/1300\s*476\s*884/gi, "7023 8094")
-          .replace(/\(03\)\s*7023\s*8094/gi, "7023 8094")
+          .replace(/1300\s*476\s*884/gi, "(03) 7023 8094")
+          .replace(/\(03\)\s*7023\s*8094/gi, "(03) 7023 8094")
           .replace(/groutix\.com\.au/gi, "groutix.com"),
       }));
 
@@ -2015,7 +2016,7 @@ export default function CrmDashboardPage() {
         return `${i + 1}. ${item.service}${q > 1 ? ` (Qty: ${q})` : ""} - $${lineTotal.toFixed(2)}${quoteTaxMode === "none" ? "" : " (inc GST)"}`;
       }).join("\n") +
       `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
-      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`
+      `Please let us know if you would like to proceed with the booking.\n\nRegards,\nGroutix Team\n📞 (03) 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`
     );
     window.location.href = `mailto:${activeQuoteLead.email}?subject=${subject}&body=${body}`;
   }
@@ -2919,7 +2920,7 @@ export default function CrmDashboardPage() {
       badge(78, "P");
       ctx!.fillStyle = "#ffffff";
       ctx!.font = "bold 16px Arial, sans-serif";
-      ctx!.fillText("70238094", 100, cy);
+      ctx!.fillText("(03) 7023 8094", 100, cy);
       ctx!.fillStyle = "#3f5f9a";
       ctx!.font = "16px Arial, sans-serif";
       ctx!.fillText("|", 300, cy);
@@ -5510,7 +5511,7 @@ export default function CrmDashboardPage() {
                       <div className="text-right text-[10.5px] leading-tight text-slate-700 space-y-0.5">
                         <div>Melbourne</div>
                         <div>VIC</div>
-                        <div>7023 8094</div>
+                        <div>(03) 7023 8094</div>
                         <div>info@groutix.com</div>
                         <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                         <div className="font-bold text-slate-900">ACN: 687 415 005</div>
@@ -6434,7 +6435,7 @@ export default function CrmDashboardPage() {
                             if (data.inspectionUrl) {
                               const firstName = (lead.name || "there").trim().split(/\s+/)[0];
                               setReplySubject(`Book Your Free Groutix Inspection — ${lead.name || "Customer"}`);
-                              setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
+                              setReplyText(`Hi ${firstName},\n\nThank you for your enquiry with Groutix!\n\nTo book your FREE inspection, please click the link below and choose a time that suits you:\n\n${data.inspectionUrl}\n\nIf you have any questions, feel free to reply to this email or call us on (03) 7023 8094.\n\nKind regards,\nGroutix Team\n📞 (03) 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
                             }
                           } catch { /* silently fail */ }
                         }}
@@ -6454,7 +6455,7 @@ export default function CrmDashboardPage() {
                             if (data.jobUrl) {
                               const firstName = (lead.name || "there").trim().split(/\s+/)[0];
                               setReplySubject(`Confirm Your Job Booking — ${lead.name || "Customer"}`);
-                              setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on 7023 8094.\n\nKind regards,\nGroutix Team\n📞 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
+                              setReplyText(`Hi ${firstName},\n\nGreat news! Your Groutix job is ready to be scheduled.\n\nTo confirm your booking date and time, please click the link below:\n\n${data.jobUrl}\n\nIf you have any questions, feel free to reply to this email or call us on (03) 7023 8094.\n\nKind regards,\nGroutix Team\n📞 (03) 7023 8094\n✉️ info@groutix.com\n🌐 www.groutix.com`);
                             }
                           } catch { /* silently fail */ }
                         }}
@@ -6692,7 +6693,7 @@ export default function CrmDashboardPage() {
                             <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-1.5">
                               <div className="font-bold text-[11px] text-[#001f97]">Stay Sealed. Stay Smiling.</div>
                               <div className="text-[10px] text-slate-500">
-                                📞 7023 8094 &nbsp;•&nbsp; ✉️ info@groutix.com &nbsp;•&nbsp; 🌐 www.groutix.com
+                                📞 (03) 7023 8094 &nbsp;•&nbsp; ✉️ info@groutix.com &nbsp;•&nbsp; 🌐 www.groutix.com
                               </div>
                               <div className="text-[9px] text-slate-400">
                                 &copy; {new Date().getFullYear()} Groutix. All rights reserved.
@@ -6963,7 +6964,7 @@ export default function CrmDashboardPage() {
                                 You are receiving this email regarding your Groutix service inquiry. If you have any questions, simply reply directly to this email.
                               </p>
                               <div className="flex items-center justify-center gap-4 text-xs font-semibold text-[#001f97] flex-wrap">
-                                <a href="tel:70238094" className="hover:underline">📞 7023 8094</a>
+                                <a href="tel:+61370238094" className="hover:underline">📞 (03) 7023 8094</a>
                                 <span>•</span>
                                 <a href="mailto:info@groutix.com" className="hover:underline">✉️ info@groutix.com</a>
                                 <span>•</span>
@@ -7940,7 +7941,7 @@ export default function CrmDashboardPage() {
                     <div className="text-right text-[10px] leading-tight text-slate-700 space-y-0.5">
                       <div>Melbourne</div>
                       <div>VIC</div>
-                      <div>7023 8094</div>
+                      <div>(03) 7023 8094</div>
                       <div>info@groutix.com</div>
                       <div className="pt-2 font-bold text-base text-[#d4af37]">Tax Invoice</div>
                       <div className="font-bold text-slate-900">ACN: 687 415 005</div>

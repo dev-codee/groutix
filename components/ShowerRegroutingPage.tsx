@@ -1,5 +1,8 @@
 "use client";
 
+import ResponsiveTable from "@/components/ResponsiveTable";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
@@ -21,7 +24,6 @@ import {
   Zap,
 } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
-import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -384,7 +386,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
     href?: string;
   }> = [
     { Icon: Droplets, value: "8,000+", label: "Bathrooms Restored", sub: "Across Melbourne & regional Victoria" },
-    { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", sub: "Based on 290+ Google reviews", stars: true, href: googleReviewsUrl },
+    { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", sub: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews`, stars: true, href: googleReviewsUrl },
     { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", sub: "On every complete shower regrout" },
   ];
 
@@ -392,15 +394,14 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
     <>
       <Navbar />
       {/* FIX 1: overflow-x-clip stops anything inside from creating a horizontal scrollbar */}
-      <main className="overflow-x-clip">
+      <main className="public-page overflow-x-clip">
         {/* ═══ 1. HERO ═══ */}
         <section id="quote-form" className="relative overflow-hidden pt-[110px] lg:pt-[125px]">
           <Image src="/img101.jpeg" alt="Tiled bathroom shower" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative mx-auto max-w-[1460px] px-6 py-8 pb-16 lg:px-10 lg:pb-20">
-            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_520px] xl:grid-cols-[minmax(0,1fr)_540px] lg:gap-12">
+          <div className="relative mx-auto max-w-[1460px] px-4 sm:px-6 py-8 pb-16 lg:px-10 lg:pb-20">
+            <div className="grid min-w-0 grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_520px] xl:grid-cols-[minmax(0,1fr)_540px] lg:gap-12">
               <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
-              <ServiceBreadcrumb service="Shower Regrouting" />
               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
                 Shower Regrouting Melbourne
@@ -409,25 +410,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
                 Groutix removes failed shower grout and rebuilds it with waterproof epoxy. Your tiles stay in place. Every complete shower regrout comes with a 10 year waterproof warranty.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
-                <a
-                  href={googleReviewsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-16 items-center gap-3 rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20"
-                  aria-label="5.0 stars, 290 plus Google reviews for Groutix"
-                >
-                  <GoogleIcon className="h-6 w-6 flex-shrink-0" />
-                  <span className="text-2xl font-black text-white">5.0</span>
-                  <span>
-                    <span className="flex gap-0.5" aria-hidden="true">
-                      {Array.from({ length: 5 }, (_, index) => <Star key={index} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}
-                    </span>
-                    <span className="text-[13px] text-white/80">290+ Google Reviews</span>
-                  </span>
-                </a>
-                <a href={tel} className="flex h-16 items-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20">
-                  <Phone className="h-4 w-4" /> {phone}
-                </a>
+                <HeroContactBadges />
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-sm text-white/85 lg:justify-start">
                 <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Eligible repairs: 10-year warranty</span>
@@ -442,7 +425,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
         <section className="border-b border-[#e2e6f0] bg-white px-6 py-12 lg:px-10 lg:py-16">
           <div className="mx-auto max-w-[920px]">
             <p className="mb-8 text-center text-[13px] font-bold uppercase tracking-[0.2em] text-accent">Trusted Across Victoria</p>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-3">
               {stats.map(({ Icon, value, label, sub, stars, href }) => {
                 const inner = (
                   <div className="flex h-full flex-col items-center gap-3 rounded-2xl border border-[#e2e6f0] bg-white px-6 py-8 text-center">
@@ -524,7 +507,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             <p className={lead}>Most showers use one of two grout types. The difference matters.</p>
           </SecHead>
 
-          <div className="w-full min-w-0 max-w-[900px] rounded-2xl border border-[#e2e6f0] bg-white shadow-sm">
+          <ResponsiveTable label="Epoxy grout and cement grout comparison">
             <table className="w-full table-fixed text-left text-sm sm:text-base">
               <thead className="bg-[#eef1f8] text-[12px] font-bold uppercase tracking-wide text-neutral-500 sm:tracking-widest">
                 <tr>
@@ -543,7 +526,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
                 ))}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
 
           <div className="max-w-[900px] space-y-4 text-center">
             <p className={lead}>Cement grout soaks up water, soap and dirt. Mould then grows in those pores, even when you clean often.</p>
@@ -769,7 +752,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
             <span className="font-bold text-neutral-900">Customer Reviews</span>
           </div>
           <div className="review-marquee-wrap w-full min-w-0 overflow-hidden">
-            <div className="review-marquee flex w-max px-6 lg:px-10">
+            <div className="review-marquee flex w-max px-4 sm:px-6 lg:px-10">
               {[...reviews, ...reviews].map((review, i) => (
                 <ReviewCard key={`${review.name}-${i}`} review={review} className="mr-6 w-[85vw] shrink-0 sm:w-[360px]" />
               ))}

@@ -1,5 +1,7 @@
 "use client";
 
+import ResponsiveTable from "@/components/ResponsiveTable";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Grid2x2, Droplets, Footprints, Home, ImageIcon, MapPin, Paintbrush, Phone, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 import { Section, Cards, QuoteLink, card, link, text } from "@/components/ServicePageSections";
@@ -15,18 +17,17 @@ import { tileRegroutingFaqs, tileGroutRows, tilePhotoSlots } from "@/lib/tileReg
 
 
 export default function TileRegroutingPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
-  return <><Navbar /><main>
+  return <><Navbar /><main className="public-page">
     <ServicePageHero
       title="Tile Regrouting Melbourne"
-      breadcrumb="Tile Regrouting"
       description="Groutix removes worn grout from floors, kitchens, laundries and bathrooms and rebuilds the joints. Your tiles look clean and keep water out. Your tiles stay in place. We tell you honestly when a clean is enough."
       defaultService="Tile Regrouting"
       benefits={["Tiles stay in place", "Clear quote first", "Honest advice"]}
       rating={rating}
     />
-    <section aria-labelledby="tile-trust" className="border-b border-neutral-200 bg-white py-10"><div className="mx-auto max-w-[1320px] px-6 lg:px-10"><h2 id="tile-trust" className="mb-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Victoria</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
+    <section aria-labelledby="tile-trust" className="border-b border-neutral-200 bg-white py-10"><div className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-10"><h2 id="tile-trust" className="mb-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Trusted Across Victoria</h2><div className="grid gap-8 text-center sm:grid-cols-3">{[
       { icon: MapPin, value: "Melbourne & Victoria", label: "Local Tile Repairs", sub: "Homes, rentals and commercial properties" },
-      { icon: GoogleIcon, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", sub: `Based on ${rating.count} Google reviews` },
+      { icon: GoogleIcon, value: `${rating.value.toFixed(1)}/5`, label: "Google Rating", sub: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews` },
       { icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", sub: "Eligible waterproof work; scope confirmed in your quote" },
     ].map(({ icon: Icon, value, label, sub }) => <div key={label}><Icon className="mx-auto mb-3 h-6 w-6 text-accent" /><p className="text-2xl font-black text-primary">{value}</p><p className="mt-1 font-bold text-neutral-900">{label}</p><p className="mt-2 text-sm text-neutral-500">{sub}</p></div>)}</div></div></section>
     <Section eyebrow="Signs to check" title="Signs Your Tile Grout Needs Regrouting" intro="Grout wears out slowly, so it is easy to miss. Look for these signs." alternate><Cards items={[
@@ -50,7 +51,7 @@ export default function TileRegroutingPage({ rating, reviews }: { rating: Busine
       { label: "Full regrout", title: "Many joints failing", body: <>Widespread staining, failing joints or movement need a closer look and may require a full regrout.</> },
       { label: "Replace tiles", title: "Cracked, loose or hollow tiles", body: <>These need more than grout. See <Link href="/small-tiling-jobs/" className={link}>small tiling jobs</Link>.</> },
     ].map(({ label, title, body }, i) => <div key={label} className={`${card} ${i === 1 ? "border-primary border-t-4" : "border-t-4 border-t-accent-light"}`}><span className="inline-block rounded-sm bg-accent-light/60 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">{label}</span><h3 className="mt-5 text-xl font-bold text-neutral-900">{title}</h3><p className="mt-3 leading-relaxed text-neutral-600">{body}</p></div>)}</div></Section>
-    <Section eyebrow="Choosing grout" title="Which Grout Suits Which Area?" intro="The right grout depends on what the room faces every day."><div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[640px] text-left text-sm sm:text-base"><caption className="sr-only">Grout options by tiled area, subject to inspection and material availability.</caption><thead className="bg-primary text-white"><tr>{["Area", "What it faces", "What we usually suggest"].map(h => <th key={h} scope="col" className="px-6 py-5 font-bold">{h}</th>)}</tr></thead><tbody>{tileGroutRows.map(([area, faces, suggestion], i) => <tr key={area} className={i % 2 ? "bg-neutral-50" : "bg-white"}><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">{area}</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{faces}</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{suggestion}</td></tr>)}</tbody></table></div><p className="mt-5 text-center text-sm leading-relaxed text-neutral-600">We choose after we inspect and confirm the available materials in your quote. Learn more on our <Link href="/epoxy-grout/" className={link}>epoxy grout</Link> page.</p></Section>
+    <Section eyebrow="Choosing grout" title="Which Grout Suits Which Area?" intro="The right grout depends on what the room faces every day."><ResponsiveTable label="Service comparison table"><table className="w-full min-w-[640px] text-left text-sm sm:text-base"><caption className="sr-only">Grout options by tiled area, subject to inspection and material availability.</caption><thead className="bg-primary text-white"><tr>{["Area", "What it faces", "What we usually suggest"].map(h => <th key={h} scope="col" className="px-6 py-5 font-bold">{h}</th>)}</tr></thead><tbody>{tileGroutRows.map(([area, faces, suggestion], i) => <tr key={area} className={i % 2 ? "bg-neutral-50" : "bg-white"}><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">{area}</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{faces}</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{suggestion}</td></tr>)}</tbody></table></ResponsiveTable><p className="mt-5 text-center text-sm leading-relaxed text-neutral-600">We choose after we inspect and confirm the available materials in your quote. Learn more on our <Link href="/epoxy-grout/" className={link}>epoxy grout</Link> page.</p></Section>
     <Section eyebrow="Before you book" title="Clean First, or Regrout?" intro="Not every dirty grout line needs replacing. If the grout is solid but stained, a proper clean may be enough." alternate><Cards items={[
       { title: "Sound Grout, Surface Stain", body: "A clean may be enough.", icon: Sparkles },
       { title: "Cracked, Crumbling or Missing", body: "The grout has failed. Regrout.", icon: Wrench },

@@ -15,7 +15,7 @@ const MAX_FIELD_LENGTH = 1000;
 const MAX_TRANSCRIPT_MESSAGES = 20;
 const TO_EMAIL = process.env.SUPPORT_TO_EMAIL || "info@groutix.com";
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
-const DEFAULT_CONTACT_PHONE = "7023 8094";
+const DEFAULT_CONTACT_PHONE = "(03) 7023 8094";
 
 type TicketBody = {
   name?: string;

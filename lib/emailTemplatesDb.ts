@@ -46,7 +46,7 @@ export async function listDbTemplates(): Promise<EmailTemplate[]> {
           doc.body.includes("1300 476 884") ||
           doc.body.includes("groutix.com.au") ||
           doc.body.includes("| ✉️") ||
-          doc.body.includes("(03) 7023 8094")
+          /(?<!\(03\) )7023 8094/.test(doc.body)
         ) {
           await col
             .updateOne(

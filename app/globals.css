@@ -205,3 +205,33 @@ body:has(.admin-ui) section.fixed.bottom-5.right-4,
 .admin-ui ~ button.fixed.bottom-5.right-4 {
   display: none !important;
 }
+/* Public content should wrap within the viewport; wide tables scroll independently. */
+.public-page {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.public-page :where(.grid, .flex) > * {
+  min-width: 0;
+}
+.public-page :where(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+.responsive-table table {
+  width: 100%;
+  min-width: 640px;
+}
+@media (max-width: 639px) {
+  .public-page .review-marquee-wrap {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+  .public-page .review-marquee {
+    animation: none;
+    transform: none;
+  }
+  .public-page .review-marquee > * {
+    scroll-snap-align: start;
+  }
+}

@@ -5,6 +5,8 @@
 // in lib/siteContentServer.ts so this file can be imported from client
 // components (provider, admin editor) without pulling in the Mongo driver.
 
+import { formatBusinessPhone, normalizeBusinessPhoneText } from "@/lib/phone";
+
 import { BUSINESS } from "@/lib/seo";
 import { faqCategories as DEFAULT_FAQS, type FaqCategory } from "@/lib/faqData";
 import { SHOWER_SCREEN_MODELS, type ShowerScreenModel } from "@/lib/showerScreensData";
@@ -13,7 +15,7 @@ export type { Faq, FaqCategory } from "@/lib/faqData";
 export type { ShowerScreenModel } from "@/lib/showerScreensData";
 
 export interface BusinessContent {
-  phone: string; // display form, e.g. "7023 8094"
+  phone: string; // display form, e.g. "(03) 7023 8094"
   email: string;
   hours: string; // e.g. "Mon – Fri: 8:00am – 5:00pm"
   address: {
@@ -134,13 +136,13 @@ export const DEFAULT_CONTENT: SiteContent = {
   },
   templates: {
     quoteEmailSubject: "Your Groutix Quote is Ready",
-    quoteEmailBody: "Hi {name},\n\nThank you for choosing Groutix! Please find your quote attached.\n\nRegards,\nThe Groutix Team\n📞 7023 8094\n🌐 groutix.com",
+    quoteEmailBody: "Hi {name},\n\nThank you for choosing Groutix! Please find your quote attached.\n\nRegards,\nThe Groutix Team\n📞 (03) 7023 8094\n🌐 groutix.com",
     invoiceEmailSubject: "Your Groutix Invoice",
-    invoiceEmailBody: "Hi {name},\n\nThank you for your business. Please find your invoice attached.\n\nRegards,\nThe Groutix Team\n📞 7023 8094\n🌐 groutix.com",
+    invoiceEmailBody: "Hi {name},\n\nThank you for your business. Please find your invoice attached.\n\nRegards,\nThe Groutix Team\n📞 (03) 7023 8094\n🌐 groutix.com",
     warrantyEmailSubject: "Your Groutix Warranty Certificate",
-    warrantyEmailBody: "Hi {name},\n\nPlease find your warranty certificate attached.\n\nRegards,\nThe Groutix Team\n📞 7023 8094\n🌐 groutix.com",
-    bookingSms: "Hi {name}, your appointment with Groutix is booked for {time}. Call 7023 8094 or reply YES to confirm.",
-    reminderSms: "Hi {name}, this is a reminder for your Groutix appointment tomorrow at {time}. Call 7023 8094."
+    warrantyEmailBody: "Hi {name},\n\nPlease find your warranty certificate attached.\n\nRegards,\nThe Groutix Team\n📞 (03) 7023 8094\n🌐 groutix.com",
+    bookingSms: "Hi {name}, your appointment with Groutix is booked for {time}. Call (03) 7023 8094 or reply YES to confirm.",
+    reminderSms: "Hi {name}, this is a reminder for your Groutix appointment tomorrow at {time}. Call (03) 7023 8094."
   },
   hero: {
     headline:
@@ -231,9 +233,13 @@ export const DEFAULT_CONTENT: SiteContent = {
 export function mergeContent(overrides: SiteContentOverrides | null | undefined): SiteContent {
   if (!overrides) return DEFAULT_CONTENT;
   const b = overrides.business ?? {};
+  const templates = { ...DEFAULT_CONTENT.templates, ...overrides.templates };
+  for (const key of Object.keys(templates) as (keyof typeof templates)[]) {
+    templates[key] = normalizeBusinessPhoneText(templates[key]);
+  }
   return {
     business: {
-      phone: b.phone ?? DEFAULT_CONTENT.business.phone,
+      phone: formatBusinessPhone(b.phone ?? DEFAULT_CONTENT.business.phone),
       email: b.email ?? DEFAULT_CONTENT.business.email,
       hours: b.hours ?? DEFAULT_CONTENT.business.hours,
       address: { ...DEFAULT_CONTENT.business.address, ...(b.address ?? {}) },
@@ -287,10 +293,7 @@ export function mergeContent(overrides: SiteContentOverrides | null | undefined)
       overrides.faqCategories && overrides.faqCategories.length
         ? overrides.faqCategories
         : DEFAULT_CONTENT.faqCategories,
-    templates: {
-      ...DEFAULT_CONTENT.templates,
-      ...overrides.templates,
-    },
+    templates,
   };
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import ResponsiveTable from "@/components/ResponsiveTable";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Clock, Grid2x2, Hammer, House, Layers, Paintbrush, Phone, Ruler, Search, ShieldCheck, Wrench } from "lucide-react";
 import ServiceTrustStrip from "@/components/ServiceTrustStrip";
@@ -21,8 +22,8 @@ function FaqAnswer({ index }: { index: number }) {
 }
 
 export default function SmallTilingJobsPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
-  return <><Navbar /><main className="overflow-x-clip">
-    <ServicePageHero title="Small Tiling Jobs Melbourne" breadcrumb="Small Tiling Jobs" description="Groutix repairs and replaces broken, cracked and loose tiles, then matches the grout so the repair blends in. No full retile needed for a small problem." defaultService="Small Tiling Job" benefits={["Single tile repairs", "Clear quote first", "Matched grout finish"]} rating={rating} />
+  return <><Navbar /><main className="public-page overflow-x-clip">
+    <ServicePageHero title="Small Tiling Jobs Melbourne" description="Groutix repairs and replaces broken, cracked and loose tiles, then matches the grout so the repair blends in. No full retile needed for a small problem." defaultService="Small Tiling Job" benefits={["Single tile repairs", "Clear quote first", "Matched grout finish"]} rating={rating} />
 
     <ServiceTrustStrip id="small-tiling-trust" variant="wireframe" rating={rating} first={{ value: "8,000+", label: "Bathrooms Restored", detail: "Across Melbourne & regional Victoria" }} />
 
@@ -44,12 +45,12 @@ export default function SmallTilingJobsPage({ rating, reviews }: { rating: Busin
       { title: "Match the Grout", body: "Colour match the grout around the repair.", icon: Paintbrush },
     ]} /><p className="mt-6 text-center text-sm leading-relaxed text-neutral-500">We inspect the area and confirm the repair scope before work starts.</p></Section>
 
-    <Section id="what-it-means" eyebrow="Reading the problem" title="Loose, Cracked or Hollow: What It Means" intro="A tile can fail for different reasons. Here is how we read it." alternate><div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[640px] text-left text-sm sm:text-base"><caption className="sr-only">Tile symptoms, possible causes and the repair assessment.</caption><thead className="bg-primary text-white"><tr>{["What you notice", "What it could mean", "What we do"].map(heading => <th key={heading} scope="col" className="px-6 py-5 font-bold">{heading}</th>)}</tr></thead><tbody>{[
+    <Section id="what-it-means" eyebrow="Reading the problem" title="Loose, Cracked or Hollow: What It Means" intro="A tile can fail for different reasons. Here is how we read it." alternate><ResponsiveTable label="Service comparison table"><table className="w-full min-w-[640px] text-left text-sm sm:text-base"><caption className="sr-only">Tile symptoms, possible causes and the repair assessment.</caption><thead className="bg-primary text-white"><tr>{["What you notice", "What it could mean", "What we do"].map(heading => <th key={heading} scope="col" className="px-6 py-5 font-bold">{heading}</th>)}</tr></thead><tbody>{[
       ["Hollow sound when tapped", "The tile may have lost its bond underneath", "We tap test nearby tiles and lift one if needed."],
       ["Tile moves or rocks", "The adhesive has let go", "Refix or replace."],
       ["Cracked tile", "Impact or movement", "Replace the tile."],
       ["Raised or lifted edge", "Movement or bond failure", "Refix, and check the surrounding tiles."],
-    ].map(([notice, meaning, action], i) => <tr key={notice} className={i % 2 ? "bg-neutral-50" : "bg-white"}><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">{notice}</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{meaning}</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{action}</td></tr>)}<tr className="bg-white"><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">Tiles keep coming loose in one area</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">Moisture or movement under the tiles</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">We tell you if it needs a leak assessment. See <Link href="/leaking-shower-repair/" className={link}>leaking shower repair</Link>.</td></tr></tbody></table></div><p className={`mx-auto mt-7 max-w-3xl text-center ${text}`}>A hollow sound alone is not always a problem. We check before we recommend anything.</p></Section>
+    ].map(([notice, meaning, action], i) => <tr key={notice} className={i % 2 ? "bg-neutral-50" : "bg-white"}><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">{notice}</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{meaning}</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">{action}</td></tr>)}<tr className="bg-white"><th scope="row" className="border-t border-neutral-200 px-6 py-5 font-bold text-neutral-900">Tiles keep coming loose in one area</th><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">Moisture or movement under the tiles</td><td className="border-t border-neutral-200 px-6 py-5 text-neutral-600">We tell you if it needs a leak assessment. See <Link href="/leaking-shower-repair/" className={link}>leaking shower repair</Link>.</td></tr></tbody></table></ResponsiveTable><p className={`mx-auto mt-7 max-w-3xl text-center ${text}`}>A hollow sound alone is not always a problem. We check before we recommend anything.</p></Section>
 
     <Section id="matching" eyebrow="Getting a match" title="Matching Your Tile"><aside className="mb-6 rounded-xl border-l-4 border-[#FBBC04] bg-accent-light/30 p-6 sm:p-8"><h3 className="text-xl font-bold text-neutral-900">Spare Tiles Match Best</h3><p className="mt-3 leading-relaxed text-neutral-600">Spare tiles from the original job are the best match. If you have a few, keep them. If the tile is discontinued, we tell you what the closest options are before we start.</p><p className="mt-3 text-sm leading-relaxed text-neutral-500">Please supply matching spare tiles if you have them. We confirm tile availability and supply arrangements before booking the repair.</p></aside><Cards items={[
       { title: "Size and Thickness", body: "The repaired tile needs to sit level with the rest.", icon: Ruler },

@@ -1,4 +1,6 @@
 "use client";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -20,7 +22,6 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -32,7 +33,7 @@ import { faqJsonLd } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import ServiceSuburbChecker from "@/components/ServiceSuburbChecker";
 
-/* Used only for the BreadcrumbList / Service JSON-LD. Change if the live domain differs. */
+/* Used for the Service JSON-LD. Change if the live domain differs. */
 const SITE_URL = "https://groutix.com";
 
 /* ─── Image placeholder (same ImgBox as the homepage) ─── */
@@ -314,7 +315,7 @@ export default function EpoxyGroutPage({
 }) {
   const { tel, mailto } = useContact();
   const [selectedSuburb, setSelectedSuburb] = useState<string>("");
-  const reviewCount = rating?.count ?? 290;
+  const reviewCount = GOOGLE_REVIEW_COUNT_LABEL;
 
   /* Reviews 2 and 3: real reviews that mention epoxy (never invented). Review 1 (Kirat Singh) is fixed. */
   const epoxyReviews = reviews
@@ -333,21 +334,12 @@ export default function EpoxyGroutPage({
     provider: { "@type": "LocalBusiness", name: "Groutix", url: SITE_URL },
     url: `${SITE_URL}/epoxy-grout`,
   };
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name: "Epoxy Grout", item: `${SITE_URL}/epoxy-grout` },
-    ],
-  };
 
   return (
     <>
       <Navbar />
-      <main>
+      <main className="public-page">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(EPOXY_FAQS)) }} />
 
         {/* ══════════════ SECTION 1, HERO (copy left, quote form right) ══════════════ */}
@@ -358,10 +350,9 @@ export default function EpoxyGroutPage({
           </div>
 
           <div className="relative z-10 flex flex-col">
-            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
+            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-4 sm:px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
               <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 <div className="space-y-4 text-white lg:pt-2 text-center lg:text-left flex flex-col items-center lg:items-start">
-                  <ServiceBreadcrumb service="Epoxy Grout" />
                   <p className="text-[13px] font-bold text-[#FBBC04] uppercase tracking-[0.2em]">Groutix</p>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
@@ -388,30 +379,7 @@ export default function EpoxyGroutPage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
                     className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-1 w-full"
                   >
-                    <a
-                      href="https://www.google.com/maps/place/Groutix"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex h-16 items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
-                    >
-                      <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.18 3.665-9.15z" />
-                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.14C3.25 21.32 7.31 24 12 24z" />
-                        <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.59H1.27C.46 8.21 0 10.05 0 12s.46 3.79 1.27 5.41l4.01-3.14z" />
-                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.68 1.27 6.59l4.01 3.14c.95-2.83 3.6-4.98 6.72-4.98z" />
-                      </svg>
-                      <span className="text-2xl font-black text-white">5.0</span>
-                      <div className="flex flex-col">
-                        <Stars />
-                        <span className="text-[13px] text-white/80">{reviewCount}+ Google Reviews</span>
-                      </div>
-                    </a>
-                    <a
-                      href="tel:+61370238094"
-                      className="flex h-16 items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
-                    >
-                      <Phone className="h-4 w-4" /> (03) 7023 8094
-                    </a>
+                    <HeroContactBadges rating={rating} />
                   </motion.div>
                 </div>
 
@@ -431,14 +399,14 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 2, TRUST STATS ══════════════ */}
         <AnimatedSection className="bg-white py-12 lg:py-16">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
             <p className="text-center text-[13px] font-bold text-accent uppercase tracking-[0.2em] mb-8">
               Trusted Across Victoria
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 { Icon: Droplets, value: "8,000+", label: "Bathrooms Restored", sub: "Across Melbourne & regional Victoria", stars: false, href: "" },
-                { Icon: Star, value: "5.0/5", label: "Google Rating", sub: `Based on ${reviewCount}+ Google reviews`, stars: true, href: "https://www.google.com/maps/place/Groutix" },
+                { Icon: Star, value: "5.0/5", label: "Google Rating", sub: `Based on ${reviewCount} Google reviews`, stars: true, href: "https://www.google.com/maps/place/Groutix" },
                 { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", sub: "On eligible completed work", stars: false, href: "" },
               ].map(({ Icon, value, label, sub, stars, href }, i) => {
                 const card = (
@@ -472,13 +440,13 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 3, WHAT IS EPOXY GROUT ══════════════ */}
         <AnimatedSection className="bg-white pb-16 pt-4 lg:pb-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="The Basics"
               title="What Is Epoxy Grout?"
               intro="Epoxy grout is a two part resin grout, not a cement one. Once it sets, it does not soak up water."
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {WHAT_IS.map(({ Icon, title, desc }, i) => (
                 <motion.div
                   key={title}
@@ -505,13 +473,13 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 4, BENEFITS AND TRADE-OFFS ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="The Honest Picture"
               title="Benefits and Trade-offs"
               intro="Epoxy is not the answer to everything. Here is the honest picture."
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <div className="space-y-3">
                 <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-primary">Benefits</p>
                 {BENEFITS.map((b, i) => (
@@ -561,9 +529,9 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 5, WHERE EPOXY GROUT WORKS BEST ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Where It Fits" title="Where Epoxy Grout Works Best" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {WORKS_BEST.map(({ Icon, title, link }, i) => (
                 <motion.div
                   key={title}
@@ -604,13 +572,13 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 6, EPOXY GROUT COLOURS ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="Colour"
               title="Epoxy Grout Colours"
               intro="Epoxy comes in many colours. We match your current grout or change it."
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {COLOURS.map((c, i) => (
                 <motion.div
                   key={c}
@@ -635,9 +603,9 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 7, MYTHS ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Clearing It Up" title="Myths About Epoxy Grout" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
               {MYTHS.map((m, i) => (
                 <motion.div
                   key={m.myth}
@@ -660,8 +628,8 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 8, OUR EPOXY GROUT PROCESS (steps left, photo right) ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
+            <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
               <div className="space-y-6">
                 <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Our Process</p>
                 <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -718,14 +686,14 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 9, LOOKING AFTER EPOXY GROUT ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Aftercare" title="Looking After Epoxy Grout" />
             <div className="max-w-4xl mx-auto border-l-4 border-accent pl-5 py-4 pr-5 bg-accent/5 rounded-r-sm">
               <p className="text-neutral-700 text-base sm:text-lg leading-relaxed">
                 Epoxy does not need sealing the way cement grout does. A gentle clean is usually enough.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {CARE.map((c, i) => (
                 <motion.div
                   key={c}
@@ -747,13 +715,13 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 10, WHAT DOES EPOXY GROUT COST? ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="Pricing"
               title="What Does Epoxy Grout Cost?"
               intro="Epoxy costs more upfront than cement because the material and the application are more demanding. We quote after we see the job."
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {COST_FACTORS.map((c, i) => (
                 <motion.div
                   key={c}
@@ -787,7 +755,7 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 11, LANDLORDS, AGENTS AND COMMERCIAL ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="For Property Professionals"
               title="Landlords, Agents and Commercial"
@@ -815,9 +783,9 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 12, WHY CHOOSE GROUTIX ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Why Groutix" title="Why Choose Groutix" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {WHY.map((w, i) => (
                 <motion.div
                   key={w.title}
@@ -840,10 +808,10 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 13, BEFORE AND AFTER ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Real Work" title="Before and After" />
             {/* Needs real photos: pass `src` to each ImgBox */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {BEFORE_AFTER.map((label, i) => (
                 <AnimatedImage key={label} delay={i * 0.1}>
                   <ImgBox
@@ -860,14 +828,14 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 14, CUSTOMER FEEDBACK ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Reviews" title="Customer Feedback" />
             <div className="flex items-center justify-center gap-3">
               <Stars className="h-5 w-5" />
               <span className="font-bold text-neutral-900">Customer Reviews</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {/* Review 1: real review from the homepage */}
               <div className="bg-white border border-neutral-200 rounded-sm p-6 flex flex-col gap-4">
                 <span className="self-start text-[11px] font-bold uppercase tracking-widest text-accent border border-accent/30 bg-accent/5 px-3 py-1 rounded-sm">
@@ -902,9 +870,9 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 15, RELATED SERVICES ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead eyebrow="Related Services" title="Related Services" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {RELATED.map((s, i) => (
                 <motion.div
                   key={s.href}
@@ -930,7 +898,7 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 16, SERVICE AREAS (same chips + checker as homepage) ══════════════ */}
         <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <SectionHead
               eyebrow="Service Areas"
               title="Which Melbourne Suburbs Do We Apply Epoxy Grout In?"
@@ -1011,7 +979,7 @@ export default function EpoxyGroutPage({
 
         {/* ══════════════ SECTION 17, EPOXY GROUT FAQs ══════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24" id="faq">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
             <div className="space-y-6 max-w-3xl mx-auto">
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight text-center">
                 Epoxy Grout FAQs
@@ -1031,7 +999,7 @@ export default function EpoxyGroutPage({
         </AnimatedSection>
 
         {/* ══════════════ SECTION 18, FINAL CTA ══════════════ */}
-        <AnimatedSection className="bg-primary py-16 px-6 lg:px-10 relative overflow-hidden">
+        <AnimatedSection className="bg-primary py-16 px-4 sm:px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto text-center space-y-6 relative z-10">
             <h2 className="text-3xl lg:text-[42px] font-black text-white leading-tight">Get Your Free Quote Today</h2>

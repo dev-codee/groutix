@@ -1,5 +1,6 @@
 "use client";
 
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Phone, Menu, X, ChevronDown, ChevronRight, MapPin } from "lucide-react";
@@ -34,6 +35,7 @@ export default function Navbar() {
   const [mobileLocationSubmenu, setMobileLocationSubmenu] = useState<string | null>(null);
   const [openDesktopMenu, setOpenDesktopMenu] = useState<string | null>(null);
   const desktopNavRef = React.useRef<HTMLDivElement>(null);
+  const mobileNavRef = React.useRef<HTMLElement>(null);
   const { phone, tel } = useContact();
 
   useEffect(() => {
@@ -64,16 +66,42 @@ export default function Navbar() {
 
   // Lock background scroll while the mobile menu is open.
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    const panel = mobileNavRef.current;
+    panel?.querySelector<HTMLButtonElement>('button[aria-label="Close menu"]')?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        setActiveSubmenu(null);
+        setMobileLocationSubmenu(null);
+      }
+      if (event.key !== "Tab" || !panel) return;
+      const controls = Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'));
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus();
     };
   }, [isOpen]);
 
   // Close the mobile menu when resizing up to desktop.
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth >= 768) setIsOpen(false);
+      if (window.innerWidth >= 1024) setIsOpen(false);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -92,7 +120,7 @@ export default function Navbar() {
   const services = [
     { name: "Shower Regrouting", href: "/shower-regrouting" },
     { name: "Leaking Shower Repair", href: "/leaking-shower-repair" },
-    { name: "Balcony Leak Repair", href: "/balcony-regrouting" },
+    { name: "Balcony Leak Repair", href: "/balcony-leak-repairs" },
     // { name: "Shower Base Repair", href: "/shower-base-repair" },
     // { name: "Shower Screens", href: "/shower-screens" },
     { name: "Tile Regrouting", href: "/tile-regrouting" },
@@ -238,7 +266,7 @@ export default function Navbar() {
             </a>
             <div className="flex items-center gap-1.5">
               <span className="text-amber-400 font-bold tracking-widest text-xs">★★★★★</span>
-              <span className="font-semibold">5.0 · 290+ Google Reviews</span>
+              <span className="font-semibold">5.0 · {GOOGLE_REVIEW_COUNT_LABEL} Google Reviews</span>
             </div>
           </div>
         </div>
@@ -490,9 +518,14 @@ export default function Navbar() {
               <Phone className="h-5 w-5" />
             </a>
             <button
-              onClick={() => setIsOpen(!isOpen)}
+              onClick={() => {
+                setIsOpen(!isOpen);
+                setActiveSubmenu("services");
+              }}
               className="inline-flex items-center justify-center p-2 rounded-lg text-slate-700 hover:text-[#001f97] hover:bg-blue-50 focus:outline-none cursor-pointer"
               aria-expanded={isOpen}
+              aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-controls="mobile-navigation"
             >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -511,18 +544,21 @@ export default function Navbar() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={closeMenu}
-              className="md:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+              className="pointer-events-auto lg:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
               aria-hidden="true"
             />
             <motion.aside
+              ref={mobileNavRef}
               key="panel"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="md:hidden fixed top-0 right-0 z-[70] flex h-[100dvh] w-[85%] max-w-sm flex-col bg-white shadow-2xl"
+              className="pointer-events-auto lg:hidden fixed top-0 right-0 z-[70] flex h-[100dvh] w-[90%] max-w-sm flex-col bg-white shadow-2xl"
+              id="mobile-navigation"
               role="dialog"
               aria-modal="true"
+              aria-label="Site navigation"
             >
               {/* Panel header */}
               <div className="flex h-[72px] flex-shrink-0 items-center justify-between border-b border-neutral-100 px-4">
@@ -539,7 +575,7 @@ export default function Navbar() {
               </div>
 
               {/* Scrollable links */}
-              <div className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 py-4">
                 {/* Mobile Services */}
                 <div>
                   <button
@@ -564,7 +600,7 @@ export default function Navbar() {
                               key={item.href}
                               href={item.href}
                               onClick={closeMenu}
-                              className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
+                              className="flex min-h-11 items-center py-2 text-base font-medium text-neutral-600 hover:text-accent"
                             >
                               {item.name}
                             </Link>

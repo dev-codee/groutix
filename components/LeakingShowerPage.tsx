@@ -1,11 +1,13 @@
 "use client";
 
+import ResponsiveTable from "@/components/ResponsiveTable";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, Building2, Camera, ChevronDown, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Star, Wrench } from "lucide-react";
+import { ArrowRight, Building2, Camera, ChevronDown, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Wrench } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
-import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -23,7 +25,7 @@ function Section({ id, title, accent, intro, eyebrow, alternate = false, childre
   id: string; title: string; accent?: string; intro?: string; eyebrow?: string; alternate?: boolean; children: ReactNode;
 }) {
   return <section id={id} className={`${alternate ? "bg-neutral-100" : "bg-white"} py-16 lg:py-24`}>
-    <div className="mx-auto max-w-[1460px] px-6 lg:px-10 space-y-10">
+    <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10 space-y-10">
       <div className="mx-auto max-w-3xl space-y-4 text-center">
         {eyebrow && <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-accent">{eyebrow}</p>}
         <h2 className="text-3xl lg:text-[42px] font-bold leading-tight text-neutral-900">{title}{accent && <> <span className="text-accent">{accent}</span></>}</h2>
@@ -75,23 +77,18 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
 
   return <>
     <Navbar />
-    <main>
+    <main className="public-page">
       <section id="quote-form" className="relative overflow-hidden pt-[110px] lg:pt-[125px]">
         <Image src="/img101.jpeg" alt="Tiled bathroom shower" fill priority sizes="100vw" className="object-cover" />
         <div className="absolute inset-0 bg-black/50" />
         <div className="relative mx-auto max-w-[1460px] px-6 py-8 pb-16 lg:px-10 lg:pb-20">
-          <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
+          <div className="grid min-w-0 grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
             <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
-              <ServiceBreadcrumb service="Leaking Shower Repair" />
               <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">Leaking Shower Repairs Melbourne</h1>
               <p className="mx-auto max-w-xl text-base leading-relaxed text-white/85 sm:text-lg lg:mx-0">Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
-                <a href={googleReviews} target="_blank" rel="noopener noreferrer" className="flex h-16 w-[280px] max-w-full shrink-0 items-center justify-center gap-3 rounded-sm border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition-colors hover:bg-white/20" aria-label="5.0 stars, 290 plus Google reviews for Groutix">
-                  <Image src="/google-logo.svg" alt="Google" width={24} height={24} /><span className="text-2xl font-black">5.0</span>
-                  <span><span className="flex gap-0.5" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <Star key={index} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />)}</span><span className="text-[13px] text-white/80">290+ Google Reviews</span></span>
-                </a>
-                <a href={phoneHref} className="inline-flex h-16 w-[280px] max-w-full shrink-0 items-center justify-center gap-2 rounded-sm border border-white/20 bg-white/10 px-5 py-3 font-bold backdrop-blur-sm transition-colors hover:bg-white/20"><Phone className="h-4 w-4" />(03) 7023 8094</a>
+                <HeroContactBadges />
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-sm text-white/85 lg:justify-start"><span className="inline-flex items-center gap-2"><Search className="h-4 w-4" />Find the source</span><span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Eligible repairs: 10-year warranty</span></div>
             </div>
@@ -101,12 +98,12 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
       </section>
 
       <section id="trust-stats" className="bg-white py-12 lg:py-16">
-        <div className="mx-auto max-w-[1460px] px-6 lg:px-10">
+        <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
           <p className="mb-8 text-center text-[13px] font-bold uppercase tracking-[0.2em] text-accent">Trusted Across Melbourne</p>
           <div className="grid gap-6 md:grid-cols-3">
             {[
               { Icon: Droplets, value: "Specialist", label: "Bathroom Repairs", detail: "Focused on grout, silicone and wet areas" },
-              { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", detail: "Based on 290+ Google reviews" },
+              { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", detail: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews` },
               { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", detail: "On eligible completed repairs" },
             ].map(({ Icon, value, label, detail }) => <div key={label} className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center"><span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-secondary"><Icon className="h-6 w-6" /></span><p className="text-3xl font-black leading-none text-neutral-900">{value}</p><h2 className="text-lg font-bold text-neutral-900">{label}</h2><p className="text-sm text-neutral-500">{detail}</p></div>)}
           </div>
@@ -119,7 +116,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
       </Section>
 
       <Section id="leak-sources" title="Where Is the Water" accent="Coming From?" intro="Not every leak is a grout leak. Here is how the common sources compare and who fixes each one.">
-        <div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[680px] text-left text-base leading-relaxed"><caption className="sr-only">Common shower leak sources, signs and who repairs them</caption><thead className="bg-primary text-white"><tr>{["Source", "What it looks like", "Who fixes it"].map((label) => <th key={label} scope="col" className="px-6 py-4 font-bold">{label}</th>)}</tr></thead><tbody>{sources.map(([source, signs, repairer], index) => <tr key={source} className={index % 2 ? "bg-neutral-50" : "bg-white"}><th scope="row" className="w-[30%] border-t border-neutral-200 px-6 py-5 align-top font-bold text-neutral-900">{source}</th><td className="w-[35%] border-t border-neutral-200 px-6 py-5 align-top text-neutral-600">{signs}</td><td className="border-t border-neutral-200 px-6 py-5 align-top text-neutral-700">{repairer}</td></tr>)}</tbody></table></div>
+        <ResponsiveTable label="Service comparison table"><table className="w-full min-w-[680px] text-left text-base leading-relaxed"><caption className="sr-only">Common shower leak sources, signs and who repairs them</caption><thead className="bg-primary text-white"><tr>{["Source", "What it looks like", "Who fixes it"].map((label) => <th key={label} scope="col" className="px-6 py-4 font-bold">{label}</th>)}</tr></thead><tbody>{sources.map(([source, signs, repairer], index) => <tr key={source} className={index % 2 ? "bg-neutral-50" : "bg-white"}><th scope="row" className="w-[30%] border-t border-neutral-200 px-6 py-5 align-top font-bold text-neutral-900">{source}</th><td className="w-[35%] border-t border-neutral-200 px-6 py-5 align-top text-neutral-600">{signs}</td><td className="border-t border-neutral-200 px-6 py-5 align-top text-neutral-700">{repairer}</td></tr>)}</tbody></table></ResponsiveTable>
         <p className="mx-auto max-w-4xl rounded-sm border-l-4 border-accent bg-accent/5 p-5 text-base leading-relaxed text-neutral-700">Plumbing work in Victoria must be done by a licensed plumber. If we suspect a pipe leak, we say so and do not charge for a repair that will not fix it.</p>
       </Section>
 

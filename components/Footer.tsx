@@ -1,4 +1,5 @@
 "use client";
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useContact } from "@/components/SiteContentProvider";
@@ -41,7 +42,7 @@ export default function Footer() {
             <div className="pt-1">
               <div className="flex items-center gap-1.5 text-xs text-white">
                 <span className="text-amber-400 font-bold tracking-widest text-xs">★★★★★</span>
-                <span className="font-semibold text-white/90">5.0 · 290+ Google reviews</span>
+                <span className="font-semibold text-white/90">5.0 · {GOOGLE_REVIEW_COUNT_LABEL} Google reviews</span>
               </div>
             </div>
             {/* Social Icons: circular dark buttons 'f' and 'ig' */}

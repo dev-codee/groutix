@@ -11,7 +11,7 @@ import ImgBox from "@/components/ServiceImageBox";
 export default function TeamSection({ title = <>Meet the Groutix <span className="text-accent">Team</span></> }: { title?: ReactNode }) {
   return (
     <AnimatedSection className="bg-white py-16 lg:py-24">
-      <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+      <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
         <div className="mx-auto max-w-3xl space-y-4 text-center">
           <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">The People Behind The Work</p>
           <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">

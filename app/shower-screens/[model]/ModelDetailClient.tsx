@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Phone, Ruler, ChevronRight } from "lucide-react";
+import { ArrowRight, Check, Phone, Ruler } from "lucide-react";
 import type { ShowerScreenModel } from "@/lib/showerScreensData";
 import { useContact, useSiteContent } from "@/components/SiteContentProvider";
 import { ScreenPreview, SpecificationTable } from "@/components/ShowerScreenCatalog";
@@ -19,7 +19,6 @@ export default function ModelDetailClient({ model: initialModel, allModels }: { 
   return (
     <main className="min-h-screen bg-[#f5f7f9] pt-[110px] text-slate-900 lg:pt-[125px]">
       <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
-        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-xs text-slate-500"><Link href="/" className="hover:underline">Home</Link><ChevronRight size={12} /><Link href="/shower-screens" className="hover:underline">Shower screens</Link><ChevronRight size={12} /><span>{model.name}</span></nav>
         <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-8">
           <p className="mb-2 text-xs font-semibold text-slate-500">Groutix · {model.category}</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{model.name}</h1>

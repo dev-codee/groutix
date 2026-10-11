@@ -11,6 +11,10 @@ export const SITE_URL = (
 // Default social-share image (swap for a branded 1200×630 image when you have one).
 export const OG_IMAGE = "/img11.jpeg";
 
+// Shared marketing review count; keep every badge and metadata label consistent.
+export const GOOGLE_REVIEW_COUNT = 292;
+export const GOOGLE_REVIEW_COUNT_LABEL = `${GOOGLE_REVIEW_COUNT}+`;
+
 export const BUSINESS = {
   name: "Groutix",
   legalName: "Groutix | Epoxy Regrouting, Shower & Balcony Leak Repairs",
@@ -37,7 +41,7 @@ export const BUSINESS = {
   ],
   // Fallback rating used when live Google data is unavailable. Keep in sync with
   // the Google Business Profile (see getBusinessRating in lib/reviews.ts).
-  rating: { value: 5, count: 236 },
+  rating: { value: 5, count: GOOGLE_REVIEW_COUNT },
   // Google Business Profile listing & official social profiles.
   sameAs: [
     "https://maps.google.com/?cid=11736395911597271820",

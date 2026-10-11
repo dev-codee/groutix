@@ -143,7 +143,7 @@ export async function buildWarrantyPdfBase64(input: WarrantyPdfInput): Promise<s
       color: NAVY,
     });
 
-    const phoneStr = input.phone || "70238094";
+    const phoneStr = input.phone || "(03) 7023 8094";
     const emailStr = input.email || "info@groutix.com";
     const webStr = input.website || "www.groutix.com";
 

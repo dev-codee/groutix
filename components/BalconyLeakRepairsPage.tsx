@@ -1,5 +1,6 @@
 "use client";
 
+import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Building2, Check, ChevronDown, ClipboardCheck, Clock, Droplets, Eye, Grid2x2, House, Layers, Paintbrush, Phone, Search, ShieldCheck, Sparkles, Sun, Waves, Wind, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -22,9 +23,12 @@ function InspectionCta({ label = "Book Your Free Inspection" }: { label?: string
 
 export default function BalconyLeakRepairsPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
   const balconyReviews = reviews.filter(review => /balcon(?:y|ies)/i.test(review.review));
-  const visibleReviews = balconyReviews.length ? balconyReviews : reviews.slice(0, 3);
-  return <><Navbar /><main className="overflow-x-clip">
-    <ServicePageHero title="Balcony Leak Repair Melbourne" breadcrumb="Balcony Leak Repairs" description={balconyIntro} descriptionId="balcony-intro" defaultService="Balcony Leak Repair" benefits={["No unnecessary tile removal", "Fixed written quote", "10-year warranty on eligible work"]} rating={rating} />
+  const visibleReviews = [
+    ...balconyReviews,
+    ...reviews.filter(review => !/balcon(?:y|ies)/i.test(review.review)),
+  ].slice(0, 3);
+  return <><Navbar /><main className="public-page overflow-x-clip">
+    <ServicePageHero title="Balcony Leak Repair Melbourne" description={balconyIntro} descriptionId="balcony-intro" defaultService="Balcony Leak Repair" benefits={["No unnecessary tile removal", "Fixed written quote", "10-year warranty on eligible work"]} rating={rating} />
     <ServiceTrustStrip id="balcony-trust" rating={rating} first={{ value: "Melbourne", label: "Homes, Apartments & Strata", detail: "Balcony leak repairs across our service areas" }} warrantyDetail="Eligible waterproof work; scope confirmed in your quote" />
 
     <Section id="signs" eyebrow="Signs to check" title="Signs Your Balcony Needs Leak Repair" intro="Balconies rarely fail overnight. They warn you first. Here is what to look for." alternate>
@@ -114,7 +118,7 @@ export default function BalconyLeakRepairsPage({ rating, reviews }: { rating: Bu
     <Section eyebrow="Why Groutix" title="Why Melbourne Homeowners Choose Groutix">
       <Cards items={[
         { title: "10 Year Waterproof Warranty", body: "On eligible completed waterproof work. Scope and terms confirmed in your quote.", icon: ShieldCheck },
-        { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${rating.count} Google reviews through our existing business review source.`, icon: Sparkles },
+        { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews through our existing business review source.`, icon: Sparkles },
         { title: "Leak and Grout Specialists", body: "Practical repairs for failed grout, silicone and leaking tiled areas.", icon: Wrench },
         { title: "Free Inspections", body: "Fixed written quotes before the agreed work starts.", icon: Search },
         { title: "Real Customer Reviews", body: "Read existing feedback from customers we have helped.", icon: ClipboardCheck },
@@ -122,7 +126,7 @@ export default function BalconyLeakRepairsPage({ rating, reviews }: { rating: Bu
       ]} />
     </Section>
 
-    <Section id="reviews" eyebrow="Customer feedback" title="What Melbourne Customers Say About Our Balcony Work" intro={balconyReviews.length ? "Google feedback mentioning balcony work, shown in the customer's own words." : "Read Google feedback about Groutix's repair work. These reviews describe the customers' own jobs; balcony-specific feedback will appear when available."} alternate>
+    <Section id="reviews" eyebrow="Customer feedback" title="What Our Customers Say" intro="Google feedback from customers we have helped across Melbourne, in their own words." alternate>
       <div className={`grid gap-6 ${visibleReviews.length === 1 ? "mx-auto max-w-xl" : visibleReviews.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>{visibleReviews.map(review => <ReviewCard key={`${review.name}-${review.review}`} review={review} />)}</div><div className="mt-8 text-center"><a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={link}>Read More Reviews on Google →</a></div>
     </Section>
 

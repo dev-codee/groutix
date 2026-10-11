@@ -30,7 +30,7 @@ const CUSTOMER_FROM_NAME = "Groutix";
 // Public phone shown to customers for urgent enquiries. Defaults to the
 // business number; the current value is loaded per-request in the handler so
 // admin edits to the contact number flow through to confirmation emails.
-const DEFAULT_CONTACT_PHONE = "7023 8094";
+const DEFAULT_CONTACT_PHONE = "(03) 7023 8094";
 
 // TEMPORARY: the customer self-service inspection booking button is disabled in
 // the confirmation email/SMS for now. Flip this back to `true` to re-enable the

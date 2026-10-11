@@ -1,11 +1,11 @@
 "use client";
 
+import HeroContactBadges from "@/components/HeroContactBadges";
 import { useState } from "react";
 import Link from "next/link";
-import ServiceBreadcrumb from "@/components/ServiceBreadcrumb";
-import { Search, SlidersHorizontal, ArrowRight, Phone, Ruler, ShieldCheck } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowRight, Ruler, ShieldCheck } from "lucide-react";
 import { SHOWER_SCREEN_MODELS } from "@/lib/showerScreensData";
-import { useContact, useSiteContent } from "@/components/SiteContentProvider";
+import { useSiteContent } from "@/components/SiteContentProvider";
 import { ProductRow } from "@/components/ShowerScreenCatalog";
 
 const FAQS = [
@@ -32,7 +32,6 @@ const FAQS = [
 ];
 
 export default function ShowerScreensClient() {
-  const { phone, tel } = useContact();
   const content = useSiteContent();
   const models = content.showerScreens?.length ? content.showerScreens : SHOWER_SCREEN_MODELS;
   const [category, setCategory] = useState("All");
@@ -44,12 +43,11 @@ export default function ShowerScreensClient() {
   if (sort === "name") filtered.sort((a,b) => a.name.localeCompare(b.name));
 
   return (
-    <main className="min-h-screen bg-[#f5f7f9] pt-[110px] text-slate-900 lg:pt-[125px]">
+    <main className="public-page min-h-screen bg-[#f5f7f9] pt-[110px] text-slate-900 lg:pt-[125px]">
       <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
-        <ServiceBreadcrumb service="Shower Screens & Wardrobes" theme="light" className="mb-6" />
-        <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div className="mb-7 flex flex-col gap-4">
           <div><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Find your shower screen</h1><p className="mt-2 text-sm text-slate-600">Compare designs, glass and finishes. Custom measured and installed across Victoria.</p></div>
-          <a href={tel} className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><Phone size={16} /> {phone}</a>
+          <div className="flex w-full flex-wrap gap-3"><HeroContactBadges theme="light" /></div>
         </div>
         <div className="mb-7 flex flex-wrap gap-x-7 gap-y-3 border-y border-slate-200 py-4 text-xs text-slate-600"><span className="flex items-center gap-2"><Ruler size={16} className="text-primary" /> On-site measurement</span><span className="flex items-center gap-2"><ShieldCheck size={16} className="text-primary" /> Toughened safety glass</span><span>Quotes tailored to your space</span></div>
         <div className="grid items-start gap-6 lg:grid-cols-[230px_1fr]">

@@ -1,5 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import { BUSINESS, GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
+import React, { useRef, useState } from "react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
@@ -42,6 +45,8 @@ import { faqJsonLd } from "@/lib/seo";
 import ImgBox from "@/components/ServiceImageBox";
 import TeamSection from "@/components/TeamSection";
 
+const coverageSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
 /* ─── Image placeholder ─── */
 function GoogleIcon({ className = "h-6 w-6" }: { className?: string }) {
   return (
@@ -71,18 +76,18 @@ function HomePhotoSlider() {
   const [idx, setIdx] = useState(0);
   const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
   const total = sliderImages.length;
-  const visibleImages = [sliderImages[idx], sliderImages[(idx + 1) % total], sliderImages[(idx + 2) % total]];
+  const visibleImages = Array.from({ length: 4 }, (_, offset) => sliderImages[(idx + offset) % total]);
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {visibleImages.map((img, i) => (
           <AnimatedImage key={`${idx}-${i}`} delay={i * 0.1}>
             <ImgBox
               src={img}
-              label={`Before & After Photo ${idx + i + 1}`}
+              label={`Before & After Photo ${(idx + i) % total + 1}`}
               aspect="aspect-[4/3]"
               className="rounded-sm"
               showBeforeAfterBadges={true}
@@ -93,12 +98,14 @@ function HomePhotoSlider() {
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={prev}
+          aria-label="Previous before and after photos"
           className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={next}
+          aria-label="Next before and after photos"
           className="h-9 w-9 rounded-sm bg-[#001F97] hover:bg-[#2F63CC] text-white flex items-center justify-center transition-colors"
         >
           <ChevronRight className="h-5 w-5" />
@@ -220,38 +227,17 @@ const HOME_FAQS = [
 
 /* ─── Diagnostic FAQ Item ─── */
 function DiagnosticFaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <motion.li
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="border border-neutral-200 bg-white cursor-pointer list-none rounded-sm"
-      onClick={() => setOpen((o) => !o)}
-    >
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
+  return <li className="list-none">
+    <details className="group rounded-sm border border-neutral-200 bg-white open:border-accent/50">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
         <span className="font-semibold text-neutral-900 text-base leading-snug">{q}</span>
-        <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform ${open ? "rotate-180 text-[#2F63CC]" : "text-neutral-400"}`} />
-      </div>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <p className="px-5 pb-4 text-base text-neutral-600 leading-relaxed border-t border-neutral-100 pt-3">
-              {a}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.li>
-  );
+        <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400 transition-transform group-open:rotate-180 group-open:text-accent" />
+      </summary>
+      <p className="border-t border-neutral-100 px-5 pb-4 pt-3 text-base leading-relaxed text-neutral-600">{a}</p>
+    </details>
+  </li>;
 }
 
-/* ─── Suburbs Directory for Instant Coverage Checker ─── */
 const SUBURB_DIRECTORY: Array<{ name: string; postcode?: string; region: string; href?: string }> = [
   // Melbourne Metro
   { name: "South Melbourne", postcode: "3205", region: "Melbourne Metro", href: "/locations/melbourne/south-melbourne" },
@@ -310,6 +296,10 @@ function SuburbCheckerWidget({
   const [query, setQuery] = useState(activeSuburb || "");
   const [fullName, setFullName] = useState("");
   const [phoneNum, setPhoneNum] = useState("");
+  const [emailAddress, setEmailAddress] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captcha = useRef<TurnstileInstance>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -373,12 +363,40 @@ function SuburbCheckerWidget({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query) return;
+    if (isSubmitting || !query.trim()) return;
+    const names = fullName.trim().split(/\s+/);
+    if (names.length < 2) {
+      setSubmitError("Please enter your first and last name.");
+      return;
+    }
+    if (coverageSiteKey && !captchaToken) {
+      setSubmitError("Please complete the verification below.");
+      return;
+    }
     setIsSubmitting(true);
-    // Simulate brief network submission to confirm coverage
-    await new Promise((r) => setTimeout(r, 600));
-    setIsSubmitting(false);
-    setSubmitted(true);
+    setSubmitError("");
+    const form = new FormData();
+    form.set("firstName", names[0]);
+    form.set("lastName", names.slice(1).join(" "));
+    form.set("phone", phoneNum.trim());
+    form.set("email", emailAddress.trim());
+    form.set("city", query.trim());
+    form.set("service", "Coverage & Callback Request");
+    form.set("sourcePage", "/#service-areas");
+    form.set("message", `Please confirm coverage for ${query.trim()} and contact me about my repair.`);
+    if (captchaToken) form.set("cf-turnstile-response", captchaToken);
+    try {
+      const response = await fetch("/api/quote", { method: "POST", body: form });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not send your enquiry. Please try again.");
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Could not send your enquiry. Please try again.");
+      captcha.current?.reset();
+      setCaptchaToken("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -537,14 +555,16 @@ function SuburbCheckerWidget({
               ? `Leave your details below and we will confirm if we can come to ${checkResult.suburb}:`
               : "Want us to confirm availability or book an inspection?"}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your Full Name"
-              className="w-full border border-neutral-300 rounded-lg px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-primary transition-colors"
+              aria-label="Full Name"
+              autoComplete="name"
+              className="w-full border border-neutral-300 rounded-lg px-3.5 py-2.5 text-base text-neutral-900 focus:outline-none focus:border-primary transition-colors"
             />
             <input
               type="tel"
@@ -552,9 +572,22 @@ function SuburbCheckerWidget({
               value={phoneNum}
               onChange={(e) => setPhoneNum(e.target.value)}
               placeholder="Your Phone Number"
-              className="w-full border border-neutral-300 rounded-lg px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-primary transition-colors"
+              aria-label="Phone Number"
+              autoComplete="tel"
+              className="w-full border border-neutral-300 rounded-lg px-3.5 py-2.5 text-base text-neutral-900 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
+          <label className="block text-sm font-semibold text-neutral-700">
+            Email
+            <input type="email" required autoComplete="email" value={emailAddress}
+              onChange={(e) => setEmailAddress(e.target.value)} placeholder="you@example.com"
+              className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-base font-normal text-neutral-900 focus:border-primary focus:outline-none" />
+          </label>
+          {coverageSiteKey && <Turnstile ref={captcha} siteKey={coverageSiteKey} onSuccess={setCaptchaToken}
+            onExpire={() => setCaptchaToken("")}
+            onError={() => { setCaptchaToken(""); setSubmitError("Verification could not load. Please try again."); }}
+            options={{ size: "flexible" }} />}
+          {submitError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
           <button
             type="submit"
             disabled={isSubmitting || !query.trim()}
@@ -587,7 +620,7 @@ export default function HomePage({
   return (
     <>
       <Navbar />
-      <main>
+      <main className="public-page">
         {/* ══════════════════════════════════════
             SECTION 1, HERO
             Two-column: copy left, form right
@@ -600,17 +633,18 @@ export default function HomePage({
           </div>
 
           <div className="relative z-10 flex min-h-[calc(100vh-110px)] lg:min-h-[calc(100vh-125px)] flex-col">
-            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
+            <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-4 sm:px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
               <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 {/* Left: headline + paragraph + badges */}
                 <div className="space-y-4 text-white lg:pt-2 text-center lg:text-left flex flex-col items-center lg:items-start">
+                  <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    Shower Regrouting and Balcony Regrouting in Melbourne | Groutix
+                    Shower Regrouting and Balcony Leak Repair in Melbourne | Groutix
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -628,46 +662,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
                     className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-1 w-full"
                   >
-                    <a
-                      href="https://www.google.com/maps/place/Groutix"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex h-16 items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors"
-                    >
-                      <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.18 3.665-9.15z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.14C3.25 21.32 7.31 24 12 24z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.59H1.27C.46 8.21 0 10.05 0 12s.46 3.79 1.27 5.41l4.01-3.14z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.68 1.27 6.59l4.01 3.14c.95-2.83 3.6-4.98 6.72-4.98z"
-                        />
-                      </svg>
-                      <span className="text-2xl font-black text-white">5.0</span>
-                      <div className="flex flex-col">
-                        <div className="flex gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
-                          ))}
-                        </div>
-                        <span className="text-[13px] text-white/80">{rating.count}+ Google Reviews</span>
-                      </div>
-                    </a>
-                    <a
-                      href={tel}
-                      className="flex h-16 items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-sm px-5 py-3 hover:bg-white/20 transition-colors text-white font-bold"
-                    >
-                      <Phone className="h-4 w-4" /> (03) 7023 8094
-                    </a>
+                    <HeroContactBadges rating={rating} />
                   </motion.div>
                 </div>
 
@@ -694,11 +689,11 @@ export default function HomePage({
             SECTION 3, Trust Stats (3-column)
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-12 lg:py-16">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
             <p className="text-center text-[13px] font-bold text-accent uppercase tracking-[0.2em] mb-8">
               Trusted Across Victoria
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   Icon: Droplets,
@@ -712,7 +707,7 @@ export default function HomePage({
                   Icon: GoogleIcon,
                   value: "5.0/5",
                   label: "Google Rating",
-                  sublabel: `Based on ${rating.count}+ Google reviews`,
+                  sublabel: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews`,
                   color: "",
                   showStars: true,
                   linked: true,
@@ -752,7 +747,7 @@ export default function HomePage({
                 );
                 if (linked) {
                   return (
-                    <a key={label} href="https://www.google.com/maps/place/Groutix" target="_blank" rel="noopener noreferrer" className="block">
+                    <a key={label} href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className="block">
                       {content}
                     </a>
                   );
@@ -766,26 +761,22 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 4, Credentials strip
         ══════════════════════════════════════ */}
-        {/*
-        <div className="bg-primary py-3">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 flex flex-wrap items-center justify-center gap-6 text-[13px] text-white/90">
-            <span className="font-bold text-accent">Licensed &amp; Insured</span>
-            <span>Licence No. [CONFIRM]</span>
-            <span>ABN [CONFIRM]</span>
-            <span>[CONFIRM years] years in business</span>
+        <section aria-label="Credentials" className="bg-primary py-3">
+          <div className="mx-auto flex max-w-[1460px] flex-wrap items-center justify-center gap-3 px-4 text-[13px] text-white sm:px-6 lg:px-10">
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="font-bold">Licensed &amp; Insured</span>
           </div>
-        </div>
-        */}
+        </section>
 
         {/* ══════════════════════════════════════
             SECTION 5, What We Do, Services
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <AnimatedSection id="services" className="bg-white py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">What We Do</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
-                Shower Regrouting &amp; <span className="text-accent">Balcony Regrouting</span> Services
+                Shower Regrouting &amp; <span className="text-accent">Balcony Leak Repair</span> Services
               </h2>
               <p className="text-neutral-600 text-lg leading-relaxed">
                 Groutix handles shower regrouting, leaking shower repairs, and balcony regrouting across Melbourne.
@@ -793,7 +784,7 @@ export default function HomePage({
             </div>
 
             {/* Featured Services (3 core) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {FEATURED_SERVICES.map((s, i) => {
                 const Icon = SERVICE_ICONS[s.slug] ?? Droplets;
                 return (
@@ -848,7 +839,7 @@ export default function HomePage({
             </div>
 
             {/* Standard Services (4 cards) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {STANDARD_SERVICES.map((s, i) => {
                 const Icon = SERVICE_ICONS[s.slug] ?? Droplets;
                 return (
@@ -905,8 +896,8 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 6, Problem / Diagnostic
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-12">
+        <section id="shower-grout-problems" className="bg-neutral-100 py-16 lg:py-24 scroll-mt-32">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-12">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Shower Grout Problems</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -920,7 +911,7 @@ export default function HomePage({
             {/* Diagnostic table */}
             <div className="bg-white rounded-sm border border-neutral-200 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-3 bg-neutral-50 border-b border-neutral-200">
+              <div className="hidden sm:grid sm:grid-cols-3 bg-neutral-50 border-b border-neutral-200">
                 <div className="px-6 py-3 text-[12px] font-bold uppercase tracking-widest text-neutral-500">What You See</div>
                 <div className="px-6 py-3 text-[12px] font-bold uppercase tracking-widest text-neutral-500">What It Could Mean</div>
                 <div className="px-6 py-3 text-[12px] font-bold uppercase tracking-widest text-neutral-500">What To Do</div>
@@ -944,15 +935,15 @@ export default function HomePage({
               ].map((row, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={false}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className="grid grid-cols-3 border-b border-neutral-100 last:border-b-0"
+                  className="grid grid-cols-1 sm:grid-cols-3 border-b border-neutral-200 last:border-b-0"
                 >
-                  <div className="px-6 py-5 font-bold text-neutral-900 text-base">{row.see}</div>
-                  <div className="px-6 py-5 text-neutral-600 text-base leading-relaxed">{row.mean}</div>
-                  <div className="px-6 py-5 text-neutral-600 text-base leading-relaxed">{row.todo}</div>
+                  <div className="px-4 py-3 sm:px-6 sm:py-5 font-bold text-neutral-900 text-base"><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-accent sm:hidden">What You See</span>{row.see}</div>
+                  <div className="px-4 py-3 sm:px-6 sm:py-5 text-neutral-600 text-base leading-relaxed"><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-accent sm:hidden">What It Could Mean</span>{row.mean}</div>
+                  <div className="px-4 py-3 sm:px-6 sm:py-5 text-neutral-600 text-base leading-relaxed"><span className="mb-1 block text-xs font-bold uppercase tracking-wide text-accent sm:hidden">What To Do</span>{row.todo}</div>
                 </motion.div>
               ))}
             </div>
@@ -972,7 +963,7 @@ export default function HomePage({
                 ].map((item, i) => (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={false}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.08, duration: 0.4 }}
@@ -1017,13 +1008,13 @@ export default function HomePage({
               </div>
             </div>
           </div>
-        </AnimatedSection>
+        </section>
 
         {/* ══════════════════════════════════════
             SECTION 7, Before & After Gallery
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 relative z-10 space-y-8">
+        <AnimatedSection id="before-after" className="bg-white py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 relative z-10 space-y-8">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Real Work</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -1040,8 +1031,8 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 8, Client Reviews & Testimonials
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <AnimatedSection id="reviews" className="bg-neutral-100 py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Customer Feedback</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900">
@@ -1062,8 +1053,8 @@ export default function HomePage({
               <span className="font-bold text-neutral-900">Customer Reviews</span>
             </div>
 
-            <div className="review-marquee-wrap overflow-hidden -mx-6 lg:-mx-10">
-              <div className="review-marquee flex w-max px-6 lg:px-10">
+            <div className="review-marquee-wrap overflow-hidden -mx-4 sm:-mx-6 lg:-mx-10">
+              <div className="review-marquee flex w-max px-4 sm:px-6 lg:px-10">
                 {[...reviews, ...reviews].map((r, i) => (
                   <ReviewCard key={i} review={r} className="mr-6 shrink-0 w-[85vw] sm:w-[360px]" />
                 ))}
@@ -1072,7 +1063,7 @@ export default function HomePage({
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
               <a
-                href="https://www.google.com/maps/place/Groutix"
+                href={BUSINESS.sameAs[0]}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-accent font-bold hover:underline"
@@ -1100,9 +1091,9 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 9, Our Regrouting Process
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+        <AnimatedSection id="process" className="bg-white py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
+            <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
               {/* Left: Process steps */}
               <div className="space-y-6">
                 <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Our Process</p>
@@ -1183,7 +1174,7 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 10, Warranty
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-primary py-14 px-6 lg:px-10 relative overflow-hidden">
+        <AnimatedSection id="warranty" className="bg-primary py-14 px-4 sm:px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
             <div className="space-y-4 max-w-2xl">
@@ -1218,8 +1209,8 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 11, Why Choose Groutix
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <AnimatedSection id="why-groutix" className="bg-neutral-100 py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Why Groutix</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -1230,7 +1221,7 @@ export default function HomePage({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   Icon: Search,
@@ -1298,8 +1289,8 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 13, Real Estate & Property Services
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <AnimatedSection id="property-services" className="bg-neutral-100 py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">For Property Professionals</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -1310,7 +1301,7 @@ export default function HomePage({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   Icon: Users,
@@ -1369,7 +1360,7 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 14, Specialist vs General CTA band
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-primary py-14 px-6 lg:px-10 relative overflow-hidden">
+        <AnimatedSection className="bg-primary py-14 px-4 sm:px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto space-y-6 relative z-10 text-center">
             <h2 className="text-2xl lg:text-3xl font-black text-white leading-tight max-w-3xl mx-auto">
@@ -1390,8 +1381,8 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 15, What Happens After You Book
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-white py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <AnimatedSection id="how-it-works" className="bg-white py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">How It Works</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -1402,7 +1393,7 @@ export default function HomePage({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   num: "01",
@@ -1474,8 +1465,8 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 16, Service Areas
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-neutral-100 py-16 lg:py-24">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10 space-y-10">
+        <AnimatedSection id="service-areas" className="bg-neutral-100 py-16 lg:py-24">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 space-y-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <p className="text-[13px] font-bold text-accent uppercase tracking-[0.2em]">Service Areas</p>
               <h2 className="text-3xl lg:text-[42px] font-bold text-neutral-900 leading-tight">
@@ -1566,7 +1557,7 @@ export default function HomePage({
             SECTION 17, FAQ (Updated questions from doc)
         ══════════════════════════════════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24" id="faq">
-          <div className="max-w-[1460px] mx-auto px-6 lg:px-10">
+          <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10">
             <div className="space-y-6 max-w-3xl mx-auto">
               <h2 className="text-3xl lg:text-[40px] font-bold text-neutral-900 leading-tight text-center">
                 Frequently Asked <span className="text-accent">Questions</span>
@@ -1595,7 +1586,7 @@ export default function HomePage({
         {/* ══════════════════════════════════════
             SECTION 18, Final CTA
         ══════════════════════════════════════ */}
-        <AnimatedSection className="bg-primary py-16 px-6 lg:px-10 relative overflow-hidden">
+        <AnimatedSection className="bg-primary py-16 px-4 sm:px-6 lg:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,214,79,0.25),transparent_45%)]" />
           <div className="max-w-[1460px] mx-auto text-center space-y-6 relative z-10">
             <h2 className="text-3xl lg:text-[42px] font-black text-white leading-tight">
