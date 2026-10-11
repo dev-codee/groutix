@@ -1871,20 +1871,22 @@ export default function CrmDashboardPage() {
     if (!activeQuoteLead || quoteSaving) return;
     setQuoteSaving(true);
     setQuoteSaveError("");
-    const { total } = quoteTotals();
-    const updates: Partial<Lead> = {
-      ...quoteLeadDetails(activeQuoteLead),
-      quoteScope,
-      quoteItems,
-      quoteTaxMode,
-      quoteTaxRate,
-      quoteTerms,
-      quoteAmount: total,
-      quoteUpdated: new Date().toISOString()
-    };
     try {
+      const { total } = quoteTotals();
+      const updates: Partial<Lead> = {
+        ...quoteLeadDetails(activeQuoteLead),
+        quoteScope,
+        quoteItems,
+        quoteTaxMode,
+        quoteTaxRate,
+        quoteTerms,
+        quoteAmount: total,
+        quoteUpdated: new Date().toISOString()
+      };
       const saved = await updateLeadField(activeQuoteLead.id, updates, setQuoteSaveError);
       if (saved) setQuoteModalOpen(false);
+    } catch (error) {
+      setQuoteSaveError(error instanceof Error ? error.message : "Could not save the quote. Please try again.");
     } finally { setQuoteSaving(false); }
   }
 

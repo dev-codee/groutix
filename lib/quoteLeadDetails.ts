@@ -10,6 +10,6 @@ export function quoteLeadDetails(lead: Lead): Partial<Lead> {
     name: lead.name || "", phone: lead.phone || "", email: lead.email || "", address: lead.address || "",
     ...(lead.customerType !== undefined ? { customerType: lead.customerType } : {}),
     ...(lead.agency !== undefined ? { agency: lead.agency } : {}),
-    ...(lead.tenants !== undefined ? { tenants: lead.tenants.map(tenant => ({ ...tenant })) } : {}),
+    ...(Array.isArray(lead.tenants) ? { tenants: lead.tenants.map(tenant => ({ ...tenant })) } : {}),
   };
 }
