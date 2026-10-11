@@ -650,7 +650,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-xl text-base leading-relaxed text-white/85 sm:text-base text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    Cracked grout lets water slip behind tiles, feeding mould and hidden damage in Melbourne homes from Geelong to Frankston. We remove the failed grout and rebuild it with waterproof epoxy.Every complete shower regrout carries our 10 year waterproof warranty.
+                    Cracked grout lets water slip behind tiles, We remove the failed grout and rebuild it with waterproof epoxy in Melbourne.Every complete shower regrout carries our 10 year waterproof warranty.
                   </motion.p>
 
                   {/* Google badge + Call button */}
