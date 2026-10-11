@@ -651,7 +651,7 @@ export default function HomePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg text-center lg:text-left mx-auto lg:mx-0"
+                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-base text-center lg:text-left mx-auto lg:mx-0"
                   >
                     We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria, without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
                   </motion.p>
