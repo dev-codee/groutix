@@ -10,7 +10,7 @@ export default function HeroContactBadges({ rating, theme = "dark" }: {
   rating?: BusinessRating;
   theme?: "dark" | "light";
 }) {
-  const { tel } = useContact();
+  const { phone, tel } = useContact();
   const { business } = useSiteContent();
   const stars = rating?.value ?? business.rating.value;
   const badge = "inline-flex box-border h-14 w-auto max-w-full shrink-0 items-center justify-center rounded-2xl border px-5 py-2.5 text-sm transition-colors";
@@ -34,7 +34,7 @@ export default function HeroContactBadges({ rating, theme = "dark" }: {
       </span>
     </a>
     <a href={tel} className={`${badge} ${phoneColors} gap-2 font-bold whitespace-nowrap`}>
-      <Phone className="h-4 w-4 shrink-0" />+61 3 7023 8094
+      <Phone className="h-4 w-4 shrink-0" />{phone}
     </a>
   </>;
 }
