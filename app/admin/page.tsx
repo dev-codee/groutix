@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { QuoteSaveButton } from "@/components/admin/QuoteSaveButton";
+import { jobNumberChanges } from "@/lib/jobNumberChanges";
 import { saveLeadChanges } from "@/lib/saveLeadChanges";
 import { QuoteLeadDetailsForm } from "@/components/admin/QuoteLeadDetailsForm";
 import { quoteLeadDetails } from "@/lib/quoteLeadDetails";
@@ -389,7 +391,6 @@ export default function CrmDashboardPage() {
   }
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
-  const [quoteSaving, setQuoteSaving] = useState(false);
   const quoteSaveSession = useRef(0);
   const quoteSaveInFlight = useRef<number | null>(null);
   const [quoteSaveError, setQuoteSaveError] = useState("");
@@ -715,12 +716,7 @@ export default function CrmDashboardPage() {
           address: l.address || [l.city, l.state].filter(Boolean).join(", ") || "",
         }));
         const withJobNos = generateJobNos(normalized, cutoffMs);
-        const changes: { id: string; jobNo: string | undefined }[] = [];
-        for (let i = 0; i < withJobNos.length; i++) {
-          const before = rawItems[i]?.jobNo;
-          const after = withJobNos[i]?.jobNo;
-          if (before !== after) changes.push({ id: withJobNos[i].id, jobNo: after });
-        }
+        const changes = jobNumberChanges(rawItems, withJobNos);
         if (changes.length > 0) {
           Promise.all(
             changes.map((c) =>
@@ -1590,7 +1586,6 @@ export default function CrmDashboardPage() {
   function openQuoteModal(lead: Lead) {
     quoteSaveSession.current += 1;
     quoteSaveInFlight.current = null;
-    setQuoteSaving(false);
     setQuoteSaveError("");
     clearQuoteDrag();
     setQuoteOrderNotice("");
@@ -1623,7 +1618,6 @@ export default function CrmDashboardPage() {
   function closeQuoteModal() {
     quoteSaveSession.current += 1;
     quoteSaveInFlight.current = null;
-    setQuoteSaving(false);
     setQuoteModalOpen(false);
   }
 
@@ -1883,7 +1877,6 @@ export default function CrmDashboardPage() {
     const session = quoteSaveSession.current;
     if (!activeQuoteLead || quoteSaveInFlight.current === session) return;
     quoteSaveInFlight.current = session;
-    setQuoteSaving(true);
     setQuoteSaveError("");
     const showError = (message: string) => {
       if (quoteSaveSession.current === session) setQuoteSaveError(message);
@@ -1907,7 +1900,6 @@ export default function CrmDashboardPage() {
     } finally {
       if (quoteSaveSession.current === session) {
         quoteSaveInFlight.current = null;
-        setQuoteSaving(false);
       }
     }
   }
@@ -5705,14 +5697,16 @@ export default function CrmDashboardPage() {
                       </button>
                     </>
                   )}
-                  <button
-                    type="button"
-                    onClick={handleSaveQuote}
-                    disabled={quoteSaving}
-                    className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 disabled:opacity-50 disabled:cursor-wait"
-                  >
-                    {quoteSaving ? "Saving…" : isTechnician ? "Save Scope" : "Save Quote"}
-                  </button>
+                  <QuoteSaveButton
+                    key={quoteSaveSession.current}
+                    onSave={handleSaveQuote}
+                    isTechnician={isTechnician}
+                    onError={(message) => {
+                      quoteSaveSession.current += 1;
+                      quoteSaveInFlight.current = null;
+                      setQuoteSaveError(message);
+                    }}
+                  />
                   <button
                     type="button"
                     onClick={handleMarkQuoteSent}

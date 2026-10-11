@@ -14,7 +14,7 @@ const compiled = ts.transpileModule(`${functions.get("quoteTotals")}\n${function
 function handler({ tenants = null, preparationError = false, save, saving = false } = {}) {
   const state = { saving, error: "", closed: false, writes: [] };
   const module = { exports: {} };
-  const context = { module, Error, quoteSaveSession: { current: 0 }, quoteSaveInFlight: { current: null }, activeQuoteLead: { id: "lead-1", name: "Homeowner", tenants }, quoteSaving: saving,
+  const context = { module, Error, quoteSaveSession: { current: 0 }, quoteSaveInFlight: { current: saving ? 0 : null }, activeQuoteLead: { id: "lead-1", name: "Homeowner", tenants }, quoteSaving: saving,
     quoteItems: [{ service: "Regrouting", price: 100, qty: 2 }], quoteTaxMode: "exclusive", quoteTaxRate: 10,
     quoteScope: "Scope", quoteTerms: "Terms", quoteLeadDetails: preparationError ? () => { throw new Error("Invalid lead data"); } : quoteLeadDetails,
     setQuoteSaving: value => { state.saving = value; context.quoteSaving = value; }, setQuoteSaveError: value => { state.error = value; },
@@ -29,6 +29,7 @@ function handler({ tenants = null, preparationError = false, save, saving = fals
     setQuoteScope: value => { context.quoteScope = value; },
     updateLeadField: async (id, updates, onError) => { state.writes.push({ id, updates }); return save ? save(id, updates, onError) : true; },
   };
+  Object.defineProperty(state, "saving", { get: () => context.quoteSaveInFlight.current === context.quoteSaveSession.current });
   vm.runInNewContext(compiled, context);
   return { state, ...module.exports };
 }
