@@ -641,7 +641,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    #1 Shower Regrouting and Balcony Leak Repair in Melbourne
+                    <span className="text-[#FBBC04]">#1</span> Shower Regrouting and Balcony Leak Repair in Melbourne
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
