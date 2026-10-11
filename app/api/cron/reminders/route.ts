@@ -23,7 +23,7 @@ const DAY_MS = 24 * HOUR_MS;
 // "time until the appointment" that makes each tier due.
 const TIERS = [
   { key: "1h" as const, floor: 0, within: HOUR_MS, when: "in about an hour", soon: true },
-  { key: "24h" as const, floor: HOUR_MS, within: DAY_MS, when: "tomorrow", soon: false },
+  { key: "24h" as const, floor: HOUR_MS, within: DAY_MS, when: "within 24 hours", soon: false },
 ];
 
 function esc(v: string) {
@@ -76,6 +76,7 @@ async function runSweep(req: NextRequest) {
   let sent = 0;
 
   for (const lead of candidates) {
+    if (!isEmailConfigured() || !lead.email) continue;
     // Evaluate the inspection appointment, then the job appointment, independently.
     const appts: { kind: "inspection" | "job"; at?: string }[] = [
       { kind: "inspection", at: lead.inspectionAt },

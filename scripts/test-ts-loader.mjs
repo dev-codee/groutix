@@ -19,7 +19,7 @@ export function loadTs(relativePath, overrides = {}, globals = {}) {
       compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
     }).outputText;
     vm.runInNewContext(compiled, {
-      module: moduleRecord, exports: moduleRecord.exports, process, console, Buffer, URL,
+      module: moduleRecord, exports: moduleRecord.exports, process, console, Buffer, URL, AbortController, AbortSignal,
       setTimeout, clearTimeout, ...globals,
       require: (name) => {
         if (Object.hasOwn(overrides, name)) return overrides[name];

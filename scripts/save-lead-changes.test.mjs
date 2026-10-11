@@ -23,3 +23,15 @@ test("expired sessions and connection errors give actionable messages", async ()
     assert.match((await saveLeadChanges("lead-1", {})).error, expected);
   }
 });
+test("a stalled quote save times out with edits preserved and a warning that the server may have saved", async () => {
+  const { saveLeadChanges } = loadTs("lib/saveLeadChanges.ts", {}, {
+    setTimeout: callback => { queueMicrotask(callback); return 1; }, clearTimeout: () => {},
+    fetch: async (_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    }),
+  });
+  const result = await saveLeadChanges("lead-1", { quoteScope: "Keep these edits" });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /took too long/);
+  assert.match(result.error, /server may have saved/);
+});

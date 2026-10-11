@@ -89,6 +89,23 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  // Quote editing does not change appointments or trigger workflow notifications.
+  // Persist directly instead of loading the complete lead and booking/zone settings.
+  const quoteFields = new Set([
+    "quoteScope", "quoteItems", "quoteTaxMode", "quoteTaxRate", "quoteTerms", "quoteAmount", "quoteUpdated",
+    "name", "phone", "email", "address", "customerType", "agency", "tenants",
+  ]);
+  const fields = Object.keys(body);
+  if (fields.some(field => field.startsWith("quote")) && fields.every(field => quoteFields.has(field))) {
+    try {
+      const saved = await updateSubmission(id, body);
+      return saved ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Quote could not be saved. The lead may no longer exist." }, { status: 404 });
+    } catch (error) {
+      console.error("Quote save failed:", error);
+      return NextResponse.json({ error: "Could not save the quote. Please try again." }, { status: 503 });
+    }
+  }
+
   // Snapshot the prior state so we can record what actually changed.
   const before = await getSubmission(id);
   if (!before) return NextResponse.json({ error: "Not found." }, { status: 404 });

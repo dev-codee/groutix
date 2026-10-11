@@ -229,10 +229,10 @@ export interface TaskDoc {
 
 let indexesEnsured = false;
 
-async function collection(): Promise<Collection<SubmissionDoc>> {
+async function collection(ensureIndexes = true): Promise<Collection<SubmissionDoc>> {
   const db = await getDb();
   const col = db.collection<SubmissionDoc>("submissions");
-  if (!indexesEnsured) {
+  if (ensureIndexes && !indexesEnsured) {
     try {
       await col.createIndexes([
         { key: { createdAt: -1 } },
@@ -658,7 +658,7 @@ export async function listReminderCandidates(): Promise<SubmissionJSON[]> {
   const col = await collection();
   const docs = await col
     .find({
-      status: { $nin: ["Lost", "Completed"] },
+      status: { $nin: ["Lost", "Cancelled", "Closed", "No Response", "Completed"] },
       $or: [
         { inspectionAt: { $gt: "" }, inspectionReminderSent: { $ne: true } },
         { inspectionAt: { $gt: "" }, inspectionReminder1hSent: { $ne: true } },
@@ -695,9 +695,21 @@ export async function updateSubmission(
   updates: Partial<SubmissionDoc>
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
-  const col = await collection();
+  const col = await collection(false);
   const { _id, ...safeUpdates } = updates;
   normalizeApptFields(safeUpdates);
+  // Every booking path resets reminders for a changed appointment, including Dispatch.
+  if ("inspectionAt" in safeUpdates || "jobAt" in safeUpdates) {
+    const before = await col.findOne({ _id: new ObjectId(id) }, { projection: { inspectionAt: 1, jobAt: 1 } });
+    if ("inspectionAt" in safeUpdates && normalizeApptString(safeUpdates.inspectionAt) !== normalizeApptString(before?.inspectionAt)) {
+      safeUpdates.inspectionReminderSent = false;
+      safeUpdates.inspectionReminder1hSent = false;
+    }
+    if ("jobAt" in safeUpdates && normalizeApptString(safeUpdates.jobAt) !== normalizeApptString(before?.jobAt)) {
+      safeUpdates.jobReminderSent = false;
+      safeUpdates.jobReminder1hSent = false;
+    }
+  }
   if (safeUpdates.status && !["Inspection En Route", "Job En Route"].includes(safeUpdates.status)) {
     safeUpdates.customerTrackingEndedAt = new Date();
   }
