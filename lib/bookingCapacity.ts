@@ -1,6 +1,6 @@
 import { technicianWorksOnDate } from "./technicianAvailability";
 import { appointmentDurationMinutes } from "./bookingDuration";
-import { toMinutes, type BookingRules, type BookingType } from "./bookingRules";
+import { toMinutes, weekdayOf, type BookingRules, type BookingType } from "./bookingRules";
 
 export interface BookingTechnician {
   id: string;
@@ -50,7 +50,9 @@ export function bookingAvailability(
   technicians: BookingTechnician[],
 ) {
   const working = techniciansOnDate(technicians, candidate.date);
-  const capacity = candidate.type === "inspection" ? 1 : working.length;
+  const weekday = weekdayOf(candidate.date);
+  const jobLimit = weekday === 0 || weekday === 6 ? 3 : 2;
+  const capacity = candidate.type === "inspection" ? 1 : Math.min(jobLimit, working.length);
   const start = toMinutes(candidate.time);
   const end = start + appointmentDurationMinutes(candidate, rules);
   const overlapping = appointments.filter((entry) => entry.date === candidate.date && entry.type === candidate.type && entry.leadId !== candidate.leadId &&

@@ -18,12 +18,13 @@ test("dragging snaps time to 15 minutes and preserves the grabbed point and comp
 });
 test("moving a booking excludes itself but blocks overlapping jobs for its technician", () => {
   assert.equal(dispatchBookingIssue(candidate, [{ ...candidate }], rules, technicians), null);
-  assert.match(dispatchBookingIssue(candidate, [{ ...candidate, leadId: "other", time: "12:30" }], rules, technicians), /overlapping|booked/);
+  assert.match(dispatchBookingIssue(candidate, [{ ...candidate, leadId: "other", time: "10:30" }], rules, technicians), /overlapping|booked/);
   assert.equal(dispatchBookingIssue({ ...candidate, date: "2026-10-13" }, [{ ...candidate, leadId: "other" }], rules, technicians), null);
 });
-test("a full job cannot extend beyond the day's hours and closed dates cannot be booked", () => {
-  assert.match(dispatchBookingIssue({ ...candidate, time: "15:00" }, [], rules, technicians), /full appointment/);
-  assert.match(dispatchBookingIssue({ ...candidate, date: "2026-10-16", time: "13:00" }, [], rules, technicians), /full appointment/);
+test("one-hour windows respect closing hours and legacy work durations do not block valid times", () => {
+  assert.equal(dispatchBookingIssue({ ...candidate, time: "16:00" }, [], rules, technicians), null);
+  assert.match(dispatchBookingIssue({ ...candidate, time: "16:30" }, [], rules, technicians), /hours|full appointment/);
+  assert.match(dispatchBookingIssue({ ...candidate, date: "2026-10-16", time: "14:30" }, [], rules, technicians), /hours|full appointment/);
   const closed = { ...rules, closedDates: [{ date: candidate.date, label: "Closed" }] };
   assert.match(dispatchBookingIssue(candidate, [], closed, technicians), /closed/);
 });
@@ -77,7 +78,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   let tree = drag();
   assert.equal(writes.length, 0);
   assert.ok(tree.some(node => node.props?.role === "dialog"));
-  assert.match(label(tree.find(node => node.props?.role === "dialog")), /1:00 PM.*4:00 PM/);
+  assert.match(label(tree.find(node => node.props?.role === "dialog")), /1:00 PM.*2:00 PM/);
   tree.find(node => node.type === "button" && label(node) === "Cancel").props.onClick();
   assert.equal(writes.length, 0);
   assert.equal(nodes(render()).some(node => node.props?.role === "dialog"), false);

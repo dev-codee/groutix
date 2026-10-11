@@ -1,4 +1,4 @@
-import { estimatedJobMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { dayHours, toMinutes, weekdayOf } from "@/lib/bookingRules";
 import { NextRequest, NextResponse } from "next/server";
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Could not load booking availability. Please try again." }, { status: 503 });
   }
   const sameZoneDates = new Set(appointments.filter((entry) => entry.zone === area.zone || area.inner).map((entry) => entry.date));
-  const durationMinutes = type === "job" ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes : rules.inspection.slotMinutes;
+  const durationMinutes = appointmentDurationMinutes({ type }, rules);
   const days = shortlistDays(applyBookingCapacity(
     computeAvailability(area, new Map(), sameZoneDates, type, rules, zoneRules), appointments,
     { leadId: id, type, durationMinutes, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername },
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
   const rules = await getBookingRules();
-  const durationMinutes = type === "job" ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes : rules.inspection.slotMinutes;
+  const durationMinutes = appointmentDurationMinutes({ type }, rules);
   if (!isSlotOffered(area, date, time, type, rules, zoneRules)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }

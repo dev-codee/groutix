@@ -33,20 +33,20 @@ test("date exceptions override weekdays, while inactive technicians never add ca
   assert.equal(techniciansOnDate([{ ...tech, workDays: [], dateOverrides: {} }], date).length, 0);
 });
 
-test("booking pages mark empty days with no technicians unavailable, and use full duration", () => {
+test("booking pages honor one-hour windows and days without technicians", () => {
   const day = { date, label: "Saturday", weekday: "Saturday", times: ["09:00", "10:00", "12:00", "16:00"], slots: ["09:00", "10:00", "12:00", "16:00"].map((time) => ({ time, booked: false })), recommended: false };
   assert.equal(applyBookingCapacity([day], [], candidate, rules, [])[0].times.length, 0);
   const output = applyBookingCapacity([day], [job], { ...candidate, technicianId: "all", durationMinutes: 120 }, rules, roster)[0];
-  assert.deepEqual(Array.from(output.times), ["12:00"]);
+  assert.deepEqual(Array.from(output.times), ["10:00", "12:00", "16:00"]);
   assert.equal(output.slots.find((slot) => slot.time === "09:00").remaining, 0);
   assert.equal(applyBookingCapacity([day], [job], candidate, rules, roster)[0].slots[0].remaining, 1);
 });
 
-test("a technician must be free for the whole job, including on reassignment", () => {
+test("work estimates do not block later booking windows", () => {
   const bookings = [job, { ...job, leadId: "other", technicianId: "weekend", time: "12:00", durationMinutes: 120 }];
   const long = { ...candidate, time: "11:00", durationMinutes: 120 };
-  assert.equal(bookingAvailability(bookings, long, rules, roster).available, false);
-  assert.equal(bookingAvailability(bookings, { ...long, technicianId: "weekend" }, rules, roster).available, false);
+  assert.equal(bookingAvailability(bookings, long, rules, roster).available, true);
+  assert.equal(bookingAvailability(bookings, { ...long, technicianId: "weekend" }, rules, roster).available, true);
 });
 
 test("invalid weekdays and malformed exception dates are rejected", () => {
@@ -108,7 +108,7 @@ test("the customer API rereads roster changes and closes days with zero technici
   assert.ok(empty.body.days.every((day) => day.times.length === 0 && day.slots.every((slot) => slot.capacity === 0)));
   technicians = roster;
   const dynamic = await get();
-  assert.equal(dynamic.body.durationMinutes, 150);
+  assert.equal(dynamic.body.durationMinutes, 60);
   for (const day of dynamic.body.days) {
     const count = techniciansOnDate(roster, day.date).length;
     assert.equal(day.slots[0].capacity, count);
@@ -117,4 +117,18 @@ test("the customer API rereads roster changes and closes days with zero technici
   technicians = [...roster, { id: "third", name: "New technician", active: true }];
   const expanded = await get();
   assert.equal(expanded.body.days[0].slots[0].capacity, dynamic.body.days[0].slots[0].capacity + 1);
+});
+
+test("weekday slots fill after two bookings and Saturday/Sunday slots fill after three", () => {
+  const technicians = Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Tech ${i}`, active: true }));
+  for (const date of ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"]) {
+    const weekend = ["2026-10-17", "2026-10-18"].includes(date);
+    const limit = weekend ? 3 : 2;
+    const candidate = { date, time: "10:00", type: "job", leadId: "new" };
+    const appointments = Array.from({ length: limit }, (_, i) => ({ ...candidate, leadId: `booking-${i}` }));
+    assert.equal(bookingAvailability(appointments.slice(0, 1), candidate, rules, technicians).available, true);
+    assert.equal(bookingAvailability(appointments.slice(0, limit - 1), candidate, rules, technicians).remaining, 1);
+    assert.equal(bookingAvailability(appointments, candidate, rules, technicians).available, false);
+    assert.equal(bookingAvailability(appointments, { ...candidate, time: "11:00" }, rules, technicians).remaining, limit);
+  }
 });

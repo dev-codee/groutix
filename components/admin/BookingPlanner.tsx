@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Loader2, MapPin, Star, AlertTriangle, Home, Navigation, RefreshCw } from "lucide-react";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import type { Lead } from "@/components/admin/types";
-import { estimatedJobMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 import { useTechnicians } from "@/lib/useTechnicians";
 import { bookingAvailability, type BookingTechnician } from "@/lib/bookingCapacity";
 import type { DayAppointment } from "@/lib/bookings";
@@ -131,7 +131,7 @@ export function BookingPlanner({
       if (!grid.length) continue;
       // This lead's own appointment of the same type is being rescheduled → not an obstacle.
       const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type));
-      const duration = type === "job" ? estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes : rules.inspection.slotMinutes;
+      const duration = appointmentDurationMinutes({ type }, rules);
       const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername }, rules, technicians).available));
       const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
       const stops: PlannerStop[] = dayAppts.map((a) => ({
@@ -156,7 +156,7 @@ export function BookingPlanner({
       });
     }
     return out;
-  }, [appts, firstDay, lastDay, rules, type, lead.id, lead.inspectionReport?.estimatedTime, lead.technicianId, lead.technician, lead.technicianUsername, technicians, target, today, area.zone, zoneRules]);
+  }, [appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, technicians, target, today, area.zone, zoneRules]);
 
   // Top 3 days by route fit (days with existing nearby stops beat empty days).
   const topDays = useMemo(() => {
@@ -187,7 +187,7 @@ export function BookingPlanner({
       ...selectedDay.free.map((time) => ({ kind: "free" as const, time, fit: target ? scoreSlot(target, time, selectedDay.stops, rules, type) : null })),
     ];
     return rows.sort((a, b) => (a.kind === "stop" ? a.stop.time : a.time).localeCompare(b.kind === "stop" ? b.stop.time : b.time));
-  }, [selectedDay, target, rules]);
+  }, [selectedDay, target, rules, type]);
 
   const mapItems: DispatchMapItem[] = useMemo(() => {
     if (!selectedDay) return [];

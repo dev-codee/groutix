@@ -21,7 +21,7 @@ import { useZoneRules } from "@/lib/useZoneRules";
 
 import { useTechnicians } from "@/lib/useTechnicians";
 import { bookingAvailability, type BookingTechnician, type TechnicianAssignment } from "@/lib/bookingCapacity";
-import { overlapsSlot } from "@/lib/bookingDuration";
+import { overlapsSlot, appointmentDurationMinutes } from "@/lib/bookingDuration";
 import type { DayAppointment } from "@/lib/bookings";
 export type { DayAppointment };
 
@@ -163,7 +163,7 @@ export function SlotBoard({
   for (const a of appts || []) {
     if (a.type === type) {
       for (const time of gridTimes) {
-        if (overlapsSlot(a, time, durationMinutes || rules[type].slotMinutes, rules)) byTime.set(time, [...(byTime.get(time) || []), a]);
+        if (overlapsSlot(a, time, appointmentDurationMinutes({ type }, rules), rules)) byTime.set(time, [...(byTime.get(time) || []), a]);
       }
     }
   }
@@ -299,7 +299,7 @@ export function SlotBoard({
           )}
         </>
       )}
-      <p className="text-[9px] text-slate-400">Jobs reserve the full estimated time for their assigned technician. Inspection availability is separate.</p>
+      <p className="text-[9px] text-slate-400">Job slots allow up to 2 bookings on weekdays and 3 on weekends, subject to technician availability. Inspection availability is separate.</p>
     </div>
   );
 }

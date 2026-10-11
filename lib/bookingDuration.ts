@@ -12,9 +12,9 @@ export function estimatedJobMinutes(value: unknown): number | undefined {
 export function appointmentDurationMinutes(
   appointment: { type: BookingType; durationMinutes?: number }, rules: BookingRules,
 ): number {
-  const duration = appointment.durationMinutes;
-  return appointment.type === "job" && typeof duration === "number" && Number.isFinite(duration) && duration > 0
-    ? duration : rules[appointment.type].slotMinutes;
+  // The booking window is the configured slot (normally one hour). Estimated
+  // work hours and legacy durationMinutes do not reserve subsequent slots.
+  return rules[appointment.type].slotMinutes;
 }
 
 export function overlapsSlot(appointment: { type: BookingType; time: string; durationMinutes?: number }, time: string, duration: number, rules: BookingRules): boolean {

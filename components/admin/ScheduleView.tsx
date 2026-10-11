@@ -3,12 +3,17 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { RefreshCcw, Loader2, CalendarDays, ExternalLink, MapPin, Edit3, Search } from "lucide-react";
 
+import { appointmentDurationMinutes } from "@/lib/bookingDuration";
+import { formatSlotRange } from "@/lib/scheduling";
+import { useBookingRules } from "@/lib/useBookingRules";
+
 type BookingEntry = {
   id: string;
   leadId: string;
   type: "inspection" | "job";
   date: string;
   time: string;
+  durationMinutes?: number;
   zone: string;
   suburb: string | null;
   reference: string;
@@ -39,18 +44,12 @@ function fmtScheduleDate(dateStr: string) {
   });
 }
 
-function fmtScheduleTime(t: string) {
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hr = h % 12 === 0 ? 12 : h % 12;
-  return `${hr}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
 export function ScheduleView({
   onOpenLead,
 }: {
   onOpenLead: (id: string, date?: string, action?: "view" | "reschedule") => void;
 }) {
+  const rules = useBookingRules();
   const [bookings, setBookings] = useState<BookingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -158,27 +157,16 @@ export function ScheduleView({
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 rounded-xl bg-slate-50/70 hover:bg-slate-100/80 border border-slate-200/60 transition-all cursor-pointer group shadow-2xs"
                     onClick={() => onOpenLead(b.leadId)}
                   >
-                    <div className="flex items-center justify-between sm:justify-start gap-2">
-                      <div className="text-xs font-bold text-blue-600 sm:w-20 shrink-0 tabular-nums">
-                        {fmtScheduleTime(b.time)}
-                      </div>
-                      <span
-                        className={`sm:hidden text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                          b.type === "inspection"
-                            ? "bg-blue-50 text-blue-700 border-blue-200/60"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
-                        }`}
-                      >
-                        {b.type === "inspection" ? "Inspection" : "Job"}
-                      </span>
-                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-slate-900 truncate">
                           {b.customer?.name || "Customer"}
                         </span>
+                        <span className="text-[11px] font-bold text-blue-600 tabular-nums whitespace-nowrap">
+                          {formatSlotRange(b.time, appointmentDurationMinutes(b, rules))}
+                        </span>
                         <span
-                          className={`hidden sm:inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                          className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                             b.type === "inspection"
                               ? "bg-blue-50 text-blue-700 border-blue-200/60"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200/60"

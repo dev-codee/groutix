@@ -124,18 +124,18 @@ test("booking store retains the prior reservation until the lead write commits",
 });
 
 
-test("reassignment reserves the full inspection estimate before updating the technician", async () => {
+test("reassignment checks its booking without passing work estimates as duration", async () => {
   const { patch, calls } = patchApi({ before: { jobAt: "2026-10-09T09:00", technicianId: "old", inspectionReport: { estimatedTime: "4–6 hrs" } } });
   assert.equal((await patch({ technicianId: "new" })).status, 200);
   const reservation = calls.find(([action]) => action === "reserve")[1];
-  assert.equal(reservation.durationMinutes, 360);
+  assert.equal(reservation.durationMinutes, undefined);
   assert.equal(reservation.technicianId, "new");
   assert.equal(calls[0][0], "reserve");
 });
 
-test("changing estimated hours on a scheduled job rechecks capacity before saving", async () => {
+test("changing estimated work hours does not reserve additional booking slots", async () => {
   const { patch, calls } = patchApi({ conflict: true, before: { jobAt: "2026-10-09T09:00", inspectionReport: { estimatedTime: "1" } } });
-  assert.equal((await patch({ inspectionReport: { estimatedTime: "3.5 hours" } })).status, 409);
-  assert.equal(calls.find(([action]) => action === "reserve")[1].durationMinutes, 210);
-  assert.equal(calls.some(([action]) => action === "update"), false);
+  assert.equal((await patch({ inspectionReport: { estimatedTime: "3.5 hours" } })).status, 200);
+  assert.equal(calls.some(([action]) => action === "reserve"), false);
+  assert.equal(calls.find(([action]) => action === "update")[2].inspectionReport.estimatedTime, "3.5 hours");
 });

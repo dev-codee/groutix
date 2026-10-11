@@ -1,3 +1,4 @@
+import { appointmentDurationMinutes } from "./bookingDuration";
 import { addDaysYmd } from "./scheduling";
 import { bookingAvailability, type CapacityAppointment, type BookingTechnician } from "./bookingCapacity";
 import { dayHours, explainOutsideRules, toMinutes, weekdayOf, type BookingRules } from "./bookingRules";
@@ -16,7 +17,7 @@ export function dispatchBookingIssue(candidate: CapacityAppointment, appointment
   const outside = explainOutsideRules(rules, candidate.type, `${candidate.date}T${candidate.time}`);
   if (outside) return outside;
   const hours = dayHours(rules, candidate.type, weekdayOf(candidate.date), candidate.date);
-  if (toMinutes(candidate.time) + (candidate.durationMinutes ?? rules[candidate.type].slotMinutes) > toMinutes(hours.end)) {
+  if (toMinutes(candidate.time) + appointmentDurationMinutes(candidate, rules) > toMinutes(hours.end)) {
     return "The full appointment must finish within the opening hours. Choose an earlier start time.";
   }
   return bookingAvailability(appointments, candidate, rules, technicians).reason;

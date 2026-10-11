@@ -1,7 +1,7 @@
 "use client";
 
 import { technicianWorksOnDate } from "@/lib/technicianAvailability";
-import { estimatedJobMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import {
@@ -476,7 +476,7 @@ export function ManagerDashboard() {
         if (!d) continue;
         const apptDate = new Date(d);
         const apptH = apptDate.getHours() + apptDate.getMinutes() / 60;
-        const durationHours = member.isInspector ? bookingRules.inspection.slotMinutes / 60 : (estimatedJobMinutes(lead.inspectionReport?.estimatedTime) ?? bookingRules.job.slotMinutes) / 60;
+        const durationHours = appointmentDurationMinutes({ type: member.isInspector ? "inspection" : "job" }, bookingRules) / 60;
 
         if (hour + 1 > apptH && hour < apptH + durationHours) {
           const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;

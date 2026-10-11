@@ -1,4 +1,4 @@
-import { estimatedJobMinutes } from "./bookingDuration";
+import { appointmentDurationMinutes } from "./bookingDuration";
 // Inspection and job pools have independent capacity. Job capacity comes from the technician roster.
 
 import { ObjectId, type Collection, type Filter } from "mongodb";
@@ -100,7 +100,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         technician: input.technician !== undefined ? input.technician : lead?.technician,
         technicianUsername: input.technicianUsername !== undefined ? input.technicianUsername : lead?.technicianUsername,
       } : {};
-      const durationMinutes = input.type === "job" ? (input.durationMinutes === 0 ? rules.job.slotMinutes : input.durationMinutes ?? estimatedJobMinutes(lead?.inspectionReport?.estimatedTime) ?? rules.job.slotMinutes) : rules.inspection.slotMinutes;
+      const durationMinutes = appointmentDurationMinutes(input, rules);
       const availability = bookingAvailability(appointments, { ...input, ...assignment, durationMinutes, date, time }, rules, technicians);
       if (!availability.available) return { ok: false as const, conflict: true, error: availability.reason! };
       const reservationId = randomUUID();
@@ -178,7 +178,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
     // Naive "YYYY-MM-DDTHH:mm" strings sort lexically, so a string range works.
     const range = { $gte: `${from}T`, $lt: `${to}T~` };
 
-    const [locks, subs] = await Promise.all([
+    const [locks, subs, rules] = await Promise.all([
       col.find({ date: { $gte: from, $lte: to } }).toArray(),
       subCol
         .find({
@@ -187,13 +187,13 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         })
         .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
         .toArray(),
+      getBookingRules(),
     ]);
 
     const out: DayAppointment[] = [];
     const seen = new Set<string>(); // leadId|type|date|time
     const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string; technicianId?: string; technician?: string; technicianUsername?: string; durationMinutes?: number }>();
     const describe = (s: Record<string, unknown>) => ({
-      durationMinutes: estimatedJobMinutes((s.inspectionReport as { estimatedTime?: string } | undefined)?.estimatedTime),
       name: String(s.name || "Customer"),
       jobNo: typeof s.jobNo === "string" ? s.jobNo : undefined,
       address: typeof s.address === "string" && s.address ? s.address : undefined,
@@ -215,7 +215,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         const time = tRaw.slice(0, 5).padStart(5, "0");
         seen.add(`${id}|${type}|${date}|${time}`);
         const lock = locks.find((booking) => booking.leadId === id && booking.type === type && booking.date === date && booking.time.slice(0, 5) === time);
-        out.push({ date, time, type, leadId: id, ...info.get(id)!, durationMinutes: info.get(id)?.durationMinutes ?? lock?.durationMinutes, ...(lock ? { technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
+        out.push({ date, time, type, leadId: id, ...info.get(id)!, durationMinutes: appointmentDurationMinutes({ type }, rules), ...(lock ? { technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
       }
     }
 
@@ -247,7 +247,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         technicianId: b.technicianId || i?.technicianId,
         technician: b.technician || i?.technician,
         technicianUsername: b.technicianUsername || i?.technicianUsername,
-        durationMinutes: i?.durationMinutes ?? b.durationMinutes,
+        durationMinutes: appointmentDurationMinutes(b, rules),
         zone: b.zone,
         source: "online",
       });

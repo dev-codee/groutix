@@ -29,6 +29,7 @@ const calendarDependencies = {
   "@/lib/useTechnicians": { useTechnicians: () => ({ technicians: [{ id: "tech", name: "Technician", active: true }] }) },
   "@/lib/bookingCapacity": loadTs("lib/bookingCapacity.ts"),
   "@/lib/bookingDuration": loadTs("lib/bookingDuration.ts"),
+  "@/lib/scheduling": loadTs("lib/scheduling.ts"),
   "@/lib/unassignedLeads": scheduling,
   "@/lib/scheduleDays": load("../lib/scheduleDays.ts"),
   "@/lib/scheduleRoutes": loadTs("lib/scheduleRoutes.ts"),

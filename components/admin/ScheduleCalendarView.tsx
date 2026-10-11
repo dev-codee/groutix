@@ -3,7 +3,7 @@
 import { useTechnicians } from "@/lib/useTechnicians";
 import type { BookingRules } from "@/lib/bookingRules";
 import { bookingAvailability } from "@/lib/bookingCapacity";
-import { appointmentDurationMinutes, estimatedJobMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
 import {
   useState,
@@ -11,6 +11,7 @@ import {
   useEffect,
   useRef,
   useMemo,
+  type ReactNode,
 } from "react";
 import {
   CalendarDays,
@@ -46,6 +47,7 @@ import type { DayAppointment } from "@/lib/bookings";
 import type { Lead } from "@/components/admin/types";
 import { applyRouteOrders, appointmentKey, estimateRoute, optimizeRouteStops } from "@/lib/scheduleRoutes";
 import { useBookingRules } from "@/lib/useBookingRules";
+import { formatSlotRange } from "@/lib/scheduling";
 import { explainOutsideRules } from "@/lib/bookingRules";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -115,22 +117,6 @@ function fmtDate(dateStr: string): string {
   });
 }
 
-function fmtTime(t: string): string {
-  if (!t) return "";
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hr = h % 12 === 0 ? 12 : h % 12;
-  return `${hr}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
-function addMinutes(t: string, mins: number): string {
-  const [h, m] = t.split(":").map(Number);
-  const total = h * 60 + m + mins;
-  const nh = Math.floor(total / 60) % 24;
-  const nm = total % 60;
-  return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
-}
-
 function offsetDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + days);
@@ -149,7 +135,7 @@ async function checkBookingAvailability(leadId: string, type: JobType, date: str
   const response = await fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not check availability.");
-  const availability = bookingAvailability(result.appointments, { leadId, type, date, time, durationMinutes: durationMinutes ?? estimatedJobMinutes(lead?.inspectionReport?.estimatedTime), technicianId: lead?.technicianId, technician: lead?.technician, technicianUsername: lead?.technicianUsername }, rules, result.technicians || []);
+  const availability = bookingAvailability(result.appointments, { leadId, type, date, time, durationMinutes: appointmentDurationMinutes({ type, durationMinutes }, rules), technicianId: lead?.technicianId, technician: lead?.technician, technicianUsername: lead?.technicianUsername }, rules, result.technicians || []);
   if (!availability.available) throw new Error(availability.reason || "This time is already booked.");
 }
 
@@ -260,7 +246,7 @@ function RescheduleDialog({
                 <div className="mt-1 flex items-center gap-2 flex-wrap">
                   <TypeBadge type={modal.entry.type} />
                   <span className="text-[10px] text-slate-400">
-                    Currently: {fmtDate(modal.entry.date)} · {fmtTime(modal.entry.time)}
+                    Currently: {fmtDate(modal.entry.date)} · {formatSlotRange(modal.entry.time, modal.entry.durationMinutes)}
                   </span>
                 </div>
               </div>
@@ -291,7 +277,7 @@ function RescheduleDialog({
           </div>
 
           {warning && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">{warning} Staff may override these hours.</p>}
-          <p className="text-xs text-slate-600">Move this {modal.entry.type} to <strong>{fmtDate(date)} · {fmtTime(time)}</strong>? The booking changes only after you confirm.</p>
+          <p className="text-xs text-slate-600">Move this {modal.entry.type} to <strong>{fmtDate(date)} · {formatSlotRange(time, modal.entry.durationMinutes)}</strong>? The booking changes only after you confirm.</p>
           {modal.error && (
             <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -396,7 +382,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onB
           </div>
           {existing && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">This customer already has this booking type scheduled. Saving will reschedule it and may notify the customer.</p>}
           {warning && <p className="rounded-lg bg-amber-50 p-3 text-amber-800">{warning} Staff may override these hours.</p>}
-          {selectedLead && <p className="rounded-lg bg-blue-50 p-3 text-blue-800">{existing ? "Reschedule" : "Book"} <strong>{selectedLead.name || "Customer"}</strong> for <strong>{fmtDate(date)} · {fmtTime(time)}</strong>? Confirm below to save.</p>}
+          {selectedLead && <p className="rounded-lg bg-blue-50 p-3 text-blue-800">{existing ? "Reschedule" : "Book"} <strong>{selectedLead.name || "Customer"}</strong> for <strong>{fmtDate(date)} · {formatSlotRange(time, appointmentDurationMinutes({ type }, rules))}</strong>? Confirm below to save.</p>}
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-600">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 p-4">
@@ -467,7 +453,7 @@ function SelectedBookingSidebar({
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-600">
             <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span>{fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, entry.durationMinutes))}</span>
+            <span>{formatSlotRange(entry.time, entry.durationMinutes)}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-600">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -552,7 +538,7 @@ function RouteTimeline({
 }) {
   const dragFrom = useRef<number | null>(null);
   return (
-    <div className="bg-white border-t border-slate-200/80 px-4 py-3">
+    <div className="bg-white border-t border-slate-200/80 px-3 py-2">
       <div className="flex items-center gap-2 mb-2.5">
         <Route className="w-3.5 h-3.5 text-blue-600" />
         <span className="text-[11px] font-bold text-slate-700">
@@ -560,7 +546,7 @@ function RouteTimeline({
         </span>
         <span className="text-[10px] text-slate-400">({fmtDate(dateStr)})</span>
       </div>
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 min-h-[72px]">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 min-h-[56px]">
         {entries.map((e, i) => (
           <div key={e.id} className="flex items-center gap-2 shrink-0">
             <button
@@ -570,7 +556,7 @@ function RouteTimeline({
               onDrop={() => { if (dragFrom.current !== null) onReorder(dragFrom.current, i); dragFrom.current = null; }}
               onDragEnd={() => { dragFrom.current = null; }}
               onClick={() => onSelect(e.id)}
-              className={`flex flex-col items-center justify-between p-2.5 rounded-xl border min-w-[120px] transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-between p-2 rounded-lg border min-w-[120px] transition-all cursor-pointer ${
                 selectedId === e.id
                   ? "border-amber-400 bg-amber-50 shadow-sm"
                   : "border-slate-200 bg-slate-50 hover:bg-white hover:shadow-sm"
@@ -584,7 +570,7 @@ function RouteTimeline({
                 <MoreVertical className="w-3 h-3 text-slate-400 ml-auto shrink-0" />
               </div>
               <span className="text-[10px] text-slate-500 mt-1 self-start pl-0.5">
-                {fmtTime(e.time)} – {fmtTime(addMinutes(e.time, e.durationMinutes))}
+                {formatSlotRange(e.time, e.durationMinutes)}
               </span>
             </button>
 
@@ -621,16 +607,15 @@ function DayStatsBar({ entries }: { entries: ScheduleEntry[] }) {
     { icon: CalendarDays, value: jobs, label: "Bookings", color: "text-blue-600", bg: "bg-blue-50" },
     { icon: Navigation, value: estimate.missing === jobs && jobs > 0 ? "Unavailable" : `${estimate.km} km`, label: "Est. Distance", color: "text-sky-600", bg: "bg-sky-50" },
     { icon: Clock, value: travelStr, label: "Est. Travel Time", color: "text-emerald-600", bg: "bg-emerald-50" },
-    { icon: MapPin, value: "Melbourne Metro", label: "Service Area", color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-3 gap-2 mb-2">
       {stats.map((s) => (
-        <div key={s.label} className={`flex items-center gap-3 ${s.bg} rounded-xl px-4 py-3 border border-slate-200/60`}>
-          <s.icon className={`w-5 h-5 ${s.color} shrink-0`} />
+        <div key={s.label} className={`flex items-center gap-2 ${s.bg} rounded-lg px-2.5 py-1.5 border border-slate-200/60`}>
+          <s.icon className={`w-4 h-4 ${s.color} shrink-0`} />
           <div>
-            <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
+            <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>
             <p className="text-[10px] text-slate-500 font-medium">{s.label}</p>
           </div>
         </div>
@@ -663,7 +648,7 @@ function RouteSummaryFooter({
   const travelStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
 
   return (
-    <div className="flex items-center gap-4 px-5 py-3 bg-white border-t border-slate-200/80 flex-wrap">
+    <div className="flex items-center gap-3 px-3 py-2 bg-white border-t border-slate-200/80 flex-wrap">
       <div className="flex items-center gap-2 text-xs text-slate-700">
         <Navigation className="w-4 h-4 text-blue-500" />
         <span className="font-semibold">{hasChanges ? "Unsaved Route Changes" : "Saved Route Summary"}</span>
@@ -800,7 +785,7 @@ function JobListPanel({
               onDrop={(event) => onDropBooking(event, dateStr, entry.id)}
               onDragEnd={onDragEnd}
               onClick={() => onSelect(selectedId === entry.id ? null : entry.id)}
-              className={`group flex items-start gap-2.5 px-3 py-3 transition-all cursor-pointer relative ${
+              className={`group flex items-start gap-2.5 px-2.5 py-2 transition-all cursor-pointer relative ${
                 selectedId === entry.id
                   ? "bg-amber-50 border-l-2 border-amber-400"
                   : "hover:bg-slate-50 border-l-2 border-transparent"
@@ -820,15 +805,15 @@ function JobListPanel({
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-bold text-blue-600 tabular-nums">
-                    {fmtTime(entry.time)} – {fmtTime(addMinutes(entry.time, entry.durationMinutes))}
-                  </span>
-                  <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
-                    Drag to another day or reorder
+                <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
+                  <p className="text-xs font-semibold text-slate-900">{entry.customer?.name || "Customer"}</p>
+                  <span className="text-[10px] font-bold text-blue-600 tabular-nums whitespace-nowrap">
+                    {formatSlotRange(entry.time, entry.durationMinutes)}
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-slate-900 mt-0.5">{entry.customer?.name || "Customer"}</p>
+                <span className="text-rose-500 text-[9px] font-bold hidden group-hover:inline-flex items-center gap-0.5">
+                  Drag to another day or reorder
+                </span>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <TypeBadge type={entry.type} />
                 </div>
@@ -884,6 +869,7 @@ function JobListPanel({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function ScheduleCalendarView({
+  header,
   onOpenLead,
   leads = [],
   onBookingsChanged,
@@ -891,6 +877,7 @@ export function ScheduleCalendarView({
   initialBooking,
   unassignedLeads = [],
 }: {
+  header?: ReactNode;
   onOpenLead: (id: string) => void;
   leads?: Lead[];
   onBookingsChanged?: () => void;
@@ -920,7 +907,7 @@ export function ScheduleCalendarView({
     const lead = leads.find((lead) => lead.id === leadId);
     const entry = entries.find((entry) => entry.leadId === leadId && entry.type === type);
     return suggestedPlanningTime(rules, type, date, entries, preferred, technicians, {
-      leadId, durationMinutes: estimatedJobMinutes(lead?.inspectionReport?.estimatedTime) ?? entry?.durationMinutes,
+      leadId, durationMinutes: appointmentDurationMinutes({ type }, rules),
       technicianId: entry?.technicianId || lead?.technicianId,
       technician: entry?.technician || lead?.technician, technicianUsername: entry?.technicianUsername || lead?.technicianUsername,
     });
@@ -1223,7 +1210,8 @@ export function ScheduleCalendarView({
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-slate-50">
       {/* ── Top Bar ──────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200/80 px-5 py-3 flex items-center gap-3 flex-wrap shrink-0">
+      <div className="bg-white border-b border-slate-200/80 px-3 py-2 flex items-center gap-1.5 flex-wrap shrink-0">
+        {header}
         {/* Date navigation */}
         <div className="flex items-center gap-2">
           <button
@@ -1235,14 +1223,12 @@ export function ScheduleCalendarView({
           </button>
 
           <div className="relative">
-          <button type="button" onClick={() => setDatePickerOpen((open) => !open)} aria-expanded={datePickerOpen} aria-label="Choose schedule date" className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-blue-50">
+          <button type="button" onClick={() => setDatePickerOpen((open) => !open)} aria-expanded={datePickerOpen} aria-label="Choose schedule date" className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-blue-50">
             <CalendarDays className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="text-sm font-bold text-slate-900 whitespace-nowrap">
-              {fmtDate(currentDate)}
+            <span className="text-[11px] font-bold text-slate-900 whitespace-nowrap">
+              {new Date(`${currentDate}T00:00:00`).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
             </span>
-            {isToday(currentDate) && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">Today</span>
-            )}
+
           </button>
           {datePickerOpen && <ScheduleDatePicker value={currentDate} onChange={(date) => { setCurrentDate(date); setDatePickerOpen(false); }} onClose={() => setDatePickerOpen(false)} />}
           </div>
@@ -1256,7 +1242,7 @@ export function ScheduleCalendarView({
           </button>
         </div>
 
-        <button type="button" disabled={dayCount >= MAX_PLANNING_DAYS || loading || routeSaving} onClick={() => changeVisibleDates(addPlanningDate(visibleDates, offsetPlanningDate(endDate, 1)))} title={`Show ${fmtDate(offsetPlanningDate(endDate, 1))}`} className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-40 cursor-pointer"><Plus className="w-3.5 h-3.5" />Add next day</button>
+        <button type="button" disabled={dayCount >= MAX_PLANNING_DAYS || loading || routeSaving} onClick={() => changeVisibleDates(addPlanningDate(visibleDates, offsetPlanningDate(endDate, 1)))} title={`Show ${fmtDate(offsetPlanningDate(endDate, 1))}`} className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-40 cursor-pointer"><Plus className="w-3.5 h-3.5" />Add next day</button>
 
         <button
           onClick={goToday}
@@ -1266,13 +1252,13 @@ export function ScheduleCalendarView({
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <button type="button" aria-pressed={showUnassigned} onClick={() => { setShowUnassigned((show) => !show); setSelectedPlanningLeadId(null); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+          <button type="button" aria-pressed={showUnassigned} onClick={() => { setShowUnassigned((show) => !show); setSelectedPlanningLeadId(null); }} className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
             {showUnassigned ? "Hide" : "Show"} unassigned leads ({unassignedLeads.length})
           </button>
           {/* Optimize Route */}
           <button
             onClick={optimizeRoute}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <Route className="w-3.5 h-3.5" />
             Optimize Route
@@ -1290,26 +1276,26 @@ export function ScheduleCalendarView({
         </div>
       </div>
 
-      {loadError && <div role="alert" className="mx-5 mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{loadError} Use Refresh to try again.</div>}
-      <div className="flex flex-wrap items-center gap-2 px-5 pt-3 pb-1 shrink-0">
+      {loadError && <div role="alert" className="mx-3 mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{loadError} Use Refresh to try again.</div>}
+      <div className="flex flex-wrap items-center gap-1.5 px-3 pt-2 pb-1 shrink-0">
         {visibleDates.map((date, dayIndex) => <div key={date} className="inline-flex items-center rounded-lg border bg-white" style={{ borderColor: planningDayColor(dayIndex) }}>
-          <button type="button" onClick={() => setMapDate(date)} aria-pressed={activeMapDate === date} className="flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer" style={{ color: planningDayColor(dayIndex), backgroundColor: activeMapDate === date ? `color-mix(in srgb, ${planningDayColor(dayIndex)} 10%, white)` : undefined }}><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(dayIndex) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</button>
+          <button type="button" onClick={() => setMapDate(date)} aria-pressed={activeMapDate === date} className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold cursor-pointer" style={{ color: planningDayColor(dayIndex), backgroundColor: activeMapDate === date ? `color-mix(in srgb, ${planningDayColor(dayIndex)} 10%, white)` : undefined }}><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(dayIndex) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</button>
           {dayCount > 1 && <button type="button" aria-label={`Remove ${date} from view`} onClick={() => changeVisibleDates(visibleDates.filter((day) => day !== date))} className="p-2 text-slate-400 hover:text-rose-600 cursor-pointer"><X className="w-3 h-3" /></button>}
         </div>)}
-        <span className="ml-auto text-xs text-slate-500">{dayCount} {dayCount === 1 ? "day" : "days"} shown · One color per day</span>
-        {showUnassigned && <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>}
+        <span className="ml-auto text-[10px] text-slate-500">{dayCount} {dayCount === 1 ? "day" : "days"} shown</span>
+        {showUnassigned && <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>}
       </div>
 
       {/* ── Stats Bar ─────────────────────────────────────────────────────── */}
-      <div className="px-5 pt-4 shrink-0">
+      <div className="px-3 pt-1.5 shrink-0">
         <DayStatsBar entries={entries} />
       </div>
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
-      <div className={`grid grid-cols-1 items-start px-5 gap-4 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(260px,1fr)_minmax(300px,1.1fr)]" : "lg:grid-cols-2"}`}>
+      <div className={`grid grid-cols-1 items-start px-3 gap-2.5 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(260px,1fr)_minmax(300px,1.1fr)]" : "lg:grid-cols-2"}`}>
 
-        {showUnassigned && <div className="max-h-[280px] xl:max-h-none xl:h-[560px] min-w-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
-          <div className="shrink-0 border-b border-amber-100 bg-amber-50 p-3 space-y-2">
+        {showUnassigned && <div className="max-h-[280px] xl:max-h-none xl:h-[clamp(300px,calc(100dvh-330px),680px)] min-w-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-amber-100 bg-amber-50 p-2 space-y-1.5">
             <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900">Unassigned leads</h3><span className="text-xs font-bold text-amber-700">{unassignedLeads.length}</span></div>
             <div className="flex gap-1">
               {(["all", "inspection", "job"] as const).map((type) => <button key={type} type="button" onClick={() => setPlanningFilter(type)} aria-pressed={planningFilter === type} className={`rounded-lg px-2 py-1 text-[10px] font-semibold cursor-pointer ${planningFilter === type ? "bg-amber-500 text-white" : "bg-white text-slate-600"}`}>{type === "all" ? "All" : type === "inspection" ? "Inspections" : "Jobs"}</button>)}
@@ -1317,7 +1303,7 @@ export function ScheduleCalendarView({
             <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5"><Search className="w-3.5 h-3.5 text-slate-400" /><input aria-label="Search unassigned leads" placeholder="Search name or address" value={planningSearch} onChange={(event) => setPlanningSearch(event.target.value)} className="min-w-0 w-full text-xs outline-none" /></label>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
-            {visiblePlanningLeads.map(({ lead, type }) => <button key={`${lead.id}:${type}`} type="button" draggable={!loading && !routeSaving} onDragStart={(event) => startDrag(event, { kind: "unassigned", leadId: lead.id, type })} onDragEnd={endDrag} onClick={() => selectPlanningLead(lead.id)} aria-pressed={selectedPlanningLeadId === lead.id} className={`w-full text-left rounded-xl border p-3 space-y-1 cursor-pointer ${selectedPlanningLeadId === lead.id ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" : "border-slate-200 hover:bg-slate-50"}`}>
+            {visiblePlanningLeads.map(({ lead, type }) => <button key={`${lead.id}:${type}`} type="button" draggable={!loading && !routeSaving} onDragStart={(event) => startDrag(event, { kind: "unassigned", leadId: lead.id, type })} onDragEnd={endDrag} onClick={() => selectPlanningLead(lead.id)} aria-pressed={selectedPlanningLeadId === lead.id} className={`w-full text-left rounded-lg border p-2 space-y-0.5 cursor-pointer ${selectedPlanningLeadId === lead.id ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" : "border-slate-200 hover:bg-slate-50"}`}>
               <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-900 truncate">{lead.name || "Customer"}</span><TypeBadge type={type} /></div>
               <p className="text-[10px] font-semibold text-slate-500">{lead.status}</p>
               <p className="text-[11px] text-slate-600">{lead.address || lead.city || "Address needed to show on map"}</p>
@@ -1328,7 +1314,7 @@ export function ScheduleCalendarView({
           </div>
         </div>}
         {/* Days remain in one vertical list while the map stays visible. */}
-        <div data-testid="schedule-day-stack" className="min-w-0 h-[560px] overflow-y-auto space-y-3 pr-1 pb-2" onDragOver={(event) => {
+        <div data-testid="schedule-day-stack" className="min-w-0 h-[clamp(300px,calc(100dvh-330px),680px)] overflow-y-auto space-y-3 pr-1 pb-2" onDragOver={(event) => {
           if (!dragItem.current) return;
           const bounds = event.currentTarget.getBoundingClientRect();
           if (event.clientY < bounds.top + 60) event.currentTarget.scrollTop -= 16;
@@ -1345,9 +1331,9 @@ export function ScheduleCalendarView({
                 setDropDate(date);
               }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropDate(null); }} onDrop={(event) => dropBooking(event, date)} className={`rounded-xl shadow-xs border bg-white transition-shadow ${dropDate === date ? "border-blue-500 ring-2 ring-blue-200" : "border-slate-200"}`}>
 
-                <div className="px-4 py-3 border-b bg-white shrink-0" style={{ borderTop: `4px solid ${planningDayColor(dayIndex)}` }}>
-                  <p className="text-sm font-bold" style={{ color: planningDayColor(dayIndex) }}>{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long" })}</p>
-                  <p className="text-xs mt-1 text-slate-600">{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short" })} · {dayEntries.length} bookings</p>
+                <div className="px-3 py-2 border-b bg-white shrink-0" style={{ borderTop: `4px solid ${planningDayColor(dayIndex)}` }}>
+                  <p className="text-xs font-bold" style={{ color: planningDayColor(dayIndex) }}>{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long" })}</p>
+                  <p className="text-[10px] mt-0.5 text-slate-600">{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short" })} · {dayEntries.length} bookings</p>
                   <button type="button" onClick={() => setMapDate(date)} className="text-[10px] font-semibold text-blue-600 mt-1 cursor-pointer">{activeMapDate === date ? "Booking day selected" : "Use for new booking"}</button>
                 </div>
                 {loading ? <div className="flex-1 flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div> : <JobListPanel
@@ -1364,14 +1350,14 @@ export function ScheduleCalendarView({
                   onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestTime(selectedPlanningLead?.type || "inspection", date, undefined, selectedPlanningLead?.lead.id)); setBookingDate(date); }}
                   dateStr={date}
                 />}
-                {!loading && <div className={`m-3 rounded-lg border border-dashed p-3 text-center text-[11px] ${dragging ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"}`}>{date < todayStr() ? "Past day · Drag bookings to a future day" : "Drop a lead or booking here · Confirm date and time before saving"}</div>}
+                {!loading && <div className={`m-2 rounded-lg border border-dashed p-2 text-center text-[11px] ${dragging ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"}`}>{date < todayStr() ? "Past day · Drag bookings to a future day" : "Drop a lead or booking here · Confirm date and time before saving"}</div>}
               </div>
             );
           })}
         </div>
 
         {/* Map */}
-        <div className="min-w-0 h-[560px] rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
+        <div className="min-w-0 h-[clamp(300px,calc(100dvh-330px),680px)] rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col">
           {selectedPlanningLead && <div className="shrink-0 border-b border-violet-200 bg-violet-50 p-3 space-y-2">
             <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-semibold text-violet-700">Selected for {selectedPlanningLead.type === "inspection" ? "inspection" : "job"}</p><p className="text-sm font-bold text-slate-900">{selectedPlanningLead.lead.name || "Customer"}</p></div><button type="button" onClick={() => setSelectedPlanningLeadId(null)} aria-label="Clear selected lead" className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
             <p className="text-xs text-slate-600">{selectedPlanningLead.lead.address || selectedPlanningLead.lead.city || "Add an address to place this lead on the map."}</p>
@@ -1418,7 +1404,7 @@ export function ScheduleCalendarView({
       </div>
 
       {/* ── Route Timeline ─────────────────────────────────────────────────── */}
-      <div className="shrink-0 mx-5 mt-3 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
+      <div className="shrink-0 mx-3 mt-2 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
         <RouteTimeline
           entries={mapEntries}
           selectedId={selectedId}
@@ -1429,7 +1415,7 @@ export function ScheduleCalendarView({
       </div>
 
       {/* ── Footer Summary ─────────────────────────────────────────────────── */}
-      <div className="shrink-0 mx-5 mb-4 mt-2 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
+      <div className="shrink-0 mx-3 mb-2 mt-2 rounded-xl overflow-hidden border border-slate-200 shadow-xs">
         <RouteSummaryFooter
           entries={entries}
           originalEntries={originalEntries}
@@ -1463,7 +1449,7 @@ export function ScheduleCalendarView({
           <div className="flex items-center justify-between border-b p-4"><h3 id="route-preview-title" className="text-sm font-bold text-slate-900">Review route changes</h3><button type="button" aria-label="Close route preview" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="p-1 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button></div>
           <div className="p-4 space-y-3 overflow-y-auto text-xs">
             <p className="rounded-lg bg-amber-50 p-3 text-amber-800">This saves the planned driving order. Customer booking times stay as shown. Reschedule individual bookings if the driving order requires different times.</p>
-            {visibleDates.map((date) => <div key={date}><p className="font-bold text-slate-800 mb-2">{fmtDate(date)}</p><ol className="space-y-1.5">{entries.filter((entry) => entry.date === date).map((entry, index) => <li key={entry.id} className="rounded-lg bg-slate-50 p-2 text-slate-700">{index + 1}. {entry.customer?.name || "Customer"} · {fmtTime(entry.time)}<span className="block text-slate-500 mt-1">{entry.customer?.address || "No address"}</span></li>)}</ol></div>)}
+            {visibleDates.map((date) => <div key={date}><p className="font-bold text-slate-800 mb-2">{fmtDate(date)}</p><ol className="space-y-1.5">{entries.filter((entry) => entry.date === date).map((entry, index) => <li key={entry.id} className="rounded-lg bg-slate-50 p-2 text-slate-700">{index + 1}. {entry.customer?.name || "Customer"} · {formatSlotRange(entry.time, entry.durationMinutes)}<span className="block text-slate-500 mt-1">{entry.customer?.address || "No address"}</span></li>)}</ol></div>)}
             {saveError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-700">{saveError}</p>}
           </div>
           <div className="flex justify-end gap-2 border-t p-4"><button type="button" disabled={routeSaving} onClick={() => setPreviewOpen(false)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Back</button><button type="button" disabled={routeSaving} onClick={() => void saveRoute()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{routeSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{routeSaving ? "Saving…" : "Save Route Order"}</button></div>
@@ -1472,7 +1458,7 @@ export function ScheduleCalendarView({
       {removingEntry && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
         <div role="dialog" aria-modal="true" aria-labelledby="remove-booking-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-4">
           <h3 id="remove-booking-title" className="text-sm font-bold text-slate-900">Remove booking?</h3>
-          <p className="text-xs text-slate-600">Remove the {removingEntry.type} for {removingEntry.customer?.name || "this customer"} on {fmtDate(removingEntry.date)} at {fmtTime(removingEntry.time)}? This clears the appointment and releases its time for another customer.</p>
+          <p className="text-xs text-slate-600">Remove the {removingEntry.type} for {removingEntry.customer?.name || "this customer"} on {fmtDate(removingEntry.date)} at {formatSlotRange(removingEntry.time, removingEntry.durationMinutes)}? This clears the appointment and releases its time for another customer.</p>
           {removeError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{removeError}</p>}
           <div className="flex justify-end gap-2"><button type="button" disabled={removing} onClick={() => setRemovingEntry(null)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Keep Booking</button><button type="button" disabled={removing} onClick={() => void removeFromRoute()} className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{removing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{removing ? "Removing…" : "Remove Booking"}</button></div>
         </div>

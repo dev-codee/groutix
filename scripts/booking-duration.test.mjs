@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
-const { estimatedJobMinutes } = loadTs("lib/bookingDuration.ts");
+const { estimatedJobMinutes, appointmentDurationMinutes } = loadTs("lib/bookingDuration.ts");
 const { bookingAvailability } = loadTs("lib/bookingCapacity.ts");
 const { DEFAULT_BOOKING_RULES: rules } = loadTs("lib/bookingRules.ts");
 const technicians = [{ id: "a", name: "Alex", active: true }, { id: "b", name: "Bob", active: true }];
@@ -10,22 +10,22 @@ const check = (overrides = {}, appointments = [job]) => bookingAvailability(appo
 test("hour estimates support decimals and reserve the upper bound of ranges", () => {
   for (const [value, minutes] of [["4",240],["2.5 hours",150],["4–6 hrs",360],["4 to 6 hours",360],["0",undefined],["tomorrow",undefined],["1.5 days",undefined]]) assert.equal(estimatedJobMinutes(value), minutes);
 });
-test("full duration blocks the assigned technician and leaves another technician free", () => {
-  assert.equal(check().available, false);
-  assert.equal(check({ technicianId: "b" }).available, true);
-  assert.equal(check({ time: "11:30" }).available, true);
+test("booking windows remain one hour even when estimated work takes several hours", () => {
+  assert.equal(appointmentDurationMinutes(job, rules), 60);
+  assert.equal(check({ time: "09:00" }).available, false);
+  assert.equal(check({ time: "09:00", technicianId: "b" }).available, true);
+  assert.equal(check({ time: "10:00" }).available, true);
+  assert.equal(check({ time: "08:00", durationMinutes: 240 }).available, true);
 });
-test("a new long job checks its entire interval, including a later booking", () => {
-  assert.equal(check({ time: "08:00", durationMinutes: 180 }).available, false);
+test("inspection capacity stays separate from jobs", () => {
+  assert.equal(check({ time: "09:00", type: "inspection", technicianId: undefined }).available, true);
 });
-test("inspection capacity remains separate from long jobs", () => {
-  assert.equal(check({ type: "inspection", technicianId: undefined }).available, true);
+test("one booking leaves the second technician available; the second booking fills the hour", () => {
+  const first = { ...job, technicianId: undefined };
+  assert.equal(bookingAvailability([first], { ...first, leadId: "new" }, rules, technicians).remaining, 1);
+  assert.equal(bookingAvailability([first, { ...first, leadId: "second" }], { ...first, leadId: "new" }, rules, technicians).available, false);
 });
-test("unassigned capacity is booked throughout a long job, not only its start", () => {
-  assert.equal(bookingAvailability([job], { leadId: "new", date: job.date, time: "10:00", type: "job" }, rules, [technicians[0]]).available, false);
-});
-
-test("planning suggestions skip the occupied hours of a long job", () => {
+test("planning suggestions offer the next hour despite a longer work estimate", () => {
   const { suggestedPlanningTime } = loadTs("lib/scheduleDrag.ts");
-  assert.equal(suggestedPlanningTime(rules, "job", job.date, [{ ...job, id: "existing" }], "10:00"), "12:00");
+  assert.equal(suggestedPlanningTime(rules, "job", job.date, [{ ...job, id: "existing" }], "10:00"), "10:00");
 });

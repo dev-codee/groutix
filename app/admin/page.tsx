@@ -325,6 +325,43 @@ export default function CrmDashboardPage() {
   // Schedule view tab switcher: "upcoming" (Upcoming Bookings List) vs. "calendar" (Day Calendar & Route)
   const [scheduleBookingRequest, setScheduleBookingRequest] = useState<{ leadId: string; type: "inspection" | "job"; date?: string } | null>(null);
   const [scheduleTab, setScheduleTab] = useState<"upcoming" | "calendar">("upcoming");
+  const scheduleHeader = (
+    <>
+      <div className="flex items-center gap-1.5">
+        <CalendarDays className="w-4 h-4 text-[#001f97]" />
+        <div>
+          <h2 className="text-xs font-bold text-slate-900 leading-tight">Schedule &amp; Calendar</h2>
+        </div>
+      </div>
+
+      <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/90 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setScheduleTab("upcoming")}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+            scheduleTab === "upcoming"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
+        >
+          <CalendarDays className="w-3.5 h-3.5 text-[#001f97]" />
+          List
+        </button>
+        <button
+          type="button"
+          onClick={() => setScheduleTab("calendar")}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+            scheduleTab === "calendar"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
+        >
+          <Route className="w-3.5 h-3.5 text-emerald-600" />
+          Calendar &amp; Route
+        </button>
+      </div>
+    </>
+  );
 
   // Live AUS clock — updates every second.
   // Both states start as "" so the server and first client render agree (no
@@ -4506,48 +4543,9 @@ export default function CrmDashboardPage() {
               VIEW: SCHEDULE
              ========================================================================= */}
             {currentView === "schedule" && (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {/* View Mode Tabs: Upcoming Schedule List vs Day Calendar & Route */}
-                <div className="flex items-center justify-between gap-3 flex-wrap bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-                  <div className="flex items-center gap-2.5">
-                    <CalendarDays className="w-5 h-5 text-[#001f97]" />
-                    <div>
-                      <h2 className="text-sm font-bold text-slate-900 leading-tight">Schedule &amp; Calendar</h2>
-                      <p className="text-[11px] text-slate-500">
-                        {scheduleTab === "upcoming"
-                          ? "Upcoming inspection and job bookings grouped by date"
-                          : "Interactive day calendar, route optimization & map"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/90 shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setScheduleTab("upcoming")}
-                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        scheduleTab === "upcoming"
-                          ? "bg-white text-slate-900 shadow-xs"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                      }`}
-                    >
-                      <CalendarDays className="w-3.5 h-3.5 text-[#001f97]" />
-                      Upcoming Schedule (List)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setScheduleTab("calendar")}
-                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        scheduleTab === "calendar"
-                          ? "bg-white text-slate-900 shadow-xs"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-                      }`}
-                    >
-                      <Route className="w-3.5 h-3.5 text-emerald-600" />
-                      Day Calendar &amp; Route
-                    </button>
-                  </div>
-                </div>
+                {scheduleTab === "upcoming" && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">{scheduleHeader}</div>}
 
                 {/* Tab 1: Old Schedule View (Upcoming bookings list grouped by date) */}
                 {scheduleTab === "upcoming" && (
@@ -4568,8 +4566,9 @@ export default function CrmDashboardPage() {
 
                 {/* Tab 2: New Schedule Calendar View (Interactive day calendar & map) */}
                 {scheduleTab === "calendar" && (
-                  <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs" style={{ height: "calc(100vh - 175px)", minHeight: 650 }}>
+                  <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs" style={{ height: "calc(100dvh - 110px)", minHeight: 420 }}>
                     <ScheduleCalendarView
+                      header={scheduleHeader}
                       initialBooking={scheduleBookingRequest || undefined}
                       onBookingRequestHandled={() => setScheduleBookingRequest(null)}
                       leads={leads}

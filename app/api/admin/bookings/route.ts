@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
           type: b.type,
           date: b.date,
           time: b.time,
+          durationMinutes: b.durationMinutes,
           zone: area.zone,
           suburb: b.suburb || null,
           reference: b.jobNo || `GX-ADM-${b.leadId.slice(-6)}`,

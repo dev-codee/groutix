@@ -1,6 +1,6 @@
 "use client";
 
-import { estimatedJobMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
 import { useRef, useState } from "react";
 import { X, Phone, MapPin } from "lucide-react";
@@ -61,7 +61,7 @@ export function LeadEditModal({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const inspectionConflict = useSlotConflict(editingLead?.inspectionAt, editingLead?.id, "inspection");
-  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id, "job", estimatedJobMinutes(editingLead?.inspectionReport?.estimatedTime), editingLead || {});
+  const jobConflict = useSlotConflict(editingLead?.jobAt, editingLead?.id, "job", appointmentDurationMinutes({ type: "job" }, bookingRules), editingLead || {});
   // Compare against the form's opening snapshot, even if the lead list refreshes.
   const original = useRef<Partial<Lead>>({ ...editingLead });
 
@@ -366,7 +366,7 @@ export function LeadEditModal({
               {showBoard.job && (
                 <SlotBoard
                   type="job"
-                  durationMinutes={estimatedJobMinutes(editingLead?.inspectionReport?.estimatedTime)}
+                  durationMinutes={appointmentDurationMinutes({ type: "job" }, bookingRules)}
                   assignment={editingLead || {}}
                   value={editingLead?.jobAt}
                   leadId={editingLead?.id}
