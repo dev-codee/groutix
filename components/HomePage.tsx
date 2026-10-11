@@ -627,8 +627,7 @@ export default function HomePage({
             Two-column: copy left, form right
         ══════════════════════════════════════ */}
         <section className="relative overflow-hidden pt-[110px] lg:pt-[125px]" id="quote-form">
-          {/* Background: solid dark blue */}
-<div className="absolute inset-0 bg-[#000f5c]" />
+          <HeroBackground />
 
           <div className="relative z-10 flex min-h-[calc(100vh-110px)] lg:min-h-[calc(100vh-125px)] flex-col">
             <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-4 sm:px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
