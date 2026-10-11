@@ -627,11 +627,8 @@ export default function HomePage({
             Two-column: copy left, form right
         ══════════════════════════════════════ */}
         <section className="relative overflow-hidden pt-[110px] lg:pt-[125px]" id="quote-form">
-          {/* Background image */}
-          <div className="absolute inset-0">
-            <Image src="/img101.jpeg" alt="Hero background" fill className="object-cover" priority />
-            <div className="absolute inset-0 bg-black/40" />
-          </div>
+          {/* Background: solid dark blue */}
+<div className="absolute inset-0 bg-[#001f97]" />
 
           <div className="relative z-10 flex min-h-[calc(100vh-110px)] lg:min-h-[calc(100vh-125px)] flex-col">
             <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-4 sm:px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
@@ -645,7 +642,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    Shower Regrouting and Balcony Leak Repair in Melbourne | Groutix
+                    #1 Shower Regrouting and Balcony Leak Repair in Melbourne
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -653,7 +650,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
                     className="max-w-xl text-base leading-relaxed text-white/85 sm:text-base text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria, without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
+                    Cracked grout lets water slip behind tiles, feeding mould and hidden damage in Melbourne homes from Geelong to Frankston. We remove the failed grout and rebuild it with waterproof epoxy.Every complete shower regrout carries our 10 year waterproof warranty.
                   </motion.p>
 
                   {/* Google badge + Call button */}
