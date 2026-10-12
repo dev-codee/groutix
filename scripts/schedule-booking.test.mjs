@@ -37,6 +37,7 @@ test("a competing slot reservation returns conflict before changing the lead", a
   assert.equal((await patch({ inspectionAt: "2026-10-09T10:00:00" })).status, 409);
   assert.equal(calls.some(([action]) => action === "update"), false);
   assert.equal(calls[0][2].retainPrevious, true);
+  assert.equal(calls[0][2].staffOverride, true);
 });
 
 test("inspection and job pools can share a start time", async () => {
@@ -187,4 +188,16 @@ test("invalid end dates cannot change a saved booking", async () => {
   const result = await patch({ jobAt: "2026-10-14T10:00", jobEndAt: "2026-10-14T09:00" });
   assert.equal(result.status, 400);
   assert.equal(calls.some(c => c[0] === "update" || c[0] === "reserve"), false);
+});
+
+test("changing only an inspector rechecks the full existing booking before saving", async () => {
+  const { patch, calls } = patchApi({ before: { inspectionAt: "2026-10-14T09:00", assigned: "Alex", inspectorId: "old" } });
+  const result = await patch({ assigned: "Bob" });
+  assert.equal(result.status, 200);
+  const reservation = calls.find(c => c[0] === "reserve")[1];
+  assert.equal(reservation.assigned, "Bob");
+  assert.equal(reservation.inspectorId, "");
+  const blocked = patchApi({ conflict: true, before: { inspectionAt: "2026-10-14T09:00", assigned: "Alex" } });
+  assert.equal((await blocked.patch({ assigned: "Bob" })).status, 409);
+  assert.equal(blocked.calls.some(c => c[0] === "update"), false);
 });

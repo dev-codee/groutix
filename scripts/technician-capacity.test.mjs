@@ -121,11 +121,10 @@ test("the customer API rereads roster changes and closes days with zero technici
   assert.ok(expanded.body.days.every((day) => day.times.length > 0 && day.slots.every((slot) => !slot.booked)));
 });
 
-test("weekday slots fill after two bookings and Saturday/Sunday slots fill after three", () => {
+test("unassigned capacity follows the working roster on weekdays and weekends", () => {
   const technicians = Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Tech ${i}`, active: true }));
   for (const date of ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"]) {
-    const weekend = ["2026-10-17", "2026-10-18"].includes(date);
-    const limit = weekend ? 3 : 2;
+    const limit = technicians.length;
     const candidate = { date, time: "10:00", type: "job", leadId: "new" };
     const appointments = Array.from({ length: limit }, (_, i) => ({ ...candidate, leadId: `booking-${i}` }));
     assert.equal(bookingAvailability(appointments.slice(0, 1), candidate, rules, technicians).available, true);
@@ -133,4 +132,39 @@ test("weekday slots fill after two bookings and Saturday/Sunday slots fill after
     assert.equal(bookingAvailability(appointments, candidate, rules, technicians).available, false);
     assert.equal(bookingAvailability(appointments, { ...candidate, time: "11:00" }, rules, technicians).remaining, limit);
   }
+});
+
+
+test("different assigned inspectors can overlap; the same inspector cannot", () => {
+  const inspection = { leadId: "first", type: "inspection", date: "2026-10-12", time: "09:00", scheduledMinutes: 180, inspectorId: "inspector-a", assigned: "Alex" };
+  const candidate = { ...inspection, leadId: "second", time: "10:00", scheduledMinutes: 60 };
+  assert.equal(bookingAvailability([inspection], candidate, rules, roster).available, false);
+  assert.equal(bookingAvailability([inspection], { ...candidate, inspectorId: "inspector-b", assigned: "Bob" }, rules, roster).available, true);
+  assert.equal(bookingAvailability([inspection], { ...candidate, time: "12:00" }, rules, roster).available, true);
+});
+test("one person cannot overlap inspections and jobs, including on the same lead", () => {
+  const technicians = [{ id: "tech-a", name: "Alex", username: "alex", aliases: ["user-a"], active: true }, { id: "tech-b", name: "Bob", active: true }];
+  const inspection = { leadId: "same-lead", type: "inspection", date: "2026-10-12", time: "09:00", scheduledMinutes: 120, inspectorId: "user-a", assigned: "Alex" };
+  const job = { leadId: "same-lead", type: "job", date: inspection.date, time: "10:00", technicianId: "tech-a" };
+  assert.equal(bookingAvailability([inspection], job, rules, technicians).available, false);
+  assert.equal(bookingAvailability([job], inspection, rules, technicians).available, false);
+  assert.equal(bookingAvailability([inspection], { ...job, technicianId: "tech-b" }, rules, technicians).available, true);
+  assert.equal(bookingAvailability([inspection], inspection, rules, technicians).available, true);
+});
+test("four different working people can share the same weekday start", () => {
+  const technicians = Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Tech ${i}`, active: true }));
+  const candidate = { leadId: "new", type: "job", date: "2026-10-12", time: "10:00", technicianId: "3" };
+  const bookings = technicians.slice(0, 3).map(tech => ({ ...candidate, leadId: tech.id, technicianId: tech.id }));
+  assert.equal(bookingAvailability(bookings, candidate, rules, technicians).available, true);
+  assert.equal(bookingAvailability(bookings, { ...candidate, technicianId: "0" }, rules, technicians).available, false);
+});
+
+test("simultaneous inspection and job reservations share the same date lock", async () => {
+  const held = new Set(); let inside = 0, peak = 0;
+  const collection = { updateOne: async query => { if (held.has(query._id)) throw { code: 11000 }; held.add(query._id); }, deleteOne: async query => { held.delete(query._id); } };
+  const { withBookingCalendarLock } = loadTs("lib/bookingCalendarLock.ts", { "./mongodb": { getDb: async () => ({ collection: () => collection }) } });
+  const action = async () => { inside++; peak = Math.max(peak, inside); await new Promise(resolve => setTimeout(resolve, 10)); inside--; };
+  await Promise.all([withBookingCalendarLock("2026-10-12", "inspection", action), withBookingCalendarLock("2026-10-12", "job", action)]);
+  assert.equal(peak, 1);
+  assert.equal(held.size, 0);
 });

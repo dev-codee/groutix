@@ -1,5 +1,7 @@
 "use client";
 
+import { staffBookingRules } from "@/lib/staffBookingRules";
+
 import type { DayAppointment } from "@/lib/bookings";
 import { bookingAvailability } from "@/lib/bookingCapacity";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
@@ -131,7 +133,7 @@ export function DispatchView({
     callCustomer,
   } = useAdminPageCtx();
 
-  const bookingRules = useBookingRules();
+  const bookingRules = staffBookingRules(useBookingRules());
   const zoneRules = useZoneRules();
 
   const todayStr = useMemo(() => todayAU(), []);
@@ -436,6 +438,8 @@ export function DispatchView({
       const segments = proposal.endAt ? bookingSegments(proposal.type, `${proposal.newDate}T${proposal.newTime}`, proposal.endAt, bookingRules) : [{ date: proposal.newDate, time: proposal.newTime }];
       for (const segment of segments) {
         const issue = dispatchBookingIssue({ leadId: proposal.lead.id, type: proposal.type, ...segment,
+          assigned: proposal.type === "inspection" ? proposal.technician || proposal.lead.assigned : undefined,
+          inspectorId: proposal.type === "inspection" && !proposal.technician ? proposal.lead.inspectorId : undefined,
           technician: proposal.technician || proposal.lead.technician,
           technicianId: proposal.technician ? undefined : proposal.lead.technicianId,
           technicianUsername: proposal.technician ? undefined : proposal.lead.technicianUsername,
@@ -528,6 +532,7 @@ export function DispatchView({
         if (!confirmRescheduleData.oldDateTime) updates.status = "Inspection Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.assigned = confirmRescheduleData.technician;
+          updates.inspectorId = inspectionStaff.find(person => person.name === confirmRescheduleData.technician)?.id || "";
         }
       } else {
         updates.jobAt = isoDateTime;
@@ -536,6 +541,8 @@ export function DispatchView({
         if (!confirmRescheduleData.oldDateTime) updates.status = "Job Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.technician = confirmRescheduleData.technician;
+          updates.technicianId = assignableTechnicians.find(person => person.name === confirmRescheduleData.technician)?.id || "";
+          updates.technicianUsername = assignableTechnicians.find(person => person.name === confirmRescheduleData.technician)?.username || "";
         }
       }
 
@@ -636,7 +643,7 @@ export function DispatchView({
           <span className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700 whitespace-nowrap">
             7 Days
           </span>
-          <button type="button" onClick={() => setNewBooking({ date: selectedDate, time: fromMinutes(TIMELINE_START_MINS) })}
+          <button type="button" onClick={() => setNewBooking({ date: selectedDate, time: "09:00" })}
             className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white flex items-center gap-1"><Plus className="h-4 w-4" />New booking</button>
         </div>
 

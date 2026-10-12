@@ -1,5 +1,7 @@
 "use client";
 
+import { staffBookingRules } from "@/lib/staffBookingRules";
+
 import { useEffect, useRef, useState } from "react";
 import { X, ArrowLeft, CalendarCheck, Loader2 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -13,7 +15,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, onC
   date: string; time: string; onClose: () => void; onBooked: (date: string, message: string) => void;
 }) {
   const { scopedLeads, assignableTechnicians, inspectionStaff, upsertLead } = useAdminPageCtx();
-  const rules = useBookingRules();
+  const rules = staffBookingRules(useBookingRules());
   const [type, setType] = useState<"inspection" | "job">("inspection");
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
@@ -58,7 +60,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, onC
     if (!response.ok) throw new Error(data.error || "Could not check availability.");
     for (const segment of segments) {
     const issue = dispatchBookingIssue({ leadId: savedLead.current?.id || "new-dispatch-booking", type, ...segment,
-      ...(type === "job" ? { technicianId: assignee, technician: choices.find(c => c.key === assignee)?.name } : {}) }, data.appointments, rules, assignableTechnicians);
+      ...(type === "job" ? { technicianId: assignee, technician: choices.find(c => c.key === assignee)?.name } : { inspectorId: assignee, assigned: choices.find(c => c.key === assignee)?.name }) }, data.appointments, rules, assignableTechnicians);
     if (issue) throw new Error(`${segment.date}: ${issue}`);
     }
   }
@@ -118,7 +120,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, onC
       <form onSubmit={event => { event.preventDefault(); void submit(); }}>
         <fieldset disabled={busy} className="p-5 space-y-4">
           {review ? <div className="space-y-3 text-sm">
-            <div className="rounded-xl bg-blue-50 p-4"><p className="font-bold capitalize">{type} · {date} at {time}</p><p>Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} working hours · Melbourne time</p></div>
+            <div className="rounded-xl bg-blue-50 p-4"><p className="font-bold capitalize">{type} · {date} at {time}</p><p>Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} hours · Melbourne time</p></div>
             <ul className="max-h-36 overflow-y-auto text-xs text-slate-600">{segments.map(segment => <li key={segment.date}>{segment.date}: {segment.time} · {segment.scheduledMinutes / 60} hours</li>)}</ul>
             <p><strong>{customer.name}</strong><br />{customer.address}</p>
             <p>{service}<br />Assigned to <strong>{choices.find(c => c.key === assignee)?.name}</strong></p>
@@ -128,10 +130,10 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, onC
             <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
             <div className="grid grid-cols-2 gap-3"><label className="text-sm">Date<input required type="date" min={todayAU()} value={date} onChange={e => setDate(e.target.value)} className={input} /></label><label className="text-sm">Start time<input required type="time" value={time} onChange={e => setTime(e.target.value)} className={input} /></label></div>
             <div className="rounded-xl border border-slate-200 p-3 space-y-3">
-              <label className="block text-sm">Set the finish by<select className={input} value={timingMode} onChange={e => setTimingMode(e.target.value as "duration" | "end")}><option value="duration">Working duration</option><option value="end">End date and time</option></select></label>
-              {timingMode === "duration" ? <label className="block text-sm">Duration (working hours)<input required type="number" min="0.25" step="0.25" value={hours} onChange={e => setHours(e.target.value)} className={input} /></label> : <div className="grid grid-cols-2 gap-3"><label className="text-sm">End date<input required type="date" min={date} value={endDate} onChange={e => setEndDate(e.target.value)} className={input} /></label><label className="text-sm">End time<input required type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className={input} /></label></div>}
-              <p className="text-xs text-slate-500">Jobs continue across working days, skipping nights and closed days. Availability is checked for every occupied day (up to 45 calendar days).</p>
-              {!timingError && <p className="text-sm font-semibold text-blue-700">Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} working hours</p>}
+              <label className="block text-sm">Set the finish by<select className={input} value={timingMode} onChange={e => setTimingMode(e.target.value as "duration" | "end")}><option value="duration">Duration (continuous hours)</option><option value="end">End date and time</option></select></label>
+              {timingMode === "duration" ? <label className="block text-sm">Duration (hours)<input required type="number" min="0.25" step="0.25" value={hours} onChange={e => setHours(e.target.value)} className={input} /></label> : <div className="grid grid-cols-2 gap-3"><label className="text-sm">End date<input required type="date" min={date} value={endDate} onChange={e => setEndDate(e.target.value)} className={input} /></label><label className="text-sm">End time<input required type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className={input} /></label></div>}
+              <p className="text-xs text-slate-500">Staff can book any day or time, even when customer booking is closed. Duration runs continuously; multi-day bookings reserve the full period, including overnight (up to 45 calendar days).</p>
+              {!timingError && <p className="text-sm font-semibold text-blue-700">Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} hours</p>}
               {timingError && <p className="text-xs text-amber-700">{timingError}</p>}
             </div>
             <div className="flex gap-3">{(["existing", "new"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => { setMode(value); setCustomerId(""); setCustomer({ name: "", email: "", phone: "", address: "" }); }} className={`text-sm rounded-lg px-3 py-2 ${mode === value ? "bg-slate-900 text-white" : "bg-slate-100"}`}>{value === "existing" ? "Existing customer" : "New customer"}</button>)}</div>

@@ -201,6 +201,8 @@ export interface SubmissionDoc {
   // reminder cron; the *ReminderSent flags stop duplicate reminders.
   inspectionWorkSegments?: { date: string; time: string; scheduledMinutes: number }[];
   jobWorkSegments?: { date: string; time: string; scheduledMinutes: number }[];
+  inspectorId?: string;
+  inspectorUsername?: string;
   inspectionEndAt?: string;
   jobEndAt?: string;
   inspectionAt?: string; // ISO datetime of the booked inspection

@@ -1,5 +1,7 @@
 "use client";
 
+import { staffBookingRules } from "@/lib/staffBookingRules";
+
 import { useTechnicians } from "@/lib/useTechnicians";
 import type { BookingRules } from "@/lib/bookingRules";
 import { bookingAvailability } from "@/lib/bookingCapacity";
@@ -135,7 +137,7 @@ async function checkBookingAvailability(leadId: string, type: JobType, date: str
   const response = await fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not check availability.");
-  const availability = bookingAvailability(result.appointments, { leadId, type, date, time, durationMinutes: appointmentDurationMinutes({ type, durationMinutes }, rules), technicianId: lead?.technicianId, technician: lead?.technician, technicianUsername: lead?.technicianUsername }, rules, result.technicians || []);
+  const availability = bookingAvailability(result.appointments, { leadId, type, date, time, durationMinutes: appointmentDurationMinutes({ type, durationMinutes }, rules), technicianId: lead?.technicianId, technician: lead?.technician, technicianUsername: lead?.technicianUsername, inspectorId: lead?.inspectorId, assigned: lead?.assigned }, rules, result.technicians || []);
   if (!availability.available) throw new Error(availability.reason || "This time is already booked.");
 }
 
@@ -214,7 +216,7 @@ function RescheduleDialog({
 }) {
   const [date, setDate] = useState(modal.newDate);
   const [time, setTime] = useState(modal.newTime);
-  const rules = useBookingRules();
+  const rules = staffBookingRules(useBookingRules());
   const warning = explainOutsideRules(rules, modal.entry.type, `${date}T${time}`);
 
   return (
@@ -269,7 +271,7 @@ function RescheduleDialog({
               <input
                 type="time"
                 value={time}
-                step="1800"
+                step="60"
                 onChange={(e) => setTime(e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
               />
@@ -328,7 +330,7 @@ function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onB
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const rules = useBookingRules();
+  const rules = staffBookingRules(useBookingRules());
   const warning = explainOutsideRules(rules, type, `${date}T${time}`);
   const availableLeads = leads.filter((lead) => !["Lost", "Cancelled"].includes(lead.status));
   const selectedLead = leads.find((lead) => lead.id === leadId);
@@ -901,7 +903,7 @@ export function ScheduleCalendarView({
   const [removingEntry, setRemovingEntry] = useState<ScheduleEntry | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState("");
-  const rules = useBookingRules();
+  const rules = staffBookingRules(useBookingRules());
   const { technicians } = useTechnicians();
   const suggestTime = (type: JobType, date: string, preferred?: string, leadId?: string) => {
     const lead = leads.find((lead) => lead.id === leadId);
@@ -1292,7 +1294,7 @@ export function ScheduleCalendarView({
       </div>
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
-      <div className={`grid grid-cols-1 items-start px-3 gap-2.5 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(260px,1fr)_minmax(300px,1.1fr)]" : "lg:grid-cols-2"}`}>
+      <div className={`grid grid-cols-1 items-start px-3 gap-2.5 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(280px,340px)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]"}`}>
 
         {showUnassigned && <div className="max-h-[280px] xl:max-h-none xl:h-[clamp(300px,calc(100dvh-330px),680px)] min-w-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
           <div className="shrink-0 border-b border-amber-100 bg-amber-50 p-2 space-y-1.5">

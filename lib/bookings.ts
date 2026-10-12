@@ -1,6 +1,8 @@
+import { explainOutsideRules } from "./bookingRules";
+import { staffBookingRules } from "./staffBookingRules";
 import { bookingSegments, type BookingSegment } from "./bookingSpan";
 import { appointmentDurationMinutes } from "./bookingDuration";
-// Inspection and job pools have independent capacity. Job capacity comes from the technician roster.
+// Assigned staff cannot overlap across inspections and jobs.
 
 import { ObjectId, type Collection, type Filter } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
@@ -65,6 +67,7 @@ export async function listUpcomingBookings(options: { strict?: boolean } = {}): 
     leadId: appointment.leadId, type: appointment.type, date: appointment.date, time: appointment.time,
     durationMinutes: appointment.durationMinutes, scheduledMinutes: appointment.scheduledMinutes, technicianId: appointment.technicianId,
     technician: appointment.technician, technicianUsername: appointment.technicianUsername,
+    inspectorId: appointment.inspectorId, assigned: appointment.assigned, inspectorUsername: appointment.inspectorUsername,
     zone: appointment.zone || "flexible", suburb: appointment.suburb,
     reference: appointment.jobNo || `GX-SUB-${appointment.leadId.slice(-6)}`, createdAt: new Date(),
   }));
@@ -85,21 +88,27 @@ export type CreateBookingResult =
 type BookingInput = Omit<BookingDoc, "_id" | "createdAt" | "reservationId">;
 
 /** Capacity is checked and reserved under a shared per-day/pool database lock. */
-export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean } = {}): Promise<CreateBookingResult> {
+export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean; staffOverride?: boolean } = {}): Promise<CreateBookingResult> {
   if (!isMongoConfigured()) return { ok: false, error: "Database not configured." };
   const date = input.date.trim();
   const time = input.time.slice(0, 5);
   if (!validScheduleDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { ok: false, error: "Invalid appointment date or time." };
   try {
     const col = await collection();
-    const spanRules = await getBookingRules();
+    const settings = await getBookingRules();
+    if (!options.staffOverride) {
+      const outside = explainOutsideRules(settings, input.type, `${date}T${time}`);
+      if (outside) return { ok: false, conflict: true, error: outside };
+    }
+    const spanRules = options.staffOverride ? staffBookingRules(settings) : settings;
     const segments = input.endAt ? bookingSegments(input.type, `${date}T${time}`, input.endAt, spanRules) : [{ date, time, scheduledMinutes: appointmentDurationMinutes(input, spanRules) }];
     // Acquire every occupied date in chronological order before checking or writing.
     const locked = async <T,>(index: number, action: () => Promise<T>): Promise<T> => index === segments.length ? action() : withBookingCalendarLock(segments[index].date, input.type, () => locked(index + 1, action));
     return await locked(0, async () => {
-      const [appointments, technicians, rules] = await Promise.all([
+      const [appointments, technicians, customerRules] = await Promise.all([
         listAppointmentsBetween(date, segments[segments.length - 1].date, { strict: true }), listTechnicians({ strict: true }), getBookingRules(),
       ]);
+      const rules = options.staffOverride ? staffBookingRules(customerRules) : customerRules;
       const existing = await col.findOne({ leadId: input.leadId, type: input.type, date, time });
       const db = await getDb();
       const lead = ObjectId.isValid(input.leadId) ? await db.collection("submissions").findOne({ _id: new ObjectId(input.leadId) }) : null;
@@ -107,7 +116,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         technicianId: input.technicianId !== undefined ? input.technicianId : lead?.technicianId,
         technician: input.technician !== undefined ? input.technician : lead?.technician,
         technicianUsername: input.technicianUsername !== undefined ? input.technicianUsername : lead?.technicianUsername,
-      } : {};
+      } : { inspectorId: input.inspectorId ?? lead?.inspectorId, assigned: input.assigned ?? lead?.assigned, inspectorUsername: input.inspectorUsername ?? lead?.inspectorUsername };
       const durationMinutes = appointmentDurationMinutes(input, rules);
       for (const segment of segments) {
         const availability = bookingAvailability(appointments, { ...input, ...assignment, ...segment }, rules, technicians);
@@ -198,15 +207,18 @@ export async function listAppointmentsBetween(from: string, to: string, options:
           status: { $nin: ["Lost", "Cancelled"] },
           $or: [{ inspectionAt: range }, { jobAt: range }, { inspectionAt: { $lt: `${from}T` }, inspectionEndAt: { $gte: `${from}T` } }, { jobAt: { $lt: `${from}T` }, jobEndAt: { $gte: `${from}T` } }],
         })
-        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, inspectionEndAt: 1, jobEndAt: 1, inspectionWorkSegments: 1, jobWorkSegments: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
+        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, inspectionEndAt: 1, jobEndAt: 1, inspectionWorkSegments: 1, jobWorkSegments: 1, technicianId: 1, technician: 1, technicianUsername: 1, inspectorId: 1, assigned: 1, inspectorUsername: 1, "inspectionReport.estimatedTime": 1 })
         .toArray(),
       getBookingRules(),
     ]);
 
     const out: DayAppointment[] = [];
     const seen = new Set<string>(); // leadId|type|date|time
-    const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string; technicianId?: string; technician?: string; technicianUsername?: string; durationMinutes?: number }>();
+    const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string; technicianId?: string; technician?: string; technicianUsername?: string; durationMinutes?: number; inspectorId?: string; assigned?: string; inspectorUsername?: string }>();
     const describe = (s: Record<string, unknown>) => ({
+      inspectorId: typeof s.inspectorId === "string" ? s.inspectorId : undefined,
+      assigned: typeof s.assigned === "string" ? s.assigned : undefined,
+      inspectorUsername: typeof s.inspectorUsername === "string" ? s.inspectorUsername : undefined,
       name: String(s.name || "Customer"),
       jobNo: typeof s.jobNo === "string" ? s.jobNo : undefined,
       address: typeof s.address === "string" && s.address ? s.address : undefined,
@@ -234,7 +246,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         const segments = endAt ? (storedSegments?.length ? storedSegments : bookingSegments(type, `${date}T${time}`, endAt, rules)) : [{ date, time }];
         for (const segment of segments) {
           if (segment.date < from || segment.date > to) continue;
-          out.push({ ...segment, endAt, type, leadId: id, ...info.get(id)!, durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
+          out.push({ ...segment, endAt, type, leadId: id, ...info.get(id)!, durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { inspectorId: lock.inspectorId ?? s.inspectorId, assigned: lock.assigned ?? s.assigned, inspectorUsername: lock.inspectorUsername ?? s.inspectorUsername, technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
         }
       }
     }
@@ -246,7 +258,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
     if (missingIds.length) {
       const docs = await subCol
         .find({ _id: { $in: missingIds.map((id) => new ObjectId(id)) } })
-        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
+        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, technicianId: 1, technician: 1, technicianUsername: 1, inspectorId: 1, assigned: 1, inspectorUsername: 1, "inspectionReport.estimatedTime": 1 })
         .toArray();
       for (const d of docs) info.set(d._id.toString(), describe(d));
     }
@@ -265,6 +277,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         address: i?.address,
         suburb: i?.suburb || b.suburb,
         status: i?.status,
+        inspectorId: b.inspectorId ?? i?.inspectorId, assigned: b.assigned ?? i?.assigned, inspectorUsername: b.inspectorUsername ?? i?.inspectorUsername,
         technicianId: b.technicianId || i?.technicianId,
         technician: b.technician || i?.technician,
         technicianUsername: b.technicianUsername || i?.technicianUsername,

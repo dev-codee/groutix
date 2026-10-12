@@ -70,7 +70,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
     const transfer = { setData: noop };
     card.props.onDragStart({ clientX: 0, currentTarget: { getBoundingClientRect: () => ({ left: 0, width: 300 }) }, dataTransfer: transfer });
     tree = nodes(render());
-    // Second row is the following date; 50% of the 9–17 track means 13:00.
+    // Second row is the following date; 50% of the unrestricted 24-hour staff track means 12:00.
     tree.filter(node => node.props?.onDrop)[1].props.onDrop({ preventDefault: noop, clientX: 400,
       currentTarget: { getBoundingClientRect: () => ({ left: 0, width: 800 }) }, dataTransfer: transfer });
     return nodes(render());
@@ -78,7 +78,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   let tree = drag();
   assert.equal(writes.length, 0);
   assert.ok(tree.some(node => node.props?.role === "dialog"));
-  assert.match(label(tree.find(node => node.props?.role === "dialog")), /1:00 PM.*2:00 PM/);
+  assert.match(label(tree.find(node => node.props?.role === "dialog")), /12:00 PM.*1:00 PM/);
   tree.find(node => node.type === "button" && label(node) === "Cancel").props.onClick();
   assert.equal(writes.length, 0);
   assert.equal(nodes(render()).some(node => node.props?.role === "dialog"), false);
@@ -86,7 +86,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   await tree.find(node => node.type === "button" && label(node).includes("Confirm & Reschedule")).props.onClick();
   assert.equal(writes.length, 1);
   assert.equal(writes[0][0], "lead-1");
-  assert.equal(writes[0][1].jobAt, "2026-10-13T13:00");
+  assert.equal(writes[0][1].jobAt, "2026-10-13T12:00");
   assert.equal(writes[0][1].inspectionAt, undefined);
   assert.equal(writes[0][1].status, undefined);
   assert.equal(nodes(render()).some(node => node.props?.role === "dialog"), false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { technicianWorksOnDate } from "@/lib/technicianAvailability";
+import { staffBookingRules } from "@/lib/staffBookingRules";
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
@@ -101,7 +101,7 @@ export function ManagerDashboard() {
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"all" | "inspectors" | "technicians">("all");
   const [unassignedTab, setUnassignedTab] = useState<"all" | "inspections" | "jobs">("inspections");
 
-  const bookingRules = useBookingRules();
+  const bookingRules = staffBookingRules(useBookingRules());
   const _now = useMemo(() => new Date(), []);
   // All "today/tomorrow" references must use Australian Eastern Time so the
   // dashboard rolls over at AU midnight, not UTC midnight.
@@ -423,8 +423,8 @@ export function ManagerDashboard() {
       //    inspection hours, technicians follow job hours).
       const hrs = dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey));
       const technician = assignableTechnicians.find((tech) => tech.id === member.id);
-      if (!member.isInspector && (!technician || !technicianWorksOnDate(technician, _ymd(dateKey)))) {
-        return { status: "closed", detail: "Technician day off" };
+      if (!member.isInspector && (!technician || !technician.active)) {
+        return { status: "closed", detail: "Technician inactive" };
       }
       if (!hrs.open) {
         return { status: "closed", detail: `${WEEKDAY_NAMES[dayOfWeek]} Closed` };
@@ -502,7 +502,7 @@ export function ManagerDashboard() {
       dayOfWeek: number
     ) => {
       const technician = assignableTechnicians.find((tech) => tech.id === member.id);
-      if ((!member.isInspector && (!technician || !technicianWorksOnDate(technician, _ymd(dateKey)))) || !dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey)).open) {
+      if ((!member.isInspector && (!technician || !technician.active)) || !dayHours(bookingRules, member.isInspector ? "inspection" : "job", dayOfWeek, _ymd(dateKey)).open) {
         return {
           status: "off" as const,
           label: "Day Off",

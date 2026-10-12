@@ -1,5 +1,7 @@
 "use client";
 
+import { staffBookingRules } from "@/lib/staffBookingRules";
+
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
 import { useRef, useState } from "react";
@@ -50,7 +52,7 @@ export function LeadEditModal({
 }: Props) {
   // Manager-configured booking hours (Settings → Booking Hours). Staff can still
   // book outside them (e.g. a special arrangement) but get a visible warning.
-  const bookingRules = useBookingRules();
+  const bookingRules = staffBookingRules(useBookingRules());
   const minBookingValue = bookingRules.minDate ? `${bookingRules.minDate}T00:00` : undefined;
   const inspectionWarning = editingLead?.inspectionAt ? explainOutsideRules(bookingRules, "inspection", editingLead.inspectionAt) : null;
   const jobWarning = editingLead?.jobAt ? explainOutsideRules(bookingRules, "job", editingLead.jobAt) : null;

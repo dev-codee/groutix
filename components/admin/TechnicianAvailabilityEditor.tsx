@@ -6,8 +6,7 @@ import type { TechnicianJSON } from "@/lib/technicians";
 import { publishTechnicianChanges, useTechnicians } from "@/lib/useTechnicians";
 import { techniciansOnDate } from "@/lib/bookingCapacity";
 import { addDaysYmd, todayAU } from "@/lib/scheduling";
-import { useBookingRules } from "@/lib/useBookingRules";
-import { WEEKDAY_SHORT, slotsForDate } from "@/lib/bookingRules";
+import { WEEKDAY_SHORT } from "@/lib/bookingRules";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0];
 const button = "rounded-lg border px-2 py-1 text-xs font-semibold cursor-pointer disabled:opacity-50";
@@ -75,11 +74,10 @@ export function TechnicianAvailabilityEditor({ technician }: { technician: Techn
 export function TechnicianCapacitySummary() {
   const { technicians, loading, error } = useTechnicians();
   const [from, setFrom] = useState(todayAU());
-  const rules = useBookingRules();
   return <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
     <div className="flex flex-wrap justify-between items-center gap-2"><h3 className="text-sm font-bold text-slate-900">Job capacity by day</h3><input type="date" aria-label="Capacity week starting" value={from} onChange={(event) => { if (event.target.value) setFrom(event.target.value); }} className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs" /></div>
     <p className="text-xs text-slate-600">Each available technician can take one job at a time. Booked hours reduce availability; inspection capacity uses Inspection Hours.</p>
-    {loading ? <p className="text-xs">Loading roster…</p> : error ? <p role="alert" className="text-xs text-red-600">{error}</p> : <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">{DAYS.map((_, index) => { const date = addDaysYmd(from, index); const available = slotsForDate(rules, "job", date).length ? techniciansOnDate(technicians, date) : []; return <div key={date} title={available.map((tech) => tech.name).join(", ") || "No technicians working"} className="rounded-lg border border-blue-100 bg-white p-2 text-center"><p className="text-[10px] text-slate-500">{date}</p><p className="text-lg font-bold text-blue-700">{available.length}</p><p className="text-[10px] text-slate-500">available technicians</p></div>; })}</div>}
+    {loading ? <p className="text-xs">Loading roster…</p> : error ? <p role="alert" className="text-xs text-red-600">{error}</p> : <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">{DAYS.map((_, index) => { const date = addDaysYmd(from, index); const available = techniciansOnDate(technicians, date); return <div key={date} title={available.map((tech) => tech.name).join(", ") || "No technicians working"} className="rounded-lg border border-blue-100 bg-white p-2 text-center"><p className="text-[10px] text-slate-500">{date}</p><p className="text-lg font-bold text-blue-700">{available.length}</p><p className="text-[10px] text-slate-500">available technicians</p></div>; })}</div>}
   </div>;
 }
 

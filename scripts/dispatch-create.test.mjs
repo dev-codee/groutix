@@ -50,7 +50,7 @@ test("a multi-day job reviews and saves the computed finish", async () => {
   const selects = nodes.filter(n => n.type === "select").slice(1);
   selects[0].props.onChange({ target: { value: "old" } });
   selects[1].props.onChange({ target: { value: "tech" } });
-  nodes.find(n => n.type === "input" && n.props.type === "number").props.onChange({ target: { value: "10" } });
+  nodes.find(n => n.type === "input" && n.props.type === "number").props.onChange({ target: { value: "26" } });
   h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
   await settle();
   assert.equal(h.requests.filter(r => r.method).length, 0);

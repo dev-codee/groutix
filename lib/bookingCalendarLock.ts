@@ -4,11 +4,11 @@ import type { BookingType } from "./bookingRules";
 
 interface CalendarLock { _id: string; owner: string; expiresAt: Date }
 
-/** Serialize capacity checks + reservations across server instances per pool/day. */
-export async function withBookingCalendarLock<T>(date: string, type: BookingType, action: () => Promise<T>): Promise<T> {
+/** Serialize capacity checks + reservations across server instances per day across both appointment types. */
+export async function withBookingCalendarLock<T>(date: string, _type: BookingType, action: () => Promise<T>): Promise<T> {
   const db = await getDb();
   const locks = db.collection<CalendarLock>("bookingCalendarLocks");
-  const key = `${type}:${date}`;
+  const key = `calendar:${date}`;
   const owner = randomUUID();
   const deadline = Date.now() + 10_000;
   while (true) {

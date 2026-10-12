@@ -1,5 +1,7 @@
 "use client";
 
+import { staffBookingRules } from "@/lib/staffBookingRules";
+
 import { useEffect, useMemo, useState } from "react";
 import { X, Loader2, MapPin, Star, AlertTriangle, Home, Navigation, RefreshCw } from "lucide-react";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
@@ -82,7 +84,7 @@ export function BookingPlanner({
   onPick: (value: string) => void;
   onClose: () => void;
 }) {
-  const rules = useBookingRules();
+  const rules = staffBookingRules(useBookingRules());
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
@@ -132,7 +134,7 @@ export function BookingPlanner({
       // This lead's own appointment of the same type is being rescheduled → not an obstacle.
       const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type));
       const duration = appointmentDurationMinutes({ type }, rules);
-      const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername }, rules, technicians).available));
+      const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername, inspectorId: lead.inspectorId, assigned: lead.assigned }, rules, technicians).available));
       const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
       const stops: PlannerStop[] = dayAppts.map((a) => ({
         time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb, durationMinutes: a.durationMinutes,

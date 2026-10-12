@@ -1,5 +1,7 @@
 "use client";
 
+import { staffBookingRules } from "@/lib/staffBookingRules";
+
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, CalendarDays, RefreshCw } from "lucide-react";
 import {
@@ -68,8 +70,8 @@ function describe(a: DayAppointment, leadId?: string): string {
 
 /** Another lead already holding `value`'s date+time on the shared calendar, if any. */
 export function useSlotConflict(value: string | undefined, leadId: string | undefined, type?: BookingType, durationMinutes?: number, assignment: TechnicianAssignment = {}) {
-  const { technicianId, technician, technicianUsername } = assignment;
-  const rules = useBookingRules();
+  const { technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername } = assignment;
+  const rules = staffBookingRules(useBookingRules());
   const { technicians, loading: rosterLoading } = useTechnicians();
   // Result is tagged with the slot it was computed for, so a stale answer for a
   // previous value is never shown.
@@ -77,20 +79,20 @@ export function useSlotConflict(value: string | undefined, leadId: string | unde
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value || "");
   const date = m?.[1];
   const time = m?.[2];
-  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${technicianId || technician || ""}` : "";
+  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${technicianId || technician || ""}|${inspectorId || ""}|${assigned || ""}|${inspectorUsername || ""}` : "";
   useEffect(() => {
     if (!date || !time || rosterLoading) return;
     let alive = true;
     fetchDay(date)
       .then(({ appointments }) => {
-        const availability = bookingAvailability(appointments, { date, time, leadId: leadId || "", type: type || "job", durationMinutes, technicianId, technician, technicianUsername }, rules, technicians);
+        const availability = bookingAvailability(appointments, { date, time, leadId: leadId || "", type: type || "job", durationMinutes, technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername }, rules, technicians);
         if (alive) setResult({ key, conflict: availability.available ? null : { time, label: availability.reason || "This time is unavailable." } });
       })
       .catch(() => alive && setResult({ key, conflict: null }));
     return () => {
       alive = false;
     };
-  }, [key, date, time, leadId, type, durationMinutes, technicianId, technician, technicianUsername, rules, technicians, rosterLoading]);
+  }, [key, date, time, leadId, type, durationMinutes, technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername, rules, technicians, rosterLoading]);
   const conflict = key && result?.key === key ? result.conflict : null;
   return conflict;
 }
@@ -113,7 +115,7 @@ export function SlotBoard({
   address?: string;
   onPick: (value: string) => void;
 }) {
-  const rules = useBookingRules();
+  const rules = staffBookingRules(useBookingRules());
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();

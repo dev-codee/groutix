@@ -1,3 +1,4 @@
+import { isStaffScheduling } from "./staffBookingRules";
 import { closedDateInfo, dayHours, fromMinutes, toMinutes, weekdayOf, type BookingRules, type BookingType } from "./bookingRules";
 import { addDaysYmd } from "./scheduling";
 
@@ -9,7 +10,7 @@ export function bookingSegments(type: BookingType, start: string, end: string, r
   if (!validStamp(start) || !validStamp(end) || end <= start) throw new Error("End must be after the start, with valid dates and times.");
   const first = start.slice(0, 10), last = end.slice(0, 10);
   if ((Date.parse(last) - Date.parse(first)) / 86400000 > 44) throw new Error("A booking can span up to 45 calendar days.");
-  if (type === "inspection" && first !== last) throw new Error("An inspection must start and finish on the same day.");
+  if (!isStaffScheduling(rules) && type === "inspection" && first !== last) throw new Error("An inspection must start and finish on the same day.");
   const result: BookingSegment[] = [];
   for (let date = first; date <= last; date = addDaysYmd(date, 1)) {
     const hours = dayHours(rules, type, weekdayOf(date), date);
@@ -20,6 +21,7 @@ export function bookingSegments(type: BookingType, start: string, end: string, r
     }
     const from = date === first ? toMinutes(start.slice(11)) : toMinutes(hours.start);
     const to = date === last ? toMinutes(end.slice(11)) : toMinutes(hours.end);
+    if (date === last && to === 0 && date !== first) continue;
     if (from < toMinutes(hours.start) || to > toMinutes(hours.end) || to <= from) throw new Error(`${date}: select a time within ${hours.start}–${hours.end}.`);
     result.push({ date, time: fromMinutes(from), scheduledMinutes: to - from });
   }
@@ -40,8 +42,8 @@ export function bookingEndForDuration(type: BookingType, start: string, minutes:
     const from = offset ? toMinutes(hours.start) : toMinutes(start.slice(11));
     const available = toMinutes(hours.end) - from;
     if (from < toMinutes(hours.start) || available <= 0) throw new Error(`Start must be within ${hours.start}–${hours.end}.`);
-    if (remaining <= available) return `${date}T${fromMinutes(from + remaining)}`;
-    if (type === "inspection") throw new Error("The inspection must finish within this day's opening hours.");
+    if (remaining <= available) return from + remaining === 1440 ? `${addDaysYmd(date, 1)}T00:00` : `${date}T${fromMinutes(from + remaining)}`;
+    if (!isStaffScheduling(rules) && type === "inspection") throw new Error("The inspection must finish within this day's opening hours.");
     remaining -= available;
   }
   throw new Error("The duration exceeds 45 calendar days of working hours.");

@@ -1,3 +1,4 @@
+import { staffBookingRules } from "@/lib/staffBookingRules";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { getBookingRules } from "@/lib/bookingRulesServer";
 import { NextRequest, NextResponse } from "next/server";
@@ -129,6 +130,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // Acquire new slot locks before changing the lead. A conflict must never
   // overwrite the prior appointment or trigger a reschedule notification.
+  // A name-only reassignment must not retain the previous person's ID.
+  if ("assigned" in body && body.assigned !== before.assigned && !("inspectorId" in body)) { body.inspectorId = ""; body.inspectorUsername = ""; }
+  if ("technician" in body && body.technician !== before.technician && !("technicianId" in body)) {
+    body.technicianId = "";
+    body.technicianUsername = "";
+  }
+  const inspectorChanged = ["inspectorId", "assigned", "inspectorUsername"].some(key => key in body && body[key] !== before[key as keyof typeof before]);
+  if (inspectorChanged && before.inspectionAt && !("inspectionAt" in body)) body.inspectionAt = before.inspectionAt;
   const assignmentChanged = ["technicianId", "technician", "technicianUsername"].some((key) => key in body && body[key] !== before[key as keyof typeof before]);
   if (assignmentChanged && before.jobAt && !("jobAt" in body)) body.jobAt = before.jobAt;
   for (const type of ["inspection", "job"] as const) {
@@ -139,7 +148,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     // Older editing screens supply only a new start; preserve working hours.
     if (typeof body[startField] === "string" && body[startField] && before[startField] && before[endField] && !(endField in body)) {
       try {
-        const rules = await getBookingRules();
+        const rules = staffBookingRules(await getBookingRules());
         const stored = type === "job" ? before.jobWorkSegments : before.inspectionWorkSegments;
         const minutes = (stored?.length ? stored : bookingSegments(type, before[startField]!.slice(0, 16), before[endField]!, rules)).reduce((sum, segment) => sum + segment.scheduledMinutes, 0);
         body[endField] = bookingEndForDuration(type, body[startField].slice(0, 16), minutes, rules);
@@ -173,11 +182,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       const endAt = body[endField] ?? before[endField];
       const segmentsField = type === "job" ? "jobWorkSegments" : "inspectionWorkSegments";
       if (endAt) {
-        try { body[segmentsField] = bookingSegments(type, value!, endAt, await getBookingRules()); }
+        try { body[segmentsField] = bookingSegments(type, value!, endAt, staffBookingRules(await getBookingRules())); }
         catch (error) { await rollback(); return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid end time." }, { status: 400 }); }
       }
       else body[segmentsField] = [];
-      if ((value === normalizeApptString(before[field]) && endAt === before[endField] && !(type === "job" && assignmentChanged)) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
+      if ((value === normalizeApptString(before[field]) && endAt === before[endField] && !(type === "job" ? assignmentChanged : inspectorChanged)) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
       const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
@@ -186,8 +195,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           technicianId: body.technicianId ?? before.technicianId,
           technician: body.technician ?? before.technician,
           technicianUsername: body.technicianUsername ?? before.technicianUsername,
-        } : {}),
-        suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true });
+        } : { inspectorId: body.inspectorId ?? before.inspectorId, assigned: body.assigned ?? before.assigned, inspectorUsername: body.inspectorUsername ?? before.inspectorUsername }),
+        suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true });
       if (!result.ok) {
         await rollback();
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
@@ -327,7 +336,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             zone: area.zone,
             suburb: area.suburb || undefined,
             reference: `GX-ADM-${id.slice(-6)}`,
-          });
+          }, { staffOverride: true });
 
           // Reschedule: notify customer when an existing booking is moved.
           if (before.inspectionAt) {
@@ -407,7 +416,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             zone: area.zone,
             suburb: area.suburb || undefined,
             reference: `GX-ADM-${id.slice(-6)}`,
-          });
+          }, { staffOverride: true });
 
           // Reschedule: notify customer and log activity when an existing job booking is moved.
           if (before.jobAt) {
