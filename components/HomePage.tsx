@@ -44,7 +44,6 @@ import TrustedMarquee from "@/components/TrustedMarquee";
 import { useSiteContent, useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
 import ImgBox from "@/components/ServiceImageBox";
-import TeamSection from "@/components/TeamSection";
 import HomeBalconySection from "@/components/HomeBalconySection";
 
 const coverageSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -642,7 +641,7 @@ export default function HomePage({
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    #1 Shower Regrouting and Balcony Leak Repair in Melbourne
+                    #1 Shower Regrouting and Balcony Regrouting in Melbourne
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -726,7 +725,7 @@ export default function HomePage({
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1, duration: 0.4 }}
-                    className="flex flex-col items-center text-center gap-3 px-6 py-8 rounded-xl border border-neutral-200 bg-neutral-50"
+                    className="flex flex-col items-center text-center gap-3 px-6 py-8 rounded-xl border border-neutral-200 bg-neutral-50 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#FBBC04] hover:shadow-lg"
                   >
                     <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 ${color || ""}`}>
                       <Icon className="h-6 w-6" />
@@ -796,7 +795,7 @@ export default function HomePage({
                   >
                     <Link
                       href={`/${s.slug}`}
-                      className="group border border-neutral-200 rounded-sm p-6 hover:border-accent hover:shadow-md transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden h-full"
+                      className="group border border-neutral-200 rounded-sm p-6 hover:border-[#FBBC04] hover:shadow-lg hover:-translate-y-1.5 transition-all flex flex-col justify-between gap-6 bg-white relative overflow-hidden h-full"
                     >
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="flex flex-col h-full justify-between">
@@ -1248,7 +1247,7 @@ export default function HomePage({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4"
+                  className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#FBBC04] hover:shadow-lg
                 >
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-primary">
                     <b.Icon className="h-6 w-6" />
@@ -1284,11 +1283,7 @@ export default function HomePage({
           </div>
         </AnimatedSection>
 
-        {/* ══════════════════════════════════════
-            SECTION 12, Meet the Groutix Team
-        ══════════════════════════════════════ */}
-        <TeamSection />
-
+      
         {/* ══════════════════════════════════════
             SECTION 13, Real Estate & Property Services
         ══════════════════════════════════════ */}
@@ -1429,7 +1424,8 @@ export default function HomePage({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className={`rounded-sm p-6 space-y-4 border ${step.highlighted ? "border-accent bg-accent/5" : "border-neutral-200 bg-white"}`}
+                  cclassName={`rounded-sm p-6 space-y-4 border transition-all duration-300 hover:-translate-y-1.5 hover:border-[#FBBC04] hover:shadow-lg ${step.highlighted ? "border-accent bg-accent/5" : "border-neutral-200 bg-white"}`}
+
                 >
                   <div className="flex items-center justify-between">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-full font-black text-base ${step.highlighted ? "bg-accent text-primary" : "bg-primary text-white"}`}>
