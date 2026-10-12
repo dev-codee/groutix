@@ -1196,7 +1196,7 @@ export default function HomePage({
               <div className="relative w-[220px] sm:w-[260px] lg:w-[300px] flex items-center justify-center shrink-0">
                 <div className="absolute inset-2 rounded-full bg-amber-400/20 blur-2xl pointer-events-none" />
                 <Image
-                  src="/warranty-seal-10-year.png"
+                  src="/groutix-official-warranty-seal.webp"
                   alt="Groutix 10 Year Waterproof Warranty Guaranteed"
                   width={340}
                   height={327}
