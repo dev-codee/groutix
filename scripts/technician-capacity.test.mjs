@@ -105,18 +105,20 @@ test("the customer API rereads roster changes and closes days with zero technici
   const empty = await get();
   assert.equal(empty.status, 200);
   assert.ok(empty.body.days.length > 0);
-  assert.ok(empty.body.days.every((day) => day.times.length === 0 && day.slots.every((slot) => slot.capacity === 0)));
+  assert.ok(empty.body.days.every((day) => day.times.length === 0 && day.slots.every((slot) => slot.booked)));
   technicians = roster;
   const dynamic = await get();
   assert.equal(dynamic.body.durationMinutes, 60);
   for (const day of dynamic.body.days) {
     const count = techniciansOnDate(roster, day.date).length;
-    assert.equal(day.slots[0].capacity, count);
-    assert.equal(day.slots[0].remaining, count);
+    assert.equal(day.slots[0].booked, count === 0);
+    assert.equal(day.times.length > 0, count > 0);
+    assert.equal(day.slots[0].capacity, undefined);
+    assert.equal(day.slots[0].remaining, undefined);
   }
   technicians = [...roster, { id: "third", name: "New technician", active: true }];
   const expanded = await get();
-  assert.equal(expanded.body.days[0].slots[0].capacity, dynamic.body.days[0].slots[0].capacity + 1);
+  assert.ok(expanded.body.days.every((day) => day.times.length > 0 && day.slots.every((slot) => !slot.booked)));
 });
 
 test("weekday slots fill after two bookings and Saturday/Sunday slots fill after three", () => {

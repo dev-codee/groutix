@@ -8,7 +8,10 @@ export async function GET(req: NextRequest) {
   try {
     const result = await syncUnreadEmails();
     // Return full detail so cron-job.org logs show exactly what happened
-    return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), ...result });
+    return NextResponse.json(
+      { ok: !result.error, timestamp: new Date().toISOString(), ...result },
+      { status: result.error ? 503 : 200 }
+    );
   } catch (error: any) {
     console.error("Inbox sync failed:", error);
     return NextResponse.json(

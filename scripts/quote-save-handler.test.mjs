@@ -56,6 +56,15 @@ test("opening a quote clears carried loading without sending a save request", ()
   assert.equal(fixture.state.closed, false);
   assert.equal(fixture.state.writes.length, 0);
 });
+test("new quotes default to exclusive GST and persist tax added on top", async () => {
+  const fixture = handler();
+  fixture.open({ id: "new-lead", name: "New customer" });
+  await fixture.run();
+  const saved = fixture.state.writes[0].updates;
+  assert.equal(saved.quoteTaxMode, "exclusive");
+  assert.equal(saved.quoteTaxRate, 10);
+  assert.equal(saved.quoteAmount, 220);
+});
 test("a previous quote save cannot close a newly opened quote", async () => {
   let resolve;
   const fixture = handler({ save: () => new Promise(done => { resolve = done; }) });

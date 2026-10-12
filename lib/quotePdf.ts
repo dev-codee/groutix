@@ -131,6 +131,16 @@ function wrapLines(text: string, font: PDFFont, size: number, maxWidth: number):
   return result.length ? result : [""];
 }
 
+/** Match the quote preview: each scope paragraph is a bullet with hanging indentation. */
+function wrapScopeLines(text: string, font: PDFFont, size: number, maxWidth: number) {
+  const indent = 8;
+  return String(text || "").split(/\r?\n/).filter((line) => line.trim()).flatMap((line) => {
+    const content = line.trim().replace(/^(?:[•*\-✓]|o)\s+/, "");
+    return wrapLines(content, font, size, maxWidth - indent).filter(Boolean)
+      .map((text, index) => ({ text, bullet: index === 0, indent }));
+  });
+}
+
 export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string> {
   if (input.docType === "invoice") {
     return buildInvoicePdfBase64(input);
@@ -361,7 +371,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       ? it.description!
       : "";
     const scopeLines = rawScope
-      ? wrapLines(rawScope, font, 7.5, descMaxWidth).filter(Boolean)
+      ? wrapScopeLines(rawScope, font, 7.5, descMaxWidth)
       : [];
 
     const qty = Number(it.qty || 1);
@@ -384,7 +394,10 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       ty -= 11;
     }
     for (const ln of scopeLines) {
-      page1.drawText(cleanPdfText(ln), { x: colDescX, y: ty, size: 7.5, font, color: INK });
+      if (ln.bullet) {
+        page1.drawCircle({ x: colDescX + 2, y: ty + 2.5, size: 1.2, color: INK });
+      }
+      page1.drawText(ln.text, { x: colDescX + ln.indent, y: ty, size: 7.5, font, color: INK });
       ty -= 9.5;
     }
 

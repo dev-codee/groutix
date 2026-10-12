@@ -711,17 +711,13 @@ export default function CrmDashboardPage() {
   const handleSyncEmails = async () => {
     setSyncingEmails(true);
     try {
-      // Vercel cron endpoints often expect a GET, but we'll just hit it normally
-      // We don't have CRON_SECRET attached here, so it might fail if we require it.
-      // Actually, if we just want it to work for the admin, we should maybe hit an admin route.
-      // But the cron route works too if we don't strictly require CRON_SECRET for admin sessions,
-      // OR we just build an admin route. Since this is just a demo/admin sync button, we'll try it.
-      const res = await fetch("/api/cron/sync-emails");
-      if (res.ok) {
-        alert("Emails synced successfully!");
-        loadData();
+      const res = await fetch("/api/cron/sync-emails", { cache: "no-store" });
+      const result = await res.json();
+      await loadData({ silent: true });
+      if (res.ok && result.ok) {
+        alert(result.hasMore ? "Emails synced. Remaining messages will continue syncing automatically." : "Emails synced successfully!");
       } else {
-        alert("Failed to sync emails (check CRON_SECRET or server logs).");
+        alert(result.error === "not_configured" ? "Email sync is not configured. Check the mailbox credentials." : "Email sync could not finish. Please retry; saved replies are shown in the dashboard.");
       }
     } catch (err) {
       console.error(err);
@@ -828,6 +824,36 @@ export default function CrmDashboardPage() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // Import incoming email as well as refreshing saved CRM data. A running
+  // request is never overlapped within this tab, and hidden tabs stop polling.
+  useEffect(() => {
+    let running = false;
+    let disposed = false;
+    const controller = new AbortController();
+    const sync = async () => {
+      if (running || disposed || document.visibilityState === "hidden") return;
+      running = true;
+      try {
+        const response = await fetch("/api/cron/sync-emails", { cache: "no-store", signal: controller.signal });
+        const result = await response.json();
+        if (!disposed && result.syncedCount > 0) await loadData({ silent: true });
+        if (!response.ok && !disposed) console.error("Email sync failed:", result.error);
+      } catch (error) {
+        if (!disposed) console.error("Email sync failed:", error);
+      } finally { running = false; }
+    };
+    void sync();
+    const interval = setInterval(() => { void sync(); }, 60000);
+    const onVisible = () => { if (document.visibilityState === "visible") void sync(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      disposed = true;
+      controller.abort();
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [loadData]);
 
   // Auto-refresh leads/tasks in the background so customer replies synced by the
@@ -2185,6 +2211,13 @@ export default function CrmDashboardPage() {
   }
 
   // Conversation Management
+  async function updateConversation(id: string, update: { readIds: string[] } | { message: CustomerMessage }) {
+    const response = await fetch(`/api/admin/lead/${id}/messages`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(update),
+    });
+    if (!response.ok) throw new Error("Could not save the conversation update.");
+  }
+
   async function openMessagesModal(lead: Lead, initialChannel: "email" | "sms" = "email") {
     let currentLead = lead;
 
@@ -2198,7 +2231,7 @@ export default function CrmDashboardPage() {
       setLeads(prev => prev.map(l => l.id === lead.id ? currentLead : l));
 
       // Update backend silently
-      updateLeadField(lead.id, { messages: updatedMessages }).catch(console.error);
+      updateConversation(lead.id, { readIds: lead.messages.filter(m => m.from === "customer" && m.read === false).map(m => m.id) }).catch(console.error);
     }
 
     setActiveMessageLead(currentLead);
@@ -2750,7 +2783,8 @@ export default function CrmDashboardPage() {
       time: new Date().toISOString()
     };
     const updated = [...currentMsgs, newMsg];
-    await updateLeadField(lead.id, { messages: updated });
+    try { await updateConversation(lead.id, { message: newMsg }); }
+    catch (error) { console.error(error); alert("WhatsApp opened, but the message could not be saved to history."); return; }
     setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, messages: updated } : l)));
     setSmsText("");
@@ -2771,7 +2805,8 @@ export default function CrmDashboardPage() {
       time: new Date().toISOString()
     };
     const updated = [...currentMsgs, newMsg];
-    await updateLeadField(activeMessageLead.id, { messages: updated });
+    try { await updateConversation(activeMessageLead.id, { message: newMsg }); }
+    catch (error) { console.error(error); alert("Could not save the customer reply."); return; }
     setActiveMessageLead((prev) => (prev ? { ...prev, messages: updated } : prev));
     setLeads((prev) => prev.map((l) => (l.id === activeMessageLead.id ? { ...l, messages: updated } : l)));
     setTimeout(() => {

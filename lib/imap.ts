@@ -1,216 +1,158 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { getDb } from "@/lib/mongodb";
-import { updateSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
+import { type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendReplyNotification, getNotifyRecipients } from "@/lib/email";
 import { uploadBufferToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { stripQuotedReply } from "@/lib/emailClean";
 
-const user = process.env.SMTP_USER || "";
-const pass = process.env.SMTP_PASS || "";
+type SyncState = { key: string; uidValidity: string; lastUid: number };
+export type EmailSyncResult = { error?: string; syncedCount: number; hasMore?: boolean; step?: string };
+let activeSync: Promise<EmailSyncResult> | null = null;
 
-export async function syncUnreadEmails() {
-  if (!user || !pass) {
-    console.log("[IMAP] Missing SMTP_USER or SMTP_PASS, skipping sync.");
-    return { error: "not_configured" };
-  }
+// Reading a reply on a phone must not prevent it from reaching the dashboard.
+// Retain the existing entry point, but use a durable UID cursor, not Seen flags.
+export function syncUnreadEmails(): Promise<EmailSyncResult> {
+  if (activeSync) return activeSync;
+  activeSync = syncEmails().finally(() => { activeSync = null; });
+  return activeSync;
+}
 
-  let step = "init";
-  
-  // Wrap the entire process in a 25-second timeout so cron-job.org doesn't timeout (max 30s)
-  return Promise.race([
-    new Promise((resolve) => setTimeout(() => resolve({ error: "timeout", syncedCount: 0, step }), 55000)),
-    (async () => {
-      // imap.gmail.com is standard for Google Workspace
-      const client = new ImapFlow({
-        host: "imap.gmail.com",
-        port: 993,
-        secure: true,
-        auth: { user, pass },
-        logger: false,
-      });
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-      let syncedCount = 0;
+async function bounded<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([operation, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Email sync operation timed out")), Math.max(1, timeoutMs));
+    })]);
+  } finally { if (timer) clearTimeout(timer); }
+}
 
-      try {
-        step = "connecting";
-        console.log("[IMAP] Connecting...");
-        await client.connect();
-        step = "connected";
-        console.log("[IMAP] Connected!");
-        
-        step = "locking_inbox";
-        console.log("[IMAP] Locking INBOX...");
-        const lock = await client.getMailboxLock("INBOX");
-        step = "inbox_locked";
-        console.log("[IMAP] INBOX locked.");
-        try {
-          step = "searching";
-          console.log("[IMAP] Searching for unread...");
-          // Only fetch emails smaller than 5MB to prevent Vercel from hanging on huge attachments
-          const searchResult = await client.search({ seen: false, smaller: 5000000 });
-          
-          step = "slicing";
-          // Fetch up to 20 most recent unread emails to avoid missing customer replies
-          const uidsToFetch = Array.isArray(searchResult) ? searchResult.slice(-20) : [];
-          console.log(`[IMAP] Found ${Array.isArray(searchResult) ? searchResult.length : 0} unread (under 5MB), fetching latest ${uidsToFetch.length}...`);
-          
-          if (uidsToFetch.length > 0) {
-            const emailsToProcess: any[] = [];
-            step = "fetching";
-            for await (const message of client.fetch(uidsToFetch, { source: true, envelope: true })) {
-              const currentId = message.uid || message.seq;
-              step = "parsing_source_" + currentId;
-              console.log("[IMAP] Parsing email ID:", currentId);
-              if (!message.source) continue;
-        
-              // Parse the raw email source
-              const parsed = await simpleParser(message.source);
-              emailsToProcess.push({ parsed, seq: message.seq });
-            }
-            
-            step = "db_processing";
-            for (const item of emailsToProcess) {
-              const parsed = item.parsed;
-              const seq = item.seq;
-              const fromEmail = parsed.from?.value[0]?.address?.toLowerCase();
-              
-              if (fromEmail) {
-                // Ignore any emails sent by staff / Groutix company addresses (outgoing messages, alerts, etc.)
-                const staffEmails = new Set(
-                  [
-                    user.toLowerCase(),
-                    (process.env.SMTP_FROM || "").toLowerCase(),
-                    ...getNotifyRecipients().map((e) => e.toLowerCase()),
-                  ].filter(Boolean)
-                );
+async function syncEmails(): Promise<EmailSyncResult> {
+  const user = process.env.SMTP_USER || "";
+  const pass = process.env.SMTP_PASS || "";
+  if (!user || !pass) return { error: "not_configured", syncedCount: 0 };
 
-                if (staffEmails.has(fromEmail)) {
-                  console.log("[IMAP] Skipping staff/outgoing email from:", fromEmail);
-                  await client.messageFlagsAdd(seq, ["\\Seen"]);
-                  continue;
-                }
+  const client = new ImapFlow({
+    host: process.env.IMAP_HOST || "imap.gmail.com", port: 993, secure: true,
+    auth: { user, pass }, logger: false, connectionTimeout: 10000, socketTimeout: 15000,
+  });
+  let step = "connecting";
+  let syncedCount = 0;
+  let timedOut = false;
+  const deadline = Date.now() + 45000;
+  // Cancel pending IMAP work instead of leaving a timed-out Promise.race writing
+  // messages in the background after the request has returned.
+  const timer = setTimeout(() => { timedOut = true; client.close(); }, 50000);
 
-                step = "db_lookup_" + seq;
-                // Find if this email matches any active lead in the CRM
-                const db = await getDb();
-                const col = db.collection<SubmissionDoc>("submissions");
+  try {
+    await client.connect();
+    step = "selecting_mailbox";
+    const mailboxes = await client.list();
+    const mailbox = mailboxes.find(box => box.specialUse === "\\All")?.path || "INBOX";
+    const lock = await client.getMailboxLock(mailbox, { readOnly: true });
+    try {
+      const db = await getDb();
+      const col = db.collection<SubmissionDoc>("submissions");
+      const states = db.collection<SyncState>("email_sync_state");
+      const key = `${user.toLowerCase()}:${mailbox}`;
+      const uidValidity = client.mailbox ? String(client.mailbox.uidValidity) : "";
+      const state = await states.findOne({ key, uidValidity });
+      const lastUid = state?.lastUid || 0;
+      const since = new Date(Date.now() - 30 * 86400000);
+      step = "searching";
+      const found = await client.search(lastUid ? { uid: `${lastUid + 1}:*` } : { since }, { uid: true });
+      // UID n:* can include the last UID even when n is higher than it.
+      // Oldest first ensures a busy inbox cannot starve older replies.
+      const uids = (Array.isArray(found) ? found : []).filter(uid => uid > lastUid).sort((a, b) => a - b);
+      const batch = uids.slice(0, 100);
+      const staffEmails = new Set([user, process.env.SMTP_FROM || "", ...getNotifyRecipients()]
+        .map(value => (value.match(/<([^>]+)>/)?.[1] || value).trim().toLowerCase()).filter(Boolean));
+      let processed = 0;
 
-                // Case-insensitive email match so "John@gmail.com" matches "john@gmail.com"
-                const lead = await col.findOne({
-                  email: { $regex: `^${fromEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
-                  status: { $nin: ["Lost"] }
-                }, { sort: { createdAt: -1 } });
-
-                if (lead) {
-                  // Prevent duplicate processing if already recorded
-                  if (parsed.messageId && lead.messages?.some((m) => m.id === parsed.messageId)) {
-                    await client.messageFlagsAdd(seq, ["\\Seen"]);
+      for (const uid of batch) {
+        if (Date.now() >= deadline || timedOut) break;
+        step = `envelope_${uid}`;
+        const envelope = await client.fetchOne(String(uid), { envelope: true }, { uid: true });
+        const fromEmail = envelope && envelope.envelope?.from?.[0]?.address?.trim().toLowerCase();
+        if (fromEmail && !staffEmails.has(fromEmail)) {
+          const emailMatch = { $regex: `^${escapeRegex(fromEmail)}$`, $options: "i" };
+          const leads = await col.find({ $or: [{ email: emailMatch }, { "tenants.email": emailMatch }] })
+            .sort({ createdAt: -1 }).toArray();
+          const subject = envelope && envelope.envelope?.subject || "";
+          const lead = leads.find(item => [item.quoteNumber, item.jobNo, item.jobNo?.replace(/^(?:JOBNO|Job No)-/i, "QT-")]
+            .some(ref => ref && new RegExp(`(?:^|[^a-z0-9])${escapeRegex(ref)}(?:$|[^a-z0-9])`, "i").test(subject))) || leads[0];
+          if (lead) {
+            step = `source_${uid}`;
+            // No size filter: customer replies with photos still need importing.
+            // Fetch bodies only for known customers, skipping unrelated mail.
+            const message = await client.fetchOne(String(uid), { source: true }, { uid: true });
+            if (!message || !message.source) throw new Error(`Missing source for UID ${uid}`);
+            const parsed = await simpleParser(message.source);
+            const messageId = parsed.messageId || `imap:${key}:${uidValidity}:${uid}`;
+            const existing = await col.findOne({ "messages.id": messageId });
+            if (!existing) {
+              step = `attachments_${uid}`;
+              const attachments: NonNullable<CustomerMessage["attachments"]> = [];
+              for (const att of parsed.attachments || []) {
+                if (att.related) continue;
+                const name = att.filename || "attachment";
+                if (isCloudinaryConfigured() && att.content && Date.now() < deadline) {
+                  try {
+                    const up = await bounded(uploadBufferToCloudinary(att.content, { folder: "groutix/inbound", filename: name, tags: ["inbound-email"] }), Math.min(10000, deadline - Date.now()));
+                    attachments.push({ name, contentType: att.contentType, size: att.size, url: up.secureUrl, secureUrl: up.secureUrl, publicId: up.publicId });
                     continue;
-                  }
-
-                  step = "attachments_" + seq;
-                  // Capture any real file attachments (skip inline/related parts
-                  // like signature logos). Upload each to Cloudinary so staff can
-                  // open them from the dashboard; fall back to metadata-only if the
-                  // upload isn't configured or fails.
-                  const crmAttachments: NonNullable<CustomerMessage["attachments"]> = [];
-                  const rawAttachments = Array.isArray(parsed.attachments) ? parsed.attachments : [];
-                  for (const att of rawAttachments) {
-                    if (att.related) continue; // inline (e.g. logo in signature)
-                    const name = att.filename || "attachment";
-                    if (isCloudinaryConfigured() && att.content) {
-                      try {
-                        const up = await uploadBufferToCloudinary(att.content as Buffer, {
-                          folder: "groutix/inbound",
-                          filename: name,
-                          tags: ["inbound-email"],
-                        });
-                        crmAttachments.push({
-                          name,
-                          contentType: att.contentType,
-                          size: att.size,
-                          url: up.secureUrl,
-                          secureUrl: up.secureUrl,
-                          publicId: up.publicId,
-                        });
-                        continue;
-                      } catch (e) {
-                        console.error("[IMAP] attachment upload failed:", e);
-                      }
-                    }
-                    crmAttachments.push({ name, contentType: att.contentType, size: att.size });
-                  }
-
-                  step = "db_update_" + seq;
-                  // Clean email text to remove previous quoted thread/history
-                  const cleanText = stripQuotedReply(parsed.text || "");
-
-                  // Append the message
-                  const crmMessage: CustomerMessage = {
-                    id: parsed.messageId || `msg_${Date.now()}`,
-                    from: "customer",
-                    channel: "email",
-                    subject: parsed.subject,
-                    text: cleanText || parsed.text || "No text content.",
-                    time: (parsed.date || new Date()).toISOString(),
-                    read: false,
-                    ...(crmAttachments.length ? { attachments: crmAttachments } : {}),
-                  };
-
-                  await col.updateOne(
-                    { _id: lead._id },
-                    { $push: { messages: crmMessage } }
-                  );
-
-                  // Log activity
-                  await appendActivity(lead._id.toString(), {
-                    time: new Date().toISOString(),
-                    actor: "system",
-                    action: "Customer replied via Email",
-                    detail: parsed.subject,
-                  });
-
-                  // Automatically stop follow-ups if they are in "Quote Sent"
-                  if (lead.status === "Quote Sent") {
-                    await updateSubmission(lead._id.toString(), { status: "In Progress" });
-                  }
-
-                  // Alert the team by email that a reply came in (best-effort,
-                  // never throws — so a mail hiccup can't fail the sync).
-                  await sendReplyNotification({
-                    leadName: lead.name,
-                    leadEmail: fromEmail,
-                    subject: parsed.subject,
-                    snippet: cleanText || parsed.text || "",
-                    leadId: lead._id.toString(),
-                  });
-
-                  syncedCount++;
+                  } catch (error) { console.error("[IMAP] attachment upload failed:", error); }
                 }
+                attachments.push({ name, contentType: att.contentType, size: att.size });
               }
-
-              // Mark as SEEN so we don't process it again
-              await client.messageFlagsAdd(seq, ["\\Seen"]);
+              const body = parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<br\s*\/?\s*>|<\/p>/gi, "\n").replace(/<[^>]*>/g, " ") : "");
+              const text = stripQuotedReply(body) || body || "No text content.";
+              const crmMessage: CustomerMessage = {
+                id: messageId, from: "customer", channel: "email", subject: parsed.subject,
+                text, time: (parsed.date || new Date()).toISOString(), read: false,
+                ...(attachments.length ? { attachments } : {}),
+              };
+              step = `saving_${uid}`;
+              if (!lead.messages || !lead.activity) {
+                // Legacy documents can have null conversation/activity fields.
+                // Normalize against the current DB value, preserving messages
+                // another sync may have appended since this lead was fetched.
+                await col.updateOne({ _id: lead._id }, [{ $set: {
+                  messages: { $ifNull: ["$messages", []] }, activity: { $ifNull: ["$activity", []] },
+                } }]);
+              }
+              // Atomic conditional push also prevents duplicate activity when
+              // cron and the dashboard import the same message concurrently.
+              const saved = await col.updateOne({ _id: lead._id, "messages.id": { $ne: messageId } }, {
+                $push: { messages: crmMessage, activity: {
+                  time: new Date().toISOString(), actor: "system", action: "Customer replied via Email", detail: parsed.subject,
+                } },
+              });
+              if (saved.modifiedCount) {
+                syncedCount++;
+                await col.updateOne({ _id: lead._id, status: "Quote Sent" }, { $set: { status: "In Progress" } });
+                // Alerts are best effort; a failure cannot block later replies.
+                try {
+                  if (Date.now() < deadline) await bounded(sendReplyNotification({ leadName: lead.name, leadEmail: fromEmail, subject: parsed.subject, snippet: text, leadId: lead._id.toString() }), Math.min(5000, deadline - Date.now()));
+                } catch (error) { console.error("[IMAP] reply notification failed:", error); }
+              }
             }
           }
-    } finally {
-      lock.release();
-    }
-  } catch (err) {
-    console.error("[IMAP Sync Error]", err);
-    // don't throw, just return error so it doesn't crash the race
-    return { error: "sync_failed", syncedCount: 0 };
+        }
+        // Advance only after persistence succeeds; failures retry next run.
+        // Dashboard syncing never changes Gmail's Seen flags.
+        await states.updateOne({ key, uidValidity }, { $max: { lastUid: uid }, $set: { key, uidValidity } }, { upsert: true });
+        processed++;
+      }
+      return { syncedCount, hasMore: processed < uids.length, ...(timedOut ? { error: "timeout", step } : {}) };
+    } finally { lock.release(); }
+  } catch (error) {
+    console.error("[IMAP Sync Error]", step, error);
+    return { error: timedOut ? "timeout" : "sync_failed", syncedCount, step };
   } finally {
-    // Attempt graceful logout, but don't await indefinitely if it hangs
-    Promise.race([
-      client.logout(),
-      new Promise(r => setTimeout(r, 1000))
-    ]).catch(() => {});
+    clearTimeout(timer);
     client.close();
   }
-
-  return { syncedCount };
-  })()
-  ]) as Promise<{ error?: string; syncedCount?: number }>;
 }

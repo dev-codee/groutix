@@ -153,7 +153,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       serviced: area.serviced,
       located: lat != null && lng != null,
     },
-    days,
+    days: days.map(day => ({ ...day, slots: day.slots.map(({ time, booked }) => ({ time, booked })) })),
     current: already || null,
   });
 }

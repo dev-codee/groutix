@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 
 import { formatSlotRange } from "@/lib/scheduling";
 
-type TimeSlot = { time: string; booked: boolean; remaining?: number; reason?: string | null };
+type TimeSlot = { time: string; booked: boolean };
 
 type DayOption = {
   date: string;
@@ -238,10 +238,9 @@ export default function BookingPage() {
                                 ? "bg-[#001f97] text-white border-[#001f97]"
                                 : "bg-white text-slate-700 border-slate-300 hover:border-[#001f97]"
                             }`}
-                            title={s.booked ? s.reason || "This time is unavailable" : undefined}
+                            title={s.booked ? "This time is unavailable" : undefined}
                           >
                             <span>{timeLabel(s.time, data?.durationMinutes)}</span>
-                            {!s.booked && type === "job" && s.remaining !== undefined && <span className="block text-[9px] font-semibold mt-1">{s.remaining} technician{s.remaining === 1 ? "" : "s"} available</span>}
                             {s.booked && (
                               <span className="block text-[9px] font-semibold not-italic no-underline text-rose-400 leading-none mt-1">
                                 Unavailable
