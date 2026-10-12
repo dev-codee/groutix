@@ -24,7 +24,7 @@ test("emails and SMS can be viewed independently with channel-specific unread co
   const email = getInboxThreads([lead], "inbox", "email")[0];
   assert.equal(email.latest.id, "new");
   assert.equal(email.unreadCount, 1);
-  assert.equal(email.messageCount, 2);
+  assert.equal(email.messageCount, 1);
   assert.equal(getInboxThreads([lead], "inbox", "sms")[0].latest.id, "sms");
 });
 
@@ -44,4 +44,43 @@ test("mailbox searches message subjects and bodies and orders newest conversatio
 test("internal notes are excluded from customer mailbox folders", () => {
   const internal = { ...lead, messages: [{ ...lead.messages[0], channel: "internal" }] };
   assert.equal(getInboxThreads([internal], "all", "all").length, 0);
+});
+
+test("generated lead enquiries and website submissions are not received emails", () => {
+  const enquiry = { ...lead, messages: [], service: "Shower Regrouting", notes: "Please call me", source: "Website" };
+  const sentOnly = { ...enquiry, id: "sent-only", messages: [lead.messages[1]] };
+  for (const folder of ["inbox", "unread", "sent", "all"]) {
+    assert.equal(getInboxThreads([enquiry], folder, "email").length, 0);
+  }
+  assert.equal(getInboxThreads([sentOnly], "inbox", "email").length, 0);
+  assert.equal(getInboxThreads([sentOnly], "all", "email").length, 1);
+  assert.equal(getInboxThreads([sentOnly], "sent", "email")[0].latest.id, "old");
+  assert.equal(getLeadConversation(enquiry)[0].initial, true);
+});
+
+test("folder previews, counts, search and sorting use messages from that folder", () => {
+  const outgoing = { ...lead.messages[1], id: "outgoing", subject: "Outgoing-only subject", time: "2026-10-12T12:00:00Z" };
+  const mixed = { ...lead, messages: [...lead.messages, outgoing] };
+  const inbox = getInboxThreads([mixed], "inbox", "email")[0];
+  assert.equal(inbox.latest.id, "new");
+  assert.equal(inbox.messageCount, 1);
+  const sent = getInboxThreads([mixed], "sent", "email")[0];
+  assert.equal(sent.latest.id, "outgoing");
+  assert.equal(sent.messageCount, 2);
+  assert.equal(sent.unreadCount, 0);
+  assert.equal(getInboxThreads([mixed], "all", "email")[0].messageCount, 3);
+  assert.equal(getInboxThreads([mixed], "inbox", "email", "Outgoing-only subject").length, 0);
+  assert.equal(getInboxThreads([mixed], "sent", "email", "Outgoing-only subject").length, 1);
+  const newerReceived = { ...lead, id: "newer-received", messages: [{ ...lead.messages[0], time: "2026-10-11T12:00:00Z" }] };
+  assert.equal(getInboxThreads([mixed, newerReceived], "inbox", "email")[0].lead.id, "newer-received");
+});
+
+test("legacy emails remain visible while saved initial enquiries and SMS stay out of Email", () => {
+  const legacy = { ...lead.messages[0], id: "legacy", channel: undefined };
+  const initial = { ...lead.messages[0], id: "initial", channel: undefined, initial: true };
+  const storedEnquiry = { ...lead.messages[0], id: "lead-message", channel: "lead" };
+  const example = { ...lead, messages: [legacy, initial, storedEnquiry, lead.messages[2]] };
+  assert.equal(getInboxThreads([example], "inbox", "email")[0].messageCount, 1);
+  assert.equal(getInboxThreads([example], "all", "email")[0].latest.id, "legacy");
+  assert.equal(getInboxThreads([example], "all", "all")[0].messageCount, 2);
 });

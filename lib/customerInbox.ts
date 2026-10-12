@@ -7,14 +7,18 @@ export function getInboxThreads(leads: Lead[], folder: InboxFolder, channel: Inb
   const search = query.trim().toLowerCase();
   return leads.flatMap(lead => {
     const messages = getLeadConversation(lead).filter(message => {
-      if (message.channel === "internal") return false;
-      return channel === "all" || (channel === "sms" ? message.channel === "sms" : message.channel !== "sms");
+      // Original enquiries belong in the lead timeline, not the email mailbox.
+      if (message.initial || message.channel === "lead" || message.channel === "internal") return false;
+      // Older stored emails have no channel; keep those alongside explicit emails.
+      const matchesChannel = channel === "all" || (channel === "sms" ? message.channel === "sms" : message.channel === "email" || !message.channel);
+      if (!matchesChannel) return false;
+      if (folder === "inbox") return message.from === "customer";
+      if (folder === "sent") return message.from === "groutix";
+      if (folder === "unread") return message.from === "customer" && message.read === false;
+      return true;
     });
     if (!messages.length) return [];
     const unreadCount = messages.filter(message => message.from === "customer" && message.read === false).length;
-    if (folder === "unread" && !unreadCount) return [];
-    if (folder === "inbox" && !messages.some(message => message.from === "customer")) return [];
-    if (folder === "sent" && !messages.some(message => message.from === "groutix")) return [];
     if (search && ![lead.jobNo, lead.name, lead.email, lead.phone, ...messages.flatMap(message => [message.subject, message.text])].filter(Boolean).join(" ").toLowerCase().includes(search)) return [];
     const latest = messages[messages.length - 1];
     return [{ lead, latest, unreadCount, messageCount: messages.length }];
