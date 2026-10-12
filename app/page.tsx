@@ -19,8 +19,3 @@ export default async function Home() {
   const [reviews, rating] = await Promise.all([getReviews(5), getBusinessRating()]);
   return <HomePage reviews={reviews} rating={rating} />;
 }
-
-export default async function Home() {
-  const [reviews, rating] = await Promise.all([getReviews(5), getBusinessRating()]);
-  return <HomePage reviews={reviews} rating={rating} />;
-}
