@@ -1247,7 +1247,7 @@ export default function HomePage({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#FBBC04] hover:shadow-lg
+                  className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#FBBC04] hover:shadow-lg"
                 >
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-primary">
                     <b.Icon className="h-6 w-6" />
