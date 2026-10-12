@@ -1,7 +1,7 @@
 "use client";
 
+import HeroBackground from "@/components/HeroBackground";
 import HeroContactBadges from "@/components/HeroContactBadges";
-import Image from "next/image";
 import { Check } from "lucide-react";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import type { BusinessRating } from "@/lib/reviews";
@@ -10,9 +10,8 @@ import type { BusinessRating } from "@/lib/reviews";
 export default function ServicePageHero({ title, description, descriptionId, defaultService, benefits, rating }: {
   title: string; description: string; descriptionId?: string; defaultService: string; benefits: string[]; rating: BusinessRating;
 }) {
-  return <section id="quote-form" className="relative scroll-mt-20 overflow-hidden bg-primary pt-[110px] lg:pt-[125px]">
-    <Image src="/img101.jpeg" alt="Tiled bathroom shower" fill priority sizes="100vw" className="object-cover" />
-    <div className="absolute inset-0 bg-black/55" />
+  return <section id="quote-form" className="relative scroll-mt-20 overflow-hidden pt-[110px] lg:pt-[125px]">
+    <HeroBackground />
     <div className="relative mx-auto grid max-w-[1460px] items-start gap-8 px-4 sm:px-6 pb-16 pt-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 lg:px-10 lg:pb-20 xl:grid-cols-[minmax(0,1fr)_540px]">
       <div className="space-y-5 text-center text-white lg:pt-2 lg:text-left">
         <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>

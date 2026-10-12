@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
+import HeroBackground from "@/components/HeroBackground";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -627,33 +628,29 @@ export default function HomePage({
             Two-column: copy left, form right
         ══════════════════════════════════════ */}
         <section className="relative overflow-hidden pt-[110px] lg:pt-[125px]" id="quote-form">
-          {/* Background image */}
-          <div className="absolute inset-0">
-            <Image src="/img101.jpeg" alt="Hero background" fill className="object-cover" priority />
-            <div className="absolute inset-0 bg-black/40" />
-          </div>
-
+          <HeroBackground />
           <div className="relative z-10 flex min-h-[calc(100vh-110px)] lg:min-h-[calc(100vh-125px)] flex-col">
             <div className="mx-auto flex w-full max-w-[1460px] flex-1 items-start justify-center px-4 sm:px-6 py-6 pb-16 lg:px-10 lg:py-8 lg:pb-20">
               <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_520px] xl:grid-cols-[1fr_540px] lg:gap-12">
                 {/* Left: headline + paragraph + badges */}
                 <div className="space-y-4 text-white lg:pt-2 text-center lg:text-left flex flex-col items-center lg:items-start">
-                  <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/80">Groutix</p>
+                  <p className="text-[15px] font-black uppercase tracking-[0.2em] text-[#FBBC04]">Groutix</p>
+
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
                     className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)] text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    Shower Regrouting and Balcony Leak Repair in Melbourne | Groutix
+                    #1 Shower Regrouting and Balcony Leak Repair in Melbourne
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg text-center lg:text-left mx-auto lg:mx-0"
+                    className="max-w-xl text-base leading-relaxed text-white/85 sm:text-base text-center lg:text-left mx-auto lg:mx-0"
                   >
-                    We fix failed grout, worn silicone, and leaking shower areas across Melbourne and Victoria, without a full renovation. Every complete shower regrout comes with a 10 year waterproof warranty.
+                    Failed grout lets water slip behind tiles, We fix failed grout and rebuild it with waterproof epoxy in Melbourne.Every complete shower regrout carries our 10 year waterproof warranty.
                   </motion.p>
 
                   {/* Google badge + Call button */}
