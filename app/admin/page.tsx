@@ -1642,7 +1642,7 @@ export default function CrmDashboardPage() {
       : getMatchedQuoteItemsForLead(lead);
 
     setQuoteItems(initialItems);
-    setQuoteTaxMode(lead.quoteTaxMode === "none" ? "none" : (lead.quoteTaxMode === "inclusive" ? "exclusive" : (lead.quoteTaxMode || "exclusive")));
+    setQuoteTaxMode(lead.quoteTaxMode || "exclusive");
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
     const existingTerms = (lead.quoteTerms || "").trim();
     const isFullTermsDump = existingTerms.length > 500 || /^Groutix terms and conditions/i.test(existingTerms);
