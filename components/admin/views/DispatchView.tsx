@@ -2,6 +2,7 @@
 
 import type { DayAppointment } from "@/lib/bookings";
 import { bookingAvailability } from "@/lib/bookingCapacity";
+import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
 import { useState, useMemo, useCallback, useEffect, type DragEvent } from "react";
@@ -96,6 +97,7 @@ interface RescheduleConfirmData {
   oldDateTime?: string;
   newDate: string;
   newTime: string;
+  endAt?: string;
   technician?: string;
   service?: string;
 }
@@ -149,6 +151,7 @@ export function DispatchView({
   );
   const [changeBookingDate, setChangeBookingDate] = useState<string>(initialDate || todayStr);
   const [changeBookingTime, setChangeBookingTime] = useState<string>("09:00");
+  const [changeBookingEnd, setChangeBookingEnd] = useState("");
   const [changeBookingType, setChangeBookingType] = useState<"inspection" | "job">("inspection");
   const [changeBookingTech, setChangeBookingTech] = useState<string>("");
   const [changeBookingService, setChangeBookingService] = useState<string>("Shower Cubicle Regrouting");
@@ -287,76 +290,25 @@ export function DispatchView({
       const area = resolveArea(lead.address || lead.city);
       const suburb = area.suburb || lead.city || "Melbourne";
 
-      // Check inspection
-      if (lead.inspectionAt && lead.inspectionAt.includes("T")) {
-        const [d, tRaw] = lead.inspectionAt.split("T");
-        if (map.has(d)) {
-          const t = tRaw.slice(0, 5) || "09:00";
-          const startMins = parseMinutes(t);
-          const durationMins = bookingRules.inspection.slotMinutes;
-          const endMins = startMins + durationMins;
-
-          // Clamp to timeline range (9 AM = 0%, 5 PM = 100%)
+      for (const type of ["inspection", "job"] as const) {
+        const start = type === "job" ? lead.jobAt : lead.inspectionAt;
+        const end = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
+        if (!start?.includes("T")) continue;
+        let segments;
+        try { segments = end ? bookingSegments(type, start.slice(0, 16), end, bookingRules) : [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
+        catch { segments = [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
+        for (const segment of segments) {
+          if (!map.has(segment.date)) continue;
+          const startMins = parseMinutes(segment.time), durationMins = segment.scheduledMinutes, endMins = startMins + durationMins;
           const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
           const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
-          const leftPct = ((clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
-          const widthPct = Math.max(1, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
-
           const travel = calculateTravel("Tullamarine", suburb);
-
-          map.get(d)!.push({
-            lead,
-            type: "inspection",
-            startTime: t,
-            startMins,
-            durationMins,
-            endMins,
-            endTime: fmtMinutesTo12h(endMins),
-            tech: lead.assigned || lead.inspectorId || "Inspector",
-            suburb,
-            travelToMins: travel.durationMinutes,
-            travelToKm: travel.distanceKm,
-            title: "Inspection",
-            serviceLabel: lead.service || "Tile & Grout Inspection",
-            leftPct,
-            widthPct,
-          });
-        }
-      }
-
-      // Check job
-      if (lead.jobAt && lead.jobAt.includes("T")) {
-        const [d, tRaw] = lead.jobAt.split("T");
-        if (map.has(d)) {
-          const t = tRaw.slice(0, 5) || "10:00";
-          const startMins = parseMinutes(t);
-          const durationMins = appointmentDurationMinutes({ type: "job" }, bookingRules);
-          const endMins = startMins + durationMins;
-
-          const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
-          const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
-          const leftPct = ((clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;
-          const widthPct = Math.max(1, ((clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS) * 100);
-
-          const travel = calculateTravel("Tullamarine", suburb);
-
-          map.get(d)!.push({
-            lead,
-            type: "job",
-            startTime: t,
-            startMins,
-            durationMins,
-            endMins,
-            endTime: fmtMinutesTo12h(endMins),
-            tech: lead.technician || lead.assigned || "Technician",
-            suburb,
-            travelToMins: travel.durationMinutes,
-            travelToKm: travel.distanceKm,
-            title: `Job (${durationMins / 60} hrs)`,
-            serviceLabel: lead.service || "Shower Regrout",
-            leftPct,
-            widthPct,
-          });
+          map.get(segment.date)!.push({ lead, type, startTime: segment.time, startMins, durationMins, endMins,
+            endTime: fmtMinutesTo12h(endMins), tech: type === "job" ? lead.technician || lead.assigned || "Technician" : lead.assigned || "Inspector",
+            suburb, travelToMins: travel.durationMinutes, travelToKm: travel.distanceKm,
+            title: `${type === "job" ? "Job" : "Inspection"} (${durationMins / 60} hrs)${segments.length > 1 ? " · multi-day" : ""}`,
+            serviceLabel: lead.service || "Tile & Grout Service", leftPct: (clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100,
+            widthPct: Math.max(1, (clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS * 100) });
         }
       }
     }
@@ -388,12 +340,14 @@ export function DispatchView({
         setChangeBookingDate(d);
         setChangeBookingTime(t.slice(0, 5));
         setChangeBookingType("inspection");
+        setChangeBookingEnd("");
         setChangeBookingTech(activeLead.assigned || "");
       } else if (activeLead.jobAt && activeLead.jobAt.includes("T")) {
         const [d, t] = activeLead.jobAt.split("T");
         setChangeBookingDate(d);
         setChangeBookingTime(t.slice(0, 5));
         setChangeBookingType("job");
+        setChangeBookingEnd("");
         setChangeBookingTech(activeLead.technician || "");
       } else {
         setChangeBookingDate(selectedDate);
@@ -467,22 +421,33 @@ export function DispatchView({
 
   const bookingDuration = (type: "inspection" | "job") => appointmentDurationMinutes({ type }, bookingRules);
 
-  const proposalIssue = (proposal: RescheduleConfirmData, appointments: DayAppointment[]) => dispatchBookingIssue({
-    leadId: proposal.lead.id, type: proposal.type, date: proposal.newDate, time: proposal.newTime,
-    durationMinutes: bookingDuration(proposal.type),
-    technician: proposal.technician || proposal.lead.technician,
-    technicianId: proposal.technician ? undefined : proposal.lead.technicianId,
-    technicianUsername: proposal.technician ? undefined : proposal.lead.technicianUsername,
-  }, appointments, bookingRules, assignableTechnicians);
+  const leadWorkingMinutes = (lead: Lead, type: "inspection" | "job") => {
+    const start = type === "job" ? lead.jobAt : lead.inspectionAt;
+    const end = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
+    try { if (start && end) return bookingSegments(type, start.slice(0, 16), end, bookingRules).reduce((sum, row) => sum + row.scheduledMinutes, 0); } catch { /* legacy appointment */ }
+    return bookingDuration(type);
+  };
+
+  const proposalIssue = (proposal: RescheduleConfirmData, appointments: DayAppointment[]) => {
+    try {
+      const segments = proposal.endAt ? bookingSegments(proposal.type, `${proposal.newDate}T${proposal.newTime}`, proposal.endAt, bookingRules) : [{ date: proposal.newDate, time: proposal.newTime }];
+      for (const segment of segments) {
+        const issue = dispatchBookingIssue({ leadId: proposal.lead.id, type: proposal.type, ...segment,
+          technician: proposal.technician || proposal.lead.technician,
+          technicianId: proposal.technician ? undefined : proposal.lead.technicianId,
+          technicianUsername: proposal.technician ? undefined : proposal.lead.technicianUsername,
+        }, appointments, bookingRules, assignableTechnicians);
+        if (issue) return `${segment.date}: ${issue}`;
+      }
+      return null;
+    } catch (error) { return error instanceof Error ? error.message : "Invalid booking time."; }
+  };
 
   const stageReschedule = (proposal: RescheduleConfirmData) => {
-    if (proposal.oldDateTime?.slice(0, 16) === `${proposal.newDate}T${proposal.newTime}` &&
-      proposal.technician === (proposal.type === "job" ? proposal.lead.technician : proposal.lead.assigned) &&
-      proposal.service === proposal.lead.service) return;
-    if (capacityAppointments?.date !== selectedDate) {
-      setActionNotice("Availability is still loading. Please try again shortly.");
-      return;
-    }
+    try {
+      if (!proposal.endAt) proposal.endAt = bookingEndForDuration(proposal.type, `${proposal.newDate}T${proposal.newTime}`, leadWorkingMinutes(proposal.lead, proposal.type), bookingRules);
+    } catch (error) { setActionNotice(error instanceof Error ? error.message : "Invalid time."); return; }
+    if (capacityAppointments?.date !== selectedDate) { setActionNotice("Availability is still loading. Please try again shortly."); return; }
     const issue = proposalIssue(proposal, capacityAppointments.appointments);
     if (issue) { setActionNotice(issue); return; }
     setRescheduleError(null);
@@ -490,7 +455,7 @@ export function DispatchView({
   };
 
   const startBookingDrag = (event: DragEvent<HTMLDivElement>, lead: Lead, type: "inspection" | "job", fromTimeline = true) => {
-    const duration = bookingDuration(type);
+    const duration = Math.min(leadWorkingMinutes(lead, type), TOTAL_TIMELINE_MINS);
     const rect = event.currentTarget.getBoundingClientRect();
     const grabOffset = fromTimeline ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * duration : 0;
     event.dataTransfer.setData("application/x-groutix-booking", `${lead.id}:${type}`);
@@ -543,7 +508,7 @@ export function DispatchView({
     setIsSavingBooking(true);
     try {
       // Fetch fresh capacity: another dispatcher may have booked the slot while the popup was open.
-      const response = await fetch(`/api/admin/slots?from=${confirmRescheduleData.newDate}&to=${confirmRescheduleData.newDate}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/slots?from=${confirmRescheduleData.newDate}&to=${confirmRescheduleData.endAt?.slice(0, 10) || confirmRescheduleData.newDate}`, { cache: "no-store" });
       if (!response.ok) throw new Error("Could not check availability. Please try again.");
       const availability = await response.json();
       const issue = proposalIssue(confirmRescheduleData, availability.appointments);
@@ -554,12 +519,14 @@ export function DispatchView({
 
       if (confirmRescheduleData.type === "inspection") {
         updates.inspectionAt = isoDateTime;
+        updates.inspectionEndAt = confirmRescheduleData.endAt;
         if (!confirmRescheduleData.oldDateTime) updates.status = "Inspection Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.assigned = confirmRescheduleData.technician;
         }
       } else {
         updates.jobAt = isoDateTime;
+        updates.jobEndAt = confirmRescheduleData.endAt;
         if (!confirmRescheduleData.oldDateTime) updates.status = "Job Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.technician = confirmRescheduleData.technician;
@@ -883,6 +850,11 @@ export function DispatchView({
                 </div>
               </div>
 
+              <label className="block text-[11px] font-bold text-slate-700">End date and time (optional override)
+                <input type="datetime-local" value={changeBookingEnd} onChange={event => setChangeBookingEnd(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-1.5 text-[11px]" />
+                <span className="block font-normal text-slate-500 mt-1">Leave empty to preserve the current working duration when moving this booking.</span>
+              </label>
               {/* Quick Slots */}
               <div className="flex flex-wrap gap-1">
                 {slotsForDate(bookingRules, changeBookingType, changeBookingDate).map((t) => (
@@ -925,6 +897,7 @@ export function DispatchView({
                       oldDateTime: oldDateTime || undefined,
                       newDate: changeBookingDate,
                       newTime: changeBookingTime,
+                      endAt: changeBookingEnd || undefined,
                       technician: changeBookingTech && changeBookingTech !== "all" ? changeBookingTech : (changeBookingType === "inspection" ? activeLead.assigned : activeLead.technician),
                       service: changeBookingService || activeLead.service,
                     });
@@ -1264,11 +1237,11 @@ export function DispatchView({
             <div className="bg-white border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-4 text-[10.5px] text-slate-600 font-semibold shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-md bg-sky-200 border border-sky-400 inline-block" />
-                <span>Inspection (1-hour booking)</span>
+                <span>Inspection</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-md bg-emerald-200 border border-emerald-400 inline-block" />
-                <span>Job (1-hour booking)</span>
+                <span>Job (reserved working time)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-md border-2 border-dashed border-emerald-500 bg-emerald-50 inline-block" />
@@ -1387,7 +1360,7 @@ export function DispatchView({
                         {fmtReadableDate(confirmRescheduleData.newDate)}
                       </p>
                       <p className="text-sm font-extrabold text-blue-700">
-                        {fmtScheduleTime(confirmRescheduleData.newTime)} – {fmtMinutesFull(parseMinutes(confirmRescheduleData.newTime) + bookingDuration(confirmRescheduleData.type))}
+                        {fmtScheduleTime(confirmRescheduleData.newTime)} → {confirmRescheduleData.endAt ? `${fmtReadableDate(confirmRescheduleData.endAt.slice(0, 10))} ${fmtScheduleTime(confirmRescheduleData.endAt.slice(11, 16))}` : fmtMinutesFull(parseMinutes(confirmRescheduleData.newTime) + bookingDuration(confirmRescheduleData.type))}
                       </p>
                     </div>
                   </div>

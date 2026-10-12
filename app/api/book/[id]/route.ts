@@ -1,3 +1,4 @@
+import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { dayHours, toMinutes, weekdayOf } from "@/lib/bookingRules";
@@ -211,6 +212,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "The full job does not fit before closing. Choose an earlier time." }, { status: 400 });
   }
 
+  let endAt: string | undefined;
+  const previousStart = type === "job" ? lead.jobAt : lead.inspectionAt;
+  const previousEnd = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
+  if (previousStart && previousEnd) {
+    try {
+      const minutes = bookingSegments(type, previousStart.slice(0, 16), previousEnd, rules).reduce((sum, segment) => sum + segment.scheduledMinutes, 0);
+      endAt = bookingEndForDuration(type, `${date}T${time}`, minutes, rules);
+    } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Please contact us to reschedule this booking." }, { status: 400 }); }
+  }
+
   // Use assigned lead number (e.g. "JOBNO-1201") as the booking reference number.
   let reference = lead.jobNo;
   if (!reference) {
@@ -218,6 +229,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await updateSubmission(id, { jobNo: reference });
   }
   const lock = await createBooking({
+    endAt,
     leadId: id,
     type,
     date,
@@ -242,13 +254,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     day: "2-digit",
     month: "long",
   });
-  const whenLabel = `${dayName} · ${formatSlotRange(time, durationMinutes)}`;
+  const whenLabel = `${dayName} · ${formatSlotRange(time, durationMinutes)}${endAt ? ` — ends ${endAt.replace("T", " ")} (Melbourne time)` : ""}`;
   const now = new Date().toISOString();
 
   // Advance the lead + arm the 24h reminder for the fresh appointment.
   if (type === "inspection") {
     await updateSubmission(id, {
       inspectionAt: whenIso,
+      inspectionEndAt: endAt,
       status: "Inspection Booked",
       inspectionReminderSent: false,
     });
@@ -257,6 +270,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } else {
     await updateSubmission(id, {
       jobAt: whenIso,
+      jobEndAt: endAt,
       status: "Job Booked",
       jobReminderSent: false,
     });

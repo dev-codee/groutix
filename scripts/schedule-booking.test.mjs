@@ -23,6 +23,7 @@ function patchApi({ conflict = false, conflictType, updateFails = false, appoint
     },
     "@/lib/adminAuth": { SESSION_COOKIE: "session", verifySession: async () => ({ username: "manager" }) },
     "@/lib/automations": {},
+    "@/lib/bookingRulesServer": { getBookingRules: async () => loadTs("lib/bookingRules.ts").DEFAULT_BOOKING_RULES },
     "@/lib/email": { sendEmail: async args => { calls.push(["email", args]); }, sendInternalAlert: noop, getEmailLogoUrl: noop, wrapEmailHtml: value => value, isEmailConfigured: () => messaging },
     "@/lib/sms": { isSmsConfigured: () => messaging, prepareSinglePartSms: value => value, sendSms: async args => { calls.push(["sms", args]); return { ok: !smsFails }; } },
     "@/lib/zoneRulesServer": { getZoneRules: async () => loadTs("lib/zoneRules.ts").DEFAULT_ZONE_RULES },
@@ -170,4 +171,20 @@ test("rescheduling sends reschedule messages once and unchanged bookings send no
   const same = patchApi({ messaging: true, before: { inspectionAt: "2026-10-14T09:00", email: "customer@example.com", phone: "0400000000" } });
   await same.patch({ inspectionAt: "2026-10-14T09:00", bookingNotifications: true });
   assert.equal(same.calls.some(c => c[0] === "email" || c[0] === "sms"), false);
+});
+
+
+test("end-only edits reserve additional capacity and notify the customer after saving", async () => {
+  const { patch, calls } = patchApi({ messaging: true, before: { jobAt: "2026-10-14T09:00", jobEndAt: "2026-10-14T10:00", email: "customer@example.com", phone: "0400000000" } });
+  const result = await patch({ jobEndAt: "2026-10-14T13:00", bookingNotifications: true });
+  assert.equal(result.status, 200);
+  assert.equal(calls.find(c => c[0] === "reserve")[1].endAt, "2026-10-14T13:00");
+  assert.equal(calls.filter(c => c[0] === "email").length, 1);
+  assert.match(calls.find(c => c[0] === "email")[1].html, /13:00/);
+});
+test("invalid end dates cannot change a saved booking", async () => {
+  const { patch, calls } = patchApi();
+  const result = await patch({ jobAt: "2026-10-14T10:00", jobEndAt: "2026-10-14T09:00" });
+  assert.equal(result.status, 400);
+  assert.equal(calls.some(c => c[0] === "update" || c[0] === "reserve"), false);
 });

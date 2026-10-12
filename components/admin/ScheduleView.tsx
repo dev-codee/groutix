@@ -14,6 +14,7 @@ type BookingEntry = {
   date: string;
   time: string;
   durationMinutes?: number;
+  scheduledMinutes?: number;
   zone: string;
   suburb: string | null;
   reference: string;

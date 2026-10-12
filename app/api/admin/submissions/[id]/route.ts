@@ -1,3 +1,5 @@
+import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
+import { getBookingRules } from "@/lib/bookingRulesServer";
 import { NextRequest, NextResponse } from "next/server";
 import { isMongoConfigured } from "@/lib/mongodb";
 import {
@@ -126,6 +128,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   // overwrite the prior appointment or trigger a reschedule notification.
   const assignmentChanged = ["technicianId", "technician", "technicianUsername"].some((key) => key in body && body[key] !== before[key as keyof typeof before]);
   if (assignmentChanged && before.jobAt && !("jobAt" in body)) body.jobAt = before.jobAt;
+  for (const type of ["inspection", "job"] as const) {
+    const startField = type === "job" ? "jobAt" : "inspectionAt";
+    const endField = type === "job" ? "jobEndAt" : "inspectionEndAt";
+    if (endField in body && !(startField in body)) body[startField] = before[startField];
+    if (startField in body && !body[startField]) body[endField] = "";
+    // Older editing screens supply only a new start; preserve working hours.
+    if (typeof body[startField] === "string" && body[startField] && before[startField] && before[endField] && !(endField in body)) {
+      try {
+        const rules = await getBookingRules();
+        const minutes = bookingSegments(type, before[startField]!.slice(0, 16), before[endField]!, rules).reduce((sum, segment) => sum + segment.scheduledMinutes, 0);
+        body[endField] = bookingEndForDuration(type, body[startField].slice(0, 16), minutes, rules);
+      } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid booking time." }, { status: 400 }); }
+    }
+  }
   const reserved: { type: "inspection" | "job"; date: string; time: string; reservationId?: string; previousBooking?: BookingDoc }[] = [];
   const rollback = async () => {
     await Promise.all(reserved.map((slot) => releaseBookingSlot(id, slot.type, slot.date, slot.time, slot)));
@@ -149,11 +165,17 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         return NextResponse.json({ error: "Invalid appointment date or time." }, { status: 400 });
       }
       body[field] = value;
-      if ((value === normalizeApptString(before[field]) && !(type === "job" && assignmentChanged)) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
+      const endField = type === "job" ? "jobEndAt" : "inspectionEndAt";
+      const endAt = body[endField] ?? before[endField];
+      if (endAt) {
+        try { bookingSegments(type, value!, endAt, await getBookingRules()); }
+        catch (error) { await rollback(); return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid end time." }, { status: 400 }); }
+      }
+      if ((value === normalizeApptString(before[field]) && endAt === before[endField] && !(type === "job" && assignmentChanged)) || ["Lost", "Cancelled"].includes(body.status || before.status)) continue;
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
       const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
-      const result = await createBooking({ leadId: id, type, date, time, zone: area.zone,
+      const result = await createBooking({ leadId: id, type, date, time, endAt, zone: area.zone,
         ...(type === "job" ? {
           technicianId: body.technicianId ?? before.technicianId,
           technician: body.technician ?? before.technician,
@@ -286,13 +308,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       await deleteBooking(id);
     } else {
       const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
-      if (typeof body.inspectionAt === "string" && body.inspectionAt !== (normalizeApptString(before.inspectionAt) || "")) {
+      if (typeof body.inspectionAt === "string" && (body.inspectionAt !== (normalizeApptString(before.inspectionAt) || "") || body.inspectionEndAt !== undefined && (body.inspectionEndAt || "") !== (before.inspectionEndAt || ""))) {
         if (body.inspectionAt.includes("T")) {
           const [d, tRaw] = body.inspectionAt.split("T");
           const t = tRaw.slice(0, 5).padStart(5, "0");
           await createBooking({
             leadId: id,
             type: "inspection",
+            endAt: body.inspectionEndAt ?? before.inspectionEndAt,
             date: d,
             time: t,
             zone: area.zone,
@@ -312,10 +335,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               detail: `${formatAppt(before.inspectionAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || before.inspectionAt} → ${formatAppt(body.inspectionAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body.inspectionAt}`,
             });
 
-            const newDateLabel = formatAppt(body.inspectionAt, {
+            let newDateLabel = formatAppt(body.inspectionAt, {
               weekday: "long", day: "2-digit", month: "short",
               year: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
             }) || body.inspectionAt;
+            if (body.inspectionEndAt) newDateLabel += ` – ${body.inspectionEndAt.replace("T", " ")} (Melbourne time)`;
             const firstName = before.name?.trim().split(/\s+/)[0] || "there";
             const propertyAddress = before.address || "your property";
 
@@ -343,7 +367,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 hour: "numeric", minute: "2-digit", hour12: true,
               }) || body.inspectionAt;
               const smsBody = prepareSinglePartSms(
-                `Your Groutix inspection has been rescheduled to ${shortLabel}. Call (03) 7023 8094 for questions.`
+                `Your Groutix inspection has been rescheduled to ${shortLabel}${body.inspectionEndAt ? ` to ${body.inspectionEndAt.replace("T", " ")}` : ""}. Call (03) 7023 8094 for questions.`
               );
               const result = await sendSms({ to: before.phone, body: smsBody, campaign: "inspection_reschedule" }).catch(() => ({ ok: false }));
               if (!result.ok) notificationWarnings.push("Rescheduling SMS failed. Send it from the customer messages panel.");
@@ -364,13 +388,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           }
         }
       }
-      if (typeof body.jobAt === "string" && body.jobAt !== (normalizeApptString(before.jobAt) || "")) {
+      if (typeof body.jobAt === "string" && (body.jobAt !== (normalizeApptString(before.jobAt) || "") || body.jobEndAt !== undefined && (body.jobEndAt || "") !== (before.jobEndAt || ""))) {
         if (body.jobAt.includes("T")) {
           const [d, tRaw] = body.jobAt.split("T");
           const t = tRaw.slice(0, 5).padStart(5, "0");
           await createBooking({
             leadId: id,
             type: "job",
+            endAt: body.jobEndAt ?? before.jobEndAt,
             date: d,
             time: t,
             zone: area.zone,
@@ -389,10 +414,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               detail: `${formatAppt(before.jobAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || before.jobAt} → ${formatAppt(body.jobAt, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body.jobAt}`,
             });
 
-            const newJobDateLabel = formatAppt(body.jobAt, {
+            let newJobDateLabel = formatAppt(body.jobAt, {
               weekday: "long", day: "2-digit", month: "short",
               year: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
             }) || body.jobAt;
+            if (body.jobEndAt) newJobDateLabel += ` – ${body.jobEndAt.replace("T", " ")} (Melbourne time)`;
             const firstName = before.name?.trim().split(/\s+/)[0] || "there";
             const propertyAddress = before.address || "your property";
 
@@ -420,7 +446,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 hour: "numeric", minute: "2-digit", hour12: true,
               }) || body.jobAt;
               const smsBody = prepareSinglePartSms(
-                `Your Groutix job has been rescheduled to ${shortJobLabel}. Call (03) 7023 8094 for questions.`
+                `Your Groutix job has been rescheduled to ${shortJobLabel}${body.jobEndAt ? ` to ${body.jobEndAt.replace("T", " ")}` : ""}. Call (03) 7023 8094 for questions.`
               );
               const result = await sendSms({ to: before.phone, body: smsBody, campaign: "job_reschedule" }).catch(() => ({ ok: false }));
               if (!result.ok) notificationWarnings.push("Rescheduling SMS failed. Send it from the customer messages panel.");
@@ -450,7 +476,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       const field = type === "inspection" ? "inspectionAt" : "jobAt";
       // Existing appointments have their own reschedule notifications above.
       if (!body[field] || before[field] || ["Lost", "Cancelled"].includes(customer.status)) continue;
-      const when = formatAppt(body[field], { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body[field];
+      let when = formatAppt(body[field], { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body[field];
+      const end = customer[type === "job" ? "jobEndAt" : "inspectionEndAt"];
+      if (end) when += ` – ${end.replace("T", " ")}`;
       const escape = (value: string) => value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]!));
       if (customer.email && isEmailConfigured()) {
         try {

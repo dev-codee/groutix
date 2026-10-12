@@ -24,6 +24,7 @@ export interface CapacityAppointment extends TechnicianAssignment {
   date: string;
   time: string;
   durationMinutes?: number;
+  scheduledMinutes?: number;
 }
 
 const normalize = (value?: string) => value?.trim().toLowerCase() || "";

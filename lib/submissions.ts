@@ -199,6 +199,8 @@ export interface SubmissionDoc {
   // Scheduling — the booked date/time for the free inspection and the job. Set
   // by staff today (and by the public booking flow in Phase E). Drive the 24h
   // reminder cron; the *ReminderSent flags stop duplicate reminders.
+  inspectionEndAt?: string;
+  jobEndAt?: string;
   inspectionAt?: string; // ISO datetime of the booked inspection
   jobAt?: string; // ISO datetime of the booked job
   inspectionReminderSent?: boolean; // 24h-before reminder

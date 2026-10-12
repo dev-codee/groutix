@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
           date: b.date,
           time: b.time,
           durationMinutes: b.durationMinutes,
+          scheduledMinutes: b.scheduledMinutes,
+          endAt: b.endAt,
           zone: area.zone,
           suburb: b.suburb || null,
           reference: b.jobNo || `GX-ADM-${b.leadId.slice(-6)}`,

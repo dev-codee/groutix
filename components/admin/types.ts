@@ -132,6 +132,8 @@ export interface Lead {
   invoiceSentAt?: string;
   invoiceStatus?: string;
   invoiceOpenedAt?: string;
+  inspectionEndAt?: string;
+  jobEndAt?: string;
   inspectionAt?: string;
   jobAt?: string;
   inspectionReminderSent?: boolean;
