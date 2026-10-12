@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
+import HeroBackground from "@/components/HeroBackground";
 import AnimatedSection from "@/components/AnimatedSection";
 import AnimatedImage from "@/components/AnimatedImage";
 import type { Review } from "@/lib/reviews";
@@ -493,8 +494,9 @@ export default function ServicePageTemplate({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
-          className="bg-[#001F97] text-white relative"
-        >
+         className="text-white relative"
+>
+  <HeroBackground />
           <div className="max-w-[1460px] mx-auto px-4 sm:px-6 lg:px-10 pt-16 pb-28 grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -505,10 +507,11 @@ export default function ServicePageTemplate({
               <div className="w-12 h-12 flex items-center justify-center bg-white rounded-sm">
                 {icons[0]}
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-black leading-tight tracking-tight capitalize">
-                {heroTitle ?? `${title} Services`}
-              </h1>
-              <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-xl">
+              <p className="text-[15px] font-black uppercase tracking-[0.2em] text-[#FBBC04]">Groutix</p>
+<h1 className="text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px]">
+  {heroTitle ?? `${title} Services`}
+</h1>
+              <p className="text-white/85 text-base sm:text-base leading-relaxed max-w-xl">
                 {h1Desc}
               </p>
               <div className="flex flex-wrap gap-3 pt-2">
