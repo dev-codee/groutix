@@ -1,8 +1,3 @@
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
-import type { Metadata } from "next";
-import HomePage from "@/components/HomePage";
-import { getReviews, getBusinessRating } from "@/lib/reviews";
-
 import type { Metadata } from "next";
 import HomePage from "@/components/HomePage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
