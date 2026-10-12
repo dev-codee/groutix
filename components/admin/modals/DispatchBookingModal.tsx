@@ -86,8 +86,8 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, onC
       const lead = savedLead.current!;
       const specialist = choices.find(c => c.key === assignee)!;
       const updates: Partial<Lead> = { ...customer, service, status: type === "job" ? "Job Booked" : "Inspection Booked",
-        ...(type === "job" ? { jobAt: `${date}T${time}`, jobEndAt: endAt, technicianId: assignee, technician: specialist.name }
-          : { inspectionAt: `${date}T${time}`, inspectionEndAt: endAt, assigned: specialist.name, inspectorId: assignee }) };
+        ...(type === "job" ? { jobAt: `${date}T${time}`, jobEndAt: endAt, jobWorkSegments: segments, technicianId: assignee, technician: specialist.name }
+          : { inspectionAt: `${date}T${time}`, inspectionEndAt: endAt, inspectionWorkSegments: segments, assigned: specialist.name, inspectorId: assignee }) };
       const response = await fetch(`/api/admin/submissions/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...updates, bookingNotifications: true }) });
       const data = await response.json();

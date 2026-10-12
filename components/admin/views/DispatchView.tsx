@@ -294,8 +294,9 @@ export function DispatchView({
         const start = type === "job" ? lead.jobAt : lead.inspectionAt;
         const end = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
         if (!start?.includes("T")) continue;
+        const storedSegments = type === "job" ? lead.jobWorkSegments : lead.inspectionWorkSegments;
         let segments;
-        try { segments = end ? bookingSegments(type, start.slice(0, 16), end, bookingRules) : [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
+        try { segments = end ? storedSegments?.length ? storedSegments : bookingSegments(type, start.slice(0, 16), end, bookingRules) : [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
         catch { segments = [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
         for (const segment of segments) {
           if (!map.has(segment.date)) continue;
@@ -354,6 +355,7 @@ export function DispatchView({
         setChangeBookingTime("09:00");
         setChangeBookingType("inspection");
         setChangeBookingTech("");
+        setChangeBookingEnd("");
       }
       if (activeLead.service) setChangeBookingService(activeLead.service);
     }
@@ -424,7 +426,8 @@ export function DispatchView({
   const leadWorkingMinutes = (lead: Lead, type: "inspection" | "job") => {
     const start = type === "job" ? lead.jobAt : lead.inspectionAt;
     const end = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
-    try { if (start && end) return bookingSegments(type, start.slice(0, 16), end, bookingRules).reduce((sum, row) => sum + row.scheduledMinutes, 0); } catch { /* legacy appointment */ }
+    const storedSegments = type === "job" ? lead.jobWorkSegments : lead.inspectionWorkSegments;
+    try { if (start && end) return (storedSegments?.length ? storedSegments : bookingSegments(type, start.slice(0, 16), end, bookingRules)).reduce((sum, row) => sum + row.scheduledMinutes, 0); } catch { /* legacy appointment */ }
     return bookingDuration(type);
   };
 
@@ -455,7 +458,8 @@ export function DispatchView({
   };
 
   const startBookingDrag = (event: DragEvent<HTMLDivElement>, lead: Lead, type: "inspection" | "job", fromTimeline = true) => {
-    const duration = Math.min(leadWorkingMinutes(lead, type), TOTAL_TIMELINE_MINS);
+    const workingMinutes = leadWorkingMinutes(lead, type);
+    const duration = workingMinutes > TOTAL_TIMELINE_MINS ? bookingDuration(type) : workingMinutes;
     const rect = event.currentTarget.getBoundingClientRect();
     const grabOffset = fromTimeline ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * duration : 0;
     event.dataTransfer.setData("application/x-groutix-booking", `${lead.id}:${type}`);
@@ -520,6 +524,7 @@ export function DispatchView({
       if (confirmRescheduleData.type === "inspection") {
         updates.inspectionAt = isoDateTime;
         updates.inspectionEndAt = confirmRescheduleData.endAt;
+        if (confirmRescheduleData.endAt) updates.inspectionWorkSegments = bookingSegments("inspection", isoDateTime, confirmRescheduleData.endAt, bookingRules);
         if (!confirmRescheduleData.oldDateTime) updates.status = "Inspection Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.assigned = confirmRescheduleData.technician;
@@ -527,6 +532,7 @@ export function DispatchView({
       } else {
         updates.jobAt = isoDateTime;
         updates.jobEndAt = confirmRescheduleData.endAt;
+        if (confirmRescheduleData.endAt) updates.jobWorkSegments = bookingSegments("job", isoDateTime, confirmRescheduleData.endAt, bookingRules);
         if (!confirmRescheduleData.oldDateTime) updates.status = "Job Booked";
         if (confirmRescheduleData.technician && confirmRescheduleData.technician !== "all" && confirmRescheduleData.technician !== "Unassigned") {
           updates.technician = confirmRescheduleData.technician;

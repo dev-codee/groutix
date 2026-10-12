@@ -1,4 +1,4 @@
-import { bookingSegments } from "./bookingSpan";
+import { bookingSegments, type BookingSegment } from "./bookingSpan";
 import { appointmentDurationMinutes } from "./bookingDuration";
 // Inspection and job pools have independent capacity. Job capacity comes from the technician roster.
 
@@ -20,6 +20,7 @@ export interface BookingDoc extends TechnicianAssignment {
   durationMinutes?: number;
   scheduledMinutes?: number;
   endAt?: string;
+  workSegments?: BookingSegment[];
   time: string; // HH:mm
   zone: string;
   suburb?: string;
@@ -62,7 +63,7 @@ export async function listUpcomingBookings(options: { strict?: boolean } = {}): 
   const appointments = await listAppointmentsBetween(todayAU(), "9999-12-31", options);
   return appointments.map((appointment) => ({
     leadId: appointment.leadId, type: appointment.type, date: appointment.date, time: appointment.time,
-    durationMinutes: appointment.durationMinutes, technicianId: appointment.technicianId,
+    durationMinutes: appointment.durationMinutes, scheduledMinutes: appointment.scheduledMinutes, technicianId: appointment.technicianId,
     technician: appointment.technician, technicianUsername: appointment.technicianUsername,
     zone: appointment.zone || "flexible", suburb: appointment.suburb,
     reference: appointment.jobNo || `GX-SUB-${appointment.leadId.slice(-6)}`, createdAt: new Date(),
@@ -113,7 +114,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }
       const reservationId = randomUUID();
-      const document: BookingDoc = { ...input, ...assignment, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+      const document: BookingDoc = { ...input, ...assignment, workSegments: input.endAt ? segments : undefined, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
         date, time, reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);
@@ -156,6 +157,7 @@ export interface DayAppointment extends TechnicianAssignment {
   durationMinutes?: number;
   scheduledMinutes?: number;
   endAt?: string;
+  workSegments?: BookingSegment[];
   time: string; // HH:mm
   type: "inspection" | "job";
   leadId: string;
@@ -196,7 +198,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
           status: { $nin: ["Lost", "Cancelled"] },
           $or: [{ inspectionAt: range }, { jobAt: range }, { inspectionAt: { $lt: `${from}T` }, inspectionEndAt: { $gte: `${from}T` } }, { jobAt: { $lt: `${from}T` }, jobEndAt: { $gte: `${from}T` } }],
         })
-        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, inspectionEndAt: 1, jobEndAt: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
+        .project({ _id: 1, name: 1, jobNo: 1, address: 1, city: 1, status: 1, inspectionAt: 1, jobAt: 1, inspectionEndAt: 1, jobEndAt: 1, inspectionWorkSegments: 1, jobWorkSegments: 1, technicianId: 1, technician: 1, technicianUsername: 1, "inspectionReport.estimatedTime": 1 })
         .toArray(),
       getBookingRules(),
     ]);
@@ -228,7 +230,8 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         const lock = locks.find((booking) => booking.leadId === id && booking.type === type && booking.date === date && booking.time.slice(0, 5) === time);
         const savedEnd = type === "job" ? s.jobEndAt : s.inspectionEndAt;
         const endAt = lock?.endAt && (!savedEnd || lock.endAt > savedEnd) ? lock.endAt : savedEnd;
-        const segments = endAt ? bookingSegments(type, `${date}T${time}`, endAt, rules) : [{ date, time }];
+        const storedSegments = endAt === lock?.endAt && lock?.workSegments?.length ? lock.workSegments : type === "job" ? s.jobWorkSegments : s.inspectionWorkSegments;
+        const segments = endAt ? (storedSegments?.length ? storedSegments : bookingSegments(type, `${date}T${time}`, endAt, rules)) : [{ date, time }];
         for (const segment of segments) {
           if (segment.date < from || segment.date > to) continue;
           out.push({ ...segment, endAt, type, leadId: id, ...info.get(id)!, durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
@@ -251,7 +254,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
       const i = info.get(b.leadId);
       // Lock held by a lead that's since been lost/cancelled → no longer a real appointment.
       if (i?.status === "Lost" || i?.status === "Cancelled") continue;
-      const segments = b.endAt ? bookingSegments(b.type, `${b.date}T${b.time.slice(0, 5)}`, b.endAt, rules) : [{ date: b.date, time: b.time.slice(0, 5) }];
+      const segments = b.endAt ? (b.workSegments?.length ? b.workSegments : bookingSegments(b.type, `${b.date}T${b.time.slice(0, 5)}`, b.endAt, rules)) : [{ date: b.date, time: b.time.slice(0, 5) }];
       for (const segment of segments) {
         if (segment.date < from || segment.date > to) continue;
       out.push({

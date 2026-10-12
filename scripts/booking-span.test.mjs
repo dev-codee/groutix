@@ -53,3 +53,17 @@ test("reservation locks every occupied day and a later-day conflict writes nothi
   assert.equal((await api.createBooking({ leadId: "new", type: "job", date: "2026-10-12", time: "15:00", endAt: "2026-10-13T12:00", technicianId: "alex", reference: "test", zone: "flexible" })).ok, true);
   assert.equal(inserted[0].endAt, "2026-10-13T12:00");
 });
+
+test("a job starting before the visible range still occupies later days, using saved working windows", async () => {
+  const job = { _id: { toString: () => "lead" }, name: "Customer", status: "Job Booked", jobAt: "2026-10-12T15:00", jobEndAt: "2026-10-13T12:00", jobWorkSegments: [{ date: "2026-10-12", time: "15:00", scheduledMinutes: 120 }, { date: "2026-10-13", time: "09:00", scheduledMinutes: 180 }], technicianId: "alex" };
+  const col = { createIndex: async () => {}, listIndexes: () => ({ toArray: async () => [] }), find: () => ({ toArray: async () => [] }) };
+  const db = { collection: name => name === "bookings" ? col : { find: () => ({ project: () => ({ toArray: async () => [job] }) }) } };
+  const api = loadTs("lib/bookings.ts", {
+    "@/lib/mongodb": { isMongoConfigured: () => true, getDb: async () => db },
+    "./bookingRulesServer": { getBookingRules: async () => ({ ...rules, minDate: "2026-11-01" }) },
+  });
+  const result = await api.listAppointmentsBetween("2026-10-13", "2026-10-13", { strict: true });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].date, "2026-10-13");
+  assert.equal(result[0].scheduledMinutes, 180);
+});

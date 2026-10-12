@@ -217,7 +217,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const previousEnd = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
   if (previousStart && previousEnd) {
     try {
-      const minutes = bookingSegments(type, previousStart.slice(0, 16), previousEnd, rules).reduce((sum, segment) => sum + segment.scheduledMinutes, 0);
+      const stored = type === "job" ? lead.jobWorkSegments : lead.inspectionWorkSegments;
+      const minutes = (stored?.length ? stored : bookingSegments(type, previousStart.slice(0, 16), previousEnd, rules)).reduce((sum, segment) => sum + segment.scheduledMinutes, 0);
       endAt = bookingEndForDuration(type, `${date}T${time}`, minutes, rules);
     } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Please contact us to reschedule this booking." }, { status: 400 }); }
   }
@@ -262,6 +263,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await updateSubmission(id, {
       inspectionAt: whenIso,
       inspectionEndAt: endAt,
+      inspectionWorkSegments: endAt ? bookingSegments(type, whenIso, endAt, rules) : [],
       status: "Inspection Booked",
       inspectionReminderSent: false,
     });
@@ -271,6 +273,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await updateSubmission(id, {
       jobAt: whenIso,
       jobEndAt: endAt,
+      jobWorkSegments: endAt ? bookingSegments(type, whenIso, endAt, rules) : [],
       status: "Job Booked",
       jobReminderSent: false,
     });
