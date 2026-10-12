@@ -38,7 +38,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   const lead = { id: "lead-1", status: "Job Booked", name: "Test Customer", jobAt: "2026-10-12T10:00", technician: "Alex", service: "Regrouting", inspectionReport: { estimatedTime: "3 hours" } };
   const noop = () => {};
   const ctx = { scopedLeads: [lead], assignableTechnicians: technicians, staff: [], inspectionStaff: [], openSchedule: noop,
-    updateLeadField: async (...args) => { writes.push(args); return true; }, setEditingLead: noop, setLeadModalOpen: noop,
+    upsertLead: noop, setEditingLead: noop, setLeadModalOpen: noop,
     openPhotosModal: noop, openMessagesModal: noop, callCustomer: noop };
   const react = {
     useState: initial => { const index = cursor++; if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
@@ -49,7 +49,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
     react, "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ctx },
     "@/lib/useBookingRules": { useBookingRules: () => rules }, "@/lib/useZoneRules": { useZoneRules: () => ({}) },
     "@/components/admin/DispatchMap": { DispatchMap: () => null },
-  }, { fetch: async () => ({ ok: true, json: async () => ({ appointments: [candidate] }) }), setTimeout: () => 0 });
+  }, { fetch: async (url, options) => { if (options?.method === "PATCH") writes.push([url.split("/").pop(), JSON.parse(options.body)]); return { ok: true, json: async () => ({ appointments: [candidate] }) }; }, setTimeout: () => 0 });
   const render = () => { cursor = 0; return DispatchView({ onOpenLead: noop, initialDate: "2026-10-12" }); };
   const nodes = root => {
     const result = [];

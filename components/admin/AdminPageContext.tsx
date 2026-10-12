@@ -27,6 +27,7 @@ export interface AdminPageCtxType {
   liveGpsCoords?: { lat: number; lng: number; accuracy?: number; time: string } | null;
 
   // Lead CRUD
+  upsertLead: (lead: Lead) => void;
   updateLeadField: (id: string, updates: Partial<Lead>) => Promise<void | boolean>;
   handleDeleteLead: (id: string) => Promise<void | boolean>;
   setEditingLead: React.Dispatch<React.SetStateAction<Partial<Lead> | null>>;

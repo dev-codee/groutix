@@ -88,6 +88,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  // Dispatch explicitly opts in after the dispatcher reviews the booking.
+  const bookingNotifications = body.bookingNotifications === true;
+  delete body.bookingNotifications;
+  const notificationWarnings: string[] = [];
+
   // Quote editing does not change appointments or trigger workflow notifications.
   // Persist directly instead of loading the complete lead and booking/zone settings.
   const quoteFields = new Set([
@@ -297,6 +302,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
           // Reschedule: notify customer when an existing booking is moved.
           if (before.inspectionAt) {
+            if (!before.email || !isEmailConfigured()) notificationWarnings.push("Rescheduling email not sent: email address or service unavailable.");
+            if (!before.phone || !isSmsConfigured()) notificationWarnings.push("Rescheduling SMS not sent: phone number or service unavailable.");
             await updateSubmission(id, { inspectionRescheduled: true });
             await appendActivity(id, {
               time: now,
@@ -327,7 +334,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                   "Your Groutix inspection has been rescheduled",
                   logoUrl
                 ),
-              }).catch((err) => console.error("Reschedule email failed (non-fatal):", err));
+              }).catch(() => { notificationWarnings.push("Rescheduling email failed. Send it from the customer messages panel."); });
             }
 
             if (isSmsConfigured() && before.phone) {
@@ -338,9 +345,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               const smsBody = prepareSinglePartSms(
                 `Your Groutix inspection has been rescheduled to ${shortLabel}. Call (03) 7023 8094 for questions.`
               );
-              await sendSms({ to: before.phone, body: smsBody, campaign: "inspection_reschedule" }).catch(
-                (err) => console.error("Reschedule SMS failed (non-fatal):", err)
-              );
+              const result = await sendSms({ to: before.phone, body: smsBody, campaign: "inspection_reschedule" }).catch(() => ({ ok: false }));
+              if (!result.ok) notificationWarnings.push("Rescheduling SMS failed. Send it from the customer messages panel.");
             }
           } else {
             // Brand-new inspection booking — log it
@@ -374,6 +380,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
           // Reschedule: notify customer and log activity when an existing job booking is moved.
           if (before.jobAt) {
+            if (!before.email || !isEmailConfigured()) notificationWarnings.push("Rescheduling email not sent: email address or service unavailable.");
+            if (!before.phone || !isSmsConfigured()) notificationWarnings.push("Rescheduling SMS not sent: phone number or service unavailable.");
             await appendActivity(id, {
               time: now,
               actor,
@@ -403,7 +411,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                   "Your Groutix job has been rescheduled",
                   logoUrl
                 ),
-              }).catch((err) => console.error("Job reschedule email failed (non-fatal):", err));
+              }).catch(() => { notificationWarnings.push("Rescheduling email failed. Send it from the customer messages panel."); });
             }
 
             if (isSmsConfigured() && before.phone) {
@@ -414,9 +422,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
               const smsBody = prepareSinglePartSms(
                 `Your Groutix job has been rescheduled to ${shortJobLabel}. Call (03) 7023 8094 for questions.`
               );
-              await sendSms({ to: before.phone, body: smsBody, campaign: "job_reschedule" }).catch(
-                (err) => console.error("Job reschedule SMS failed (non-fatal):", err)
-              );
+              const result = await sendSms({ to: before.phone, body: smsBody, campaign: "job_reschedule" }).catch(() => ({ ok: false }));
+              if (!result.ok) notificationWarnings.push("Rescheduling SMS failed. Send it from the customer messages panel.");
             }
           } else {
             // Brand-new job booking (no previous jobAt) — log it
@@ -437,7 +444,29 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  if (bookingNotifications) {
+    const customer = { ...before, ...body };
+    for (const type of ["inspection", "job"] as const) {
+      const field = type === "inspection" ? "inspectionAt" : "jobAt";
+      // Existing appointments have their own reschedule notifications above.
+      if (!body[field] || before[field] || ["Lost", "Cancelled"].includes(customer.status)) continue;
+      const when = formatAppt(body[field], { weekday: "long", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) || body[field];
+      const escape = (value: string) => value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]!));
+      if (customer.email && isEmailConfigured()) {
+        try {
+          await sendEmail({ toEmail: customer.email, subject: `Your Groutix ${type} is confirmed`,
+            html: wrapEmailHtml(`<h2>Booking confirmed</h2><p>Hi ${escape(customer.name || "there")},</p><p>Your ${type} is booked for <strong>${escape(when)}</strong> (Melbourne time).</p><p>Address: ${escape(customer.address || "your property")}</p><p>Service: ${escape(customer.service || "Tile and grout service")}</p><p>Call (03) 7023 8094 if you need to make changes.</p>`, "Your booking is confirmed", await getEmailLogoUrl()) });
+        } catch { notificationWarnings.push("Confirmation email failed. Send it from the customer messages panel."); }
+      } else notificationWarnings.push("Confirmation email not sent: email address or email service unavailable.");
+      if (customer.phone && isSmsConfigured()) {
+        try {
+          const result = await sendSms({ to: customer.phone, body: prepareSinglePartSms(`Groutix: Your ${type} is confirmed for ${when} (Melbourne time). Call (03) 7023 8094 for changes.`), campaign: `${type}_confirmation` });
+          if (!result.ok) notificationWarnings.push("Confirmation SMS failed. Send it from the customer messages panel.");
+        } catch { notificationWarnings.push("Confirmation SMS failed. Send it from the customer messages panel."); }
+      } else notificationWarnings.push("Confirmation SMS not sent: phone number or SMS service unavailable.");
+    }
+  }
+  return NextResponse.json({ ok: true, notificationWarnings });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {

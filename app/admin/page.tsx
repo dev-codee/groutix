@@ -3884,6 +3884,7 @@ export default function CrmDashboardPage() {
     onTheWayLoading, openDetails, setOpenDetails, unreadReplyCount,
     locationTrackingActive, liveGpsCoords,
     // Lead CRUD
+    upsertLead: (lead: Lead) => setLeads(prev => [lead, ...prev.filter(item => item.id !== lead.id)]),
     updateLeadField, handleDeleteLead, setEditingLead, setLeadModalOpen,
     setStartJobPrompt, setStartJobDays,
     statusFilter, setStatusFilter, setPage,

@@ -22,6 +22,7 @@ import { useZoneRules } from "@/lib/useZoneRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
 import { DispatchDatePicker } from "@/components/admin/DispatchDatePicker";
 import { getLeadSchedulingType, getUnassignedSchedulingType } from "@/lib/unassignedLeads";
+import { DispatchBookingModal } from "@/components/admin/modals/DispatchBookingModal";
 import type { Lead } from "@/components/admin/types";
 
 // ── Timeline Geometry Constants ──────────────────────────────────────────────
@@ -120,7 +121,7 @@ export function DispatchView({
     assignableTechnicians,
     staff = [],
     inspectionStaff = [],
-    updateLeadField,
+    upsertLead,
     setEditingLead,
     setLeadModalOpen,
     openPhotosModal,
@@ -154,6 +155,9 @@ export function DispatchView({
   const [isSavingBooking, setIsSavingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
   const [confirmRescheduleData, setConfirmRescheduleData] = useState<RescheduleConfirmData | null>(null);
+
+  const [newBooking, setNewBooking] = useState<{ date: string; time: string } | null>(null);
+  const [newTimeSelection, setNewTimeSelection] = useState<{ date: string; minutes: number } | null>(null);
 
   const [dragBooking, setDragBooking] = useState<{ lead: Lead; type: "inspection" | "job"; duration: number; grabOffset: number } | null>(null);
   const [dropPreview, setDropPreview] = useState<{ date: string; minutes: number; duration: number } | null>(null);
@@ -564,17 +568,22 @@ export function DispatchView({
 
       if (confirmRescheduleData.service) updates.service = confirmRescheduleData.service;
 
-      const ok = await updateLeadField(confirmRescheduleData.lead.id, updates);
-      if (ok) {
+      const saveResponse = await fetch(`/api/admin/submissions/${confirmRescheduleData.lead.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...updates, bookingNotifications: true }),
+      });
+      const saved = await saveResponse.json();
+      if (saveResponse.ok) {
+        upsertLead({ ...confirmRescheduleData.lead, ...updates });
         setSelectedDate(confirmRescheduleData.newDate);
         setBookingSuccess(
-          `✓ Rescheduled ${confirmRescheduleData.lead.name || "Customer"} to ${fmtReadableDate(confirmRescheduleData.newDate)} at ${fmtScheduleTime(timeFormatted)}!`
+          `✓ ${confirmRescheduleData.oldDateTime ? "Rescheduled" : "Booked"} ${confirmRescheduleData.lead.name || "Customer"} for ${fmtReadableDate(confirmRescheduleData.newDate)} at ${fmtScheduleTime(timeFormatted)}. ${(saved.notificationWarnings || []).join(" ")}`
         );
-        setTimeout(() => setBookingSuccess(null), 5000);
+
         setIsChangeBookingOpen(false);
         setConfirmRescheduleData(null);
       } else {
-        setRescheduleError("The booking could not be saved. The slot may have changed. Please choose another time or try again.");
+        setRescheduleError(saved.error || "The booking could not be saved. Please choose another time or try again.");
       }
     } catch (err) {
       setRescheduleError(err instanceof Error ? err.message : "Could not save the booking. Please try again.");
@@ -654,6 +663,8 @@ export function DispatchView({
           <span className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700 whitespace-nowrap">
             7 Days
           </span>
+          <button type="button" onClick={() => setNewBooking({ date: selectedDate, time: fromMinutes(TIMELINE_START_MINS) })}
+            className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white flex items-center gap-1"><Plus className="h-4 w-4" />New booking</button>
         </div>
 
         {/* Right: Staff selector dropdown & Settings gear */}
@@ -1010,6 +1021,7 @@ export function DispatchView({
         {/* ══ 2. RIGHT PANEL: SEVEN-DAY TIMELINE ═══════════════════════ */}
         <div className="w-[80%] flex flex-col min-w-0 min-h-0">
 
+          <p className="px-3 py-2 text-xs text-slate-500">Right-click or drag across empty space to choose a booking start time. Drag an existing booking to reschedule. Changes require confirmation.</p>
           {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
           <div className="flex flex-col bg-slate-50/40 flex-1 min-h-0">
             <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
@@ -1078,11 +1090,36 @@ export function DispatchView({
                       <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[70px]">
                         {/* Each row uses the same time coordinates for grid, cards and drops. */}
                         <div className="relative w-full" style={{ height: Math.max(90, laneEnds.length * 90) }}
+                          onContextMenu={event => {
+                            if ((event.target as HTMLElement).closest('[draggable="true"]')) return;
+                            event.preventDefault();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            setNewBooking({ date, time: fromMinutes(dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes)) });
+                          }}
+                          onPointerDown={event => {
+                            if (event.button !== 0 || (event.target as HTMLElement).closest('[draggable="true"], button, [data-slot-action]')) return;
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            event.currentTarget.setPointerCapture(event.pointerId);
+                            setNewTimeSelection({ date, minutes: dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes) });
+                          }}
+                          onPointerMove={event => {
+                            if (!newTimeSelection || newTimeSelection.date !== date) return;
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            setNewTimeSelection({ date, minutes: dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes) });
+                          }}
+                          onPointerUp={() => {
+                            if (!newTimeSelection) return;
+                            setNewBooking({ date, time: fromMinutes(newTimeSelection.minutes) });
+                            setNewTimeSelection(null);
+                          }}
+                          onPointerCancel={() => setNewTimeSelection(null)}
                           onDragOver={(event) => { const preview = previewBookingDrop(event, date); if (preview) setDropPreview(preview); }}
                           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropPreview(null); }}
                           onDrop={(event) => dropBooking(event, date)}>
                           {HOUR_SLOTS.map(slot => <div key={slot.hour} className="absolute inset-y-0 border-l border-slate-100 pointer-events-none"
                             style={{ left: `${((slot.hour * 60 - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100}%` }} />)}
+                          {newTimeSelection?.date === date && <div className="absolute inset-y-0 z-30 pointer-events-none rounded-lg border-2 border-blue-500 bg-blue-100/90 p-2 text-xs font-bold text-blue-900"
+                            style={{ left: `${(newTimeSelection.minutes - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100}%`, width: `${bookingRules.inspection.slotMinutes / TOTAL_TIMELINE_MINS * 100}%` }}>{fmtMinutesFull(newTimeSelection.minutes)}</div>}
                           {dropPreview?.date === date && <div className="absolute inset-y-0 rounded-lg border-2 border-dashed border-blue-500 bg-blue-100/80 z-30 pointer-events-none text-[10px] font-bold text-blue-900 p-1"
                             style={{ left: `${(dropPreview.minutes - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100}%`, width: `${dropPreview.duration / TOTAL_TIMELINE_MINS * 100}%` }}>
                             {fmtMinutesFull(dropPreview.minutes)} – {fmtMinutesFull(dropPreview.minutes + dropPreview.duration)}
@@ -1090,17 +1127,12 @@ export function DispatchView({
                           {items.length === 0 ? (
                             /* Full-Day Available Slot */
                             <div
-                              onClick={() => {
-                                setSelectedDate(date);
-                                const suggestion = suggestedSlots.find(slot => slot.dateStr === date);
-                                if (activeLead && suggestion) handleBookSlot(suggestion);
-                              }}
                               style={{ left: "10%", width: "80%" }}
                               className="absolute top-0.5 bottom-0.5 rounded-xl border-2 border-dashed border-emerald-400/90 bg-emerald-50/40 hover:bg-emerald-50/80 flex flex-col items-center justify-center p-1 text-center cursor-pointer transition-all z-10"
                             >
                               <PlusCircle className="w-3.5 h-3.5 text-emerald-600 mb-0.5" />
                               <div className="text-[11px] font-bold text-emerald-800">No bookings</div>
-                              <div className="text-[9px] font-semibold text-emerald-700">Drag a booking here to choose a time</div>
+                              <div className="text-[9px] font-semibold text-emerald-700">Click or drag here to create a booking</div>
                             </div>
                           ) : (
                             <>
@@ -1197,7 +1229,7 @@ export function DispatchView({
                                   const availWidthPct = Math.max(12, 100 - availStartPct);
 
                                   return (
-                                    <div
+                                    <div data-slot-action
                                       onClick={() => {
                                         setSelectedDate(date);
                                         handleBookSlot(suggestion);
@@ -1248,6 +1280,10 @@ export function DispatchView({
 
         </div>
       </div>
+
+      {newBooking && <DispatchBookingModal {...newBooking} onClose={() => setNewBooking(null)} onBooked={(date, message) => {
+        setNewBooking(null); setSelectedDate(date); setBookingSuccess(message);
+      }} />}
 
       {/* ── RESCHEDULE CONFIRMATION MODAL ─────────────────────────────────────── */}
       {confirmRescheduleData && (
@@ -1384,7 +1420,7 @@ export function DispatchView({
               <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900 text-[11px] leading-relaxed">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span>
-                  Rescheduling will immediately update the dispatch calendar, route calculation, and customer record.
+                  After you confirm, the dispatch calendar and customer record will be updated. Booking or rescheduling confirmations will be sent to the customer’s saved email and phone through the configured services.
                 </span>
               </div>
             </div>

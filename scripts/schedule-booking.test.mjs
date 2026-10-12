@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const json = (body, options = {}) => ({ body, status: options.status || 200 });
-function patchApi({ conflict = false, conflictType, updateFails = false, appointments = [], before = {} } = {}) {
+function patchApi({ conflict = false, conflictType, updateFails = false, appointments = [], before = {}, messaging = false, smsFails = false } = {}) {
   const calls = [];
   const lead = { id: "lead", status: "New", name: "Customer", ...before };
   const noop = async () => {};
@@ -23,8 +23,8 @@ function patchApi({ conflict = false, conflictType, updateFails = false, appoint
     },
     "@/lib/adminAuth": { SESSION_COOKIE: "session", verifySession: async () => ({ username: "manager" }) },
     "@/lib/automations": {},
-    "@/lib/email": { sendEmail: noop, sendInternalAlert: noop, getEmailLogoUrl: noop, wrapEmailHtml: () => "", isEmailConfigured: () => false },
-    "@/lib/sms": { isSmsConfigured: () => false },
+    "@/lib/email": { sendEmail: async args => { calls.push(["email", args]); }, sendInternalAlert: noop, getEmailLogoUrl: noop, wrapEmailHtml: value => value, isEmailConfigured: () => messaging },
+    "@/lib/sms": { isSmsConfigured: () => messaging, prepareSinglePartSms: value => value, sendSms: async args => { calls.push(["sms", args]); return { ok: !smsFails }; } },
     "@/lib/zoneRulesServer": { getZoneRules: async () => loadTs("lib/zoneRules.ts").DEFAULT_ZONE_RULES },
     "@/lib/technicians": {}, "@/lib/users": {},
   });
@@ -138,4 +138,36 @@ test("changing estimated work hours does not reserve additional booking slots", 
   assert.equal((await patch({ inspectionReport: { estimatedTime: "3.5 hours" } })).status, 200);
   assert.equal(calls.some(([action]) => action === "reserve"), false);
   assert.equal(calls.find(([action]) => action === "update")[2].inspectionReport.estimatedTime, "3.5 hours");
+});
+
+
+test("confirmed new bookings notify only after a successful reservation and lead save", async () => {
+  const { patch, calls } = patchApi({ messaging: true, before: { email: "customer@example.com", phone: "0400000000" } });
+  const result = await patch({ inspectionAt: "2026-10-14T10:15", bookingNotifications: true });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.notificationWarnings.length, 0);
+  assert.equal(calls.filter(c => c[0] === "email").length, 1);
+  assert.equal(calls.filter(c => c[0] === "sms").length, 1);
+  assert.ok(calls.findIndex(c => c[0] === "email") > calls.findIndex(c => c[0] === "update"));
+  assert.equal(calls.find(c => c[0] === "update")[2].bookingNotifications, undefined);
+});
+
+test("conflicts never notify and notification failure does not undo a saved booking", async () => {
+  const blocked = patchApi({ conflict: true, messaging: true });
+  assert.equal((await blocked.patch({ jobAt: "2026-10-14T10:15", bookingNotifications: true })).status, 409);
+  assert.equal(blocked.calls.some(c => c[0] === "email" || c[0] === "sms"), false);
+  const failure = patchApi({ messaging: true, smsFails: true, before: { email: "customer@example.com", phone: "0400000000" } });
+  const result = await failure.patch({ jobAt: "2026-10-14T10:15", bookingNotifications: true });
+  assert.equal(result.status, 200);
+  assert.match(result.body.notificationWarnings.join(" "), /SMS failed/);
+});
+
+test("rescheduling sends reschedule messages once and unchanged bookings send nothing", async () => {
+  const changed = patchApi({ messaging: true, before: { inspectionAt: "2026-10-14T09:00", email: "customer@example.com", phone: "0400000000" } });
+  await changed.patch({ inspectionAt: "2026-10-14T10:15", bookingNotifications: true });
+  assert.equal(changed.calls.filter(c => c[0] === "email").length, 1);
+  assert.match(changed.calls.find(c => c[0] === "email")[1].subject, /Rescheduled/);
+  const same = patchApi({ messaging: true, before: { inspectionAt: "2026-10-14T09:00", email: "customer@example.com", phone: "0400000000" } });
+  await same.patch({ inspectionAt: "2026-10-14T09:00", bookingNotifications: true });
+  assert.equal(same.calls.some(c => c[0] === "email" || c[0] === "sms"), false);
 });
