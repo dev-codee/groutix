@@ -19,7 +19,7 @@ import {
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { resolveArea, addDaysYmd, formatApptTimeRange, todayAU, tomorrowAU, formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { calculateTravel } from "@/lib/dispatch";
-import { hoursEnvelope, fromMinutes, slotsForDate, dayHours, weekdayOf, toMinutes } from "@/lib/bookingRules";
+import { fromMinutes, slotsForDate, dayHours, weekdayOf, toMinutes } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { useZoneRules } from "@/lib/useZoneRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
@@ -233,9 +233,9 @@ export function DispatchView({
   // ── 2. Visible Dates in Timeline ────────────────────────────────────────────
   const visibleDates = useMemo(() => dispatchDates(selectedDate, "Week"), [selectedDate]);
 
-  const envelope = hoursEnvelope(bookingRules);
-  const TIMELINE_START_MINS = Math.floor(envelope.start / 60) * 60;
-  const TIMELINE_END_MINS = Math.ceil(envelope.end / 60) * 60;
+  // The visible day stays fixed; staff booking permissions are independent.
+  const TIMELINE_START_MINS = 9 * 60;
+  const TIMELINE_END_MINS = 17 * 60;
   const TOTAL_TIMELINE_MINS = Math.max(60, TIMELINE_END_MINS - TIMELINE_START_MINS);
   const HOUR_SLOTS = Array.from({ length: TOTAL_TIMELINE_MINS / 60 + 1 }, (_, index) => {
     const hour = TIMELINE_START_MINS / 60 + index;
@@ -395,7 +395,7 @@ export function DispatchView({
     const duration = appointmentDurationMinutes({ type: changeBookingType }, bookingRules);
     for (let offset = 0; offset < 7 && suggestions.length < 3; offset++) {
       const date = addDaysYmd(selectedDate, offset);
-      const time = slotsForDate(bookingRules, changeBookingType, date).find((time) => bookingAvailability(
+      const time = slotsForDate(bookingRules, changeBookingType, date).filter(time => parseMinutes(time) >= TIMELINE_START_MINS && parseMinutes(time) + duration <= TIMELINE_END_MINS).find((time) => bookingAvailability(
         capacityAppointments.appointments,
         { leadId: activeLead.id, type: changeBookingType, date, time, durationMinutes: duration,
           technicianId: changeBookingTech || activeLead.technicianId, technician: changeBookingTech ? undefined : activeLead.technician,
