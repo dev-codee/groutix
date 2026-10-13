@@ -24,7 +24,6 @@ import { useBookingRules } from "@/lib/useBookingRules";
 import { useZoneRules } from "@/lib/useZoneRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
 import { DispatchDatePicker } from "@/components/admin/DispatchDatePicker";
-import { getLeadSchedulingType, getUnassignedSchedulingType } from "@/lib/unassignedLeads";
 import { DispatchBookingModal } from "@/components/admin/modals/DispatchBookingModal";
 import type { Lead } from "@/components/admin/types";
 
@@ -66,15 +65,6 @@ function fmtScheduleTime(t: string): string {
   return `${dh}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-function getLeadDistance(lead: Lead): string {
-  const area = resolveArea(lead.address || lead.city);
-  if (area.suburb) {
-    const travel = calculateTravel("Tullamarine", area.suburb);
-    return `${travel.distanceKm} km`;
-  }
-  return "15.0 km";
-}
-
 function fmtReadableDate(dateStr?: string): string {
   if (!dateStr) return "";
   const d = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
@@ -106,7 +96,6 @@ interface RescheduleConfirmData {
 
 export function DispatchView({
   onOpenLead,
-  initialTab = "all",
   initialTechFilter = "all",
   initialDate,
   initialLeadId,
@@ -143,9 +132,6 @@ export function DispatchView({
   const [searchQuery, setSearchQuery] = useState("");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"details" | "slots">("details");
-
-  // Left sidebar Unassigned filter
-  const [unassignedFilter, setUnassignedFilter] = useState<"all" | "inspections" | "jobs">(initialTab === "inspections" || initialTab === "jobs" ? initialTab : "all");
 
   // Change Booking drawer
   const [isChangeBookingOpen, setIsChangeBookingOpen] = useState<boolean>(
@@ -193,42 +179,6 @@ export function DispatchView({
     }
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [assignableTechnicians, inspectionStaff]);
-
-  // The same status and field-assignment rules apply on the dashboard and Dispatch.
-  const unassignedLeads = useMemo(() => scopedLeads.filter((lead) =>
-    getUnassignedSchedulingType(lead, inspectionStaff, assignableTechnicians) !== null,
-  ), [scopedLeads, inspectionStaff, assignableTechnicians]);
-
-  const filteredUnassignedLeads = useMemo(() => {
-    return unassignedLeads.filter((l) => {
-      const isJobType = getLeadSchedulingType(l) === "job";
-      const isInspType = !isJobType;
-
-      if (unassignedFilter === "inspections" && !isInspType) return false;
-      if (unassignedFilter === "jobs" && !isJobType) return false;
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const str = `${l.name || ""} ${l.address || ""} ${l.city || ""} ${l.jobNo || ""} ${l.phone || ""}`.toLowerCase();
-        if (!str.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [unassignedLeads, unassignedFilter, searchQuery]);
-
-  const unassignedCounts = useMemo(() => {
-    let insp = 0;
-    let jobs = 0;
-    for (const l of unassignedLeads) {
-      const isJobType = getLeadSchedulingType(l) === "job";
-      if (isJobType) {
-        jobs++;
-      } else {
-        insp++;
-      }
-    }
-    return { all: unassignedLeads.length, inspections: insp, jobs };
-  }, [unassignedLeads]);
 
   // ── 2. Visible Dates in Timeline ────────────────────────────────────────────
   const visibleDates = useMemo(() => dispatchDates(selectedDate, "Week"), [selectedDate]);
@@ -738,69 +688,12 @@ export function DispatchView({
         </div>
       )}
 
-      {/* ── MAIN 2-COLUMN DISPATCH LAYOUT ──────────────────────────────────────── */}
+      {/* ── DISPATCH TIMELINE AND OPTIONAL BOOKING EDITOR ──────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-
-        {/* ══ 1. LEFT PANEL: UNASSIGNED LEADS (HALF PAGE) ══════════════════════ */}
-        <div className="w-[20%] shrink-0 bg-white border-r border-slate-200/90 flex flex-col min-h-0">
-          {/* Header */}
-          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-sm font-bold text-slate-900">Unassigned</h2>
-              <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                ({unassignedCounts.all})
-              </span>
-              <span className="text-[10px] text-slate-400 ml-1">Not Booked Yet</span>
-            </div>
-            <button
-              type="button"
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              title="Filter"
-            >
-              <Filter className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Sub-filter pills */}
-          <div className="px-3 py-2 flex items-center gap-1.5 border-b border-slate-100/80 bg-slate-50/50">
-            <button
-              type="button"
-              onClick={() => setUnassignedFilter("all")}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                unassignedFilter === "all"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              All ({unassignedCounts.all})
-            </button>
-            <button
-              type="button"
-              onClick={() => setUnassignedFilter("inspections")}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                unassignedFilter === "inspections"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              Inspections ({unassignedCounts.inspections})
-            </button>
-            <button
-              type="button"
-              onClick={() => setUnassignedFilter("jobs")}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                unassignedFilter === "jobs"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              Jobs ({unassignedCounts.jobs})
-            </button>
-          </div>
 
           {/* ── CHANGE BOOKING PANEL (appears when a lead is selected for reschedule) ── */}
           {activeLead && isChangeBookingOpen && (
-            <div className="bg-amber-50/40 border-b border-amber-200 p-3.5 space-y-2.5 shrink-0 overflow-y-auto max-h-[45%]">
+            <div className="w-[320px] max-w-[40%] bg-amber-50/40 border-r border-amber-200 p-3.5 space-y-2.5 shrink-0 overflow-y-auto">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
@@ -927,85 +820,9 @@ export function DispatchView({
             </div>
           )}
 
-          {/* Unassigned Leads Card List */}
-          <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
-            {filteredUnassignedLeads.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                No unassigned leads in these statuses.
-              </div>
-            ) : (
-              filteredUnassignedLeads.map((lead) => {
-                const isJobType = getLeadSchedulingType(lead) === "job";
-                const isInsp = !isJobType;
-                const isSelected = lead.id === selectedLeadId;
-                const distance = getLeadDistance(lead);
-
-                return (
-                  <div
-                    key={lead.id}
-                    draggable={!isSavingBooking && !confirmRescheduleData}
-                    onDragStart={(event) => startBookingDrag(event, lead, isJobType ? "job" : "inspection", false)}
-                    onDragEnd={() => { setDragBooking(null); setDropPreview(null); }}
-                    onClick={() => {
-                      openSchedule(lead.id, isInsp ? "inspection" : "job");
-                    }}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50/40 shadow-xs ring-2 ring-blue-500/20"
-                        : "border-slate-200/90 bg-white hover:border-blue-300 hover:shadow-2xs"
-                    }`}
-                  >
-                    {/* Top: Avatar, Name, Type tag, 3-dots */}
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${isInsp ? "bg-blue-600 text-white" : "bg-emerald-600 text-white"}`}>
-                          <User className="w-4 h-4" />
-                        </div>
-                        <div className="font-bold text-xs text-slate-900 truncate">
-                          {lead.name || "Customer"}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                          isInsp
-                            ? "bg-sky-50 text-sky-700 border-sky-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        }`}>
-                          {isInsp ? "Inspection" : "Job"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingLead(lead);
-                            setLeadModalOpen(true);
-                          }}
-                          className="p-0.5 text-slate-400 hover:text-slate-700 cursor-pointer"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Bottom: Address & Distance */}
-                    <div className="flex items-end justify-between gap-2 mt-1.5 text-slate-500 text-[11px]">
-                      <div className="truncate flex-1">
-                        {lead.address || lead.city || "Melbourne VIC"}
-                      </div>
-                      <div className="font-bold text-blue-600 text-xs shrink-0">
-                        {distance}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
 
         {/* ══ 2. RIGHT PANEL: SEVEN-DAY TIMELINE ═══════════════════════ */}
-        <div className="w-[80%] flex flex-col min-w-0 min-h-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
           <p className="px-3 py-2 text-xs text-slate-500">Right-click or drag across empty space to choose a booking start time. Drag an existing booking to reschedule. Changes require confirmation.</p>
           {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
