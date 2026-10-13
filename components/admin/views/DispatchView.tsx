@@ -7,8 +7,8 @@ import { bookingAvailability } from "@/lib/bookingCapacity";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
-import { useState, useMemo, useCallback, useEffect, type DragEvent } from "react";
-import { dispatchDates, dispatchDropMinutes, dispatchBookingIssue } from "@/lib/dispatchTimeline";
+import { useState, useMemo, useCallback, useEffect, type DragEvent, type PointerEvent } from "react";
+import { dispatchDates, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import {
   Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
   Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
@@ -84,6 +84,18 @@ function parseIsoAppt(isoStr?: string): { dateStr: string; timeStr: string } | n
   return { dateStr: fmtReadableDate(d), timeStr };
 }
 
+interface BookingResize {
+  lead: Lead;
+  type: "inspection" | "job";
+  date: string;
+  pointerId: number;
+  initialX: number;
+  trackWidth: number;
+  originalEnd: number;
+  minimumEnd: number;
+  endMinutes: number;
+}
+
 interface RescheduleConfirmData {
   lead: Lead;
   type: "inspection" | "job";
@@ -151,6 +163,7 @@ export function DispatchView({
 
   const [dragBooking, setDragBooking] = useState<{ lead: Lead; type: "inspection" | "job"; duration: number; grabOffset: number } | null>(null);
   const [dropPreview, setDropPreview] = useState<{ date: string; minutes: number; duration: number; staffName: string } | null>(null);
+  const [resizeBooking, setResizeBooking] = useState<BookingResize | null>(null);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
 
   // Sync props changes (deep link navigation from Schedule)
@@ -436,6 +449,23 @@ export function DispatchView({
     setDropPreview(null);
   };
 
+  const resizeEnd = (event: PointerEvent<HTMLButtonElement>, resize: BookingResize) =>
+    dispatchResizeEndMinutes((event.clientX - resize.initialX) / resize.trackWidth, resize.originalEnd, resize.minimumEnd, TIMELINE_END_MINS);
+
+  const finishBookingResize = (event: PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (!resizeBooking || event.pointerId !== resizeBooking.pointerId) return;
+    const resize = resizeBooking;
+    const endMinutes = resizeEnd(event, resize);
+    setResizeBooking(null);
+    if (endMinutes === resize.originalEnd) return;
+    const start = resize.type === "job" ? resize.lead.jobAt : resize.lead.inspectionAt;
+    if (!start) return;
+    stageReschedule({ lead: resize.lead, type: resize.type, oldDateTime: start,
+      newDate: start.slice(0, 10), newTime: start.slice(11, 16), endAt: `${resize.date}T${fromMinutes(endMinutes)}`,
+      technician: resize.type === "job" ? resize.lead.technician : resize.lead.assigned, service: resize.lead.service });
+  };
+
   // ── Book / Schedule Slot Handler (opens confirmation modal) ────────────────
   const handleBookSlot = async (slot: (typeof suggestedSlots)[0]) => {
     if (!activeLead) return;
@@ -687,7 +717,7 @@ export function DispatchView({
         {/* ══ 2. RIGHT PANEL: DAILY STAFF TIMELINE ═══════════════════════ */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
-          <p className="px-3 py-1.5 text-[11px] text-slate-500">Right-click or drag across empty space to choose a booking start time. Drag an existing booking to reschedule. Changes require confirmation.</p>
+          <p className="px-3 py-1.5 text-[11px] text-slate-500">Right-click or drag across empty space to choose a booking start time. Drag a booking to reschedule, or drag its right edge to resize in 30-minute steps. Changes require confirmation.</p>
           {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
           <div className="flex flex-col bg-slate-50/40 flex-1 min-h-0">
             <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
@@ -745,7 +775,7 @@ export function DispatchView({
                       {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
                       <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[60px]">
                         {/* Each row uses the same time coordinates for grid, cards and drops. */}
-                        <div className="relative w-full" style={{ height: Math.max(74, laneEnds.length * 74) }}
+                        <div data-dispatch-track className="relative w-full" style={{ height: Math.max(74, laneEnds.length * 74) }}
                           onContextMenu={event => {
                             if ((event.target as HTMLElement).closest('[draggable="true"]')) return;
                             event.preventDefault();
@@ -796,6 +826,11 @@ export function DispatchView({
                                 const isInsp = item.type === "inspection";
                                 const isSelected = item.lead.id === selectedLeadId;
                                 const nextItem = items[idx + 1];
+                                const resizing = resizeBooking?.lead.id === item.lead.id && resizeBooking.type === item.type && resizeBooking.date === date;
+                                const shownEnd = resizing ? resizeBooking.endMinutes : item.endMins;
+                                const actualEnd = item.type === "job" ? item.lead.jobEndAt : item.lead.inspectionEndAt;
+                                const canResize = (!actualEnd || actualEnd.slice(0, 10) === date) && item.endMins > TIMELINE_START_MINS && item.endMins <= TIMELINE_END_MINS && item.startMins + 30 <= TIMELINE_END_MINS;
+                                const shownWidth = resizing ? Math.max(1, (shownEnd - Math.max(TIMELINE_START_MINS, item.startMins)) / TOTAL_TIMELINE_MINS * 100) : item.widthPct;
 
                                 // Calculate travel gap pill placement between this and next appointment
                                 const gapStartPct = item.leftPct + item.widthPct;
@@ -806,7 +841,7 @@ export function DispatchView({
                                   <div key={`${item.lead.id}-${idx}`}>
                                     {/* Appointment Card */}
                                     <div
-                                      draggable={!isSavingBooking && !confirmRescheduleData}
+                                      draggable={!resizeBooking && !isSavingBooking && !confirmRescheduleData}
                                       onDragStart={(event) => startBookingDrag(event, item.lead, item.type)}
                                       onDragEnd={() => { setDragBooking(null); setDropPreview(null); }}
                                       title={`${item.lead.name || "Customer"}: ${fmtMinutesFull(item.startMins)} – ${fmtMinutesFull(item.endMins)}. Drag to reschedule.`}
@@ -817,10 +852,10 @@ export function DispatchView({
                                       }}
                                       style={{
                                         left: `${item.leftPct}%`,
-                                        width: `${item.widthPct}%`,
+                                        width: `${shownWidth}%`,
                                         top: lanes[idx] * 74 + 2, height: 70,
                                       }}
-                                      className={`absolute min-w-0 p-1.5 rounded-xl border transition-colors cursor-grab active:cursor-grabbing shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
+                                      className={`absolute min-w-0 p-1.5 pr-3.5 rounded-xl border transition-colors cursor-grab active:cursor-grabbing shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
                                         isInsp
                                           ? "bg-sky-50/95 border-sky-300 text-sky-950 hover:bg-sky-100"
                                           : "bg-emerald-50/95 border-emerald-300 text-emerald-950 hover:bg-emerald-100"
@@ -830,7 +865,7 @@ export function DispatchView({
                                         {/* Top: Time span & Car icon */}
                                         <div className="flex items-center justify-between text-[9.5px] font-extrabold mb-0.5">
                                           <span className={isInsp ? "text-blue-700" : "text-emerald-700"}>
-                                            {fmtMinutesTo12h(item.startMins)} – {fmtMinutesTo12h(item.endMins)}
+                                            {fmtMinutesTo12h(item.startMins)} – {fmtMinutesTo12h(shownEnd)}
                                           </span>
                                           <Car className="w-3 h-3 opacity-60 shrink-0" />
                                         </div>
@@ -850,8 +885,31 @@ export function DispatchView({
                                           {item.suburb} · {item.travelToMins}m travel
                                         </div>
                                       </div>
-
-
+                                      {canResize && <button type="button" draggable={false}
+                                        aria-label={`Resize ${item.type} for ${item.lead.name || "Customer"} in 30-minute steps`}
+                                        title="Drag right to extend or left to shorten · 30-minute steps"
+                                        disabled={isSavingBooking || !!confirmRescheduleData}
+                                        className={`absolute right-0 inset-y-0 w-3 flex items-center justify-center cursor-ew-resize touch-none select-none border-l ${isInsp ? "border-sky-200 bg-sky-200/60 hover:bg-sky-300" : "border-emerald-200 bg-emerald-200/60 hover:bg-emerald-300"}`}
+                                        onClick={event => event.stopPropagation()}
+                                        onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}
+                                        onPointerDown={event => {
+                                          if (event.button !== 0) return;
+                                          event.preventDefault(); event.stopPropagation();
+                                          const track = event.currentTarget.closest('[data-dispatch-track]') as HTMLElement | null;
+                                          if (!track || track.getBoundingClientRect().width <= 0) return;
+                                          event.currentTarget.setPointerCapture(event.pointerId);
+                                          setResizeBooking({ lead: item.lead, type: item.type, date, pointerId: event.pointerId,
+                                            initialX: event.clientX, trackWidth: track.getBoundingClientRect().width,
+                                            originalEnd: item.endMins, minimumEnd: Math.max(TIMELINE_START_MINS, item.startMins + 30), endMinutes: item.endMins });
+                                        }}
+                                        onPointerMove={event => {
+                                          event.stopPropagation();
+                                          if (resizeBooking && event.pointerId === resizeBooking.pointerId) setResizeBooking({ ...resizeBooking, endMinutes: resizeEnd(event, resizeBooking) });
+                                        }}
+                                        onPointerUp={finishBookingResize}
+                                        onPointerCancel={event => { event.stopPropagation(); setResizeBooking(null); }}
+                                        onLostPointerCapture={() => setResizeBooking(null)}
+                                      ><span className="h-5 w-0.5 rounded-full bg-current opacity-50" /></button>}
                                     </div>
 
                                     {/* Travel Gap Pill (between consecutive appointments) */}

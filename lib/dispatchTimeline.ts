@@ -13,6 +13,12 @@ export function dispatchDropMinutes(ratio: number, start: number, end: number, d
   return Math.max(start, Math.min(end - duration, proposed));
 }
 
+/** Resize in half-hour increments relative to the existing finish. */
+export function dispatchResizeEndMinutes(deltaRatio: number, originalEnd: number, minimum: number, maximum: number): number {
+  const end = originalEnd + Math.round(deltaRatio * 480 / 30) * 30;
+  return Math.max(minimum, Math.min(maximum, end));
+}
+
 export function dispatchBookingIssue(candidate: CapacityAppointment, appointments: CapacityAppointment[], rules: BookingRules, technicians: BookingTechnician[]): string | null {
   const outside = candidate.scheduledMinutes ? null : explainOutsideRules(rules, candidate.type, `${candidate.date}T${candidate.time}`);
   if (outside) return outside;

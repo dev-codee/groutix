@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
-const { dispatchDates, dispatchDropMinutes, dispatchBookingIssue } = loadTs("lib/dispatchTimeline.ts");
+const { dispatchDates, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } = loadTs("lib/dispatchTimeline.ts");
 const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
 const rules = structuredClone(DEFAULT_BOOKING_RULES);
 const technicians = [{ id: "tech-1", name: "Alex", active: true, workDays: [0,1,2,3,4,5,6] }];
@@ -15,6 +15,13 @@ test("dragging snaps time to 15 minutes and preserves the grabbed point and comp
   assert.equal(dispatchDropMinutes(.99, 540, 1020, 180), 840);
   assert.equal(dispatchDropMinutes(-.1, 540, 1020, 60), 540);
   assert.equal(dispatchDropMinutes(.29, 540, 1020, 60), 675);
+});
+test("resizing moves the end in half-hour steps and clamps to the visible day and minimum duration", () => {
+  assert.equal(dispatchResizeEndMinutes(50 / 800, 660, 630, 1020), 690);
+  assert.equal(dispatchResizeEndMinutes(-50 / 800, 660, 630, 1020), 630);
+  assert.equal(dispatchResizeEndMinutes(10 / 800, 660, 630, 1020), 660);
+  assert.equal(dispatchResizeEndMinutes(2, 660, 630, 1020), 1020);
+  assert.equal(dispatchResizeEndMinutes(-2, 660, 630, 1020), 630);
 });
 test("moving a booking excludes itself but blocks overlapping jobs for its technician", () => {
   assert.equal(dispatchBookingIssue(candidate, [{ ...candidate }], rules, technicians), null);
@@ -35,6 +42,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   let cursor = 0;
   let collectEffects = true;
   const writes = [];
+  let availability = [candidate];
   const lead = { id: "lead-1", status: "Job Booked", name: "Test Customer", inspectionAt: "2026-10-12T09:00", inspectionEndAt: "2026-10-12T09:30", assigned: "Clara", jobEndAt: "2026-10-12T11:00", jobAt: "2026-10-12T10:00", technician: "Alex", service: "Regrouting", inspectionReport: { estimatedTime: "3 hours" } };
   const noop = () => {};
   const ctx = { scopedLeads: [lead], assignableTechnicians: [...technicians, { id: "tech-2", name: "Bob", active: true, workDays: [0,1,2,3,4,5,6] }], staff: [], inspectionStaff: [{ id: "inspector-1", name: "Clara", active: true }], openSchedule: noop,
@@ -49,7 +57,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
     react, "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ctx },
     "@/lib/useBookingRules": { useBookingRules: () => rules }, "@/lib/useZoneRules": { useZoneRules: () => ({}) },
     "@/components/admin/DispatchMap": { DispatchMap: () => null },
-  }, { fetch: async (url, options) => { if (options?.method === "PATCH") writes.push([url.split("/").pop(), JSON.parse(options.body)]); return { ok: true, json: async () => ({ appointments: [candidate] }) }; }, setTimeout: () => 0 });
+  }, { fetch: async (url, options) => { if (options?.method === "PATCH") writes.push([url.split("/").pop(), JSON.parse(options.body)]); return { ok: true, json: async () => ({ appointments: availability }) }; }, setTimeout: () => 0 });
   const render = () => { cursor = 0; return DispatchView({ onOpenLead: noop, initialDate: "2026-10-12" }); };
   const nodes = root => {
     const result = [];
@@ -103,6 +111,39 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   assert.equal(writes[0][1].inspectionAt, undefined);
   assert.equal(writes[0][1].status, undefined);
   assert.equal(nodes(render()).some(node => node.props?.role === "dialog"), false);
+  const resize = () => {
+    const event = clientX => ({ clientX, button: 0, pointerId: 1, preventDefault: noop, stopPropagation: noop,
+      currentTarget: { setPointerCapture: noop, closest: () => ({ getBoundingClientRect: () => ({ width: 800 }) }) } });
+    let handle = nodes(render()).find(node => node.props?.["aria-label"]?.startsWith("Resize job"));
+    handle.props.onPointerDown(event(0));
+    handle = nodes(render()).find(node => node.props?.["aria-label"]?.startsWith("Resize job"));
+    handle.props.onPointerMove(event(50));
+    const preview = nodes(render());
+    assert.match(label(preview), /11:30/);
+    handle = preview.find(node => node.props?.["aria-label"]?.startsWith("Resize job"));
+    handle.props.onPointerUp(event(50));
+    return nodes(render());
+  };
+  tree = resize();
+  assert.equal(writes.length, 1);
+  assert.ok(!tree.some(node => node.type?.name === "EditBookingModal"));
+  tree.find(node => node.type === "button" && label(node) === "Cancel").props.onClick();
+  assert.equal(writes.length, 1);
+  tree = resize();
+  await tree.find(node => node.type === "button" && label(node).includes("Confirm & Reschedule")).props.onClick();
+  assert.equal(writes.length, 2);
+  assert.equal(writes[1][1].jobAt, "2026-10-12T10:00");
+  assert.equal(writes[1][1].jobEndAt, "2026-10-12T11:30");
+  assert.equal(writes[1][1].technician, "Alex");
+  assert.equal(writes[1][1].bookingNotifications, true);
+  // Another booking arriving after the drag blocks the final confirmation.
+  availability = [candidate, { ...candidate, leadId: "other", time: "11:00" }];
+  tree = resize();
+  await tree.find(node => node.type === "button" && label(node).includes("Confirm & Reschedule")).props.onClick();
+  assert.equal(writes.length, 2);
+  assert.ok(nodes(render()).some(node => node.props?.role === "alert"));
+  tree = nodes(render());
+  tree.find(node => node.type === "button" && label(node) === "Cancel").props.onClick();
   // Both booking types open the same popup without shrinking the table.
   tree = nodes(render());
   tree.find(node => node.props?.title?.includes("10:00 AM")).props.onClick();
