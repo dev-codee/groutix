@@ -105,8 +105,8 @@ export default function StKildaPage({
       />
       <main className="public-page">
         {/* ═════════ 1. HERO (dark #0d1030) ═════════ */}
-        <section className="relative overflow-hidden bg-[#0d1030] pt-[110px] lg:pt-[125px]">
-          <div className="relative mx-auto grid max-w-[1460px] items-center gap-10 px-4 sm:px-6 py-12 pb-16 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-16 lg:pb-20">
+        <section className="relative overflow-hidden bg-[#0d1030] pt-[90px] lg:pt-[100px]">
+          <div className="relative mx-auto grid max-w-[1460px] items-center gap-10 px-4 sm:px-6 py-8 pb-12 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-12 lg:pb-16">
             <div className="space-y-5 text-center text-white lg:text-left">
               <p className="text-[15px] font-black uppercase tracking-[0.2em] text-[#FBBC04]">Groutix</p>
               <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
