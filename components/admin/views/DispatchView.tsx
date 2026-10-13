@@ -24,6 +24,7 @@ import { useBookingRules } from "@/lib/useBookingRules";
 import { useZoneRules } from "@/lib/useZoneRules";
 import { getWhatsAppLink } from "@/lib/adminHelpers";
 import { DispatchDatePicker } from "@/components/admin/DispatchDatePicker";
+import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
 import { DispatchBookingModal } from "@/components/admin/modals/DispatchBookingModal";
 import type { Lead } from "@/components/admin/types";
 
@@ -138,9 +139,6 @@ export function DispatchView({
   const [isChangeBookingOpen, setIsChangeBookingOpen] = useState<boolean>(
     Boolean(initialAction === "reschedule" && initialLeadId)
   );
-  const [changeBookingDate, setChangeBookingDate] = useState<string>(initialDate || todayStr);
-  const [changeBookingTime, setChangeBookingTime] = useState<string>("09:00");
-  const [changeBookingEnd, setChangeBookingEnd] = useState("");
   const [changeBookingType, setChangeBookingType] = useState<"inspection" | "job">("inspection");
   const [changeBookingTech, setChangeBookingTech] = useState<string>("");
   const [changeBookingService, setChangeBookingService] = useState<string>("Shower Cubicle Regrouting");
@@ -159,7 +157,6 @@ export function DispatchView({
   useEffect(() => {
     if (initialDate) {
       setSelectedDate(initialDate);
-      setChangeBookingDate(initialDate);
     }
     if (initialLeadId) {
       setSelectedLeadId(initialLeadId);
@@ -301,12 +298,7 @@ export function DispatchView({
   useEffect(() => {
     if (!activeLead) return;
     const type = selectedBookingType || (activeLead.inspectionAt ? "inspection" : "job");
-    const start = (type === "job" ? activeLead.jobAt : activeLead.inspectionAt)?.slice(0, 16) || `${selectedDate}T09:00`;
-    const end = type === "job" ? activeLead.jobEndAt : activeLead.inspectionEndAt;
     setChangeBookingType(type);
-    setChangeBookingDate(start.slice(0, 10));
-    setChangeBookingTime(start.slice(11, 16));
-    setChangeBookingEnd(end?.slice(0, 16) || bookingEndForDuration(type, start, bookingRules[type].slotMinutes, bookingRules));
     setChangeBookingTech((type === "job" ? activeLead.technician : activeLead.assigned) || "");
     setChangeBookingService(activeLead.service || "Shower Cubicle Regrouting");
   }, [activeLead, selectedBookingType]);
@@ -539,12 +531,12 @@ export function DispatchView({
   const handleNextDate = () => setSelectedDate(addDaysYmd(selectedDate, 1));
 
   return (
-    <div className="flex flex-col bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden font-sans text-slate-800" style={{ height: "calc(100vh - 75px)", minHeight: 650 }}>
+    <div className="flex flex-col bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden font-sans text-slate-800" style={{ height: "calc(100dvh - 112px)", minHeight: 320 }}>
 
       {/* ── TOP HEADER BAR ─────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <div className="bg-white border-b border-slate-200/90 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         {/* Left: Search input */}
-        <div className="relative flex-1 max-w-xs sm:max-w-sm">
+        <div className="relative flex-1 min-w-[160px] max-w-[200px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -555,15 +547,15 @@ export function DispatchView({
           />
         </div>
 
-        {/* Center: Date Navigator & Seven-Day View */}
+        {/* Center: Daily date navigator */}
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/90 rounded-xl p-0.5 shadow-2xs">
             <button
               type="button"
               onClick={handlePrevDate}
               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white cursor-pointer transition-colors"
-              title="Previous 7 days"
-              aria-label="Previous 7 days"
+              title="Previous day"
+              aria-label="Previous day"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -572,8 +564,8 @@ export function DispatchView({
               type="button"
               onClick={handleNextDate}
               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white cursor-pointer transition-colors"
-              title="Next 7 days"
-              aria-label="Next 7 days"
+              title="Next day"
+              aria-label="Next day"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -595,7 +587,7 @@ export function DispatchView({
             Day
           </span>
           <button type="button" onClick={() => setNewBooking({ date: selectedDate, time: "09:00" })}
-            className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white flex items-center gap-1"><Plus className="h-4 w-4" />New booking</button>
+            className="rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-bold text-white flex items-center gap-1"><Plus className="h-4 w-4" />New booking</button>
         </div>
 
         {/* Right: Staff selector dropdown & Settings gear */}
@@ -603,7 +595,7 @@ export function DispatchView({
           <select
             value={techFilter}
             onChange={(e) => setTechFilter(e.target.value)}
-            className="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200/90 rounded-xl text-slate-800 outline-none cursor-pointer hover:border-slate-300 shadow-2xs"
+            className="max-w-[180px] text-xs font-bold px-2 py-1.5 bg-white border border-slate-200/90 rounded-xl text-slate-800 outline-none cursor-pointer hover:border-slate-300 shadow-2xs"
           >
             <option value="all">All Team Members</option>
             <option value="Unassigned">Unassigned</option>
@@ -626,8 +618,8 @@ export function DispatchView({
       </div>
 
       {/* ── SUB-HEADER: Legend Pills & Route Optimization ───────────────────────── */}
-      <div className="bg-slate-50/70 border-b border-slate-200/80 px-4 py-2 flex items-center justify-between gap-4 text-xs font-semibold shrink-0">
-        <div className="flex flex-wrap items-center gap-4 text-slate-600">
+      <div className="bg-slate-50/70 border-b border-slate-200/80 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold shrink-0">
+        <div className="flex flex-wrap items-center gap-3 text-slate-600">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
             <span>Inspection</span>
@@ -692,150 +684,20 @@ export function DispatchView({
       {/* ── DISPATCH TIMELINE AND OPTIONAL BOOKING EDITOR ──────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-          {/* ── CHANGE BOOKING PANEL (appears when a lead is selected for reschedule) ── */}
-          {activeLead && isChangeBookingOpen && (
-            <div className="w-[320px] max-w-[40%] bg-amber-50/40 border-r border-amber-200 p-3.5 space-y-2.5 shrink-0 overflow-y-auto">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-900">{activeLead.name || "Customer"}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                        Change Booking
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      {activeLead.address || activeLead.city || "Melbourne"} {activeLead.phone ? `· ${activeLead.phone}` : ""}
-                    </div>
-                  </div>
-                </div>
-                <button type="button" onClick={() => { setIsChangeBookingOpen(false); setSelectedLeadId(null); }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 cursor-pointer">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Type + Tech */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Type</label>
-                  <div className="flex gap-1 bg-white p-0.5 rounded-xl border border-slate-200">
-                    <button type="button" onClick={() => setSelectedBookingType("inspection")}
-                      className={`flex-1 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${changeBookingType === "inspection" ? "bg-blue-600 text-white" : "text-slate-600"}`}>
-                      Inspection
-                    </button>
-                    <button type="button" onClick={() => setSelectedBookingType("job")}
-                      className={`flex-1 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${changeBookingType === "job" ? "bg-emerald-600 text-white" : "text-slate-600"}`}>
-                      Job
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Assigned person</label>
-                  <select value={changeBookingTech} onChange={(e) => setChangeBookingTech(e.target.value)}
-                    className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer">
-                    <option value="" disabled>Select person</option>
-                    {staffOptions.filter(s => (changeBookingType === "job" ? assignableTechnicians : inspectionStaff).some(person => person.active && person.name === s.name)).map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              {/* Date + Time */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Start date</label>
-                  <input type="date" value={changeBookingDate} onChange={(e) => setChangeBookingDate(e.target.value)}
-                    className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer" />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Start time</label>
-                  <input type="time" value={changeBookingTime} onChange={(e) => setChangeBookingTime(e.target.value)}
-                    className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer" />
-                </div>
-              </div>
-
-              <label className="block text-[11px] font-bold text-slate-700">End date and time
-                <input type="datetime-local" value={changeBookingEnd} onChange={event => setChangeBookingEnd(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 p-1.5 text-[11px]" />
-                <span className="block font-normal text-slate-500 mt-1">Leave empty to preserve the current working duration when moving this booking.</span>
-              </label>
-              {/* Quick Slots */}
-              <div className="flex flex-wrap gap-1">
-                {slotsForDate(bookingRules, changeBookingType, changeBookingDate).filter(t => t >= "09:00" && t < "17:00").map((t) => (
-                  <button key={t} type="button" onClick={() => setChangeBookingTime(t)}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer ${
-                      changeBookingTime === t ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}>{fmtScheduleTime(t)}</button>
-                ))}
-              </div>
-
-              {/* Suggested slots */}
-              {suggestedSlots.length > 0 && (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500">Route-Optimised Slots:</span>
-                  {suggestedSlots.map((slot, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-1.5 rounded-xl bg-white border border-slate-200 text-[11px]">
-                      <div>
-                        <span className="font-bold text-slate-900">{slot.formattedDate}</span>
-                        <span className="ml-1.5 font-bold text-blue-600">{slot.timeWindow}</span>
-                        <span className={`ml-1.5 text-[9px] font-bold px-1 py-0.2 rounded border ${slot.qualityColor}`}>{slot.quality}</span>
-                      </div>
-                      <button type="button" onClick={() => handleBookSlot(slot)}
-                        className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer">Apply</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isSavingBooking}
-                  onClick={() => {
-                    if (!activeLead) return;
-                    const oldDateTime = changeBookingType === "inspection" ? activeLead.inspectionAt : activeLead.jobAt;
-                    stageReschedule({
-                      lead: activeLead,
-                      type: changeBookingType,
-                      oldDateTime: oldDateTime || undefined,
-                      newDate: changeBookingDate,
-                      newTime: changeBookingTime,
-                      endAt: changeBookingEnd || undefined,
-                      technician: changeBookingTech && changeBookingTech !== "all" ? changeBookingTech : (changeBookingType === "inspection" ? activeLead.assigned : activeLead.technician),
-                      service: changeBookingService || activeLead.service,
-                    });
-                  }}
-                  className="flex-1 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" /> Confirm Change
-                </button>
-                <button type="button" onClick={() => onOpenLead(activeLead.id)}
-                  className="py-1.5 px-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 cursor-pointer flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" /> Full Lead
-                </button>
-              </div>
-            </div>
-          )}
-
-
-        {/* ══ 2. RIGHT PANEL: SEVEN-DAY TIMELINE ═══════════════════════ */}
+        {/* ══ 2. RIGHT PANEL: DAILY STAFF TIMELINE ═══════════════════════ */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
 
-          <p className="px-3 py-2 text-xs text-slate-500">Right-click or drag across empty space to choose a booking start time. Drag an existing booking to reschedule. Changes require confirmation.</p>
+          <p className="px-3 py-1.5 text-[11px] text-slate-500">Right-click or drag across empty space to choose a booking start time. Drag an existing booking to reschedule. Changes require confirmation.</p>
           {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
           <div className="flex flex-col bg-slate-50/40 flex-1 min-h-0">
             <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
-              <div className="w-full min-w-[660px] flex flex-col bg-white">
+              <div className="w-full min-w-[580px] flex flex-col bg-white">
 
                 {/* Grid Header Row: Hourly Columns */}
                 <div className="flex border-b border-slate-200 sticky top-0 bg-white z-20 shadow-2xs">
                   {/* Staff column header */}
-                  <div className="w-40 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
-                    Technician / Inspector
+                  <div className="w-32 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
+                    Team member
                   </div>
                   {/* Hourly headers across 9 AM to 5 PM */}
                   <div className="flex-1 relative h-8 mx-1 sm:mx-1.5">
@@ -869,11 +731,11 @@ export function DispatchView({
                   return (
                     <div
                       key={row.name}
-                      className="flex border-b border-slate-200/90 min-h-[70px] group transition-colors relative"
+                      className="flex border-b border-slate-200/90 min-h-[60px] group transition-colors relative"
                     >
                       {/* Staff name remains visible when scrolling the timeline */}
                       <div
-                        className="w-40 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 bg-slate-50 text-slate-800"
+                        className="w-32 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 bg-slate-50 text-slate-800"
                       >
                         <div className="text-xs font-extrabold leading-tight break-words">{row.name}</div>
                         <div className="text-[10px] text-slate-500 mt-1">{row.role}</div>
@@ -881,9 +743,9 @@ export function DispatchView({
                       </div>
 
                       {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
-                      <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[70px]">
+                      <div className="flex-1 relative flex items-center p-1 sm:p-1.5 min-h-[60px]">
                         {/* Each row uses the same time coordinates for grid, cards and drops. */}
-                        <div className="relative w-full" style={{ height: Math.max(90, laneEnds.length * 90) }}
+                        <div className="relative w-full" style={{ height: Math.max(74, laneEnds.length * 74) }}
                           onContextMenu={event => {
                             if ((event.target as HTMLElement).closest('[draggable="true"]')) return;
                             event.preventDefault();
@@ -956,7 +818,7 @@ export function DispatchView({
                                       style={{
                                         left: `${item.leftPct}%`,
                                         width: `${item.widthPct}%`,
-                                        top: lanes[idx] * 90 + 2, height: 86,
+                                        top: lanes[idx] * 74 + 2, height: 70,
                                       }}
                                       className={`absolute min-w-0 p-1.5 rounded-xl border transition-colors cursor-grab active:cursor-grabbing shadow-2xs z-10 overflow-hidden flex flex-col justify-between ${
                                         isInsp
@@ -975,27 +837,21 @@ export function DispatchView({
 
                                         {/* Title */}
                                         <div className={`text-[10.5px] font-extrabold leading-tight truncate ${isInsp ? "text-blue-900" : "text-emerald-900"}`}>
-                                          {item.title}
+                                          {isInsp ? "Inspection" : "Job"} · {item.lead.name || "Customer"}
                                         </div>
 
                                         {/* Customer Name or Service */}
                                         <div className="text-[10px] font-bold text-slate-800 truncate leading-tight">
-                                          {isInsp ? (item.lead.name || "Customer") : (item.serviceLabel || item.lead.name)}
+                                          {item.serviceLabel}
                                         </div>
 
                                         {/* Suburb */}
                                         <div className="text-[9px] text-slate-500 font-medium truncate leading-tight">
-                                          {item.suburb}
+                                          {item.suburb} · {item.travelToMins}m travel
                                         </div>
                                       </div>
 
-                                      {/* Travel footer */}
-                                      <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-400 pt-0.5 mt-0.5 border-t border-slate-200/40 truncate leading-none">
-                                        <Car className="w-2.5 h-2.5 shrink-0" />
-                                        <span className="truncate">
-                                          {`${item.durationMins}m + ${item.travelToMins}m travel`}
-                                        </span>
-                                      </div>
+
                                     </div>
 
                                     {/* Travel Gap Pill (between consecutive appointments) */}
@@ -1056,7 +912,7 @@ export function DispatchView({
             </div>
 
             {/* Bottom Swatches Legend Bar */}
-            <div className="bg-white border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-4 text-[10.5px] text-slate-600 font-semibold shrink-0">
+            <div className="bg-white border-t border-slate-200 px-3 py-1 flex flex-wrap items-center gap-3 text-[10px] text-slate-600 font-semibold shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-md bg-sky-200 border border-sky-400 inline-block" />
                 <span>Inspection</span>
@@ -1075,6 +931,11 @@ export function DispatchView({
 
         </div>
       </div>
+
+      {activeLead && isChangeBookingOpen && <EditBookingModal key={`${activeLead.id}:${selectedBookingType || changeBookingType}`}
+        lead={activeLead} type={selectedBookingType || changeBookingType} initialDate={selectedDate}
+        onClose={() => { setIsChangeBookingOpen(false); setSelectedLeadId(null); }}
+        onSaved={(date, message) => { setIsChangeBookingOpen(false); setSelectedLeadId(null); setSelectedDate(date); setBookingSuccess(message); }} />}
 
       {newBooking && <DispatchBookingModal {...newBooking} onClose={() => setNewBooking(null)} onBooked={(date, message) => {
         setNewBooking(null); setSelectedDate(date); setBookingSuccess(message);

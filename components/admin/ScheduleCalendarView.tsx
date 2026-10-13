@@ -41,6 +41,7 @@ import {
   AlertCircle,
   Search,
 } from "lucide-react";
+import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import { buildPlanningMapItems, type UnassignedPlanningLead } from "@/lib/unassignedLeads";
 import { MAX_PLANNING_DAYS, addPlanningDate, colorPlanningMapItems, offsetPlanningDate, planningDateRanges, planningDayColor, shiftPlanningDates } from "@/lib/scheduleDays";
@@ -531,12 +532,14 @@ function RouteTimeline({
   onSelect,
   dateStr,
   onReorder,
+  onEdit,
 }: {
   entries: ScheduleEntry[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   dateStr: string;
   onReorder: (from: number, to: number) => void;
+  onEdit: (entry: ScheduleEntry) => void;
 }) {
   const dragFrom = useRef<number | null>(null);
   return (
@@ -551,7 +554,8 @@ function RouteTimeline({
       <div className="flex items-center gap-2 overflow-x-auto pb-1 min-h-[56px]">
         {entries.map((e, i) => (
           <div key={e.id} className="flex items-center gap-2 shrink-0">
-            <button
+            <div role="button" tabIndex={0}
+              onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(e.id); } }}
               draggable
               onDragStart={() => { dragFrom.current = i; }}
               onDragOver={(event) => event.preventDefault()}
@@ -569,12 +573,12 @@ function RouteTimeline({
                 <span className="text-[11px] font-semibold text-slate-900 truncate leading-tight">
                   {e.customer?.name?.split(" ")[0] || "Customer"}
                 </span>
-                <MoreVertical className="w-3 h-3 text-slate-400 ml-auto shrink-0" />
+                <button type="button" aria-label={`Edit booking for ${e.customer?.name || "Customer"}`} onClick={event => { event.stopPropagation(); onEdit(e); }} className="ml-auto shrink-0 rounded p-1 hover:bg-slate-200"><MoreVertical className="w-3 h-3 text-slate-400" /></button>
               </div>
               <span className="text-[10px] text-slate-500 mt-1 self-start pl-0.5">
                 {formatSlotRange(e.time, e.durationMinutes)}
               </span>
-            </button>
+            </div>
 
             {i < entries.length - 1 && (
               <div className="flex items-center text-slate-300">
@@ -592,36 +596,6 @@ function RouteTimeline({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// ─── Stats Bar ────────────────────────────────────────────────────────────────
-
-function DayStatsBar({ entries }: { entries: ScheduleEntry[] }) {
-  const jobs = entries.length;
-  const estimate = estimateRoute(entries);
-  const h = Math.floor(estimate.minutes / 60);
-  const m = estimate.minutes % 60;
-  const travelStr = estimate.missing === entries.length && jobs > 0 ? "Unavailable" : h > 0 ? `${h}h ${m}m` : `${m}m`;
-
-  const stats = [
-    { icon: CalendarDays, value: jobs, label: "Bookings", color: "text-blue-600", bg: "bg-blue-50" },
-    { icon: Navigation, value: estimate.missing === jobs && jobs > 0 ? "Unavailable" : `${estimate.km} km`, label: "Est. Distance", color: "text-sky-600", bg: "bg-sky-50" },
-    { icon: Clock, value: travelStr, label: "Est. Travel Time", color: "text-emerald-600", bg: "bg-emerald-50" },
-  ];
-
-  return (
-    <div className="grid grid-cols-3 gap-2 mb-2">
-      {stats.map((s) => (
-        <div key={s.label} className={`flex items-center gap-2 ${s.bg} rounded-lg px-2.5 py-1.5 border border-slate-200/60`}>
-          <s.icon className={`w-4 h-4 ${s.color} shrink-0`} />
-          <div>
-            <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-slate-500 font-medium">{s.label}</p>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -752,7 +726,6 @@ function JobListPanel({
   color: string;
   disabled: boolean;
 }) {
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col bg-white w-full">
@@ -803,7 +776,7 @@ function JobListPanel({
               </button>
 
               {/* Stop number */}
-              <StopCircle n={i} type={entry.type} color={color} />
+              <StopCircle n={i} type={entry.type} color={entry.type === "job" ? "#059669" : "#2563EB"} />
 
               {/* Content */}
               <div className="flex-1 min-w-0">
@@ -822,44 +795,11 @@ function JobListPanel({
                 <p className="text-[10px] text-slate-500 mt-0.5 truncate">{entry.customer?.address}</p>
               </div>
 
-              {/* Kebab menu */}
-              <div className="relative shrink-0">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === entry.id ? null : entry.id); }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  <MoreVertical className="w-3.5 h-3.5" />
-                </button>
-                {menuOpen === entry.id && (
-                  <div
-                    className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[160px] py-1 overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => { setMenuOpen(null); onReschedule(entry); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <Repeat2 className="w-3.5 h-3.5 text-blue-500" />
-                      Reschedule
-                    </button>
-                    <button
-                      onClick={() => { setMenuOpen(null); onSelect(entry.id); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-slate-500" />
-                      Quick View
-                    </button>
-                    <div className="h-px bg-slate-100 mx-2 my-1" />
-                    <button
-                      onClick={() => { setMenuOpen(null); onRemove(entry); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button type="button" aria-label={`Edit booking for ${entry.customer?.name || "Customer"}`}
+                disabled={disabled} onClick={event => { event.stopPropagation(); onReschedule(entry); }}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
             </div>
           ))
         )}
@@ -914,6 +854,7 @@ export function ScheduleCalendarView({
       technician: entry?.technician || lead?.technician, technicianUsername: entry?.technicianUsername || lead?.technicianUsername,
     });
   };
+  const [editBookingEntry, setEditBookingEntry] = useState<ScheduleEntry | null>(null);
   const [rescheduleModal, setRescheduleModal] = useState<RescheduleModal | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -1288,13 +1229,8 @@ export function ScheduleCalendarView({
         {showUnassigned && <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>}
       </div>
 
-      {/* ── Stats Bar ─────────────────────────────────────────────────────── */}
-      <div className="px-3 pt-1.5 shrink-0">
-        <DayStatsBar entries={entries} />
-      </div>
-
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
-      <div className={`grid grid-cols-1 items-start px-3 gap-2.5 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(280px,340px)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]"}`}>
+      <div className={`grid grid-cols-1 items-start px-3 pt-2 gap-2.5 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(280px,340px)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]"}`}>
 
         {showUnassigned && <div className="max-h-[280px] xl:max-h-none xl:h-[clamp(300px,calc(100dvh-330px),680px)] min-w-0 rounded-xl border border-amber-200 bg-white flex flex-col overflow-hidden">
           <div className="shrink-0 border-b border-amber-100 bg-amber-50 p-2 space-y-1.5">
@@ -1347,7 +1283,7 @@ export function ScheduleCalendarView({
                   onDropBooking={dropBooking}
                   color={planningDayColor(dayIndex)}
                   disabled={routeSaving || !!loadError}
-                  onReschedule={openReschedule}
+                  onReschedule={entry => { if (discardChanges()) setEditBookingEntry(entry); }}
                   onRemove={openRemove}
                   onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestTime(selectedPlanningLead?.type || "inspection", date, undefined, selectedPlanningLead?.lead.id)); setBookingDate(date); }}
                   dateStr={date}
@@ -1367,9 +1303,11 @@ export function ScheduleCalendarView({
             <div className="flex gap-2"><button type="button" onClick={bookPlanningLead} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 cursor-pointer">Book this lead</button><button type="button" onClick={() => onOpenLead(selectedPlanningLead.lead.id)} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 cursor-pointer">View details</button></div>
           </div>}
           <div className="flex shrink-0 flex-wrap gap-3 border-b border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600">
+            <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" />Inspection</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />Job</span>
             <span className="font-semibold">All {dayCount} selected {dayCount === 1 ? "day" : "days"} on map</span>
             {visibleDates.map((date, index) => <span key={date} className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(index) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</span>)}
-            {showUnassigned && showUnassignedOnMap && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" />Unassigned</span>}
+            {showUnassigned && showUnassignedOnMap && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full border border-slate-400" />Unassigned</span>}
           </div>
           <div className="flex-1 min-h-0">
           <RouteMapPanel
@@ -1412,6 +1350,7 @@ export function ScheduleCalendarView({
           selectedId={selectedId}
           onSelect={selectBooking}
           dateStr={activeMapDate}
+          onEdit={entry => { if (discardChanges()) setEditBookingEntry(entry); }}
           onReorder={(from, to) => handleReorder(entries.indexOf(mapEntries[from]), entries.indexOf(mapEntries[to]))}
         />
       </div>
@@ -1465,6 +1404,12 @@ export function ScheduleCalendarView({
           <div className="flex justify-end gap-2"><button type="button" disabled={removing} onClick={() => setRemovingEntry(null)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Keep Booking</button><button type="button" disabled={removing} onClick={() => void removeFromRoute()} className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{removing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{removing ? "Removing…" : "Remove Booking"}</button></div>
         </div>
       </div>}
+
+      {editBookingEntry && <EditBookingModal key={editBookingEntry.id}
+        lead={leads.find(lead => lead.id === editBookingEntry.leadId) || { id: editBookingEntry.leadId, name: editBookingEntry.customer?.name, address: editBookingEntry.customer?.address } as Lead}
+        type={editBookingEntry.type} initialDate={editBookingEntry.date} initialTime={editBookingEntry.time}
+        onClose={() => setEditBookingEntry(null)}
+        onSaved={(date, message) => { setEditBookingEntry(null); showToast(message, true); void load(); onBookingsChanged?.(); }} />}
 
       {/* ── Reschedule Modal ───────────────────────────────────────────────── */}
       {rescheduleModal && (

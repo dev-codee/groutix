@@ -63,7 +63,7 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   effects.forEach(fn => fn());
   await new Promise(resolve => setImmediate(resolve));
   let board = nodes(render());
-  assert.ok(label(board).includes("Technician / Inspector"));
+  assert.ok(label(board).includes("Team member"));
   assert.ok(label(board).includes("9 AM"));
   assert.ok(label(board).includes("5 PM"));
   board.filter(node => node.props?.onDrop)[1].props.onContextMenu({ preventDefault: noop, clientX: 400,
@@ -103,35 +103,16 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   assert.equal(writes[0][1].inspectionAt, undefined);
   assert.equal(writes[0][1].status, undefined);
   assert.equal(nodes(render()).some(node => node.props?.role === "dialog"), false);
-  // This lead also has an inspection: clicking its job must open the job fields.
+  // Both booking types open the same popup without shrinking the table.
   tree = nodes(render());
   tree.find(node => node.props?.title?.includes("10:00 AM")).props.onClick();
-  effects.length = 0; collectEffects = true; render(); collectEffects = false;
-  effects.forEach(fn => fn());
-  tree = nodes(render());
-  assert.equal(tree.find(node => node.type === "input" && node.props.type === "time").props.value, "10:00");
-  assert.equal(tree.find(node => node.type === "input" && node.props.type === "datetime-local").props.value, "2026-10-12T11:00");
-  const assignee = tree.find(node => node.type === "select" && node.props.value === "Alex");
-  assert.ok(assignee);
-  assert.ok(!label(assignee).includes("Clara"));
-  assignee.props.onChange({ target: { value: "Bob" } });
-  tree.find(node => node.type === "input" && node.props.type === "datetime-local").props.onChange({ target: { value: "2026-10-12T12:30" } });
-  tree = nodes(render());
-  tree.find(node => node.type === "button" && label(node).includes("Confirm Change")).props.onClick();
-  assert.equal(writes.length, 1);
-  tree = nodes(render());
-  await tree.find(node => node.type === "button" && label(node).includes("Confirm & Reschedule")).props.onClick();
-  assert.equal(writes.length, 2);
-  assert.equal(writes[1][1].jobAt, "2026-10-12T10:00");
-  assert.equal(writes[1][1].jobEndAt, "2026-10-12T12:30");
-  assert.equal(writes[1][1].technician, "Bob");
-  assert.equal(writes[1][1].inspectionAt, undefined);
+  let editor = nodes(render()).find(node => node.type?.name === "EditBookingModal");
+  assert.equal(editor.props.type, "job");
+  assert.equal(editor.props.lead.jobEndAt, "2026-10-12T11:00");
+  editor.props.onClose();
   tree = nodes(render());
   tree.find(node => node.props?.title?.includes("9:00 AM")).props.onClick();
-  effects.length = 0; collectEffects = true; render(); collectEffects = false;
-  effects.forEach(fn => fn());
-  tree = nodes(render());
-  assert.equal(tree.find(node => node.type === "input" && node.props.type === "time").props.value, "09:00");
-  assert.equal(tree.find(node => node.type === "input" && node.props.type === "datetime-local").props.value, "2026-10-12T09:30");
-  assert.ok(tree.some(node => node.type === "select" && node.props.value === "Clara"));
+  editor = nodes(render()).find(node => node.type?.name === "EditBookingModal");
+  assert.equal(editor.props.type, "inspection");
+  assert.equal(editor.props.lead.inspectionEndAt, "2026-10-12T09:30");
 });

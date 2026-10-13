@@ -44,12 +44,14 @@ function picker(value = "2026-12-29") {
   return { render, find, open, listeners, chosen: () => chosen };
 }
 
-test("calendar selects any day, highlights the seven-day range across years, and closes", () => {
+test("calendar selects any day, highlights only the selected day across years, and closes", () => {
   const ui = picker();
+  const trigger = ui.render().find(node => node.props?.["aria-haspopup"] === "dialog");
+  assert.equal(trigger.props["aria-label"], "Choose dispatch date, Tue, 29 Dec 2026");
   ui.open();
   let nodes = ui.render();
   assert.equal(nodes.filter((node) => node.props?.["aria-pressed"] !== undefined).length, 42);
-  assert.equal(nodes.filter((node) => node.props?.className?.includes("bg-blue-50 text-blue-700")).length, 6);
+  assert.equal(nodes.filter((node) => node.props?.className?.includes("bg-blue-50 text-blue-700")).length, 0);
   assert.ok(ui.find("Tuesday 29 December 2026").props["aria-pressed"]);
   ui.find("Monday 4 January 2027").props.onClick();
   assert.equal(ui.chosen(), "2027-01-04");

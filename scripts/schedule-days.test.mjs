@@ -29,15 +29,18 @@ test("distant selected dates use valid API ranges", () => {
   assert.deepEqual(ranges, [{ from: "2026-10-08", to: "2026-10-11" }, { from: "2027-02-01", to: "2027-02-05" }]);
 });
 
-test("each day has a distinct color and its own stop numbers", () => {
+test("bookings use type colors across dates and retain daily stop numbers", () => {
   const dates = consecutivePlanningDates("2026-10-08", 31);
   const items = colorPlanningMapItems(dates.map((date) => ({ lead: { id: date }, type: "job", time: "09:00", date })), dates);
-  assert.equal(new Set(items.map((item) => item.color)).size, 31);
+  assert.equal(new Set(items.map((item) => item.color)).size, 1);
   assert.ok(items.every((item) => item.stopNumber === 1));
   const sameDay = colorPlanningMapItems([items[0], { ...items[0], time: "10:00" }, items[1]], dates);
   assert.deepEqual(sameDay.map((item) => item.stopNumber), [1, 2, 1]);
   assert.equal(sameDay[0].color, sameDay[1].color);
-  assert.notEqual(sameDay[1].color, sameDay[2].color);
+  assert.equal(sameDay[1].color, sameDay[2].color);
+  assert.equal(sameDay[0].color, "#059669");
+  const inspection = colorPlanningMapItems([{ ...items[0], type: "inspection" }], dates);
+  assert.equal(inspection[0].color, "#2563EB");
 });
 
 test("routes stay within their own day and exclude unassigned and ungeocoded pins", () => {

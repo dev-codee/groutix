@@ -26,6 +26,8 @@ const load = (relativePath, overrides = {}, globals = {}) => {
 };
 const scheduling = load("../lib/unassignedLeads.ts");
 const calendarDependencies = {
+  "@/lib/staffBookingRules": loadTs("lib/staffBookingRules.ts"),
+  "@/components/admin/modals/EditBookingModal": { EditBookingModal: function EditBookingModal() { return null; } },
   "@/lib/useTechnicians": { useTechnicians: () => ({ technicians: [{ id: "tech", name: "Technician", active: true }] }) },
   "@/lib/bookingCapacity": loadTs("lib/bookingCapacity.ts"),
   "@/lib/bookingDuration": loadTs("lib/bookingDuration.ts"),
@@ -70,6 +72,7 @@ test("opening the calendar normally lists unassigned leads without selecting one
   assert.equal(mapProps.selectedLeadId, null);
   assert.equal(mapProps.items.length, 2);
   assert.match(html, /Add next day/);
+  assert.doesNotMatch(html, />Bookings<\/p>/);
   assert.match(html, /data-testid="schedule-day-stack"/);
   assert.doesNotMatch(html, /aria-label="Calendar view"|grid-auto-flow:column/);
 });
@@ -191,4 +194,19 @@ test("cross-day booking drops wait for confirmation and same-day reordering wait
   const writes = ui.requests.filter((req) => req.method === "PATCH");
   assert.equal(writes.length, 1);
   assert.equal(JSON.parse(writes[0].body).inspectionAt, "2099-10-09T11:00:00");
+});
+
+
+test("the three-dot button opens the shared booking popup without saving", async () => {
+  const ui = interactiveCalendar();
+  let root = await ui.initialize();
+  const list = ui.find(root, el => el.type?.name === "JobListPanel");
+  const listRoot = ui.render(list);
+  ui.find(listRoot, el => el.type === "button" && el.props?.["aria-label"] === "Edit booking for Booked A").props.onClick(ui.event());
+  const editor = ui.find(ui.render(), el => el.type?.name === "EditBookingModal");
+  assert.equal(editor.props.type, "inspection");
+  assert.equal(editor.props.initialDate, "2099-10-08");
+  assert.equal(ui.requests.filter(request => request.method === "PATCH").length, 0);
+  editor.props.onClose();
+  assert.ok(!ui.find(ui.render(), el => el.type?.name === "EditBookingModal"));
 });

@@ -42,10 +42,9 @@ export function colorPlanningMapItems(items: DispatchMapItem[], dates: string[])
   const counters = new Map<string, number>();
   return items.map((item) => {
     if (!item.date || item.unassigned) return item;
-    const dayIndex = dates.indexOf(item.date);
     const stopNumber = (counters.get(item.date) || 0) + 1;
     counters.set(item.date, stopNumber);
-    return { ...item, color: planningDayColor(dayIndex), stopNumber };
+    return { ...item, color: item.type === "inspection" ? "#2563EB" : "#059669", stopNumber };
   });
 }
 

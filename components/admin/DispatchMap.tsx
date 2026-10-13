@@ -247,7 +247,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
     directionsRenderersRef.current = [];
 
     const addStopMarker = (position: google.maps.LatLng | google.maps.LatLngLiteral, idx: number, item: DispatchMapItem) => {
-      const color = item.unassigned ? "#F59E0B" : item.color ? item.color : item.proposed ? "#16A34A" : item.type === "inspection" ? "#EF4444" : "#3B82F6";
+      const color = item.type === "inspection" ? "#2563EB" : "#059669";
       const selected = selectedItemIdRef.current ? selectedItemIdRef.current === item.appointmentId : selectedLeadIdRef.current === item.lead.id;
       const stopNumber = item.stopNumber || idx + 1;
       const marker = new g.maps.Marker({
