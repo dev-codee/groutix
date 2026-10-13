@@ -5126,7 +5126,7 @@ export default function CrmDashboardPage() {
                               {!isTechnician && (
                                 <>
                                   <th className="py-2 px-2 font-bold text-right">
-                                    {quoteTaxMode === "exclusive" ? "Price (ex GST)" : quoteTaxMode === "inclusive" ? "Price (inc GST)" : "Price"}
+                                    {quoteTaxMode === "none" ? "Price" : "Price (inc GST)"}
                                   </th>
                                   <th className="py-2 px-2 font-bold text-right">
                                     {quoteTaxMode === "none" ? "Total" : "Total (inc GST)"}
@@ -5311,10 +5311,11 @@ export default function CrmDashboardPage() {
                                       type="number"
                                       min="0"
                                       step="0.01"
-                                      value={item.price || ""}
+                                      value={item.price ? Number((Number(item.price) * (quoteTaxMode === "exclusive" ? 1 + quoteTaxRate / 100 : 1)).toFixed(2)) : ""}
                                       onChange={(e) => {
                                         const updated = [...quoteItems];
-                                        updated[idx].price = parseFloat(e.target.value) || 0;
+                                        const inclusivePrice = parseFloat(e.target.value) || 0;
+                                        updated[idx].price = inclusivePrice / (quoteTaxMode === "exclusive" ? 1 + quoteTaxRate / 100 : 1);
                                         setQuoteItems(updated);
                                       }}
                                       className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
@@ -5405,7 +5406,7 @@ export default function CrmDashboardPage() {
                           </div>
                           <div className="text-[11px] font-semibold">
                             {quoteTaxMode === "exclusive" ? (
-                              <span className="text-amber-700 font-bold">• Prices are Ex-Tax (+10% GST added on top)</span>
+                              <span className="text-amber-700 font-bold">• Unit prices and totals shown above include GST.</span>
                             ) : quoteTaxMode === "none" ? (
                               <span className="text-slate-600 font-bold">• No Tax Applied</span>
                             ) : (
@@ -5583,7 +5584,7 @@ export default function CrmDashboardPage() {
                           {!isTechnician && (
                             <>
                               <th className="py-2 px-2.5 text-right">
-                                {quoteTaxMode === "exclusive" ? "UNIT PRICE (EX GST)" : "UNIT PRICE"}
+                                {quoteTaxMode === "none" ? "UNIT PRICE" : "UNIT PRICE (INC GST)"}
                               </th>
                               <th className="py-2 px-2.5 text-right">
                                 {quoteTaxMode === "none" ? "TOTAL PRICE" : "TOTAL (INC GST)"}
@@ -5615,7 +5616,7 @@ export default function CrmDashboardPage() {
                             <td className="py-2.5 px-2.5 text-right">{item.qty || 1}</td>
                             {!isTechnician && (
                               <>
-                                <td className="py-2.5 px-2.5 text-right">${Number(item.price || 0).toFixed(2)}</td>
+                                <td className="py-2.5 px-2.5 text-right">${(Number(item.price || 0) * (quoteTaxMode === "exclusive" ? 1 + quoteTaxRate / 100 : 1)).toFixed(2)}</td>
                                 <td className="py-2.5 px-2.5 text-right font-bold text-black">
                                   ${(
                                     (Number(item.price || 0) * Number(item.qty || 1)) *

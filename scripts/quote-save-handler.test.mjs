@@ -10,6 +10,31 @@ const tree = ts.createSourceFile("page.tsx", source, ts.ScriptTarget.Latest, tru
 const functions = new Map();
 const visit = node => { if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node.getText(tree)); ts.forEachChild(node, visit); };
 visit(tree);
+let priceInput;
+const findPriceInput = node => {
+  if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(tree) === "input") {
+    const value = node.attributes.properties.find(prop => prop.name?.text === "value");
+    if (value?.initializer && ts.isJsxExpression(value.initializer) && value.initializer.expression?.getText(tree).startsWith("item.price ?")) priceInput = node;
+  }
+  ts.forEachChild(node, findPriceInput);
+};
+findPriceInput(tree);
+test("GST-inclusive unit price display and edits preserve exclusive quote totals", () => {
+  assert.ok(priceInput, "quote unit price input exists");
+  const expression = name => priceInput.attributes.properties.find(prop => prop.name?.text === name).initializer.expression.getText(tree);
+  const item = { price: 1550, qty: 1 };
+  const context = { item, idx: 0, quoteItems: [item], quoteTaxMode: "exclusive", quoteTaxRate: 10,
+    setQuoteItems: items => { context.quoteItems = items; } };
+  const evaluate = source => vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  assert.equal(evaluate(`(${expression("value")})`), 1705);
+  evaluate(`(${expression("onChange")})({ target: { value: "220" } })`);
+  assert.ok(Math.abs(context.quoteItems[0].price - 200) < 1e-9);
+  const totals = evaluate(`${functions.get("quoteTotals")}\nquoteTotals()`);
+  assert.equal(totals.total, 220);
+  context.quoteTaxMode = "inclusive";
+  context.item = { price: 1550, qty: 1 };
+  assert.equal(evaluate(`(${expression("value")})`), 1550);
+});
 const compiled = ts.transpileModule(`${functions.get("quoteTotals")}\n${functions.get("openQuoteModal")}\n${functions.get("closeQuoteModal")}\n${functions.get("handleSaveQuote")}\nmodule.exports = { run: handleSaveQuote, open: openQuoteModal, close: closeQuoteModal };`, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
 function handler({ tenants = null, preparationError = false, save, saving = false } = {}) {
   const state = { saving, error: "", closed: false, writes: [] };
