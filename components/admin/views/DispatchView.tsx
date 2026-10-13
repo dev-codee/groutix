@@ -127,6 +127,7 @@ export function DispatchView({
 
   const todayStr = useMemo(() => todayAU(), []);
   const [selectedDate, setSelectedDate] = useState<string>(initialDate || todayStr);
+  const [selectedBookingType, setSelectedBookingType] = useState<"inspection" | "job" | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId || null);
   const [techFilter, setTechFilter] = useState<string>(initialTechFilter);
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,11 +148,11 @@ export function DispatchView({
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
   const [confirmRescheduleData, setConfirmRescheduleData] = useState<RescheduleConfirmData | null>(null);
 
-  const [newBooking, setNewBooking] = useState<{ date: string; time: string } | null>(null);
-  const [newTimeSelection, setNewTimeSelection] = useState<{ date: string; minutes: number } | null>(null);
+  const [newBooking, setNewBooking] = useState<{ date: string; time: string; staffName?: string; initialType?: "inspection" | "job" } | null>(null);
+  const [newTimeSelection, setNewTimeSelection] = useState<{ date: string; minutes: number; staffName: string } | null>(null);
 
   const [dragBooking, setDragBooking] = useState<{ lead: Lead; type: "inspection" | "job"; duration: number; grabOffset: number } | null>(null);
-  const [dropPreview, setDropPreview] = useState<{ date: string; minutes: number; duration: number } | null>(null);
+  const [dropPreview, setDropPreview] = useState<{ date: string; minutes: number; duration: number; staffName: string } | null>(null);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
 
   // Sync props changes (deep link navigation from Schedule)
@@ -162,6 +163,7 @@ export function DispatchView({
     }
     if (initialLeadId) {
       setSelectedLeadId(initialLeadId);
+      setSelectedBookingType(null);
       if (initialAction === "reschedule") {
         setIsChangeBookingOpen(true);
       }
@@ -175,7 +177,7 @@ export function DispatchView({
       if (t.name && t.active) map.set(t.name, { name: t.name, role: "Technician" });
     }
     for (const i of inspectionStaff) {
-      if (i.name) map.set(i.name, { name: i.name, role: "Inspector" });
+      if (i.name && i.active) map.set(i.name, { name: i.name, role: map.has(i.name) ? "Technician / Inspector" : "Inspector" });
     }
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [assignableTechnicians, inspectionStaff]);
@@ -257,7 +259,7 @@ export function DispatchView({
           const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
           const travel = calculateTravel("Tullamarine", suburb);
           map.get(segment.date)!.push({ lead, type, startTime: segment.time, startMins, durationMins, endMins,
-            endTime: fmtMinutesTo12h(endMins), tech: type === "job" ? lead.technician || lead.assigned || "Technician" : lead.assigned || "Inspector",
+            endTime: fmtMinutesTo12h(endMins), tech: type === "job" ? lead.technician || "Unassigned" : lead.assigned || "Unassigned",
             suburb, travelToMins: travel.durationMinutes, travelToKm: travel.distanceKm,
             title: `${type === "job" ? "Job" : "Inspection"} (${durationMins / 60} hrs)${segments.length > 1 ? " · multi-day" : ""}`,
             serviceLabel: lead.service || "Tile & Grout Service", leftPct: (clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100,
@@ -285,33 +287,29 @@ export function DispatchView({
     return resolveArea(activeLead.address || activeLead.city).suburb || "Melbourne";
   }, [activeLead]);
 
-  // Sync fields when activeLead changes
-  useEffect(() => {
-    if (activeLead) {
-      if (activeLead.inspectionAt && activeLead.inspectionAt.includes("T")) {
-        const [d, t] = activeLead.inspectionAt.split("T");
-        setChangeBookingDate(d);
-        setChangeBookingTime(t.slice(0, 5));
-        setChangeBookingType("inspection");
-        setChangeBookingEnd("");
-        setChangeBookingTech(activeLead.assigned || "");
-      } else if (activeLead.jobAt && activeLead.jobAt.includes("T")) {
-        const [d, t] = activeLead.jobAt.split("T");
-        setChangeBookingDate(d);
-        setChangeBookingTime(t.slice(0, 5));
-        setChangeBookingType("job");
-        setChangeBookingEnd("");
-        setChangeBookingTech(activeLead.technician || "");
-      } else {
-        setChangeBookingDate(selectedDate);
-        setChangeBookingTime("09:00");
-        setChangeBookingType("inspection");
-        setChangeBookingTech("");
-        setChangeBookingEnd("");
-      }
-      if (activeLead.service) setChangeBookingService(activeLead.service);
+  const staffRows = useMemo(() => {
+    const items = appointmentsByDate.get(selectedDate) || [];
+    const roster = [...staffOptions];
+    for (const item of items) {
+      if (!roster.some(person => person.name === item.tech)) roster.push({ name: item.tech, role: "Assigned staff" });
     }
-  }, [activeLead, selectedDate]);
+    return roster.filter(person => techFilter === "all" || person.name === techFilter)
+      .map(person => ({ ...person, items: items.filter(item => item.tech === person.name) }));
+  }, [staffOptions, appointmentsByDate, selectedDate, techFilter]);
+
+  // Open the exact appointment clicked, including its full multi-day end time.
+  useEffect(() => {
+    if (!activeLead) return;
+    const type = selectedBookingType || (activeLead.inspectionAt ? "inspection" : "job");
+    const start = (type === "job" ? activeLead.jobAt : activeLead.inspectionAt)?.slice(0, 16) || `${selectedDate}T09:00`;
+    const end = type === "job" ? activeLead.jobEndAt : activeLead.inspectionEndAt;
+    setChangeBookingType(type);
+    setChangeBookingDate(start.slice(0, 10));
+    setChangeBookingTime(start.slice(11, 16));
+    setChangeBookingEnd(end?.slice(0, 16) || bookingEndForDuration(type, start, bookingRules[type].slotMinutes, bookingRules));
+    setChangeBookingTech((type === "job" ? activeLead.technician : activeLead.assigned) || "");
+    setChangeBookingService(activeLead.service || "Shower Cubicle Regrouting");
+  }, [activeLead, selectedBookingType]);
 
   const [capacityAppointments, setCapacityAppointments] = useState<{ date: string; appointments: DayAppointment[] } | null>(null);
   useEffect(() => {
@@ -420,25 +418,28 @@ export function DispatchView({
     event.dataTransfer.effectAllowed = "move";
     setDragBooking({ lead, type, duration, grabOffset });
     setSelectedLeadId(lead.id);
+    setSelectedBookingType(type);
   };
 
-  const previewBookingDrop = (event: DragEvent<HTMLDivElement>, date: string) => {
+  const previewBookingDrop = (event: DragEvent<HTMLDivElement>, date: string, staffName: string) => {
     if (!dragBooking || isSavingBooking || confirmRescheduleData) return null;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     const rect = event.currentTarget.getBoundingClientRect();
     const minutes = dispatchDropMinutes((event.clientX - rect.left) / rect.width,
       TIMELINE_START_MINS, TIMELINE_END_MINS, dragBooking.duration, dragBooking.grabOffset);
-    return { date, minutes, duration: dragBooking.duration };
+    const eligible = dragBooking.type === "job" ? assignableTechnicians : inspectionStaff;
+    if (!eligible.some(person => person.active && person.name === staffName)) return null;
+    return { date, minutes, duration: dragBooking.duration, staffName };
   };
 
-  const dropBooking = (event: DragEvent<HTMLDivElement>, date: string) => {
-    const preview = previewBookingDrop(event, date);
+  const dropBooking = (event: DragEvent<HTMLDivElement>, date: string, staffName: string) => {
+    const preview = previewBookingDrop(event, date, staffName);
     if (!dragBooking || !preview) return;
     const { lead, type } = dragBooking;
     stageReschedule({ lead, type, oldDateTime: type === "job" ? lead.jobAt : lead.inspectionAt,
       newDate: date, newTime: fromMinutes(preview.minutes),
-      technician: type === "job" ? lead.technician : lead.assigned, service: lead.service });
+      technician: staffName, service: lead.service });
     setDragBooking(null);
     setDropPreview(null);
   };
@@ -534,8 +535,8 @@ export function DispatchView({
   };
 
   // ── Date Navigation ───────────────────────────────────────────────────────
-  const handlePrevDate = () => setSelectedDate(addDaysYmd(selectedDate, -7));
-  const handleNextDate = () => setSelectedDate(addDaysYmd(selectedDate, 7));
+  const handlePrevDate = () => setSelectedDate(addDaysYmd(selectedDate, -1));
+  const handleNextDate = () => setSelectedDate(addDaysYmd(selectedDate, 1));
 
   return (
     <div className="flex flex-col bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden font-sans text-slate-800" style={{ height: "calc(100vh - 75px)", minHeight: 650 }}>
@@ -591,7 +592,7 @@ export function DispatchView({
           </button>
 
           <span className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700 whitespace-nowrap">
-            7 Days
+            Day
           </span>
           <button type="button" onClick={() => setNewBooking({ date: selectedDate, time: "09:00" })}
             className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white flex items-center gap-1"><Plus className="h-4 w-4" />New booking</button>
@@ -722,22 +723,22 @@ export function DispatchView({
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">Type</label>
                   <div className="flex gap-1 bg-white p-0.5 rounded-xl border border-slate-200">
-                    <button type="button" onClick={() => setChangeBookingType("inspection")}
+                    <button type="button" onClick={() => setSelectedBookingType("inspection")}
                       className={`flex-1 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${changeBookingType === "inspection" ? "bg-blue-600 text-white" : "text-slate-600"}`}>
                       Inspection
                     </button>
-                    <button type="button" onClick={() => setChangeBookingType("job")}
+                    <button type="button" onClick={() => setSelectedBookingType("job")}
                       className={`flex-1 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${changeBookingType === "job" ? "bg-emerald-600 text-white" : "text-slate-600"}`}>
                       Job
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Assign Tech</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Assigned person</label>
                   <select value={changeBookingTech} onChange={(e) => setChangeBookingTech(e.target.value)}
                     className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer">
-                    <option value="">Unassigned</option>
-                    {staffOptions.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
+                    <option value="" disabled>Select person</option>
+                    {staffOptions.filter(s => (changeBookingType === "job" ? assignableTechnicians : inspectionStaff).some(person => person.active && person.name === s.name)).map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -745,25 +746,25 @@ export function DispatchView({
               {/* Date + Time */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Date</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Start date</label>
                   <input type="date" value={changeBookingDate} onChange={(e) => setChangeBookingDate(e.target.value)}
                     className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer" />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Time</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Start time</label>
                   <input type="time" value={changeBookingTime} onChange={(e) => setChangeBookingTime(e.target.value)}
                     className="w-full text-[11px] font-semibold p-1.5 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none cursor-pointer" />
                 </div>
               </div>
 
-              <label className="block text-[11px] font-bold text-slate-700">End date and time (optional override)
+              <label className="block text-[11px] font-bold text-slate-700">End date and time
                 <input type="datetime-local" value={changeBookingEnd} onChange={event => setChangeBookingEnd(event.target.value)}
                   className="mt-1 w-full rounded-xl border border-slate-200 p-1.5 text-[11px]" />
                 <span className="block font-normal text-slate-500 mt-1">Leave empty to preserve the current working duration when moving this booking.</span>
               </label>
               {/* Quick Slots */}
               <div className="flex flex-wrap gap-1">
-                {slotsForDate(bookingRules, changeBookingType, changeBookingDate).map((t) => (
+                {slotsForDate(bookingRules, changeBookingType, changeBookingDate).filter(t => t >= "09:00" && t < "17:00").map((t) => (
                   <button key={t} type="button" onClick={() => setChangeBookingTime(t)}
                     className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer ${
                       changeBookingTime === t ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -832,9 +833,9 @@ export function DispatchView({
 
                 {/* Grid Header Row: Hourly Columns */}
                 <div className="flex border-b border-slate-200 sticky top-0 bg-white z-20 shadow-2xs">
-                  {/* Day column header */}
-                  <div className="w-20 sm:w-22 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
-                    Day
+                  {/* Staff column header */}
+                  <div className="w-40 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
+                    Technician / Inspector
                   </div>
                   {/* Hourly headers across 9 AM to 5 PM */}
                   <div className="flex-1 relative h-8 mx-1 sm:mx-1.5">
@@ -850,13 +851,13 @@ export function DispatchView({
                   </div>
                 </div>
 
-                {/* Day Rows */}
-                {visibleDates.map((date) => {
-                  const isToday = date === todayStr;
-                  const dObj = new Date(date + "T00:00:00");
-                  const dayName = dObj.toLocaleDateString("en-AU", { weekday: "short" });
-                  const dayDate = dObj.toLocaleDateString("en-AU", { day: "2-digit", month: "short" });
-                  const items = appointmentsByDate.get(date) || [];
+                {staffRows.length === 0 && <p className="p-6 text-sm text-slate-500">No technicians or inspectors match this filter.</p>}
+
+                {/* Staff rows for the selected day */}
+                {staffRows.map((row) => {
+                  const date = selectedDate;
+                  const items = row.items;
+                  const initialType = row.role === "Technician" ? "job" as const : "inspection" as const;
                   const laneEnds: number[] = [];
                   const lanes = items.map(item => {
                     let lane = laneEnds.findIndex(end => end <= item.startMins);
@@ -867,26 +868,16 @@ export function DispatchView({
 
                   return (
                     <div
-                      key={date}
+                      key={row.name}
                       className="flex border-b border-slate-200/90 min-h-[70px] group transition-colors relative"
                     >
-                      {/* Left Sticky Day Header Cell */}
+                      {/* Staff name remains visible when scrolling the timeline */}
                       <div
-                        className={`w-20 sm:w-22 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 ${
-                          isToday
-                            ? "bg-blue-600 text-white rounded-l-xl shadow-xs"
-                            : "bg-slate-50/90 text-slate-800"
-                        }`}
+                        className="w-40 shrink-0 p-2 border-r border-slate-200 flex flex-col justify-center sticky left-0 z-20 bg-slate-50 text-slate-800"
                       >
-                        <div className="text-[11px] font-extrabold leading-tight">
-                          {dayName}
-                        </div>
-                        <div className={`text-[10.5px] font-bold leading-tight mt-0.5 ${isToday ? "text-blue-100" : "text-slate-900"}`}>
-                          {dayDate}
-                        </div>
-                        <div className={`text-[8.5px] font-medium leading-none mt-1 ${isToday ? "text-blue-200" : "text-slate-400"}`}>
-                          {items.length} item{items.length !== 1 ? "s" : ""}
-                        </div>
+                        <div className="text-xs font-extrabold leading-tight break-words">{row.name}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">{row.role}</div>
+                        <div className="text-[9px] text-slate-400 mt-1">{items.length} booking{items.length !== 1 ? "s" : ""}</div>
                       </div>
 
                       {/* Timeline Slot Track Area (Positioned Exactly from 9 AM to 5 PM) */}
@@ -897,33 +888,33 @@ export function DispatchView({
                             if ((event.target as HTMLElement).closest('[draggable="true"]')) return;
                             event.preventDefault();
                             const rect = event.currentTarget.getBoundingClientRect();
-                            setNewBooking({ date, time: fromMinutes(dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes)) });
+                            setNewBooking({ date, staffName: row.name, initialType, time: fromMinutes(dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes)) });
                           }}
                           onPointerDown={event => {
                             if (event.button !== 0 || (event.target as HTMLElement).closest('[draggable="true"], button, [data-slot-action]')) return;
                             const rect = event.currentTarget.getBoundingClientRect();
                             event.currentTarget.setPointerCapture(event.pointerId);
-                            setNewTimeSelection({ date, minutes: dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes) });
+                            setNewTimeSelection({ date, staffName: row.name, minutes: dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes) });
                           }}
                           onPointerMove={event => {
-                            if (!newTimeSelection || newTimeSelection.date !== date) return;
+                            if (!newTimeSelection || newTimeSelection.staffName !== row.name) return;
                             const rect = event.currentTarget.getBoundingClientRect();
-                            setNewTimeSelection({ date, minutes: dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes) });
+                            setNewTimeSelection({ date, staffName: row.name, minutes: dispatchDropMinutes((event.clientX - rect.left) / rect.width, TIMELINE_START_MINS, TIMELINE_END_MINS, bookingRules.inspection.slotMinutes) });
                           }}
                           onPointerUp={() => {
                             if (!newTimeSelection) return;
-                            setNewBooking({ date, time: fromMinutes(newTimeSelection.minutes) });
+                            setNewBooking({ date, staffName: row.name, initialType, time: fromMinutes(newTimeSelection.minutes) });
                             setNewTimeSelection(null);
                           }}
                           onPointerCancel={() => setNewTimeSelection(null)}
-                          onDragOver={(event) => { const preview = previewBookingDrop(event, date); if (preview) setDropPreview(preview); }}
+                          onDragOver={(event) => { const preview = previewBookingDrop(event, date, row.name); if (preview) setDropPreview(preview); }}
                           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropPreview(null); }}
-                          onDrop={(event) => dropBooking(event, date)}>
+                          onDrop={(event) => dropBooking(event, date, row.name)}>
                           {HOUR_SLOTS.map(slot => <div key={slot.hour} className="absolute inset-y-0 border-l border-slate-100 pointer-events-none"
                             style={{ left: `${((slot.hour * 60 - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100}%` }} />)}
-                          {newTimeSelection?.date === date && <div className="absolute inset-y-0 z-30 pointer-events-none rounded-lg border-2 border-blue-500 bg-blue-100/90 p-2 text-xs font-bold text-blue-900"
+                          {newTimeSelection?.staffName === row.name && <div className="absolute inset-y-0 z-30 pointer-events-none rounded-lg border-2 border-blue-500 bg-blue-100/90 p-2 text-xs font-bold text-blue-900"
                             style={{ left: `${(newTimeSelection.minutes - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100}%`, width: `${bookingRules.inspection.slotMinutes / TOTAL_TIMELINE_MINS * 100}%` }}>{fmtMinutesFull(newTimeSelection.minutes)}</div>}
-                          {dropPreview?.date === date && <div className="absolute inset-y-0 rounded-lg border-2 border-dashed border-blue-500 bg-blue-100/80 z-30 pointer-events-none text-[10px] font-bold text-blue-900 p-1"
+                          {dropPreview?.staffName === row.name && <div className="absolute inset-y-0 rounded-lg border-2 border-dashed border-blue-500 bg-blue-100/80 z-30 pointer-events-none text-[10px] font-bold text-blue-900 p-1"
                             style={{ left: `${(dropPreview.minutes - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100}%`, width: `${dropPreview.duration / TOTAL_TIMELINE_MINS * 100}%` }}>
                             {fmtMinutesFull(dropPreview.minutes)} – {fmtMinutesFull(dropPreview.minutes + dropPreview.duration)}
                           </div>}
@@ -959,6 +950,7 @@ export function DispatchView({
                                       title={`${item.lead.name || "Customer"}: ${fmtMinutesFull(item.startMins)} – ${fmtMinutesFull(item.endMins)}. Drag to reschedule.`}
                                       onClick={() => {
                                         setSelectedLeadId(item.lead.id);
+                                        setSelectedBookingType(item.type);
                                         setIsChangeBookingOpen(true);
                                       }}
                                       style={{
@@ -1025,7 +1017,7 @@ export function DispatchView({
                               {/* Available Slot at the end of the day */}
                               {(() => {
                                 const lastItem = items[items.length - 1];
-                                const suggestion = activeLead ? suggestedSlots.find((slot) => slot.dateStr === date) : undefined;
+                                const suggestion = activeLead && changeBookingTech === row.name ? suggestedSlots.find((slot) => slot.dateStr === date) : undefined;
                                 const availStartMins = suggestion ? parseMinutes(suggestion.startIsoTime.split("T")[1]) : 0;
                                 if (lastItem && suggestion && availStartMins >= lastItem.endMins) {
                                   const availStartPct = ((availStartMins - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS) * 100;

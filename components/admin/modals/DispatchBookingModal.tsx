@@ -11,12 +11,12 @@ import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import { bookingEndForDuration, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
 import { todayAU } from "@/lib/scheduling";
 
-export function DispatchBookingModal({ date: initialDate, time: initialTime, onClose, onBooked }: {
-  date: string; time: string; onClose: () => void; onBooked: (date: string, message: string) => void;
+export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialType = "inspection", onClose, onBooked }: {
+  date: string; time: string; staffName?: string; initialType?: "inspection" | "job"; onClose: () => void; onBooked: (date: string, message: string) => void;
 }) {
   const { scopedLeads, assignableTechnicians, inspectionStaff, upsertLead } = useAdminPageCtx();
   const rules = staffBookingRules(useBookingRules());
-  const [type, setType] = useState<"inspection" | "job">("inspection");
+  const [type, setType] = useState<"inspection" | "job">(initialType);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [timingMode, setTimingMode] = useState<"duration" | "end">("duration");
@@ -34,7 +34,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, onC
   const [customerId, setCustomerId] = useState("");
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "", address: "" });
   const [service, setService] = useState("");
-  const [assignee, setAssignee] = useState("");
+  const [assignee, setAssignee] = useState((initialType === "job" ? assignableTechnicians : inspectionStaff).find(person => person.active && person.name === staffName)?.id || "");
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
