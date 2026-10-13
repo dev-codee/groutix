@@ -7,6 +7,21 @@ const nextConfig: NextConfig = {
       // 1. Specific Page Aliases & Common Alternate Names
       // -------------------------------------------------------------
       {
+      source: '/locations/melbourne/elwood',
+      destination: '/locations/melbourne/st-kilda',
+      permanent: true,
+    },
+    {
+      source: '/locations/melbourne/st-kilda-east',
+      destination: '/locations/melbourne/st-kilda',
+      permanent: true,
+    },
+    {
+      source: '/locations/melbourne/st-kilda-west',
+      destination: '/locations/melbourne/st-kilda',
+      permanent: true,
+    },
+      {
         source: '/contact-us',
         destination: '/contact',
         permanent: true,
