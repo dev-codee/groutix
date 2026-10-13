@@ -105,35 +105,18 @@ export default function StKildaPage({
       />
       <main className="public-page">
         {/* ═════════ 1. HERO (dark #0d1030) ═════════ */}
-        <section className="relative overflow-hidden bg-[#0d1030] pt-[110px] lg:pt-[125px]">
-          <div className="relative mx-auto grid max-w-[1460px] items-center gap-10 px-4 sm:px-6 py-12 pb-16 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-16 lg:pb-20">
-            <div className="space-y-5 text-white">
+        <section className="relative overflow-hidden bg-[#0d1030] pt-[90px] lg:pt-[100px]">
+          <div className="relative mx-auto grid max-w-[1460px] items-center gap-10 px-4 sm:px-6 py-8 pb-12 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-12 lg:pb-16">
+            <div className="space-y-5 text-center text-white lg:text-left">
               <p className="text-[15px] font-black uppercase tracking-[0.2em] text-[#FBBC04]">Groutix</p>
-              <h1 className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
+              <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
                 Shower Regrouting &amp; Leak Repairs in St Kilda
               </h1>
-              <p className="max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
+              <p className="mx-auto max-w-xl text-sm leading-relaxed text-white/85 sm:text-base lg:mx-0">
                 Most of St Kilda lives in flats, so a cracked shower floor or a tired balcony is rarely just your problem. It&apos;s the ceiling of the unit below. We regrout showers and balconies across St Kilda, Elwood and St Kilda East without pulling up your tiles, and back eligible shower work with a 10-year waterproof warranty.
               </p>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
                 <HeroContactBadges rating={rating} />
-              </div>
-              <div className="flex flex-wrap items-center gap-4 pt-2 text-sm text-white/85">
-                <a href="/#reviews" className="inline-flex items-center gap-2 hover:text-white">
-                  <span className="font-black text-lg">5.0</span>
-                  <span className="flex gap-0.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-[#FBBC04] text-[#FBBC04]" />
-                    ))}
-                  </span>
-                  <span className="underline">290+ Google Reviews</span>
-                </a>
-                <a
-                  href="tel:+61370238094"
-                  className="inline-flex items-center gap-2 border-[1.5px] border-white/80 hover:border-white text-white font-bold px-6 py-3 rounded-lg text-base transition-all active:scale-95"
-                >
-                  <Phone className="h-4 w-4" /> (03) 7023 8094
-                </a>
               </div>
             </div>
             <div className="w-full">
