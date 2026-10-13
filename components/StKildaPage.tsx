@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, Star, Check, ChevronDown, ShieldCheck } from "lucide-react";
+import { Phone, Star, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -217,6 +217,7 @@ export default function StKildaPage({
           </div>
         </AnimatedSection>
 
+
         {/* ═════════ 4. BALCONY (alt bg) ═════════ */}
         <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
@@ -296,5 +297,319 @@ export default function StKildaPage({
                 >
                   See Our Shower Regrouting Process
                 </Link>
-              </d
-...[truncated 16557 chars]
+              </div>
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 6. LEAKING SHOWER (alt bg) ═════════ */}
+        <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Leaking Shower Repair in St Kilda
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                In a St Kilda flat, a leaking shower usually shows up next door or downstairs before you notice it in your own bathroom. We find where the water is getting out, fix the grout and seals, and tell you straight if it&apos;s a membrane problem instead.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { title: "Drummy Tiles", text: "Loose or hollow-sounding tiles near the shower." },
+                { title: "Swollen Skirting", text: "Swollen skirting or damp carpet outside the hob." },
+                { title: "Musty Smell", text: "A musty smell in the bathroom that won't clear." },
+                { title: "Stain Downstairs", text: "A stain on the ceiling of the unit below." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-white p-6"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+            <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-white p-6">
+              <h3 className="mb-2 text-lg font-bold text-neutral-900">Regrouting Is a Surface Repair</h3>
+              <p className="text-base leading-relaxed text-neutral-600">
+                It isn&apos;t a new waterproofing membrane. Current building rules (NCC 2022) require shower walls to be waterproofed to at least 1,800 mm. If yours wasn&apos;t, or it has broken down, we&apos;ll say so. Read more on{" "}
+                <Link href="/leaking-shower-repair" className="font-bold text-accent hover:underline">leaking shower repair</Link>.
+              </p>
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 7. OTHER SERVICES ═════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Tile, Epoxy and Silicone Work in St Kilda
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {[
+                { title: "Tile Regrouting", text: "Kitchen splashbacks, laundry floors and bathroom floors outside the shower.", href: "/tile-regrouting", label: "Tile regrouting" },
+                { title: "Epoxy Grout", text: "Denser and more stain resistant, for busy showers and wet floors.", href: "/epoxy-grout", label: "Epoxy grout" },
+                { title: "Silicone Replacement", text: "Mouldy or peeling silicone stripped right back and replaced.", href: "/silicone-recaulking", label: "Silicone and recaulking" },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                >
+                  <Link
+                    href={c.href}
+                    className="block h-full space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6 transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-lg"
+                  >
+                    <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                    <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                    <span className="inline-block font-bold text-accent">{c.label} &rarr;</span>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 8. LANDLORDS (alt bg) ═════════ */}
+        <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Landlords, Agents and Owners Corporations in St Kilda
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Six in ten St Kilda homes are rented, so a lot of the work here is booked by landlords, property managers and strata managers.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {[
+                { title: "Booked Around Tenants", text: "We fit the job around your tenants and keep the bathroom out of action for as little time as possible." },
+                { title: "Plain-English Cause", text: "We explain what failed in plain words you can pass on to your agent or owners corporation." },
+                { title: "Honest Scope", text: "If it's a membrane or plumbing problem, we say so before you pay for a regrout." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-white p-6"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+            <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-white p-6">
+              <h3 className="mb-2 text-lg font-bold text-neutral-900">Who Pays for a Balcony Leak?</h3>
+              <p className="text-base leading-relaxed text-neutral-600">
+                It depends on your plan of subdivision. In Victoria the balcony tiles and membrane often belong to the lot, which makes the repair the lot owner&apos;s job, but not in every building. Check your plan or ask your strata manager.
+              </p>
+            </div>
+            <div className="mx-auto max-w-3xl rounded-sm bg-[#1a2a8c] p-8 text-center text-white">
+              <h3 className="text-xl font-bold">Managing a St Kilda rental or apartment block?</h3>
+              <p className="mt-2 text-base text-white/85">
+                See how we work with landlords, agents and strata managers.
+              </p>
+              <Link
+                href="/real-estate-property-services"
+                className="mt-5 inline-block rounded-sm bg-[#FBBC04] px-6 py-3 text-base font-bold text-neutral-900 transition-transform hover:scale-105"
+              >
+                Property Services
+              </Link>
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 9. AREAS WE COVER ═════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Areas We Cover Around St Kilda
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                We cover all of St Kilda 3182, plus Elwood, St Kilda East and St Kilda West.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div id="elwood" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6">
+                <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Elwood 3184</p>
+                <h3 className="text-xl font-bold text-neutral-900">Regrouting in Elwood</h3>
+                <p className="text-base leading-relaxed text-neutral-600">
+                  Elwood was built on the old Elster Creek swamp, and some of Melbourne&apos;s best interwar flats sit along Brighton Road, Marine Parade and the streets around Point Ormond. Many have balconies facing the bay, and that&apos;s where grout wears hardest: joints washed out at the edges, white salts in the lines, and water creeping under the door sill. Inside, 1930s bathrooms often still have their original floor tiles, which can usually be regrouted rather than replaced. We regrout and reseal balconies, showers and bathroom floors across Elwood, from Ormond Road to Glen Huntly Road. If a leaking balcony needs a membrane repair instead, we&apos;ll say so up front.
+                </p>
+              </div>
+              <div id="st-kilda-east" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6">
+                <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">St Kilda East 3183</p>
+                <h3 className="text-xl font-bold text-neutral-900">Regrouting in St Kilda East</h3>
+                <p className="text-base leading-relaxed text-neutral-600">
+                  Around Hotham Street and Alma Road, many of the big villas east of St Kilda Road were split into flats long ago, so bathrooms have often been added or redone more than once. We regrout showers, bathroom floors and laundries in St Kilda East and match the grout colour to what&apos;s already there wherever we can.
+                </p>
+              </div>
+              <div id="st-kilda-west" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6">
+                <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">St Kilda West 3182</p>
+                <h3 className="text-xl font-bold text-neutral-900">Regrouting in St Kilda West</h3>
+                <p className="text-base leading-relaxed text-neutral-600">
+                  Between Fitzroy Street and Beaconsfield Parade, St Kilda West has late Deco flats with curved corner balconies, like the blocks on Cowderoy Street. Curves and small balconies mean plenty of edge joints, and that&apos;s where grout and silicone give out first.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="text-sm font-bold text-neutral-500">Also nearby:</span>
+              {[
+                { name: "Balaclava", href: "/locations/melbourne/balaclava" },
+                { name: "Albert Park", href: "/locations/melbourne/albert-park" },
+                { name: "Middle Park", href: "/locations/melbourne/middle-park" },
+                { name: "South Melbourne", href: "/locations/melbourne/south-melbourne" },
+              ].map((l) => (
+                <Link
+                  key={l.name}
+                  href={l.href}
+                  className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-sm font-bold text-neutral-700 transition-colors hover:border-accent hover:text-accent"
+                >
+                  {l.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </AnimatedSection>
+        {/* ═════════ 10. WHY GROUTIX (alt bg) ═════════ */}
+        <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                Why St Kilda Owners Choose Groutix
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { title: "No Tile Removal", text: "On most regrouting jobs. Your tiles stay where they are." },
+                { title: "10 Year Waterproof Warranty", text: "On eligible completed shower regrouting.", link: { href: "/terms-conditions", label: "Warranty terms" } },
+                { title: "5.0 From 290+ Reviews", text: "Rated by Melbourne customers on Google." },
+                { title: "Straight Answers", text: "If it's a membrane or plumbing problem, we say so before you pay for a regrout." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-white p-6"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">
+                    {c.text}{" "}
+                    {c.link && (
+                      <Link href={c.link.href} className="font-bold text-accent hover:underline">
+                        {c.link.label}
+                      </Link>
+                    )}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 11. COST ═════════ */}
+        <AnimatedSection className="bg-white py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                What Does Regrouting Cost in St Kilda?
+              </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                The price depends on a few things. We give you a fixed quote once we&apos;ve seen the job.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {[
+                { title: "Size", text: "How big the shower, balcony or floor is." },
+                { title: "Condition", text: "How far the grout and silicone have failed." },
+                { title: "Grout Type", text: "Cement grout with sealer, or epoxy grout." },
+              ].map((c, i) => (
+                <motion.div
+                  key={c.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6 text-center"
+                >
+                  <h3 className="text-lg font-bold text-neutral-900">{c.title}</h3>
+                  <p className="text-base leading-relaxed text-neutral-600">{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+            <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
+              Shower pricing is on our{" "}
+              <Link href="/shower-regrouting" className="font-bold text-accent hover:underline">
+                shower regrouting page
+              </Link>.
+            </p>
+            <div className="text-center">
+              <Link
+                href="/contact"
+                className="inline-block rounded-sm bg-primary px-8 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+              >
+                Get a Free Quote
+              </Link>
+            </div>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 12. FAQ (alt bg) ═════════ */}
+        <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
+          <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto max-w-3xl space-y-4 text-center">
+              <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
+                St Kilda Regrouting FAQs
+              </h2>
+            </div>
+            <ul className="mx-auto max-w-3xl space-y-3">
+              {FAQS.map((f) => (
+                <FaqItem key={f.q} q={f.q} a={f.a} />
+              ))}
+            </ul>
+          </div>
+        </AnimatedSection>
+
+        {/* ═════════ 13. FINAL CTA (navy) ═════════ */}
+        <section className="bg-[#0d1030] py-16 lg:py-24">
+          <div className="mx-auto max-w-3xl space-y-5 px-4 text-center text-white sm:px-6">
+            <h2 className="text-3xl font-black leading-tight lg:text-[42px]">
+              Cracked Shower Floor or a Balcony Leak in St Kilda?
+            </h2>
+            <p className="text-base leading-relaxed text-white/85 sm:text-lg">
+              Send us a photo or call (03) 7023 8094 for a free quote. We cover St Kilda, Elwood and St Kilda East.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <Link
+                href="/contact"
+                className="inline-block rounded-sm bg-[#FBBC04] px-8 py-3 text-base font-bold text-neutral-900 transition-transform hover:scale-105"
+              >
+                Request A Quote
+              </Link>
+              <a
+                href="tel:+61370238094"
+                className="inline-flex items-center gap-2 rounded-sm border-[1.5px] border-white/80 px-8 py-3 text-base font-bold text-white transition-colors hover:border-white hover:bg-white/10"
+              >
+                <Phone className="h-4 w-4" /> (03) 7023 8094
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
+  );
+}
