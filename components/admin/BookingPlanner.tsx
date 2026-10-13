@@ -84,7 +84,16 @@ export function BookingPlanner({
   onPick: (value: string) => void;
   onClose: () => void;
 }) {
-  const rules = staffBookingRules(useBookingRules());
+  const bookingRules = useBookingRules();
+  const rules = useMemo(() => {
+    const staffRules = staffBookingRules(bookingRules);
+    const days = Array.from({ length: 7 }, () => ({ open: true, start: "09:00", end: "17:00" }));
+    return {
+      ...staffRules,
+      inspection: { ...staffRules.inspection, days },
+      job: { ...staffRules.job, days },
+    };
+  }, [bookingRules]);
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
@@ -136,7 +145,7 @@ export function BookingPlanner({
       const duration = appointmentDurationMinutes({ type }, rules);
       const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername, inspectorId: lead.inspectorId, assigned: lead.assigned }, rules, technicians).available));
       const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
-      const stops: PlannerStop[] = dayAppts.map((a) => ({
+      const stops: PlannerStop[] = dayAppts.filter((a) => a.time >= "09:00" && a.time < "17:00").map((a) => ({
         time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb, durationMinutes: a.durationMinutes,
       }));
       let best: SlotFit | null = null;
@@ -158,7 +167,7 @@ export function BookingPlanner({
       });
     }
     return out;
-  }, [appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, technicians, target, today, area.zone, zoneRules]);
+  }, [appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, lead.inspectorId, lead.assigned, technicians, target, today, area.zone, zoneRules]);
 
   // Top 3 days by route fit (days with existing nearby stops beat empty days).
   const topDays = useMemo(() => {
@@ -307,7 +316,7 @@ export function BookingPlanner({
                 })}
               </div>
               <p className="text-[10px] text-slate-400 pb-2 flex items-center gap-1">
-                <Star className="w-3 h-3 text-amber-500 fill-amber-400" /> Top picks: days where this customer adds the least extra driving to the route already booked.
+                <Star className="w-3 h-3 text-amber-500 fill-amber-400" /> Working hours: 9 AM–5 PM. Top picks: days where this customer adds the least extra driving to the route already booked.
               </p>
             </div>
 
