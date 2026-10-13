@@ -1,6 +1,6 @@
 "use client";
 
-import { staffBookingRules } from "@/lib/staffBookingRules";
+import { staffBookingRules, staffPlanningRules } from "@/lib/staffBookingRules";
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, CalendarDays, RefreshCw } from "lucide-react";
@@ -115,7 +115,7 @@ export function SlotBoard({
   address?: string;
   onPick: (value: string) => void;
 }) {
-  const rules = staffBookingRules(useBookingRules());
+  const rules = staffPlanningRules(useBookingRules());
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
@@ -180,7 +180,7 @@ export function SlotBoard({
     return map;
   }, [appts, type]);
 
-  const offGrid = (appts || []).filter((a) => !gridTimes.includes(a.time));
+  const offGrid = (appts || []).filter((a) => a.time >= hours.start && a.time < hours.end && !gridTimes.includes(a.time));
   // The assignment may be a full lead; its record type must not replace the booking type.
   const availabilityAt = (time: string) => bookingAvailability(appts || [], {
     date: day, time, type, leadId: leadId || "", durationMinutes,

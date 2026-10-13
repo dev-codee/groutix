@@ -1,6 +1,6 @@
 "use client";
 
-import { staffBookingRules } from "@/lib/staffBookingRules";
+import { staffPlanningRules } from "@/lib/staffBookingRules";
 
 import { useEffect, useMemo, useState } from "react";
 import { X, Loader2, MapPin, Star, AlertTriangle, Home, Navigation, RefreshCw } from "lucide-react";
@@ -84,16 +84,7 @@ export function BookingPlanner({
   onPick: (value: string) => void;
   onClose: () => void;
 }) {
-  const bookingRules = useBookingRules();
-  const rules = useMemo(() => {
-    const staffRules = staffBookingRules(bookingRules);
-    const days = Array.from({ length: 7 }, () => ({ open: true, start: "09:00", end: "17:00" }));
-    return {
-      ...staffRules,
-      inspection: { ...staffRules.inspection, days },
-      job: { ...staffRules.job, days },
-    };
-  }, [bookingRules]);
+  const rules = staffPlanningRules(useBookingRules());
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
