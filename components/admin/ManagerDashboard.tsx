@@ -106,6 +106,13 @@ export function ManagerDashboard() {
   // All "today/tomorrow" references must use Australian Eastern Time so the
   // dashboard rolls over at AU midnight, not UTC midnight.
   const _dayKey = (v?: string) => formatApptDate(v, { year: "numeric", month: "2-digit", day: "2-digit" });
+  const _apptMinutes = (value?: string) => {
+    if (!value) return null;
+    const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(formatApptTime(value));
+    if (!match) return null;
+    const hour = Number(match[1]) % 12 + (match[3].toUpperCase() === "PM" ? 12 : 0);
+    return hour * 60 + Number(match[2]);
+  };
   const _todayStr = _dayKey(todayAU() + "T12:00");   // noon avoids any DST edge
   // Booking rules are keyed by ISO date (YYYY-MM-DD) so scheduled changeovers
   // resolve correctly; day keys above are the en-AU "DD/MM/YYYY" display form.
@@ -435,7 +442,7 @@ export function ManagerDashboard() {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
 
         if (member.isInspector) {
-          if (sId && l.inspectorId && (l.inspectorId === sId || l.inspectorId.toLowerCase() === lowerName || l.inspectorId.toLowerCase() === lowerUser)) return true;
+          if (sId && l.inspectorId && [sId, lowerName, lowerUser].includes(l.inspectorId.trim().toLowerCase())) return true;
           if (l.inspectionReport?.inspectorName) {
             const rep = l.inspectionReport.inspectorName.toLowerCase().trim();
             if (rep && !/^(?:inspector|field inspector)$/i.test(rep) && (rep === lowerName || rep === lowerUser)) return true;
@@ -446,38 +453,46 @@ export function ManagerDashboard() {
           }
           return false;
         } else {
-          const tech = (l.technician || "").toLowerCase().trim();
-          const techId = (l.technicianId || "").toLowerCase().trim();
-          const techUser = (l.technicianUsername || "").toLowerCase().trim();
-          const assigned = (l.assigned || "").toLowerCase().trim();
-
-          if (tech && tech !== "unassigned" && (tech === lowerName || tech === lowerUser)) return true;
-          if (techId && (techId === sId || techId === lowerName || techId === lowerUser)) return true;
-          if (techUser && techUser === lowerUser) return true;
-          if (assigned && assigned !== "unassigned" && isTechnicianName(l.assigned) && (assigned === lowerName || assigned === lowerUser)) return true;
+          const matchesMember = (value?: string) => {
+            const normalized = value?.trim().toLowerCase();
+            return Boolean(normalized && normalized !== "unassigned" && [sId.toLowerCase(), lowerName, lowerUser].includes(normalized));
+          };
+          if (matchesMember(l.technician) || matchesMember(l.technicianId) || matchesMember(l.technicianUsername)) return true;
+          if (matchesMember(l.assigned)) return true;
           return false;
         }
       });
 
       const dayLeads = memberLeads.filter((l) => {
+        const segments = member.isInspector ? l.inspectionWorkSegments : l.jobWorkSegments;
+        if (segments?.some(segment => segment.date === _ymd(dateKey))) return true;
         const d = member.isInspector ? (l.inspectionAt || l.jobAt) : (l.jobAt || l.inspectionAt);
-        return d && _dayKey(d) === dateKey;
+        return Boolean(d && _dayKey(d) === dateKey);
       });
 
       // Check if this hour is booked
       for (const lead of dayLeads) {
+        const segments = member.isInspector ? lead.inspectionWorkSegments : lead.jobWorkSegments;
+        const dateSegments = segments?.filter(segment => segment.date === _ymd(dateKey)) || [];
         const d = member.isInspector ? (lead.inspectionAt || lead.jobAt) : (lead.jobAt || lead.inspectionAt);
-        if (!d) continue;
-        const apptTime = d.split("T")[1]?.slice(0, 5) || "00:00";
-        const apptH = Number(apptTime.slice(0, 2)) + Number(apptTime.slice(3, 5)) / 60;
         const endAt = member.isInspector ? lead.inspectionEndAt : lead.jobEndAt;
-        const endTime = endAt?.slice(0, 10) === dateKey ? endAt.slice(11, 16) : undefined;
-        const endH = endTime ? Number(endTime.slice(0, 2)) + Number(endTime.slice(3, 5)) / 60 : undefined;
-        const durationHours = endH !== undefined && endH > apptH
-          ? endH - apptH
-          : appointmentDurationMinutes({ type: member.isInspector ? "inspection" : "job" }, bookingRules) / 60;
+        const intervals = dateSegments.length
+          ? dateSegments.map(segment => {
+              const start = _apptMinutes(`${segment.date}T${segment.time}`);
+              return start === null ? null : { start, end: start + segment.scheduledMinutes };
+            }).filter((interval): interval is { start: number; end: number } => interval !== null)
+          : (() => {
+              if (!d || _dayKey(d) !== dateKey) return [];
+              const start = _apptMinutes(d);
+              if (start === null) return [];
+              const end = endAt && _dayKey(endAt) === dateKey ? _apptMinutes(endAt) : null;
+              const duration = end !== null && end > start
+                ? end - start
+                : appointmentDurationMinutes({ type: member.isInspector ? "inspection" : "job" }, bookingRules);
+              return [{ start, end: start + duration }];
+            })();
 
-        if (hour + 1 > apptH && hour < apptH + durationHours) {
+        if (intervals.some(interval => (hour + 1) * 60 > interval.start && hour * 60 < interval.end)) {
           const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
           const typeStr = member.isInspector ? "Inspection" : "Job";
           return {
