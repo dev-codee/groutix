@@ -1687,21 +1687,38 @@ export default function CrmDashboardPage() {
   }
 
   function quoteTotals() {
-    const subtotal = quoteItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
+    const enteredTotal = quoteItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
+    let subtotal = enteredTotal;
     let gst = 0;
-    let total = subtotal;
+    let total = enteredTotal;
 
     if (quoteTaxMode === "exclusive") {
       gst = subtotal * (quoteTaxRate / 100);
       total = Math.round(subtotal + gst);
     } else if (quoteTaxMode === "inclusive") {
-      gst = subtotal - subtotal / (1 + quoteTaxRate / 100);
-      total = Math.round(subtotal);
+      total = Math.round(enteredTotal);
+      subtotal = total / (1 + quoteTaxRate / 100);
+      gst = total - subtotal;
     } else {
       total = Math.round(subtotal);
     }
 
     return { subtotal, gst, total };
+  }
+
+  function changeQuoteTaxMode(nextMode: "inclusive" | "exclusive" | "none") {
+    if (nextMode === quoteTaxMode) return;
+    // Keep the customer-facing line prices stable when changing how tax is
+    // represented. Exclusive mode stores the pre-tax amount; the other modes
+    // store the amount shown to the customer.
+    const factor = 1 + quoteTaxRate / 100;
+    const displayedFactor = quoteTaxMode === "exclusive" ? factor : 1;
+    const nextFactor = nextMode === "exclusive" ? factor : 1;
+    setQuoteItems(items => items.map(item => ({
+      ...item,
+      price: (Number(item.price) || 0) * displayedFactor / nextFactor,
+    })));
+    setQuoteTaxMode(nextMode);
   }
 
   // Text formatting helper: parses inline **bold**, *italic*, <u>underline</u> into React nodes
@@ -5386,7 +5403,7 @@ export default function CrmDashboardPage() {
                             <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-white shadow-2xs">
                               <button
                                 type="button"
-                                onClick={() => setQuoteTaxMode("exclusive")}
+                                onClick={() => changeQuoteTaxMode("exclusive")}
                                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "exclusive"
                                   ? "bg-blue-600 text-white shadow-2xs"
                                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -5396,7 +5413,7 @@ export default function CrmDashboardPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setQuoteTaxMode("inclusive")}
+                                onClick={() => changeQuoteTaxMode("inclusive")}
                                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${quoteTaxMode === "inclusive"
                                   ? "bg-blue-600 text-white shadow-2xs"
                                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -5428,7 +5445,7 @@ export default function CrmDashboardPage() {
                             <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Tax Mode</label>
                             <select
                               value={quoteTaxMode}
-                              onChange={(e) => setQuoteTaxMode(e.target.value as any)}
+                              onChange={(e) => changeQuoteTaxMode(e.target.value as "inclusive" | "exclusive" | "none")}
                               className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"
                             >
                               <option value="inclusive">GST Inclusive (prices include tax)</option>

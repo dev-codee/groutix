@@ -222,6 +222,23 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             </div>
           </div>
 
+          {(role === "manager" || role === "super_admin") && (l.notes || l.message || l.enquiry) && (
+            <div className="space-y-1.5">
+              {l.notes && (
+                <div className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
+                  <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="min-w-0 whitespace-pre-wrap break-words"><span className="font-bold">Lead Notes:</span> {l.notes}</p>
+                </div>
+              )}
+              {Array.from(new Set([l.message, l.enquiry].filter((detail): detail is string => Boolean(detail?.trim())))).map((detail, index) => (
+                <div key={`${index}-${detail}`} className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="min-w-0 whitespace-pre-wrap break-words"><span className="font-bold">Customer Request Detail:</span> {detail}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {(l.technicianNotes || l.scopeNotes) && (
             <div className="flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 border border-amber-300 text-xs shadow-2xs">
               <StickyNote className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />

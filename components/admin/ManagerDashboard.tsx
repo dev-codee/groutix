@@ -394,22 +394,16 @@ export function ManagerDashboard() {
   const inspectorCount = useMemo(() => activeStaffRosterList.filter((s) => s.isInspector).length, [activeStaffRosterList]);
   const technicianCount = useMemo(() => activeStaffRosterList.filter((s) => !s.isInspector).length, [activeStaffRosterList]);
 
-  // Slot hours per day, spanning the configured inspection + job hours for that weekday
-  const getRosterSlotsForDay = useCallback((dayOfWeek: number, dateKey?: string) => {
-    const iso = dateKey ? _ymd(dateKey) : undefined;
-    const open = (["inspection", "job"] as BookingType[]).map((t) => dayHours(bookingRules, t, dayOfWeek, iso)).filter((d) => d.open);
-    if (!open.length) return [];
-    const startH = Math.floor(Math.min(...open.map((d) => toMinutes(d.start))) / 60);
-    const endH = Math.floor(Math.max(...open.map((d) => toMinutes(d.end))) / 60);
-    return Array.from({ length: endH - startH + 1 }, (_, k) => {
-      const hour = startH + k;
+  // The dashboard roster grid uses a consistent 9 AM–5 PM window.
+  const getRosterSlotsForDay = useCallback(() => {
+    return Array.from({ length: 8 }, (_, k) => {
+      const hour = 9 + k;
       return {
         hour,
-        label: String(hour % 12 === 0 ? 12 : hour % 12),
         time: formatHHmm(`${String(hour).padStart(2, "0")}:00`),
       };
     });
-  }, [bookingRules]);
+  }, []);
 
   // Detailed hourly slot status for compact visual schedule matching Image 2
   const getStaffSlotHourStatus = useCallback(
@@ -429,7 +423,7 @@ export function ManagerDashboard() {
       if (!hrs.open) {
         return { status: "closed", detail: `${WEEKDAY_NAMES[dayOfWeek]} Closed` };
       }
-      if (hour < Math.floor(toMinutes(hrs.start) / 60) || hour > Math.floor(toMinutes(hrs.end) / 60)) {
+      if (hour < Math.floor(toMinutes(hrs.start) / 60) || hour >= Math.ceil(toMinutes(hrs.end) / 60)) {
         return { status: "closed", detail: `Outside Working Hours (${formatHHmm(hrs.start)} – ${formatHHmm(hrs.end)})` };
       }
 
@@ -474,9 +468,14 @@ export function ManagerDashboard() {
       for (const lead of dayLeads) {
         const d = member.isInspector ? (lead.inspectionAt || lead.jobAt) : (lead.jobAt || lead.inspectionAt);
         if (!d) continue;
-        const apptDate = new Date(d);
-        const apptH = apptDate.getHours() + apptDate.getMinutes() / 60;
-        const durationHours = appointmentDurationMinutes({ type: member.isInspector ? "inspection" : "job" }, bookingRules) / 60;
+        const apptTime = d.split("T")[1]?.slice(0, 5) || "00:00";
+        const apptH = Number(apptTime.slice(0, 2)) + Number(apptTime.slice(3, 5)) / 60;
+        const endAt = member.isInspector ? lead.inspectionEndAt : lead.jobEndAt;
+        const endTime = endAt?.slice(0, 10) === dateKey ? endAt.slice(11, 16) : undefined;
+        const endH = endTime ? Number(endTime.slice(0, 2)) + Number(endTime.slice(3, 5)) / 60 : undefined;
+        const durationHours = endH !== undefined && endH > apptH
+          ? endH - apptH
+          : appointmentDurationMinutes({ type: member.isInspector ? "inspection" : "job" }, bookingRules) / 60;
 
         if (hour + 1 > apptH && hour < apptH + durationHours) {
           const jobNoStr = lead.jobNo ? `#${lead.jobNo.replace(/^(?:JobNo-|JOB-?)/i, "")}` : `#${lead.id.slice(-4)}`;
@@ -1707,31 +1706,36 @@ export function ManagerDashboard() {
 
                   {/* Day Slots: configured booking hours for each weekday */}
                   {rosterDays.map((day, dIdx) => {
-                    const daySlots = getRosterSlotsForDay(day.dayOfWeek, day.dateKey);
+                    const daySlots = getRosterSlotsForDay();
                     return (
                       <td key={dIdx} className="py-2 px-1 border-l border-slate-100 align-middle text-center">
-                        <div className="inline-flex items-center justify-center gap-0.5 p-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">
-                          {daySlots.map((slot) => {
-                            const slotInfo = getStaffSlotHourStatus(member, day.dateKey, day.dayOfWeek, slot.hour);
-                            return (
-                              <div key={slot.hour} className="flex flex-col items-center">
-                                <span className="text-[8px] font-bold text-slate-400 leading-none mb-0.5 select-none">
-                                  {slot.label}
-                                </span>
-                                <div
+                        <div className="inline-flex flex-col gap-0.5 p-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">
+                          <div className="grid grid-cols-9 gap-0.5">
+                            {daySlots.map((slot) => <span key={slot.hour} className="text-[8px] font-bold text-slate-400 leading-none text-center select-none">{slot.hour % 12 || 12}</span>)}
+                            <span className="text-[8px] font-bold text-slate-400 leading-none text-center select-none">5</span>
+                          </div>
+                          <div className="grid grid-cols-8 gap-0.5">
+                            {(() => {
+                              const statuses = daySlots.map(slot => ({ slot, info: getStaffSlotHourStatus(member, day.dateKey, day.dayOfWeek, slot.hour) }));
+                              // Adjacent booked hours with the same booking detail share one box.
+                              const groups: Array<{ start: number; count: number; status: typeof statuses[number]["info"]; slot: typeof daySlots[number] }> = [];
+                              for (let i = 0; i < statuses.length; i++) {
+                                const current = statuses[i];
+                                const prevGroup = groups[groups.length - 1];
+                                if (current.info.status === "booked" && prevGroup?.status.status === "booked" && prevGroup.status.detail === current.info.detail) prevGroup.count++;
+                                else groups.push({ start: i, count: 1, status: current.info, slot: current.slot });
+                              }
+                              return groups.map((group) => (
+                                <div key={group.start} style={{ gridColumn: `${group.start + 1} / span ${group.count}` }}
                                   onClick={() => openDispatch(member.isInspector ? "inspections" : "jobs", member.name)}
-                                  className={`w-2.5 sm:w-3 h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:scale-120 hover:shadow-xs ${
-                                    slotInfo.status === "booked"
-                                      ? "bg-[#fb7185] hover:bg-rose-500 shadow-2xs"
-                                      : slotInfo.status === "closed"
-                                      ? "bg-slate-200 hover:bg-slate-300"
-                                      : "bg-[#4ade80] hover:bg-emerald-500"
+                                  className={`h-3.5 sm:h-4 rounded-[2px] cursor-pointer transition-all duration-150 hover:brightness-95 ${
+                                    group.status.status === "booked" ? "bg-[#fb7185] shadow-2xs" : group.status.status === "closed" ? "bg-slate-200" : "bg-[#4ade80]"
                                   }`}
-                                  title={`${member.name} • ${day.dayName} ${day.fullDate} (${slot.time})\n${slotInfo.detail}\nClick to view ${member.name}'s ${member.isInspector ? "inspections" : "jobs"} in Dispatch`}
+                                  title={`${member.name} • ${day.dayName} ${day.fullDate} (${group.slot.time})${group.count > 1 ? ` – ${formatHHmm(`${String(group.slot.hour + group.count).padStart(2, "0")}:00`)}` : ""}\n${group.status.detail}\nClick to view ${member.name}'s ${member.isInspector ? "inspections" : "jobs"} in Dispatch`}
                                 />
-                              </div>
-                            );
-                          })}
+                              ));
+                            })()}
+                          </div>
                         </div>
                       </td>
                     );
