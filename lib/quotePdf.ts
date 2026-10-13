@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { GROUTIX_QUOTE_TERMS } from "./serviceTemplates";
+import { isQuoteScopeHeading } from "./quoteScope";
 import { getSiteSettings, getLogoFilePath, isLogoPng } from "./settings";
 
 export interface QuotePdfItem {
@@ -131,13 +132,14 @@ function wrapLines(text: string, font: PDFFont, size: number, maxWidth: number):
   return result.length ? result : [""];
 }
 
-/** Match the quote preview: each scope paragraph is a bullet with hanging indentation. */
+/** Match the quote preview: section headings and work bullets with hanging indentation. */
 function wrapScopeLines(text: string, font: PDFFont, size: number, maxWidth: number) {
   const indent = 8;
   return String(text || "").split(/\r?\n/).filter((line) => line.trim()).flatMap((line) => {
     const content = line.trim().replace(/^(?:[•*\-✓]|o)\s+/, "");
-    return wrapLines(content, font, size, maxWidth - indent).filter(Boolean)
-      .map((text, index) => ({ text, bullet: index === 0, indent }));
+    const heading = isQuoteScopeHeading(content);
+    return wrapLines(content, font, size, maxWidth - (heading ? 0 : indent)).filter(Boolean)
+      .map((text, index) => ({ text, bullet: !heading && index === 0, indent: heading ? 0 : indent, heading }));
   });
 }
 
@@ -397,7 +399,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       if (ln.bullet) {
         page1.drawCircle({ x: colDescX + 2, y: ty + 2.5, size: 1.2, color: INK });
       }
-      page1.drawText(ln.text, { x: colDescX + ln.indent, y: ty, size: 7.5, font, color: INK });
+      page1.drawText(ln.text, { x: colDescX + ln.indent, y: ty, size: 7.5, font: ln.heading ? bold : font, color: INK });
       ty -= 9.5;
     }
 

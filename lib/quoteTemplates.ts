@@ -72,7 +72,10 @@ export async function getAllQuoteTemplates(): Promise<QuoteTemplateJSON[]> {
     ...t,
     isCustom: false,
   }));
-  return [...custom, ...standard];
+  // The revised catalog owns its item codes, including codes saved as custom
+  // templates under the previous catalog. Do not offer a stale duplicate scope.
+  const standardCodes = new Set(standard.map((template) => template.code.toUpperCase()));
+  return [...custom.filter((template) => !standardCodes.has(template.code.toUpperCase())), ...standard];
 }
 
 /**

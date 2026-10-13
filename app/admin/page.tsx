@@ -104,6 +104,7 @@ import {
   getMatchedQuoteItemsForLead
 } from "@/lib/serviceMatching";
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
+import { isQuoteScopeHeading } from "@/lib/quoteScope";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
@@ -5185,6 +5186,7 @@ export default function CrmDashboardPage() {
                                 <td className="py-2 px-2">
                                   <TemplatePicker
                                     selectedTemplateNo={item.templateNo}
+                                    selectedTemplateCode={item.code}
                                     onSelectTemplate={(t) => {
                                       const updated = [...quoteItems];
                                       if (t) {
@@ -5198,7 +5200,7 @@ export default function CrmDashboardPage() {
                                           code: t.code,
                                           service: t.service,
                                           scope: normalizedScope,
-                                          price: Number(t.price) || updated[idx].price || 0
+                                          price: Number(t.price) || 0
                                         };
                                       } else {
                                         updated[idx] = {
@@ -5603,6 +5605,9 @@ export default function CrmDashboardPage() {
                                 <ul className="mt-1 space-y-0.5">
                                   {item.scope.split("\n").filter(l => l.trim()).map((line, li) => {
                                     const clean = line.replace(/^[•o]\s*/, "").trim();
+                                    if (isQuoteScopeHeading(clean)) {
+                                      return <li key={li} className="pt-1 text-[10px] text-black font-bold">{clean}</li>;
+                                    }
                                     return (
                                       <li key={li} className="flex items-start gap-1 text-[10px] text-black leading-snug font-normal">
                                         <span className="shrink-0 text-black font-bold mt-px">•</span>

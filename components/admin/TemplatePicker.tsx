@@ -32,6 +32,7 @@ import type { QuoteTemplateJSON } from "@/lib/quoteTemplates";
 
 interface TemplatePickerProps {
   selectedTemplateNo?: string | number;
+  selectedTemplateCode?: string;
   onSelectTemplate: (template: ServiceTemplate | null) => void;
   buttonLabel?: string;
   triggerClassName?: string;
@@ -40,6 +41,7 @@ interface TemplatePickerProps {
 
 export function TemplatePicker({
   selectedTemplateNo,
+  selectedTemplateCode,
   onSelectTemplate,
   buttonLabel,
   triggerClassName,
@@ -104,9 +106,10 @@ export function TemplatePicker({
 
   // Find currently selected template
   const currentTemplate = useMemo(() => {
+    if (selectedTemplateCode) return allTemplates.find((t) => t.code.toUpperCase() === selectedTemplateCode.toUpperCase()) || null;
     if (!selectedTemplateNo) return null;
     return allTemplates.find((t) => String(t.no) === String(selectedTemplateNo)) || null;
-  }, [selectedTemplateNo, allTemplates]);
+  }, [selectedTemplateNo, selectedTemplateCode, allTemplates]);
 
   // Handle saving brand-new template
   const handleCreateTemplate = async (e: React.FormEvent) => {
@@ -589,7 +592,9 @@ export function TemplatePicker({
                 </div>
               ) : (
                 filteredTemplates.map((t) => {
-                  const isSelected = String(selectedTemplateNo) === String(t.no);
+                  const isSelected = selectedTemplateCode
+                    ? selectedTemplateCode.toUpperCase() === t.code.toUpperCase()
+                    : String(selectedTemplateNo) === String(t.no);
                   const isExpanded = expandedScopeNo === t.no;
                   const category = t.category || getTemplateCategory(t);
                   const hasPrice = Number(t.price) > 0;

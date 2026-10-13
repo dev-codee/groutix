@@ -12,6 +12,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 export function loadTs(relativePath, overrides = {}, globals = {}) {
   const cache = new Map();
   const load = (path) => {
+    if (path.endsWith(".json")) return JSON.parse(readFileSync(path, "utf8"));
     if (cache.has(path)) return cache.get(path).exports;
     const moduleRecord = { exports: {} };
     cache.set(path, moduleRecord);

@@ -120,17 +120,23 @@ export function findBestTemplateForService(
   serviceName: string,
   areaHint?: string
 ): ServiceTemplate | null {
+  const requested = String(serviceName || "").trim().toUpperCase();
+  const exact = SERVICE_TEMPLATES.find((template) => template.code === requested);
+  if (exact) return exact;
+  const titles = SERVICE_TEMPLATES.filter((template) => template.service.toUpperCase() === requested);
+  if (titles.length === 1) return titles[0];
+
   const normSvc = (serviceName || "").toLowerCase();
   const normArea = (areaHint || "").toLowerCase();
 
   // 1. Balcony Services
   if (normSvc.includes("balcony")) {
     if (normSvc.includes("pressure") || normSvc.includes("wash")) {
-      const t = SERVICE_TEMPLATES.find((x) => x.no === "74" || x.code.toLowerCase().includes("pressure"));
+      const t = SERVICE_TEMPLATES.find((x) => x.code === "PRESSURE WASH");
       if (t) return t;
     }
     // Standard Balcony Epoxy Regrouting
-    const t = SERVICE_TEMPLATES.find((x) => x.no === "69" || x.code === "BALCONY");
+    const t = SERVICE_TEMPLATES.find((x) => x.code === "BALCONY");
     if (t) return t;
   }
 
@@ -141,25 +147,26 @@ export function findBestTemplateForService(
     normSvc.includes("loose tile") ||
     normSvc.includes("drummy")
   ) {
-    const t = SERVICE_TEMPLATES.find((x) => x.no === "71" || x.code.startsWith("CT - Groutix"));
+    const t = SERVICE_TEMPLATES.find((x) => x.code === "CT - GROUTIX TO SUPPLY & INSTA");
     if (t) return t;
   }
 
   // 3. Silicone / Caulking Replacement
-  if (normSvc.includes("silicone") || normSvc.includes("caulk") || normSvc.includes("reseal")) {
-    const t = SERVICE_TEMPLATES.find((x) => x.no === "81" || x.code === "C-V-I");
+  const regrouting = normSvc.includes("grout") || normSvc.includes("leak");
+  if (!regrouting && (normSvc.includes("silicone") || normSvc.includes("caulk") || normSvc.includes("reseal"))) {
+    const t = SERVICE_TEMPLATES.find((x) => x.code === "C-V-I");
     if (t) return t;
   }
 
   // 4. Mould Treatment
-  if (normSvc.includes("mould") || normSvc.includes("mold")) {
-    const t = SERVICE_TEMPLATES.find((x) => x.no === "72" || x.code.startsWith("MT -"));
+  if (!regrouting && (normSvc.includes("mould") || normSvc.includes("mold"))) {
+    const t = SERVICE_TEMPLATES.find((x) => x.code === "MT - MOULD TREATMENT");
     if (t) return t;
   }
 
   // 5. Grout Sealer
   if (normSvc.includes("sealer") || normSvc.includes("penetrating")) {
-    const t = SERVICE_TEMPLATES.find((x) => x.no === "73" || x.code.startsWith("S -") || x.no === "82");
+    const t = SERVICE_TEMPLATES.find((x) => x.code === "S - SEALANT");
     if (t) return t;
   }
 
@@ -169,7 +176,7 @@ export function findBestTemplateForService(
     normSvc.includes("screen replacement") ||
     normSvc.includes("screen install")
   ) {
-    const t = SERVICE_TEMPLATES.find((x) => x.no === "84" || x.code.includes("screen"));
+    const t = SERVICE_TEMPLATES.find((x) => x.code === "SCREEN REPLECEMENT");
     if (t) return t;
   }
 
@@ -180,39 +187,52 @@ export function findBestTemplateForService(
     normSvc.includes("leak") ||
     normSvc.includes("grout")
   ) {
-    const isEnsuite = normArea.includes("ensuite");
-    const isGuest = normArea.includes("guest");
+    const areaText = `${normArea} ${normSvc}`;
+    const isEnsuite = areaText.includes("ensuite");
+    const isGuest = areaText.includes("guest");
     const isFloorOnly = normSvc.includes("floor only") || normSvc.includes("base only");
 
     if (isGuest) {
-      const t = SERVICE_TEMPLATES.find((x) => x.no === "31");
+      const t = SERVICE_TEMPLATES.find((x) => x.code === "GUYS");
       if (t) return t;
     }
 
+    const room = isEnsuite ? "EN" : "MB";
+    const shower = normSvc.includes("double") ? "DS" : "SS";
+    const grout = normSvc.includes("polymer") || normSvc.includes("standard grout") ? "PG" : "EG";
+    const extent = normSvc.includes("ceiling") ? "TC" : "SH";
+    const surface = isFloorOnly ? "FO"
+      : normSvc.includes("walls only") || normSvc.includes("wall only") ? "WO"
+      : /\bpan\b/.test(normSvc) ? "WP"
+      : /\bbath\b/.test(normSvc) ? "WB" : "WF";
+    const code = surface === "FO" ? `${room}-${shower}-FO-${grout}` : `${room}-${shower}-${surface}-${extent}-${grout}`;
+    const specified = SERVICE_TEMPLATES.find((template) => template.code === code);
+    if (specified) return specified;
+
     if (isEnsuite) {
       if (isFloorOnly) {
-        const t = SERVICE_TEMPLATES.find((x) => x.no === "12" || x.code === "EN-SS-FO-EG");
+        const t = SERVICE_TEMPLATES.find((x) => x.code === "EN-SS-FO-EG");
         if (t) return t;
       }
       // Ensuite Single Shower Walls & Floor Epoxy
-      const t = SERVICE_TEMPLATES.find((x) => x.no === "20" || x.code === "EN-SS-WF-SH-EG");
+      const t = SERVICE_TEMPLATES.find((x) => x.code === "EN-SS-WF-SH-EG");
       if (t) return t;
     }
 
     // Default to Main Bathroom Single Shower Walls & Floor Epoxy / Standard
     if (isFloorOnly) {
-      const t = SERVICE_TEMPLATES.find((x) => x.no === "44" || x.code === "MB-SS-FO-EG");
+      const t = SERVICE_TEMPLATES.find((x) => x.code === "MB-SS-FO-EG");
       if (t) return t;
     }
 
-    // Main Bathroom Single shower walls & floor (Template 55 MB-SS-WF-SH-EG or Template 48)
+    // Match stable item codes; catalog row numbers can change.
     const t =
-      SERVICE_TEMPLATES.find((x) => x.no === "55" || x.code === "MB-SS-WF-SH-EG") ||
-      SERVICE_TEMPLATES.find((x) => x.no === "48");
+      SERVICE_TEMPLATES.find((x) => x.code === "MB-SS-WF-SH-EG") ||
+      SERVICE_TEMPLATES.find((x) => x.code === "MB SINGLE SHOWER WALLS & FLOOR");
     if (t) return t;
   }
 
-  // 8. Fallback: Search all 84 templates by keyword scoring
+  // 8. Fallback: Search the catalog by keyword scoring
   const terms = normSvc.split(/\s+/).filter((w) => w.length > 2);
   let bestTemplate: ServiceTemplate | null = null;
   let bestScore = 0;
@@ -253,13 +273,13 @@ export function getMatchedQuoteItemsForLead(lead: {
   const customerServices = parseCustomerServices(lead.service || lead.enquiry || "");
   const areas = lead.areas || "";
   const items: MatchedQuoteItem[] = [];
-  const usedTemplateNos = new Set<string>();
+  const usedTemplateCodes = new Set<string>();
 
   for (const svc of customerServices) {
     const matched = findBestTemplateForService(svc, areas);
 
     if (matched) {
-      usedTemplateNos.add(matched.no);
+      usedTemplateCodes.add(matched.code);
       items.push({
         templateNo: matched.no,
         code: matched.code,
@@ -287,10 +307,10 @@ export function getMatchedQuoteItemsForLead(lead: {
   const damaged = (lead.damagedTiles || "").toLowerCase();
   if (
     (damaged.includes("cracked") || damaged.includes("loose") || damaged.includes("drummy")) &&
-    !usedTemplateNos.has("71") &&
-    !usedTemplateNos.has("70")
+    !usedTemplateCodes.has("CT - GROUTIX TO SUPPLY & INSTA") &&
+    !usedTemplateCodes.has("CT - (CLIENT TO SOURCE)")
   ) {
-    const ctTemplate = SERVICE_TEMPLATES.find((x) => x.no === "71");
+    const ctTemplate = SERVICE_TEMPLATES.find((x) => x.code === "CT - GROUTIX TO SUPPLY & INSTA");
     if (ctTemplate) {
       items.push({
         templateNo: ctTemplate.no,
@@ -306,7 +326,7 @@ export function getMatchedQuoteItemsForLead(lead: {
 
   // Fallback if no services were specified
   if (items.length === 0) {
-    const defaultTemplate = SERVICE_TEMPLATES.find((x) => x.no === "55") || SERVICE_TEMPLATES[0];
+    const defaultTemplate = SERVICE_TEMPLATES.find((x) => x.code === "MB-SS-WF-SH-EG") || SERVICE_TEMPLATES[0];
     items.push({
       templateNo: defaultTemplate.no,
       code: defaultTemplate.code,
