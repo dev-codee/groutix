@@ -93,7 +93,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
       const res = await fetch("/api/admin/settings/booking-rules", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rules }),
+        body: JSON.stringify({ rules: { ...rules, inspection: { ...rules.inspection, maxBookingsPerSlot: rules.inspection.maxBookingsPerSlot ?? 1 } } }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Save failed.");
@@ -145,6 +145,30 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
             <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60} hr${m > 60 ? "s" : ""}`}</option>
           ))}
         </select>
+      </div>
+
+      <div className="text-xs space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="slot-capacity" className="font-bold text-slate-700">{typeLabel}: bookings per slot</label>
+          <select
+            id="slot-capacity"
+            value={rules[tab].maxBookingsPerSlot ?? (tab === "inspection" ? 1 : "auto")}
+            onChange={(e) => update({ ...rules, [tab]: { ...rules[tab], maxBookingsPerSlot: e.target.value === "auto" ? undefined : Number(e.target.value) } })}
+            className="p-2 border border-slate-200 rounded-lg bg-white"
+          >
+            {tab === "job" && <option value="auto">Available technicians</option>}
+            {Array.from({ length: 5 }, (_, i) => i + 1).map((limit) => (
+              <option key={limit} value={limit}>{limit} booking{limit === 1 ? "" : "s"}</option>
+            ))}
+          </select>
+        </div>
+        <p className="text-slate-500 leading-relaxed">
+          {tab === "job" && rules.job.maxBookingsPerSlot === undefined
+            ? "Each available technician adds one booking per slot."
+            : `Customer slots lock after ${rules[tab].maxBookingsPerSlot ?? 1} overlapping booking${(rules[tab].maxBookingsPerSlot ?? 1) === 1 ? "" : "s"}.`}
+          {tab === "job" && " Job availability is also limited by the working technicians."}
+          {" Staff can book other free people from the dashboard; the same person cannot have overlapping appointments."}
+        </p>
       </div>
 
       {/* Weekly hours */}

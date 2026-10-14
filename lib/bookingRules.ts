@@ -35,6 +35,8 @@ export interface TypeRules {
   days: DayHours[];
   /** Length of one bookable slot, in minutes. */
   slotMinutes: number;
+  /** Customer booking limit per overlapping slot; unset preserves legacy capacity. */
+  maxBookingsPerSlot?: number;
   /** Future changeovers, sorted ascending by `from`; the latest match wins. */
   changeovers?: DayChangeover[];
 }
@@ -231,6 +233,9 @@ function sanitizeType(input: unknown, fallback: TypeRules): TypeRules {
   const slot = Number(src.slotMinutes);
   const slotMinutes = [15, 30, 45, 60, 90, 120, 180, 240].includes(slot) ? slot : fallback.slotMinutes;
   const days = sanitizeDays(src.days, fallback.days);
+  const limit = Number(src.maxBookingsPerSlot);
+  const maxBookingsPerSlot = Number.isInteger(limit) && limit >= 1 && limit <= 5
+    ? limit : fallback.maxBookingsPerSlot;
   // Changeovers: valid dates only, deduplicated, sorted so the latest match wins.
   const changeovers = (Array.isArray(src.changeovers) ? src.changeovers : [])
     .filter((c): c is DayChangeover => !!c && typeof c === "object" && YMD_RE.test(String((c as DayChangeover).from)))
@@ -241,7 +246,8 @@ function sanitizeType(input: unknown, fallback: TypeRules): TypeRules {
     }))
     .filter((c, i, arr) => arr.findIndex((x) => x.from === c.from) === i)
     .sort((a, b) => a.from.localeCompare(b.from));
-  return changeovers.length ? { slotMinutes, days, changeovers } : { slotMinutes, days };
+  return { slotMinutes, days, ...(maxBookingsPerSlot !== undefined ? { maxBookingsPerSlot } : {}),
+    ...(changeovers.length ? { changeovers } : {}) };
 }
 
 /**
@@ -280,6 +286,10 @@ export function validateBookingRules(rules: BookingRules): string[] {
   for (const type of ["inspection", "job"] as BookingType[]) {
     const label = type === "inspection" ? "Inspection" : "Job";
     const slotLen = rules[type].slotMinutes;
+    const limit = rules[type].maxBookingsPerSlot;
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 5)) {
+      errors.push(`${label}: bookings per slot must be a whole number from 1 to 5.`);
+    }
     const check = (days: DayHours[], scope: string) =>
       days.forEach((d, wd) => {
         if (!d.open) return;

@@ -65,8 +65,10 @@ export function bookingAvailability(
   appointments: CapacityAppointment[], candidate: CapacityAppointment, rules: BookingRules, technicians: BookingTechnician[],
 ) {
   const working = isStaffScheduling(rules) ? technicians.filter(person => person.active) : techniciansOnDate(technicians, candidate.date);
-  // Unassigned online inspections retain a conservative single-slot fallback.
-  const capacity = candidate.type === "inspection" ? 1 : working.length;
+  const limit = rules[candidate.type].maxBookingsPerSlot;
+  const customerLimit = !isStaffScheduling(rules) && limit !== undefined ? limit : undefined;
+  const capacity = candidate.type === "inspection" ? (customerLimit ?? 1)
+    : Math.min(customerLimit ?? working.length, working.length);
   const start = toMinutes(candidate.time);
   const end = start + appointmentDurationMinutes(candidate, rules);
   const overlapping = appointments.filter(entry => entry.date === candidate.date &&
@@ -87,6 +89,7 @@ export function bookingAvailability(
   else if (candidate.type === "job" && capacity === 0) reason = "No active job technicians are working on this date.";
   else if (technicianId && !working.some(tech => tech.id === technicianId)) reason = "The selected technician is not available to work on this date.";
   else if (keys.length && conflicts(keys)) reason = "The assigned person already has an overlapping booking. Choose another person or time.";
+  else if (customerLimit !== undefined && peak >= customerLimit) reason = `This slot has reached its limit of ${customerLimit} ${candidate.type} booking${customerLimit === 1 ? "" : "s"}. Choose another time.`;
   else if (!keys.length && peak >= capacity) reason = "No unassigned booking capacity remains during this time. Choose a free person or another time.";
   else if (!keys.length && candidate.type === "job" && working.every(person => conflicts(appointmentAssigneeKeys({ type: "job", technicianId: person.id }, technicians)))) reason = "No technician is free for the entire job. Choose another time.";
   return { available: reason === null, capacity, remaining: reason ? 0 : keys.length ? 1 : Math.max(0, capacity - peak), reason, overlapping, technicianId };
