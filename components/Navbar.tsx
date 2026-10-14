@@ -171,7 +171,7 @@ export default function Navbar() {
         "Mount Evelyn", "Mount Waverley", "Mulgrave", "Narre Warren", "Niddrie", "Noble Park",
         "North Melbourne", "Northcote", "Nunawading", "Oak Park", "Oakleigh", "Ormond",
         "Pakenham", "Parkville", "Patterson Lakes", "Plumpton", "Point Cook", "Port Melbourne",
-        "Prahran", "Princes Hill", "Research", "Reservoir", "Richmond", "Ringwood",
+        "Princes Hill", "Research", "Reservoir", "Richmond", "Ringwood",
         "Ringwood East", "Ringwood North", "Rosanna", "Seaford", "South Melbourne",
         "South Morang", "South Yarra", "Southbank", "Springvale", "St Kilda", "Strathmore",
         "Sunbury", "Sydenham", "Tarneit", "Templestowe",
