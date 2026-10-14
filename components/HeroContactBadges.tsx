@@ -14,7 +14,7 @@ export default function HeroContactBadges({ rating, theme = "dark" }: {
   const { business } = useSiteContent();
   const stars = rating?.value ?? business.rating.value;
   const badge = "inline-flex box-border h-14 w-auto max-w-full shrink-0 items-center justify-center rounded-2xl border px-5 py-2.5 text-sm transition-colors";
-  onst googleColors = theme === "light"
+  const googleColors = theme === "light"
   ? "border-primary/20 bg-white text-primary hover:bg-blue-50"
   : "border-white/40 bg-white/5 text-white backdrop-blur-sm hover:bg-white/15";
   const phoneColors = theme === "light"
