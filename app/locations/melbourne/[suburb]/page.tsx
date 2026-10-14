@@ -167,6 +167,7 @@ export default async function SuburbPage({ params }: Props) {
   if (suburb === "st-kilda") {  return <StKildaPage reviews={reviews} rating={rating} />;}
   if (suburb === "brighton") {  return <BrightonPage reviews={reviews} rating={rating} />;}
   if (suburb === "south-yarra") {  return <SouthYarraPage reviews={reviews} rating={rating} />;}
+  if (suburb === "south-yarra") {  return <SouthYarraPage reviews={reviews} rating={rating} />;}
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
   const explanation = getSuburbExplanation(suburbName);
 
