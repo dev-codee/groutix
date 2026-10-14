@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
 { source: '/locations/melbourne/beaumaris', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/highett', destination: '/locations/melbourne/brighton', permanent: true },
       { source: '/locations/melbourne/prahran', destination: '/locations/melbourne/south-yarra', permanent: true },
+      { source: '/locations/melbourne/prahran', destination: '/locations/melbourne/south-yarra', permanent: true },
       {
         source: '/contact-us',
         destination: '/contact',
