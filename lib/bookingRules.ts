@@ -128,6 +128,16 @@ export function daysInForce(rules: BookingRules, type: BookingType, date?: strin
   return days;
 }
 
+/** Use the hours currently in force as one weekly schedule, with no dated overrides. */
+export function consolidateBookingHours(rules: BookingRules, date: string): BookingRules {
+  const weekly = (type: BookingType): TypeRules => ({
+    ...rules[type],
+    days: daysInForce(rules, type, date).map(day => ({ ...day })),
+    changeovers: [],
+  });
+  return { ...rules, inspection: weekly("inspection"), job: weekly("job") };
+}
+
 /** The next changeover taking effect after `date`, if any. */
 export function nextChangeover(rules: BookingRules, type: BookingType, date: string): DayChangeover | undefined {
   return rules[type].changeovers?.find((c) => c.from > date);
