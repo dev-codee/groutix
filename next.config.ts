@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
       destination: '/locations/melbourne/st-kilda',
       permanent: true,
     },
+      { source: '/locations/melbourne/brighton-east', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/hampton', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/sandringham', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/highett', destination: '/locations/melbourne/brighton', permanent: true },
       {
         source: '/contact-us',
         destination: '/contact',
