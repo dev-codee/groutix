@@ -105,6 +105,7 @@ import {
 } from "@/lib/serviceMatching";
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { isQuoteScopeHeading } from "@/lib/quoteScope";
+import { layoutWarrantyAddress } from "@/lib/warrantyAddressLayout";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
@@ -3257,8 +3258,17 @@ export default function CrmDashboardPage() {
       ctx.stroke();
       if (warrantyAddress) {
         ctx.fillStyle = "#0f172a";
-        ctx.font = "bold 13px Arial, sans-serif";
-        ctx.fillText(warrantyAddress, valueX + 4, fY);
+        const addressLayout = layoutWarrantyAddress(
+          warrantyAddress, [valueW - 8, RW - 8],
+          (text, size) => {
+            ctx.font = `bold ${size}px Arial, sans-serif`;
+            return ctx.measureText(text).width;
+          }, 13
+        );
+        ctx.font = `bold ${addressLayout.fontSize}px Arial, sans-serif`;
+        addressLayout.lines.forEach((line, index) => {
+          ctx.fillText(line, (index === 0 ? valueX : RP) + 4, fY + index * 21);
+        });
       }
       fY += rowGap + 24;
 

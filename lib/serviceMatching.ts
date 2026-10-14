@@ -92,9 +92,15 @@ export function getTemplateCategory(template: ServiceTemplate): TemplateCategory
 export function parseCustomerServices(serviceStr?: string): string[] {
   if (!serviceStr || !serviceStr.trim()) return [];
 
-  // Split by comma, semicolon, bullet, or ' + '
+  // A catalog title can contain punctuation; preserve it as one request.
+  const requested = serviceStr.trim().toUpperCase();
+  if (SERVICE_TEMPLATES.some((t) => t.code === requested || t.service.toUpperCase() === requested)) {
+    return [serviceStr.trim()];
+  }
+
+  // Split by comma, semicolon, bullet, pipe, or a spaced plus sign.
   const rawParts = serviceStr
-    .split(/[,;\n•|]+/)
+    .split(/[,;\n•|]+|\s+\+\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && s.toLowerCase() !== "other" && s.toLowerCase() !== "none");
 
@@ -110,7 +116,7 @@ export function parseCustomerServices(serviceStr?: string): string[] {
     }
   }
 
-  return results.length > 0 ? results : [serviceStr.trim()];
+  return results;
 }
 
 /**
@@ -154,8 +160,11 @@ export function findBestTemplateForService(
   // 3. Silicone / Caulking Replacement
   const regrouting = normSvc.includes("grout") || normSvc.includes("leak");
   if (!regrouting && (normSvc.includes("silicone") || normSvc.includes("caulk") || normSvc.includes("reseal"))) {
-    const t = SERVICE_TEMPLATES.find((x) => x.code === "C-V-I");
-    if (t) return t;
+    // These catalog items cover screen joints only, not general silicone work.
+    if (!normSvc.includes("screen")) return null;
+    const direction = normSvc.includes("horizontal") ? "H" : "V";
+    const side = normSvc.includes("outside") || normSvc.includes("external") ? "O" : "I";
+    return SERVICE_TEMPLATES.find((x) => x.code === `C-${direction}-${side}`) || null;
   }
 
   // 4. Mould Treatment
@@ -172,9 +181,9 @@ export function findBestTemplateForService(
 
   // 6. Shower Screen Replacement
   if (
-    normSvc.includes("shower screen") ||
     normSvc.includes("screen replacement") ||
-    normSvc.includes("screen install")
+    normSvc.includes("screen install") ||
+    (normSvc.includes("shower screen") && !regrouting && !normSvc.includes("height"))
   ) {
     const t = SERVICE_TEMPLATES.find((x) => x.code === "SCREEN REPLECEMENT");
     if (t) return t;
@@ -187,10 +196,13 @@ export function findBestTemplateForService(
     normSvc.includes("leak") ||
     normSvc.includes("grout")
   ) {
-    const areaText = `${normArea} ${normSvc}`;
+    // An explicit room in the service takes priority over the lead's area list.
+    const areaText = /ensuite|guest|main bath/.test(normSvc) ? normSvc : normArea;
     const isEnsuite = areaText.includes("ensuite");
     const isGuest = areaText.includes("guest");
-    const isFloorOnly = normSvc.includes("floor only") || normSvc.includes("base only");
+    const hasWalls = /\bwalls?\b/.test(normSvc);
+    const isFloorOnly = normSvc.includes("floor only") || normSvc.includes("base only") ||
+      (!hasWalls && /\b(floor|base)\b/.test(normSvc));
 
     if (isGuest) {
       const t = SERVICE_TEMPLATES.find((x) => x.code === "GUYS");
@@ -208,6 +220,9 @@ export function findBestTemplateForService(
     const code = surface === "FO" ? `${room}-${shower}-FO-${grout}` : `${room}-${shower}-${surface}-${extent}-${grout}`;
     const specified = SERVICE_TEMPLATES.find((template) => template.code === code);
     if (specified) return specified;
+
+    // Never replace an unavailable specified variant with a different scope.
+    if (shower === "DS" || grout === "PG" || extent === "TC" || surface === "WO" || surface === "WP" || surface === "WB") return null;
 
     if (isEnsuite) {
       if (isFloorOnly) {
@@ -279,6 +294,7 @@ export function getMatchedQuoteItemsForLead(lead: {
     const matched = findBestTemplateForService(svc, areas);
 
     if (matched) {
+      if (usedTemplateCodes.has(matched.code)) continue;
       usedTemplateCodes.add(matched.code);
       items.push({
         templateNo: matched.no,

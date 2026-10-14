@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { SERVICE_TEMPLATES, bestTemplateForTask } = loadTs("lib/serviceTemplates.ts");
-const { findBestTemplateForService, getMatchedQuoteItemsForLead } = loadTs("lib/serviceMatching.ts");
+const { findBestTemplateForService, getMatchedQuoteItemsForLead, parseCustomerServices } = loadTs("lib/serviceMatching.ts");
 const byCode = code => SERVICE_TEMPLATES.find(item => item.code === code);
 const expectedCodes = `EN-DS-WB-TC-PG
 EN-DS-WB-SH-EG
@@ -166,6 +166,45 @@ test("an older quote's row number cannot make its picker show a different item c
   }));
   assert.match(html, /EN-SS-WF-SH-EG/);
   assert.doesNotMatch(html, /EN-SS-WF-TC-PG/);
+});
+
+test("natural requests select the actual surface and screen joint from the revised catalog", () => {
+  const cases = [
+    ["Single shower walls and floor to shower screen height epoxy", "Main Bathroom", "MB-SS-WF-SH-EG"],
+    ["Shower Base Repair", "Main Bathroom", "MB-SS-FO-EG"],
+    ["Double shower floor epoxy", "Ensuite Bathroom", "EN-DS-FO-EG"],
+    ["Shower screen replacement", "Main Bathroom", "SCREEN REPLECEMENT"],
+    ["Horizontal outside shower screen caulking", "", "C-H-O"],
+    ["Horizontal inside shower screen silicone", "", "C-H-I"],
+    ["Vertical outside shower screen silicone", "", "C-V-O"],
+    ["Vertical inside shower screen caulking", "", "C-V-I"],
+    ["Main bathroom shower regrouting", "Ensuite Bathroom, Guest Bathroom", "MB-SS-WF-SH-EG"],
+  ];
+  for (const [service, area, code] of cases) {
+    assert.equal(findBestTemplateForService(service, area)?.code, code, service);
+  }
+});
+
+test("requests without a suitable catalog scope stay custom rather than picking different work", () => {
+  for (const service of ["Silicone Replacement", "Double shower walls only to ceiling polymer"]) {
+    assert.equal(findBestTemplateForService(service, "Main Bathroom"), null, service);
+    const item = getMatchedQuoteItemsForLead({ service, message: "Requested work details" })[0];
+    assert.equal(item.code, "");
+    assert.equal(item.service, service);
+    assert.equal(item.scope, "Requested work details");
+  }
+});
+
+test("compound requests preserve catalog titles and do not repeat matching quote items", () => {
+  assert.deepEqual(Array.from(parseCustomerServices("Other, None")), []);
+  for (const item of SERVICE_TEMPLATES) {
+    assert.deepEqual(Array.from(parseCustomerServices(item.service)), [item.service]);
+  }
+  const items = getMatchedQuoteItemsForLead({
+    service: "Shower Cubicle Regrouting + Leaking Shower Repair + Balcony Regrouting",
+    areas: "Main Bathroom",
+  });
+  assert.deepEqual(Array.from(items, item => item.code), ["MB-SS-WF-SH-EG", "BALCONY"]);
 });
 
 test("selecting a zero-priced item replaces a previous item's price", () => {

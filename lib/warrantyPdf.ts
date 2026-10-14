@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { getSiteSettings, getLogoFilePath, isLogoPng } from "./settings";
+import { layoutWarrantyAddress } from "./warrantyAddressLayout";
 
 export interface WarrantyPdfInput {
   jobNo: string;
@@ -438,7 +439,28 @@ export async function buildWarrantyPdfBase64(input: WarrantyPdfInput): Promise<s
   drawFieldRow("COMPLETION DATE:", input.completionDate);
   drawFieldRow("WARRANTY EXPIRY DATE:", input.expiryDate);
   drawFieldRow("CUSTOMER NAME:", input.customerName);
-  drawFieldRow("PROPERTY ADDRESS:", input.address);
+  const addressY = curY;
+  drawFieldRow("PROPERTY ADDRESS:", "");
+  const addressLayout = layoutWarrantyAddress(
+    cleanPdfText(input.address),
+    [lineEndX - MARGIN - fieldLabelW - 12, lineEndX - MARGIN - 12],
+    (text, size) => font.widthOfTextAtSize(text, size), 9.5
+  );
+  addressLayout.lines.forEach((line, index) => {
+    page1.drawText(line, {
+      x: MARGIN + (index === 0 ? fieldLabelW : 0) + 6,
+      y: addressY + 1 - index * 18,
+      size: addressLayout.fontSize, font, color: INK,
+    });
+  });
+  if (addressLayout.lines.length > 1) {
+    page1.drawLine({
+      start: { x: MARGIN, y: addressY - 20 },
+      end: { x: lineEndX, y: addressY - 20 },
+      thickness: 1, color: LINE,
+    });
+    curY -= 18;
+  }
 
   curY -= 12;
   drawFieldRow("AUTHORISED BY GROUTIX:", input.authorisedBy || "GROUTIX PTY LTD");
