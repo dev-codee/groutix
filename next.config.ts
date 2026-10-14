@@ -23,7 +23,10 @@ const nextConfig: NextConfig = {
     },
       { source: '/locations/melbourne/brighton-east', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/hampton', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/hampton-east', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/sandringham', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/black-rock', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/beaumaris', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/highett', destination: '/locations/melbourne/brighton', permanent: true },
       {
         source: '/contact-us',
