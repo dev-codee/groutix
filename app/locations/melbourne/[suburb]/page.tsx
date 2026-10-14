@@ -7,6 +7,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 import StKildaPage from "@/components/StKildaPage";
 import BrightonPage from "@/components/BrightonPage";
 import SouthYarraPage from "@/components/SouthYarraPage";
+import AlbertParkPage from "@/components/AlbertParkPage";
 // Helper to format suburb slug to readable name (e.g. fitzroy-north -> Fitzroy North)
 function formatSuburbName(slug: string): string {
   return slug
@@ -25,6 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 if (suburb === "brighton") {  return {    title: "Shower & Balcony Regrouting Brighton | 10-Yr Warranty | Groutix",    description: "Shower, tile and balcony regrouting in Brighton, Hampton and Sandringham. No tile removal, 10-year waterproof warranty, 5.0 from 290+ reviews. Free quote.",    alternates: { canonical: "/locations/melbourne/brighton" },    openGraph: {      title: "Shower & Balcony Regrouting in Brighton | Groutix",      description: "Shower, tile and balcony regrouting in Brighton, Hampton and Sandringham. No tile removal, 10-year waterproof warranty, 5.0 from 290+ reviews. Free quote.",      url: "/locations/melbourne/brighton",      type: "website",    },    robots: "index, follow",  };}
   const name = formatSuburbName(suburb);
   if (suburb === "south-yarra") {  return {    title: "Balcony & Shower Regrouting South Yarra | Groutix",    description: "Balcony and shower regrouting in South Yarra and Prahran apartments. Epoxy or cement grout, no tile removal, 10-year waterproof warranty. 5.0 from 290+ reviews.",    alternates: { canonical: "/locations/melbourne/south-yarra" },    openGraph: {      title: "Balcony & Shower Regrouting in South Yarra | Groutix",      description: "Balcony and shower regrouting in South Yarra and Prahran apartments. Epoxy or cement grout, no tile removal, 10-year waterproof warranty. 5.0 from 290+ reviews.",      url: "/locations/melbourne/south-yarra",      type: "website",    },    robots: "index, follow",  };}
+  if (suburb === "albert-park") {  return {    title: "Albert Park Balcony & Shower Regrouting | Groutix",    description: "Balcony, verandah and shower regrouting for Albert Park terraces and apartments. No tile removal, 10-year waterproof warranty, 5.0 from 290+ reviews. Free quote.",    alternates: { canonical: "/locations/melbourne/albert-park" },    openGraph: {      title: "Balcony & Shower Regrouting in Albert Park | Groutix",      description: "Balcony, verandah and shower regrouting for Albert Park terraces and apartments. No tile removal, 10-year waterproof warranty, 5.0 from 290+ reviews. Free quote.",      url: "/locations/melbourne/albert-park",      type: "website",    },    robots: "index, follow",  };}
   return {
     title: `Shower Regrouting ${name} | Melbourne | GROUTIX`,
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Melbourne. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
@@ -164,6 +166,7 @@ export default async function SuburbPage({ params }: Props) {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   if (suburb === "st-kilda") {  return <StKildaPage reviews={reviews} rating={rating} />;}
   if (suburb === "brighton") {  return <BrightonPage reviews={reviews} rating={rating} />;}
+  if (suburb === "south-yarra") {  return <SouthYarraPage reviews={reviews} rating={rating} />;}
   if (suburb === "south-yarra") {  return <SouthYarraPage reviews={reviews} rating={rating} />;}
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
   const explanation = getSuburbExplanation(suburbName);
