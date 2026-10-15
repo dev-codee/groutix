@@ -10,6 +10,8 @@ import { getDb, isMongoConfigured } from "@/lib/mongodb";
 import { getActiveUsersByRole } from "@/lib/users";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { normalizeApptString } from "@/lib/scheduling";
+import { getBookingRules } from "./bookingRulesServer";
+import { savedBookingMinutes } from "./bookingDuration";
 
 /**
  * Force `inspectionAt` / `jobAt` in a submission patch to the canonical naive
@@ -176,6 +178,8 @@ export interface SubmissionDoc {
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
+  quoteReference?: string;
+  hasCustomerQuotes?: boolean;
   quoteSentAt?: string;
   quoteOpenedAt?: string;
   quoteAcceptedAt?: string; // ISO time the customer accepted the quote online
@@ -706,7 +710,20 @@ export async function updateSubmission(
   normalizeApptFields(safeUpdates);
   // Every booking path resets reminders for a changed appointment, including Dispatch.
   if ("inspectionAt" in safeUpdates || "jobAt" in safeUpdates) {
-    const before = await col.findOne({ _id: new ObjectId(id) }, { projection: { inspectionAt: 1, jobAt: 1 } });
+    const before = await col.findOne({ _id: new ObjectId(id) }, { projection: { inspectionAt: 1, jobAt: 1, inspectionWorkSegments: 1, jobWorkSegments: 1 } });
+    for (const type of ["inspection", "job"] as const) {
+      const field = type === "inspection" ? "inspectionAt" : "jobAt";
+      const segmentsField = type === "inspection" ? "inspectionWorkSegments" : "jobWorkSegments";
+      if (!(field in safeUpdates) || safeUpdates[segmentsField]?.length) continue;
+      const start = safeUpdates[field];
+      if (!start) { safeUpdates[segmentsField] = []; continue; }
+      const previous = before?.[segmentsField];
+      const minutes = before?.[field]
+        ? previous?.reduce((sum, segment) => sum + segment.scheduledMinutes, 0) || 60
+        : (await getBookingRules())[type].slotMinutes;
+      // Explicit end times have their own segments supplied by the booking routes.
+      safeUpdates[segmentsField] = [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: savedBookingMinutes({ scheduledMinutes: minutes }) }];
+    }
     if ("inspectionAt" in safeUpdates && normalizeApptString(safeUpdates.inspectionAt) !== normalizeApptString(before?.inspectionAt)) {
       safeUpdates.inspectionReminderSent = false;
       safeUpdates.inspectionReminder1hSent = false;

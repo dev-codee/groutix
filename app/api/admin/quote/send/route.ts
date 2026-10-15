@@ -1,12 +1,7 @@
+import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId, listCustomerQuotes, reserveCustomerQuoteSend, releaseCustomerQuoteSend } from "@/lib/customerQuotes";
 import { quoteTrackingPixel } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getSubmission,
-  updateSubmission,
-  appendActivity,
-  getNextSequence,
-  formatDocNumber,
-} from "@/lib/submissions";
+import { getNextSequence, formatDocNumber } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
@@ -37,9 +32,10 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const actor = session?.username || "staff";
 
-  let body: { id?: string };
+  let body: { id?: string; quoteId?: string };
   try {
     body = await req.json();
   } catch {
@@ -47,12 +43,19 @@ export async function POST(req: NextRequest) {
   }
   if (!body.id) return NextResponse.json({ error: "Missing lead id." }, { status: 400 });
 
-  const lead = await getSubmission(body.id);
-  if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
-  if (!lead.email) return NextResponse.json({ error: "This lead has no email address." }, { status: 400 });
+  const reference = body.quoteId || body.id;
+  if (quoteLeadId(reference) !== body.id) return NextResponse.json({ error: "Quote does not belong to this customer." }, { status: 400 });
+  if (!await listCustomerQuotes(body.id)) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+  if (!await reserveCustomerQuoteSend(reference)) return NextResponse.json({ error: "This quote is already being sent. Please try again shortly." }, { status: 409 });
+  try {
+  const lead = await getSubmission(reference, true);
+  if (!lead || !lead.email) {
+    await releaseCustomerQuoteSend(reference);
+    return NextResponse.json({ error: lead ? "This lead has no email address." : "Lead not found." }, { status: 400 });
+  }
 
   // Automatic step: mint a sequential quote number the first time it's sent.
-  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : (lead.quoteNumber || formatDocNumber("GX-Q", await getNextSequence("quote")));
+  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : formatDocNumber("GX-Q", await getNextSequence("quote")));
 
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(
@@ -91,8 +94,8 @@ export async function POST(req: NextRequest) {
         </tr>`;
 
   // Public, HMAC-signed link to review and digitally sign the quote online
-  const signUrl = buildQuoteSignUrl(body.id);
-  const acceptUrl = buildQuoteResponseUrl(body.id, "accept");
+  const signUrl = buildQuoteSignUrl(reference);
+  const acceptUrl = buildQuoteResponseUrl(reference, "accept");
 
   const html = `
     <p style="margin:0 0 24px;font-size:15px;color:#334155;">Hi ${esc(lead.name?.split(" ")[0] || "there")},</p>
@@ -111,7 +114,7 @@ export async function POST(req: NextRequest) {
           <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">Review &amp; Sign Quote</a>
         </td>
         <td>
-          <a href="${siteBaseUrl()}/api/quote/pdf/${body.id}?token=${signQuoteToken(body.id)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">Download PDF</a>
+          <a href="${siteBaseUrl()}/api/quote/pdf/${reference}?token=${signQuoteToken(reference)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">Download PDF</a>
         </td>
       </tr>
     </table>
@@ -164,18 +167,19 @@ export async function POST(req: NextRequest) {
       fromEmail: FROM_EMAIL,
       replyTo: REPLY_TO,
       subject: `Your Groutix Quotation ${quoteNumber} — AUD $${total.toFixed(2)}`,
-      html: wrapEmailHtml(html + quoteTrackingPixel(body.id), `Your Groutix quotation ${quoteNumber} is ready.`, logoUrl),
+      html: wrapEmailHtml(html + quoteTrackingPixel(reference), `Your Groutix quotation ${quoteNumber} is ready.`, logoUrl),
       attachments: attachments.length ? attachments : undefined,
     });
   } catch (err) {
     console.error("quote send failed:", err);
+    await releaseCustomerQuoteSend(reference);
     return NextResponse.json({ error: "Could not send the quote email." }, { status: 502 });
   }
 
   // Automatic steps: record the send, set status, and start the follow-up clock.
   const now = new Date();
   const followUpNext = new Date(now.getTime() + FOLLOWUP_DAYS * 86400000).toISOString();
-  await updateSubmission(body.id, {
+  await updateSubmission(reference, {
     status: "Quote Sent",
     quoteNumber,
     quoteAmount: total,
@@ -184,7 +188,7 @@ export async function POST(req: NextRequest) {
     followUpStage: 0,
     followUpNext,
   });
-  await appendActivity(body.id, {
+  await appendActivity(reference, {
     time: now.toISOString(),
     actor,
     action: "Quote emailed",
@@ -195,7 +199,7 @@ export async function POST(req: NextRequest) {
   // (identical to email) so they can open and accept the quote directly on their phone.
   if (lead.phone) {
     const firstName = (lead.name || "there").trim().split(/\s+/)[0];
-    const quoteUrl = buildQuoteSignUrl(body.id);
+    const quoteUrl = buildQuoteSignUrl(reference);
     await sendSms({
       to: lead.phone,
       body: `Groutix: Hi ${firstName}, your quote ${quoteNumber} ($${total.toFixed(2)}) is ready. View & accept your quote here: ${quoteUrl}`,
@@ -203,4 +207,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, quoteNumber, total });
+  } finally {
+    await releaseCustomerQuoteSend(reference);
+  }
 }

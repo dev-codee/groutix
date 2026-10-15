@@ -1,5 +1,7 @@
 "use client";
 
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+
 import { useState } from "react";
 import {
   Phone, Mail, MapPin, MessageSquare, Send,
@@ -93,7 +95,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
+    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.jobAt ? "job" : "inspection") / 60)}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();

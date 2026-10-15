@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 const SAVE_TIMEOUT_MESSAGE = "Saving took too long. Your edits are still in this form. Check the quote after refreshing before retrying, as the server may have saved it.";
 
-export function QuoteSaveButton({ onSave, onError, isTechnician = false }: {
+export function QuoteSaveButton({ onSave, onError, isTechnician = false, label }: {
   onSave: () => Promise<void>;
   onError: (message: string) => void;
   isTechnician?: boolean;
+  label?: string;
 }) {
   const [saving, setSaving] = useState(false);
   const pending = useRef(false);
@@ -40,6 +41,6 @@ export function QuoteSaveButton({ onSave, onError, isTechnician = false }: {
 
   return <button type="button" onClick={save} disabled={saving} aria-busy={saving}
     className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 disabled:opacity-50 disabled:cursor-wait">
-    {saving ? "Saving…" : isTechnician ? "Save Scope" : "Save Quote"}
+    {saving ? "Saving…" : label || (isTechnician ? "Save Scope" : "Save Quote")}
   </button>;
 }

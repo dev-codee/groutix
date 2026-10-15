@@ -1,5 +1,6 @@
+import { getQuoteSubmission as getSubmission, quoteLeadId } from "@/lib/customerQuotes";
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission } from "@/lib/submissions";
+
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
 import { getMatchedQuoteItemsForLead } from "@/lib/serviceMatching";
@@ -13,7 +14,9 @@ type Ctx = { params: Promise<{ id: string }> };
 // been minted, otherwise labels the document DRAFT (no number is consumed).
 export async function GET(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const lead = await getSubmission(id);
+  const reference = req.nextUrl.searchParams.get("quoteId") || id;
+  if (quoteLeadId(reference) !== id) return NextResponse.json({ error: "Quote not found." }, { status: 404 });
+  const lead = await getSubmission(reference, true);
   if (!lead) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const sp = req.nextUrl.searchParams;
@@ -35,7 +38,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     lead.quoteAmount
   );
 
-  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : (lead.quoteNumber || "DRAFT");
+  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : "DRAFT");
   const jobDescription =
     sp.get("scope") ||
     lead.quoteScope ||

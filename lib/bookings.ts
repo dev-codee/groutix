@@ -1,7 +1,7 @@
 import { explainOutsideRules } from "./bookingRules";
 import { staffBookingRules } from "./staffBookingRules";
 import { bookingSegments, type BookingSegment } from "./bookingSpan";
-import { appointmentDurationMinutes } from "./bookingDuration";
+import { appointmentDurationMinutes, savedBookingMinutes } from "./bookingDuration";
 // Assigned staff cannot overlap across inspections and jobs.
 
 import { ObjectId, type Collection, type Filter } from "mongodb";
@@ -123,7 +123,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }
       const reservationId = randomUUID();
-      const document: BookingDoc = { ...input, ...assignment, workSegments: input.endAt ? segments : undefined, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+      const document: BookingDoc = { ...input, ...assignment, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
         date, time, reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);
@@ -243,7 +243,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         const savedEnd = type === "job" ? s.jobEndAt : s.inspectionEndAt;
         const endAt = lock?.endAt && (!savedEnd || lock.endAt > savedEnd) ? lock.endAt : savedEnd;
         const storedSegments = endAt === lock?.endAt && lock?.workSegments?.length ? lock.workSegments : type === "job" ? s.jobWorkSegments : s.inspectionWorkSegments;
-        const segments = endAt ? (storedSegments?.length ? storedSegments : bookingSegments(type, `${date}T${time}`, endAt, rules)) : [{ date, time }];
+        const segments = storedSegments?.length ? storedSegments : endAt ? bookingSegments(type, `${date}T${time}`, endAt, rules) : [{ date, time, scheduledMinutes: savedBookingMinutes(lock || {}) }];
         for (const segment of segments) {
           if (segment.date < from || segment.date > to) continue;
           out.push({ ...segment, endAt, type, leadId: id, ...info.get(id)!, durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { inspectorId: lock.inspectorId ?? s.inspectorId, assigned: lock.assigned ?? s.assigned, inspectorUsername: lock.inspectorUsername ?? s.inspectorUsername, technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
@@ -266,7 +266,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
       const i = info.get(b.leadId);
       // Lock held by a lead that's since been lost/cancelled → no longer a real appointment.
       if (i?.status === "Lost" || i?.status === "Cancelled") continue;
-      const segments = b.endAt ? (b.workSegments?.length ? b.workSegments : bookingSegments(b.type, `${b.date}T${b.time.slice(0, 5)}`, b.endAt, rules)) : [{ date: b.date, time: b.time.slice(0, 5) }];
+      const segments = b.workSegments?.length ? b.workSegments : b.endAt ? bookingSegments(b.type, `${b.date}T${b.time.slice(0, 5)}`, b.endAt, rules) : [{ date: b.date, time: b.time.slice(0, 5), scheduledMinutes: savedBookingMinutes(b) }];
       for (const segment of segments) {
         if (segment.date < from || segment.date > to) continue;
       out.push({

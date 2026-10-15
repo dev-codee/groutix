@@ -24,7 +24,7 @@ test("first quote open is recorded once and unsent drafts stay untracked", async
   let lead = { id: "lead-1", quoteNumber: "QT-1", quoteSentAt: "2026-10-10T11:00:00Z" };
   const writes = [], activities = [];
   const { recordQuoteOpen, quoteTrackingPixel } = loadTs("lib/quoteOpenTracking.ts", {
-    "./submissions": { getSubmission: async () => lead, updateSubmission: async (_id, updates) => { writes.push(updates); lead = { ...lead, ...updates }; }, appendActivity: async (_id, entry) => activities.push(entry) },
+    "./customerQuotes": { getQuoteSubmission: async () => lead, updateQuoteSubmission: async (_id, updates) => { writes.push(updates); lead = { ...lead, ...updates }; }, appendQuoteActivity: async (_id, entry) => activities.push(entry) },
   });
   assert.match(quoteTrackingPixel("lead-1"), /\/api\/track\/quote\/lead-1\?token=/);
   await recordQuoteOpen("lead-1");

@@ -1,5 +1,6 @@
+import { getQuoteSubmission as getSubmission } from "@/lib/customerQuotes";
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission, getNextSequence, formatDocNumber } from "@/lib/submissions";
+import { getNextSequence, formatDocNumber } from "@/lib/submissions";
 import { verifyQuoteToken } from "@/lib/quoteToken";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const lead = await getSubmission(id);
   if (!lead) return new NextResponse("Lead not found", { status: 404 });
 
-  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : (lead.quoteNumber || formatDocNumber("GX-Q", await getNextSequence("quote")));
+  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : formatDocNumber("GX-Q", await getNextSequence("quote")));
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(
     items,

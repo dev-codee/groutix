@@ -1151,7 +1151,8 @@ export function ScheduleCalendarView({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-slate-50">
+    <div className="relative isolate flex flex-col h-full overflow-y-auto bg-slate-50">
+      <div className="sticky top-0 z-30 shrink-0 bg-white shadow-sm" data-testid="schedule-toolbar">
       {/* ── Top Bar ──────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-200/80 px-3 py-2 flex items-center gap-1.5 flex-wrap shrink-0">
         {header}
@@ -1219,7 +1220,6 @@ export function ScheduleCalendarView({
         </div>
       </div>
 
-      {loadError && <div role="alert" className="mx-3 mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{loadError} Use Refresh to try again.</div>}
       <div className="flex flex-wrap items-center gap-1.5 px-3 pt-2 pb-1 shrink-0">
         {visibleDates.map((date, dayIndex) => <div key={date} className="inline-flex items-center rounded-lg border bg-white" style={{ borderColor: planningDayColor(dayIndex) }}>
           <button type="button" onClick={() => setMapDate(date)} aria-pressed={activeMapDate === date} className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold cursor-pointer" style={{ color: planningDayColor(dayIndex), backgroundColor: activeMapDate === date ? `color-mix(in srgb, ${planningDayColor(dayIndex)} 10%, white)` : undefined }}><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(dayIndex) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</button>
@@ -1228,6 +1228,9 @@ export function ScheduleCalendarView({
         <span className="ml-auto text-[10px] text-slate-500">{dayCount} {dayCount === 1 ? "day" : "days"} shown</span>
         {showUnassigned && <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 cursor-pointer"><input type="checkbox" checked={showUnassignedOnMap} onChange={(event) => setShowUnassignedOnMap(event.target.checked)} />Show unassigned on map</label>}
       </div>
+      </div>
+
+      {loadError && <div role="alert" className="mx-3 mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{loadError} Use Refresh to try again.</div>}
 
       {/* ── Main Body ─────────────────────────────────────────────────────── */}
       <div className={`grid grid-cols-1 items-start px-3 pt-2 gap-2.5 shrink-0 ${showUnassigned ? "xl:grid-cols-[220px_minmax(280px,340px)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]"}`}>

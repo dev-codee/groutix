@@ -1,4 +1,4 @@
-import { inspectionConfirmationHtml } from "@/lib/inspectionConfirmation";
+import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
@@ -406,6 +406,7 @@ export async function POST(req: NextRequest) {
           type: "inspection",
           date: inspectionDate,
           time: inspectionTime,
+          scheduledMinutes: bookingRules.inspection.slotMinutes,
           zone: area.zone || "flexible",
           suburb: area.suburb || undefined,
           reference: jobNo,
@@ -416,7 +417,8 @@ export async function POST(req: NextRequest) {
           // new Date().toISOString() — on a UTC server that reinterprets the local
           // time as UTC and shifts the appointment by the Melbourne offset.
           const inspectionAt = `${inspectionDate}T${inspectionTime.slice(0, 5).padStart(5, "0")}`;
-          const saved = await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt });
+          const saved = await updateSubmission(submissionId, { status: "Inspection Booked", inspectionAt,
+            inspectionWorkSegments: [{ date: inspectionDate, time: inspectionTime.slice(0, 5), scheduledMinutes: bookingRules.inspection.slotMinutes }] });
           if (!saved) throw new Error("Could not save inspection booking.");
           inspectionSelfBooked = true;
           // Hand it to the inspection team, or it never reaches their dashboard.
@@ -532,7 +534,7 @@ export async function POST(req: NextRequest) {
       <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#1e293b;">
         We've received your request and our team will review your details shortly.
       </p>
-      ${inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked)}
+      ${inspectionConfirmationHtml(inspectionDate, inspectionTime, inspectionSelfBooked, bookingRules.inspection.slotMinutes)}
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#1e293b;">
         If you have any questions, simply reply to this email or call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">${esc(CONTACT_PHONE)}</a>.
       </p>
@@ -575,7 +577,7 @@ export async function POST(req: NextRequest) {
       const bookingLine = smsBookingUrl
         ? `\n\nBook or change your free inspection time:\n${smsBookingUrl}`
         : "";
-      const smsBody = `Thanks ${firstName || "there"}!\n\nWe've received your enquiry and any preferred booking date/time you selected. Please note that your selected time is a booking preference and is subject to availability.\nIf we need to make any changes, our team will contact you. Otherwise, we'll proceed with your requested time.${bookingLine}\n\nGroutix\nStay Sealed. Stay Smiling.`;
+      const smsBody = `Thanks ${firstName || "there"}!\n\nWe've received your enquiry. ${inspectionConfirmationSms(inspectionDate, inspectionTime, inspectionSelfBooked, bookingRules.inspection.slotMinutes)}${bookingLine}\n\nGroutix\nStay Sealed. Stay Smiling.`;
       await sendSms({ to: phone, body: smsBody });
     }
   };

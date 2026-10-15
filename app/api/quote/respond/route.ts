@@ -1,5 +1,6 @@
+import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity } from "@/lib/customerQuotes";
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
+
 import { verifyQuoteToken } from "@/lib/quoteToken";
 import { buildBookingUrl } from "@/lib/bookingToken";
 import { QUOTE_STATUSES } from "@/lib/pipeline";

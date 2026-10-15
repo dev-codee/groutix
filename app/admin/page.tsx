@@ -8,6 +8,7 @@ import { jobNumberChanges } from "@/lib/jobNumberChanges";
 import { saveLeadChanges } from "@/lib/saveLeadChanges";
 import { QuoteLeadDetailsForm } from "@/components/admin/QuoteLeadDetailsForm";
 import { quoteLeadDetails } from "@/lib/quoteLeadDetails";
+import type { CustomerQuote } from "@/lib/customerQuotes";
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
 import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
 import { reorderItems } from "@/lib/reorderItems";
@@ -437,6 +438,11 @@ export default function CrmDashboardPage() {
   const [quoteFullscreen, setQuoteFullscreen] = useState(true);
   const [quoteViewTab, setQuoteViewTab] = useState<"split" | "form" | "preview">("split");
   const [activeQuoteLead, setActiveQuoteLead] = useState<Lead | null>(null);
+  const [customerQuotes, setCustomerQuotes] = useState<CustomerQuote[]>([]);
+  const [activeCustomerQuote, setActiveCustomerQuote] = useState<CustomerQuote | null>(null);
+  const [customerQuoteTitle, setCustomerQuoteTitle] = useState("");
+  const [customerQuotesLoading, setCustomerQuotesLoading] = useState(false);
+  const [customerQuoteBusy, setCustomerQuoteBusy] = useState(false);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const quoteDragFrom = useRef<number | null>(null);
   const [quoteDropIndex, setQuoteDropIndex] = useState<number | null>(null);
@@ -1534,6 +1540,30 @@ export default function CrmDashboardPage() {
   }
 
   async function updateLeadField(id: string, updates: Partial<Lead>, onError?: (message: string) => void) {
+    if (quoteModalOpen && activeQuoteLead?.id === id && Object.keys(updates).some(key => key.startsWith("quote"))) {
+      if (!activeCustomerQuote || customerQuotesLoading) { onError?.("Please wait for the customer's quotes to load."); return false; }
+      if (activeCustomerQuote.state !== "draft") return true; // Sent versions are immutable; preview/resend uses the saved version.
+      try {
+        const response = await fetch(`/api/admin/customer-quotes/${id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quoteId: activeCustomerQuote._id, title: customerQuoteTitle, updates }),
+        });
+        const data = await response.json();
+        if (!response.ok) { onError?.(data.error || "Could not save quote."); return false; }
+        const updated = { ...activeCustomerQuote, title: customerQuoteTitle, values: { ...activeCustomerQuote.values, ...updates } } as CustomerQuote;
+        setActiveCustomerQuote(updated);
+        setCustomerQuotes(current => current.map(quote => quote._id === updated._id ? updated : quote));
+        setLeads(current => current.map(lead => lead.id === id ? { ...lead, hasCustomerQuotes: true } : lead));
+        if (updates.status === "Quote Sent" || updates.status === "Negotiation") {
+          const result = await fetch(`/api/admin/customer-quotes/${id}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quoteId: activeCustomerQuote._id, markSent: updates.status === "Quote Sent", markNegotiation: updates.status === "Negotiation", updates: {} }),
+          });
+          if (!result.ok) return false;
+        }
+        return true;
+      } catch { onError?.("Could not save quote. Please try again."); return false; }
+    }
     const targetLead = leads.find((l) => l.id === id);
     if (targetLead && typeof updates.status === "string" && updates.status !== targetLead.status) {
       const isTerminal = /^(lost|cancelled|closed|no response)/i.test(updates.status);
@@ -1649,6 +1679,62 @@ export default function CrmDashboardPage() {
   }
 
   // Quote Builder Logic
+  function selectCustomerQuote(lead: Lead, quote: CustomerQuote) {
+    openQuoteModal({ ...lead, ...quote.values, id: lead.id } as Lead);
+    if (quote.values.quoteItems) setQuoteItems(quote.values.quoteItems as QuoteItem[]);
+    setActiveCustomerQuote(quote);
+    setCustomerQuoteTitle(quote.title);
+  }
+
+  useEffect(() => {
+    if (!quoteModalOpen || !activeQuoteLead) return;
+    let cancelled = false;
+    const lead = activeQuoteLead;
+    setCustomerQuotesLoading(true);
+    setActiveCustomerQuote(null);
+    setCustomerQuotes([]);
+    fetch(`/api/admin/customer-quotes/${lead.id}`, { cache: "no-store" })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load quotes."); return data; })
+      .then(data => {
+        if (cancelled) return;
+        const quotes: CustomerQuote[] = data.quotes;
+        setCustomerQuotes(quotes);
+        const chosen = quotes.filter(quote => quote.state === "draft").at(-1) || quotes.at(-1);
+        if (chosen) selectCustomerQuote(lead, chosen);
+      })
+      .catch(error => { if (!cancelled) setQuoteSaveError(error.message); })
+      .finally(() => { if (!cancelled) setCustomerQuotesLoading(false); });
+    return () => { cancelled = true; };
+    // The customer ID controls loading; switching versions uses the loaded list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteModalOpen, activeQuoteLead?.id]);
+
+  async function changeCustomerQuote(reference?: string, duplicate = false) {
+    if (!activeQuoteLead || !activeCustomerQuote || customerQuoteBusy || customerQuotesLoading) return;
+    setCustomerQuoteBusy(true);
+    setQuoteSaveError("");
+    try {
+      if (activeCustomerQuote.state === "draft") {
+        const saved = await updateLeadField(activeQuoteLead.id, { ...quoteLeadDetails(activeQuoteLead), quoteScope, quoteItems, quoteTaxMode, quoteTaxRate, quoteTerms, quoteAmount: quoteTotals().total }, setQuoteSaveError);
+        if (!saved) return;
+      }
+      if (reference) {
+        const chosen = customerQuotes.find(quote => quote._id === reference);
+        if (chosen) selectCustomerQuote(activeQuoteLead, chosen);
+      } else {
+        const response = await fetch(`/api/admin/customer-quotes/${activeQuoteLead.id}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(duplicate ? { copyId: activeCustomerQuote._id } : {}),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not create quote.");
+        setCustomerQuotes(current => [...current, data.quote]);
+        selectCustomerQuote(activeQuoteLead, data.quote);
+      }
+    } catch (error) { setQuoteSaveError(error instanceof Error ? error.message : "Could not switch quotes."); }
+    finally { setCustomerQuoteBusy(false); }
+  }
+
   function openQuoteModal(lead: Lead) {
     quoteSaveSession.current += 1;
     quoteSaveInFlight.current = null;
@@ -2046,7 +2132,7 @@ export default function CrmDashboardPage() {
       const res = await fetch("/api/admin/quote/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: activeQuoteLead.id }),
+        body: JSON.stringify({ id: activeQuoteLead.id, quoteId: activeCustomerQuote?._id }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return alert(data.error || "Could not send the quote.");
@@ -2080,7 +2166,7 @@ export default function CrmDashboardPage() {
     const notesParam = encodeURIComponent(quoteTerms || "");
     const scopeParam = encodeURIComponent(quoteScope || "");
     const typeParam = isTechnician ? "&type=scope" : "";
-    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?items=${itemsParam}&notes=${notesParam}&scope=${scopeParam}${typeParam}&t=${Date.now()}`, "_blank");
+    window.open(`/api/admin/quote/pdf/${activeQuoteLead.id}?quoteId=${encodeURIComponent(activeCustomerQuote?._id || "")}&items=${itemsParam}&notes=${notesParam}&scope=${scopeParam}${typeParam}&t=${Date.now()}`, "_blank");
   }
 
   function handleEmailQuote() {
@@ -3766,7 +3852,7 @@ export default function CrmDashboardPage() {
   // Derived lists backing the Quotes and Jobs views, so we can both count them
   // and paginate the same array.
   const quoteLeads = useMemo(
-    () => filteredLeads.filter((l) => l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
+    () => filteredLeads.filter((l) => l.hasCustomerQuotes || l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
     [filteredLeads]
   );
   const jobLeads = useMemo(
@@ -4330,7 +4416,7 @@ export default function CrmDashboardPage() {
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
           {/* Top Header Bar */}
-          <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-20 shadow-2xs">
+          <header className="h-16 shrink-0 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-20 shadow-2xs">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
@@ -4609,7 +4695,7 @@ export default function CrmDashboardPage() {
             {currentView === "schedule" && (
               <div className="space-y-2">
                 {/* View Mode Tabs: Upcoming Schedule List vs Day Calendar & Route */}
-                {scheduleTab === "upcoming" && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">{scheduleHeader}</div>}
+                {scheduleTab === "upcoming" && <div className="sticky top-16 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">{scheduleHeader}</div>}
 
                 {/* Tab 1: Old Schedule View (Upcoming bookings list grouped by date) */}
                 {scheduleTab === "upcoming" && (
@@ -4796,13 +4882,35 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-2 shrink-0">
+                <label className="text-xs font-bold text-slate-700">
+                  Customer quotes
+                  <select aria-label="Customer quotes" value={activeCustomerQuote?._id || ""}
+                    disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote}
+                    onChange={event => void changeCustomerQuote(event.target.value)}
+                    className="ml-2 max-w-72 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-normal">
+                    {!activeCustomerQuote && <option value="">{customerQuotesLoading ? "Loading quotes…" : "Select quote"}</option>}
+                    {customerQuotes.map(quote => <option key={quote._id} value={quote._id}>{quote.title} · {quote.values.quoteNumber || "Draft"} · {quote.state}</option>)}
+                  </select>
+                </label>
+                <input aria-label="Quote title" value={customerQuoteTitle} maxLength={120}
+                  disabled={customerQuotesLoading || customerQuoteBusy || activeCustomerQuote?.state !== "draft"}
+                  onChange={event => setCustomerQuoteTitle(event.target.value)} placeholder="Quote title"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs disabled:bg-slate-100" />
+                <button type="button" disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote}
+                  onClick={() => void changeCustomerQuote()} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">+ New quote</button>
+                <button type="button" disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote}
+                  onClick={() => void changeCustomerQuote(undefined, true)} className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 disabled:opacity-50">Duplicate quote</button>
+                {activeCustomerQuote && activeCustomerQuote.state !== "draft" && <span className="text-xs text-slate-600">This quote is {activeCustomerQuote.state}. Duplicate it to make changes.</span>}
+              </div>
+
               <div className={`grid gap-6 text-xs p-1 flex-1 min-h-0 overflow-hidden ${quoteViewTab === "split"
                 ? "grid-cols-1 md:grid-cols-2"
                 : "grid-cols-1"
                 }`}>
                 {/* Left Column: Quote Form Controls */}
                 {(quoteViewTab === "split" || quoteViewTab === "form") && (
-                  <div className="space-y-4 min-w-0 pr-1 h-full overflow-y-auto">
+                  <div inert={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote || activeCustomerQuote.state !== "draft"} className="space-y-4 min-w-0 pr-1 h-full overflow-y-auto">
                     {/* Customer Request & Selected Services Details Card */}
                     <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -5580,7 +5688,7 @@ export default function CrmDashboardPage() {
                         <div>info@groutix.com</div>
                         <div className="pt-2 font-bold text-base text-[#d4af37]">Quote</div>
                         <div className="font-bold text-slate-900">ACN: 687 415 005</div>
-                        <div className="pt-1.5 text-slate-900">Quote # {activeQuoteLead.jobNo || `JOBNO-${activeQuoteLead.id.slice(-6).toUpperCase()}`}</div>
+                        <div className="pt-1.5 text-slate-900">Quote # {activeCustomerQuote?.values.quoteNumber || activeQuoteLead.quoteNumber || "DRAFT"}</div>
                         <div className="text-slate-600">{new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
                       </div>
                     </div>
@@ -5715,7 +5823,7 @@ export default function CrmDashboardPage() {
               </div>
 
               {/* Bottom Actions Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 shrink-0 bg-white z-10">
+              <div inert={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote} className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 shrink-0 bg-white z-10">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -5770,6 +5878,7 @@ export default function CrmDashboardPage() {
                     key={quoteSaveSession.current}
                     onSave={handleSaveQuote}
                     isTechnician={isTechnician}
+                    label={activeCustomerQuote?.state === "draft" ? (isTechnician ? "Save Scope" : "Save draft") : "Close quote"}
                     onError={(message) => {
                       quoteSaveSession.current += 1;
                       quoteSaveInFlight.current = null;

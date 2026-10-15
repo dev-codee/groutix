@@ -8,6 +8,7 @@ import { useBookingRules } from "@/lib/useBookingRules";
 import { staffBookingRules } from "@/lib/staffBookingRules";
 import { bookingEndForDuration, bookingSegments } from "@/lib/bookingSpan";
 import { todayAU } from "@/lib/scheduling";
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
 
 export function EditBookingModal({ lead, type, initialDate, initialTime, onClose, onSaved }: {
@@ -22,7 +23,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
   const rules = staffBookingRules(useBookingRules());
   const originalStart = (type === "job" ? lead.jobAt : lead.inspectionAt)?.slice(0, 16) || `${initialDate || todayAU()}T${initialTime || "09:00"}`;
   const originalEnd = (type === "job" ? lead.jobEndAt : lead.inspectionEndAt)?.slice(0, 16)
-    || bookingEndForDuration(type, originalStart, rules[type].slotMinutes, rules);
+    || bookingEndForDuration(type, originalStart, savedLeadBookingMinutes(lead, type), rules);
   const [date, setDate] = useState(originalStart.slice(0, 10));
   const [time, setTime] = useState(originalStart.slice(11, 16));
   const [endAt, setEndAt] = useState(originalEnd);

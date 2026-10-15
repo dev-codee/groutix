@@ -5,7 +5,7 @@ import { staffBookingRules } from "@/lib/staffBookingRules";
 import type { DayAppointment } from "@/lib/bookings";
 import { bookingAvailability } from "@/lib/bookingCapacity";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
-import { appointmentDurationMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes, savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { useState, useMemo, useCallback, useEffect, type DragEvent, type PointerEvent } from "react";
 import { dispatchDates, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } from "@/lib/dispatchTimeline";
@@ -260,8 +260,8 @@ export function DispatchView({
         if (!start?.includes("T")) continue;
         const storedSegments = type === "job" ? lead.jobWorkSegments : lead.inspectionWorkSegments;
         let segments;
-        try { segments = end ? storedSegments?.length ? storedSegments : bookingSegments(type, start.slice(0, 16), end, bookingRules) : [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
-        catch { segments = [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: bookingRules[type].slotMinutes }]; }
+        try { segments = storedSegments?.length ? storedSegments : end ? bookingSegments(type, start.slice(0, 16), end, bookingRules) : [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: savedLeadBookingMinutes(lead, type) }]; }
+        catch { segments = [{ date: start.slice(0, 10), time: start.slice(11, 16), scheduledMinutes: savedLeadBookingMinutes(lead, type) }]; }
         for (const segment of segments) {
           if (!map.has(segment.date)) continue;
           const startMins = parseMinutes(segment.time), durationMins = segment.scheduledMinutes, endMins = startMins + durationMins;

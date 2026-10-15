@@ -26,7 +26,7 @@ export function QuotesView() {
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <h2 className="text-sm font-bold text-slate-900 tracking-tight">Active &amp; Prepared Quotations</h2>
-          <div className="text-xs text-slate-400 font-medium">{quoteLeads.length} Quotes in System</div>
+          <div className="text-xs text-slate-400 font-medium">{quoteLeads.length} customers with quotes · Open a customer to manage their drafts and sent quotes</div>
         </div>
         <div className="relative w-full sm:w-64 md:w-72">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

@@ -22,3 +22,18 @@ export function overlapsSlot(appointment: { type: BookingType; time: string; dur
   const minutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
   return minutes(appointment.time) < minutes(time) + duration && minutes(appointment.time) + appointmentDurationMinutes(appointment, rules) > minutes(time);
 }
+
+/** Saved appointments must never inherit a subsequently changed slot setting. */
+export function savedBookingMinutes(booking: { scheduledMinutes?: number; durationMinutes?: number }): number {
+  if (Number.isInteger(booking.scheduledMinutes) && booking.scheduledMinutes! > 0) return booking.scheduledMinutes!;
+  if (Number.isInteger(booking.durationMinutes) && booking.durationMinutes! > 0) return booking.durationMinutes!;
+  return 60; // Historical bookings without a saved window used one-hour slots.
+}
+
+export function savedLeadBookingMinutes(lead: {
+  inspectionWorkSegments?: { scheduledMinutes: number }[];
+  jobWorkSegments?: { scheduledMinutes: number }[];
+}, type: BookingType): number {
+  const segments = type === "inspection" ? lead.inspectionWorkSegments : lead.jobWorkSegments;
+  return segments?.reduce((sum, segment) => sum + segment.scheduledMinutes, 0) || 60;
+}

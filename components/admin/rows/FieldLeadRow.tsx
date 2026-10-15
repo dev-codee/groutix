@@ -1,5 +1,7 @@
 "use client";
 
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+
 import {
   Phone, MapPin, Wrench, Camera, Navigation,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
@@ -36,7 +38,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.inspectionAt || l.jobAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
+    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.inspectionAt ? "inspection" : "job") / 60)}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();

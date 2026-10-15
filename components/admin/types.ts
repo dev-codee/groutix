@@ -119,6 +119,7 @@ export interface Lead {
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
   quoteNumber?: string;
+  hasCustomerQuotes?: boolean;
   quoteSentAt?: string;
   quoteOpenedAt?: string;
   quoteAcceptedAt?: string;

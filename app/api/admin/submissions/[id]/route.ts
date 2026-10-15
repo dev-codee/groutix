@@ -1,6 +1,7 @@
 import { staffBookingRules } from "@/lib/staffBookingRules";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { getBookingRules } from "@/lib/bookingRulesServer";
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 import { NextRequest, NextResponse } from "next/server";
 import { isMongoConfigured } from "@/lib/mongodb";
 import {
@@ -190,7 +191,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
       const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
-      const result = await createBooking({ leadId: id, type, date, time, endAt, zone: area.zone,
+      const scheduledMinutes = before[field] ? savedLeadBookingMinutes(before, type) : (await getBookingRules())[type].slotMinutes;
+      if (!endAt) body[segmentsField] = [{ date, time, scheduledMinutes }];
+      const result = await createBooking({ leadId: id, type, date, time, endAt, scheduledMinutes, zone: area.zone,
         ...(type === "job" ? {
           technicianId: body.technicianId ?? before.technicianId,
           technician: body.technician ?? before.technician,

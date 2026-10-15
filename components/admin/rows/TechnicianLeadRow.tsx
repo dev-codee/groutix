@@ -1,5 +1,7 @@
 "use client";
 
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+
 import {
   Phone, MapPin, MessageSquare,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
@@ -43,7 +45,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
+    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.jobAt ? "job" : "inspection") / 60)}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();
@@ -231,7 +233,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
+                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
                 </div>
               )}
             </div>
@@ -368,7 +370,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </div>
               {l.jobAt && (
                 <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
+                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
                 </div>
               )}
             </div>

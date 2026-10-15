@@ -216,9 +216,8 @@ export function formatApptTimeRange(
   if (!start) return "";
   const m = NAIVE_DT_RE.exec(str);
   if (!m) return start;
-  const endH = (+m[4] + durationHours) % 24;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const endValue = `${m[1]}-${m[2]}-${m[3]}T${pad(endH)}:${m[5]}`;
+  const endMinutes = (+m[4] * 60 + +m[5] + Math.round(durationHours * 60)) % (24 * 60);
+  const endValue = `${m[1]}-${m[2]}-${m[3]}T${fromMinutes(endMinutes)}`;
   const end = formatApptTime(endValue);
   return end ? `${start} – ${end}` : start;
 }

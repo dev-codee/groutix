@@ -26,14 +26,14 @@ function esc(v: string) {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function followUpHtml(id: string, name: string, stage: number) {
+function followUpHtml(id: string, name: string, stage: number, quoteReference = id) {
   const nudges = [
     "Just checking you received the quotation we sent — happy to answer any questions.",
     "Following up on your Groutix quote. Would you like to lock in a booking date? You can book online at a time that suits you.",
     "Last check-in on your quotation before we close the file — let us know if you'd still like to go ahead.",
   ];
-  const acceptUrl = buildQuoteResponseUrl(id, "accept");
-  const declineUrl = buildQuoteResponseUrl(id, "decline");
+  const acceptUrl = buildQuoteResponseUrl(quoteReference, "accept");
+  const declineUrl = buildQuoteResponseUrl(quoteReference, "decline");
   const jobBookingUrl = buildBookingUrl(id, "job");
   return wrapEmailHtml(
     `
@@ -112,7 +112,7 @@ async function runSweep(req: NextRequest) {
           fromEmail: FROM_EMAIL,
           replyTo: REPLY_TO,
           subject: `Following up on your Groutix quote`,
-          html: followUpHtml(lead.id, lead.name || "", stage),
+          html: followUpHtml(lead.id, lead.name || "", stage, lead.quoteReference),
         });
       } catch (err) {
         console.error("follow-up email failed:", err);

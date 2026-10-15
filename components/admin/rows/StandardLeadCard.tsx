@@ -1,5 +1,7 @@
 "use client";
 
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
 import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
 
@@ -375,7 +377,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               })()}
               {l.inspectionAt && (
                 <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
-                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt)}
+                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt, savedLeadBookingMinutes(l, "inspection") / 60)}
                 </div>
               )}
             </div>
@@ -587,7 +589,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Job booked time range */}
           {l.jobAt && (
             <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
-              📅 {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt)}
+              📅 {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
             </div>
           )}
 

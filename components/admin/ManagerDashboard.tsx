@@ -1,7 +1,7 @@
 "use client";
 
 import { staffBookingRules } from "@/lib/staffBookingRules";
-import { appointmentDurationMinutes } from "@/lib/bookingDuration";
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import {
@@ -488,7 +488,7 @@ export function ManagerDashboard() {
               const end = endAt && _dayKey(endAt) === dateKey ? _apptMinutes(endAt) : null;
               const duration = end !== null && end > start
                 ? end - start
-                : appointmentDurationMinutes({ type: member.isInspector ? "inspection" : "job" }, bookingRules);
+                : savedLeadBookingMinutes(lead, member.isInspector ? "inspection" : "job");
               return [{ start, end: start + duration }];
             })();
 

@@ -1,6 +1,7 @@
+import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId } from "@/lib/customerQuotes";
 import { recordQuoteOpen } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
+
 import { verifyQuoteToken } from "@/lib/quoteToken";
 import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Quote not found." }, { status: 404 });
   }
 
-  const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : (lead.quoteNumber || `Job No-${lead.id.slice(-6).toUpperCase()}`);
+  const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : `Job No-${lead.id.slice(-6).toUpperCase()}`);
   const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
   const { subtotal, gst, total } = computeQuoteTotals(
     items,
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
     (items[0]?.scope || items[0]?.description || "");
 
   await recordQuoteOpen(id).catch(error => console.error("Quote open tracking failed:", error));
-  const bookingUrl = buildBookingUrl(id, "job");
+  const bookingUrl = buildBookingUrl(quoteLeadId(id), "job");
 
   return NextResponse.json({
     ok: true,
@@ -96,8 +97,10 @@ export async function POST(req: NextRequest) {
     if (!lead) {
       return NextResponse.json({ error: "Quotation record not found." }, { status: 404 });
     }
+    if (lead.quoteSignedAt) return NextResponse.json({ ok: true, quoteNumber: lead.quoteNumber, bookingUrl: buildBookingUrl(quoteLeadId(id), "job") });
+    if (lead.quoteDeclinedAt) return NextResponse.json({ error: "This quotation was declined. Please contact us for a new quote." }, { status: 409 });
 
-    const quoteNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : (lead.quoteNumber || `Job No-${lead.id.slice(-6).toUpperCase()}`);
+    const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : `Job No-${lead.id.slice(-6).toUpperCase()}`);
     const items = Array.isArray(lead.quoteItems) ? lead.quoteItems : [];
     const { subtotal, gst, total } = computeQuoteTotals(
       items,
@@ -182,7 +185,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const bookingUrl = buildBookingUrl(id, "job");
+    const bookingUrl = buildBookingUrl(quoteLeadId(id), "job");
 
     // 5. Send confirmation email to Customer
     if (lead.email) {
@@ -223,7 +226,7 @@ export async function POST(req: NextRequest) {
       await sendSms({
         to: lead.phone,
         // Multipart SMS keeps the signed booking link and contact footer intact.
-        body: `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Book your job time: ${buildBookingSmsUrl(id, "job")}`,
+        body: `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Book your job time: ${buildBookingSmsUrl(quoteLeadId(id), "job")}`,
       }).catch((e) => console.error("Customer sign SMS failed:", e));
     }
 

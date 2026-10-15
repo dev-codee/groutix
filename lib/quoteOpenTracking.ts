@@ -1,4 +1,4 @@
-import { getSubmission, updateSubmission, appendActivity } from "./submissions";
+import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity } from "./customerQuotes";
 import { quoteDeliveryTimes } from "./quoteDelivery";
 import { signQuoteToken, siteBaseUrl } from "./quoteToken";
 

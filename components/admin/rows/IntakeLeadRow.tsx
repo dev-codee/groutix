@@ -1,5 +1,7 @@
 "use client";
 
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
 import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
 
@@ -61,7 +63,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.inspectionAt || l.jobAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v)}`;
+    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.inspectionAt ? "inspection" : "job") / 60)}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();
@@ -416,7 +418,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt)}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
                 </div>
               )}
             </div>
@@ -499,7 +501,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </div>
               {l.jobAt && (
                 <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt)}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
                 </div>
               )}
             </div>

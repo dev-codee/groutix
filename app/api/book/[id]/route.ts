@@ -1,5 +1,5 @@
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
-import { appointmentDurationMinutes } from "@/lib/bookingDuration";
+import { appointmentDurationMinutes, savedLeadBookingMinutes } from "@/lib/bookingDuration";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { dayHours, toMinutes, weekdayOf } from "@/lib/bookingRules";
 import { NextRequest, NextResponse } from "next/server";
@@ -130,10 +130,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Could not load booking availability. Please try again." }, { status: 503 });
   }
   const sameZoneDates = new Set(appointments.filter((entry) => entry.zone === area.zone || area.inner).map((entry) => entry.date));
-  const durationMinutes = appointmentDurationMinutes({ type }, rules);
+  const durationMinutes = (type === "inspection" ? lead.inspectionAt : lead.jobAt) ? savedLeadBookingMinutes(lead, type) : appointmentDurationMinutes({ type }, rules);
   const days = shortlistDays(applyBookingCapacity(
     computeAvailability(area, new Map(), sameZoneDates, type, rules, zoneRules), appointments,
-    { leadId: id, type, durationMinutes, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername },
+    { leadId: id, type, scheduledMinutes: durationMinutes, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername },
     rules, technicians,
   ), { maxOptions: 14, maxDaysAhead: 35 });
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
@@ -202,7 +202,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
   const rules = await getBookingRules();
-  const durationMinutes = appointmentDurationMinutes({ type }, rules);
+  const durationMinutes = (type === "inspection" ? lead.inspectionAt : lead.jobAt) ? savedLeadBookingMinutes(lead, type) : appointmentDurationMinutes({ type }, rules);
   if (!isSlotOffered(area, date, time, type, rules, zoneRules)) {
     return NextResponse.json({ error: "That day/time isn't available. Please pick another." }, { status: 400 });
   }
@@ -230,6 +230,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await updateSubmission(id, { jobNo: reference });
   }
   const lock = await createBooking({
+    scheduledMinutes: durationMinutes,
     endAt,
     leadId: id,
     type,
@@ -263,7 +264,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await updateSubmission(id, {
       inspectionAt: whenIso,
       inspectionEndAt: endAt,
-      inspectionWorkSegments: endAt ? bookingSegments(type, whenIso, endAt, rules) : [],
+      inspectionWorkSegments: endAt ? bookingSegments(type, whenIso, endAt, rules) : [{ date, time, scheduledMinutes: durationMinutes }],
       status: "Inspection Booked",
       inspectionReminderSent: false,
     });
@@ -273,7 +274,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await updateSubmission(id, {
       jobAt: whenIso,
       jobEndAt: endAt,
-      jobWorkSegments: endAt ? bookingSegments(type, whenIso, endAt, rules) : [],
+      jobWorkSegments: endAt ? bookingSegments(type, whenIso, endAt, rules) : [{ date, time, scheduledMinutes: durationMinutes }],
       status: "Job Booked",
       jobReminderSent: false,
     });
