@@ -6,28 +6,38 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ComponentType, ReactNode } from "react";
-import { Check, Droplets, Grid2x2, Home, Phone, Users, Waves, Wrench, Zap } from "lucide-react";
+import type { ReactNode } from "react";
+import { Check, Home, Phone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useContact } from "@/components/SiteContentProvider";
+import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { faqJsonLd } from "@/lib/seo";
 import type { Review } from "@/lib/reviews";
 import {
-  BeforeAfter, FaqList, MobileCallBar, ReviewsMarquee, Section, SectionHead, ServiceHero, SuburbCheck,
+  BeforeAfter, FaqList, MobileCallBar, ReviewsMarquee, Section, SectionHead, ServiceHero,
   box, btnGhost, btnGold, btnNavy, cardText, cardTitle, h2, inlineLink, lead, wrap, eyebrow,
 } from "@/components/v2/ui";
 
 /* ───────────── Content (unchanged from the live page) ───────────── */
 const googleReviewsUrl = "https://www.google.com/maps/place/Groutix";
 
-const warningSigns: Array<{ Icon: ComponentType<{ className?: string }>; title: string; text: string }> = [
-  { Icon: Zap, title: "Cracked or Crumbling Grout", text: "Grout that is cracked or crumbles when you touch it" },
-  { Icon: Grid2x2, title: "Dark Grout After Cleaning", text: "Grout that stays dark even after cleaning" },
-  { Icon: Droplets, title: "Returning Mould", text: "Mould that comes back weeks after you scrub it" },
-  { Icon: Wrench, title: "Tired Silicone", text: "Silicone that has peeled, yellowed or turned soft" },
-  { Icon: Home, title: "Damp Patch Nearby", text: "A damp patch on a wall or ceiling near the bathroom" },
-  { Icon: Waves, title: "Pooling Water", text: "Water that pools on the shower floor after you turn it off" },
+// Image cards: the title and text are the live copy; image + link are added for the new layout.
+type ImgCard = { title: string; text: string; img: string; alt: string; href: string; link: string; half?: boolean };
+
+const warningSigns: ImgCard[] = [
+  { title: "Cracked or Crumbling Grout", text: "Grout that is cracked or crumbles when you touch it", img: "/img54.jpeg", alt: "Cracked, crumbling grout between shower floor tiles", href: "/epoxy-grout", link: "Epoxy grout repair" },
+  { title: "Dark Grout After Cleaning", text: "Grout that stays dark even after cleaning", img: "/img94.jpeg", alt: "Dark, stained grout lines on white shower tiles", href: "#epoxy-vs-cement", link: "Why cement grout stains" },
+  { title: "Returning Mould", text: "Mould that comes back weeks after you scrub it", img: "/img23.jpeg", alt: "Mould and staining in a shower corner", href: "/cracked-grout-or-a-leaking-shower", link: "Grout and silicone check" },
+  { title: "Tired Silicone", text: "Silicone that has peeled, yellowed or turned soft", img: "/img50.jpeg", alt: "Old silicone being replaced around a shower screen", href: "/silicone-recaulking", link: "Silicone and recaulking" },
+  { title: "Damp Patch Nearby", text: "A damp patch on a wall or ceiling near the bathroom", img: "/img58.jpeg", alt: "Damp patch and mould on a wall near a bathroom", href: "/leaking-shower-repair", link: "Leaking shower repair" },
+  { title: "Pooling Water", text: "Water that pools on the shower floor after you turn it off", img: "/img31.jpg", alt: "Stained mosaic shower base where water sits", href: "/shower-base-repair", link: "Shower base repair" },
+];
+
+const failCauses: ImgCard[] = [
+  { title: "Melbourne’s Weather", text: "Warm days and cold nights make tiles move slightly. Cement grout cannot flex with that movement for long. It cracks, and water gets in.", img: "/img21.jpeg", alt: "Melbourne home on a warm, sunny day", href: "#epoxy-vs-cement", link: "Why epoxy handles movement" },
+  { title: "Older Bathrooms", text: "Many homes in suburbs like Malvern, Toorak and Camberwell have bathrooms that are decades old.", img: "/img61.jpeg", alt: "Old wall tiles with failed, mouldy grout", href: "#old-bathrooms", link: "Regrouting an older bathroom", half: true },
+  { title: "Wet Area Standards", text: "Some were built before Australian Standard AS 3740 tightened the rules for wet area waterproofing. In those showers, the grout and silicone do more of the work than they should.", img: "/img41.jpeg", alt: "Shower wall with failed waterproofing and broken tiles", href: "/leaking-shower-repair", link: "When the membrane has failed" },
 ];
 
 const comparisonRows: Array<[string, string, string]> = [
@@ -82,17 +92,11 @@ const beforeAfterPhotos = [
 ];
 
 const relatedProblems = [
-  { label: "Leaking shower or damp walls", href: "/leaking-shower-repair", link: "Leaking Shower Repair" },
-  { label: "Peeling or mouldy silicone", href: "/silicone-recaulking", link: "Silicone and Recaulking" },
-  { label: "Balcony leaks", href: "/balcony-leak-repairs", link: "Balcony Leak Repairs and Regrouting" },
-  { label: "Bathrooms, kitchens, laundries", href: "/tile-regrouting", link: "Tile Regrouting" },
+  { label: "Leaking shower or damp walls", href: "/leaking-shower-repair", link: "Leaking Shower Repair", img: "/img37.jpeg", alt: "Water damage on a wall next to a leaking shower" },
+  { label: "Peeling or mouldy silicone", href: "/silicone-recaulking", link: "Silicone and Recaulking", img: "/img86.jpeg", alt: "Shower screen freshly sealed with new silicone" },
+  { label: "Balcony leaks", href: "/balcony-leak-repairs", link: "Balcony Leak Repairs and Regrouting", img: "/img102.jpeg", alt: "Tiled balcony floor ready for regrouting" },
+  { label: "Bathrooms, kitchens, laundries", href: "/tile-regrouting", link: "Tile Regrouting", img: "/img36.jpeg", alt: "Kitchen floor tiles with worn grout lines" },
 ];
-
-const innerSuburbs = [
-  "South Yarra", "Toorak", "Malvern", "Armadale", "Prahran", "Hawthorn", "Camberwell",
-  "Brighton", "St Kilda", "Richmond", "Albert Park", "Windsor", "Elwood", "Port Melbourne",
-];
-const regionalSuburbs = ["Geelong", "Ballarat", "Frankston", "Lilydale", "Yarra Glen", "Kilmore"];
 
 const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [
   { q: "What is shower regrouting?", a: "Removing old, damaged grout and replacing it with new grout. Your tiles stay in place.", plain: "Removing old, damaged grout and replacing it with new grout. Your tiles stay in place." },
@@ -124,9 +128,29 @@ function Callout({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/* Image card styled like the homepage "shower grout problems" cards. */
+function PhotoCard({ c, sizes = "(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" }: { c: ImgCard; sizes?: string }) {
+  return (
+    <Link href={c.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+      <div className="relative h-[180px] overflow-hidden bg-slate-200">
+        {c.half ? (
+          <div className="absolute inset-y-0 left-0 w-[200%]"><Image src={c.img} alt={c.alt} fill sizes={sizes} className="object-cover" /></div>
+        ) : (
+          <Image src={c.img} alt={c.alt} fill sizes={sizes} className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className={cardTitle}>{c.title}</h3>
+        <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{c.text}</p>
+        <span className="mt-auto pt-3 text-sm font-bold text-[#2F63CC] group-hover:underline">{c.link} →</span>
+      </div>
+    </Link>
+  );
+}
+
 /* ───────────── Page ───────────── */
 export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] }) {
-  const { phone, tel, email, mailto } = useContact();
+  const { phone, tel } = useContact();
 
   return (
     <>
@@ -143,15 +167,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             <p className={lead}>Check your shower for these signs. If you spot two or more, get it looked at soon.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {warningSigns.map(({ Icon, title, text }) => (
-              <div key={title} className={`${card} flex items-start gap-4`}>
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-5 w-5" aria-hidden="true" /></span>
-                <span>
-                  <h3 className={cardTitle}>{title}</h3>
-                  <p className="mt-1 text-[15px] leading-relaxed text-slate-600">{text}</p>
-                </span>
-              </div>
-            ))}
+            {warningSigns.map((c) => <PhotoCard key={c.title} c={c} />)}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl md:text-center`}>
             One sign is worth a look. Several together can mean water has moved past the grout. If you notice damp walls or ceiling stains, see our{" "}
@@ -165,18 +181,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             <p className={lead}>Grout is not decoration. It works with the waterproof membrane under your tiles to keep water where it belongs.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            <div className={card}>
-              <h3 className={cardTitle}>Melbourne’s Weather</h3>
-              <p className={cardText}>Warm days and cold nights make tiles move slightly. Cement grout cannot flex with that movement for long. It cracks, and water gets in.</p>
-            </div>
-            <div className={card}>
-              <h3 className={cardTitle}>Older Bathrooms</h3>
-              <p className={cardText}>Many homes in suburbs like Malvern, Toorak and Camberwell have bathrooms that are decades old.</p>
-            </div>
-            <div className={card}>
-              <h3 className={cardTitle}>Wet Area Standards</h3>
-              <p className={cardText}>Some were built before Australian Standard AS 3740 tightened the rules for wet area waterproofing. In those showers, the grout and silicone do more of the work than they should.</p>
-            </div>
+            {failCauses.map((c) => <PhotoCard key={c.title} c={c} />)}
           </div>
         </Section>
 
@@ -380,20 +385,6 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
           </div>
         </Section>
 
-        {/* 13. TEAM */}
-        <Section id="team" alt>
-          <SectionHead k="The People Behind The Work" title="Meet the Groutix Team">
-            <p className={lead}>The same small team handles your job from inspection through to the finished work. Here’s who you’ll actually deal with.</p>
-          </SectionHead>
-          <div className="flex flex-col items-center gap-6">
-            <div className={`${box} flex items-center gap-5 px-7 py-6`}>
-              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#EEF3FF] text-[#001F97]"><Users className="h-7 w-7" aria-hidden="true" /></span>
-              <h3 className="text-xl font-bold text-slate-900">Johnny</h3>
-            </div>
-            <Link href="/contact" className={btnNavy}>Talk to Our Team</Link>
-          </div>
-        </Section>
-
         {/* 14. PROPERTY MANAGERS */}
         <section id="property" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
           <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12`}>
@@ -413,51 +404,37 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
         </section>
 
         {/* 15. RELATED PROBLEMS */}
-        <Section id="related">
+        <Section id="related" alt>
           <SectionHead k="Related Services" title="Related Problems" />
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
             {relatedProblems.map((r) => (
-              <Link key={r.href} href={r.href} className={`${card} group flex flex-col text-slate-900`}>
-                <h3 className={cardTitle}>{r.label}</h3>
-                <span className="mt-auto border-t border-slate-200 pt-4 text-sm font-bold text-[#2F63CC] group-hover:underline">{r.link} →</span>
+              <Link key={r.href} href={r.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                <div className="relative h-[150px] overflow-hidden bg-slate-200">
+                  <Image src={r.img} alt={r.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className={cardTitle}>{r.label}</h3>
+                  <span className="mt-auto pt-3 text-sm font-bold text-[#2F63CC] group-hover:underline">{r.link} →</span>
+                </div>
               </Link>
             ))}
           </div>
         </Section>
 
-        {/* 16. SERVICE AREAS */}
-        <Section id="service-areas" alt>
-          <h2 className={`${h2} mb-4`}>Which Melbourne Suburbs Do We Regrout?</h2>
-          <p className="mb-8 max-w-[900px] text-[17px] leading-relaxed text-slate-600">
+        {/* 16. SERVICE AREAS (same layout as the homepage: map + live suburb check) */}
+        <Section id="service-areas">
+          <h2 className="mb-4 text-[clamp(26px,3vw,42px)] font-bold leading-tight tracking-[-0.01em] text-slate-900 lg:whitespace-nowrap">
+            Which Melbourne Suburbs Do We Regrout?
+          </h2>
+          <p className="mb-8 max-w-[1000px] text-[17px] leading-relaxed text-slate-600">
             We regrout showers across inner and bayside Melbourne, including South Yarra, Toorak, Malvern, Armadale, Prahran, Hawthorn, Camberwell, Brighton, St Kilda, Richmond, Albert Park, Windsor, Elwood and Port Melbourne. We also service Geelong, Ballarat, Frankston, Lilydale, Yarra Glen and Kilmore. Not sure about your suburb? Use the suburb checker or see our{" "}
             <Link className={inlineLink} href="/locations">locations page</Link>.
           </p>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <div className="flex flex-col gap-6">
-              <div>
-                <h3 className="mb-3 text-lg font-bold text-slate-900">Inner &amp; Bayside Melbourne</h3>
-                <div className="flex flex-wrap gap-2.5">
-                  {innerSuburbs.map((s) => <span key={s} className="inline-flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium text-slate-900">{s}</span>)}
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-3 text-lg font-bold text-slate-900">Also Servicing</h3>
-                <div className="flex flex-wrap gap-2.5">
-                  {regionalSuburbs.map((s) => <span key={s} className="inline-flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium text-slate-900">{s}</span>)}
-                </div>
-              </div>
-            </div>
-            <div className="lg:pt-9">
-              <SuburbCheck
-                title="Check If We Service Your Suburb"
-                text="Not listed above, or not sure? Enter your suburb or postcode and we’ll confirm coverage."
-              />
-            </div>
-          </div>
+          <HomeAreasV2 />
         </Section>
 
         {/* 17. FAQ */}
-        <Section id="faq">
+        <Section id="faq" alt>
           <SectionHead title="Frequently Asked Questions" />
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faqs.map((f) => ({ q: f.q, a: f.plain })))) }} />
           <FaqList items={faqs.map((f) => ({ q: f.q, a: f.a }))} />
@@ -466,20 +443,17 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
           </div>
         </Section>
 
-        {/* 18. FINAL CTA */}
-        <section className="bg-white pb-14 md:pb-20">
+        {/* 18. FINAL CTA (homepage style) */}
+        <section className="bg-white py-14 md:py-20">
           <div className={wrap}>
             <div className="grid grid-cols-1 items-center gap-7 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
               <div>
                 <h2 className={`${h2} text-white`}>Get Your Free Quote Today</h2>
-                <p className="mt-3 text-[#D6DCF5]">
-                  Call <a href={tel} className="font-bold text-white underline">{phone}</a>, email <a href={mailto} className="font-bold text-white underline">{email}</a>, or request a quote online.
-                </p>
-                <p className="mt-2 text-[#D6DCF5]/80">Open Mon to Sat 9:00 AM to 6:30 PM, Sun 11:00 AM to 10:00 PM.</p>
-                <p className="mt-2 text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
+                <p className="mt-3 text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
+                <p className="mt-1 text-[#D6DCF5]">Free quote · Tiles stay in place · 10-year waterproof warranty</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Link href="/contact" className={`${btnGold} min-h-[54px] w-full sm:w-auto`}>Request A Quote</Link>
+                <a href="#quote-form" className={`${btnGold} min-h-[54px] w-full sm:w-auto`}>Request A Quote</a>
                 <a href={tel} className={`${btnGhost} min-h-[54px] w-full sm:w-auto`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
               </div>
             </div>
