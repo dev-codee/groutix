@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import LeakingShowerPage from "@/components/LeakingShowerPage";
+// Old layout kept in components/LeakingShowerPage.tsx; point this import back there to roll back.
+import LeakingShowerPage from "@/components/service/LeakingShowerPageV2";
 import { getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
 import { LEAKING_SHOWER_FAQS, LEAKING_SHOWER_META } from "@/lib/leakingShowerContent";
