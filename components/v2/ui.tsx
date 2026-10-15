@@ -53,7 +53,7 @@ export function Stars({ n = 5, className = "" }: { n?: number; className?: strin
 }
 
 /* ── Hero with the site's existing quote form ── */
-export function ServiceHero({ title, children, rating, warrantyNote = "On every complete shower regrout" }: { title: ReactNode; children: ReactNode; rating?: BusinessRating; warrantyNote?: string }) {
+export function ServiceHero({ title, children, rating, warrantyNote = "On every complete shower regrout", defaultService }: { title: ReactNode; children: ReactNode; rating?: BusinessRating; warrantyNote?: string; defaultService?: string }) {
   return (
     <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[118px] text-white lg:pb-[72px] lg:pt-[150px]">
       <div className={`${heroWrap} grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
@@ -80,7 +80,7 @@ export function ServiceHero({ title, children, rating, warrantyNote = "On every 
           </div>
         </div>
         <div className="mx-auto w-full max-w-[560px] lg:max-w-none lg:self-start">
-          <HeroQuoteForm />
+          <HeroQuoteForm defaultService={defaultService} />
         </div>
       </div>
     </section>
@@ -160,7 +160,7 @@ export function ReviewsMarquee({ reviews, rating }: { reviews: Review[]; rating?
 }
 
 /* ── FAQ list (native details, works without JS) ── */
-export function FaqList({ items }: { items: { q: string; a: ReactNode }[] }) {
+export function FaqList({ items, answerClassName = "" }: { items: { q: string; a: ReactNode }[]; answerClassName?: string }) {
   return (
     <div className="mx-auto grid max-w-[900px] gap-3">
       {items.map((f, i) => (
@@ -170,7 +170,7 @@ export function FaqList({ items }: { items: { q: string; a: ReactNode }[] }) {
             <span className="shrink-0 text-2xl font-normal text-[#2F63CC] group-open:hidden" aria-hidden="true">+</span>
             <span className="hidden shrink-0 text-2xl font-normal text-[#2F63CC] group-open:inline" aria-hidden="true">–</span>
           </summary>
-          <div className="max-w-[70ch] px-6 pb-5 text-slate-600">{f.a}</div>
+          <div className={`max-w-[70ch] px-6 pb-5 text-slate-600 ${answerClassName}`}>{f.a}</div>
         </details>
       ))}
     </div>

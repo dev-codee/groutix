@@ -11,7 +11,8 @@ import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingConte
 import TileRegroutingPage from "@/components/TileRegroutingPage";
 import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
 import { abs, SITE_URL } from "@/lib/seo";
-import BalconyLeakRepairsPage from "@/components/BalconyLeakRepairsPage";
+// Old layout kept in components/BalconyLeakRepairsPage.tsx; point this import back there to roll back.
+import BalconyLeakRepairsPage from "@/components/service/BalconyLeakRepairsPageV2";
 import { BALCONY_META_TITLE, BALCONY_META_DESCRIPTION, balconyFaqs } from "@/lib/balconyLeakContent";
 // Old layout kept in components/ShowerRegroutingPage.tsx; point this import back there to roll back.
 import ShowerRegroutingPage from "@/components/service/ShowerRegroutingPageV2";
