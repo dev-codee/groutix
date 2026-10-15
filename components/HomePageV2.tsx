@@ -201,15 +201,25 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                   ["Warranty", "10-year waterproof"],
                   ["Typical job", "Single visit"],
                   ["Google rating", `${rating.value.toFixed(1)} from ${GOOGLE_REVIEW_COUNT_LABEL} reviews`],
-                  ["Hours", business.hours],
-                  ["Phone", phone],
                   ...(PRICES[0] ? [["Starting price", `From ${PRICES[0].from}`]] : []),
                 ].map(([k, v]) => (
                   <div key={k} className="border-l-[3px] border-[#001F97] pl-3.5">
                     <dt className="text-[13px] text-slate-500">{k}</dt>
-                    <dd className="mt-0.5 font-bold text-slate-900">{v.split("|").map((line) => <span key={line} className="block">{line.trim()}</span>)}</dd>
+                    <dd className="mt-0.5 font-bold text-slate-900">{v}</dd>
                   </div>
                 ))}
+                {/* Hours get their own full-width row so both days fit on one line */}
+                <div className="col-span-2 border-l-[3px] border-[#001F97] pl-3.5">
+                  <dt className="text-[13px] text-slate-500">Hours</dt>
+                  <dd className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 font-bold text-slate-900">
+                    {business.hours.split("|").map((line, i) => (
+                      <span key={line} className="whitespace-nowrap">
+                        {i > 0 && <span className="mr-2 hidden font-normal text-slate-400 sm:inline" aria-hidden="true">·</span>}
+                        {line.trim()}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
               </dl>
             </div>
           </div>
