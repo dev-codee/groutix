@@ -207,7 +207,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 ].map(([k, v]) => (
                   <div key={k} className="border-l-[3px] border-[#001F97] pl-3.5">
                     <dt className="text-[13px] text-slate-500">{k}</dt>
-                    <dd className="mt-0.5 font-bold text-slate-900">{v}</dd>
+                    <dd className="mt-0.5 font-bold text-slate-900">{v.split("|").map((line) => <span key={line} className="block">{line.trim()}</span>)}</dd>
                   </div>
                 ))}
               </dl>
