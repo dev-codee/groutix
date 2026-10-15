@@ -8,7 +8,8 @@ import SmallTilingJobsPage from "@/components/SmallTilingJobsPage";
 import { SMALL_TILING_META_TITLE, smallTilingFaqs } from "@/lib/smallTilingContent";
 import SiliconeRecaulkingPage from "@/components/SiliconeRecaulkingPage";
 import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingContent";
-import TileRegroutingPage from "@/components/TileRegroutingPage";
+// Old layout kept in components/TileRegroutingPage.tsx; point this import back there to roll back.
+import TileRegroutingPage from "@/components/service/TileRegroutingPageV2";
 import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
 import { abs, SITE_URL } from "@/lib/seo";
 // Old layout kept in components/BalconyLeakRepairsPage.tsx; point this import back there to roll back.
