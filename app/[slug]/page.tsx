@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
 import { getBusinessRating, getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
-import SmallTilingJobsPage from "@/components/SmallTilingJobsPage";
+// Old layout kept in components/SmallTilingJobsPage.tsx; point this import back there to roll back.
+import SmallTilingJobsPage from "@/components/service/SmallTilingJobsPageV2";
 import { SMALL_TILING_META_TITLE, smallTilingFaqs } from "@/lib/smallTilingContent";
 // Old layout kept in components/SiliconeRecaulkingPage.tsx; point this import back there to roll back.
 import SiliconeRecaulkingPage from "@/components/service/SiliconeRecaulkingPageV2";
