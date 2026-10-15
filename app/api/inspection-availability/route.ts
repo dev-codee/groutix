@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     days,
+    durationMinutes: rules.inspection.slotMinutes,
     inServiceArea: true,
     suburb: area.suburb,
     zone: area.zone,

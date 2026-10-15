@@ -9,6 +9,7 @@ import {
   Navigation, Eye, CheckCircle2, ShieldCheck, ShieldAlert,
   Clock, ChevronRight, Send, DollarSign, X, StickyNote,
 } from "lucide-react";
+import { LeadRequestDetails } from "@/components/admin/LeadRequestDetails";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import {
@@ -71,7 +72,6 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   type PaymentStep = "idle" | "ask_type" | "ask_amount";
   const [payStep, setPayStep] = useState<PaymentStep>("idle");
   const [partialAmt, setPartialAmt] = useState<string>("");
-  const [showLeadDetails, setShowLeadDetails] = useState(false);
 
   const totalQuote = getLeadQuoteTotal(l);
   const invoiceTotal = totalQuote && totalQuote > 0 ? totalQuote : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null);
@@ -223,35 +223,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             </div>
           </div>
 
-          {(role === "manager" || role === "super_admin") && (l.notes || l.message || l.enquiry) && (
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                aria-expanded={showLeadDetails}
-                onClick={() => setShowLeadDetails(value => !value)}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 cursor-pointer"
-              >
-                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                {showLeadDetails ? "Hide lead notes & customer request" : "View lead notes & customer request"}
-                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showLeadDetails ? "rotate-90" : ""}`} />
-              </button>
-              {showLeadDetails && (
-                <div className="space-y-1.5">
-                  {l.notes && (
-                    <div className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
-                      <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                      <p className="min-w-0 whitespace-pre-wrap break-words"><span className="font-bold">Lead Notes:</span> {l.notes}</p>
-                    </div>
-                  )}
-                  {Array.from(new Set([l.message, l.enquiry].filter((detail): detail is string => Boolean(detail?.trim())))).map((detail, index) => (
-                    <div key={`${index}-${detail}`} className="flex items-start gap-1.5 text-xs text-slate-700 min-w-0">
-                      <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                      <p className="min-w-0 whitespace-pre-wrap break-words"><span className="font-bold">Customer Request Detail:</span> {detail}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {(role === "manager" || role === "super_admin") && (
+            <LeadRequestDetails lead={l} onSave={updateLeadField} />
           )}
 
           {(l.technicianNotes || l.scopeNotes) && (

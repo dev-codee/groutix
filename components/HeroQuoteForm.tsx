@@ -4,6 +4,7 @@ import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users, Che
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { formatBytes, MAX_TOTAL_BYTES, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT } from "@/lib/imageCompression";
+import { formatSlotRange } from "@/lib/scheduling";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -115,6 +116,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
   const [isDragging, setIsDragging] = useState(false);
   const [inspectionSectionOpen, setInspectionSectionOpen] = useState(false);
   const [inspectionDays, setInspectionDays] = useState<{ date: string; label: string; slots: { time: string; booked: boolean }[] }[]>([]);
+  const [inspectionDurationMinutes, setInspectionDurationMinutes] = useState(60);
   const [inspectionDaysLoading, setInspectionDaysLoading] = useState(false);
   const [isOutsideServiceArea, setIsOutsideServiceArea] = useState(false);
   // Why we can't offer online times: "coastal" (route skips the bay/ocean strip)
@@ -194,6 +196,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
         setInspectionZoneDay(json.zoneDay || null);
         const sortedDays = (json.days || []).slice().sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
         setInspectionDays(sortedDays);
+        setInspectionDurationMinutes(json.durationMinutes ?? 60);
         setInspectionDate("");
         setInspectionTime("");
       }
@@ -1501,10 +1504,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                                     Choose arrival time for {inspectionDays.find((d) => d.date === inspectionDate)?.label}…
                                   </option>
                                   {(inspectionDays.find((d) => d.date === inspectionDate)?.slots || []).map((s) => {
-                                    const [h] = s.time.split(":").map(Number);
-                                    const endH = h + 1;
-                                    const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
-                                    const label = `${fmt(h)} – ${fmt(endH)}`;
+                                    const label = formatSlotRange(s.time, inspectionDurationMinutes);
                                     return (
                                       <option key={s.time} value={s.time} disabled={s.booked}>
                                         {label} {s.booked ? "(Booked)" : ""}
@@ -1525,12 +1525,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                               <div className="bg-green-50 border border-green-200 rounded-sm px-3 py-2 text-[12px] text-green-700 space-y-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <span className="font-semibold">
-                                    ✓ Preferred inspection time selected, {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {(() => {
-                                      const [h] = inspectionTime.split(":").map(Number);
-                                      const endH = h + 1;
-                                      const fmt = (hr: number) => `${hr % 12 === 0 ? 12 : hr % 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
-                                      return `${fmt(h)} – ${fmt(endH)}`;
-                                    })()}
+                                    ✓ Preferred inspection time selected, {inspectionDays.find((d) => d.date === inspectionDate)?.label}, {formatSlotRange(inspectionTime, inspectionDurationMinutes)}
                                   </span>
                                   <button
                                     type="button"
