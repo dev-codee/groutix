@@ -6,7 +6,8 @@ import { getBusinessRating, getReviews } from "@/lib/reviews";
 import { faqJsonLd } from "@/lib/seo";
 import SmallTilingJobsPage from "@/components/SmallTilingJobsPage";
 import { SMALL_TILING_META_TITLE, smallTilingFaqs } from "@/lib/smallTilingContent";
-import SiliconeRecaulkingPage from "@/components/SiliconeRecaulkingPage";
+// Old layout kept in components/SiliconeRecaulkingPage.tsx; point this import back there to roll back.
+import SiliconeRecaulkingPage from "@/components/service/SiliconeRecaulkingPageV2";
 import { SILICONE_META_TITLE, siliconeFaqs } from "@/lib/siliconeRecaulkingContent";
 // Old layout kept in components/TileRegroutingPage.tsx; point this import back there to roll back.
 import TileRegroutingPage from "@/components/service/TileRegroutingPageV2";
