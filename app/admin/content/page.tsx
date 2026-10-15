@@ -180,7 +180,7 @@ export default function ContentPage() {
                 <Labeled label="Business Hours">
                   <input
                     className={inputCls}
-                    value={content.business.hours ?? "Mon – Fri: 8:00am – 5:00pm"}
+                    value={content.business.hours ?? "Mon – Sat : 9:00am – 6:30pm | Sunday : 11:00am to 10:00pm"}
                     onChange={(e) => setBusiness("hours", e.target.value)}
                   />
                 </Labeled>

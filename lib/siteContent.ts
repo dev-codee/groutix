@@ -17,7 +17,7 @@ export type { ShowerScreenModel } from "@/lib/showerScreensData";
 export interface BusinessContent {
   phone: string; // display form, e.g. "(03) 7023 8094"
   email: string;
-  hours: string; // e.g. "Mon – Fri: 8:00am – 5:00pm"
+  hours: string; // e.g. "Mon – Sat : 9:00am – 6:30pm | Sunday : 11:00am to 10:00pm" ("|" starts a new line)
   address: {
     street: string;
     locality: string;
@@ -120,7 +120,7 @@ export const DEFAULT_CONTENT: SiteContent = {
   business: {
     phone: BUSINESS.phone,
     email: BUSINESS.email,
-    hours: "Mon – Fri: 8:00am – 5:00pm",
+    hours: "Mon – Sat : 9:00am – 6:30pm | Sunday : 11:00am to 10:00pm",
     address: {
       street: BUSINESS.address.street,
       locality: BUSINESS.address.locality,

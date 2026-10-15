@@ -34,7 +34,7 @@ async function readOverrides(): Promise<SiteContentOverrides | null> {
 // Cached, tagged loader. Revalidated on-demand from saveSiteContent().
 const loadMerged = unstable_cache(
   async (): Promise<SiteContent> => mergeContent(await readOverrides()),
-  ["site-content-merged-local-phone-v2"],
+  ["site-content-merged-hours-v3"],
   { tags: [CONTENT_TAG] }
 );
 
