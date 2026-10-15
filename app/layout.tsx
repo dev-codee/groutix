@@ -7,7 +7,9 @@ import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { SiteContentProvider } from "@/components/SiteContentProvider";
-import SupportChatWidget from "@/components/SupportChatWidget";
+// Support chat button hidden site-wide. To bring it back, re-add:
+// import SupportChatWidget from "@/components/SupportChatWidget";
+// and put <SupportChatWidget /> back under {children} below.
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -140,7 +142,6 @@ export default async function RootLayout({
         />
         <SiteContentProvider content={content}>
           {children}
-          <SupportChatWidget />
         </SiteContentProvider>
       </body>
     </html>
