@@ -13,7 +13,8 @@ import { tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
 import { abs, SITE_URL } from "@/lib/seo";
 import BalconyLeakRepairsPage from "@/components/BalconyLeakRepairsPage";
 import { BALCONY_META_TITLE, BALCONY_META_DESCRIPTION, balconyFaqs } from "@/lib/balconyLeakContent";
-import ShowerRegroutingPage from "@/components/ShowerRegroutingPage";
+// Old layout kept in components/ShowerRegroutingPage.tsx; point this import back there to roll back.
+import ShowerRegroutingPage from "@/components/service/ShowerRegroutingPageV2";
 
 const services: Record<string, {
   title: string;
