@@ -11,7 +11,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact } from "@/components/SiteContentProvider";
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import type { Review } from "@/lib/reviews";
 import { LEAKING_SHOWER_FAQS } from "@/lib/leakingShowerContent";
 import {
@@ -102,29 +101,6 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
         <ServiceHero title="Leaking Shower Repairs Melbourne" warrantyNote="On eligible completed repairs">
           <p>Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
         </ServiceHero>
-
-        {/* 2. TRUST STATS */}
-        <Section id="trust-stats">
-          <p className={`${eyebrow} text-center`}>Trusted Across Melbourne</p>
-          <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
-            {[
-              { Icon: Droplets, value: "Specialist", label: "Bathroom Repairs", detail: "Focused on grout, silicone and wet areas" },
-              { Icon: ShieldCheck, value: "5.0/5", label: "Google Rating", detail: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews` },
-              { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", detail: "On eligible completed repairs" },
-            ].map(({ Icon, value, label, detail }, i) => (
-              <div key={label} className={`${box} flex items-center gap-4 p-6`}>
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]">
-                  {i === 1 ? <Image src="/google-logo.svg" alt="" width={22} height={22} /> : <Icon className="h-6 w-6" aria-hidden="true" />}
-                </span>
-                <span>
-                  <span className="block text-[28px] font-black leading-none text-slate-900">{value}</span>
-                  <h3 className="mt-1 text-[17px] font-bold text-slate-900">{label}</h3>
-                  <p className="text-sm text-slate-500">{detail}</p>
-                </span>
-              </div>
-            ))}
-          </div>
-        </Section>
 
         {/* 3. SIGNS */}
         <Section id="leak-signs" alt>
