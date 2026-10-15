@@ -294,8 +294,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
         {/* 8. COST */}
         <Section id="cost">
           <SectionHead k="Pricing" title="What Does Shower Regrouting Cost in Melbourne?">
-            <p className={lead}>This is the question we get asked most.</p>
-            <p className={lead}>A standard single shower regrout and reseal in Melbourne typically costs about $550 to $1,500. Simple jobs with little damage sit near the low end. Larger showers, mosaic tiles, heavy mould and epoxy grout sit near the high end. The final price depends on your shower, so we quote after we see it.</p>
+            <p className={lead}>Simple jobs with little damage sit near the low end. Larger showers, mosaic tiles, heavy mould and epoxy grout sit near the high end. The final price depends on your shower, so we quote after we see it.</p>
           </SectionHead>
           <div className="mx-auto max-w-[1000px]">
             <div className="flex flex-col items-start gap-6 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:flex-row sm:items-center sm:justify-between sm:p-9">
