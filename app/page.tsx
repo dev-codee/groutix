@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import HomePage from "@/components/HomePage";
+// Old layout kept in components/HomePage.tsx; swap the import back to roll back.
+import HomePageV2 from "@/components/HomePageV2";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -12,5 +13,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const [reviews, rating] = await Promise.all([getReviews(5), getBusinessRating()]);
-  return <HomePage reviews={reviews} rating={rating} />;
+  return <HomePageV2 reviews={reviews} rating={rating} />;
 }
