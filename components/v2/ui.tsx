@@ -5,6 +5,7 @@
 
 import { useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Phone } from "lucide-react";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
@@ -52,7 +53,7 @@ export function Stars({ n = 5, className = "" }: { n?: number; className?: strin
 }
 
 /* ── Hero with the site's existing quote form ── */
-export function ServiceHero({ title, children, rating }: { title: ReactNode; children: ReactNode; rating?: BusinessRating }) {
+export function ServiceHero({ title, children, rating, warrantyNote = "On every complete shower regrout" }: { title: ReactNode; children: ReactNode; rating?: BusinessRating; warrantyNote?: string }) {
   return (
     <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[118px] text-white lg:pb-[72px] lg:pt-[150px]">
       <div className={`${heroWrap} grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
@@ -68,7 +69,7 @@ export function ServiceHero({ title, children, rating }: { title: ReactNode; chi
               <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
               <div>
                 <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
-                <span className="text-sm text-[#D6DCF5]">On every complete shower regrout</span>
+                <span className="text-sm text-[#D6DCF5]">{warrantyNote}</span>
               </div>
             </div>
             <div className="sm:border-l sm:border-white/25 sm:pl-6">
@@ -237,5 +238,49 @@ export function MobileCallBar({ quoteHref = "#quote-form" }: { quoteHref?: strin
         <a href={quoteHref} className={`${btn} min-h-[52px] bg-[#FBBC04] px-3 text-[#0F172A]`}>Free Quote</a>
       </div>
     </>
+  );
+}
+
+/* ── Photo card (same style as the homepage "shower grout problems" cards) ──
+   half: the photo is a before/after composite, so show only its left (before) half. */
+export type PhotoCardData = { title: string; text?: string; img: string; alt: string; href: string; link: string; half?: boolean };
+
+export function PhotoCard({ c, imgH = "h-[180px]", sizes = "(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" }: { c: PhotoCardData; imgH?: string; sizes?: string }) {
+  return (
+    <Link href={c.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+      <div className={`relative ${imgH} overflow-hidden bg-slate-200`}>
+        {c.half ? (
+          <div className="absolute inset-y-0 left-0 w-[200%]"><Image src={c.img} alt={c.alt} fill sizes={sizes} className="object-cover" /></div>
+        ) : (
+          <Image src={c.img} alt={c.alt} fill sizes={sizes} className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className={cardTitle}>{c.title}</h3>
+        {c.text && <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{c.text}</p>}
+        <span className="mt-auto pt-3 text-sm font-bold text-[#2F63CC] group-hover:underline">{c.link} →</span>
+      </div>
+    </Link>
+  );
+}
+
+/* ── Final CTA box (same as the homepage final CTA) ── */
+export function FinalCta({ title, lines, quoteHref = "#quote-form" }: { title: string; lines: ReactNode[]; quoteHref?: string }) {
+  const { phone, tel } = useContact();
+  return (
+    <section className="bg-white py-14 md:py-20">
+      <div className={wrap}>
+        <div className="grid grid-cols-1 items-center gap-7 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
+          <div>
+            <h2 className={`${h2} text-white`}>{title}</h2>
+            {lines.map((l, i) => <p key={i} className={`${i ? "mt-1" : "mt-3"} text-[#D6DCF5]`}>{l}</p>)}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <a href={quoteHref} className={`${btnGold} min-h-[54px] w-full sm:w-auto`}>Request A Quote</a>
+            <a href={tel} className={`${btnGhost} min-h-[54px] w-full sm:w-auto`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
