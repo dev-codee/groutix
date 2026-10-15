@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import EpoxyGroutPage from "@/components/EpoxyGroutPage";
+// Old layout kept in components/EpoxyGroutPage.tsx; point this import back there to roll back.
+import EpoxyGroutPage from "@/components/service/EpoxyGroutPageV2";
 import { getBusinessRating, getReviews } from "@/lib/reviews";
 
 export const metadata: Metadata = {
