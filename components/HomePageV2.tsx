@@ -12,9 +12,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TrustedMarquee from "@/components/TrustedMarquee";
 import HeroContactBadges from "@/components/HeroContactBadges";
-// Existing site-wide quote form for now. The 3-step version is ready in
-// components/home/QuoteFormV2.tsx: swap these two lines to switch later.
-import HeroQuoteForm from "@/components/HeroQuoteForm";
+// Step-by-step quote form (same /api/quote data as the old HeroQuoteForm, which
+// older pages still use). To roll back, import HeroQuoteForm here instead.
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact, useSiteContent } from "@/components/SiteContentProvider";
 import { BUSINESS, GOOGLE_REVIEW_COUNT_LABEL, faqJsonLd } from "@/lib/seo";
@@ -147,7 +147,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         <style>{`@media (max-width:767px){body:has(.home-v2) [data-support-chat-widget]{bottom:92px!important}}`}</style>
 
         {/* ── HERO + QUOTE FORM ── */}
-        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[150px]">
+        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[64px] lg:pt-[128px]">
           <div className={`${heroWrap} grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Melbourne Wet-Area Specialists</p>
@@ -176,7 +176,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               </div>
             </div>
             <div className="mx-auto w-full max-w-[560px] lg:max-w-none lg:self-start">
-              <HeroQuoteForm />
+              <QuoteFormV2 />
             </div>
           </div>
         </section>
