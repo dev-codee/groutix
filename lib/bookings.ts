@@ -28,6 +28,8 @@ export interface BookingDoc extends TechnicianAssignment {
   suburb?: string;
   reference: string;
   createdAt: Date;
+  reminderSent?: boolean;
+  reminder1hSent?: boolean;
   reservationId?: string;
 }
 

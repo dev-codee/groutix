@@ -60,6 +60,11 @@ export function computeQuoteTotals(
   rate: number,
   quoteAmount?: number
 ): { subtotal: number; gst: number; total: number } {
+  if (!items.length && typeof quoteAmount === "number" && Number.isFinite(quoteAmount) && quoteAmount >= 0) {
+    const total = quoteAmount;
+    const subtotal = mode === "none" ? total : total / (1 + rate / 100);
+    return { subtotal, gst: total - subtotal, total };
+  }
   const rawSub = items.reduce((a, x) => a + Number(x.price || 0) * Number(x.qty || 1), 0);
   const effectiveMode = (mode === "inclusive" || mode === "none") ? mode : "exclusive";
   if (effectiveMode === "exclusive") {

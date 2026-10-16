@@ -57,7 +57,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const [partialAmt, setPartialAmt] = useState<string>("");
 
   const quoteTotal = getLeadQuoteTotal(l);
-  const invoiceTotal = quoteTotal && quoteTotal > 0 ? quoteTotal : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null);
+  const invoiceTotal = l.invoiceAmount ?? (quoteTotal && quoteTotal > 0 ? quoteTotal : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
   const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
   const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;

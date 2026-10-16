@@ -58,7 +58,10 @@ export async function POST(req: NextRequest) {
   // The modal treats the entered price as the GST-inclusive total, matching the
   // on-screen preview, so the emailed invoice always agrees with what staff saw.
   const gstRate = Number(body.gst ?? 10);
-  const total = Number(body.price || 0);
+  const total = Number(body.price);
+  if (body.price == null || !Number.isFinite(total) || total <= 0 || !Number.isFinite(gstRate) || gstRate < 0) {
+    return NextResponse.json({ error: "Enter a valid invoice amount greater than zero and a valid tax rate." }, { status: 400 });
+  }
   const subtotal = total / (1 + gstRate / 100);
   const gst = total - subtotal;
   const service = body.service || lead.service || "Regrouting & waterproof resealing";
@@ -206,7 +209,7 @@ export async function POST(req: NextRequest) {
     invoiceNumber,
     invoiceSentAt: now,
     invoiceStatus: status,
-    quoteAmount: total,
+    invoiceAmount: total,
     // Sending the invoice advances the finance stage: Paid → "Payment Received",
     // otherwise → "Payment Pending" (we're now awaiting the customer's payment).
     status: status === "Paid" ? "Payment Received" : "Payment Pending",

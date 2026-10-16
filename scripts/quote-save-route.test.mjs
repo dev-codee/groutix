@@ -24,7 +24,7 @@ test("quote database errors return a failure response instead of leaving the req
 });
 test("direct quote data writes do not wait for index creation", async () => {
   let indexed = false, saved = false;
-  const collection = { createIndexes: () => { indexed = true; return new Promise(() => {}); }, updateOne: async () => { saved = true; return { matchedCount: 1 }; } };
+  const collection = { findOne: async () => ({ quoteItems: [] }), createIndexes: () => { indexed = true; return new Promise(() => {}); }, updateOne: async () => { saved = true; return { matchedCount: 1 }; } };
   const { updateSubmission } = loadTs("lib/submissions.ts", {
     "@/lib/mongodb": { getDb: async () => ({ collection: () => collection }) }, "@/lib/users": {},
   });

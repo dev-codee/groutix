@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const overrideDesc = sp.get("description") || undefined;
   const overrideStatus = sp.get("status") || lead.invoiceStatus || "Unpaid";
 
-  const price = overridePrice !== undefined && !isNaN(overridePrice) ? overridePrice : (lead.quoteAmount || 850);
+  const price = overridePrice !== undefined && !isNaN(overridePrice) ? overridePrice : (lead.invoiceAmount ?? lead.quoteAmount ?? 850);
   const service = overrideService || lead.service || "Regrouting & waterproof resealing";
   const description = overrideDesc !== undefined ? overrideDesc : (lead.quoteScope || lead.message || lead.issue || "");
 

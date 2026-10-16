@@ -95,10 +95,11 @@ export async function GET(req: NextRequest) {
   }
 
   // decline
-  await updateSubmission(id, {
+  const saved = await updateSubmission(id, {
     status: "Lost",
     quoteDeclinedAt: now,
   });
+  if (!saved) return page("Response not saved", "This quotation changed while you were responding. Refresh the page to see its current status.", "info");
   await appendActivity(id, {
     time: now,
     actor: "customer",

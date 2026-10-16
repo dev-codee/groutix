@@ -1,3 +1,4 @@
+import { changesAcceptedQuote } from "./quoteIntegrity";
 import { randomUUID } from "node:crypto";
 import { getDb } from "./mongodb";
 import { getSubmission, updateSubmission, appendActivity, getNextSequence, formatDocNumber, type SubmissionDoc, type SubmissionJSON } from "./submissions";
@@ -113,15 +114,26 @@ export async function updateQuoteSubmission(reference: string, updates: Partial<
   const quote = await col.findOne({ _id: reference.includes("~") ? reference : originalReference(leadId), leadId });
   if (!quote) return reference.includes("~") ? false : updateSubmission(leadId, updates);
   if (quote.state === "deleted") return false;
+  if (quote.state === "accepted" && (updates.quoteAcceptedAt || updates.quoteSignedAt)) return true;
+  if (quote.state === "accepted" && updates.quoteDeclinedAt) return false;
+  if (!updates.quoteSentAt && changesAcceptedQuote(quote.values, updates as Record<string, unknown>)) return false;
   const set: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-  for (const [field, value] of Object.entries(valuesFrom(updates))) set[`values.${field}`] = value;
+  for (const [field, value] of Object.entries(valuesFrom(updates))) {
+    // Sending again updates delivery metadata, never the saved commercial terms.
+    if (updates.quoteSentAt && ["sent", "accepted", "declined"].includes(quote.state) && !["quoteSentAt", "quoteUpdated"].includes(field)) continue;
+    set[`values.${field}`] = value;
+  }
   if (updates.quoteSignedAt || updates.quoteAcceptedAt) set.state = "accepted";
   else if (updates.quoteDeclinedAt) set.state = "declined";
   else if (updates.quoteSentAt && quote.state !== "accepted" && quote.state !== "declined") set.state = "sent";
-  await col.updateOne({ _id: quote._id, leadId }, { $set: set });
-  // Drafts never replace the working lead quote. A sent/accepted selection does.
+  const result = await col.updateOne({ _id: quote._id, leadId, state: quote.state }, { $set: set });
+  if (!result.matchedCount) return false;
+  // Publish quote state separately; preserve an already accepted working quote.
   if (updates.quoteSentAt || updates.quoteAcceptedAt || updates.quoteSignedAt) {
     if (updates.quoteSentAt && (quote.state === "accepted" || quote.state === "declined")) return true;
+    const workingLead = await getSubmission(leadId);
+    // Sending/accepting another option cannot silently replace the agreed job quote.
+    if (workingLead?.quoteAcceptedAt || workingLead?.quoteSignedAt) return true;
     return updateSubmission(leadId, { quoteOpenedAt: "", quoteAcceptedAt: "", quoteDeclinedAt: "", quoteSignedAt: "", quoteSignature: "", quoteSignedName: "", quoteSignedIp: "",
       ...quote.values, ...updates, quoteReference: quote._id });
   }

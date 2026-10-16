@@ -1,3 +1,5 @@
+import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
+import { bookingReminderCandidates } from "./bookingReminders";
 // Data-access layer for form submissions (quotes + support tickets).
 //
 // Everything the admin panel reads and everything the public forms write goes
@@ -188,6 +190,7 @@ export interface SubmissionDoc {
   quoteSignedName?: string; // Name entered/confirmed on signature
   quoteSignedAt?: string; // ISO time the signature was captured
   quoteSignedIp?: string; // IP address of the signer
+  invoiceAmount?: number;
   invoiceNumber?: string;
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
   invoiceOpenedAt?: string; // ISO time the customer first opened the invoice email
@@ -680,18 +683,25 @@ export async function listFollowUpCandidates(): Promise<SubmissionJSON[]> {
  */
 export async function listReminderCandidates(): Promise<SubmissionJSON[]> {
   const col = await collection();
-  const docs = await col
-    .find({
-      status: { $nin: ["Lost", "Cancelled", "Closed", "No Response", "Completed"] },
-      $or: [
-        { inspectionAt: { $gt: "" }, inspectionReminderSent: { $ne: true } },
-        { inspectionAt: { $gt: "" }, inspectionReminder1hSent: { $ne: true } },
-        { jobAt: { $gt: "" }, jobReminderSent: { $ne: true } },
-        { jobAt: { $gt: "" }, jobReminder1hSent: { $ne: true } },
-      ],
-    })
-    .toArray();
-  return docs.map(toJSON);
+  const db = await getDb();
+  const bookings = await db.collection<import("./bookings").BookingDoc>("bookings").find({}).toArray();
+  const ids = [...new Set(bookings.map(b => b.leadId))].filter(id => ObjectId.isValid(id));
+  const docs = await col.find({
+    status: { $nin: ["Lost", "Cancelled", "Closed", "No Response", "Completed"] },
+    $or: [{ inspectionAt: { $gt: "" } }, { jobAt: { $gt: "" } }, { _id: { $in: ids.map(id => new ObjectId(id)) } }],
+  }).toArray();
+  return bookingReminderCandidates(docs.map(toJSON), bookings);
+}
+
+/** Mark only the visit that received a reminder; never suppress a sibling visit. */
+export async function markBookingReminderSent(id: string, type: "inspection" | "job", at: string, tier: "1h" | "24h"): Promise<void> {
+  const db = await getDb();
+  await db.collection("bookings").updateOne({ leadId: id, type, date: at.slice(0, 10), time: at.slice(11, 16) },
+    { $set: { [tier === "1h" ? "reminder1hSent" : "reminderSent"]: true } });
+  const col = await collection(false);
+  const field = type === "job" ? "jobAt" : "inspectionAt";
+  await col.updateOne({ _id: new ObjectId(id), [field]: { $in: [at, `${at.slice(0, 16)}:00`] } },
+    { $set: { [`${type}Reminder${tier === "1h" ? "1h" : ""}Sent`]: true } });
 }
 
 export async function getSubmission(id: string): Promise<SubmissionJSON | null> {
@@ -721,6 +731,15 @@ export async function updateSubmission(
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
   const { _id, ...safeUpdates } = updates;
+  const writeFilter: Filter<SubmissionDoc> = { _id: new ObjectId(id) };
+  if (acceptedQuoteFields.some(field => field in safeUpdates)) {
+    const current = await col.findOne({ _id: new ObjectId(id) });
+    if (!current || changesAcceptedQuote(current as unknown as Record<string, unknown>, safeUpdates as Record<string, unknown>)) return false;
+    // An acceptance racing a draft save must not have its terms overwritten.
+    for (const field of ["quoteAcceptedAt", "quoteSignedAt"] as const) {
+      writeFilter[field] = current[field] === undefined ? { $exists: false } : current[field];
+    }
+  }
   normalizeApptFields(safeUpdates);
   // Every booking path resets reminders for a changed appointment, including Dispatch.
   if ("inspectionAt" in safeUpdates || "jobAt" in safeUpdates) {
@@ -750,7 +769,7 @@ export async function updateSubmission(
   if (safeUpdates.status && !["Inspection En Route", "Job En Route"].includes(safeUpdates.status)) {
     safeUpdates.customerTrackingEndedAt = new Date();
   }
-  const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: safeUpdates });
+  const res = await col.updateOne(writeFilter, { $set: safeUpdates });
   return res.matchedCount > 0;
 }
 

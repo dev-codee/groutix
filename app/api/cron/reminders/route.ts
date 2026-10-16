@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listReminderCandidates, updateSubmission, appendActivity } from "@/lib/submissions";
+import { listReminderCandidates, markBookingReminderSent, appendActivity } from "@/lib/submissions";
 import { sendEmail, isEmailConfigured, wrapEmailHtml } from "@/lib/email";
 import { apptInstantMs, formatAppt } from "@/lib/scheduling";
 
@@ -123,15 +123,7 @@ async function runSweep(req: NextRequest) {
 
         // Reminder is sent via email only (no SMS).
 
-        const flagField =
-          a.kind === "inspection"
-            ? tier.key === "1h"
-              ? "inspectionReminder1hSent"
-              : "inspectionReminderSent"
-            : tier.key === "1h"
-            ? "jobReminder1hSent"
-            : "jobReminderSent";
-        await updateSubmission(lead.id, { [flagField]: true });
+        await markBookingReminderSent(lead.id, a.kind, a.at, tier.key);
         await appendActivity(lead.id, {
           time: new Date().toISOString(),
           actor: "system",

@@ -118,6 +118,7 @@ export interface Lead {
   warranty?: WarrantyDoc;
   warrantyProvided?: boolean;
   activity?: ActivityEntry[];
+  quoteReference?: string;
   quoteNumber?: string;
   hasCustomerQuotes?: boolean;
   quoteSentAt?: string;
@@ -129,6 +130,7 @@ export interface Lead {
   quoteSignedAt?: string;
   followUpStage?: number;
   followUpNext?: string;
+  invoiceAmount?: number;
   invoiceNumber?: string;
   invoiceSentAt?: string;
   invoiceStatus?: string;

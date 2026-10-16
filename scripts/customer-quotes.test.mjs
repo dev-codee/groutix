@@ -137,7 +137,7 @@ test("sending two quotes produces separate customer links and the selected PDF t
   assert.ok(emails[1].html.includes(tokens.buildQuoteSignUrl(second._id)));
   assert.ok(texts[1].body.includes(tokens.buildQuoteSignUrl(second._id)));
   assert.equal(tokens.verifyQuoteToken(second._id, tokens.signQuoteToken(original._id)), false);
-  assert.equal((await api.getQuoteSubmission(original._id)).quoteAmount, pdfs[0].total);
+  assert.equal((await api.getQuoteSubmission(original._id)).quoteAmount, 110); // Resending keeps the saved value, not floating-point recalculation noise.
 });
 
 test("the public PDF and signature routes resolve the selected quote and keep its signature independent", async () => {
@@ -221,4 +221,24 @@ test("quote deletion requires authentication and a quote belonging to the custom
   assert.equal((await DELETE(request(null), context)).status, 400);
   assert.equal((await DELETE(request(original._id), context)).status, 200);
   assert.equal((await DELETE(request(original._id), context)).status, 409);
+});
+
+test("accepted amount and signature survive sending or accepting another quote and resending the original", async () => {
+  const { api, leadId, leads } = fixture();
+  const original = (await api.listCustomerQuotes(leadId))[0];
+  await api.updateQuoteSubmission(original._id, { quoteAcceptedAt: "accepted", quoteSignedAt: "signed", quoteSignature: "signature", status: "Won" });
+  const saved = structuredClone(leads.get(leadId));
+  const other = await api.createCustomerQuote(leadId);
+  await api.updateQuoteSubmission(other._id, { quoteSentAt: "later", quoteAmount: 200, status: "Quote Sent" });
+  assert.equal(leads.get(leadId).quoteAmount, saved.quoteAmount);
+  assert.equal(leads.get(leadId).quoteSignature, saved.quoteSignature);
+  await api.updateQuoteSubmission(other._id, { quoteAcceptedAt: "later-accepted", quoteSignedAt: "later-signed", quoteSignature: "other-signature", status: "Won" });
+  assert.equal(leads.get(leadId).quoteAmount, saved.quoteAmount);
+  assert.equal(leads.get(leadId).quoteSignature, saved.quoteSignature);
+  await api.updateQuoteSubmission(original._id, { quoteSentAt: "resent", quoteAmount: 0, quoteItems: [], quoteSignature: "" });
+  const unchanged = await api.getQuoteSubmission(original._id);
+  assert.equal(unchanged.quoteAmount, saved.quoteAmount);
+  assert.equal(unchanged.quoteItems.length, 1);
+  assert.equal(unchanged.quoteSignature, saved.quoteSignature);
+  assert.equal(await api.updateQuoteSubmission(original._id, { quoteDeclinedAt: "decline" }), false);
 });

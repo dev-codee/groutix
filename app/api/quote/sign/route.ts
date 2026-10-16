@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     const resolvedSignerName = (signerName || lead.name || "Customer").trim();
 
     // 1. Update Lead in MongoDB
-    await updateSubmission(id, {
+    const accepted = await updateSubmission(id, {
       status: "Won",
       quoteAcceptedAt: now,
       quoteSignedAt: now,
@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
       quoteSignedName: resolvedSignerName,
       quoteSignedIp: clientIp,
     });
+
+    if (!accepted) return NextResponse.json({ error: "The quotation changed while signing. Refresh the page before trying again." }, { status: 409 });
 
     // 2. Log in CRM Activity Trail
     await appendActivity(id, {

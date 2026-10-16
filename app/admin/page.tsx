@@ -1,5 +1,7 @@
 "use client";
 
+import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
+
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { normalizeBusinessPhoneText } from "@/lib/phone";
@@ -1691,7 +1693,7 @@ export default function CrmDashboardPage() {
 
   // Quote Builder Logic
   function selectCustomerQuote(lead: Lead, quote: CustomerQuote) {
-    openQuoteModal({ ...lead, ...quote.values, id: lead.id } as Lead);
+    openQuoteModal(customerQuoteLead(lead, quote));
     if (quote.values.quoteItems) setQuoteItems(quote.values.quoteItems as QuoteItem[]);
     setActiveCustomerQuote(quote);
     setCustomerQuoteTitle(quote.title);
@@ -1710,7 +1712,7 @@ export default function CrmDashboardPage() {
         if (cancelled) return;
         const quotes: CustomerQuote[] = data.quotes;
         setCustomerQuotes(quotes);
-        const chosen = quotes.filter(quote => quote.state === "draft").at(-1) || quotes.at(-1);
+        const chosen = preferredCustomerQuote(quotes, lead.quoteReference);
         if (chosen) selectCustomerQuote(lead, chosen);
         else { setQuoteItems([]); setQuoteScope(""); setQuoteTerms(""); setCustomerQuoteTitle(""); }
       })
@@ -3583,7 +3585,7 @@ export default function CrmDashboardPage() {
       lead.message ||
       "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints"
     );
-    setInvoicePrice(lead.quoteAmount || 850);
+    setInvoicePrice(lead.invoiceAmount ?? lead.quoteAmount ?? 850);
     setInvoiceExtraWork(lead.technicianNotes || lead.scopeNotes || "");
     setInvoiceExtraCharge(0);
     setInvoiceGst(10);
@@ -8338,7 +8340,7 @@ export default function CrmDashboardPage() {
                   type="button"
                   onClick={() => {
                     updateLeadField(activeInvoiceLead.id, {
-                      quoteAmount: invoicePrice,
+                      invoiceAmount: invoicePrice,
                       status: invoiceStatus === "Paid" ? "Payment Received" : activeInvoiceLead.status
                     });
                     setInvoiceModalOpen(false);

@@ -65,6 +65,11 @@ export async function POST(req: NextRequest) {
     lead.quoteAmount
   );
 
+  if (!Number.isFinite(total) || total <= 0) {
+    await releaseCustomerQuoteSend(reference);
+    return NextResponse.json({ error: "Add a quote amount greater than zero before sending." }, { status: 400 });
+  }
+
   const jobDescription =
     lead.quoteScope ||
     lead.message ||
@@ -179,7 +184,7 @@ export async function POST(req: NextRequest) {
   // Automatic steps: record the send, set status, and start the follow-up clock.
   const now = new Date();
   const followUpNext = new Date(now.getTime() + FOLLOWUP_DAYS * 86400000).toISOString();
-  await updateSubmission(reference, {
+  const recorded = await updateSubmission(reference, {
     status: "Quote Sent",
     quoteNumber,
     quoteAmount: total,
@@ -188,6 +193,7 @@ export async function POST(req: NextRequest) {
     followUpStage: 0,
     followUpNext,
   });
+  if (!recorded) return NextResponse.json({ error: "The email was delivered, but the quotation changed before its delivery status could be saved. Review the quote before resending." }, { status: 409 });
   await appendActivity(reference, {
     time: now.toISOString(),
     actor,
