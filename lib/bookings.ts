@@ -138,6 +138,8 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         return { ok: false as const, conflict: true, error: "Another visit for this lead already starts at that time. Choose another start time." };
       }
       const replaced = replacedStart ? await col.findOne({ leadId: input.leadId, type: input.type, date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16) }) : null;
+      const status = resolveBookingStatus(input.type, input.status ?? replaced?.status ?? existing?.status,
+        lead?.status, !options.append && replacedStart === (input.type === "job" ? lead?.jobAt : lead?.inspectionAt)?.slice(0, 16));
       const previousSegments = replaced?.workSegments || (replacedStart ? [{ date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16) }] : []);
       const competing = appointments.filter(a => !(a.leadId === input.leadId && a.type === input.type &&
         ((!options.append && previousSegments.some(segment => segment.date === a.date && segment.time === a.time)) ||
@@ -145,7 +147,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
       for (const segment of segments) {
         // Status changes retain the reserved window. Reopening a cancelled
         // visit must acquire capacity again before it becomes active.
-        if (input.status === "Cancelled" || options.statusOnly && existing?.status !== "Cancelled") continue;
+        if (status === "Cancelled" || options.statusOnly && existing?.status !== "Cancelled") continue;
         const availability = bookingAvailability(competing, { ...input, leadId: "__new_reservation__", ...assignment, ...segment }, rules, technicians);
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }
@@ -154,9 +156,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         return { ok: true as const, reference: existing.reference };
       }
       const reservationId = randomUUID();
-      const status = resolveBookingStatus(input.type, input.status ?? replaced?.status ?? existing?.status,
-        lead?.status, !options.append && replacedStart === (input.type === "job" ? lead?.jobAt : lead?.inspectionAt)?.slice(0, 16));
-      const document: BookingDoc = { ...(options.statusOnly ? existing : {}), ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+      const document: BookingDoc = { ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
         date, time, reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);

@@ -14,6 +14,7 @@ import type { InspectionReportDoc } from "@/lib/inspection";
 import { normalizeApptString } from "@/lib/scheduling";
 import { getBookingRules } from "./bookingRulesServer";
 import { savedBookingMinutes } from "./bookingDuration";
+import { validBookingStatus } from "./bookingStatus";
 
 /**
  * Force `inspectionAt` / `jobAt` in a submission patch to the canonical naive
@@ -687,7 +688,7 @@ export async function listReminderCandidates(): Promise<SubmissionJSON[]> {
   const bookings = await db.collection<import("./bookings").BookingDoc>("bookings").find({}).toArray();
   const ids = [...new Set(bookings.map(b => b.leadId))].filter(id => ObjectId.isValid(id));
   const docs = await col.find({
-    status: { $nin: ["Lost", "Cancelled", "Closed", "No Response", "Completed"] },
+    status: { $nin: ["Lost", "Cancelled", "Closed", "No Response"] },
     $or: [{ inspectionAt: { $gt: "" } }, { jobAt: { $gt: "" } }, { _id: { $in: ids.map(id => new ObjectId(id)) } }],
   }).toArray();
   return bookingReminderCandidates(docs.map(toJSON), bookings);
@@ -721,7 +722,22 @@ export async function updateStatus(
     status,
     ...(!["Inspection En Route", "Job En Route"].includes(status) ? { customerTrackingEndedAt: new Date() } : {}),
   } });
+  if (res.matchedCount) await syncPrimaryBookingStatus(id, status);
   return res.matchedCount > 0;
+}
+
+/** Existing lead workflow buttons address the primary visit, never siblings. */
+async function syncPrimaryBookingStatus(id: string, status?: string): Promise<void> {
+  if (!status || status === "Cancelled") return;
+  const type = validBookingStatus("job", status) ? "job" : validBookingStatus("inspection", status) ? "inspection" : undefined;
+  if (!type) return;
+  const col = await collection(false);
+  const lead = await col.findOne({ _id: new ObjectId(id) });
+  const start = lead?.[type === "job" ? "jobAt" : "inspectionAt"];
+  if (!start) return;
+  const db = await getDb();
+  await db.collection("bookings").updateOne({ leadId: id, type, date: start.slice(0, 10), time: start.slice(11, 16), status: { $ne: "Cancelled" } },
+    { $set: { status } });
 }
 
 export async function updateSubmission(
@@ -770,6 +786,7 @@ export async function updateSubmission(
     safeUpdates.customerTrackingEndedAt = new Date();
   }
   const res = await col.updateOne(writeFilter, { $set: safeUpdates });
+  if (res.matchedCount) await syncPrimaryBookingStatus(id, safeUpdates.status);
   return res.matchedCount > 0;
 }
 

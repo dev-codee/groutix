@@ -19,7 +19,7 @@ export function bookingReminderCandidates(leads: SubmissionJSON[], bookings: Boo
           [type === "job" ? "jobReminder1hSent" : "inspectionReminder1hSent"]: booking.reminder1hSent ?? (isPrimary ? lead[type === "job" ? "jobReminder1hSent" : "inspectionReminder1hSent"] : false),
         });
       }
-      if (at && !matching.some(b => `${b.date}T${b.time}` === at.slice(0, 16))) {
+      if (at && bookingNeedsReminder(resolveBookingStatus(type, undefined, lead.status, true)) && !matching.some(b => `${b.date}T${b.time}` === at.slice(0, 16))) {
         result.push({ ...lead, inspectionAt: undefined, jobAt: undefined, [type === "job" ? "jobAt" : "inspectionAt"]: at });
       }
     }

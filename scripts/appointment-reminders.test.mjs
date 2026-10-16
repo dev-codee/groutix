@@ -6,7 +6,13 @@ function setup({ hours = 24, configured = true, email = "customer@example.test",
   const lead = { id: "test", name: "Customer", email, inspectionAt: new Date(now + hours * 3600000).toISOString(), ...flags };
   const sent = [], updates = [], activity = [];
   const { GET } = loadTs("app/api/cron/reminders/route.ts", {
-    "@/lib/submissions": { listReminderCandidates: async () => [lead], updateSubmission: async (_id, patch) => { updates.push(patch); Object.assign(lead, patch); return true; }, appendActivity: async (_id, entry) => activity.push(entry) },
+    "@/lib/submissions": { listReminderCandidates: async () => [lead], markBookingReminderSent: async (id, type, at, tier) => {
+      assert.equal(id, lead.id);
+      assert.equal(type, "inspection");
+      assert.equal(at, lead.inspectionAt);
+      const patch = { [tier === "1h" ? "inspectionReminder1hSent" : "inspectionReminderSent"]: true };
+      updates.push(patch); Object.assign(lead, patch);
+    }, appendActivity: async (_id, entry) => activity.push(entry) },
     "@/lib/email": { isEmailConfigured: () => configured, wrapEmailHtml: html => html, sendEmail: async data => { if (failure) throw new Error("SMTP failed"); sent.push(data); } },
   }, { process: { env: { CRON_SECRET: "test-secret" } }, Date: class extends Date { static now() { return now; } }, console: { error: () => {} } });
   const request = { headers: { get: name => name === "authorization" ? "Bearer test-secret" : null } };

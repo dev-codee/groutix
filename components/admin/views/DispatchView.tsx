@@ -222,6 +222,7 @@ export function DispatchView({
       travelToKm: number;
       title: string;
       serviceLabel: string;
+      bookingStatus: string;
       // Exact timeline coordinates (% of 9 AM - 5 PM track)
       leftPct: number;
       widthPct: number;
@@ -231,7 +232,7 @@ export function DispatchView({
       map.set(date, []);
     }
 
-    for (const visit of scopedLeads.flatMap(lead => leadBookings(lead).filter(booking => booking.status !== "Cancelled").map(booking => ({ lead: bookingLead(lead, booking), type: booking.type })))) {
+    for (const visit of scopedLeads.flatMap(lead => leadBookings(lead).filter(booking => booking.status !== "Cancelled").map(booking => ({ lead: bookingLead(lead, booking), type: booking.type, status: booking.status! })))) {
       const lead = visit.lead;
       if (lead.status === "Lost" || lead.status === "Cancelled") continue;
 
@@ -275,7 +276,7 @@ export function DispatchView({
             endTime: fmtMinutesTo12h(endMins), tech: type === "job" ? lead.technician || "Unassigned" : lead.assigned || "Unassigned",
             suburb, travelToMins: travel.durationMinutes, travelToKm: travel.distanceKm,
             title: `${type === "job" ? "Job" : "Inspection"} (${durationMins / 60} hrs)${segments.length > 1 ? " · multi-day" : ""}`,
-            serviceLabel: lead.service || "Tile & Grout Service", leftPct: (clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100,
+            serviceLabel: lead.service || "Tile & Grout Service", bookingStatus: visit.status, leftPct: (clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100,
             widthPct: Math.max(1, (clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS * 100) });
         }
       }
@@ -885,7 +886,7 @@ export function DispatchView({
 
                                         {/* Customer Name or Service */}
                                         <div className="text-[10px] font-bold text-slate-800 truncate leading-tight">
-                                          {item.serviceLabel}
+                                          {item.bookingStatus} · {item.serviceLabel}
                                         </div>
 
                                         {/* Suburb */}

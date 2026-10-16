@@ -13,6 +13,11 @@ export function validBookingStatus(type: "inspection" | "job", value: unknown): 
 export function resolveBookingStatus(type: "inspection" | "job", saved?: string, leadStatus?: string, primary = false): BookingStatus {
   if (validBookingStatus(type, saved)) return saved;
   if (primary && validBookingStatus(type, leadStatus)) return leadStatus;
+  if (primary && type === "job") {
+    if (["Job Started", "In Progress"].includes(leadStatus || "")) return "Job In Progress";
+    if (["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(leadStatus || "")) return "Job Done";
+  }
+  if (primary && type === "inspection" && leadStatus === "Completed") return "Inspection Completed";
   return type === "job" ? "Job Booked" : "Inspection Booked";
 }
 

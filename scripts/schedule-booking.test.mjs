@@ -222,3 +222,12 @@ test("editing a secondary visit releases only that visit and preserves the prima
   assert.equal(calls.find(c => c[0] === "update")[2].jobAt, undefined);
   assert.deepEqual(Array.from(calls.find(c => c[0] === "release")).slice(0, 5), ["release", "lead", "job", "2026-10-21", "11:00"]);
 });
+
+test("appended bookings keep the original job reference and do not inherit another person's username", async () => {
+  const { patch, calls } = patchApi({ before: { jobNo: "JOBNO-1201", jobAt: "2026-10-20T09:00", technicianId: "alex", technicianUsername: "alex-login" } });
+  const result = await patch({ appendBooking: true, jobAt: "2026-10-21T09:00", technicianId: "sam" });
+  assert.equal(result.status, 200);
+  const reservation = calls.find(c => c[0] === "reserve")[1];
+  assert.equal(reservation.reference, "JOBNO-1201");
+  assert.equal(reservation.technicianUsername, "");
+});
