@@ -1,5 +1,7 @@
 "use client";
 
+import { bookingLead, leadBookings } from "@/lib/leadBookings";
+
 import { staffBookingRules } from "@/lib/staffBookingRules";
 
 import type { DayAppointment } from "@/lib/bookings";
@@ -229,7 +231,8 @@ export function DispatchView({
       map.set(date, []);
     }
 
-    for (const lead of scopedLeads) {
+    for (const visit of scopedLeads.flatMap(lead => leadBookings(lead).map(booking => ({ lead: bookingLead(lead, booking), type: booking.type })))) {
+      const lead = visit.lead;
       if (lead.status === "Lost" || lead.status === "Cancelled") continue;
 
       // Staff filter
@@ -254,7 +257,7 @@ export function DispatchView({
       const area = resolveArea(lead.address || lead.city);
       const suburb = area.suburb || lead.city || "Melbourne";
 
-      for (const type of ["inspection", "job"] as const) {
+      for (const type of [visit.type]) {
         const start = type === "job" ? lead.jobAt : lead.inspectionAt;
         const end = type === "job" ? lead.jobEndAt : lead.inspectionEndAt;
         if (!start?.includes("T")) continue;
@@ -286,10 +289,14 @@ export function DispatchView({
   }, [scopedLeads, visibleDates, techFilter, searchQuery, bookingRules]);
 
   // ── Currently Selected Lead ────────────────────────────────────────────────
+  const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const activeLead = useMemo(() => {
     if (!selectedLeadId) return null;
-    return scopedLeads.find((l) => l.id === selectedLeadId) || null;
-  }, [scopedLeads, selectedLeadId]);
+    const lead = scopedLeads.find((l) => l.id === selectedLeadId);
+    if (!lead) return null;
+    const booking = leadBookings(lead).find(b => b.type === selectedBookingType && `${b.date}T${b.time}` === selectedStart);
+    return booking ? bookingLead(lead, booking) : lead;
+  }, [scopedLeads, selectedLeadId, selectedStart, selectedBookingType]);
 
   // Active lead suburb
   const activeLeadSuburb = useMemo(() => {
@@ -523,11 +530,11 @@ export function DispatchView({
 
       const saveResponse = await fetch(`/api/admin/submissions/${confirmRescheduleData.lead.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updates, bookingNotifications: true }),
+        body: JSON.stringify({ ...updates, bookingOriginalStart: confirmRescheduleData.oldDateTime?.slice(0, 16), bookingNotifications: true }),
       });
       const saved = await saveResponse.json();
       if (saveResponse.ok) {
-        upsertLead({ ...confirmRescheduleData.lead, ...updates });
+        upsertLead(saved.item || { ...confirmRescheduleData.lead, ...updates });
         setSelectedDate(confirmRescheduleData.newDate);
         setBookingSuccess(
           `✓ ${confirmRescheduleData.oldDateTime ? "Rescheduled" : "Booked"} ${confirmRescheduleData.lead.name || "Customer"} for ${fmtReadableDate(confirmRescheduleData.newDate)} at ${fmtScheduleTime(timeFormatted)}. ${(saved.notificationWarnings || []).join(" ")}`
@@ -848,6 +855,7 @@ export function DispatchView({
                                       onClick={() => {
                                         setSelectedLeadId(item.lead.id);
                                         setSelectedBookingType(item.type);
+                                        setSelectedStart((item.type === "job" ? item.lead.jobAt : item.lead.inspectionAt)?.slice(0, 16) || null);
                                         setIsChangeBookingOpen(true);
                                       }}
                                       style={{

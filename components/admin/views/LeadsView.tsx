@@ -1,5 +1,6 @@
 "use client";
 
+import { LeadBookings } from "../LeadBookings";
 import { useMemo } from "react";
 import { Search, Mail } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -150,12 +151,11 @@ export function LeadsView() {
 
           <div className="divide-y divide-slate-200/80 w-full">
             {filteredLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
-              if ((role as string) === "intake") return <IntakeLeadRow key={l.id} l={l} />;
-              if ((role as string) === "inspection" || (role as string) === "field")
-                return <FieldLeadRow key={l.id} l={l} />;
-              if ((role as string) === "technician") return <TechnicianLeadRow key={l.id} l={l} />;
-              if ((role as string) === "finance") return <FinanceLeadRow key={l.id} l={l} />;
-              return <StandardLeadCard key={l.id} l={l} />;
+              const row = role === "intake" ? <IntakeLeadRow l={l} />
+                : role === "inspection" || role === "field" ? <FieldLeadRow l={l} />
+                : role === "technician" ? <TechnicianLeadRow l={l} />
+                : role === "finance" ? <FinanceLeadRow l={l} /> : <StandardLeadCard l={l} />;
+              return <div key={l.id}>{row}<LeadBookings lead={l} /></div>;
             })}
             {filteredLeads.length === 0 && (
               <div className="py-16 text-center text-slate-400">

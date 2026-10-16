@@ -210,6 +210,7 @@ export interface SubmissionDoc {
   inspectionEndAt?: string;
   jobEndAt?: string;
   inspectionAt?: string; // ISO datetime of the booked inspection
+  bookings?: import("@/lib/leadBookings").LeadBooking[];
   jobAt?: string; // ISO datetime of the booked job
   inspectionReminderSent?: boolean; // 24h-before reminder
   jobReminderSent?: boolean; // 24h-before reminder
@@ -615,6 +616,19 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> {
+  if (!items.length) return items;
+  const db = await getDb();
+  const bookings = await db.collection<import("./bookings").BookingDoc>("bookings")
+    .find({ leadId: { $in: items.map(item => item.id) } }).toArray();
+  return items.map(item => ({ ...item, bookings: bookings.filter(b => b.leadId === item.id).map(b => ({
+    type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: b.workSegments,
+    scheduledMinutes: b.scheduledMinutes, technicianId: b.technicianId, technician: b.technician,
+    technicianUsername: b.technicianUsername, inspectorId: b.inspectorId, assigned: b.assigned,
+    inspectorUsername: b.inspectorUsername,
+  })) }));
+}
+
 export async function listSubmissions(
   params: ListParams
 ): Promise<{ items: SubmissionJSON[]; total: number }> {
@@ -633,7 +647,7 @@ export async function listSubmissions(
     col.countDocuments(filter),
   ]);
 
-  return { items: docs.map(toJSON), total };
+  return { items: await withBookings(docs.map(toJSON)), total };
 }
 
 /** Stream-friendly export: every matching doc, newest first, no pagination. */
@@ -684,7 +698,7 @@ export async function getSubmission(id: string): Promise<SubmissionJSON | null> 
   if (!ObjectId.isValid(id)) return null;
   const col = await collection();
   const doc = await col.findOne({ _id: new ObjectId(id) });
-  return doc ? toJSON(doc) : null;
+  return doc ? (await withBookings([toJSON(doc)]))[0] : null;
 }
 
 export async function updateStatus(

@@ -67,10 +67,10 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
         : { inspectionAt: startAt, inspectionEndAt: endAt, inspectionWorkSegments: segments, assigned: person.name, inspectorId: person.id };
       if (!(type === "job" ? lead.jobAt : lead.inspectionAt)) updates.status = type === "job" ? "Job Booked" : "Inspection Booked";
       const savedResponse = await fetch(`/api/admin/submissions/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updates, bookingNotifications: true }) });
+        body: JSON.stringify({ ...updates, bookingOriginalStart: originalStart, bookingNotifications: true }) });
       const saved = await savedResponse.json();
       if (!savedResponse.ok) throw new Error(saved.error || "Could not save booking changes.");
-      upsertLead({ ...lead, ...updates });
+      upsertLead(saved.item || { ...lead, ...updates });
       onSaved(date, `Updated ${lead.name || "Customer"}'s ${type} booking. ${(saved.notificationWarnings || []).join(" ")}`);
     } catch (error) { setError(error instanceof Error ? error.message : "Could not save booking changes."); }
     finally { saving.current = false; setBusy(false); }

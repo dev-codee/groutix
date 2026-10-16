@@ -138,6 +138,7 @@ export interface Lead {
   inspectionEndAt?: string;
   jobEndAt?: string;
   inspectionAt?: string;
+  bookings?: import("@/lib/leadBookings").LeadBooking[];
   jobAt?: string;
   inspectionReminderSent?: boolean;
   inspectionRescheduled?: boolean;

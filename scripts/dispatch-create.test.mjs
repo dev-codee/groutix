@@ -18,7 +18,7 @@ function harness() {
   return { render, requests, saved, completed };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
-test("reviewing a new booking writes nothing; final confirmation creates, assigns and requests notifications", async () => {
+test("reviewing a new booking writes nothing; final confirmation reuses the lead, assigns and requests notifications", async () => {
   const h = harness();
   let nodes = h.render();
   const selects = nodes.filter(n => n.type === "select").slice(1);
@@ -32,13 +32,14 @@ test("reviewing a new booking writes nothing; final confirmation creates, assign
   nodes = h.render();
   nodes.find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
   await settle();
-  assert.equal(h.requests.filter(r => r.method === "POST").length, 1);
+  assert.equal(h.requests.filter(r => r.method === "POST").length, 0);
   const patch = h.requests.find(r => r.method === "PATCH");
-  assert.equal(patch.url, "/api/admin/submissions/new");
+  assert.equal(patch.url, "/api/admin/submissions/old");
   const body = JSON.parse(patch.body);
   assert.equal(body.inspectionAt, "2026-10-14T10:15");
   assert.equal(body.assigned, "Alex");
   assert.equal(body.bookingNotifications, true);
+  assert.equal(body.appendBooking, true);
   assert.equal(h.completed.length, 1);
 });
 
@@ -59,4 +60,25 @@ test("a multi-day job reviews and saves the computed finish", async () => {
   await settle();
   const body = JSON.parse(h.requests.find(r => r.method === "PATCH").body);
   assert.equal(body.jobEndAt, "2026-10-15T12:15");
+});
+
+test("a new customer still creates exactly one lead before adding the booking", async () => {
+  const h = harness();
+  h.render().find(n => n.type === "button" && n.props.children === "New customer").props.onClick();
+  let nodes = h.render();
+  for (const [type, value] of [["email", "new@example.com"], ["tel", "0400000000"]]) {
+    h.render().find(n => n.type === "input" && n.props.type === type).props.onChange({ target: { value } });
+  }
+  let texts = h.render().filter(n => n.type === "input" && n.props.type === "text");
+  texts[0].props.onChange({ target: { value: "New Customer" } });
+  texts = h.render().filter(n => n.type === "input" && n.props.type === "text");
+  texts[1].props.onChange({ target: { value: "10 Test Street" } });
+  h.render().find(n => n.type === "input" && n.props.placeholder === "e.g. Shower regrouting").props.onChange({ target: { value: "Regrouting" } });
+  h.render().filter(n => n.type === "select").at(-1).props.onChange({ target: { value: "inspector" } });
+  h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+  await settle();
+  h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+  await settle();
+  assert.equal(h.requests.filter(r => r.method === "POST").length, 1);
+  assert.equal(h.requests.find(r => r.method === "PATCH").url, "/api/admin/submissions/new");
 });

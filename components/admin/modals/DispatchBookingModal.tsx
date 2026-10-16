@@ -59,7 +59,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not check availability.");
     for (const segment of segments) {
-    const issue = dispatchBookingIssue({ leadId: savedLead.current?.id || "new-dispatch-booking", type, ...segment,
+    const issue = dispatchBookingIssue({ leadId: "new-dispatch-booking", type, ...segment,
       ...(type === "job" ? { technicianId: assignee, technician: choices.find(c => c.key === assignee)?.name } : { inspectorId: assignee, assigned: choices.find(c => c.key === assignee)?.name }) }, data.appointments, rules, assignableTechnicians);
     if (issue) throw new Error(`${segment.date}: ${issue}`);
     }
@@ -75,8 +75,9 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
       if (!customer.email.trim() && !customer.phone.trim()) throw new Error("Add an email address or phone number for the confirmation.");
       await checkAvailability();
       if (!review) { setReview(true); return; }
-      // A repeat visit gets its own job record; previous customer history stays intact.
+      // Reuse the selected lead; only a genuinely new customer needs a new record.
       // Keep this ID after a conflict so retrying never creates a second record.
+      if (mode === "existing") savedLead.current = scopedLeads.find(l => l.id === customerId) || null;
       if (!savedLead.current) {
         const response = await fetch("/api/admin/submissions", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...customer, service, source: "Dispatch board" }) });
@@ -91,10 +92,10 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         ...(type === "job" ? { jobAt: `${date}T${time}`, jobEndAt: endAt, jobWorkSegments: segments, technicianId: assignee, technician: specialist.name }
           : { inspectionAt: `${date}T${time}`, inspectionEndAt: endAt, inspectionWorkSegments: segments, assigned: specialist.name, inspectorId: assignee }) };
       const response = await fetch(`/api/admin/submissions/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updates, bookingNotifications: true }) });
+        body: JSON.stringify({ ...updates, appendBooking: true, bookingNotifications: true }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not reserve this time.");
-      upsertLead({ ...lead, ...updates });
+      upsertLead(data.item || { ...lead, ...updates });
       onBooked(date, `${type === "job" ? "Job" : "Inspection"} booked for ${customer.name}. ${data.notificationWarnings?.length ? data.notificationWarnings.join(" ") : "Email and SMS confirmations sent."}`);
     } catch (err) {
       setError(`${err instanceof Error ? err.message : "Could not save. Please try again."}${savedLead.current ? " The customer record is saved; retry here to complete the booking." : ""}`);
@@ -138,8 +139,8 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
             </div>
             <div className="flex gap-3">{(["existing", "new"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => { setMode(value); setCustomerId(""); setCustomer({ name: "", email: "", phone: "", address: "" }); }} className={`text-sm rounded-lg px-3 py-2 ${mode === value ? "bg-slate-900 text-white" : "bg-slate-100"}`}>{value === "existing" ? "Existing customer" : "New customer"}</button>)}</div>
             {mode === "existing" && <div><label className="text-sm">Find customer<input className={input} placeholder="Search name, phone, email or address" value={search} onChange={e => setSearch(e.target.value)} /></label><label className="text-sm">Customer<select required className={input} value={customerId} onChange={e => { const lead = scopedLeads.find(l => l.id === e.target.value); setCustomerId(e.target.value); if (lead) { setCustomer({ name: lead.name || "", email: lead.email || "", phone: lead.phone || "", address: lead.address || "" }); setService(lead.service || ""); } }}><option value="">Select a customer ({matches.length} matches)</option>{matches.map(l => <option key={l.id} value={l.id}>{l.name} · {l.address || l.phone} · {l.jobNo}</option>)}</select></label></div>}
-            <div className="grid grid-cols-2 gap-3">{(["name", "email", "phone", "address"] as const).map(field => <label key={field} className={`text-sm capitalize ${field === "address" ? "col-span-2" : ""}`}>{field === "address" ? "Property address" : field}<input required={field === "name" || field === "address"} type={field === "email" ? "email" : field === "phone" ? "tel" : "text"} className={input} value={customer[field]} onChange={e => setCustomer({ ...customer, [field]: e.target.value })} /></label>)}</div>
-            <label className="block text-sm">Service<input required className={input} value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Shower regrouting" /></label>
+            <div className="grid grid-cols-2 gap-3">{(["name", "email", "phone", "address"] as const).map(field => <label key={field} className={`text-sm capitalize ${field === "address" ? "col-span-2" : ""}`}>{field === "address" ? "Property address" : field}<input readOnly={mode === "existing"} required={field === "name" || field === "address"} type={field === "email" ? "email" : field === "phone" ? "tel" : "text"} className={input} value={customer[field]} onChange={e => setCustomer({ ...customer, [field]: e.target.value })} /></label>)}</div>
+            <label className="block text-sm">Service<input readOnly={mode === "existing"} required className={input} value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Shower regrouting" /></label>
             <label className="block text-sm">{type === "job" ? "Technician" : "Inspector"}<select required className={input} value={assignee} onChange={e => setAssignee(e.target.value)}><option value="">Select a specialist</option>{choices.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}</select></label>
           </>}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}

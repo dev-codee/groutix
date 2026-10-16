@@ -57,7 +57,7 @@ test("booking removal clears the appointment and releases its slot", async () =>
   const { patch, calls } = patchApi({ before: { jobAt: "2026-10-08T09:00" } });
   assert.equal((await patch({ jobAt: "" })).status, 200);
   assert.equal(calls.find(([action]) => action === "update")[2].jobAt, "");
-  assert.deepEqual(Array.from(calls.find(([action]) => action === "delete")), ["delete", "lead", "job"]);
+  assert.deepEqual(Array.from(calls.find(([action]) => action === "release")).slice(0, 5), ["release", "lead", "job", "2026-10-08", "09:00"]);
 });
 
 test("invalid appointment dates never update a lead", async () => {
@@ -89,7 +89,7 @@ test("clearing an appointment using null releases that booking", async () => {
   const { patch, calls } = patchApi({ before: { inspectionAt: "2026-10-14T10:00" } });
   assert.equal((await patch({ inspectionAt: null })).status, 200);
   assert.equal(calls.find(([action]) => action === "update")[2].inspectionAt, "");
-  assert.deepEqual(Array.from(calls.find(([action]) => action === "delete")), ["delete", "lead", "inspection"]);
+  assert.deepEqual(Array.from(calls.find(([action]) => action === "release")).slice(0, 5), ["release", "lead", "inspection", "2026-10-14", "10:00"]);
 });
 
 test("editing both dates does not partially save if the job time is unavailable", async () => {
@@ -121,8 +121,7 @@ test("booking store retains the prior reservation until the lead write commits",
   assert.equal(deletes.length, 0);
   col.findOne = async () => slot;
   assert.equal((await api.createBooking(slot)).ok, true);
-  assert.equal(deletes.length, 1);
-  assert.equal(deletes[0].type, "job");
+  assert.equal(deletes.length, 0); // An idempotent save must never delete sibling visits.
 });
 
 
@@ -200,4 +199,26 @@ test("changing only an inspector rechecks the full existing booking before savin
   const blocked = patchApi({ conflict: true, before: { inspectionAt: "2026-10-14T09:00", assigned: "Alex" } });
   assert.equal((await blocked.patch({ assigned: "Bob" })).status, 409);
   assert.equal(blocked.calls.some(c => c[0] === "update"), false);
+});
+
+test("additional visits preserve all customer business fields and the primary booking", async () => {
+  const original = { jobAt: "2026-10-20T09:00", jobEndAt: "2026-10-20T10:00", technician: "Alex", technicianId: "alex", jobNo: "JOBNO-1201", quoteAmount: 1500, amountPaid: 500, notes: "Keep", status: "Invoice Sent" };
+  const { patch, calls } = patchApi({ before: original });
+  const response = await patch({ appendBooking: true, jobAt: "2026-10-21T11:00", jobEndAt: "2026-10-21T12:00", technician: "Sam", technicianId: "sam", name: "Changed", quoteAmount: 1, amountPaid: 0, notes: "Discard", status: "Job Booked" });
+  assert.equal(response.status, 200);
+  const saved = calls.find(c => c[0] === "update")[2];
+  for (const key of [...Object.keys(original), "name"]) assert.equal(saved[key], undefined, key);
+  const reservation = calls.find(c => c[0] === "reserve");
+  assert.equal(reservation[1].technician, "Sam");
+  assert.equal(reservation[2].append, true);
+  assert.equal(reservation[2].retainPrevious, true);
+  assert.equal(calls.some(c => c[0] === "delete" || c[0] === "release"), false);
+});
+
+test("editing a secondary visit releases only that visit and preserves the primary", async () => {
+  const { patch, calls } = patchApi({ before: { jobAt: "2026-10-20T09:00", technician: "Alex", bookings: [{ type: "job", date: "2026-10-21", time: "11:00", technician: "Sam" }] } });
+  const result = await patch({ bookingOriginalStart: "2026-10-21T11:00", jobAt: "2026-10-21T13:00", technician: "Sam" });
+  assert.equal(result.status, 200);
+  assert.equal(calls.find(c => c[0] === "update")[2].jobAt, undefined);
+  assert.deepEqual(Array.from(calls.find(c => c[0] === "release")).slice(0, 5), ["release", "lead", "job", "2026-10-21", "11:00"]);
 });

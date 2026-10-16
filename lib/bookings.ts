@@ -88,7 +88,7 @@ export type CreateBookingResult =
 type BookingInput = Omit<BookingDoc, "_id" | "createdAt" | "reservationId">;
 
 /** Capacity is checked and reserved under a shared per-day/pool database lock. */
-export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean; staffOverride?: boolean } = {}): Promise<CreateBookingResult> {
+export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean; staffOverride?: boolean; append?: boolean; replaceStart?: string } = {}): Promise<CreateBookingResult> {
   if (!isMongoConfigured()) return { ok: false, error: "Database not configured." };
   const date = input.date.trim();
   const time = input.time.slice(0, 5);
@@ -110,6 +110,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
       ]);
       const rules = options.staffOverride ? staffBookingRules(customerRules) : customerRules;
       const existing = await col.findOne({ leadId: input.leadId, type: input.type, date, time });
+      if (options.append && existing) return { ok: false as const, conflict: true, error: "This lead already has a booking at this start time. Edit that visit or choose another start time." };
       const db = await getDb();
       const lead = ObjectId.isValid(input.leadId) ? await db.collection("submissions").findOne({ _id: new ObjectId(input.leadId) }) : null;
       const assignment: TechnicianAssignment = input.type === "job" ? {
@@ -118,8 +119,18 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         technicianUsername: input.technicianUsername !== undefined ? input.technicianUsername : lead?.technicianUsername,
       } : { inspectorId: input.inspectorId ?? lead?.inspectorId, assigned: input.assigned ?? lead?.assigned, inspectorUsername: input.inspectorUsername ?? lead?.inspectorUsername };
       const durationMinutes = appointmentDurationMinutes(input, rules);
+      // Exclude only the visit being edited. Sibling visits still reserve staff.
+      const replacedStart = options.append ? undefined : options.replaceStart ?? (input.type === "job" ? lead?.jobAt : lead?.inspectionAt)?.slice(0, 16);
+      if (existing && replacedStart && replacedStart !== `${date}T${time}`) {
+        return { ok: false as const, conflict: true, error: "Another visit for this lead already starts at that time. Choose another start time." };
+      }
+      const replaced = replacedStart ? await col.findOne({ leadId: input.leadId, type: input.type, date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16) }) : null;
+      const previousSegments = replaced?.workSegments || (replacedStart ? [{ date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16) }] : []);
+      const competing = appointments.filter(a => !(a.leadId === input.leadId && a.type === input.type &&
+        ((!options.append && previousSegments.some(segment => segment.date === a.date && segment.time === a.time)) ||
+          (existing && a.date === date && a.time === time))));
       for (const segment of segments) {
-        const availability = bookingAvailability(appointments, { ...input, ...assignment, ...segment }, rules, technicians);
+        const availability = bookingAvailability(competing, { ...input, leadId: "__new_reservation__", ...assignment, ...segment }, rules, technicians);
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }
       const reservationId = randomUUID();
@@ -127,9 +138,8 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         date, time, reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);
-      if (!options.retainPrevious) await col.deleteMany({
-        leadId: input.leadId, type: input.type,
-        $or: [{ date: { $ne: date } }, { time: { $ne: time } }],
+      if (!options.retainPrevious && replacedStart && replacedStart !== `${date}T${time}`) await col.deleteOne({
+        leadId: input.leadId, type: input.type, date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16),
       });
       return { ok: true as const, reference: existing?.reference || input.reference, acquired: !existing, reservationId, previousBooking: existing || undefined };
     });

@@ -92,6 +92,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  const appendBooking = body.appendBooking === true;
+  const bookingOriginalStart = typeof body.bookingOriginalStart === "string" ? body.bookingOriginalStart : undefined;
+  delete body.appendBooking;
+  delete body.bookingOriginalStart;
+  delete body.bookings;
   // Dispatch explicitly opts in after the dispatcher reviews the booking.
   const bookingNotifications = body.bookingNotifications === true;
   delete body.bookingNotifications;
@@ -118,8 +123,37 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
 
   // Snapshot the prior state so we can record what actually changed.
-  const before = await getSubmission(id);
+  const current = await getSubmission(id);
+  const before = current ? { ...current } : null;
   if (!before) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  if (appendBooking && ["Lost", "Cancelled"].includes(before.status)) return NextResponse.json({ error: "Reopen this lead before adding a booking." }, { status: 409 });
+  const primary = { ...before };
+  const bookingType = "jobAt" in body ? "job" : "inspectionAt" in body ? "inspection" : undefined;
+  if (appendBooking && !bookingType) return NextResponse.json({ error: "Choose a booking type." }, { status: 400 });
+  if (bookingType && (appendBooking || bookingOriginalStart)) {
+    const startField = bookingType === "job" ? "jobAt" : "inspectionAt";
+    const endField = bookingType === "job" ? "jobEndAt" : "inspectionEndAt";
+    const segmentsField = bookingType === "job" ? "jobWorkSegments" : "inspectionWorkSegments";
+    if (appendBooking) {
+      // Adding a visit must never overwrite customer details, finance or workflow.
+      const allowed = new Set([startField, endField, ...(bookingType === "job"
+        ? ["technicianId", "technician", "technicianUsername"] : ["inspectorId", "assigned", "inspectorUsername"])]);
+      for (const key of Object.keys(body)) if (!allowed.has(key)) delete body[key];
+      before[startField] = undefined;
+      before[endField] = undefined;
+      before[segmentsField] = undefined;
+      if (!primary[startField]) body.status = bookingType === "job" ? "Job Booked" : "Inspection Booked";
+    } else if (bookingOriginalStart !== primary[startField]?.slice(0, 16)) {
+      const booking = before.bookings?.find(b => b.type === bookingType && `${b.date}T${b.time}` === bookingOriginalStart);
+      if (!booking) return NextResponse.json({ error: "This booking has changed. Refresh before editing." }, { status: 409 });
+      before[startField] = bookingOriginalStart;
+      before[endField] = booking.endAt;
+      before[segmentsField] = booking.workSegments;
+      if (bookingType === "job") Object.assign(before, { technician: booking.technician, technicianId: booking.technicianId, technicianUsername: booking.technicianUsername });
+      else Object.assign(before, { assigned: booking.assigned, inspectorId: booking.inspectorId, inspectorUsername: booking.inspectorUsername });
+    }
+  }
 
   if (typeof body.status === "string" && body.status !== before.status) {
     const isTerminal = /^(lost|cancelled|closed|no response)/i.test(body.status);
@@ -199,14 +233,21 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           technician: body.technician ?? before.technician,
           technicianUsername: body.technicianUsername ?? before.technicianUsername,
         } : { inspectorId: body.inspectorId ?? before.inspectorId, assigned: body.assigned ?? before.assigned, inspectorUsername: body.inspectorUsername ?? before.inspectorUsername }),
-        suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true });
+        suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true, append: appendBooking, replaceStart: before[field]?.slice(0, 16) });
       if (!result.ok) {
         await rollback();
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
       }
       if (result.acquired || result.previousBooking) reserved.push({ type, date, time, reservationId: result.reservationId, previousBooking: result.previousBooking });
     }
-    const ok = await updateSubmission(id, body);
+    const persisted = { ...body };
+    if (bookingType && primary[bookingType === "job" ? "jobAt" : "inspectionAt"] &&
+        (appendBooking || bookingOriginalStart && bookingOriginalStart !== primary[bookingType === "job" ? "jobAt" : "inspectionAt"]?.slice(0, 16))) {
+      const keys = bookingType === "job" ? ["jobAt", "jobEndAt", "jobWorkSegments", "technician", "technicianId", "technicianUsername"]
+        : ["inspectionAt", "inspectionEndAt", "inspectionWorkSegments", "assigned", "inspectorId", "inspectorUsername"];
+      for (const key of keys) delete persisted[key];
+    }
+    const ok = await updateSubmission(id, persisted);
     if (!ok) {
       await rollback();
       return NextResponse.json({ error: "Update failed." }, { status: 400 });
@@ -215,6 +256,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     await rollback();
     console.error("Update appointment failed:", err);
     return NextResponse.json({ error: "Could not save changes." }, { status: 500 });
+  }
+
+  for (const type of ["inspection", "job"] as const) {
+    const field = type === "job" ? "jobAt" : "inspectionAt";
+    const old = before[field]?.slice(0, 16);
+    if (!appendBooking && old && field in body && body[field]?.slice(0, 16) !== old) {
+      await releaseBookingSlot(id, type, old.slice(0, 10), old.slice(11, 16));
+    }
   }
 
   // Automatic step: write an audit-trail entry for meaningful staff changes.
@@ -325,21 +374,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (body.status === "Lost" || body.status === "Cancelled") {
       await deleteBooking(id);
     } else {
-      const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
       if (typeof body.inspectionAt === "string" && (body.inspectionAt !== (normalizeApptString(before.inspectionAt) || "") || body.inspectionEndAt !== undefined && (body.inspectionEndAt || "") !== (before.inspectionEndAt || ""))) {
         if (body.inspectionAt.includes("T")) {
-          const [d, tRaw] = body.inspectionAt.split("T");
-          const t = tRaw.slice(0, 5).padStart(5, "0");
-          await createBooking({
-            leadId: id,
-            type: "inspection",
-            endAt: body.inspectionEndAt ?? before.inspectionEndAt,
-            date: d,
-            time: t,
-            zone: area.zone,
-            suburb: area.suburb || undefined,
-            reference: `GX-ADM-${id.slice(-6)}`,
-          }, { staffOverride: true });
+          // Reservation was committed before saving the lead.
 
           // Reschedule: notify customer when an existing booking is moved.
           if (before.inspectionAt) {
@@ -400,7 +437,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             });
           }
         } else if (body.inspectionAt === "" || !body.inspectionAt) {
-          await deleteBooking(id, "inspection");
+          // The selected inspection was released above; sibling visits remain.
           if (before.inspectionAt) {
             await appendActivity(id, { time: now, actor, action: "Inspection booking cleared", detail: before.inspectionAt });
           }
@@ -408,18 +445,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       }
       if (typeof body.jobAt === "string" && (body.jobAt !== (normalizeApptString(before.jobAt) || "") || body.jobEndAt !== undefined && (body.jobEndAt || "") !== (before.jobEndAt || ""))) {
         if (body.jobAt.includes("T")) {
-          const [d, tRaw] = body.jobAt.split("T");
-          const t = tRaw.slice(0, 5).padStart(5, "0");
-          await createBooking({
-            leadId: id,
-            type: "job",
-            endAt: body.jobEndAt ?? before.jobEndAt,
-            date: d,
-            time: t,
-            zone: area.zone,
-            suburb: area.suburb || undefined,
-            reference: `GX-ADM-${id.slice(-6)}`,
-          }, { staffOverride: true });
+          // Reservation was committed before saving the lead.
 
           // Reschedule: notify customer and log activity when an existing job booking is moved.
           if (before.jobAt) {
@@ -479,7 +505,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
             });
           }
         } else if (body.jobAt === "" || !body.jobAt) {
-          await deleteBooking(id, "job");
+          // The selected job was released above; sibling visits remain.
           if (before.jobAt) {
             await appendActivity(id, { time: now, actor, action: "Job booking cleared", detail: before.jobAt });
           }
@@ -512,7 +538,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       } else notificationWarnings.push("Confirmation SMS not sent: phone number or SMS service unavailable.");
     }
   }
-  return NextResponse.json({ ok: true, notificationWarnings });
+  return NextResponse.json({ ok: true, notificationWarnings, item: await getSubmission(id) });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {

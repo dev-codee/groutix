@@ -3685,7 +3685,10 @@ export default function CrmDashboardPage() {
                 (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser)
               );
 
-            if (!isAssigned) return false;
+            const assignedVisit = l.bookings?.some(b => b.type === "job" && (
+              !!b.technicianId && targetAllIds.has(b.technicianId) ||
+              [b.technician, b.technicianUsername].some(value => value && [targetUser, targetName].includes(value.trim().toLowerCase()))));
+            if (!isAssigned && !assignedVisit) return false;
             return true;
           }
           if (role === "inspection" || role === "field") {
@@ -3713,7 +3716,10 @@ export default function CrmDashboardPage() {
               (!l.assigned || l.assigned.trim() === "" || l.assigned.trim().toLowerCase() === "unassigned") &&
               INSPECTION_STATUSES.includes(l.status);
 
-            if (!isAssigned && !isUnclaimedInspection) return false;
+            const assignedVisit = l.bookings?.some(b => b.type === "inspection" && (
+              !!targetId && b.inspectorId === targetId ||
+              [b.assigned, b.inspectorUsername].some(value => value && [targetUser, targetName].includes(value.trim().toLowerCase()))));
+            if (!isAssigned && !assignedVisit && !isUnclaimedInspection) return false;
             return inRoleQueue(role, l.status) || isFlowInProgress(role, l.status, l) || isFlowCompleted(role, l.status, l);
           }
           if (!inRoleQueue(role, l.status) && !isFlowInProgress(role, l.status, l) && !isFlowCompleted(role, l.status, l)) return false;
