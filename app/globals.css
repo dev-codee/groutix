@@ -205,6 +205,12 @@ body:has(.admin-ui) section.fixed.bottom-5.right-4,
 .admin-ui ~ button.fixed.bottom-5.right-4 {
   display: none !important;
 }
+/* Hide the support chat button (and its panel) on mobile screens; desktop keeps it. */
+@media (max-width: 767px) {
+  [data-support-chat-widget] {
+    display: none !important;
+  }
+}
 /* Public content should wrap within the viewport; wide tables scroll independently. */
 .public-page {
   min-width: 0;
