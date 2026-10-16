@@ -4,6 +4,7 @@
 // and customer signature block.
 
 import fs from "fs";
+import { quoteUnitPriceExGst } from "./quotePricing";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { GROUTIX_QUOTE_TERMS } from "./serviceTemplates";
@@ -30,6 +31,8 @@ export interface QuotePdfInput {
   subtotal: number;
   gst: number;
   total: number;
+  taxMode?: "inclusive" | "exclusive" | "none";
+  taxRate?: number;
   taxName?: string; // e.g. "GST (10%)"
   specialNotes?: string;
   terms?: string;
@@ -348,14 +351,19 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   page1.drawText("DESCRIPTION", { x: colDescX, y: y - 11, size: 8.5, font: bold, color: INK });
   rightTextOnPage(page1, "QTY", colQtyRight, y - 11, bold, 8.5);
   if (!isScopeDoc) {
-    rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - 11, bold, 8.5);
-    rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - 11, bold, 8.5);
+    const showExGst = input.taxMode && input.taxMode !== "none";
+    rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - (showExGst ? 8 : 11), bold, 8.5);
+    rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - (showExGst ? 8 : 11), bold, 8.5);
+    if (showExGst) {
+      rightTextOnPage(page1, "(EX GST)", colPriceRight, y - 17, font, 6.5);
+      rightTextOnPage(page1, "(EX GST)", colAmountRight, y - 17, font, 6.5);
+    }
   }
   y -= 22;
 
   const items = input.items.length
     ? input.items
-    : [{ service: "Regrouting & waterproof resealing", price: input.total, qty: 1 }];
+    : [{ service: "Regrouting & waterproof resealing", price: input.subtotal, qty: 1 }];
 
   const normText = (s: string) =>
     s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -382,7 +390,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       : [];
 
     const qty = Number(it.qty || 1);
-    const price = Number(it.price || 0);
+    const price = input.items.length ? quoteUnitPriceExGst(it.price, input.taxMode, input.taxRate ?? 10) : Number(it.price || 0);
     const amount = price * qty;
 
     const rowContentH = descLines.length * 11 + scopeLines.length * 9.5;

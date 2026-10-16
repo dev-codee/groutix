@@ -68,6 +68,8 @@ export async function GET(req: NextRequest) {
       subtotal,
       gst,
       total,
+      taxMode: lead.quoteTaxMode,
+      taxRate: lead.quoteTaxRate ?? 10,
       status: lead.status,
       quoteAcceptedAt: lead.quoteAcceptedAt,
       quoteSignedAt: lead.quoteSignedAt,
@@ -159,6 +161,8 @@ export async function POST(req: NextRequest) {
         subtotal,
         gst,
         total,
+        taxMode: lead.quoteTaxMode,
+        taxRate: lead.quoteTaxRate ?? 10,
         taxName: lead.quoteTaxMode === "none" ? "No Tax" : `GST (${lead.quoteTaxRate ?? 10}%)`,
         specialNotes:
           lead.quoteTerms && lead.quoteTerms.length < 500 && !/^Groutix terms/i.test(lead.quoteTerms)

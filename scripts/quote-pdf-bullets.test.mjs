@@ -47,3 +47,33 @@ test("scope bullets and hanging indents render on the second quote page", async 
   assert.ok(scopeText.every(call => !/^[•*\-]|^o\s/.test(call.text)), "existing markers are not duplicated");
   if (process.env.QUOTE_PDF_PREVIEW) fs.writeFileSync(process.env.QUOTE_PDF_PREVIEW, Buffer.from(base64, "base64"));
 });
+
+test("inclusive PDF shows net unit prices and adds GST once while preserving the total", async () => {
+  const texts = [];
+  const { buildQuotePdfBase64, computeQuoteTotals } = loadTs("lib/quotePdf.ts", {
+    "./settings": { getSiteSettings: async () => { throw new Error("No logo in fixture"); } },
+    "pdf-lib": { ...pdfLib, PDFDocument: { create: async () => {
+      const doc = await pdfLib.PDFDocument.create();
+      const addPage = doc.addPage.bind(doc);
+      doc.addPage = (...args) => {
+        const page = addPage(...args.map(arg => Array.isArray(arg) ? Array.from(arg) : arg));
+        const drawText = page.drawText.bind(page);
+        const drawLine = page.drawLine.bind(page);
+        page.drawLine = options => drawLine({ ...options, start: { ...options.start }, end: { ...options.end } });
+        page.drawText = (text, options) => { texts.push(text); return drawText(text, options); };
+        return page;
+      };
+      return doc;
+    } } },
+  });
+  const items = [{ service: "Regrouting", price: 1000, qty: 1 }];
+  const totals = computeQuoteTotals(items, "inclusive", 10);
+  await buildQuotePdfBase64({ quoteNumber: "TEST", date: "16 Oct 2026", items, ...totals, taxMode: "inclusive", taxRate: 10 });
+  assert.ok(texts.includes("UNIT PRICE"));
+  assert.equal(texts.filter(text => text === "(EX GST)").length, 2);
+  assert.ok(texts.filter(text => text === "$909.09").length >= 2);
+  assert.ok(texts.some(text => /SUBTOTAL.*909\.09/.test(text)));
+  assert.ok(texts.some(text => /GST.*90\.91/.test(text)));
+  assert.ok(texts.some(text => /^TOTAL:.*1,?000\.00/.test(text)));
+  assert.equal(items[0].price, 1000);
+});

@@ -1,3 +1,4 @@
+import { quoteUnitPriceExGst } from "@/lib/quotePricing";
 import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId, listCustomerQuotes, reserveCustomerQuoteSend, releaseCustomerQuoteSend } from "@/lib/customerQuotes";
 import { quoteTrackingPixel } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
@@ -86,16 +87,16 @@ export async function POST(req: NextRequest) {
                 ${it.scope && it.scope !== it.service ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">${esc(it.scope).replace(/\n/g, "<br/>")}</div>` : ""}
               </td>
               <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1e293b;text-align:center;">${it.qty || 1}</td>
-              <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1e293b;text-align:right;">$${Number(it.price || 0).toFixed(2)}</td>
-              <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1e293b;text-align:right;font-weight:600;">$${(Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)}</td>
+              <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1e293b;text-align:right;">$${quoteUnitPriceExGst(it.price, lead.quoteTaxMode, lead.quoteTaxRate ?? 10).toFixed(2)}</td>
+              <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1e293b;text-align:right;font-weight:600;">$${(quoteUnitPriceExGst(it.price, lead.quoteTaxMode, lead.quoteTaxRate ?? 10) * Number(it.qty || 1)).toFixed(2)}</td>
             </tr>`
           )
           .join("")
       : `<tr>
           <td style="padding:10px 12px;border:1px solid #e2e8f0;color:#1e293b;">${esc(lead.service || "Regrouting & waterproof resealing")}</td>
           <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;">1</td>
-          <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:right;">$${total.toFixed(2)}</td>
-          <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:right;font-weight:600;">$${total.toFixed(2)}</td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:right;">$${subtotal.toFixed(2)}</td>
+          <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:right;font-weight:600;">$${subtotal.toFixed(2)}</td>
         </tr>`;
 
   // Public, HMAC-signed link to review and digitally sign the quote online
@@ -147,6 +148,8 @@ export async function POST(req: NextRequest) {
       subtotal,
       gst,
       total,
+      taxMode: lead.quoteTaxMode,
+      taxRate: lead.quoteTaxRate ?? 10,
       taxName: lead.quoteTaxMode === "none" ? "No Tax" : `GST (${lead.quoteTaxRate ?? 10}%)`,
       specialNotes:
         lead.quoteTerms && lead.quoteTerms.length < 500 && !/^Groutix terms/i.test(lead.quoteTerms)

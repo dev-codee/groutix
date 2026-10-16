@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, use } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { quoteUnitPriceExGst } from "@/lib/quotePricing";
 import {
   CheckCircle2,
   FileText,
@@ -36,6 +37,8 @@ interface QuoteData {
   service?: string;
   jobDescription?: string;
   items: QuoteItem[];
+  taxMode?: "inclusive" | "exclusive" | "none";
+  taxRate?: number;
   subtotal: number;
   gst: number;
   total: number;
@@ -438,8 +441,8 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                       <tr>
                         <th className="py-2.5 px-3.5">Description</th>
                         <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-3 text-right">Unit Price</th>
-                        <th className="py-2.5 px-3.5 text-right">Total</th>
+                        <th className="py-2.5 px-3 text-right">Unit Price{quote.taxMode !== "none" ? " (ex GST)" : ""}</th>
+                        <th className="py-2.5 px-3.5 text-right">Total{quote.taxMode !== "none" ? " (ex GST)" : ""}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -454,10 +457,10 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                             </td>
                             <td className="py-3 px-3 text-center text-slate-600">{it.qty || 1}</td>
                             <td className="py-3 px-3 text-right text-slate-600">
-                              ${Number(it.price || 0).toFixed(2)}
+                              ${quoteUnitPriceExGst(it.price, quote.taxMode, quote.taxRate ?? 10).toFixed(2)}
                             </td>
                             <td className="py-3 px-3.5 text-right font-bold text-slate-900">
-                              ${(Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)}
+                              ${(quoteUnitPriceExGst(it.price, quote.taxMode, quote.taxRate ?? 10) * Number(it.qty || 1)).toFixed(2)}
                             </td>
                           </tr>
                         ))
@@ -466,7 +469,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                           <td className="py-3 px-3.5 font-bold text-slate-800">{quote.service}</td>
                           <td className="py-3 px-3 text-center text-slate-600">1</td>
                           <td className="py-3 px-3 text-right text-slate-600">${quote.subtotal.toFixed(2)}</td>
-                          <td className="py-3 px-3.5 text-right font-bold text-slate-900">${quote.total.toFixed(2)}</td>
+                          <td className="py-3 px-3.5 text-right font-bold text-slate-900">${quote.subtotal.toFixed(2)}</td>
                         </tr>
                       )}
                     </tbody>
@@ -481,7 +484,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                       </tr>
                       <tr>
                         <td colSpan={3} className="py-1.5 px-3.5 text-right text-slate-500">
-                          GST (10%):
+                          {quote.taxMode === "none" ? "No GST:" : `GST (${quote.taxRate ?? 10}%):`}
                         </td>
                         <td className="py-1.5 px-3.5 text-right text-slate-800">
                           ${quote.gst.toFixed(2)}

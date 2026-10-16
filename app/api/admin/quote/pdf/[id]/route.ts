@@ -74,6 +74,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     subtotal,
     gst,
     total,
+    taxMode: lead.quoteTaxMode,
+    taxRate: lead.quoteTaxRate ?? 10,
     taxName: lead.quoteTaxMode === "none" ? "No Tax" : `GST (${lead.quoteTaxRate ?? 10}%)`,
     specialNotes,
     terms: GROUTIX_OFFICIAL_TERMS,
