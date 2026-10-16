@@ -147,21 +147,21 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         <style>{`@media (max-width:767px){body:has(.home-v2) [data-support-chat-widget]{bottom:92px!important}}`}</style>
 
         {/* ── HERO + QUOTE FORM ── */}
-        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[118px] text-white lg:pb-[72px] lg:pt-[150px]">
+        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[150px]">
           <div className={`${heroWrap} grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
-            <div>
+            <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Melbourne Wet-Area Specialists</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
                 #1 Shower Regrouting &amp; Leak Repairs in Melbourne
               </h1>
-              <p className="mb-6 max-w-[560px] text-[15px] leading-relaxed text-[#D6DCF5] sm:text-base">
+              <p className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
                 We remove failed grout and rebuild it with waterproof epoxy, so your shower or balcony stops leaking. Most jobs are finished in a single visit.
               </p>
-              <div className="mb-7 flex flex-wrap gap-3">
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges rating={rating} />
               </div>
-              <div className="grid grid-cols-1 items-center gap-5 border-t border-white/20 pt-6 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-                <div className="flex items-center gap-3.5">
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
                   <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
                   <div>
                     <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
