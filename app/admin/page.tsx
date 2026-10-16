@@ -457,7 +457,7 @@ export default function CrmDashboardPage() {
     quoteDragFrom.current = null;
     setQuoteDropIndex(null);
   }
-  const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("exclusive");
+  const [quoteTaxMode, setQuoteTaxMode] = useState<"inclusive" | "exclusive" | "none">("inclusive");
   const [quoteTaxRate, setQuoteTaxRate] = useState<number>(10);
   const [quoteTerms, setQuoteTerms] = useState<string>(
     "Final scope is subject to the details stated in this quotation. Any additional work not listed will require approval before proceeding."
@@ -1781,7 +1781,7 @@ export default function CrmDashboardPage() {
       : getMatchedQuoteItemsForLead(lead);
 
     setQuoteItems(initialItems);
-    setQuoteTaxMode(lead.quoteTaxMode || "exclusive");
+    setQuoteTaxMode(lead.quoteTaxMode || (hasExistingItems ? "exclusive" : "inclusive"));
     setQuoteTaxRate(lead.quoteTaxRate ?? 10);
     const existingTerms = (lead.quoteTerms || "").trim();
     const isFullTermsDump = existingTerms.length > 500 || /^Groutix terms and conditions/i.test(existingTerms);
@@ -1819,17 +1819,7 @@ export default function CrmDashboardPage() {
   }
 
   function changeQuoteTaxMode(nextMode: "inclusive" | "exclusive" | "none") {
-    if (nextMode === quoteTaxMode) return;
-    // Keep the customer-facing line prices stable when changing how tax is
-    // represented. Exclusive mode stores the pre-tax amount; the other modes
-    // store the amount shown to the customer.
-    const factor = 1 + quoteTaxRate / 100;
-    const displayedFactor = quoteTaxMode === "exclusive" ? factor : 1;
-    const nextFactor = nextMode === "exclusive" ? factor : 1;
-    setQuoteItems(items => items.map(item => ({
-      ...item,
-      price: (Number(item.price) || 0) * displayedFactor / nextFactor,
-    })));
+    // The entered prices stay unchanged: Exclusive adds tax; Inclusive includes it.
     setQuoteTaxMode(nextMode);
   }
 
@@ -2205,7 +2195,7 @@ export default function CrmDashboardPage() {
       quoteItems.map((item, i) => {
         const q = Number(item.qty) || 1;
         const unitPrice = Number(item.price) || 0;
-        const lineTotal = (unitPrice * q) * (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1);
+        const lineTotal = (unitPrice * q) * (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate ?? 10) / 100) : 1);
         return `${i + 1}. ${item.service}${q > 1 ? ` (Qty: ${q})` : ""} - $${lineTotal.toFixed(2)}${quoteTaxMode === "none" ? "" : " (inc GST)"}`;
       }).join("\n") +
       `\n\nOfficial Groutix terms and conditions and warranty details are included in the attached quotation document.\n\n` +
@@ -2223,7 +2213,7 @@ export default function CrmDashboardPage() {
       quoteItems.map((item, i) => {
         const q = Number(item.qty) || 1;
         const unitPrice = Number(item.price) || 0;
-        const lineTotal = (unitPrice * q) * (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1);
+        const lineTotal = (unitPrice * q) * (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate ?? 10) / 100) : 1);
         return `• ${item.service}${q > 1 ? ` (Qty: ${q})` : ""}: $${lineTotal.toFixed(2)}${quoteTaxMode === "none" ? "" : " (inc GST)"}`;
       }).join("\n") +
       `\n\nOfficial terms and conditions are included directly with your quote document.\n\nStay Sealed. Stay Smiling. - Groutix`
@@ -5292,10 +5282,10 @@ export default function CrmDashboardPage() {
                               {!isTechnician && (
                                 <>
                                   <th className="py-2 px-2 font-bold text-right">
-                                    {quoteTaxMode === "none" ? "Price" : "Price (inc GST)"}
+                                    {quoteTaxMode === "none" ? "Price" : quoteTaxMode === "exclusive" ? "Price (ex GST)" : "Price (inc GST)"}
                                   </th>
                                   <th className="py-2 px-2 font-bold text-right">
-                                    {quoteTaxMode === "none" ? "Total" : "Total (inc GST)"}
+                                    {quoteTaxMode === "none" ? "Total" : quoteTaxMode === "exclusive" ? "Total (ex GST)" : "Total (inc GST)"}
                                   </th>
                                 </>
                               )}
@@ -5478,11 +5468,10 @@ export default function CrmDashboardPage() {
                                       type="number"
                                       min="0"
                                       step="0.01"
-                                      value={item.price ? Number((Number(item.price) * (quoteTaxMode === "exclusive" ? 1 + quoteTaxRate / 100 : 1)).toFixed(2)) : ""}
+                                      value={item.price ? Number(Number(item.price).toFixed(2)) : ""}
                                       onChange={(e) => {
                                         const updated = [...quoteItems];
-                                        const inclusivePrice = parseFloat(e.target.value) || 0;
-                                        updated[idx].price = inclusivePrice / (quoteTaxMode === "exclusive" ? 1 + quoteTaxRate / 100 : 1);
+                                        updated[idx].price = parseFloat(e.target.value) || 0;
                                         setQuoteItems(updated);
                                       }}
                                       className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-xs text-right"
@@ -5494,8 +5483,7 @@ export default function CrmDashboardPage() {
                                 {!isTechnician && (
                                   <td className="py-2 px-2 text-right font-bold text-slate-900 whitespace-nowrap">
                                     ${(
-                                      (Number(item.price || 0) * Number(item.qty || 1)) *
-                                      (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1)
+                                      (Number(item.price || 0) * Number(item.qty || 1))
                                     ).toFixed(2)}
                                   </td>
                                 )}
@@ -5557,7 +5545,7 @@ export default function CrmDashboardPage() {
                                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                                   }`}
                               >
-                                Tax Exclusive (+10% GST)
+                                Tax Exclusive (+{quoteTaxRate}% GST)
                               </button>
                               <button
                                 type="button"
@@ -5573,11 +5561,11 @@ export default function CrmDashboardPage() {
                           </div>
                           <div className="text-[11px] font-semibold">
                             {quoteTaxMode === "exclusive" ? (
-                              <span className="text-amber-700 font-bold">• Unit prices and totals shown above include GST.</span>
+                              <span className="text-amber-700 font-bold">• GST is added on top of the unit prices and totals above.</span>
                             ) : quoteTaxMode === "none" ? (
                               <span className="text-slate-600 font-bold">• No Tax Applied</span>
                             ) : (
-                              <span className="text-emerald-700 font-bold">• Prices are Tax-Inclusive (10% GST included)</span>
+                              <span className="text-emerald-700 font-bold">• Prices are Tax-Inclusive ({quoteTaxRate}% GST included)</span>
                             )}
                           </div>
                         </div>
@@ -5791,7 +5779,7 @@ export default function CrmDashboardPage() {
                                 <td className="py-2.5 px-2.5 text-right font-bold text-black">
                                   ${(
                                     (Number(item.price || 0) * Number(item.qty || 1)) *
-                                    (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate || 10) / 100) : 1)
+                                    (quoteTaxMode === "exclusive" ? (1 + (quoteTaxRate ?? 10) / 100) : 1)
                                   ).toFixed(2)}
                                 </td>
                               </>
@@ -5852,6 +5840,30 @@ export default function CrmDashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* Keep the editor totals visible while scrolling through quote items. */}
+              {!isTechnician && quoteViewTab !== "preview" && activeCustomerQuote && !customerQuotesLoading && (() => {
+                const totals = quoteTotals();
+                return (
+                  <div aria-label="Quote totals" className="shrink-0 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-2.5">
+                    <dl className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 text-xs tabular-nums">
+                      <div className="flex items-center gap-2">
+                        <dt className="text-slate-600">Subtotal{quoteTaxMode !== "none" ? " (ex GST)" : ""}</dt>
+                        <dd className="font-semibold text-slate-900">AUD ${totals.subtotal.toFixed(2)}</dd>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <dt className="text-slate-600">{quoteTaxMode === "none" ? "GST (not applied)" : `GST (${quoteTaxRate}%)`}</dt>
+                        <dd className="font-semibold text-slate-900">AUD ${totals.gst.toFixed(2)}</dd>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm font-bold text-blue-950">
+                        <dt>Quote total{quoteTaxMode !== "none" ? " (inc GST)" : ""}</dt>
+                        <dd><output aria-label="Quote total">AUD ${totals.total.toFixed(2)}</output></dd>
+                      </div>
+                    </dl>
+                    <p className="mt-1 text-right text-[10px] text-slate-500">Final total rounded to the nearest dollar, as shown in the live preview.</p>
+                  </div>
+                );
+              })()}
 
               {/* Bottom Actions Bar */}
               <div inert={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote} className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 shrink-0 bg-white z-10">

@@ -55,7 +55,7 @@ export async function createCustomerQuote(leadId: string, copyId?: string): Prom
   for (const field of ["quoteSentAt", "quoteOpenedAt", "quoteAcceptedAt", "quoteDeclinedAt", "quoteSignedAt", "quoteSignature", "quoteSignedName", "quoteSignedIp"] as const) delete values[field];
   if (!copy) {
     values.quoteItems = []; values.quoteScope = ""; values.quoteAmount = 0;
-    values.quoteTerms = ""; values.quoteTaxMode = "exclusive"; values.quoteTaxRate = 10;
+    values.quoteTerms = ""; values.quoteTaxMode = "inclusive"; values.quoteTaxRate = 10;
   }
   values.quoteNumber = formatDocNumber("GX-Q", await getNextSequence("quote"));
   const now = new Date().toISOString();

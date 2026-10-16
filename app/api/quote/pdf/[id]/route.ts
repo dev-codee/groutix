@@ -45,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       subtotal,
       gst,
       total,
-      taxName: lead.quoteTaxMode === "none" ? "No Tax" : "GST (10%)",
+      taxName: lead.quoteTaxMode === "none" ? "No Tax" : `GST (${lead.quoteTaxRate ?? 10}%)`,
       specialNotes:
         lead.quoteTerms && lead.quoteTerms.length < 500 && !/^Groutix terms/i.test(lead.quoteTerms)
           ? lead.quoteTerms

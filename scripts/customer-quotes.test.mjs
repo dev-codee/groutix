@@ -56,6 +56,8 @@ test("multiple drafts keep independent items, totals, numbers and titles without
   assert.equal(second.values.quoteSentAt, undefined);
   assert.equal(second.values.quoteSignature, undefined);
   assert.equal(third.values.quoteItems.length, 0);
+  assert.equal(third.values.quoteTaxMode, "inclusive");
+  assert.equal(second.values.quoteTaxMode, "exclusive");
   await api.saveCustomerQuote(leadId, second._id, { quoteScope: "Both showers", quoteItems: [{ service: "Two showers", price: 200, qty: 2 }], quoteAmount: 440 }, "Both showers");
   const list = await api.listCustomerQuotes(leadId);
   assert.equal(list.length, 3);
