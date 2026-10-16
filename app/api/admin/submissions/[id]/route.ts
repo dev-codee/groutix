@@ -171,6 +171,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     body.technicianId = "";
     body.technicianUsername = "";
   }
+  if ("technicianId" in body && body.technicianId !== before.technicianId && !("technicianUsername" in body)) body.technicianUsername = "";
+  if ("inspectorId" in body && body.inspectorId !== before.inspectorId && !("inspectorUsername" in body)) body.inspectorUsername = "";
   const inspectorChanged = ["inspectorId", "assigned", "inspectorUsername"].some(key => key in body && body[key] !== before[key as keyof typeof before]);
   if (inspectorChanged && before.inspectionAt && !("inspectionAt" in body)) body.inspectionAt = before.inspectionAt;
   const assignmentChanged = ["technicianId", "technician", "technicianUsername"].some((key) => key in body && body[key] !== before[key as keyof typeof before]);
@@ -233,7 +235,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           technician: body.technician ?? before.technician,
           technicianUsername: body.technicianUsername ?? before.technicianUsername,
         } : { inspectorId: body.inspectorId ?? before.inspectorId, assigned: body.assigned ?? before.assigned, inspectorUsername: body.inspectorUsername ?? before.inspectorUsername }),
-        suburb: area.suburb || undefined, reference: `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true, append: appendBooking, replaceStart: before[field]?.slice(0, 16) });
+        suburb: area.suburb || undefined, reference: primary.jobNo || `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true, append: appendBooking, replaceStart: before[field]?.slice(0, 16) });
       if (!result.ok) {
         await rollback();
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
@@ -361,7 +363,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         detail: body.technician || undefined,
       });
       if (body.technician && typeof body.technicianId === "string" && body.technicianId) {
-        await notifyTechnicianAssigned(body.technicianId, before).catch((err) =>
+        await notifyTechnicianAssigned(body.technicianId, { ...before, ...body }).catch((err) =>
           console.error("notifyTechnicianAssigned failed (non-fatal):", err)
         );
       }

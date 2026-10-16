@@ -1,7 +1,9 @@
 import type { Lead } from "@/components/admin/types";
 import type { TechnicianAssignment } from "./bookingCapacity";
+import { resolveBookingStatus, type BookingStatus } from "./bookingStatus";
 
 export interface LeadBooking extends TechnicianAssignment {
+  status?: BookingStatus;
   type: "inspection" | "job";
   date: string;
   time: string;
@@ -12,7 +14,7 @@ export interface LeadBooking extends TechnicianAssignment {
 
 /** Each calendar visit keeps the same lead identity and business records. */
 export function bookingLead(lead: Lead, booking: LeadBooking): Lead {
-  return { ...lead, ...(booking.type === "job" ? {
+  return { ...lead, bookings: leadBookings(lead), ...(booking.type === "job" ? {
     jobAt: `${booking.date}T${booking.time}`, jobEndAt: booking.endAt,
     jobWorkSegments: booking.workSegments, technician: booking.technician,
     technicianId: booking.technicianId, technicianUsername: booking.technicianUsername,
@@ -32,5 +34,7 @@ export function leadBookings(lead: Lead): LeadBooking[] {
       ...(type === "job" ? { endAt: lead.jobEndAt, workSegments: lead.jobWorkSegments, technician: lead.technician, technicianId: lead.technicianId }
         : { endAt: lead.inspectionEndAt, workSegments: lead.inspectionWorkSegments, assigned: lead.assigned, inspectorId: lead.inspectorId }) });
   }
-  return bookings.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  return bookings.map(booking => ({ ...booking, status: resolveBookingStatus(booking.type, booking.status, lead.status,
+    (booking.type === "job" ? lead.jobAt : lead.inspectionAt)?.slice(0, 16) === `${booking.date}T${booking.time}`),
+  })).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }

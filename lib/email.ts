@@ -3,6 +3,7 @@
 // Leads and customer notifications are delivered via SMTP with per-attempt
 // timeout and automatic retries.
 
+import { formatEmailPresentation } from "./emailPresentation";
 import nodemailer from "nodemailer";
 import { normalizeBusinessPhoneText } from "@/lib/phone";
 
@@ -134,7 +135,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
     to: args.toEmail,
     replyTo: args.replyTo || fromAddress,
     subject: cleanedSubject,
-    html: cleanedHtml,
+    html: formatEmailPresentation(cleanedHtml),
     attachments: args.attachments?.map((att) => ({
       filename: att.name,
       content: Buffer.from(att.content, "base64"),
@@ -301,7 +302,7 @@ export async function getEmailLogoUrl(): Promise<string> {
 export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoUrl?: string): string {
   const resolvedLogoUrl = logoUrl || `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.groutix.com"}/new_logo.jpeg`;
 
-  return `<!DOCTYPE html>
+  return formatEmailPresentation(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -366,5 +367,5 @@ export function wrapEmailHtml(contentHtml: string, preheaderText?: string, logoU
     </tr>
   </table>
 </body>
-</html>`;
+</html>`);
 }

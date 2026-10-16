@@ -1,5 +1,6 @@
 import type { SubmissionJSON } from "./submissions";
 import type { BookingDoc } from "./bookings";
+import { bookingNeedsReminder, resolveBookingStatus } from "./bookingStatus";
 
 /** One reminder candidate per visit, including additional visits on the same lead. */
 export function bookingReminderCandidates(leads: SubmissionJSON[], bookings: BookingDoc[]): SubmissionJSON[] {
@@ -12,6 +13,7 @@ export function bookingReminderCandidates(leads: SubmissionJSON[], bookings: Boo
       for (const booking of matching) {
         const start = `${booking.date}T${booking.time}`;
         const isPrimary = at?.slice(0, 16) === start;
+        if (!bookingNeedsReminder(resolveBookingStatus(type, booking.status, lead.status, isPrimary))) continue;
         result.push({ ...lead, inspectionAt: undefined, jobAt: undefined, [type === "job" ? "jobAt" : "inspectionAt"]: start,
           [type === "job" ? "jobReminderSent" : "inspectionReminderSent"]: booking.reminderSent ?? (isPrimary ? lead[type === "job" ? "jobReminderSent" : "inspectionReminderSent"] : false),
           [type === "job" ? "jobReminder1hSent" : "inspectionReminder1hSent"]: booking.reminder1hSent ?? (isPrimary ? lead[type === "job" ? "jobReminder1hSent" : "inspectionReminder1hSent"] : false),

@@ -1,3 +1,4 @@
+import { formatEmailPresentation } from "./emailPresentation";
 import { formatAppt } from "./scheduling";
 
 export interface EmailTemplate {
@@ -693,6 +694,6 @@ export function renderEmailHtml(
   return {
     subject: rendered.subject,
     body: rendered.body,
-    html: fullHtml,
+    html: formatEmailPresentation(fullHtml),
   };
 }

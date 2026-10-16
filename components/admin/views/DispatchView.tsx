@@ -231,7 +231,7 @@ export function DispatchView({
       map.set(date, []);
     }
 
-    for (const visit of scopedLeads.flatMap(lead => leadBookings(lead).map(booking => ({ lead: bookingLead(lead, booking), type: booking.type })))) {
+    for (const visit of scopedLeads.flatMap(lead => leadBookings(lead).filter(booking => booking.status !== "Cancelled").map(booking => ({ lead: bookingLead(lead, booking), type: booking.type })))) {
       const lead = visit.lead;
       if (lead.status === "Lost" || lead.status === "Cancelled") continue;
 

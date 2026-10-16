@@ -11,6 +11,7 @@ import { StandardLeadCard } from "@/components/admin/rows/StandardLeadCard";
 import { STAGE_GROUP_ACCENT, getRoleStatusOptions, getJobsGroups, type JobsGroupDef } from "@/lib/adminHelpers";
 import { isFlowCompleted } from "@/lib/pipeline";
 import { InspectorDayStrip } from "@/components/admin/InspectorDayStrip";
+import { LeadBookings } from "../LeadBookings";
 
 const PAGE_SIZE = 20;
 
@@ -345,12 +346,11 @@ export function JobsView() {
 
           <div className="divide-y divide-slate-200/80 w-full">
             {jobLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((l) => {
-              if ((role as string) === "intake") return <IntakeLeadRow key={l.id} l={l} />;
-              if ((role as string) === "inspection" || (role as string) === "field")
-                return <FieldLeadRow key={l.id} l={l} />;
-              if ((role as string) === "technician") return <TechnicianLeadRow key={l.id} l={l} />;
-              if ((role as string) === "finance") return <FinanceLeadRow key={l.id} l={l} />;
-              return <StandardLeadCard key={l.id} l={l} />;
+              const row = role === "intake" ? <IntakeLeadRow l={l} />
+                : role === "inspection" || role === "field" ? <FieldLeadRow l={l} />
+                : role === "technician" ? <TechnicianLeadRow l={l} />
+                : role === "finance" ? <FinanceLeadRow l={l} /> : <StandardLeadCard l={l} />;
+              return <div key={l.id}>{row}<LeadBookings lead={l} /></div>;
             })}
             {jobLeads.length === 0 && (
               <div className="py-16 text-center text-slate-400 text-sm">

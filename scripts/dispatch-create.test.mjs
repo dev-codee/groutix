@@ -3,19 +3,22 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
-function harness() {
+function harness({ failFirstPatch = false } = {}) {
   const state = []; let cursor = 0;
   const requests = [], saved = [], completed = [];
   const rules = structuredClone(DEFAULT_BOOKING_RULES);
   const customer = { id: "old", name: "Jane", address: "10 Test Street", email: "jane@example.com", phone: "0400000000", service: "Regrouting" };
+  const customers = [customer];
   const react = { useState: initial => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = value; }]; },
     useRef: initial => { const i = cursor++; if (!(i in state)) state[i] = { current: initial }; return state[i]; }, useEffect: () => {} };
   const { DispatchBookingModal } = loadTs("components/admin/modals/DispatchBookingModal.tsx", {
-    react, "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ({ scopedLeads: [customer], inspectionStaff: [{ id: "inspector", name: "Alex", active: true }], assignableTechnicians: [{ id: "tech", name: "Technician", active: true, workDays: [1,2,3,4,5] }], upsertLead: lead => saved.push(lead) }) },
+    react, "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ({ scopedLeads: customers, inspectionStaff: [{ id: "inspector", name: "Alex", active: true }], assignableTechnicians: [{ id: "tech", name: "Technician", active: true, workDays: [1,2,3,4,5] }], upsertLead: lead => saved.push(lead) }) },
     "@/lib/useBookingRules": { useBookingRules: () => rules }, "@/lib/scheduling": { ...loadTs("lib/scheduling.ts"), todayAU: () => "2026-10-12" },
-  }, { fetch: async (url, options = {}) => { requests.push({ url, ...options }); return { ok: true, json: async () => options.method === "POST" ? { item: { ...customer, id: "new" } } : options.method === "PATCH" ? { notificationWarnings: [] } : { appointments: [] } }; } });
+  }, { fetch: async (url, options = {}) => { requests.push({ url, ...options });
+    const failed = options.method === "PATCH" && failFirstPatch && requests.filter(r => r.method === "PATCH").length === 1;
+    return { ok: !failed, json: async () => failed ? { error: "Slot taken" } : options.method === "POST" ? { item: { ...customer, id: "new" } } : options.method === "PATCH" ? { notificationWarnings: [] } : { appointments: [] } }; } });
   const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); visit(node.props?.children); }; visit(DispatchBookingModal({ date: "2026-10-14", time: "10:15", onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
-  return { render, requests, saved, completed };
+  return { render, requests, saved, completed, customers };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
 test("reviewing a new booking writes nothing; final confirmation reuses the lead, assigns and requests notifications", async () => {
@@ -81,4 +84,36 @@ test("a new customer still creates exactly one lead before adding the booking", 
   await settle();
   assert.equal(h.requests.filter(r => r.method === "POST").length, 1);
   assert.equal(h.requests.find(r => r.method === "PATCH").url, "/api/admin/submissions/new");
+});
+
+test("an existing customer disappearing during review never creates a replacement lead or overwrites shared fields", async () => {
+  const h = harness();
+  let nodes = h.render();
+  nodes.filter(n => n.type === "select")[1].props.onChange({ target: { value: "old" } });
+  nodes.filter(n => n.type === "select")[2].props.onChange({ target: { value: "inspector" } });
+  h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+  await settle();
+  h.customers.length = 0;
+  h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+  await settle();
+  assert.equal(h.requests.filter(r => r.method === "POST").length, 0);
+  const request = h.requests.find(r => r.method === "PATCH");
+  assert.equal(request.url, "/api/admin/submissions/old");
+  const body = JSON.parse(request.body);
+  for (const key of ["name", "address", "email", "phone", "service", "status", "jobNo"]) assert.equal(body[key], undefined, key);
+  assert.equal(h.saved.length, 0, "never optimistically overwrite the primary booking with an additional visit");
+});
+
+test("retrying an existing customer's conflicting booking never creates a lead", async () => {
+  const h = harness({ failFirstPatch: true });
+  const nodes = h.render();
+  nodes.filter(n => n.type === "select")[1].props.onChange({ target: { value: "old" } });
+  nodes.filter(n => n.type === "select")[2].props.onChange({ target: { value: "inspector" } });
+  for (let i = 0; i < 3; i++) {
+    h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+    await settle();
+  }
+  assert.equal(h.requests.filter(r => r.method === "POST").length, 0);
+  assert.equal(h.requests.filter(r => r.method === "PATCH" && r.url === "/api/admin/submissions/old").length, 2);
+  assert.equal(h.completed.length, 1);
 });

@@ -77,8 +77,9 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
       if (!review) { setReview(true); return; }
       // Reuse the selected lead; only a genuinely new customer needs a new record.
       // Keep this ID after a conflict so retrying never creates a second record.
-      if (mode === "existing") savedLead.current = scopedLeads.find(l => l.id === customerId) || null;
-      if (!savedLead.current) {
+      // Existing selections always PATCH their ID, even after the list refreshes.
+      // Never turn a missing/stale selection into permission to create a lead.
+      if (mode === "new" && !savedLead.current) {
         const response = await fetch("/api/admin/submissions", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...customer, service, source: "Dispatch board" }) });
         const data = await response.json();
@@ -86,16 +87,18 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         savedLead.current = data.item;
         upsertLead(data.item);
       }
-      const lead = savedLead.current!;
+      const leadId = mode === "existing" ? customerId : savedLead.current!.id;
       const specialist = choices.find(c => c.key === assignee)!;
-      const updates: Partial<Lead> = { ...customer, service, status: type === "job" ? "Job Booked" : "Inspection Booked",
+      const updates: Partial<Lead> = {
         ...(type === "job" ? { jobAt: `${date}T${time}`, jobEndAt: endAt, jobWorkSegments: segments, technicianId: assignee, technician: specialist.name }
           : { inspectionAt: `${date}T${time}`, inspectionEndAt: endAt, inspectionWorkSegments: segments, assigned: specialist.name, inspectorId: assignee }) };
-      const response = await fetch(`/api/admin/submissions/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+      const response = await fetch(`/api/admin/submissions/${leadId}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...updates, appendBooking: true, bookingNotifications: true }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not reserve this time.");
-      upsertLead(data.item || { ...lead, ...updates });
+      // The response contains the canonical lead and all its bookings. Do not
+      // replace the primary visit locally with this additional visit.
+      if (data.item) upsertLead(data.item);
       onBooked(date, `${type === "job" ? "Job" : "Inspection"} booked for ${customer.name}. ${data.notificationWarnings?.length ? data.notificationWarnings.join(" ") : "Email and SMS confirmations sent."}`);
     } catch (err) {
       setError(`${err instanceof Error ? err.message : "Could not save. Please try again."}${savedLead.current ? " The customer record is saved; retry here to complete the booking." : ""}`);
@@ -137,7 +140,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
               {!timingError && <p className="text-sm font-semibold text-blue-700">Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} hours</p>}
               {timingError && <p className="text-xs text-amber-700">{timingError}</p>}
             </div>
-            <div className="flex gap-3">{(["existing", "new"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => { setMode(value); setCustomerId(""); setCustomer({ name: "", email: "", phone: "", address: "" }); }} className={`text-sm rounded-lg px-3 py-2 ${mode === value ? "bg-slate-900 text-white" : "bg-slate-100"}`}>{value === "existing" ? "Existing customer" : "New customer"}</button>)}</div>
+            <div className="flex gap-3">{(["existing", "new"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => { setMode(value); savedLead.current = null; setCustomerId(""); setCustomer({ name: "", email: "", phone: "", address: "" }); setService(""); }} className={`text-sm rounded-lg px-3 py-2 ${mode === value ? "bg-slate-900 text-white" : "bg-slate-100"}`}>{value === "existing" ? "Existing customer" : "New customer"}</button>)}</div>
             {mode === "existing" && <div><label className="text-sm">Find customer<input className={input} placeholder="Search name, phone, email or address" value={search} onChange={e => setSearch(e.target.value)} /></label><label className="text-sm">Customer<select required className={input} value={customerId} onChange={e => { const lead = scopedLeads.find(l => l.id === e.target.value); setCustomerId(e.target.value); if (lead) { setCustomer({ name: lead.name || "", email: lead.email || "", phone: lead.phone || "", address: lead.address || "" }); setService(lead.service || ""); } }}><option value="">Select a customer ({matches.length} matches)</option>{matches.map(l => <option key={l.id} value={l.id}>{l.name} · {l.address || l.phone} · {l.jobNo}</option>)}</select></label></div>}
             <div className="grid grid-cols-2 gap-3">{(["name", "email", "phone", "address"] as const).map(field => <label key={field} className={`text-sm capitalize ${field === "address" ? "col-span-2" : ""}`}>{field === "address" ? "Property address" : field}<input readOnly={mode === "existing"} required={field === "name" || field === "address"} type={field === "email" ? "email" : field === "phone" ? "tel" : "text"} className={input} value={customer[field]} onChange={e => setCustomer({ ...customer, [field]: e.target.value })} /></label>)}</div>
             <label className="block text-sm">Service<input readOnly={mode === "existing"} required className={input} value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Shower regrouting" /></label>

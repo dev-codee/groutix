@@ -1,6 +1,7 @@
 "use client";
 import type { Lead } from "./types";
 import { leadBookings } from "@/lib/leadBookings";
+import { BookingStatusControl } from "./BookingStatusControl";
 
 export function LeadBookings({ lead }: { lead: Lead }) {
   const bookings = leadBookings(lead);
@@ -11,6 +12,7 @@ export function LeadBookings({ lead }: { lead: Lead }) {
       <span className="font-semibold capitalize">{b.type}</span>
       <span>{b.date} at {b.time}{b.endAt ? ` – ${b.endAt.replace("T", " at ")}` : ""}</span>
       <span>Assigned to {b.type === "job" ? b.technician || "Unassigned" : b.assigned || "Unassigned"}</span>
+      <BookingStatusControl leadId={lead.id} booking={b} disabled={["Lost", "Cancelled"].includes(lead.status)} />
     </li>)}</ul>
   </div>;
 }

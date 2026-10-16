@@ -10,6 +10,8 @@ import { bookingEndForDuration, bookingSegments } from "@/lib/bookingSpan";
 import { todayAU } from "@/lib/scheduling";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
+import { leadBookings } from "@/lib/leadBookings";
+import { BookingStatusControl } from "../BookingStatusControl";
 
 export function EditBookingModal({ lead, type, initialDate, initialTime, onClose, onSaved }: {
   lead: Lead;
@@ -24,6 +26,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
   const originalStart = (type === "job" ? lead.jobAt : lead.inspectionAt)?.slice(0, 16) || `${initialDate || todayAU()}T${initialTime || "09:00"}`;
   const originalEnd = (type === "job" ? lead.jobEndAt : lead.inspectionEndAt)?.slice(0, 16)
     || bookingEndForDuration(type, originalStart, savedLeadBookingMinutes(lead, type), rules);
+  const selectedBooking = leadBookings(lead).find(b => b.type === type && `${b.date}T${b.time}` === originalStart);
   const [date, setDate] = useState(originalStart.slice(0, 10));
   const [time, setTime] = useState(originalStart.slice(11, 16));
   const [endAt, setEndAt] = useState(originalEnd);
@@ -54,10 +57,14 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
       const response = await fetch(`/api/admin/slots?from=${date}&to=${endAt.slice(0, 10)}`, { cache: "no-store" });
       const availability = await response.json();
       if (!response.ok) throw new Error(availability.error || "Could not check availability.");
+      const originalSegments = (type === "job" ? lead.jobWorkSegments : lead.inspectionWorkSegments)
+        || bookingSegments(type, originalStart, originalEnd, rules);
+      const competing = availability.appointments.filter((appointment: { leadId: string; type: string; date: string; time: string }) =>
+        !(appointment.leadId === lead.id && appointment.type === type && originalSegments.some(segment => segment.date === appointment.date && segment.time === appointment.time)));
       for (const segment of segments) {
-        const issue = dispatchBookingIssue({ leadId: lead.id, type, ...segment,
+        const issue = dispatchBookingIssue({ leadId: "__edited_visit__", type, ...segment,
           ...(type === "job" ? { technicianId: person.id, technician: person.name } : { inspectorId: person.id, assigned: person.name }) },
-          availability.appointments, rules, assignableTechnicians);
+          competing, rules, assignableTechnicians);
         if (issue) throw new Error(`${segment.date}: ${issue}`);
       }
       if (!review) { setReview(true); return; }
@@ -83,6 +90,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
           <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-blue-600" /><h2 id="edit-booking-title" className="text-sm font-bold">{review ? "Confirm booking changes" : "Change Booking"}</h2></div>
           <button type="button" aria-label="Close booking editor" disabled={busy} onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"><X className="h-4 w-4" /></button>
         </div>
+        {selectedBooking && <div className="px-5 pt-4"><BookingStatusControl leadId={lead.id} booking={selectedBooking} disabled={busy} /></div>}
         <form onSubmit={event => { event.preventDefault(); void submit(); }} className="space-y-4 p-5">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-sm font-bold">{lead.name || "Customer"}</p><p className="text-xs text-slate-500">{lead.address || lead.city}</p><p className={`mt-1 text-xs font-bold ${type === "job" ? "text-emerald-700" : "text-blue-700"}`}>{type === "job" ? "Job" : "Inspection"} · All times are Melbourne time</p></div>
           {review ? <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">

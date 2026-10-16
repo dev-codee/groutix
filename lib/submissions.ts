@@ -625,7 +625,7 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
   const bookings = await db.collection<import("./bookings").BookingDoc>("bookings")
     .find({ leadId: { $in: items.map(item => item.id) } }).toArray();
   return items.map(item => ({ ...item, bookings: bookings.filter(b => b.leadId === item.id).map(b => ({
-    type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: b.workSegments,
+    type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: b.workSegments, status: b.status,
     scheduledMinutes: b.scheduledMinutes, technicianId: b.technicianId, technician: b.technician,
     technicianUsername: b.technicianUsername, inspectorId: b.inspectorId, assigned: b.assigned,
     inspectorUsername: b.inspectorUsername,

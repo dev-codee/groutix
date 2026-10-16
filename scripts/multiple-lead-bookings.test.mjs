@@ -76,3 +76,59 @@ test("moving one visit onto a sibling start cannot overwrite the sibling", async
   assert.equal(rows.length, 2);
   assert.equal(rows[1].technician, "Sam");
 });
+
+test("each visit owns its status and rescheduling preserves it", async () => {
+  const { api, rows, input } = store();
+  await api.createBooking(input, { append: true, staffOverride: true });
+  await api.createBooking({ ...input, time: "11:00", technicianId: "sam", technician: "Sam" }, { append: true, staffOverride: true });
+  assert.equal(rows[0].status, "Job Booked");
+  const sibling = JSON.stringify(rows[1]);
+  rows[0].reminderSent = true;
+  const result = await api.createBooking({ ...rows[0], status: "Job Done" }, { statusOnly: true, staffOverride: true, replaceStart: "2026-10-20T09:00" });
+  assert.equal(result.ok, true);
+  assert.equal(rows[0].status, "Job Done");
+  assert.equal(rows[0].reminderSent, true);
+  assert.equal(JSON.stringify(rows[1]), sibling);
+  const moved = await api.createBooking({ ...input, time: "13:00" }, { staffOverride: true, replaceStart: "2026-10-20T09:00" });
+  assert.equal(moved.ok, true);
+  assert.equal(rows.find(b => b.time === "13:00").status, "Job Done");
+  assert.equal(rows.find(b => b.time === "11:00").status, "Job Booked");
+});
+
+test("cancelling one visit frees only its slot and reopening rechecks staff capacity", async () => {
+  const { api, rows, input } = store();
+  await api.createBooking(input, { append: true, staffOverride: true });
+  await api.createBooking({ ...input, time: "11:00" }, { append: true, staffOverride: true });
+  const change = status => api.createBooking({ ...rows[0], status }, { statusOnly: true, staffOverride: true, replaceStart: "2026-10-20T09:00" });
+  assert.equal((await change("Cancelled")).ok, true);
+  const appointments = await api.listAppointmentsBetween(input.date, input.date);
+  assert.deepEqual(Array.from(appointments, a => a.time), ["11:00"]);
+  assert.equal(rows.length, 2, "keep cancelled booking history");
+  assert.equal((await api.createBooking({ ...input, leadId: "another-customer" }, { append: true, staffOverride: true })).ok, true);
+  assert.equal((await change("Job Booked")).ok, false);
+  assert.equal(rows[0].status, "Cancelled");
+  rows.pop();
+  assert.equal((await change("Job Booked")).ok, true);
+});
+
+test("status changes cannot restore a removed visit or overwrite a changed assignment", async () => {
+  const { api, rows, input } = store();
+  assert.equal((await api.createBooking({ ...input, status: "Job Done" }, { statusOnly: true, staffOverride: true })).ok, false);
+  await api.createBooking(input, { append: true, staffOverride: true });
+  assert.equal((await api.createBooking({ ...input, technician: "Sam", status: "Job Done" }, { statusOnly: true, staffOverride: true })).ok, false);
+  assert.equal(rows[0].technician, "Alex");
+  assert.equal(rows[0].status, "Job Booked");
+});
+
+test("legacy primary status never leaks into a secondary visit", () => {
+  const lead = { id: "lead", status: "Job Done", jobAt: "2026-10-20T09:00", bookings: [
+    { type: "job", date: "2026-10-20", time: "09:00" },
+    { type: "job", date: "2026-10-21", time: "09:00" },
+  ] };
+  const visits = leadBookings(lead);
+  assert.equal(visits[0].status, "Job Done");
+  assert.equal(visits[1].status, "Job Booked");
+  const second = bookingLead(lead, visits[1]);
+  assert.equal(leadBookings(second)[1].status, "Job Booked");
+  assert.equal(second.status, "Job Done", "shared workflow is unchanged");
+});

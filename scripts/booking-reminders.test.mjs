@@ -25,3 +25,14 @@ test('legacy schedules remain supported without duplicate reminders for stored b
   assert.equal(candidates.filter(c => c.jobAt).length, 1);
   assert.equal(candidates.find(c => c.jobAt).jobReminderSent, true);
 });
+
+test('completed and cancelled visits do not receive reminders while sibling visits still do', () => {
+  const lead = { id: 'lead', jobAt: '2026-10-18T15:00' };
+  const candidates = bookingReminderCandidates([lead], [
+    { leadId: 'lead', type: 'job', date: '2026-10-18', time: '15:00', status: 'Job Done' },
+    { leadId: 'lead', type: 'job', date: '2026-10-19', time: '08:00', status: 'Cancelled' },
+    { leadId: 'lead', type: 'job', date: '2026-10-20', time: '09:00', status: 'Job Booked' },
+  ]);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].jobAt, '2026-10-20T09:00');
+});
