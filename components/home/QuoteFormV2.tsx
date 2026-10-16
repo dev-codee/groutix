@@ -6,10 +6,11 @@
 // so leads, bookings, the admin and the CRM keep working unchanged.
 // HeroQuoteForm is untouched and is still used by the older pages.
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { CalendarDays, Camera, Check, ImagePlus, Info, MapPin, X } from "lucide-react";
+import { CalendarDays, Camera, Check, ChevronDown, ImagePlus, Info, MapPin, X } from "lucide-react";
 import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
@@ -88,19 +89,157 @@ const primaryBtn =
   "h-12 w-full rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-base font-extrabold text-white shadow-[0_8px_18px_rgba(0,31,151,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/50 disabled:cursor-progress disabled:opacity-70";
 const backBtn = "mx-auto mt-0.5 block min-h-8 px-3 text-[13px] text-neutral-500 hover:text-neutral-800";
 
-function Chip({ on, children, onClick }: { on: boolean; children: React.ReactNode; onClick: () => void }) {
+const HIDDEN: React.CSSProperties = { position: "fixed", top: 0, left: 0, visibility: "hidden" };
+
+// Click-to-open select list (multi or single choice). Keeps step 1 short.
+function Dropdown({
+  id,
+  label: lbl,
+  options,
+  value,
+  onToggle,
+  multiple = true,
+  placeholder,
+  error,
+}: {
+  id: string;
+  label: React.ReactNode;
+  options: [string, string][];
+  value: string[];
+  onToggle: (v: string) => void;
+  multiple?: boolean;
+  placeholder: string;
+  error?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [pos, setPos] = useState<React.CSSProperties>(HIDDEN);
+
+  // The list is rendered in a portal with fixed position, so the hero section
+  // can never clip it. It opens upwards when there isn't room below.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const want = Math.min(popRef.current?.offsetHeight || 300, 300);
+      const below = window.innerHeight - r.bottom - 8;
+      const up = below < want && r.top - 8 > below;
+      setPos(up ? { position: "fixed", left: r.left, width: r.width, bottom: window.innerHeight - r.top + 4, maxHeight: r.top - 12 } : { position: "fixed", left: r.left, width: r.width, top: r.bottom + 4, maxHeight: Math.max(160, below) });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+      setPos(HIDDEN);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (!wrapRef.current?.contains(t) && !popRef.current?.contains(t)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("touchstart", close);
+    };
+  }, [open]);
+
+  // Keep the keyboard-highlighted option visible (scrolls the list only, never the page).
+  useEffect(() => {
+    const list = listRef.current;
+    const el = list?.querySelector<HTMLElement>(`[data-i="${active}"]`);
+    if (!open || !list || !el) return;
+    if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop;
+    else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight;
+  }, [open, active]);
+
+  const pick = (v: string) => {
+    onToggle(v);
+    if (!multiple) setOpen(false);
+  };
+  const shown = options.filter(([, v]) => value.includes(v)).map(([l]) => l);
+
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={`min-h-[30px] rounded-full border-[1.5px] px-3 text-[13px] leading-tight transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40 ${
-        on ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#DBE3F0] bg-white text-neutral-900 hover:border-[#2F63CC]"
-      }`}
-    >
-      {on && <Check className="-ml-0.5 mr-1 inline h-3.5 w-3.5" aria-hidden="true" />}
-      {children}
-    </button>
+    <div ref={wrapRef} className="relative min-w-0">
+      <span id={`${id}-label`} className={label}>{lbl}</span>
+      <button
+        ref={btnRef}
+        id={id}
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-labelledby={`${id}-label ${id}`}
+        aria-controls={`${id}-list`}
+        aria-activedescendant={open ? `${id}-opt-${active}` : undefined}
+        aria-invalid={!!error}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") { e.preventDefault(); if (!open) setOpen(true); else setActive((i) => (i + 1) % options.length); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); if (!open) setOpen(true); else setActive((i) => (i - 1 + options.length) % options.length); }
+          else if ((e.key === "Enter" || e.key === " ") && open) { e.preventDefault(); pick(options[active][1]); }
+          else if (e.key === "Escape" || e.key === "Tab") setOpen(false);
+        }}
+        className={`flex h-11 w-full items-center gap-2 rounded-[10px] border-[1.5px] bg-[#FBFCFE] pl-3 pr-2.5 text-left text-[15px] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15 ${
+          error ? fieldBad : open ? "border-[#2F63CC]" : "border-[#DBE3F0] hover:border-[#2F63CC]"
+        }`}
+      >
+        <span className={`min-w-0 flex-1 truncate ${shown.length ? "text-neutral-900" : "text-neutral-400"}`}>
+          {shown.length ? shown.join(", ") : placeholder}
+        </span>
+        {multiple && shown.length > 1 && (
+          <span className="shrink-0 rounded-full bg-[#1A2A8C] px-1.5 text-[11px] font-bold leading-[18px] text-white">{shown.length}</span>
+        )}
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#1A2A8C] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+      {open && typeof document !== "undefined" && createPortal(
+        <div ref={popRef} style={pos} className="z-[60] flex flex-col overflow-hidden rounded-xl border-[1.5px] border-[#DBE3F0] bg-white font-sans text-neutral-900 shadow-[0_14px_30px_rgba(15,23,42,0.22)]">
+          <ul ref={listRef} id={`${id}-list`} role="listbox" aria-multiselectable={multiple || undefined} aria-labelledby={`${id}-label`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
+            {options.map(([l, v], i) => {
+              const on = value.includes(v);
+              return (
+                <li
+                  key={v}
+                  id={`${id}-opt-${i}`}
+                  data-i={i}
+                  role="option"
+                  aria-selected={on}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => pick(v)}
+                  className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[14px] ${i === active ? "bg-[#EEF3FF]" : ""} ${on ? "font-semibold text-[#1A2A8C]" : "text-neutral-800"}`}
+                >
+                  <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center border-[1.5px] ${multiple ? "rounded-[5px]" : "rounded-full"} ${on ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#B8C5DC] bg-white"}`}>
+                    {on && <Check className="h-3 w-3" aria-hidden="true" />}
+                  </span>
+                  {l}
+                </li>
+              );
+            })}
+          </ul>
+          {multiple && (
+            <div className="border-t border-[#EEF2F8] px-2 py-1.5">
+              <button type="button" onClick={() => { setOpen(false); btnRef.current?.focus(); }} className="h-8 w-full rounded-lg bg-[#1A2A8C] text-[13px] font-bold text-white">
+                Done
+              </button>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+      <FieldError msg={error} />
+    </div>
   );
 }
 
@@ -110,15 +249,6 @@ function FieldError({ msg }: { msg?: string }) {
     <p role="alert" className="mt-1 text-[12px] leading-tight text-red-700">
       {msg}
     </p>
-  );
-}
-
-function GroupError({ msg }: { msg?: string }) {
-  if (!msg) return null;
-  return (
-    <span role="alert" className="ml-1.5 text-[12px] font-medium text-red-700">
-      {msg}
-    </span>
   );
 }
 
@@ -598,7 +728,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   return (
     <div
       ref={rootRef}
-      className="relative flex w-full scroll-mt-28 flex-col rounded-2xl bg-white px-4 pb-3 pt-4 text-[15px] leading-[1.45] text-neutral-900 shadow-[0_12px_40px_rgba(0,0,0,0.28)] sm:px-6 lg:min-h-[592px]"
+      className="relative flex w-full scroll-mt-28 flex-col rounded-2xl bg-white px-4 pb-3 pt-4 text-[15px] leading-[1.45] text-neutral-900 shadow-[0_12px_40px_rgba(0,0,0,0.28)] sm:px-6"
       aria-label="Request a quote"
       role="form"
     >
@@ -676,24 +806,43 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                 <input type="checkbox" checked={isPM} onChange={(e) => setIsPM(e.target.checked)} className="h-[18px] w-[18px] accent-[#001F97]" />
                 I am a Property Manager / agent
               </label>
-              <h3 className={h3}>What do you need done?<GroupError msg={jobErrors.services} /></h3>
-              <div className="flex flex-wrap gap-1.5">
-                {serviceChips.map(([l, v]) => <Chip key={v} on={services.includes(v)} onClick={() => toggle(services, setServices, v, "services")}>{l}</Chip>)}
-              </div>
-              <h3 className={h3}>Which area?<GroupError msg={jobErrors.areas} /></h3>
-              <div className="flex flex-wrap gap-1.5">
-                {AREAS.map(([l, v]) => <Chip key={v} on={areas.includes(v)} onClick={() => toggle(areas, setAreas, v, "areas")}>{l}</Chip>)}
-              </div>
-              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5" role="group" aria-labelledby="qf2-leaking">
-                <h3 id="qf2-leaking" className="text-sm font-bold text-neutral-900">Is it currently leaking?</h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {LEAKING.map((v) => <Chip key={v} on={leaking === v} onClick={() => { setLeaking(leaking === v ? "" : v); setJobErrors((e) => ({ ...e, leaking: "" })); }}>{v}</Chip>)}
-                </div>
-                <GroupError msg={jobErrors.leaking} />
-              </div>
-              <h3 className={h3}>Any damaged tiles? <small className={opt}>(optional)</small></h3>
-              <div className="flex flex-wrap gap-1.5">
-                {DAMAGED.map((v) => <Chip key={v} on={damaged.includes(v)} onClick={() => toggleDamaged(v)}>{v}</Chip>)}
+              <div className="mt-3 grid grid-cols-1 gap-x-3 gap-y-3 min-[420px]:grid-cols-2">
+                <Dropdown
+                  id="qf2-services"
+                  label={<>What do you need done? {req}</>}
+                  placeholder="Select service(s)"
+                  options={serviceChips}
+                  value={services}
+                  onToggle={(v) => toggle(services, setServices, v, "services")}
+                  error={jobErrors.services}
+                />
+                <Dropdown
+                  id="qf2-areas"
+                  label={<>Which area? {req}</>}
+                  placeholder="Select area(s)"
+                  options={AREAS}
+                  value={areas}
+                  onToggle={(v) => toggle(areas, setAreas, v, "areas")}
+                  error={jobErrors.areas}
+                />
+                <Dropdown
+                  id="qf2-leaking"
+                  label={<>Is it currently leaking? {req}</>}
+                  placeholder="Select one"
+                  options={LEAKING.map((v) => [v, v] as [string, string])}
+                  value={leaking ? [leaking] : []}
+                  multiple={false}
+                  onToggle={(v) => { setLeaking(v); setJobErrors((e) => ({ ...e, leaking: "" })); }}
+                  error={jobErrors.leaking}
+                />
+                <Dropdown
+                  id="qf2-damaged"
+                  label={<>Any damaged tiles? <small className={opt}>(optional)</small></>}
+                  placeholder="Select if any"
+                  options={DAMAGED.map((v) => [v, v] as [string, string])}
+                  value={damaged}
+                  onToggle={toggleDamaged}
+                />
               </div>
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
             </div>
