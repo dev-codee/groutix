@@ -1483,16 +1483,27 @@ export default function CrmDashboardPage() {
     try {
       if (payload.id) {
         const changes = leadEditChanges(payload, before || {});
+        const confirmJobBooking = Boolean(changes.jobAt && !before?.jobAt);
         const res = await fetch(`/api/admin/submissions/${payload.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(changes)
+          body: JSON.stringify({ ...changes, ...(confirmJobBooking ? { bookingNotifications: true } : {}) })
         });
         if (res.ok) {
+          const result = await res.json().catch(() => ({}));
           setLeads((prev) =>
             prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes } as Lead) : l))
           );
           setLeadModalOpen(false);
+          if (confirmJobBooking) {
+            setEtaToast({
+              leadId: payload.id,
+              msg: result.notificationWarnings?.length
+                ? `Job booked. ${result.notificationWarnings.join(" ")}`
+                : "Job booked. Email and SMS confirmations sent.",
+            });
+            setTimeout(() => setEtaToast(null), 8000);
+          }
         } else {
           const error = await res.json().catch(() => ({}));
           return typeof error.error === "string" ? error.error : "Could not update the lead. Please try again.";
