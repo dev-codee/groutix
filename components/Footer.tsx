@@ -55,7 +55,7 @@ export default function Footer() {
 
   return (
     <footer className="relative overflow-hidden border-t border-[#091544] bg-[#0b1a53] font-sans text-white">
-      <div className="mx-auto w-full max-w-[1440px] px-5 pb-6 pt-16 sm:px-10 lg:px-20 xl:px-28">
+      <div className="w-full px-5 pb-6 pt-16 sm:px-8 lg:px-10">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 border-b border-white/10 pb-10 md:grid-cols-3 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))] lg:gap-x-9">
           {/* Brand */}
           <div className="col-span-2 md:col-span-3 lg:col-span-1">
