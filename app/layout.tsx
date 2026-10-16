@@ -138,7 +138,8 @@ export default async function RootLayout({
             __html: JSON.stringify(localBusinessJsonLd(rating, content.business)),
           }}
         />
-        <SiteContentProvider content={content}>
+        {/* Live Google rating (refreshed daily) overrides the stored one, so footer/badges stay current */}
+        <SiteContentProvider content={{ ...content, business: { ...content.business, rating } }}>
           {children}
           <SupportChatWidget />
         </SiteContentProvider>
