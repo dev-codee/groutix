@@ -172,3 +172,51 @@ test("the public PDF and signature routes resolve the selected quote and keep it
   assert.equal((await sign.POST(request())).status, 200);
   assert.equal(pdfs.length, count);
 });
+
+
+test("deleting quotes hides them permanently and revokes both modern and legacy links", async () => {
+  const { api, leadId, leads } = fixture();
+  const original = (await api.listCustomerQuotes(leadId))[0];
+  const draft = await api.createCustomerQuote(leadId);
+  assert.equal(await api.deleteCustomerQuote("another-customer", original._id), false);
+  assert.equal(await api.deleteCustomerQuote(leadId, original._id), true);
+  assert.equal((await api.listCustomerQuotes(leadId)).length, 1);
+  assert.equal(await api.getQuoteSubmission(leadId), null);
+  assert.equal(await api.getQuoteSubmission(original._id, true), null);
+  assert.equal(await api.reserveCustomerQuoteSend(original._id), false);
+  assert.equal(await api.updateQuoteSubmission(original._id, { quoteAcceptedAt: "now" }), false);
+  assert.equal(leads.get(leadId).hasCustomerQuotes, true);
+  assert.equal(await api.deleteCustomerQuote(leadId, draft._id), true);
+  assert.deepEqual(await api.listCustomerQuotes(leadId), []);
+  assert.equal(leads.get(leadId).hasCustomerQuotes, false);
+  assert.equal(leads.get(leadId).name, "Sam");
+  assert.equal(await api.deleteCustomerQuote(leadId, draft._id), false);
+  const fresh = await api.createCustomerQuote(leadId);
+  assert.ok(fresh);
+  assert.equal((await api.listCustomerQuotes(leadId)).length, 1);
+});
+
+test("a quote being sent cannot be deleted", async () => {
+  const { api, leadId } = fixture();
+  const draft = await api.createCustomerQuote(leadId);
+  assert.equal(await api.reserveCustomerQuoteSend(draft._id), true);
+  assert.equal(await api.deleteCustomerQuote(leadId, draft._id), false);
+  await api.releaseCustomerQuoteSend(draft._id);
+  assert.equal(await api.deleteCustomerQuote(leadId, draft._id), true);
+});
+
+test("quote deletion requires authentication and a quote belonging to the customer", async () => {
+  const { api, leadId } = fixture();
+  const original = (await api.listCustomerQuotes(leadId))[0];
+  const { DELETE } = loadTs("app/api/admin/customer-quotes/[id]/route.ts", {
+    "@/lib/customerQuotes": api,
+    "@/lib/adminAuth": { SESSION_COOKIE: "session", verifySession: async value => value === "valid" ? { username: "manager" } : null },
+  });
+  const request = (quoteId, token = "valid") => ({ cookies: { get: () => ({ value: token }) }, json: async () => ({ quoteId }) });
+  const context = { params: Promise.resolve({ id: leadId }) };
+  assert.equal((await DELETE(request(original._id, "invalid"), context)).status, 401);
+  assert.equal((await DELETE(request("other~original"), context)).status, 404);
+  assert.equal((await DELETE(request(null), context)).status, 400);
+  assert.equal((await DELETE(request(original._id), context)).status, 200);
+  assert.equal((await DELETE(request(original._id), context)).status, 409);
+});

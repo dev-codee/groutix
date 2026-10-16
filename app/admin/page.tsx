@@ -1701,6 +1701,7 @@ export default function CrmDashboardPage() {
         setCustomerQuotes(quotes);
         const chosen = quotes.filter(quote => quote.state === "draft").at(-1) || quotes.at(-1);
         if (chosen) selectCustomerQuote(lead, chosen);
+        else { setQuoteItems([]); setQuoteScope(""); setQuoteTerms(""); setCustomerQuoteTitle(""); }
       })
       .catch(error => { if (!cancelled) setQuoteSaveError(error.message); })
       .finally(() => { if (!cancelled) setCustomerQuotesLoading(false); });
@@ -1710,11 +1711,11 @@ export default function CrmDashboardPage() {
   }, [quoteModalOpen, activeQuoteLead?.id]);
 
   async function changeCustomerQuote(reference?: string, duplicate = false) {
-    if (!activeQuoteLead || !activeCustomerQuote || customerQuoteBusy || customerQuotesLoading) return;
+    if (!activeQuoteLead || customerQuoteBusy || customerQuotesLoading || (duplicate && !activeCustomerQuote)) return;
     setCustomerQuoteBusy(true);
     setQuoteSaveError("");
     try {
-      if (activeCustomerQuote.state === "draft") {
+      if (activeCustomerQuote?.state === "draft") {
         const saved = await updateLeadField(activeQuoteLead.id, { ...quoteLeadDetails(activeQuoteLead), quoteScope, quoteItems, quoteTaxMode, quoteTaxRate, quoteTerms, quoteAmount: quoteTotals().total }, setQuoteSaveError);
         if (!saved) return;
       }
@@ -1724,7 +1725,7 @@ export default function CrmDashboardPage() {
       } else {
         const response = await fetch(`/api/admin/customer-quotes/${activeQuoteLead.id}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(duplicate ? { copyId: activeCustomerQuote._id } : {}),
+          body: JSON.stringify(duplicate ? { copyId: activeCustomerQuote?._id } : {}),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not create quote.");
@@ -1732,6 +1733,30 @@ export default function CrmDashboardPage() {
         selectCustomerQuote(activeQuoteLead, data.quote);
       }
     } catch (error) { setQuoteSaveError(error instanceof Error ? error.message : "Could not switch quotes."); }
+    finally { setCustomerQuoteBusy(false); }
+  }
+
+  async function deleteSelectedCustomerQuote() {
+    if (!activeQuoteLead || !activeCustomerQuote || customerQuoteBusy || customerQuotesLoading || quoteSaveInFlight.current !== null) return;
+    if (!window.confirm(`Delete "${activeCustomerQuote.title}"? Its customer link will stop working. The customer and job will be kept.`)) return;
+    setCustomerQuoteBusy(true);
+    setQuoteSaveError("");
+    const lead = activeQuoteLead;
+    const quote = activeCustomerQuote;
+    try {
+      const response = await fetch(`/api/admin/customer-quotes/${lead.id}`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteId: quote._id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not delete the quote.");
+      const remaining = customerQuotes.filter(item => item._id !== quote._id);
+      setCustomerQuotes(remaining);
+      setLeads(current => current.map(item => item.id === lead.id ? { ...item, hasCustomerQuotes: remaining.length > 0 } : item));
+      const next = remaining.at(-1);
+      if (next) selectCustomerQuote(lead, next);
+      else { setActiveCustomerQuote(null); closeQuoteModal(); }
+    } catch (error) { setQuoteSaveError(error instanceof Error ? error.message : "Could not delete the quote."); }
     finally { setCustomerQuoteBusy(false); }
   }
 
@@ -3852,7 +3877,7 @@ export default function CrmDashboardPage() {
   // Derived lists backing the Quotes and Jobs views, so we can both count them
   // and paginate the same array.
   const quoteLeads = useMemo(
-    () => filteredLeads.filter((l) => l.hasCustomerQuotes || l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms),
+    () => filteredLeads.filter((l) => l.hasCustomerQuotes ?? Boolean(l.quoteItems?.length || l.status === "Quote Sent" || l.quoteTerms)),
     [filteredLeads]
   );
   const jobLeads = useMemo(
@@ -4813,7 +4838,7 @@ export default function CrmDashboardPage() {
          ========================================================================= */}
         {quoteModalOpen && activeQuoteLead && (
           <div className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${quoteFullscreen ? "p-0" : "items-center justify-center p-2 sm:p-4 overflow-hidden"}`}>
-            <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-screen h-screen rounded-none p-4 sm:p-5 space-y-2.5 overflow-hidden" : "rounded-2xl max-w-7xl w-full h-[94vh] p-4 sm:p-5 space-y-2.5 my-auto overflow-hidden"}`}>
+            <div className={`bg-white shadow-2xl flex flex-col ${quoteFullscreen ? "w-screen h-dvh rounded-none p-4 sm:p-5 space-y-2.5 overflow-hidden" : "rounded-2xl max-w-7xl w-full h-[94vh] p-4 sm:p-5 space-y-2.5 my-auto overflow-hidden"}`}>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                 <div>
                   <h2 className="text-lg font-black text-slate-900">{isTechnician ? "Create Scope of Work" : "Create & Send Groutix Quotation"}</h2>
@@ -4897,20 +4922,25 @@ export default function CrmDashboardPage() {
                   disabled={customerQuotesLoading || customerQuoteBusy || activeCustomerQuote?.state !== "draft"}
                   onChange={event => setCustomerQuoteTitle(event.target.value)} placeholder="Quote title"
                   className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs disabled:bg-slate-100" />
-                <button type="button" disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote}
+                <button type="button" disabled={customerQuotesLoading || customerQuoteBusy}
                   onClick={() => void changeCustomerQuote()} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">+ New quote</button>
                 <button type="button" disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote}
                   onClick={() => void changeCustomerQuote(undefined, true)} className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 disabled:opacity-50">Duplicate quote</button>
+                <button type="button" disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote || activeCustomerQuote.state === "sending"}
+                  onClick={() => void deleteSelectedCustomerQuote()} className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">
+                  <Trash2 className="h-3.5 w-3.5" /> Delete quote
+                </button>
                 {activeCustomerQuote && activeCustomerQuote.state !== "draft" && <span className="text-xs text-slate-600">This quote is {activeCustomerQuote.state}. Duplicate it to make changes.</span>}
               </div>
 
-              <div className={`grid gap-6 text-xs p-1 flex-1 min-h-0 overflow-hidden ${quoteViewTab === "split"
+              <div className={`grid auto-rows-fr gap-6 text-xs p-1 flex-1 min-h-0 overflow-hidden ${quoteViewTab === "split"
                 ? "grid-cols-1 md:grid-cols-2"
                 : "grid-cols-1"
                 }`}>
                 {/* Left Column: Quote Form Controls */}
                 {(quoteViewTab === "split" || quoteViewTab === "form") && (
-                  <div inert={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote || activeCustomerQuote.state !== "draft"} className="space-y-4 min-w-0 pr-1 h-full overflow-y-auto">
+                  <div className="min-h-0 min-w-0 pr-1 h-full overflow-y-auto overscroll-contain" tabIndex={0} aria-label="Quote details">
+                    <fieldset disabled={customerQuotesLoading || customerQuoteBusy || !activeCustomerQuote || activeCustomerQuote.state !== "draft"} className="space-y-4 min-w-0">
                     {/* Customer Request & Selected Services Details Card */}
                     <div className="p-3.5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 via-slate-50 to-indigo-50/50 space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -5633,12 +5663,13 @@ export default function CrmDashboardPage() {
                         placeholder="Enter conditions or special notes (supports **bold**, *italic*, <u>underline</u>)..."
                       />
                     </div>
+                    </fieldset>
                   </div>
                 )}
 
                 {/* Right Column: Branded Quotation Document Preview (Matches official 10-page layout) */}
                 {(quoteViewTab === "split" || quoteViewTab === "preview") && (
-                  <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 h-full overflow-y-auto ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
+                  <div className={`border border-slate-300 rounded-xl p-6 bg-white shadow-sm font-sans space-y-4 min-h-0 h-full overflow-y-auto overscroll-contain ${quoteViewTab === "preview" ? "max-w-4xl mx-auto w-full" : "min-w-0"}`}>
                     {/* Live Document Preview Header Bar */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
                       <div className="flex items-center gap-2">

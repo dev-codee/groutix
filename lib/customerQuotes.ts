@@ -11,11 +11,12 @@ export interface CustomerQuote {
   _id: string;
   leadId: string;
   title: string;
-  state: "draft" | "sending" | "sent" | "accepted" | "declined";
+  state: "draft" | "sending" | "sent" | "accepted" | "declined" | "deleted";
   values: QuoteValues;
   createdAt: string;
   updatedAt: string;
   sendStartedAt?: string;
+  deletedAt?: string;
 }
 
 function valuesFrom(source: QuoteValues): QuoteValues {
@@ -39,7 +40,7 @@ export async function listCustomerQuotes(leadId: string): Promise<CustomerQuote[
     values: { ...valuesFrom(lead), ...(sentAt ? { quoteSentAt: sentAt } : {}), quoteNumber: lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : undefined) },
     createdAt: now, updatedAt: now,
   } }, { upsert: true });
-  return col.find({ leadId }).sort({ createdAt: 1, _id: 1 }).toArray();
+  return col.find({ leadId, state: { $ne: "deleted" } }).sort({ createdAt: 1, _id: 1 }).toArray();
 }
 
 export async function createCustomerQuote(leadId: string, copyId?: string): Promise<CustomerQuote | null> {
@@ -80,12 +81,25 @@ export async function saveCustomerQuote(leadId: string, reference: string, updat
   return result.matchedCount > 0;
 }
 
+/** Keep a tombstone so legacy quote links cannot resolve or be imported again. */
+export async function deleteCustomerQuote(leadId: string, reference: string): Promise<boolean> {
+  const col = await collection();
+  const result = await col.updateOne({ _id: reference, leadId, state: { $in: ["draft", "sent", "accepted", "declined"] } },
+    { $set: { state: "deleted", deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } });
+  if (!result.matchedCount) return false;
+  const remaining = await col.countDocuments({ leadId, state: { $ne: "deleted" } });
+  await updateSubmission(leadId, { hasCustomerQuotes: remaining > 0 });
+  await appendActivity(leadId, { time: new Date().toISOString(), actor: "staff", action: "Quote deleted", detail: reference });
+  return true;
+}
+
 export async function getQuoteSubmission(reference: string, allowDraft = false): Promise<SubmissionJSON | null> {
   const leadId = quoteLeadId(reference);
   const lead = await getSubmission(leadId);
   if (!lead) return null;
   const quote = await (await collection()).findOne({ _id: reference.includes("~") ? reference : originalReference(leadId), leadId });
   if (!quote) return reference.includes("~") ? null : lead;
+  if (quote.state === "deleted") return null;
   if (!allowDraft && (quote.state === "draft" || quote.state === "sending")) return null;
   // Never inherit a signature, total or response belonging to a different quote.
   const base = { ...lead };
@@ -98,6 +112,7 @@ export async function updateQuoteSubmission(reference: string, updates: Partial<
   const col = await collection();
   const quote = await col.findOne({ _id: reference.includes("~") ? reference : originalReference(leadId), leadId });
   if (!quote) return reference.includes("~") ? false : updateSubmission(leadId, updates);
+  if (quote.state === "deleted") return false;
   const set: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   for (const [field, value] of Object.entries(valuesFrom(updates))) set[`values.${field}`] = value;
   if (updates.quoteSignedAt || updates.quoteAcceptedAt) set.state = "accepted";
@@ -127,7 +142,7 @@ export async function reserveCustomerQuoteSend(reference: string): Promise<boole
   const col = await collection();
   const id = reference.includes("~") ? reference : originalReference(reference);
   const quote = await col.findOne({ _id: id });
-  if (!quote) return false;
+  if (!quote || quote.state === "deleted") return false;
   if (quote.state === "sending" && (!quote.sendStartedAt || Date.parse(quote.sendStartedAt) > Date.now() - 5 * 60_000)) return false;
   if (quote.state !== "draft" && quote.state !== "sending") return true;
   const result = await col.updateOne({ _id: id, state: quote.state, ...(quote.state === "sending" ? { sendStartedAt: quote.sendStartedAt } : {}) }, { $set: { state: "sending", sendStartedAt: new Date().toISOString() } });
