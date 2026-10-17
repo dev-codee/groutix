@@ -55,7 +55,7 @@ export function Stars({ n = 5, className = "" }: { n?: number; className?: strin
 /* ── Hero with the step-by-step quote form ── */
 export function ServiceHero({ title, children, rating, warrantyNote = "On every complete shower regrout", defaultService }: { title: ReactNode; children: ReactNode; rating?: BusinessRating; warrantyNote?: string; defaultService?: string }) {
   return (
-    <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[64px] lg:pt-[128px]">
+    <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
       <div className={`${heroWrap} grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
         <div className="text-center lg:text-left">
           <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
