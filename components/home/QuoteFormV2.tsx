@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { CalendarDays, Camera, Check, ChevronDown, ImagePlus, Info, MapPin, X } from "lucide-react";
 import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
@@ -69,12 +68,6 @@ const shortDay = (s: string) => {
   return `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
 };
 
-// "Sarah Jane Nguyen" → first "Sarah", last "Jane Nguyen" (the API needs both)
-const splitName = (full: string) => {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  return { first: parts[0] || "", last: parts.slice(1).join(" ") };
-};
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[0-9+\-\s()]{8,}$/;
 
@@ -82,7 +75,6 @@ const field =
   "h-11 w-full rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15";
 const fieldBad = "border-red-500 bg-red-50/40";
 const label = "mb-1 block text-[13px] font-semibold text-neutral-800";
-const h3 = "mb-1.5 mt-2.5 text-sm font-bold text-neutral-900";
 const opt = "font-normal text-neutral-500";
 const req = <span className="text-red-600" aria-hidden="true">*</span>;
 const primaryBtn =
@@ -274,7 +266,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   const [damaged, setDamaged] = useState<string[]>([]);
   const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
 
-  const [data, setData] = useState({ fullName: "", agency: "", phone: "", email: "", address: "", message: "" });
+  const [data, setData] = useState({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [tenants, setTenants] = useState<Tenant[]>([{ name: "", phone: "", email: "" }]);
@@ -297,6 +289,9 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   const camRef = useRef<HTMLInputElement>(null);
 
   const [started, setStarted] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [photoAsk, setPhotoAsk] = useState(false);
+  const photoAskBtnRef = useRef<HTMLButtonElement>(null);
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [loading, setLoading] = useState(false);
@@ -403,9 +398,8 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   };
   const validateDetails = () => {
     const e: Record<string, string> = {};
-    const { first, last } = splitName(data.fullName);
-    if (!first) e.fullName = isPM ? "Please enter the manager's full name" : "Please enter your full name";
-    else if (!last) e.fullName = "Please add a last name too, e.g. Sarah Nguyen";
+    if (!data.firstName.trim()) e.firstName = isPM ? "Please enter the manager's first name" : "Please enter your first name";
+    if (!data.lastName.trim()) e.lastName = "Please enter a last name";
     if (!PHONE_RE.test(data.phone.trim())) e.phone = "Enter a valid mobile, e.g. 0412 345 678";
     if (!EMAIL_RE.test(data.email.trim())) e.email = "Enter a valid email address";
     if (data.address.trim().length < 3) e.address = isPM ? "Please enter the rental property address" : "Please enter the property address";
@@ -468,11 +462,19 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   useEffect(() => () => thumbs.forEach((u) => URL.revokeObjectURL(u)), [thumbs]);
   const photoBytes = photos.reduce((a, f) => a + f.size, 0);
 
+  useEffect(() => {
+    if (!photoAsk) return;
+    photoAskBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPhotoAsk(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [photoAsk]);
+
   /* ---------- submit ---------- */
   const canBook = mode === "insp" && avail.status === "ok" && avail.days.length > 0;
   const submitLabel = mode === "quote" ? "Get My Free Quote" : canBook ? "Book My Free Inspection" : "Submit Details";
 
-  const submit = async () => {
+  const submit = async (skipPhotoCheck = false) => {
     setSubmitError("");
     setInspError("");
     if (mode === "insp" && avail.status === "loading") {
@@ -481,6 +483,11 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
     }
     if (canBook && (!date || !time)) {
       setInspError(!date ? "Please pick a day for your free inspection." : "Please choose an arrival time.");
+      return;
+    }
+    // No photos yet: ask once (upload or skip) before sending.
+    if (!photos.length && !skipPhotoCheck) {
+      setPhotoAsk(true);
       return;
     }
     if (TURNSTILE_SITE_KEY && !captchaToken) {
@@ -523,7 +530,6 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
         }
       }
 
-      const { first, last } = splitName(data.fullName);
       const payload = new FormData();
       if (isPM) {
         payload.append("customerType", "Property Manager");
@@ -531,8 +537,8 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
         const valid = tenants.filter((t) => t.name.trim() || t.phone.trim());
         if (valid.length) payload.append("tenants", JSON.stringify(valid));
       }
-      payload.append("firstName", first);
-      payload.append("lastName", last);
+      payload.append("firstName", data.firstName.trim());
+      payload.append("lastName", data.lastName.trim());
       payload.append("email", data.email.trim());
       payload.append("phone", data.phone.trim());
       payload.append("address", data.address.trim());
@@ -589,7 +595,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
     setLeaking("");
     setDamaged([]);
     setJobErrors({});
-    setData({ fullName: "", agency: "", phone: "", email: "", address: "", message: "" });
+    setData({ firstName: "", lastName: "", agency: "", phone: "", email: "", address: "", message: "" });
     setErrors({});
     setTenants([{ name: "", phone: "", email: "" }]);
     setTenantIdx(0);
@@ -601,6 +607,8 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
     setCalendarOpen(false);
     setInspError("");
     setSubmitError("");
+    setNoteOpen(false);
+    setPhotoAsk(false);
     setAvail({ status: "idle" });
     setAvailFor("");
   };
@@ -733,15 +741,15 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
       role="form"
     >
       {done ? (
-        <div className="m-auto py-8 text-center" aria-live="polite">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-            <Check className="h-7 w-7" aria-hidden="true" />
+        <div className="m-auto px-1 py-10 text-center" aria-live="polite">
+          <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <Check className="h-9 w-9" aria-hidden="true" />
           </div>
-          <p className="mb-1 text-[13px] font-bold uppercase tracking-[1.5px] text-emerald-700">
+          <p className="mb-1.5 text-[15px] font-bold uppercase tracking-[1.5px] text-emerald-700">
             {done.booked ? "Inspection requested" : "Details received"}
           </p>
-          <h3 className="mb-2 text-xl font-bold text-[#001F97]">Thank you for choosing Groutix</h3>
-          <p className="mx-auto max-w-sm text-sm text-slate-700">
+          <h3 className="mb-3 text-[26px] font-bold leading-tight text-[#001F97] sm:text-[28px]">Thank you for choosing Groutix</h3>
+          <p className="mx-auto max-w-[420px] text-[17px] leading-relaxed text-slate-700">
             {done.booked ? (
               <>Your preferred inspection time, <strong>{done.booked}</strong>, has been received.</>
             ) : done.mode === "quote" ? (
@@ -750,15 +758,15 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
               "Your details have been received. Our team will contact you to arrange your inspection."
             )}
           </p>
-          <p className="mx-auto mt-1.5 max-w-sm text-xs text-neutral-500">
+          <p className="mx-auto mt-2 max-w-[420px] text-[15px] leading-relaxed text-neutral-500">
             {done.booked ? "We'll keep that time wherever possible and only contact you if we need to arrange an alternative." : "We look forward to helping you."}
           </p>
-          <p className="mt-3 text-sm font-bold text-neutral-900">Stay Sealed. Stay Smiling.</p>
-          <p className="mt-4 text-xs text-neutral-500">Need it sooner?</p>
-          <a href={tel} className="mt-1.5 inline-block rounded-[10px] border-[1.5px] border-[#1A2A8C] px-4 py-2 font-bold text-[#1A2A8C] hover:bg-[#EEF3FF]">
+          <p className="mt-4 text-lg font-bold text-neutral-900">Stay Sealed. Stay Smiling.</p>
+          <p className="mt-5 text-[15px] text-neutral-500">Need it sooner?</p>
+          <a href={tel} className="mt-2 inline-block rounded-xl border-[1.5px] border-[#1A2A8C] px-5 py-2.5 text-[17px] font-bold text-[#1A2A8C] hover:bg-[#EEF3FF]">
             Call {phoneDisplay}
           </a>
-          <button type="button" onClick={reset} className="mx-auto mt-3 block text-[13px] text-neutral-500 underline">
+          <button type="button" onClick={reset} className="mx-auto mt-4 block text-[15px] text-neutral-500 underline">
             Submit another request
           </button>
         </div>
@@ -808,15 +816,6 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
               </label>
               <div className="mt-3 grid grid-cols-1 gap-x-3 gap-y-3 min-[420px]:grid-cols-2">
                 <Dropdown
-                  id="qf2-services"
-                  label={<>What do you need done? {req}</>}
-                  placeholder="Select service(s)"
-                  options={serviceChips}
-                  value={services}
-                  onToggle={(v) => toggle(services, setServices, v, "services")}
-                  error={jobErrors.services}
-                />
-                <Dropdown
                   id="qf2-areas"
                   label={<>Which area? {req}</>}
                   placeholder="Select area(s)"
@@ -824,6 +823,15 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                   value={areas}
                   onToggle={(v) => toggle(areas, setAreas, v, "areas")}
                   error={jobErrors.areas}
+                />
+                <Dropdown
+                  id="qf2-services"
+                  label={<>What do you need done? {req}</>}
+                  placeholder="Select service(s)"
+                  options={serviceChips}
+                  value={services}
+                  onToggle={(v) => toggle(services, setServices, v, "services")}
+                  error={jobErrors.services}
                 />
                 <Dropdown
                   id="qf2-leaking"
@@ -851,7 +859,10 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
           {/* STEP 2: DETAILS */}
           {step === "details" && (
             <div className="flex flex-1 flex-col pt-1.5">
-              {input("fullName", <>{isPM ? "Manager full name" : "Full name"} {req}</>, { autoComplete: "name", placeholder: "e.g. Sarah Nguyen" })}
+              <div className="grid grid-cols-1 gap-x-2.5 min-[420px]:grid-cols-2">
+                {input("firstName", <>{isPM ? "Manager first name" : "First name"} {req}</>, { autoComplete: "given-name", placeholder: "e.g. Sarah" })}
+                {input("lastName", <>{isPM ? "Manager last name" : "Last name"} {req}</>, { autoComplete: "family-name", placeholder: "e.g. Nguyen" })}
+              </div>
               {isPM && input("agency", <>Real estate agency / company <small className={opt}>(optional)</small></>, { autoComplete: "organization" })}
               <div className="grid grid-cols-1 gap-x-2.5 min-[420px]:grid-cols-2">
                 {input("phone", <>{isPM ? "Manager mobile" : "Mobile"} {req}</>, { type: "tel", inputMode: "tel", autoComplete: "tel", placeholder: "04xx xxx xxx" })}
@@ -897,9 +908,6 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                 )}
                 <FieldError msg={errors.address} />
               </div>
-              <p className="text-xs text-neutral-500">
-                We only use your details to arrange your {mode === "insp" ? "inspection" : "quote"}. <Link href="/privacy-policy" className="text-[#2F63CC] underline">Privacy</Link>
-              </p>
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
             </div>
           )}
@@ -1057,12 +1065,6 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
 
               {!calendarOpen && (
                 <>
-                  <h3 className={mode === "insp" ? h3 : "mb-1.5 mt-1.5 text-sm font-bold"}>
-                    Add photos{" "}
-                    <small className={opt}>
-                      {photos.length ? `(${photos.length} of ${MAX_PHOTO_COUNT} · ${formatBytes(photoBytes)} of ${formatBytes(MAX_TOTAL_BYTES)} used)` : "(optional, helps us quote faster)"}
-                    </small>
-                  </h3>
                   <div
                     role="button"
                     tabIndex={0}
@@ -1072,7 +1074,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                     onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                     onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
                     onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
-                    className={`flex min-h-[48px] cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed px-2.5 py-1.5 transition-colors ${dragging ? "border-[#1A2A8C] bg-[#EEF3FF]" : photoError ? "border-red-500 bg-[#FBFCFE]" : "border-[#B8C5DC] bg-[#FBFCFE] hover:border-[#2F63CC]"}`}
+                    className={`${mode === "insp" ? "mt-3" : "mt-1.5"} flex min-h-[52px] cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed px-2.5 py-1.5 transition-colors ${dragging ? "border-[#1A2A8C] bg-[#EEF3FF]" : photoError ? "border-red-500 bg-[#FBFCFE]" : "border-[#B8C5DC] bg-[#FBFCFE] hover:border-[#2F63CC]"}`}
                   >
                     {photos.length ? (
                       <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label="Added photos">
@@ -1087,13 +1089,18 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                         {photos.length < MAX_PHOTO_COUNT && (
                           <li className="flex h-9 w-9 items-center justify-center rounded-md border-[1.5px] border-dashed border-[#B8C5DC] text-lg leading-none text-[#1A2A8C]" aria-hidden="true">+</li>
                         )}
+                        <li className="text-[11px] leading-tight text-neutral-500">
+                          {photos.length}/{MAX_PHOTO_COUNT} photos
+                          <br />
+                          {formatBytes(photoBytes)} of {formatBytes(MAX_TOTAL_BYTES)}
+                        </li>
                       </ul>
                     ) : (
                       <>
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF2F8]"><ImagePlus className="h-4 w-4 text-[#1A2A8C]" aria-hidden="true" /></span>
-                        <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
-                          Click or drag photos here
-                          <small className="block text-[11.5px] font-normal text-neutral-500">Up to {MAX_PHOTO_COUNT} photos · Max {formatBytes(MAX_TOTAL_BYTES)} total</small>
+                        <span className="min-w-0 flex-1 text-[13.5px] font-semibold leading-tight">
+                          Upload photos of the problem
+                          <small className="block text-[11.5px] font-normal text-neutral-500">Click or drag here · up to {MAX_PHOTO_COUNT} photos, {formatBytes(MAX_TOTAL_BYTES)} total</small>
                         </span>
                       </>
                     )}
@@ -1106,22 +1113,53 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                   </div>
                   <FieldError msg={photoError} />
 
-                  <div className="mt-2">
-                    <label htmlFor="qf2-message" className={label}>Anything else we should know? <small className={opt}>(optional)</small></label>
-                    <textarea id="qf2-message" rows={mode === "quote" ? 3 : 1} value={data.message} onChange={(e) => setData((p) => ({ ...p, message: e.target.value }))}
-                      placeholder="e.g. cracked tiles, mould, ceiling stains"
-                      className="block min-h-10 w-full resize-y rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 py-2 text-[15px] leading-snug placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15" />
-                  </div>
+                  {noteOpen || data.message ? (
+                    <div className="mt-2">
+                      <label htmlFor="qf2-message" className={label}>Anything else we should know? <small className={opt}>(optional)</small></label>
+                      <textarea id="qf2-message" rows={2} autoFocus value={data.message} onChange={(e) => setData((p) => ({ ...p, message: e.target.value }))}
+                        placeholder="e.g. cracked tiles, mould, ceiling stains"
+                        className="block min-h-10 w-full resize-y rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 py-2 text-[15px] leading-snug placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15" />
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setNoteOpen(true)}
+                      className="mt-2 inline-flex items-center gap-1 self-start text-[13px] font-semibold text-[#2F63CC] hover:underline">
+                      + Anything else we should know? <small className={opt}>(optional)</small>
+                    </button>
+                  )}
 
                   {submitError && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-2.5 py-2 text-[13px] text-red-700">{submitError}</p>}
 
                   {nav(
-                    <button type="button" onClick={submit} disabled={loading} className={primaryBtn}>
+                    <button type="button" onClick={() => submit()} disabled={loading} className={primaryBtn}>
                       {loading ? "Sending…" : submitLabel}
                     </button>
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {/* Photo reminder: shown when they submit without photos. */}
+          {photoAsk && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-[#0A123F]/45 p-4 backdrop-blur-[2px]" onClick={() => setPhotoAsk(false)}>
+              <div role="dialog" aria-modal="true" aria-labelledby="qf2-photo-ask" onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-[380px] rounded-2xl bg-white p-5 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+                <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF3FF]">
+                  <ImagePlus className="h-6 w-6 text-[#1A2A8C]" aria-hidden="true" />
+                </span>
+                <h3 id="qf2-photo-ask" className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
+                <p className="mt-1.5 text-sm text-slate-600">
+                  A few photos of the shower, grout or leak help us understand the problem and give you an accurate quote faster.
+                </p>
+                <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); fileRef.current?.click(); }}
+                  className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
+                  <ImagePlus className="h-4 w-4" aria-hidden="true" /> Upload photos
+                </button>
+                <button type="button" onClick={() => { setPhotoAsk(false); submit(true); }}
+                  className="mt-2 h-10 w-full rounded-xl border-[1.5px] border-[#DBE3F0] text-sm font-semibold text-neutral-600 hover:border-[#2F63CC] hover:text-neutral-900">
+                  Skip &amp; submit without photos
+                </button>
+              </div>
             </div>
           )}
 
