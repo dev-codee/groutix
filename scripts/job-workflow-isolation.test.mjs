@@ -174,9 +174,9 @@ test('actual travel handler saves the selected visit and offers notification onl
     let lead = customer();
     const row = jobBookingRows(lead)[1];
     const requests = [], prompts = [], errors = [];
-    const module = { exports: {} };
+    const moduleRecord = { exports: {} };
     vm.runInNewContext(compiled, {
-      module, selectedJobBooking, jobUpdatesInFlight: { current: new Set() },
+      module: moduleRecord, selectedJobBooking, jobUpdatesInFlight: { current: new Set() },
       setJobBookingsSaving: () => {},
       updateLeadField: () => assert.fail('Travel must target the visit API'),
       setLeads: update => { lead = update([lead])[0]; },
@@ -190,7 +190,7 @@ test('actual travel handler saves the selected visit and offers notification onl
         return { ok: succeeds, json: async () => succeeds ? { item } : { error: 'Booking changed' } };
       },
     });
-    await module.exports(row, 'en_route', 'job');
+    await moduleRecord.exports(row, 'en_route', 'job');
     assert.equal(requests.length, 1);
     assert.equal(requests[0].url, '/api/admin/submissions/lead/bookings');
     assert.equal(requests[0].body.start, '2026-10-21T11:00');

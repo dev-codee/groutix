@@ -84,6 +84,7 @@ export interface Lead {
   source?: string;
   notes?: string;
   technicianNotes?: string;
+  inspectionNotes?: string;
   scopeNotes?: string;
   customerType?: string;
   agency?: string;

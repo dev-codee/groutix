@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { preferredCustomerQuote } from "@/lib/customerQuoteSelection";
+import type { CustomerQuote } from "@/lib/customerQuotes";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import {
@@ -11,11 +14,36 @@ import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelper
 import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
+import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { ZoneBadge } from "@/components/admin/ZoneBadge";
 
 export function FieldLeadRow({ l }: { l: Lead }) {
   const distanceKm = useDistanceKm(l.address);
   const ctx = useAdminPageCtx();
+  const [quoteText, setQuoteText] = useState<Partial<Lead> | null>(null);
+  const [scopeError, setScopeError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    if (!l.hasCustomerQuotes) return;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/admin/customer-quotes/${l.id}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Could not load the saved quote. Please refresh to try again.");
+        const data = await response.json();
+        const quote = preferredCustomerQuote(data.quotes as CustomerQuote[], l.quoteReference);
+        if (cancelled) return;
+        setScopeError("");
+        setQuoteText(quote ? {
+          quoteScope: quote.values.quoteScope || "",
+          quoteItems: quote.values.quoteItems || [],
+          quoteTerms: quote.values.quoteTerms || "",
+        } : null);
+      } catch {
+        if (!cancelled) setScopeError("Could not load the saved quote. Please refresh to try again.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [l.id, l.hasCustomerQuotes, l.quoteReference, l.quoteUpdated]);
   const {
     role,
     onTheWayLoading,
@@ -27,7 +55,6 @@ export function FieldLeadRow({ l }: { l: Lead }) {
     openPhotosModal,
     setEditingLead,
     setLeadModalOpen,
-    staff,
   } = ctx;
 
   const followupPrompt = getFollowupPrompt(l);
@@ -180,13 +207,13 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               type="button"
               onClick={() => openPhotosModal(l)}
               className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 rounded-lg text-[10px] xl:text-[11px] font-semibold transition-colors cursor-pointer min-w-0 shadow-2xs"
-              title="View & upload job photos"
+              title="View customer photos and add inspection photos"
             >
               <Camera className="w-3 h-3 text-slate-500 shrink-0" />
-              <span className="truncate">Photos</span>
-              {Array.isArray(l.photos) && l.photos.length > 0 && (
+              <span className="truncate">Add Photos</span>
+              {(l.photosCount ?? l.photos?.length ?? 0) > 0 && (
                 <span className="min-w-[16px] h-4 px-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 text-[10px] font-semibold flex items-center justify-center shrink-0">
-                  {l.photos.length}
+                  {l.photosCount ?? l.photos?.length ?? 0}
                 </span>
               )}
             </button>
@@ -227,6 +254,15 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               <span>{l.gps ? "GPS Saved" : ctx.locationTrackingActive ? "Live GPS" : "GPS"}</span>
             </button>
           </div>
+
+          {scopeError && <p role="alert" className="text-xs text-rose-700">{scopeError}</p>}
+          <ScopeOfWorkPanel
+            lead={{ ...l, ...(l.hasCustomerQuotes ? quoteText : null) }}
+            readOnly
+            defaultOpen
+            notesField="inspectionNotes"
+            onSaveNotes={(id, notes) => updateLeadField(id, { inspectionNotes: notes })}
+          />
 
           <div className="grid grid-cols-5 gap-1">
             <button

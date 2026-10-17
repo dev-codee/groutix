@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Pencil, Save, X, StickyNote, Plus, Loader2 } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
 
@@ -9,6 +9,8 @@ interface Props {
   onSave?: (id: string, scope: string) => Promise<unknown> | unknown;
   onSaveNotes?: (id: string, notes: string) => Promise<unknown> | unknown;
   readOnly?: boolean;
+  notesField?: "technicianNotes" | "inspectionNotes";
+  defaultOpen?: boolean;
 }
 
 interface ScopeSection {
@@ -90,29 +92,27 @@ function getInitialDraft(l: Lead): string {
   return l.service || l.notes || l.message || "";
 }
 
-export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true }: Props) {
-  const [open, setOpen] = useState(false);
+export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true, notesField = "technicianNotes", defaultOpen = false }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [editingScope, setEditingScope] = useState(false);
   const [scopeDraft, setScopeDraft] = useState("");
   const [savingScope, setSavingScope] = useState(false);
   const [savedScopeOverride, setSavedScopeOverride] = useState<string | null>(null);
 
   // Extra notes (technician external notes)
-  const initialExtraNotes = l.technicianNotes ?? l.scopeNotes ?? "";
-  const [extraNotes, setExtraNotes] = useState<string>(initialExtraNotes);
+  const initialExtraNotes = l[notesField] ?? (notesField === "technicianNotes" ? l.scopeNotes : "") ?? "";
+  const [savedNotes, setSavedNotes] = useState<{ source: string; value: string } | null>(null);
+  const extraNotes = savedNotes?.source === initialExtraNotes ? savedNotes.value : initialExtraNotes;
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
-
-  useEffect(() => {
-    setExtraNotes(l.technicianNotes ?? l.scopeNotes ?? "");
-  }, [l.technicianNotes, l.scopeNotes]);
+  const [notesError, setNotesError] = useState("");
 
   const hasItems = Array.isArray(l.quoteItems) && l.quoteItems.length > 0;
   const activeScopeText = savedScopeOverride ?? l.quoteScope;
   const fallback = activeScopeText || (hasItems ? null : (l.service || l.notes || l.message || null));
 
-  if (!hasItems && !fallback && !extraNotes) return null;
+  if (!hasItems && !fallback && !extraNotes && !onSaveNotes) return null;
 
   function handleStartEditScope() {
     if (readOnly) return;
@@ -135,23 +135,23 @@ export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true
   }
 
   function handleStartEditNotes() {
+    setNotesError("");
     setNotesDraft(extraNotes);
     setEditingNotes(true);
   }
 
   async function handleSaveNotes() {
     setSavingNotes(true);
+    setNotesError("");
     const trimmed = notesDraft.trim();
     try {
-      if (onSaveNotes) {
-        await onSaveNotes(l.id, trimmed);
-      } else if (onSave) {
-        await onSave(l.id, trimmed);
-      }
-      setExtraNotes(trimmed);
+      if (!onSaveNotes) throw new Error("Notes cannot be saved here.");
+      const saved = await onSaveNotes(l.id, trimmed);
+      if (saved === false) throw new Error("Could not save the note. Please try again.");
+      setSavedNotes({ source: initialExtraNotes, value: trimmed });
       setEditingNotes(false);
     } catch (err) {
-      console.error("Failed to save extra notes:", err);
+      setNotesError(err instanceof Error ? err.message : "Could not save the note. Please try again.");
     } finally {
       setSavingNotes(false);
     }
@@ -161,13 +161,21 @@ export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true
   let sections: ScopeSection[] = [];
   if (activeScopeText && activeScopeText.trim()) {
     sections = parseScopeText(activeScopeText);
-  } else if (hasItems && l.quoteItems) {
-    sections = l.quoteItems.map((it) => ({
-      title: it.service || it.description || undefined,
-      bullets: parseBullets(it.scope && it.scope !== it.service ? it.scope : ""),
-    }));
-  } else if (fallback) {
+  }
+  if (hasItems && l.quoteItems) {
+    sections.push(...l.quoteItems.map((it) => ({
+      title: [it.code, it.service || it.description].filter(Boolean).join(" — ") || undefined,
+      bullets: [
+        ...(it.description && it.service && it.description !== it.service ? [it.description] : []),
+        ...parseBullets(it.scope && it.scope !== it.service ? it.scope : ""),
+        `Quantity: ${it.qty ?? 1}`,
+      ],
+    })));
+  } else if (!sections.length && fallback) {
     sections = parseScopeText(fallback);
+  }
+  if (l.quoteTerms?.trim()) {
+    sections.push({ title: "Quote Notes / Terms", bullets: [l.quoteTerms] });
   }
 
   return (
@@ -264,7 +272,7 @@ export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true
                               className="flex items-start gap-1.5 text-[11px] text-slate-700 leading-snug"
                             >
                               <span className="mt-[5px] w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
-                              <span className="break-words">{bullet}</span>
+                              <span className="break-words whitespace-pre-wrap">{bullet}</span>
                             </li>
                           ))}
                         </ul>
@@ -294,6 +302,7 @@ export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true
             </div>
           )}
 
+          {notesError && <p role="alert" className="text-xs text-rose-700">{notesError}</p>}
           {/* SECTION 2: EXTRA / EXTERNAL NOTES */}
           <div className="pt-2 border-t border-slate-200/70">
             <div className="flex items-center justify-between mb-1.5">

@@ -160,6 +160,7 @@ export interface SubmissionDoc {
   follow?: string;
   notes?: string;
   technicianNotes?: string;
+  inspectionNotes?: string;
   scopeNotes?: string;
   // Quote / Invoice / Workflow fields
   quoteItems?: QuoteItem[];
