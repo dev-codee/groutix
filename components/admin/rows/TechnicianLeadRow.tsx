@@ -4,7 +4,7 @@ import { leadRowKey } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import {
-  Phone, MapPin, MessageSquare,
+  Phone, MapPin, MessageSquare, Camera,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -25,6 +25,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     updateLeadField,
     callCustomer,
     openGpsModal,
+    openPhotosModal,
     handleOnTheWay,
     openInspectionModal,
     setEditingLead,
@@ -142,7 +143,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
 
-          <div className="pt-1">
+          <div className="pt-1 grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => callCustomer(l)}
@@ -150,6 +151,21 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
             >
               <Phone className="w-3 h-3 text-blue-600 shrink-0" />
               <span className="truncate">Call</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openPhotosModal(l)}
+              title="View customer photos, take a photo, or upload job photos"
+              aria-label="Add / View Photos"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] xl:text-[11px] font-semibold transition-colors cursor-pointer min-w-0 shadow-2xs"
+            >
+              <Camera className="w-3.5 h-3.5 shrink-0" />
+              <span>Add / View Photos</span>
+              {(l.photosCount ?? l.photos?.length ?? 0) > 0 && (
+                <span className="rounded-full bg-white px-1.5 text-[10px] font-bold">
+                  {l.photosCount ?? l.photos?.length ?? 0}
+                </span>
+              )}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 import { leadRowKey } from "@/lib/leadBookings";
+import { LeadBookings } from "../LeadBookings";
 
 import { Search, CheckCircle2, Trophy } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -350,7 +351,7 @@ export function JobsView() {
                 : role === "inspection" || role === "field" ? <FieldLeadRow l={l} />
                 : role === "technician" ? <TechnicianLeadRow l={l} />
                 : role === "finance" ? <FinanceLeadRow l={l} /> : <StandardLeadCard l={l} />;
-              return <div key={leadRowKey(l)}>{row}</div>;
+              return <div key={leadRowKey(l)}>{row}<LeadBookings lead={l} /></div>;
             })}
             {jobLeads.length === 0 && (
               <div className="py-16 text-center text-slate-400 text-sm">

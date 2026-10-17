@@ -256,3 +256,26 @@ test('manager booking buttons target only the selected booking and disable only 
   ctx.jobBookingsSaving[leadRowKey(rows[1])] = true;
   assert.ok(buttons(rows[1]).every(button => button.props.disabled));
 });
+
+test('jobs and leads views keep every job card while hiding the removed booking details', async () => {
+  const { createElement } = await import('react');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const lead = customer();
+  lead.bookings.push({ type: 'inspection', date: '2026-10-19', time: '08:00', assigned: 'Johnny', status: 'Inspection Booked' });
+  const ctx = {
+    role: 'manager', jobBookingsSaving: {}, jobWorkflowLeads: [lead], jobLeads: [lead],
+    leads: [lead], filteredLeads: [lead], completedLeads: [], counts: {}, page: 1,
+    globalSearch: '', statusFilter: '', onlyUnread: false, unreadReplyCount: 0,
+  };
+  const overrides = {
+    '@/components/admin/AdminPageContext': { useAdminPageCtx: () => ctx },
+    './AdminPageContext': { useAdminPageCtx: () => ctx },
+    '@/components/admin/rows/StandardLeadCard': { StandardLeadCard: () => createElement('div', null, 'Customer card') },
+  };
+  for (const name of ['JobsView', 'LeadsView']) {
+    const View = loadTs(`components/admin/views/${name}.tsx`, overrides)[name];
+    const html = renderToStaticMarkup(createElement(View));
+    for (const text of ['Customer card', 'Job 1', 'Job 2', '20 Oct', '21 Oct', 'On the Way', 'Job Done']) assert.ok(html.includes(text), `${name}: ${text}`);
+    for (const text of ['Bookings · Melbourne time', 'Update each job separately', 'Booking status', 'Assigned to Johnny', 'Change or correct status']) assert.equal(html.includes(text), false, `${name}: ${text}`);
+  }
+});
