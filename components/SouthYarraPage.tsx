@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import AnimatedSection from "@/components/AnimatedSection";
 import type { Review, BusinessRating } from "@/lib/reviews";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* ─── FAQ accordion item (matches site pattern) ─── */
 function FaqItem({ q, a }: { q: string; a: string }) {
@@ -94,6 +95,7 @@ export default function SouthYarraPage({
   reviews: Review[];
   rating: BusinessRating;
 }) {
+  const gr = useGoogleRating();
   return (
     <>
       <Navbar />
@@ -136,7 +138,7 @@ export default function SouthYarraPage({
         <AnimatedSection className="bg-white py-12 lg:py-16">
           <div className="mx-auto grid max-w-[1460px] grid-cols-1 gap-6 px-4 sm:px-6 md:grid-cols-3 lg:px-10">
             {[
-              { value: "5.0/5", stars: true, label: "Google Rating", sub: "From 290+ Google reviews" },
+              { value: `${gr.ratingLabel}/5`, stars: true, label: "Google Rating", sub: `From ${gr.countLabel} Google reviews` },
               { value: "10 Year", stars: false, label: "Waterproof Warranty", sub: "On eligible completed shower regrouting" },
               { value: "No Tile", stars: false, label: "Removal", sub: "On most regrouting jobs" },
             ].map((s, i) => (
@@ -508,7 +510,7 @@ export default function SouthYarraPage({
               {[
                 { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs." },
                 { title: "10 Year Waterproof Warranty", text: "On eligible completed shower regrouting.", link: { href: "/terms-conditions", label: "Warranty terms" } },
-                { title: "5.0 From 290+ Reviews", text: "Rated by Melbourne customers on Google." },
+                { title: `${gr.ratingLabel} From ${gr.countLabel} Reviews`, text: "Rated by Melbourne customers on Google." },
                 { title: "Apartment Ready", text: "We plan around building rules, lifts and tenants." },
               ].map((c, i) => (
                 <motion.div

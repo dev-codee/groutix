@@ -2,7 +2,6 @@
 
 import ResponsiveTable from "@/components/ResponsiveTable";
 import HeroContactBadges from "@/components/HeroContactBadges";
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -15,6 +14,7 @@ import ServiceSuburbChecker from "@/components/ServiceSuburbChecker";
 import ReviewCard from "@/components/ReviewCard";
 import type { Review } from "@/lib/reviews";
 import { LEAKING_SHOWER_FAQS, LEAK_REPAIR_PHOTOS } from "@/lib/leakingShowerContent";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 const googleReviews = "https://www.google.com/maps/place/Groutix";
 const phoneHref = "tel:+61370238094";
@@ -47,6 +47,7 @@ function QuoteButtons() {
 }
 
 export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
+  const gr = useGoogleRating();
   const signs = [
     "Stains or bubbling paint on the wall behind the shower",
     "A damp or musty smell in the bathroom or next room",
@@ -103,7 +104,7 @@ export default function LeakingShowerPage({ reviews }: { reviews: Review[] }) {
           <div className="grid gap-6 md:grid-cols-3">
             {[
               { Icon: Droplets, value: "Specialist", label: "Bathroom Repairs", detail: "Focused on grout, silicone and wet areas" },
-              { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", detail: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews` },
+              { Icon: GoogleIcon, value: `${gr.ratingLabel}/5`, label: "Google Rating", detail: `Based on ${gr.countLabel} Google reviews` },
               { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", detail: "On eligible completed repairs" },
             ].map(({ Icon, value, label, detail }) => <div key={label} className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center"><span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-secondary"><Icon className="h-6 w-6" /></span><p className="text-3xl font-black leading-none text-neutral-900">{value}</p><h2 className="text-lg font-bold text-neutral-900">{label}</h2><p className="text-sm text-neutral-500">{detail}</p></div>)}
           </div>

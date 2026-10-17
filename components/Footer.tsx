@@ -6,8 +6,9 @@
 
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { useContact, useSiteContent } from "@/components/SiteContentProvider";
-import { BUSINESS, GOOGLE_REVIEW_COUNT, GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
+import { useContact } from "@/components/SiteContentProvider";
+import { BUSINESS } from "@/lib/seo";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 const SERVICES: [string, string][] = [
   ["Shower Regrouting", "/shower-regrouting"],
@@ -46,12 +47,8 @@ const listLink = "text-sm leading-[2.1] text-white/75 transition-colors hover:te
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { phone, tel, email, mailto } = useContact();
-  const { business } = useSiteContent();
-
   // Live Google rating (refreshed daily in the layout); falls back to the stored figure.
-  const ratingValue = business.rating?.value ?? BUSINESS.rating.value;
-  const ratingCount = business.rating?.count ?? GOOGLE_REVIEW_COUNT;
-  const countLabel = ratingCount === GOOGLE_REVIEW_COUNT ? GOOGLE_REVIEW_COUNT_LABEL : ratingCount.toLocaleString("en-AU");
+  const gr = useGoogleRating();
 
   return (
     <footer className="relative overflow-hidden border-t border-[#091544] bg-[#0b1a53] font-sans text-white">
@@ -67,7 +64,7 @@ export default function Footer() {
             </p>
             <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-white/90 hover:text-white">
               <span className="tracking-[1px] text-[#FBBC04]" aria-hidden="true">★★★★★</span>
-              <span>{ratingValue.toFixed(1)} · {countLabel} Google reviews</span>
+              <span>{gr.ratingLabel} · {gr.countLabel} Google reviews</span>
             </a>
             <div className="mt-5 flex items-center gap-2.5">
               <a

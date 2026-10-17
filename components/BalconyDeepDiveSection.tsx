@@ -31,6 +31,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import ReviewCard from "@/components/ReviewCard";
 import { faqJsonLd } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* ─────────────────────────────────────────
    CONTENT (from Groutix_Balcony_Leak_Repair_Page_Content.docx)
@@ -330,6 +331,7 @@ export default function BalconyLeakRepairPage({
   reviews?: Review[];
   rating: BusinessRating;
 }) {
+  const gr = useGoogleRating();
   const visibleReviews = [
     ...reviews.filter(review => /balcon(?:y|ies)/i.test(review.review)),
     ...reviews.filter(review => !/balcon(?:y|ies)/i.test(review.review)),
@@ -436,7 +438,7 @@ export default function BalconyLeakRepairPage({
                 className="flex flex-col items-center text-center gap-3 px-6 py-8 rounded-xl border border-neutral-200 bg-neutral-50 hover:border-accent transition-colors"
               >
                 <GoogleIcon className="h-6 w-6" />
-                <p className="text-3xl font-black leading-none text-neutral-900">5.0/5</p>
+                <p className="text-3xl font-black leading-none text-neutral-900">{gr.ratingLabel}/5</p>
                 <div className="flex gap-0.5">
                   {[...Array(5)].map((_, j) => (
                     <Star key={j} className="h-4 w-4 text-[#FBBC04] fill-[#FBBC04]" />
@@ -754,7 +756,7 @@ export default function BalconyLeakRepairPage({
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent">
                     <Check className="h-5 w-5" />
                   </span>
-                  <h3 className="font-bold text-neutral-900 text-lg">{w.title}</h3>
+                  <h3 className="font-bold text-neutral-900 text-lg">{w.title === "5.0 Star Google Rating" ? `${gr.ratingLabel} Star Google Rating` : w.title}</h3>
                   {w.title === "5.0 Star Google Rating" ? (
                     <div className="flex gap-0.5">
                       {[...Array(5)].map((_, j) => (

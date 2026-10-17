@@ -1,6 +1,5 @@
 "use client";
 import HeroContactBadges from "@/components/HeroContactBadges";
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,6 +31,7 @@ import { useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import ServiceSuburbChecker from "@/components/ServiceSuburbChecker";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* Used for the Service JSON-LD. Change if the live domain differs. */
 const SITE_URL = "https://groutix.com";
@@ -313,9 +313,10 @@ export default function EpoxyGroutPage({
   reviews?: Review[];
   rating?: BusinessRating;
 }) {
+  const gr = useGoogleRating();
   const { tel, mailto } = useContact();
   const [selectedSuburb, setSelectedSuburb] = useState<string>("");
-  const reviewCount = GOOGLE_REVIEW_COUNT_LABEL;
+  const reviewCount = gr.countLabel;
 
   /* Reviews 2 and 3: real reviews that mention epoxy (never invented). Review 1 (Kirat Singh) is fixed. */
   const epoxyReviews = reviews
@@ -406,7 +407,7 @@ export default function EpoxyGroutPage({
             <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 { Icon: Droplets, value: "8,000+", label: "Bathrooms Restored", sub: "Across Melbourne & regional Victoria", stars: false, href: "" },
-                { Icon: Star, value: "5.0/5", label: "Google Rating", sub: `Based on ${reviewCount} Google reviews`, stars: true, href: "https://www.google.com/maps/place/Groutix" },
+                { Icon: Star, value: `${gr.ratingLabel}/5`, label: "Google Rating", sub: `Based on ${reviewCount} Google reviews`, stars: true, href: "https://www.google.com/maps/place/Groutix" },
                 { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", sub: "On eligible completed work", stars: false, href: "" },
               ].map(({ Icon, value, label, sub, stars, href }, i) => {
                 const card = (
@@ -798,7 +799,7 @@ export default function EpoxyGroutPage({
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 text-primary">
                     <w.Icon className="h-6 w-6" />
                   </span>
-                  <h3 className="font-bold text-neutral-900 text-lg">{w.title}</h3>
+                  <h3 className="font-bold text-neutral-900 text-lg">{w.title === "5.0 Star Google Rating" ? `${gr.ratingLabel} Star Google Rating` : w.title}</h3>
                   {w.desc && <p className="text-neutral-600 text-base leading-relaxed">{w.desc}</p>}
                 </motion.div>
               ))}

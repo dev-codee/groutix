@@ -1,6 +1,6 @@
 "use client";
 import HeroContactBadges from "@/components/HeroContactBadges";
-import { BUSINESS, GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
+import { BUSINESS } from "@/lib/seo";
 import React, { useRef, useState } from "react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import Image from "next/image";
@@ -45,6 +45,7 @@ import { useSiteContent, useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
 import ImgBox from "@/components/ServiceImageBox";
 import HomeBalconySection from "@/components/HomeBalconySection";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 const coverageSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -615,6 +616,7 @@ export default function HomePage({
   reviews: Review[];
   rating: BusinessRating;
 }) {
+  const gr = useGoogleRating();
   const { hero } = useSiteContent();
   const { phone, tel, email, mailto } = useContact();
   const [selectedSuburb, setSelectedSuburb] = useState<string>("");
@@ -702,9 +704,9 @@ export default function HomePage({
                 },
                 {
                   Icon: GoogleIcon,
-                  value: "5.0/5",
+                  value: `${gr.ratingLabel}/5`,
                   label: "Google Rating",
-                  sublabel: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews`,
+                  sublabel: `Based on ${gr.countLabel} Google reviews`,
                   color: "",
                   showStars: true,
                   linked: true,

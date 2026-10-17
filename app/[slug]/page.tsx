@@ -1,4 +1,4 @@
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
+import { formatReviewCount } from "@/lib/googleRating";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServicePageTemplate from "@/components/ServicePageTemplate";
@@ -430,11 +430,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const dedicatedService = ["tile-regrouting", "silicone-recaulking", "small-tiling-jobs", "balcony-leak-repairs"].includes(slug);
   const rating = dedicatedService ? await getBusinessRating() : null;
   const description = slug === "tile-regrouting"
-    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote.`
+    ? `Tile regrouting in Melbourne for floors, kitchens, laundries and bathrooms. Old grout removed, new grout colour matched. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
     : slug === "silicone-recaulking"
-      ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote.`
+      ? `Silicone replacement and recaulking in Melbourne. Mouldy, peeling silicone fully removed and resealed. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
       : slug === "small-tiling-jobs"
-        ? `Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. ${rating!.value.toFixed(1)} stars, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote.`
+        ? `Small tiling jobs in Melbourne: broken, cracked and loose tiles repaired or replaced, grout matched. ${rating!.value.toFixed(1)} stars, ${formatReviewCount(rating!.count)} reviews. Free quote.`
         : s.metaDesc;
   return {
     title: dedicatedService ? { absolute: s.metaTitle } : s.metaTitle,
