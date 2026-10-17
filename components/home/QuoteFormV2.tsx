@@ -71,15 +71,20 @@ const shortDay = (s: string) => {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[0-9+\-\s()]{8,}$/;
 
-const field =
-  "h-11 w-full rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15";
 const fieldBad = "border-red-500 bg-red-50/40";
 const label = "mb-1 block text-[13px] font-semibold text-neutral-800";
 const opt = "font-normal text-neutral-500";
 const req = <span className="text-red-600" aria-hidden="true">*</span>;
 const primaryBtn =
   "h-12 w-full rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-base font-extrabold text-white shadow-[0_8px_18px_rgba(0,31,151,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/50 disabled:cursor-progress disabled:opacity-70";
-const backBtn = "mx-auto mt-0.5 block min-h-8 px-3 text-[13px] text-neutral-500 hover:text-neutral-800";
+const backBtn =
+  "h-12 shrink-0 rounded-xl border-[1.5px] border-[#DBE3F0] bg-white px-4 text-sm font-semibold text-neutral-600 transition-colors hover:border-[#2F63CC] hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40";
+// Compact input with the label inside the box: it sits in the middle while empty
+// and moves to the top once the field is focused or filled, so the value always shows.
+const floatField =
+  "peer h-12 w-full rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 pb-1 pt-[18px] text-[15px] text-neutral-900 placeholder:text-transparent focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15";
+const floatLabel =
+  "pointer-events-none absolute left-3 right-3 top-1.5 truncate text-[11px] font-semibold text-neutral-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-[14.5px] peer-placeholder-shown:font-normal peer-placeholder-shown:text-neutral-500 peer-focus:top-1.5 peer-focus:translate-y-0 peer-focus:text-[11px] peer-focus:font-semibold peer-focus:text-[#2F63CC]";
 
 const HIDDEN: React.CSSProperties = { position: "fixed", top: 0, left: 0, visibility: "hidden" };
 
@@ -235,6 +240,18 @@ function Dropdown({
   );
 }
 
+function FloatInput({ id, label: lbl, error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { id: string; label: React.ReactNode; error?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="relative">
+        <input id={id} aria-invalid={!!error} {...props} placeholder=" " className={`${floatField} ${error ? fieldBad : ""}`} />
+        <label htmlFor={id} className={floatLabel}>{lbl}</label>
+      </div>
+      <FieldError msg={error} />
+    </div>
+  );
+}
+
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
@@ -324,8 +341,12 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   };
 
   /* ---------- availability (same endpoint + rules as HeroQuoteForm) ---------- */
-  const loadAvailability = useCallback(async (address: string) => {
+  const loadAvailability = useCallback(async (address: string, fresh = false) => {
     if (!address || address.trim().length < 5) return;
+    if (fresh) {
+      setDate("");
+      setTime("");
+    }
     setAvail({ status: "loading" });
     setAvailFor(address);
     try {
@@ -348,13 +369,10 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
     }
   }, []);
 
-  useEffect(() => {
-    if (step === "finish" && mode === "insp" && data.address.trim() && availFor !== data.address) {
-      setDate("");
-      setTime("");
-      loadAvailability(data.address);
-    }
-  }, [step, mode, data.address, availFor, loadAvailability]);
+  // Load live inspection times when the visitor reaches the last step (or switches back to "inspection" there).
+  const ensureAvailability = (s: StepId, m: Mode) => {
+    if (s === "finish" && m === "insp" && data.address.trim() && availFor !== data.address) loadAvailability(data.address, true);
+  };
 
   /* ---------- address autocomplete ---------- */
   const fetchSuggestions = useCallback(async (q: string) => {
@@ -432,6 +450,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
     if (step === "details" && !validateDetails()) return;
     if (step === "tenants" && !validateTenants()) return;
     setStarted(true);
+    ensureAvailability(flow[stepIndex + 1], mode);
     goTo(flow[stepIndex + 1]);
   };
   const back = () => {
@@ -629,23 +648,17 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   };
 
   const input = (name: keyof typeof data, lbl: React.ReactNode, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
-    <div className="mb-2.5 min-w-0">
-      <label htmlFor={`qf2-${name}`} className={label}>
-        {lbl}
-      </label>
-      <input
-        id={`qf2-${name}`}
-        value={data[name]}
-        onChange={(e) => {
-          setData((p) => ({ ...p, [name]: e.target.value }));
-          if (errors[name]) setErrors((x) => ({ ...x, [name]: "" }));
-        }}
-        aria-invalid={!!errors[name]}
-        className={`${field} ${errors[name] ? fieldBad : ""}`}
-        {...props}
-      />
-      <FieldError msg={errors[name]} />
-    </div>
+    <FloatInput
+      id={`qf2-${name}`}
+      label={lbl}
+      value={data[name]}
+      onChange={(e) => {
+        setData((p) => ({ ...p, [name]: e.target.value }));
+        if (errors[name]) setErrors((x) => ({ ...x, [name]: "" }));
+      }}
+      error={errors[name]}
+      {...props}
+    />
   );
 
   const days = avail.status === "ok" ? avail.days : [];
@@ -665,13 +678,13 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
 
   const timeSelect = (id: string) =>
     selectedDay && avail.status === "ok" ? (
-      <div className="mt-2">
+      <div className="mt-1.5">
         <label htmlFor={id} className="sr-only">Arrival time</label>
         <select
           id={id}
           value={time}
           onChange={(e) => { setTime(e.target.value); setInspError(""); }}
-          className="h-11 w-full appearance-none rounded-[10px] border-[1.5px] border-[#CDD8EA] bg-[#FBFCFE] bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%228%22%20fill=%22none%22%20stroke=%22%231a2a8c%22%20stroke-width=%222%22%3E%3Cpath%20d=%22M1%201l5%205%205-5%22/%3E%3C/svg%3E')] bg-[length:12px_8px] bg-[right_14px_center] bg-no-repeat pl-3 pr-9 text-[15px] text-neutral-900 focus:border-[#1A2A8C] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15"
+          className="h-10 w-full appearance-none rounded-[10px] border-[1.5px] border-[#CDD8EA] bg-[#FBFCFE] bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%228%22%20fill=%22none%22%20stroke=%22%231a2a8c%22%20stroke-width=%222%22%3E%3Cpath%20d=%22M1%201l5%205%205-5%22/%3E%3C/svg%3E')] bg-[length:12px_8px] bg-[right_14px_center] bg-no-repeat pl-3 pr-9 text-[15px] text-neutral-900 focus:border-[#1A2A8C] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15"
         >
           <option value="">Choose arrival time for {dayLabel(selectedDay.date)}…</option>
           {selectedDay.slots.map((s) => (
@@ -724,11 +737,11 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   };
 
   const nav = (cta: React.ReactNode) => (
-    <div className="mt-auto pt-3">
-      {cta}
+    <div className="mt-auto flex gap-2 pt-3">
       {stepIndex > 0 && (
         <button type="button" onClick={back} className={backBtn}>← Back</button>
       )}
+      <div className="min-w-0 flex-1">{cta}</div>
     </div>
   );
 
@@ -783,7 +796,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                 key={m}
                 type="button"
                 aria-pressed={mode === m}
-                onClick={() => { setMode(m); setInspError(""); setCalendarOpen(false); }}
+                onClick={() => { setMode(m); setInspError(""); setCalendarOpen(false); ensureAvailability(step, m); }}
                 className={`relative rounded-xl border-[1.5px] px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40 ${
                   mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
                 }`}
@@ -858,41 +871,43 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
 
           {/* STEP 2: DETAILS */}
           {step === "details" && (
-            <div className="flex flex-1 flex-col pt-1.5">
-              <div className="grid grid-cols-1 gap-x-2.5 min-[420px]:grid-cols-2">
-                {input("firstName", <>{isPM ? "Manager first name" : "First name"} {req}</>, { autoComplete: "given-name", placeholder: "e.g. Sarah" })}
-                {input("lastName", <>{isPM ? "Manager last name" : "Last name"} {req}</>, { autoComplete: "family-name", placeholder: "e.g. Nguyen" })}
+            <div className="flex flex-1 flex-col gap-2.5 pt-2">
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {input("firstName", <>{isPM ? "Manager first name" : "First name"} {req}</>, { autoComplete: "given-name" })}
+                {input("lastName", <>{isPM ? "Manager last name" : "Last name"} {req}</>, { autoComplete: "family-name" })}
               </div>
-              {isPM && input("agency", <>Real estate agency / company <small className={opt}>(optional)</small></>, { autoComplete: "organization" })}
-              <div className="grid grid-cols-1 gap-x-2.5 min-[420px]:grid-cols-2">
-                {input("phone", <>{isPM ? "Manager mobile" : "Mobile"} {req}</>, { type: "tel", inputMode: "tel", autoComplete: "tel", placeholder: "04xx xxx xxx" })}
-                {input("email", <>{isPM ? "Manager email" : "Email"} {req}</>, { type: "email", autoComplete: "email", placeholder: isPM ? "you@agency.com.au" : "you@email.com" })}
+              {isPM && input("agency", <>Real estate agency / company <span className="font-normal">(optional)</span></>, { autoComplete: "organization" })}
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {input("phone", <>{isPM ? "Manager mobile" : "Mobile"} {req}</>, { type: "tel", inputMode: "tel", autoComplete: "tel" })}
+                {input("email", <>{isPM ? "Manager email" : "Email"} {req}</>, { type: "email", autoComplete: "email" })}
               </div>
-              <div className="relative mb-2.5">
-                <label htmlFor="qf2-address" className={label}>{isPM ? "Rental property address" : "Property address or suburb"} {req}</label>
-                <input
-                  id="qf2-address"
-                  value={data.address}
-                  onChange={(e) => onAddress(e.target.value)}
-                  onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
-                  onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !(suggestOpen && activeSuggest >= 0)) { e.preventDefault(); setSuggestOpen(false); next(); return; }
-                    if (!suggestOpen || !suggestions.length) return;
-                    if (e.key === "ArrowDown") { e.preventDefault(); setActiveSuggest((i) => (i + 1) % suggestions.length); }
-                    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveSuggest((i) => (i - 1 + suggestions.length) % suggestions.length); }
-                    else if (e.key === "Enter") { e.preventDefault(); pickSuggestion(suggestions[activeSuggest]); }
-                    else if (e.key === "Escape") setSuggestOpen(false);
-                  }}
-                  role="combobox"
-                  aria-expanded={suggestOpen}
-                  aria-controls="qf2-address-list"
-                  aria-autocomplete="list"
-                  aria-invalid={!!errors.address}
-                  autoComplete="off"
-                  placeholder="Start typing your address…"
-                  className={`${field} ${errors.address ? fieldBad : ""}`}
-                />
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    id="qf2-address"
+                    value={data.address}
+                    onChange={(e) => onAddress(e.target.value)}
+                    onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
+                    onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !(suggestOpen && activeSuggest >= 0)) { e.preventDefault(); setSuggestOpen(false); next(); return; }
+                      if (!suggestOpen || !suggestions.length) return;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setActiveSuggest((i) => (i + 1) % suggestions.length); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setActiveSuggest((i) => (i - 1 + suggestions.length) % suggestions.length); }
+                      else if (e.key === "Enter") { e.preventDefault(); pickSuggestion(suggestions[activeSuggest]); }
+                      else if (e.key === "Escape") setSuggestOpen(false);
+                    }}
+                    role="combobox"
+                    aria-expanded={suggestOpen}
+                    aria-controls="qf2-address-list"
+                    aria-autocomplete="list"
+                    aria-invalid={!!errors.address}
+                    autoComplete="off"
+                    placeholder=" "
+                    className={`${floatField} ${errors.address ? fieldBad : ""}`}
+                  />
+                  <label htmlFor="qf2-address" className={floatLabel}>{isPM ? "Rental property address" : "Property address or suburb"} {req}</label>
+                </div>
                 {suggestOpen && (
                   <ul id="qf2-address-list" role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
                     {suggestions.map((s, i) => (
@@ -914,9 +929,8 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
 
           {/* STEP 3 (property managers): TENANT ACCESS */}
           {step === "tenants" && (
-            <div className="flex flex-1 flex-col pt-1.5">
-              <h3 className="text-sm font-bold">Tenant access details</h3>
-              <p className="mb-2 text-xs text-neutral-500">So our technician can coordinate property access directly.</p>
+            <div className="flex flex-1 flex-col pt-2">
+              <h3 className="mb-2 text-sm font-bold">Tenant access details <small className={opt}>(so we can arrange access)</small></h3>
               <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
                 {tenants.map((_, i) => (
                   <button key={i} type="button" aria-pressed={i === tenantIdx} onClick={() => { setTenantIdx(i); setTenantErrors({}); }}
@@ -942,25 +956,13 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                   if (tenantErrors[k]) setTenantErrors((e) => ({ ...e, [k]: undefined }));
                 };
                 return (
-                  <>
-                    <div className="mb-2.5">
-                      <label htmlFor="qf2-tn" className={label}>Tenant {tenantIdx + 1} name {req}</label>
-                      <input id="qf2-tn" value={t.name} onChange={(e) => upd("name", e.target.value)} aria-invalid={!!tenantErrors.name} className={`${field} ${tenantErrors.name ? fieldBad : ""}`} />
-                      <FieldError msg={tenantErrors.name} />
+                  <div className="flex flex-col gap-2.5">
+                    <FloatInput id="qf2-tn" label={<>Tenant {tenantIdx + 1} name {req}</>} value={t.name} onChange={(e) => upd("name", e.target.value)} error={tenantErrors.name} />
+                    <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                      <FloatInput id="qf2-tp" type="tel" inputMode="tel" label={<>Tenant phone {req}</>} value={t.phone} onChange={(e) => upd("phone", e.target.value)} error={tenantErrors.phone} />
+                      <FloatInput id="qf2-te" type="email" label={<>Tenant email <span className="font-normal">(optional)</span></>} value={t.email} onChange={(e) => upd("email", e.target.value)} error={tenantErrors.email} />
                     </div>
-                    <div className="grid grid-cols-1 gap-x-2.5 min-[420px]:grid-cols-2">
-                      <div className="mb-2.5 min-w-0">
-                        <label htmlFor="qf2-tp" className={label}>Tenant phone {req}</label>
-                        <input id="qf2-tp" type="tel" inputMode="tel" value={t.phone} onChange={(e) => upd("phone", e.target.value)} placeholder="04xx xxx xxx" aria-invalid={!!tenantErrors.phone} className={`${field} ${tenantErrors.phone ? fieldBad : ""}`} />
-                        <FieldError msg={tenantErrors.phone} />
-                      </div>
-                      <div className="mb-2.5 min-w-0">
-                        <label htmlFor="qf2-te" className={label}>Tenant email <small className={opt}>(optional)</small></label>
-                        <input id="qf2-te" type="email" value={t.email} onChange={(e) => upd("email", e.target.value)} aria-invalid={!!tenantErrors.email} className={`${field} ${tenantErrors.email ? fieldBad : ""}`} />
-                        <FieldError msg={tenantErrors.email} />
-                      </div>
-                    </div>
-                  </>
+                  </div>
                 );
               })()}
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
@@ -973,13 +975,23 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
               {mode === "insp" && (
                 <div>
                   {!calendarOpen && (
-                    <h3 className="mb-1.5 mt-1.5 text-sm font-bold">
-                      Choose your inspection day <small className={opt}>(free, no obligation)</small>
-                    </h3>
+                    <>
+                      <div className="mb-1.5 mt-2 flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold">Choose your inspection day <small className={opt}>(free)</small></h3>
+                        <button type="button" onClick={() => setShowHow((v) => !v)} aria-expanded={showHow} className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-semibold text-[#2F63CC] hover:underline">
+                          <Info className="h-3.5 w-3.5" aria-hidden="true" /> How it works
+                        </button>
+                      </div>
+                      {showHow && (
+                        <p className="mb-1.5 rounded-xl border-[1.5px] border-[#2F63CC] bg-white px-3 py-2 text-[12.5px] text-slate-700">
+                          Free on-site inspections are available across our service area. Addresses close to our base can be booked on most days; further out we visit one part of Melbourne per day, so you&apos;ll see the days our inspector is already in your area. For properties more than 50 km away, or in coastal areas, our team arranges the time with you directly.
+                        </p>
+                      )}
+                    </>
                   )}
                   {avail.status === "loading" && (
                     <div className="grid grid-cols-6 gap-1.5" role="status" aria-label="Loading available days">
-                      {Array.from({ length: 6 }, (_, i) => <span key={i} className="h-[50px] animate-pulse rounded-[10px] bg-slate-100" />)}
+                      {Array.from({ length: 6 }, (_, i) => <span key={i} className="h-[44px] animate-pulse rounded-[10px] bg-slate-100" />)}
                     </div>
                   )}
                   {avail.status === "error" && (
@@ -1013,25 +1025,25 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                           const full = !d.slots.some((s) => !s.booked);
                           return (
                             <button key={d.date} type="button" disabled={full} aria-pressed={sel} aria-label={dayLabel(d.date)} onClick={() => pickDay(d.date)}
-                              className={`rounded-[10px] border-[1.5px] px-0.5 py-1 text-center transition-colors ${sel ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC] disabled:opacity-40"}`}>
+                              className={`rounded-[10px] border-[1.5px] px-0.5 py-[3px] text-center transition-colors ${sel ? "border-[#1A2A8C] bg-[#1A2A8C] text-white" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC] disabled:opacity-40"}`}>
                               <small className={`block text-[10.5px] ${sel ? "text-[#CFE0FF]" : "text-neutral-500"}`}>{WD[dt.getDay()]}</small>
-                              <b className="text-base leading-tight">{dt.getDate()}</b>
+                              <b className="block text-[15px] leading-tight">{dt.getDate()}</b>
                             </button>
                           );
                         })}
                         <button type="button" onClick={() => { setCalendarOpen(true); setCalMonth(date ? parseYmd(date) : parseYmd(days[0].date)); }}
-                          className="rounded-[10px] border-[1.5px] border-[#2F63CC] bg-[#EEF3FF] px-0.5 py-1 text-center">
+                          className="rounded-[10px] border-[1.5px] border-[#2F63CC] bg-[#EEF3FF] px-0.5 py-[3px] text-center">
                           <small className="block text-[10.5px] text-neutral-500">More</small>
-                          <CalendarDays className="mx-auto mt-0.5 h-5 w-5 text-[#1A2A8C]" aria-hidden="true" />
+                          <CalendarDays className="mx-auto h-[19px] w-[19px] text-[#1A2A8C]" aria-hidden="true" />
                         </button>
                       </div>
                       {time && selectedDay ? (
-                        <div className="mt-2 rounded-xl border border-[#BFE6D0] bg-[#EFFAF4] px-3 py-1.5">
-                          <div className="flex items-start justify-between gap-2 text-[13px] leading-snug text-[#0F6B43]">
-                            <span>✓ Preferred inspection time selected,<br /><b>{dayLabel(selectedDay.date)}, {formatSlotRange(time, avail.durationMinutes)}</b></span>
+                        <div className="mt-1.5 rounded-[10px] border border-[#BFE6D0] bg-[#EFFAF4] px-3 py-1">
+                          <div className="flex items-center justify-between gap-2 text-[13px] leading-snug text-[#0F6B43]">
+                            <span>✓ Preferred time: <b>{dayLabel(selectedDay.date)}, {formatSlotRange(time, avail.durationMinutes)}</b></span>
                             <button type="button" onClick={() => setTime("")} className="shrink-0 text-xs font-bold text-[#1A2A8C] underline">Change time</button>
                           </div>
-                          <p className="mt-0.5 text-[11px] leading-tight text-[#4B6B5C]">If this time becomes unavailable, our team will contact you to arrange an alternative.</p>
+                          <p className="text-[11px] leading-tight text-[#4B6B5C]">If this time becomes unavailable, our team will contact you to arrange an alternative.</p>
                         </div>
                       ) : (
                         timeSelect("qf2-time")
@@ -1050,21 +1062,12 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                     </div>
                   )}
                   {inspError && <p role="alert" className="mt-1.5 text-[12.5px] font-medium text-red-700">{inspError}</p>}
-                  {!calendarOpen && (
-                    <button type="button" onClick={() => setShowHow((v) => !v)} aria-expanded={showHow} className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#2F63CC]">
-                      <Info className="h-3.5 w-3.5" aria-hidden="true" /> How inspection days work
-                    </button>
-                  )}
-                  {showHow && !calendarOpen && (
-                    <p className="mt-1 rounded-xl border-[1.5px] border-[#2F63CC] bg-white px-3 py-2 text-[12.5px] text-slate-700">
-                      Free on-site inspections are available across our service area. Addresses close to our base can be booked on most days; further out we visit one part of Melbourne per day, so you&apos;ll see the days our inspector is already in your area. For properties more than 50 km away, or in coastal areas, our team arranges the time with you directly.
-                    </p>
-                  )}
                 </div>
               )}
 
               {!calendarOpen && (
                 <>
+                  <div className={`${mode === "insp" ? "mt-2.5" : "mt-1.5"} flex items-stretch gap-2`}>
                   <div
                     role="button"
                     tabIndex={0}
@@ -1074,7 +1077,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                     onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                     onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
                     onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
-                    className={`${mode === "insp" ? "mt-3" : "mt-1.5"} flex min-h-[52px] cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed px-2.5 py-1.5 transition-colors ${dragging ? "border-[#1A2A8C] bg-[#EEF3FF]" : photoError ? "border-red-500 bg-[#FBFCFE]" : "border-[#B8C5DC] bg-[#FBFCFE] hover:border-[#2F63CC]"}`}
+                    className={`flex min-h-[46px] min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl border-[1.5px] border-dashed px-2 py-1 transition-colors ${dragging ? "border-[#1A2A8C] bg-[#EEF3FF]" : photoError ? "border-red-500 bg-[#FBFCFE]" : "border-[#B8C5DC] bg-[#FBFCFE] hover:border-[#2F63CC]"}`}
                   >
                     {photos.length ? (
                       <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label="Added photos">
@@ -1098,9 +1101,9 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                     ) : (
                       <>
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF2F8]"><ImagePlus className="h-4 w-4 text-[#1A2A8C]" aria-hidden="true" /></span>
-                        <span className="min-w-0 flex-1 text-[13.5px] font-semibold leading-tight">
-                          Upload photos of the problem
-                          <small className="block text-[11.5px] font-normal text-neutral-500">Click or drag here · up to {MAX_PHOTO_COUNT} photos, {formatBytes(MAX_TOTAL_BYTES)} total</small>
+                        <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
+                          Upload photos<span className="hidden sm:inline"> of the problem</span>
+                          <small className="block truncate text-[11px] font-normal text-neutral-500"><span className="sm:hidden">Tap to add · up to {MAX_PHOTO_COUNT}</span><span className="hidden sm:inline">Click or drag · up to {MAX_PHOTO_COUNT} photos, {formatBytes(MAX_TOTAL_BYTES)}</span></small>
                         </span>
                       </>
                     )}
@@ -1111,20 +1114,22 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                     <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
                     <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
                   </div>
+                  {!(noteOpen || data.message) && (
+                    <button type="button" onClick={() => setNoteOpen(true)} aria-label="Add a note (optional)"
+                      className="flex w-[64px] shrink-0 flex-col items-center justify-center rounded-xl border-[1.5px] border-[#DBE3F0] bg-white text-[11.5px] font-semibold leading-tight text-[#2F63CC] hover:border-[#2F63CC]">
+                      <span className="text-base leading-none">+</span>Add note
+                    </button>
+                  )}
+                  </div>
                   <FieldError msg={photoError} />
 
-                  {noteOpen || data.message ? (
+                  {(noteOpen || data.message) && (
                     <div className="mt-2">
                       <label htmlFor="qf2-message" className={label}>Anything else we should know? <small className={opt}>(optional)</small></label>
                       <textarea id="qf2-message" rows={2} autoFocus value={data.message} onChange={(e) => setData((p) => ({ ...p, message: e.target.value }))}
                         placeholder="e.g. cracked tiles, mould, ceiling stains"
                         className="block min-h-10 w-full resize-y rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 py-2 text-[15px] leading-snug placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15" />
                     </div>
-                  ) : (
-                    <button type="button" onClick={() => setNoteOpen(true)}
-                      className="mt-2 inline-flex items-center gap-1 self-start text-[13px] font-semibold text-[#2F63CC] hover:underline">
-                      + Anything else we should know? <small className={opt}>(optional)</small>
-                    </button>
                   )}
 
                   {submitError && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-2.5 py-2 text-[13px] text-red-700">{submitError}</p>}
