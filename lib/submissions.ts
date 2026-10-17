@@ -1,4 +1,3 @@
-import { combinedJobStatus } from "./bookingStatus";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
 import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
 import { bookingReminderCandidates } from "./bookingReminders";
@@ -16,7 +15,7 @@ import type { InspectionReportDoc } from "@/lib/inspection";
 import { normalizeApptString } from "@/lib/scheduling";
 import { getBookingRules } from "./bookingRulesServer";
 import { savedBookingMinutes } from "./bookingDuration";
-import { validBookingStatus } from "./bookingStatus";
+import { validBookingStatus, combinedJobStatus } from "./bookingStatus";
 
 /**
  * Force `inspectionAt` / `jobAt` in a submission patch to the canonical naive
@@ -1101,21 +1100,22 @@ export async function getRecycleBinCount(): Promise<number> {
 }
 
 /** Summarize visit progress without copying it back onto the primary booking. */
-export async function syncJobBookingWorkflow(id: string): Promise<void> {
-  if (!ObjectId.isValid(id)) return;
-  await withBookingCalendarLock(`job-workflow:${id}`, "job", async () => {
+export async function syncJobBookingWorkflow(id: string): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  return withBookingCalendarLock(`job-workflow:${id}`, "job", async () => {
     const lead = await getSubmission(id);
-    if (!lead) return;
+    if (!lead) return false;
     const jobStages = ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "In Progress", "Job Done"];
-    if (!jobStages.includes(lead.status)) return;
+    if (!jobStages.includes(lead.status)) return false;
     const jobs = (lead.bookings || []).filter(booking => booking.type === "job");
     // A legacy primary still deriving status from the customer must stay frozen
     // until it has its own saved status; changing the customer would change it too.
-    if (lead.jobAt && !jobs.some(booking => `${booking.date}T${booking.time}` === lead.jobAt?.slice(0, 16))) return;
-    if (jobs.some(booking => !validBookingStatus("job", booking.status))) return;
+    if (lead.jobAt && !jobs.some(booking => `${booking.date}T${booking.time}` === lead.jobAt?.slice(0, 16))) return false;
+    if (jobs.some(booking => !validBookingStatus("job", booking.status))) return false;
     const status = combinedJobStatus(jobs.map(booking => booking.status!));
-    if (!status || status === lead.status) return;
+    if (!status || status === lead.status) return false;
     const col = await collection(false);
-    await col.updateOne({ _id: new ObjectId(id), status: lead.status }, { $set: { status } });
+    const result = await col.updateOne({ _id: new ObjectId(id), status: lead.status }, { $set: { status } });
+    return result.matchedCount > 0 && status === "Job Done";
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { selectedJobBooking } from "@/lib/leadBookings";
+import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
@@ -51,6 +51,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     onTheWayLoading,
   } = useAdminPageCtx();
 
+  const multipleJobs = leadBookings(l).filter(booking => booking.type === "job").length > 1;
   const jobBooking = selectedJobBooking(l);
   const jobStatus = jobBooking?.status || l.status;
   const jobTotalDays = jobBooking?.jobTotalDays ?? l.jobTotalDays;
@@ -602,8 +603,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             </div>
           )}
 
-          {/* Job Status */}
-          {(() => {
+          {/* Each booking has its own actions below when the customer has multiple jobs. */}
+          {multipleJobs ? <p className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+            Manage each job using its booking buttons below.
+          </p> : (() => {
             const steps = JOB_STEPS;
             const s = jobStatus;
             const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
@@ -710,7 +713,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           })()}
 
           {/* Multi-day job progress bar */}
-          {jobTotalDays && jobTotalDays > 1 && (jobStatus === "Job Started" || jobStatus === "Job In Progress") && (
+          {!multipleJobs && jobTotalDays && jobTotalDays > 1 && (jobStatus === "Job Started" || jobStatus === "Job In Progress") && (
             <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between text-[10px] font-bold text-blue-800">
                 <span>Day {jobDaysDone || 1} of {jobTotalDays} — {l.technician || "Technician"}</span>

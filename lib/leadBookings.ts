@@ -34,7 +34,7 @@ export function leadBookings(lead: Lead): LeadBooking[] {
     if (!start || bookings.some(b => b.type === type && `${b.date}T${b.time}` === start.slice(0, 16))) continue;
     bookings.push({ type, date: start.slice(0, 10), time: start.slice(11, 16),
       ...(type === "job" ? { endAt: lead.jobEndAt, workSegments: lead.jobWorkSegments, technician: lead.technician, technicianId: lead.technicianId, technicianUsername: lead.technicianUsername }
-        : { endAt: lead.inspectionEndAt, workSegments: lead.inspectionWorkSegments, assigned: lead.assigned, inspectorId: lead.inspectorId, inspectorUsername: lead.inspectorUsername }) });
+        : { endAt: lead.inspectionEndAt, workSegments: lead.inspectionWorkSegments, assigned: lead.assigned, inspectorId: lead.inspectorId }) });
   }
   return bookings.map(booking => ({ ...booking,
     ...(booking.type === "job" && lead.jobAt?.slice(0, 16) === `${booking.date}T${booking.time}` ? {

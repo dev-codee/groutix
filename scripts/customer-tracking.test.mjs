@@ -243,3 +243,17 @@ test("booking tracking follows that visit and arrival does not end a sibling's j
   f.bookings[1].status = "Job Done";
   assert.equal((await f.tracking.getCustomerTracking(b)).status, "ended");
 });
+
+test("booking notifications reject stale visit actions before sending messages", async () => {
+  const f = fixture();
+  const booking = { type: "job", start: "2026-10-21T11:00" };
+  f.leads[0].bookings = [{ type: "job", date: "2026-10-21", time: "11:00", status: "Job Done" }];
+  const n = notificationFixture(f);
+  assert.equal((await n.post({ booking })).status, 409);
+  assert.equal((await n.post({ booking: { ...booking, start: "2026-10-22T11:00" } })).status, 409);
+  assert.equal(n.sms.length, 0);
+  assert.equal(n.emails.length, 0);
+  f.leads[0].bookings[0].status = "Job En Route";
+  assert.equal((await n.post({ booking })).status, 200);
+  assert.equal(f.docs[0].booking.start, booking.start);
+});

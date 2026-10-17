@@ -106,7 +106,7 @@ test('workflow summary writes never change sibling statuses or regress finance',
   const writes = [];
   const submissions = {
     createIndexes: async () => {}, findOne: async () => lead,
-    updateOne: async (filter, update) => { writes.push({ filter, update }); Object.assign(lead, update.$set); },
+    updateOne: async (filter, update) => { writes.push({ filter, update }); Object.assign(lead, update.$set); return { matchedCount: 1 }; },
   };
   const { syncJobBookingWorkflow } = loadTs('lib/submissions.ts', {
     '@/lib/mongodb': { getDb: async () => ({ collection: name => name === 'submissions' ? submissions : {
@@ -117,11 +117,11 @@ test('workflow summary writes never change sibling statuses or regress finance',
     '@/lib/users': {},
   });
   const snapshot = JSON.stringify(bookings);
-  await syncJobBookingWorkflow(id);
+  assert.equal(await syncJobBookingWorkflow(id), false);
   assert.equal(lead.status, 'Job Booked');
   assert.equal(JSON.stringify(bookings), snapshot);
   bookings[1].status = 'Job Done';
-  await syncJobBookingWorkflow(id);
+  assert.equal(await syncJobBookingWorkflow(id), true);
   assert.equal(lead.status, 'Job Done');
   lead.status = 'Invoice Sent';
   bookings[1].status = 'Job Booked';
@@ -143,4 +143,116 @@ test('an unsaved legacy primary cannot inherit the sibling summary status', asyn
   });
   await syncJobBookingWorkflow(id);
   assert.equal(lead.status, 'Job Done');
+});
+
+test('legacy primary assignments remain visible without assigning unclaimed siblings to that technician', () => {
+  const lead = customer();
+  lead.technician = undefined;
+  lead.assigned = 'Alex';
+  lead.bookings.forEach(booking => { booking.technician = undefined; });
+  const rows = jobBookingRows(lead);
+  assert.equal(rows[0].assigned, 'Alex');
+  assert.equal(rows[1].assigned, undefined);
+});
+
+test('actual travel handler saves the selected visit and offers notification only after success', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { default: vm } = await import('node:vm');
+  const { default: ts } = await import('typescript');
+  const source = readFileSync('app/admin/page.tsx', 'utf8');
+  const tree = ts.createSourceFile('page.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const handlers = new Map();
+  const visit = node => {
+    if (ts.isFunctionDeclaration(node) && ['updateJobBooking', 'handleOnTheWay'].includes(node.name?.text)) handlers.set(node.name.text, node.getText(tree));
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  const compiled = ts.transpileModule(`${[...handlers.values()].join('\n')}\nmodule.exports = handleOnTheWay;`, {
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  for (const succeeds of [true, false]) {
+    let lead = customer();
+    const row = jobBookingRows(lead)[1];
+    const requests = [], prompts = [], errors = [];
+    const module = { exports: {} };
+    vm.runInNewContext(compiled, {
+      module, selectedJobBooking, jobUpdatesInFlight: { current: new Set() },
+      setJobBookingsSaving: () => {},
+      updateLeadField: () => assert.fail('Travel must target the visit API'),
+      setLeads: update => { lead = update([lead])[0]; },
+      setNotifyPrompt: prompt => prompts.push(prompt),
+      alert: error => errors.push(error),
+      fetch: async (url, options) => {
+        const body = JSON.parse(options.body);
+        requests.push({ url, body });
+        const item = structuredClone(lead);
+        item.bookings[1].status = body.status;
+        return { ok: succeeds, json: async () => succeeds ? { item } : { error: 'Booking changed' } };
+      },
+    });
+    await module.exports(row, 'en_route', 'job');
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/api/admin/submissions/lead/bookings');
+    assert.equal(requests[0].body.start, '2026-10-21T11:00');
+    assert.equal(requests[0].body.status, 'Job En Route');
+    assert.equal(requests[0].body.syncWorkflow, true);
+    assert.equal(lead.bookings[0].status, 'Job Done');
+    assert.equal(lead.bookings[1].status, succeeds ? 'Job En Route' : 'Job Booked');
+    assert.equal(prompts.length, succeeds ? 1 : 0);
+    assert.equal(errors.length, succeeds ? 0 : 1);
+    if (succeeds) assert.equal(prompts[0].lead.activeBooking.start, row.activeBooking.start);
+  }
+});
+
+test('manager lead row shows separate job cards and actions for each booking', () => {
+  const lead = customer();
+  const ctx = { role: 'manager', jobBookingsSaving: {} };
+  const { LeadBookings } = loadTs('components/admin/LeadBookings.tsx', {
+    './AdminPageContext': { useAdminPageCtx: () => ctx },
+    '@/components/admin/AdminPageContext': { useAdminPageCtx: () => ctx },
+  });
+  const nodes = elements(LeadBookings({ lead }));
+  const cards = nodes.filter(node => node.type === 'li');
+  assert.equal(cards.length, 2);
+  const actions = nodes.filter(node => typeof node.type === 'function' && node.type.name === 'JobBookingActions');
+  assert.equal(actions.length, 2);
+  assert.equal(actions[0].props.lead.activeBooking.start, '2026-10-20T09:00');
+  assert.equal(actions[0].props.lead.status, 'Job Done');
+  assert.equal(actions[1].props.lead.activeBooking.start, '2026-10-21T11:00');
+  assert.equal(actions[1].props.lead.status, 'Job Booked');
+  ctx.role = 'super_admin';
+  assert.equal(elements(LeadBookings({ lead })).filter(node => typeof node.type === 'function' && node.type.name === 'JobBookingActions').length, 2);
+  lead.bookings.pop();
+  assert.equal(elements(LeadBookings({ lead })).filter(node => typeof node.type === 'function' && node.type.name === 'JobBookingActions').length, 0, 'single-booking rows retain the existing main buttons');
+});
+
+test('manager booking buttons target only the selected booking and disable only saved or busy actions', () => {
+  const lead = customer();
+  const rows = jobBookingRows(lead);
+  const updates = [], journeys = [], prompts = [];
+  const ctx = {
+    jobBookingsSaving: {}, onTheWayLoading: null,
+    updateJobBooking: (...args) => updates.push(args),
+    handleOnTheWay: (...args) => journeys.push(args),
+    setStartJobDays: () => {}, setStartJobPrompt: value => prompts.push(value),
+  };
+  const { JobBookingActions } = loadTs('components/admin/JobBookingActions.tsx', {
+    '@/components/admin/AdminPageContext': { useAdminPageCtx: () => ctx },
+    './AdminPageContext': { useAdminPageCtx: () => ctx },
+  });
+  const buttons = row => elements(JobBookingActions({ lead: row })).filter(node => node.type === 'button');
+  assert.ok(buttons(rows[0]).every(button => button.props.disabled));
+  for (const button of buttons(rows[1])) {
+    assert.equal(button.props.disabled, false);
+    button.props.onClick();
+  }
+  assert.equal(journeys.length, 2);
+  assert.equal(prompts[0].lead.activeBooking.start, rows[1].activeBooking.start);
+  assert.equal(updates[0][0].activeBooking.start, rows[1].activeBooking.start);
+  assert.equal(updates[0][1].status, 'Job Done');
+  for (const [row] of journeys) assert.equal(row.activeBooking.start, rows[1].activeBooking.start);
+  ctx.jobBookingsSaving[leadRowKey(rows[0])] = true;
+  assert.ok(buttons(rows[1]).every(button => !button.props.disabled));
+  ctx.jobBookingsSaving[leadRowKey(rows[1])] = true;
+  assert.ok(buttons(rows[1]).every(button => button.props.disabled));
 });

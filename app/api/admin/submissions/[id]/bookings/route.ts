@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendInternalAlert } from "@/lib/email";
 import { isMongoConfigured } from "@/lib/mongodb";
 import { getSubmission, appendActivity, syncJobBookingWorkflow } from "@/lib/submissions";
 import { createBooking } from "@/lib/bookings";
@@ -41,6 +42,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await appendActivity(id, { time: new Date().toISOString(), actor: session?.username || "staff", action: "Booking status changed",
       detail: `${body.type} ${body.start}: ${booking.status} → ${body.status}${Object.keys(progress).length ? ` (day ${progress.jobDaysDone ?? booking.jobDaysDone ?? 1} of ${progress.jobTotalDays ?? booking.jobTotalDays ?? 1})` : ""}` });
   }
-  if (body.type === "job" && body.syncWorkflow === true) await syncJobBookingWorkflow(id);
+  if (body.type === "job" && body.syncWorkflow === true && await syncJobBookingWorkflow(id)) {
+    await sendInternalAlert({
+      title: "Job completed", emoji: "🧾", accent: "#001f97", leadId: id,
+      lines: [`${lead.name || "A customer"} — ${lead.address || ""}`.trim(),
+        "All active job bookings are completed. Please review and send the invoice manually."],
+    }).catch(error => console.error("Booking completion alert failed:", error));
+  }
   return NextResponse.json({ ok: true, item: await getSubmission(id) });
 }

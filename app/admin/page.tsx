@@ -1042,7 +1042,7 @@ export default function CrmDashboardPage() {
         "Inspection In Progress": 3,
         "Inspection Completed": 4,
       };
-      const cur = order[isInspection ? lead.status : selectedJobBooking(lead)?.status || lead.status] ?? 0;
+      const cur = order[lead.status] ?? 0;
       const target = eventType === "en_route" ? 1 : 2;
       if (cur >= target) return;
     } else {
@@ -1057,12 +1057,12 @@ export default function CrmDashboardPage() {
         "Job Done": 4,
         "Completed": 4,
       };
-      const cur = order[isInspection ? lead.status : selectedJobBooking(lead)?.status || lead.status] ?? 0;
+      const cur = order[selectedJobBooking(lead)?.status || lead.status] ?? 0;
       const target = eventType === "en_route" ? 1 : 2;
       if (cur >= target) return;
     }
 
-    // 1. Update status immediately (optimistic)
+    // Save the selected visit before offering a customer notification.
     const newStatus =
       eventType === "en_route"
         ? isInspection
@@ -8521,6 +8521,7 @@ export default function CrmDashboardPage() {
               <div>
                 <h3 className="text-base font-black text-slate-900">Start Job</h3>
                 <p className="text-xs text-slate-500 mt-0.5">{startJobPrompt.lead.name || "Customer"} · {startJobPrompt.lead.address || ""}</p>
+                {startJobPrompt.lead.jobAt && <p className="mt-2 text-xs font-semibold text-blue-700">{formatApptDate(startJobPrompt.lead.jobAt)} · {formatApptTime(startJobPrompt.lead.jobAt)} · {startJobPrompt.lead.technician || "Unassigned"}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-600">How many days will this job take?</label>
@@ -8579,6 +8580,7 @@ export default function CrmDashboardPage() {
                   ? `An email and SMS with your ETA and live tracking link will be sent to ${notifyPrompt.lead.name || "the customer"}. Keep this dashboard open and allow location access to share updates.`
                   : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
               </p>
+              {notifyPrompt.lead.activeBooking && <p className="mb-3 text-xs font-semibold text-blue-700">Booking: {formatApptDate(notifyPrompt.lead.activeBooking.start)} · {formatApptTime(notifyPrompt.lead.activeBooking.start)}</p>}
               <div className="flex gap-3">
                 <button
                   type="button"
