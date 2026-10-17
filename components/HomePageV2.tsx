@@ -17,8 +17,9 @@ import HeroContactBadges from "@/components/HeroContactBadges";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact, useSiteContent } from "@/components/SiteContentProvider";
-import { BUSINESS, GOOGLE_REVIEW_COUNT_LABEL, faqJsonLd } from "@/lib/seo";
+import { BUSINESS, faqJsonLd } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* Fill these in to show the pricing section and "Starting price" (hidden while empty). */
 const PRICES: { label: string; from: string; note: string }[] = [
@@ -136,6 +137,7 @@ function Stars({ n = 5, className = "" }: { n?: number; className?: string }) {
 }
 
 export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rating: BusinessRating }) {
+  const gr = useGoogleRating();
   const { business } = useSiteContent();
   const { phone, tel } = useContact();
 
@@ -200,7 +202,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                   ["Service area", "Melbourne + regional VIC"],
                   ["Warranty", "10-year waterproof"],
                   ["Typical job", "Single visit"],
-                  ["Google rating", `${rating.value.toFixed(1)} from ${GOOGLE_REVIEW_COUNT_LABEL} reviews`],
+                  ["Google rating", `${rating.value.toFixed(1)} from ${gr.countLabel} reviews`],
                   ...(PRICES[0] ? [["Starting price", `From ${PRICES[0].from}`]] : []),
                 ].map(([k, v]) => (
                   <div key={k} className="border-l-[3px] border-[#001F97] pl-3.5">
@@ -328,7 +330,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 </span>
                 <span className="text-[60px] font-black leading-none">{rating.value.toFixed(1)}</span>
                 <Stars n={rating.value} className="text-[22px]" />
-                <span className="text-[15px] text-[#D6DCF5]">Based on {GOOGLE_REVIEW_COUNT_LABEL} Google reviews</span>
+                <span className="text-[15px] text-[#D6DCF5]">Based on {gr.countLabel} Google reviews</span>
                 <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={`${btn} mt-auto bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00]`}>Read Verified Reviews</a>
               </div>
               {/* Auto-scrolling review line: uses the site's existing .review-marquee styles (pauses on hover, swipeable on phones) */}

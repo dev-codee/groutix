@@ -1,10 +1,10 @@
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { SITE_URL, OG_IMAGE, localBusinessJsonLd } from "@/lib/seo";
 import { getBusinessRating } from "@/lib/reviews";
+import { formatRating, formatReviewCount } from "@/lib/googleRating";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { SiteContentProvider } from "@/components/SiteContentProvider";
 import SupportChatWidget from "@/components/SupportChatWidget";
@@ -17,75 +17,79 @@ const roboto = Roboto({
 });
 
 const TITLE_DEFAULT = "Shower Regrouting & Balcony Leak Repair Melbourne | Groutix";
-const DESCRIPTION =
-  `Shower regrouting & balcony leak repair in Melbourne, fix leaking showers without costly retiling. 10-year warranty, 5.0-star rated, ${GOOGLE_REVIEW_COUNT_LABEL} reviews. Free quote today.`;
+// Default description uses the live Google rating + review count (refreshed daily).
+const describe = (rating: { value: number; count: number }) =>
+  `Shower regrouting & balcony leak repair in Melbourne, fix leaking showers without costly retiling. 10-year warranty, ${formatRating(rating.value)}-star rated, ${formatReviewCount(rating.count)} reviews. Free quote today.`;
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: TITLE_DEFAULT,
-    template: "%s | Groutix",
-  },
-  description: DESCRIPTION,
-  keywords: [
-    // Top queries
-    "shower regrouting near me",
-    "grout repairs near me",
-    "grout repair melbourne",
-    "regrouting shower",
-    "shower repairs melbourne",
-    "bathroom grout repair",
-    "shower regrouting melbourne",
-    "groutix reviews",
-    "balcony regrouting melbourne",
-    // Original keywords
-    "shower regrouting",
-    "leaking shower repair",
-    "tile resealing",
-    "grout repair Australia",
-    "shower sealing",
-    "regrout shower",
-    "balcony leak repair",
-  ],
-  applicationName: "Groutix",
-  authors: [{ name: "Groutix" }],
-  creator: "Groutix",
-  publisher: "Groutix",
-  alternates: { canonical: "/" },
-  icons: {
-    icon: "/icon.jpeg?v=3",
-    shortcut: "/icon.jpeg?v=3",
-    apple: "/icon.jpeg?v=3",
-  },
-  openGraph: {
-    type: "website",
-    siteName: "Groutix",
-    title: TITLE_DEFAULT,
+export async function generateMetadata(): Promise<Metadata> {
+  const DESCRIPTION = describe(await getBusinessRating());
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: TITLE_DEFAULT,
+      template: "%s | Groutix",
+    },
     description: DESCRIPTION,
-    url: SITE_URL,
-    locale: "en_AU",
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Groutix shower regrouting and grout repair services" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: TITLE_DEFAULT,
-    description: DESCRIPTION,
-    images: [OG_IMAGE],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    keywords: [
+      // Top queries
+      "shower regrouting near me",
+      "grout repairs near me",
+      "grout repair melbourne",
+      "regrouting shower",
+      "shower repairs melbourne",
+      "bathroom grout repair",
+      "shower regrouting melbourne",
+      "groutix reviews",
+      "balcony regrouting melbourne",
+      // Original keywords
+      "shower regrouting",
+      "leaking shower repair",
+      "tile resealing",
+      "grout repair Australia",
+      "shower sealing",
+      "regrout shower",
+      "balcony leak repair",
+    ],
+    applicationName: "Groutix",
+    authors: [{ name: "Groutix" }],
+    creator: "Groutix",
+    publisher: "Groutix",
+    alternates: { canonical: "/" },
+    icons: {
+      icon: "/icon.jpeg?v=3",
+      shortcut: "/icon.jpeg?v=3",
+      apple: "/icon.jpeg?v=3",
+    },
+    openGraph: {
+      type: "website",
+      siteName: "Groutix",
+      title: TITLE_DEFAULT,
+      description: DESCRIPTION,
+      url: SITE_URL,
+      locale: "en_AU",
+      images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Groutix shower regrouting and grout repair services" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: TITLE_DEFAULT,
+      description: DESCRIPTION,
+      images: [OG_IMAGE],
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
-  },
-  formatDetection: { telephone: true, address: true, email: true },
-  category: "Home Services",
-};
+    formatDetection: { telephone: true, address: true, email: true },
+    category: "Home Services",
+  };
+}
 
 export default async function RootLayout({
   children,

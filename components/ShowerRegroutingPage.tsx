@@ -2,7 +2,6 @@
 
 import ResponsiveTable from "@/components/ResponsiveTable";
 import HeroContactBadges from "@/components/HeroContactBadges";
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
@@ -29,6 +28,7 @@ import Footer from "@/components/Footer";
 import HeroQuoteForm from "@/components/HeroQuoteForm";
 import HeroBackground from "@/components/HeroBackground";
 import { faqJsonLd } from "@/lib/seo";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* ─────────────────────────────────────────────
    Constants
@@ -378,6 +378,7 @@ function SuburbChecker() {
    Page
 ───────────────────────────────────────────── */
 export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] }) {
+  const gr = useGoogleRating();
   const stats: Array<{
     Icon: ComponentType<{ className?: string }>;
     value: string;
@@ -387,7 +388,7 @@ export default function ShowerRegroutingPage({ reviews }: { reviews: Review[] })
     href?: string;
   }> = [
     { Icon: Droplets, value: "8,000+", label: "Bathrooms Restored", sub: "Across Melbourne & regional Victoria" },
-    { Icon: GoogleIcon, value: "5.0/5", label: "Google Rating", sub: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews`, stars: true, href: googleReviewsUrl },
+    { Icon: GoogleIcon, value: `${gr.ratingLabel}/5`, label: "Google Rating", sub: `Based on ${gr.countLabel} Google reviews`, stars: true, href: googleReviewsUrl },
     { Icon: ShieldCheck, value: "10 Year", label: "Waterproof Warranty", sub: "On every complete shower regrout" },
   ];
 

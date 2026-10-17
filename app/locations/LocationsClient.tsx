@@ -1,6 +1,5 @@
 "use client";
 import HeroContactBadges from "@/components/HeroContactBadges";
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,6 +12,7 @@ import type { Review, BusinessRating } from "@/lib/reviews";
 import TrustedMarquee from "@/components/TrustedMarquee";
 import FaqSection from "@/components/FaqSection";
 import { useContact } from "@/components/SiteContentProvider";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* ─── Hero badge icons (match service page style) ─── */
 const LocationIcon = () => (
@@ -177,6 +177,7 @@ export default function LocationsClient({
   reviews: Review[];
   rating: BusinessRating;
 }) {
+  const gr = useGoogleRating();
   const { phone, tel } = useContact();
   return (
     <main>
@@ -473,7 +474,7 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
                 ))}
               </div>
               <span className="text-sm text-neutral-400 font-bold">
-                {rating.value} | {GOOGLE_REVIEW_COUNT_LABEL} reviews
+                {rating.value} | {gr.countLabel} reviews
               </span>
             </div>
             <a

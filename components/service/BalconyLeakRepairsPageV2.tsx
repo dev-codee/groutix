@@ -15,13 +15,14 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact } from "@/components/SiteContentProvider";
-import { BUSINESS, GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
+import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { balconyFaqs, balconyIntro } from "@/lib/balconyLeakContent";
 import {
   FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
   box, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 type IconCard = { title: string; body: string; Icon: ComponentType<{ className?: string }> };
 
@@ -105,6 +106,7 @@ function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: s
 
 /* ───────────── Page ───────────── */
 export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
+  const gr = useGoogleRating();
   const { phone, tel } = useContact();
   // Balcony reviews first, same as the live page.
   const isBalcony = (r: Review) => /balcon(?:y|ies)/i.test(r.review);
@@ -119,7 +121,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
 
   const whyGroutix: IconCard[] = [
     { title: "10 Year Waterproof Warranty", body: "On eligible completed waterproof work. Scope and terms confirmed in your quote.", Icon: ShieldCheck },
-    { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews through our existing business review source.`, Icon: Sparkles },
+    { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${gr.countLabel} Google reviews through our existing business review source.`, Icon: Sparkles },
     { title: "Leak and Grout Specialists", body: "Practical repairs for failed grout, silicone and leaking tiled areas.", Icon: Wrench },
     { title: "Free Inspections", body: "Fixed written quotes before the agreed work starts.", Icon: Search },
     { title: "Real Customer Reviews", body: "Read existing feedback from customers we have helped.", Icon: ClipboardCheck },

@@ -10,8 +10,9 @@ import { Phone } from "lucide-react";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import { useContact, useSiteContent } from "@/components/SiteContentProvider";
-import { BUSINESS, GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
+import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 /* ── Tokens (same values as HomePageV2) ── */
 export const heroWrap = "mx-auto w-full max-w-[1248px] px-5";
@@ -119,6 +120,7 @@ export function BeforeAfter({ src, title, alt }: { src: string; title: string; a
 export function ReviewsMarquee({ reviews, rating }: { reviews: Review[]; rating?: BusinessRating }) {
   const { business } = useSiteContent();
   const value = rating?.value ?? business.rating.value;
+  const gr = useGoogleRating();
   return (
     <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
       <div className="flex flex-col gap-2.5 rounded-lg bg-[#001F97] p-7 text-white">
@@ -128,7 +130,7 @@ export function ReviewsMarquee({ reviews, rating }: { reviews: Review[]; rating?
         </span>
         <span className="text-[60px] font-black leading-none">{value.toFixed(1)}</span>
         <Stars n={value} className="text-[22px]" />
-        <span className="text-[15px] text-[#D6DCF5]">Based on {GOOGLE_REVIEW_COUNT_LABEL} Google reviews</span>
+        <span className="text-[15px] text-[#D6DCF5]">Based on {gr.countLabel} Google reviews</span>
         <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className={`${btnGold} mt-auto`}>Read Verified Reviews</a>
       </div>
       <div className="review-marquee-wrap min-w-0 overflow-hidden rounded-lg [mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]">

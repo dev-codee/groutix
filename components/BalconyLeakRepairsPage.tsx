@@ -1,6 +1,5 @@
 "use client";
 
-import { GOOGLE_REVIEW_COUNT_LABEL } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Building2, Check, ChevronDown, ClipboardCheck, Clock, Droplets, Eye, Grid2x2, House, Layers, Paintbrush, Phone, Search, ShieldCheck, Sparkles, Sun, Waves, Wind, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -14,6 +13,7 @@ import ServiceAreaCoverage from "@/components/ServiceAreaCoverage";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { balconyFaqs, balconyIntro } from "@/lib/balconyLeakContent";
 import { BUSINESS } from "@/lib/seo";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
 const tel = "tel:+61370238094";
 
@@ -22,6 +22,7 @@ function InspectionCta({ label = "Book Your Free Inspection" }: { label?: string
 }
 
 export default function BalconyLeakRepairsPage({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
+  const gr = useGoogleRating();
   const balconyReviews = reviews.filter(review => /balcon(?:y|ies)/i.test(review.review));
   const visibleReviews = [
     ...balconyReviews,
@@ -118,7 +119,7 @@ export default function BalconyLeakRepairsPage({ rating, reviews }: { rating: Bu
     <Section eyebrow="Why Groutix" title="Why Melbourne Homeowners Choose Groutix">
       <Cards items={[
         { title: "10 Year Waterproof Warranty", body: "On eligible completed waterproof work. Scope and terms confirmed in your quote.", icon: ShieldCheck },
-        { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${GOOGLE_REVIEW_COUNT_LABEL} Google reviews through our existing business review source.`, icon: Sparkles },
+        { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${gr.countLabel} Google reviews through our existing business review source.`, icon: Sparkles },
         { title: "Leak and Grout Specialists", body: "Practical repairs for failed grout, silicone and leaking tiled areas.", icon: Wrench },
         { title: "Free Inspections", body: "Fixed written quotes before the agreed work starts.", icon: Search },
         { title: "Real Customer Reviews", body: "Read existing feedback from customers we have helped.", icon: ClipboardCheck },
