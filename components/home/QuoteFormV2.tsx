@@ -186,7 +186,8 @@ function Dropdown({
           if (e.key === "ArrowDown") { e.preventDefault(); if (!open) setOpen(true); else setActive((i) => (i + 1) % options.length); }
           else if (e.key === "ArrowUp") { e.preventDefault(); if (!open) setOpen(true); else setActive((i) => (i - 1 + options.length) % options.length); }
           else if ((e.key === "Enter" || e.key === " ") && open) { e.preventDefault(); pick(options[active][1]); }
-          else if (e.key === "Escape" || e.key === "Tab") setOpen(false);
+          else if (e.key === "Escape" && open) { e.preventDefault(); setOpen(false); }
+          else if (e.key === "Tab") setOpen(false);
         }}
         className={`flex h-11 w-full items-center gap-2 rounded-[10px] border-[1.5px] bg-[#FBFCFE] pl-3 pr-2.5 text-left text-[15px] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15 ${
           error ? fieldBad : open ? "border-[#2F63CC]" : "border-[#DBE3F0] hover:border-[#2F63CC]"
@@ -201,7 +202,7 @@ function Dropdown({
         <ChevronDown className={`h-4 w-4 shrink-0 text-[#1A2A8C] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {open && typeof document !== "undefined" && createPortal(
-        <div ref={popRef} style={pos} className="z-[60] flex flex-col overflow-hidden rounded-xl border-[1.5px] border-[#DBE3F0] bg-white font-sans text-neutral-900 shadow-[0_14px_30px_rgba(15,23,42,0.22)]">
+        <div ref={popRef} style={pos} className="z-[95] flex flex-col overflow-hidden rounded-xl border-[1.5px] border-[#DBE3F0] bg-white font-sans text-neutral-900 shadow-[0_14px_30px_rgba(15,23,42,0.22)]">
           <ul ref={listRef} id={`${id}-list`} role="listbox" aria-multiselectable={multiple || undefined} aria-labelledby={`${id}-label`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
             {options.map(([l, v], i) => {
               const on = value.includes(v);
@@ -261,7 +262,13 @@ function FieldError({ msg }: { msg?: string }) {
   );
 }
 
-export default function QuoteFormV2({ defaultService = "" }: { defaultService?: string } = {}) {
+export default function QuoteFormV2({
+  defaultService = "",
+  idPrefix = "qf2",
+  variant = "hero",
+}: { defaultService?: string; idPrefix?: string; variant?: "hero" | "modal" } = {}) {
+  // Unique element ids, so the hero form and the pop-up form can sit on the same page.
+  const P = idPrefix;
   const { phone: phoneDisplay, tel } = useContact();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -423,7 +430,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
     if (data.address.trim().length < 3) e.address = isPM ? "Please enter the rental property address" : "Please enter the property address";
     setErrors(e);
     const first0 = Object.keys(e)[0];
-    if (first0) document.getElementById(`qf2-${first0}`)?.focus();
+    if (first0) document.getElementById(`${P}-${first0}`)?.focus();
     return !first0;
   };
   const validateTenants = () => {
@@ -649,7 +656,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
 
   const input = (name: keyof typeof data, lbl: React.ReactNode, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <FloatInput
-      id={`qf2-${name}`}
+      id={`${P}-${name}`}
       label={lbl}
       value={data[name]}
       onChange={(e) => {
@@ -749,7 +756,12 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
   return (
     <div
       ref={rootRef}
-      className="relative flex w-full scroll-mt-28 flex-col rounded-2xl bg-white px-4 pb-3 pt-4 text-[15px] leading-[1.45] text-neutral-900 shadow-[0_12px_40px_rgba(0,0,0,0.28)] sm:px-6"
+      data-default-service={defaultService || undefined}
+      className={`relative flex w-full scroll-mt-28 flex-col bg-white px-4 pb-3 pt-4 text-[15px] leading-[1.45] text-neutral-900 sm:px-6 ${
+        variant === "modal"
+          ? "min-h-[100dvh] pb-6 sm:min-h-0 sm:rounded-2xl sm:pb-3 sm:shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+          : "rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.28)]"
+      }`}
       aria-label="Request a quote"
       role="form"
     >
@@ -829,7 +841,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
               </label>
               <div className="mt-3 grid grid-cols-1 gap-x-3 gap-y-3 min-[420px]:grid-cols-2">
                 <Dropdown
-                  id="qf2-areas"
+                  id={`${P}-areas`}
                   label={<>Which area? {req}</>}
                   placeholder="Select area(s)"
                   options={AREAS}
@@ -838,7 +850,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                   error={jobErrors.areas}
                 />
                 <Dropdown
-                  id="qf2-services"
+                  id={`${P}-services`}
                   label={<>What do you need done? {req}</>}
                   placeholder="Select service(s)"
                   options={serviceChips}
@@ -847,7 +859,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                   error={jobErrors.services}
                 />
                 <Dropdown
-                  id="qf2-leaking"
+                  id={`${P}-leaking`}
                   label={<>Is it currently leaking? {req}</>}
                   placeholder="Select one"
                   options={LEAKING.map((v) => [v, v] as [string, string])}
@@ -857,7 +869,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                   error={jobErrors.leaking}
                 />
                 <Dropdown
-                  id="qf2-damaged"
+                  id={`${P}-damaged`}
                   label={<>Any damaged tiles? <small className={opt}>(optional)</small></>}
                   placeholder="Select if any"
                   options={DAMAGED.map((v) => [v, v] as [string, string])}
@@ -884,7 +896,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
               <div className="relative">
                 <div className="relative">
                   <input
-                    id="qf2-address"
+                    id={`${P}-address`}
                     value={data.address}
                     onChange={(e) => onAddress(e.target.value)}
                     onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
@@ -895,21 +907,21 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                       if (e.key === "ArrowDown") { e.preventDefault(); setActiveSuggest((i) => (i + 1) % suggestions.length); }
                       else if (e.key === "ArrowUp") { e.preventDefault(); setActiveSuggest((i) => (i - 1 + suggestions.length) % suggestions.length); }
                       else if (e.key === "Enter") { e.preventDefault(); pickSuggestion(suggestions[activeSuggest]); }
-                      else if (e.key === "Escape") setSuggestOpen(false);
+                      else if (e.key === "Escape") { e.preventDefault(); setSuggestOpen(false); }
                     }}
                     role="combobox"
                     aria-expanded={suggestOpen}
-                    aria-controls="qf2-address-list"
+                    aria-controls={`${P}-address-list`}
                     aria-autocomplete="list"
                     aria-invalid={!!errors.address}
                     autoComplete="off"
                     placeholder=" "
                     className={`${floatField} ${errors.address ? fieldBad : ""}`}
                   />
-                  <label htmlFor="qf2-address" className={floatLabel}>{isPM ? "Rental property address" : "Property address or suburb"} {req}</label>
+                  <label htmlFor={`${P}-address`} className={floatLabel}>{isPM ? "Rental property address" : "Property address or suburb"} {req}</label>
                 </div>
                 {suggestOpen && (
-                  <ul id="qf2-address-list" role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
+                  <ul id={`${P}-address-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
                     {suggestions.map((s, i) => (
                       <li key={s} role="option" aria-selected={i === activeSuggest}>
                         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickSuggestion(s)}
@@ -957,10 +969,10 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                 };
                 return (
                   <div className="flex flex-col gap-2.5">
-                    <FloatInput id="qf2-tn" label={<>Tenant {tenantIdx + 1} name {req}</>} value={t.name} onChange={(e) => upd("name", e.target.value)} error={tenantErrors.name} />
+                    <FloatInput id={`${P}-tn`} label={<>Tenant {tenantIdx + 1} name {req}</>} value={t.name} onChange={(e) => upd("name", e.target.value)} error={tenantErrors.name} />
                     <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
-                      <FloatInput id="qf2-tp" type="tel" inputMode="tel" label={<>Tenant phone {req}</>} value={t.phone} onChange={(e) => upd("phone", e.target.value)} error={tenantErrors.phone} />
-                      <FloatInput id="qf2-te" type="email" label={<>Tenant email <span className="font-normal">(optional)</span></>} value={t.email} onChange={(e) => upd("email", e.target.value)} error={tenantErrors.email} />
+                      <FloatInput id={`${P}-tp`} type="tel" inputMode="tel" label={<>Tenant phone {req}</>} value={t.phone} onChange={(e) => upd("phone", e.target.value)} error={tenantErrors.phone} />
+                      <FloatInput id={`${P}-te`} type="email" label={<>Tenant email <span className="font-normal">(optional)</span></>} value={t.email} onChange={(e) => upd("email", e.target.value)} error={tenantErrors.email} />
                     </div>
                   </div>
                 );
@@ -1046,7 +1058,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                           <p className="text-[11px] leading-tight text-[#4B6B5C]">If this time becomes unavailable, our team will contact you to arrange an alternative.</p>
                         </div>
                       ) : (
-                        timeSelect("qf2-time")
+                        timeSelect(`${P}-time`)
                       )}
                     </>
                   )}
@@ -1055,7 +1067,7 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
                       <h3 className="mb-1 text-sm font-bold">Pick a date <small className={opt}>(free inspection)</small></h3>
                       {calendar()}
                       <h3 className="mb-0 mt-2 text-sm font-bold">Choose a time</h3>
-                      {timeSelect("qf2-cal-time")}
+                      {timeSelect(`${P}-cal-time`)}
                       <button type="button" onClick={() => setCalendarOpen(false)} className="mt-2 h-10 w-full rounded-[10px] bg-[#1A2A8C] text-sm font-bold text-white">
                         {date && time ? `Confirm ${shortDay(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : "Back to days"}
                       </button>
@@ -1125,8 +1137,8 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
 
                   {(noteOpen || data.message) && (
                     <div className="mt-2">
-                      <label htmlFor="qf2-message" className={label}>Anything else we should know? <small className={opt}>(optional)</small></label>
-                      <textarea id="qf2-message" rows={2} autoFocus value={data.message} onChange={(e) => setData((p) => ({ ...p, message: e.target.value }))}
+                      <label htmlFor={`${P}-message`} className={label}>Anything else we should know? <small className={opt}>(optional)</small></label>
+                      <textarea id={`${P}-message`} rows={2} autoFocus value={data.message} onChange={(e) => setData((p) => ({ ...p, message: e.target.value }))}
                         placeholder="e.g. cracked tiles, mould, ceiling stains"
                         className="block min-h-10 w-full resize-y rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-[#FBFCFE] px-3 py-2 text-[15px] leading-snug placeholder:text-neutral-400 focus:border-[#2F63CC] focus:outline-none focus:ring-[3px] focus:ring-[#2F63CC]/15" />
                     </div>
@@ -1147,12 +1159,12 @@ export default function QuoteFormV2({ defaultService = "" }: { defaultService?: 
           {/* Photo reminder: shown when they submit without photos. */}
           {photoAsk && (
             <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-[#0A123F]/45 p-4 backdrop-blur-[2px]" onClick={() => setPhotoAsk(false)}>
-              <div role="dialog" aria-modal="true" aria-labelledby="qf2-photo-ask" onClick={(e) => e.stopPropagation()}
+              <div role="dialog" aria-modal="true" data-qf-popup aria-labelledby={`${P}-photo-ask`} onClick={(e) => e.stopPropagation()}
                 className="w-full max-w-[380px] rounded-2xl bg-white p-5 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
                 <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF3FF]">
                   <ImagePlus className="h-6 w-6 text-[#1A2A8C]" aria-hidden="true" />
                 </span>
-                <h3 id="qf2-photo-ask" className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
+                <h3 id={`${P}-photo-ask`} className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
                 <p className="mt-1.5 text-sm text-slate-600">
                   A few photos of the shower, grout or leak help us understand the problem and give you an accurate quote faster.
                 </p>

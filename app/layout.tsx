@@ -8,6 +8,7 @@ import { getBusinessRating } from "@/lib/reviews";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { SiteContentProvider } from "@/components/SiteContentProvider";
 import SupportChatWidget from "@/components/SupportChatWidget";
+import QuoteModal from "@/components/QuoteModal";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -142,6 +143,7 @@ export default async function RootLayout({
         <SiteContentProvider content={{ ...content, business: { ...content.business, rating } }}>
           {children}
           <SupportChatWidget />
+          <QuoteModal />
         </SiteContentProvider>
       </body>
     </html>
