@@ -12,7 +12,6 @@ import { StandardLeadCard } from "@/components/admin/rows/StandardLeadCard";
 import { STAGE_GROUP_ACCENT, getRoleStatusOptions, getJobsGroups, type JobsGroupDef } from "@/lib/adminHelpers";
 import { isFlowCompleted } from "@/lib/pipeline";
 import { InspectorDayStrip } from "@/components/admin/InspectorDayStrip";
-import { LeadBookings } from "../LeadBookings";
 
 const PAGE_SIZE = 20;
 
@@ -351,7 +350,7 @@ export function JobsView() {
                 : role === "inspection" || role === "field" ? <FieldLeadRow l={l} />
                 : role === "technician" ? <TechnicianLeadRow l={l} />
                 : role === "finance" ? <FinanceLeadRow l={l} /> : <StandardLeadCard l={l} />;
-              return <div key={leadRowKey(l)}>{row}<LeadBookings lead={l} /></div>;
+              return <div key={leadRowKey(l)}>{row}</div>;
             })}
             {jobLeads.length === 0 && (
               <div className="py-16 text-center text-slate-400 text-sm">
