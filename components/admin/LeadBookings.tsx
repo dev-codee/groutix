@@ -4,7 +4,8 @@ import { leadBookings } from "@/lib/leadBookings";
 import { BookingStatusControl } from "./BookingStatusControl";
 
 export function LeadBookings({ lead }: { lead: Lead }) {
-  const bookings = leadBookings(lead);
+  const bookings = leadBookings(lead).filter(b => !lead.activeBooking ||
+    b.type === lead.activeBooking.type && `${b.date}T${b.time}` === lead.activeBooking.start);
   if (!bookings.length) return null;
   return <div className="mx-4 mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs">
     <p className="mb-2 font-semibold text-slate-700">Bookings · Melbourne time</p>

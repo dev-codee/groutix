@@ -1,3 +1,5 @@
+import { combinedJobStatus } from "./bookingStatus";
+import { withBookingCalendarLock } from "./bookingCalendarLock";
 import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
 import { bookingReminderCandidates } from "./bookingReminders";
 // Data-access layer for form submissions (quotes + support tickets).
@@ -627,6 +629,7 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
     .find({ leadId: { $in: items.map(item => item.id) } }).toArray();
   return items.map(item => ({ ...item, bookings: bookings.filter(b => b.leadId === item.id).map(b => ({
     type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: b.workSegments, status: b.status,
+    jobTotalDays: b.jobTotalDays, jobDaysDone: b.jobDaysDone,
     scheduledMinutes: b.scheduledMinutes, technicianId: b.technicianId, technician: b.technician,
     technicianUsername: b.technicianUsername, inspectorId: b.inspectorId, assigned: b.assigned,
     inspectorUsername: b.inspectorUsername,
@@ -1095,4 +1098,24 @@ export async function emptyRecycleBin(): Promise<number> {
 export async function getRecycleBinCount(): Promise<number> {
   const bin = await recycleBinCollection();
   return bin.countDocuments({});
+}
+
+/** Summarize visit progress without copying it back onto the primary booking. */
+export async function syncJobBookingWorkflow(id: string): Promise<void> {
+  if (!ObjectId.isValid(id)) return;
+  await withBookingCalendarLock(`job-workflow:${id}`, "job", async () => {
+    const lead = await getSubmission(id);
+    if (!lead) return;
+    const jobStages = ["Won", "Job Booked", "Scheduled", "Job Confirmed", "Job En Route", "Job Arrived", "Job Started", "Job In Progress", "In Progress", "Job Done"];
+    if (!jobStages.includes(lead.status)) return;
+    const jobs = (lead.bookings || []).filter(booking => booking.type === "job");
+    // A legacy primary still deriving status from the customer must stay frozen
+    // until it has its own saved status; changing the customer would change it too.
+    if (lead.jobAt && !jobs.some(booking => `${booking.date}T${booking.time}` === lead.jobAt?.slice(0, 16))) return;
+    if (jobs.some(booking => !validBookingStatus("job", booking.status))) return;
+    const status = combinedJobStatus(jobs.map(booking => booking.status!));
+    if (!status || status === lead.status) return;
+    const col = await collection(false);
+    await col.updateOne({ _id: new ObjectId(id), status: lead.status }, { $set: { status } });
+  });
 }

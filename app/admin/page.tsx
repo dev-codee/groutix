@@ -2,6 +2,7 @@
 
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
 
+import { jobBookingRows, selectedJobBooking, leadRowKey } from "@/lib/leadBookings";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { normalizeBusinessPhoneText } from "@/lib/phone";
@@ -995,6 +996,34 @@ export default function CrmDashboardPage() {
 
   // ── On-The-Way / GPS handlers ─────────────────────────────────────────────
 
+  const jobUpdatesInFlight = useRef(new Set<string>());
+  const [jobBookingsSaving, setJobBookingsSaving] = useState<Record<string, boolean>>({});
+
+  async function updateJobBooking(lead: Lead, updates: Pick<Partial<Lead>, "status" | "jobTotalDays" | "jobDaysDone">) {
+    const booking = selectedJobBooking(lead);
+    if (!booking) return updateLeadField(lead.id, updates, message => alert(message));
+    const key = `${lead.id}:job:${booking.date}T${booking.time}`;
+    if (jobUpdatesInFlight.current.has(key)) return false;
+    jobUpdatesInFlight.current.add(key);
+    setJobBookingsSaving(current => ({ ...current, [key]: true }));
+    try {
+      const response = await fetch(`/api/admin/submissions/${lead.id}/bookings`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "job", syncWorkflow: true, start: `${booking.date}T${booking.time}`, ...updates, status: updates.status || booking.status }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not update this booking.");
+      setLeads(current => current.map(item => item.id === lead.id ? data.item : item));
+      return true;
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Could not update this booking. Please try again.");
+      return false;
+    } finally {
+      jobUpdatesInFlight.current.delete(key);
+      setJobBookingsSaving(current => ({ ...current, [key]: false }));
+    }
+  }
+
   async function handleOnTheWay(
     lead: Lead,
     eventType: "en_route" | "arrived",
@@ -1013,7 +1042,7 @@ export default function CrmDashboardPage() {
         "Inspection In Progress": 3,
         "Inspection Completed": 4,
       };
-      const cur = order[lead.status] ?? 0;
+      const cur = order[isInspection ? lead.status : selectedJobBooking(lead)?.status || lead.status] ?? 0;
       const target = eventType === "en_route" ? 1 : 2;
       if (cur >= target) return;
     } else {
@@ -1028,7 +1057,7 @@ export default function CrmDashboardPage() {
         "Job Done": 4,
         "Completed": 4,
       };
-      const cur = order[lead.status] ?? 0;
+      const cur = order[isInspection ? lead.status : selectedJobBooking(lead)?.status || lead.status] ?? 0;
       const target = eventType === "en_route" ? 1 : 2;
       if (cur >= target) return;
     }
@@ -1042,10 +1071,14 @@ export default function CrmDashboardPage() {
         : isInspection
           ? "Inspection Arrived"
           : "Job Arrived";
-    await updateLeadField(lead.id, { status: newStatus });
+    const saved = isInspection
+      ? await updateLeadField(lead.id, { status: newStatus })
+      : await updateJobBooking(lead, { status: newStatus });
+    if (!saved) return;
 
     // 2. Ask staff whether to notify the customer
-    setNotifyPrompt({ lead, eventType });
+    const booking = !isInspection ? selectedJobBooking(lead) : undefined;
+    setNotifyPrompt({ lead: booking ? { ...lead, activeBooking: { type: "job", start: `${booking.date}T${booking.time}` } } : lead, eventType });
   }
 
   async function executeOnTheWayNotification(lead: Lead, eventType: "en_route" | "arrived") {
@@ -1075,7 +1108,7 @@ export default function CrmDashboardPage() {
       fetch("/api/admin/on-the-way", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: lead.id, lat: null, lng: null, eventType }),
+        body: JSON.stringify({ leadId: lead.id, booking: lead.activeBooking, lat: null, lng: null, eventType }),
       })
         .then((r) => r.json())
         .then(applyNotificationResult)
@@ -1089,7 +1122,7 @@ export default function CrmDashboardPage() {
         const res = await fetch("/api/admin/on-the-way", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId: lead.id, lat, lng, eventType }),
+          body: JSON.stringify({ leadId: lead.id, booking: lead.activeBooking, lat, lng, eventType }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not send notification");
@@ -1120,12 +1153,12 @@ export default function CrmDashboardPage() {
 
     // If real-time continuous GPS already has a lock, dispatch immediately without delay
     if (liveGpsCoords && Date.now() - new Date(liveGpsCoords.time).getTime() < 30000) {
-      setOnTheWayLoading(lead.id);
+      setOnTheWayLoading(leadRowKey(lead));
       sendOnTheWayWithCoords(liveGpsCoords.lat, liveGpsCoords.lng);
       return;
     }
 
-    setOnTheWayLoading(lead.id);
+    setOnTheWayLoading(leadRowKey(lead));
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
@@ -3731,7 +3764,46 @@ export default function CrmDashboardPage() {
     if (showLegacyLeads) return roleScoped;
     if (newLeadsCutoffMs <= 0) return roleScoped;
     return roleScoped.filter((l) => (role === "technician" ? true : !isLegacyLead(l, newLeadsCutoffMs)));
-  }, [leads, role, showLegacyLeads, newLeadsCutoffMs, staff, username, viewAs]);
+  }, [leads, role, showLegacyLeads, newLeadsCutoffMs, staff, username, viewAs, assignableTechnicians]);
+
+  // Expand only work queues; customer, inbox and dispatch lists retain one customer each.
+  const jobWorkflowLeads = useMemo(() => {
+    if (role !== "technician") return scopedLeads;
+    return scopedLeads.flatMap(jobBookingRows).filter(l => {
+      const targetStaffRecord = viewAs
+        ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
+        : staff.find((s) => s.username === username);
+      const targetName = viewAs
+        ? viewAs.name.trim().toLowerCase()
+        : (targetStaffRecord?.name || username || "").trim().toLowerCase();
+      const targetUser = viewAs ? viewAs.name.trim().toLowerCase() : (username || "").trim().toLowerCase();
+      const targetId = targetStaffRecord?.id;
+      // Collect all known IDs for this tech (staff id + any roster entries sharing the same name/username)
+      const targetAllIds = new Set<string>(targetId ? [targetId] : []);
+      assignableTechnicians.forEach((t) => {
+        if (t.username && (t.username.toLowerCase() === targetUser || t.username.toLowerCase() === targetName)) targetAllIds.add(t.id);
+        if (t.name.trim().toLowerCase() === targetName || t.name.trim().toLowerCase() === targetUser) targetAllIds.add(t.id);
+      });
+
+      const hasTechField = Boolean(l.technicianId || l.technician || l.technicianUsername);
+
+      const isAssigned = hasTechField
+        ? Boolean(
+          (l.technicianUsername && targetUser && l.technicianUsername.toLowerCase() === targetUser) ||
+          (l.technicianId && targetAllIds.has(l.technicianId)) ||
+          (l.technicianId && (l.technicianId.toLowerCase() === targetUser || l.technicianId.toLowerCase() === targetName)) ||
+          (l.technician && (l.technician.trim().toLowerCase() === targetName || l.technician.trim().toLowerCase() === targetUser))
+        )
+        : Boolean(
+          l.assigned &&
+          l.assigned.trim().toLowerCase() !== "unassigned" &&
+          isTechnicianName(l.assigned) &&
+          (l.assigned.trim().toLowerCase() === targetName || l.assigned.trim().toLowerCase() === targetUser)
+        );
+
+      return isAssigned;
+    });
+  }, [scopedLeads, role, staff, username, viewAs, assignableTechnicians]);
 
   const hiddenLegacyCount = useMemo(() => {
     if (newLeadsCutoffMs <= 0) return 0;
@@ -3762,7 +3834,7 @@ export default function CrmDashboardPage() {
 
   // Filtering & Search
   const filteredLeads = useMemo(() => {
-    let list = scopedLeads;
+    let list = jobWorkflowLeads;
     const q = globalSearch.toLowerCase().trim();
     if (q) {
       // Support searching by job number e.g. "1201", "JobNo-1201", "job 1201", "job-1201", "GQ-1201", "#1201"
@@ -3832,7 +3904,7 @@ export default function CrmDashboardPage() {
     }
 
     return list;
-  }, [scopedLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role]);
+  }, [jobWorkflowLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role]);
 
   // Leads with at least one unread customer reply — drives the header bell badge.
   const unreadReplyCount = useMemo(
@@ -3879,10 +3951,10 @@ export default function CrmDashboardPage() {
   const counts = useMemo(() => {
     const res: Record<string, number> = {};
     STATUS_LIST.forEach((s) => {
-      res[s] = scopedLeads.filter((l) => l.status === s).length;
+      res[s] = jobWorkflowLeads.filter((l) => l.status === s).length;
     });
     return res;
-  }, [scopedLeads]);
+  }, [jobWorkflowLeads]);
 
   // Derived lists backing the Quotes and Jobs views, so we can both count them
   // and paginate the same array.
@@ -4028,13 +4100,13 @@ export default function CrmDashboardPage() {
     // Identity
     role, username,
     // Core data
-    staff, assignableTechnicians, inspectionStaff, scopedLeads, counts,
+    staff, assignableTechnicians, inspectionStaff, scopedLeads, jobWorkflowLeads, counts,
     // Row UI state
     onTheWayLoading, openDetails, setOpenDetails, unreadReplyCount,
     locationTrackingActive, liveGpsCoords,
     // Lead CRUD
     upsertLead: (lead: Lead) => setLeads(prev => [lead, ...prev.filter(item => item.id !== lead.id)]),
-    updateLeadField, handleDeleteLead, setEditingLead, setLeadModalOpen,
+    updateLeadField, updateJobBooking, jobBookingsSaving, handleDeleteLead, setEditingLead, setLeadModalOpen,
     setStartJobPrompt, setStartJobDays,
     statusFilter, setStatusFilter, setPage,
     // Communication
@@ -8470,13 +8542,14 @@ export default function CrmDashboardPage() {
               <div className="flex gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    updateLeadField(startJobPrompt.lead.id, {
+                  disabled={Boolean(jobBookingsSaving[leadRowKey(startJobPrompt.lead)])}
+                  onClick={async () => {
+                    const saved = await updateJobBooking(startJobPrompt.lead, {
                       status: "Job In Progress",
                       jobTotalDays: startJobDays,
                       jobDaysDone: 1,
                     });
-                    setStartJobPrompt(null);
+                    if (saved) setStartJobPrompt(null);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
                 >

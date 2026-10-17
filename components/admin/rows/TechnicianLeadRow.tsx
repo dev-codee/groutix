@@ -1,5 +1,6 @@
 "use client";
 
+import { leadRowKey } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import {
@@ -34,7 +35,9 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     setStatusFilter,
     setPage,
     setCurrentView,
-    scopedLeads,
+    jobWorkflowLeads: scopedLeads,
+    updateJobBooking,
+    jobBookingsSaving,
   } = ctx;
 
   const followupPrompt = getFollowupPrompt(l);
@@ -54,6 +57,8 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
     ? `${l.service} | ${l.notes || l.message}`
     : l.service || l.notes || l.message || "3 Bathrooms | Silicone Replacement";
 
+  const saving = Boolean(jobBookingsSaving[leadRowKey(l)]);
+  const cancelled = ["Lost", "Cancelled"].includes(l.status);
   const workflowStatus = getEffectiveWorkflowStatus(l);
 
   const techStepIdx = (() => {
@@ -218,10 +223,10 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
             <div>
               <button
                 type="button"
-                disabled={isJobBookedDone}
+                disabled={saving || cancelled || isJobBookedDone}
                 onClick={() => {
                   if (isJobBookedDone) return;
-                  updateLeadField(l.id, { status: "Job Booked" });
+                  updateJobBooking(l, { status: "Job Booked" });
                 }}
                 className={`w-full py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 ${
                   isJobBookedDone
@@ -249,7 +254,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
-              disabled={isOnTheWayDone || onTheWayLoading === l.id}
+              disabled={saving || cancelled || isOnTheWayDone || onTheWayLoading === leadRowKey(l)}
               onClick={() => {
                 if (isOnTheWayDone) return;
                 handleOnTheWay(l, "en_route", "job");
@@ -261,12 +266,12 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               }`}
               title={isOnTheWayDone ? "On the Way (Completed)" : "Mark On the Way"}
             >
-              {onTheWayLoading === l.id ? "..." : "On the Way"}
+              {onTheWayLoading === leadRowKey(l) ? "..." : "On the Way"}
             </button>
 
             <button
               type="button"
-              disabled={isReachedDone || onTheWayLoading === l.id}
+              disabled={saving || cancelled || isReachedDone || onTheWayLoading === leadRowKey(l)}
               onClick={() => {
                 if (isReachedDone) return;
                 handleOnTheWay(l, "arrived", "job");
@@ -283,7 +288,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={isStartDone}
+              disabled={saving || cancelled || isStartDone}
               onClick={() => {
                 if (isStartDone) return;
                 setStartJobDays(1);
@@ -301,10 +306,10 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
             <button
               type="button"
-              disabled={isJobDoneDone}
+              disabled={saving || cancelled || isJobDoneDone}
               onClick={() => {
                 if (isJobDoneDone) return;
-                updateLeadField(l.id, { status: "Job Done" });
+                updateJobBooking(l, { status: "Job Done" });
               }}
               className={`py-1.5 px-1 text-center text-[10.5px] xl:text-xs font-bold rounded-lg transition-colors truncate min-w-0 ${
                 isJobDoneDone
@@ -323,12 +328,13 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
                 <span>Day {l.jobDaysDone || 1} of {l.jobTotalDays}</span>
                 <button
                   type="button"
+                  disabled={saving || cancelled}
                   onClick={() => {
                     const done = (l.jobDaysDone || 1) + 1;
                     if (done > l.jobTotalDays!) {
-                      updateLeadField(l.id, { status: "Job Done", jobDaysDone: l.jobTotalDays });
+                      updateJobBooking(l, { status: "Job Done", jobDaysDone: l.jobTotalDays });
                     } else {
-                      updateLeadField(l.id, { jobDaysDone: done });
+                      updateJobBooking(l, { jobDaysDone: done });
                     }
                   }}
                   className="px-2 py-0.5 bg-blue-600 text-white rounded-lg text-[9px] font-semibold hover:bg-blue-700 transition-colors cursor-pointer"

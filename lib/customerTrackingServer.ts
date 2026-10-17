@@ -4,7 +4,10 @@ import { getDb } from "@/lib/mongodb";
 import { TRACKING_TTL_MS, TRACKING_FRESH_MS, validCoordinates, type CustomerTrackingView } from "@/lib/customerTracking";
 import { siteBaseUrl } from "@/lib/bookingToken";
 
+type TrackingBooking = { type: "job" | "inspection"; start: string };
+
 interface TrackingDoc {
+  booking?: TrackingBooking;
   _id: string;
   leadId: string;
   username: string;
@@ -14,16 +17,16 @@ interface TrackingDoc {
   location?: { lat: number; lng: number; updatedAt: Date };
 }
 
-export async function startCustomerTracking(leadId: string, username: string, lat: number | null, lng: number | null): Promise<string> {
+export async function startCustomerTracking(leadId: string, username: string, lat: number | null, lng: number | null, booking?: TrackingBooking): Promise<string> {
   const db = await getDb();
   const col = db.collection<TrackingDoc>("customer_tracking");
   await col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   // Only the current journey may expose this staff member's location.
-  await col.updateMany({ status: "en_route", $or: [{ username }, { leadId }] }, { $set: { status: "ended" } });
+  await col.updateMany({ status: "en_route", $or: [{ username }, { leadId, ...(booking ? { "booking.type": booking.type, "booking.start": booking.start } : {}) }] }, { $set: { status: "ended" } });
   const now = new Date();
   const token = randomBytes(24).toString("base64url");
   await col.insertOne({
-    _id: token, leadId, username, status: "en_route", startedAt: now,
+    _id: token, leadId, username, ...(booking ? { booking } : {}), status: "en_route", startedAt: now,
     expiresAt: new Date(now.getTime() + TRACKING_TTL_MS),
     ...(validCoordinates(lat, lng) ? { location: { lat: lat!, lng: lng!, updatedAt: now } } : {}),
   });
@@ -35,10 +38,10 @@ export async function startCustomerTracking(leadId: string, username: string, la
   return `${siteBaseUrl()}/track/${token}`;
 }
 
-export async function stopCustomerTracking(leadId: string): Promise<void> {
+export async function stopCustomerTracking(leadId: string, booking?: TrackingBooking): Promise<void> {
   const db = await getDb();
   await db.collection<TrackingDoc>("customer_tracking").updateMany(
-    { leadId, status: "en_route" }, { $set: { status: "arrived" } }
+    { leadId, status: "en_route", ...(booking ? { "booking.type": booking.type, "booking.start": booking.start } : {}) }, { $set: { status: "arrived" } }
   );
 }
 
@@ -68,9 +71,13 @@ export async function getCustomerTracking(token: string): Promise<CustomerTracki
     { _id: new ObjectId(doc.leadId) }, { projection: { status: 1, customerTrackingEndedAt: 1 } }
   );
   // Status is authoritative even when staff choose not to send an arrival notification.
-  const endedAfterStart = lead?.customerTrackingEndedAt && new Date(lead.customerTrackingEndedAt).getTime() >= new Date(doc.startedAt).getTime();
-  if (!lead || endedAfterStart || !["Inspection En Route", "Job En Route"].includes(lead.status)) {
-    const arrived = lead && ["Inspection Arrived", "Job Arrived", "Inspection In Progress", "Job Started", "Job In Progress"].includes(lead.status);
+  const visit = doc.booking ? await db.collection("bookings").findOne({
+    leadId: doc.leadId, type: doc.booking.type, date: doc.booking.start.slice(0, 10), time: doc.booking.start.slice(11, 16),
+  }) : null;
+  const workflowStatus = doc.booking ? visit?.status : lead?.status;
+  const endedAfterStart = !doc.booking && lead?.customerTrackingEndedAt && new Date(lead.customerTrackingEndedAt).getTime() >= new Date(doc.startedAt).getTime();
+  if (!lead || ["Lost", "Cancelled"].includes(lead.status) || endedAfterStart || !["Inspection En Route", "Job En Route"].includes(workflowStatus)) {
+    const arrived = lead && ["Inspection Arrived", "Job Arrived", "Inspection In Progress", "Job Started", "Job In Progress"].includes(workflowStatus);
     const status = arrived ? "arrived" : "ended";
     await db.collection<TrackingDoc>("customer_tracking").updateOne(
       { _id: token, status: "en_route" }, { $set: { status } }

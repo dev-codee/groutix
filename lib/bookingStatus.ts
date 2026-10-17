@@ -24,3 +24,11 @@ export function resolveBookingStatus(type: "inspection" | "job", saved?: string,
 export function bookingNeedsReminder(status?: string): boolean {
   return !["Cancelled", "Job Done", "Inspection Completed"].includes(status || "");
 }
+
+/** Customer workflow advances to Done only after every active job visit is done. */
+export function combinedJobStatus(statuses: readonly string[]): BookingStatus | undefined {
+  const active = statuses.filter(status => status !== "Cancelled");
+  if (!active.length) return undefined;
+  if (active.every(status => status === "Job Done")) return "Job Done";
+  return ["Job In Progress", "Job Arrived", "Job En Route", "Job Booked"].find(status => active.includes(status)) as BookingStatus | undefined;
+}

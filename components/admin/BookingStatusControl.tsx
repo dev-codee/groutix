@@ -15,7 +15,7 @@ export function BookingStatusControl({ leadId, booking, disabled = false }: { le
     saving.current = true; setBusy(true); setError("");
     try {
       const response = await fetch(`/api/admin/submissions/${leadId}/bookings`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: booking.type, start: `${booking.date}T${booking.time}`, status }) });
+        body: JSON.stringify({ type: booking.type, syncWorkflow: booking.type === "job", start: `${booking.date}T${booking.time}`, status }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not update the booking status.");
       upsertLead(data.item);

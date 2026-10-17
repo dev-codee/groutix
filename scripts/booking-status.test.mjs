@@ -17,7 +17,7 @@ function harness({ conflict = false, legacy = false } = {}) {
       writes.push({ input, options });
       if (conflict) return { ok: false, conflict: true, error: 'Slot taken' };
       const booking = lead.bookings.find(b => b.type === input.type && b.date === input.date && b.time === input.time);
-      if (booking) booking.status = input.status;
+      if (booking) Object.assign(booking, { status: input.status, jobTotalDays: input.jobTotalDays, jobDaysDone: input.jobDaysDone });
       else lead.bookings.push(input);
       return { ok: true };
     } },
@@ -94,4 +94,20 @@ test('ordinary lead workflow changes update only the primary visit status', asyn
   assert.equal(writes[1][1].$set.status, 'Job Done');
   await updateSubmission(id, { status: 'Invoice Sent' });
   assert.equal(writes.length, 2, 'finance workflow must not change visit statuses');
+});
+
+
+test('day progress is validated and saved on the selected booking only', async () => {
+  const h = harness();
+  const sibling = JSON.stringify(h.lead.bookings[0]);
+  const base = { type: 'job', start: '2026-10-21T11:00', status: 'Job In Progress' };
+  for (const progress of [{ jobTotalDays: 0 }, { jobTotalDays: 15 }, { jobTotalDays: 2.5 }, { jobTotalDays: 2, jobDaysDone: 3 }]) {
+    assert.equal((await h.patch({ ...base, ...progress })).status, 400);
+  }
+  assert.equal(h.writes.length, 0);
+  assert.equal((await h.patch({ ...base, jobTotalDays: 3, jobDaysDone: 1 })).status, 200);
+  assert.equal((await h.patch({ ...base, jobDaysDone: 2 })).status, 200);
+  assert.equal(h.lead.bookings[1].jobTotalDays, 3);
+  assert.equal(h.lead.bookings[1].jobDaysDone, 2);
+  assert.equal(JSON.stringify(h.lead.bookings[0]), sibling);
 });

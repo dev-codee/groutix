@@ -1,5 +1,6 @@
 "use client";
 
+import { selectedJobBooking } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
@@ -29,6 +30,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const {
     role,
     updateLeadField,
+    updateJobBooking,
+    jobBookingsSaving,
     callCustomer,
     openMessagesModal,
     openPhotosModal,
@@ -48,6 +51,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     onTheWayLoading,
   } = useAdminPageCtx();
 
+  const jobBooking = selectedJobBooking(l);
+  const jobStatus = jobBooking?.status || l.status;
+  const jobTotalDays = jobBooking?.jobTotalDays ?? l.jobTotalDays;
+  const jobDaysDone = jobBooking?.jobDaysDone ?? l.jobDaysDone;
+  const jobKey = `${l.id}:job:${l.jobAt?.slice(0, 16)}`;
+  const jobSaving = Boolean(jobBookingsSaving[jobKey]);
   const workflowStatus = getEffectiveWorkflowStatus(l);
   const isFinanceStage = [
     "Job Done",
@@ -596,7 +605,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Job Status */}
           {(() => {
             const steps = JOB_STEPS;
-            const s = workflowStatus;
+            const s = jobStatus;
             const sIdx = s ? STATUS_LIST.indexOf(s) : -1;
             const currentIdx = (() => {
               if (sIdx >= 19 || (s && (s === "Job Done" || s === "Completed" || s.startsWith("Invoice") || s.startsWith("Payment") || s.startsWith("Warranty")))) return 3;
@@ -619,10 +628,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           <button
                             key={step.status}
                             type="button"
-                            disabled={done}
+                            disabled={done || jobSaving || isTerminalStatus(l.status)}
                             onClick={() => {
                               if (done) return;
-                              updateLeadField(l.id, { status: step.status });
+                              updateJobBooking(l, { status: step.status });
                             }}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               done
@@ -636,10 +645,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           <button
                             key="job-done-inline"
                             type="button"
-                            disabled={currentIdx >= 3}
+                            disabled={currentIdx >= 3 || jobSaving || isTerminalStatus(l.status)}
                             onClick={() => {
                               if (currentIdx >= 3) return;
-                              updateLeadField(l.id, { status: "Job Done" });
+                              updateJobBooking(l, { status: "Job Done" });
                             }}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-semibold transition-colors truncate ${
                               currentIdx >= 3
@@ -661,17 +670,17 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       <button
                         key={step.status}
                         type="button"
-                        disabled={done || (isYellowStep && onTheWayLoading === l.id)}
+                        disabled={done || jobSaving || isTerminalStatus(l.status) || (isYellowStep && (onTheWayLoading === jobKey || onTheWayLoading === l.id))}
                         onClick={() => {
                           if (done) return;
                           if (isYellowStep) {
                             handleOnTheWay(l, eventType, "job");
                           } else {
-                            updateLeadField(l.id, { status: step.status });
+                            updateJobBooking(l, { status: step.status });
                           }
                         }}
                         className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-semibold transition-colors truncate ${
-                          isYellowStep && onTheWayLoading === l.id ? "opacity-60 cursor-wait " : ""
+                          isYellowStep && (onTheWayLoading === jobKey || onTheWayLoading === l.id) ? "opacity-60 cursor-wait " : ""
                         }${
                           done
                             ? isYellowStep
@@ -701,23 +710,23 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           })()}
 
           {/* Multi-day job progress bar */}
-          {l.jobTotalDays && l.jobTotalDays > 1 && (l.status === "Job Started" || l.status === "Job In Progress") && (
+          {jobTotalDays && jobTotalDays > 1 && (jobStatus === "Job Started" || jobStatus === "Job In Progress") && (
             <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between text-[10px] font-bold text-blue-800">
-                <span>Day {l.jobDaysDone || 1} of {l.jobTotalDays} — {l.technician || "Technician"}</span>
+                <span>Day {jobDaysDone || 1} of {jobTotalDays} — {l.technician || "Technician"}</span>
                 <span className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
-                  {Math.round(((l.jobDaysDone || 1) / l.jobTotalDays) * 100)}%
+                  {Math.round(((jobDaysDone || 1) / jobTotalDays) * 100)}%
                 </span>
               </div>
               <div className="w-full bg-blue-100 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, ((l.jobDaysDone || 1) / l.jobTotalDays) * 100)}%` }}
+                  style={{ width: `${Math.min(100, ((jobDaysDone || 1) / jobTotalDays) * 100)}%` }}
                 />
               </div>
               <div className="flex gap-0.5">
-                {Array.from({ length: l.jobTotalDays }).map((_, i) => (
-                  <div key={i} className={`flex-1 h-1.5 rounded-full ${i < (l.jobDaysDone || 1) ? "bg-blue-600" : "bg-blue-100"}`} />
+                {Array.from({ length: jobTotalDays }).map((_, i) => (
+                  <div key={i} className={`flex-1 h-1.5 rounded-full ${i < (jobDaysDone || 1) ? "bg-blue-600" : "bg-blue-100"}`} />
                 ))}
               </div>
             </div>

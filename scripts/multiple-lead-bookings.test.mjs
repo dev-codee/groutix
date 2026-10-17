@@ -132,3 +132,19 @@ test("legacy primary status never leaks into a secondary visit", () => {
   assert.equal(leadBookings(second)[1].status, "Job Booked");
   assert.equal(second.status, "Job Done", "shared workflow is unchanged");
 });
+
+
+test("multi-day progress persists through booking saves and rescheduling without touching siblings", async () => {
+  const { api, rows, input } = store();
+  await api.createBooking(input, { append: true, staffOverride: true });
+  await api.createBooking({ ...input, time: "11:00" }, { append: true, staffOverride: true });
+  const sibling = JSON.stringify(rows[1]);
+  assert.equal((await api.createBooking({ ...rows[0], status: "Job In Progress", jobTotalDays: 3, jobDaysDone: 2 },
+    { statusOnly: true, staffOverride: true, replaceStart: "2026-10-20T09:00" })).ok, true);
+  assert.equal(rows[0].jobDaysDone, 2);
+  assert.equal(rows[0].jobTotalDays, 3);
+  assert.equal((await api.createBooking({ ...input, time: "13:00" }, { staffOverride: true, replaceStart: "2026-10-20T09:00" })).ok, true);
+  assert.equal(rows.find(row => row.time === "13:00").jobDaysDone, 2);
+  assert.equal(rows.find(row => row.time === "13:00").jobTotalDays, 3);
+  assert.equal(JSON.stringify(rows.find(row => row.time === "11:00")), sibling);
+});

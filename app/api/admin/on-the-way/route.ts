@@ -1,3 +1,4 @@
+import { leadBookings } from "@/lib/leadBookings";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, appendActivity, type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendSms } from "@/lib/sms";
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     leadId: string;
+    booking?: { type: "job" | "inspection"; start: string };
     lat: number | null;
     lng: number | null;
     eventType: "en_route" | "arrived";
@@ -127,13 +129,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
+  const booking = body.booking;
+  if (booking) {
+    const visit = leadBookings(lead).find(item => item.type === booking.type && `${item.date}T${item.time}` === booking.start);
+    const expectedStatus = `${booking.type === "job" ? "Job" : "Inspection"} ${eventType === "en_route" ? "En Route" : "Arrived"}`;
+    if (!visit || visit.status !== expectedStatus || ["Lost", "Cancelled"].includes(lead.status)) {
+      return NextResponse.json({ error: "This booking has changed. Refresh before notifying the customer." }, { status: 409 });
+    }
+  }
+
   const firstName = (lead.name || "").split(" ")[0].trim() || "there";
   const customerAddress = lead.address || "";
   const htmlFirstName = escapeHtml(firstName);
   const trackingUrl = eventType === "en_route"
-    ? await startCustomerTracking(leadId, session.username, lat, lng)
+    ? await startCustomerTracking(leadId, session.username, lat, lng, booking)
     : null;
-  if (eventType === "arrived") await stopCustomerTracking(leadId);
+  if (eventType === "arrived") await stopCustomerTracking(leadId, booking);
 
   // Calculate ETA if we have staff GPS coords and a destination address
   let etaText = "";

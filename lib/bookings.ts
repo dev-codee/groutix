@@ -17,6 +17,8 @@ import { resolveBookingStatus, type BookingStatus } from "./bookingStatus";
 
 export interface BookingDoc extends TechnicianAssignment {
   status?: BookingStatus;
+  jobTotalDays?: number;
+  jobDaysDone?: number;
   _id?: ObjectId;
   leadId: string;
   type: "inspection" | "job";
@@ -152,11 +154,11 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }
       if (options.statusOnly && existing) {
-        await col.updateOne({ _id: existing._id }, { $set: { status: input.status } });
+        await col.updateOne({ _id: existing._id }, { $set: { status: input.status, ...(input.jobTotalDays !== undefined ? { jobTotalDays: input.jobTotalDays } : {}), ...(input.jobDaysDone !== undefined ? { jobDaysDone: input.jobDaysDone } : {}) } });
         return { ok: true as const, reference: existing.reference };
       }
       const reservationId = randomUUID();
-      const document: BookingDoc = { ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+      const document: BookingDoc = { jobTotalDays: replaced?.jobTotalDays ?? existing?.jobTotalDays, jobDaysDone: replaced?.jobDaysDone ?? existing?.jobDaysDone, ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
         date, time, reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);

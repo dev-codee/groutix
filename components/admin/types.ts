@@ -140,6 +140,8 @@ export interface Lead {
   inspectionEndAt?: string;
   jobEndAt?: string;
   inspectionAt?: string;
+  /** UI-only identity for a selected visit. Never persisted on the customer. */
+  activeBooking?: { type: "job" | "inspection"; start: string };
   bookings?: import("@/lib/leadBookings").LeadBooking[];
   jobAt?: string;
   inspectionReminderSent?: boolean;

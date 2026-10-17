@@ -1,4 +1,5 @@
 "use client";
+import { leadRowKey } from "@/lib/leadBookings";
 
 import { useState, useMemo } from "react";
 import {
@@ -268,7 +269,7 @@ export function CompletedView() {
 
             return (
               <div
-                key={l.id}
+                key={leadRowKey(l)}
                 className="py-4 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
               >
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-6 items-start w-full divide-y divide-slate-100 lg:divide-y-0">

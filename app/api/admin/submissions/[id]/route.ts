@@ -97,6 +97,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   delete body.appendBooking;
   delete body.bookingOriginalStart;
   delete body.bookings;
+  delete body.activeBooking;
   // Dispatch explicitly opts in after the dispatcher reviews the booking.
   const bookingNotifications = body.bookingNotifications === true;
   delete body.bookingNotifications;

@@ -11,13 +11,15 @@ function matches(doc, filter) {
   return Object.entries(filter).every(([key, value]) => {
     if (key === "$or") return value.some((item) => matches(doc, item));
     if (value && typeof value === "object" && "$gt" in value) return doc[key] > value.$gt;
-    return String(doc[key]) === String(value);
+    const actual = key.split(".").reduce((item, part) => item?.[part], doc);
+    return String(actual) === String(value);
   });
 }
 
 function fixture() {
   const docs = [];
   const staff = [];
+  const bookings = [];
   const leads = [
     { _id: leadId, status: "Inspection En Route", name: "Sam", phone: "0412345678", email: "sam@example.test" },
     { _id: otherLeadId, status: "Job En Route", name: "Jo" },
@@ -39,9 +41,9 @@ function fixture() {
       return { matchedCount: doc ? 1 : 0 };
     },
   });
-  const db = { collection: (name) => makeCollection(name === "customer_tracking" ? docs : name === "staff_locations" ? staff : leads) };
+  const db = { collection: (name) => makeCollection(name === "customer_tracking" ? docs : name === "staff_locations" ? staff : name === "bookings" ? bookings : leads) };
   const tracking = loadTs("lib/customerTrackingServer.ts", { "@/lib/mongodb": { getDb: async () => db } });
-  return { docs, staff, leads, indexes, db, tracking };
+  return { docs, staff, leads, bookings, indexes, db, tracking };
 }
 
 test("unguessable visit link returns only its specialist's current location", async () => {
@@ -217,4 +219,27 @@ test("notification endpoint rejects invalid events, coordinates and unauthentica
   n.setSession(null);
   assert.equal((await n.post()).status, 403);
   assert.equal(n.sms.length, 0);
+});
+
+
+test("booking tracking follows that visit and arrival does not end a sibling's journey", async () => {
+  const f = fixture();
+  f.leads[0].status = "Job Done"; // Shared status is not the visit's status.
+  const first = { type: "job", start: "2026-10-20T09:00" };
+  const second = { type: "job", start: "2026-10-21T11:00" };
+  f.bookings.push(
+    { leadId, type: "job", date: "2026-10-20", time: "09:00", status: "Job En Route" },
+    { leadId, type: "job", date: "2026-10-21", time: "11:00", status: "Job En Route" },
+  );
+  const a = tokenFrom(await f.tracking.startCustomerTracking(leadId, "alex", -37.7, 144.9, first));
+  const b = tokenFrom(await f.tracking.startCustomerTracking(leadId, "sam", -37.8, 144.8, second));
+  assert.equal((await f.tracking.getCustomerTracking(a)).status, "en_route");
+  assert.equal((await f.tracking.getCustomerTracking(b)).status, "en_route");
+  f.bookings[0].status = "Job Arrived";
+  // Arrival stops location even when no notification is sent.
+  assert.equal((await f.tracking.getCustomerTracking(a)).status, "arrived");
+  await f.tracking.stopCustomerTracking(leadId, first);
+  assert.equal((await f.tracking.getCustomerTracking(b)).status, "en_route");
+  f.bookings[1].status = "Job Done";
+  assert.equal((await f.tracking.getCustomerTracking(b)).status, "ended");
 });
