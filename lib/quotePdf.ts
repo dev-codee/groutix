@@ -127,6 +127,19 @@ function wrapLines(text: string, font: PDFFont, size: number, maxWidth: number):
     const words = trimmed.split(/\s+/);
     let cur = "";
     for (const w of words) {
+      // A URL or an unbroken pasted word must also stay inside its column.
+      if (font.widthOfTextAtSize(w, size) > maxWidth) {
+        if (cur) result.push(cur);
+        cur = "";
+        for (const char of w) {
+          if (cur && font.widthOfTextAtSize(cur + char, size) > maxWidth) {
+            result.push(cur);
+            cur = "";
+          }
+          cur += char;
+        }
+        continue;
+      }
       const candidate = cur ? `${cur} ${w}` : w;
       if (font.widthOfTextAtSize(candidate, size) > maxWidth && cur) {
         result.push(cur);
@@ -276,6 +289,15 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   drawQuoteFooter(page1);
 
   let y = 600;
+  const newQuotePage = () => {
+    page1 = doc.addPage([A4.w, A4.h]);
+    drawQuoteHeader(page1);
+    drawQuoteFooter(page1);
+    y = 635;
+  };
+  const ensureQuoteRoom = (needed: number) => {
+    if (y - needed < bottomLimit) newQuotePage();
+  };
 
   const rightTextOnPage = (
     p: any,
@@ -299,6 +321,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   if (input.address) {
     const addrLines = wrapLines(input.address, font, 10, contentW / 2);
     for (const ln of addrLines) {
+      ensureQuoteRoom(13);
       page1.drawText(cleanPdfText(ln), { x: MARGIN, y, size: 10, font, color: INK });
       y -= 13;
     }
@@ -323,11 +346,13 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
         .slice(0, 3);
 
   if (jobDescHeadings.length > 0) {
+    ensureQuoteRoom(26);
     page1.drawText("JOB DESCRIPTION:", { x: MARGIN, y, size: 9.5, font: bold, color: INK });
     y -= 13;
     for (const heading of jobDescHeadings) {
       const descLines = wrapLines(heading, font, 8.5, contentW);
       for (const ln of descLines) {
+        ensureQuoteRoom(11);
         if (ln === "") {
           y -= 4;
         } else {
@@ -347,19 +372,27 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   const colPriceRight = A4.w - MARGIN - 85;
   const colAmountRight = A4.w - MARGIN - 8;
 
-  // Header row
-  page1.drawText("DESCRIPTION", { x: colDescX, y: y - 11, size: 8.5, font: bold, color: INK });
-  rightTextOnPage(page1, "QTY", colQtyRight, y - 11, bold, 8.5);
-  if (!isScopeDoc) {
-    const showExGst = input.taxMode && input.taxMode !== "none";
-    rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - (showExGst ? 8 : 11), bold, 8.5);
-    rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - (showExGst ? 8 : 11), bold, 8.5);
-    if (showExGst) {
-      rightTextOnPage(page1, "(EX GST)", colPriceRight, y - 17, font, 6.5);
-      rightTextOnPage(page1, "(EX GST)", colAmountRight, y - 17, font, 6.5);
+  const drawItemsHeader = () => {
+    page1.drawText("DESCRIPTION", { x: colDescX, y: y - 11, size: 8.5, font: bold, color: INK });
+    rightTextOnPage(page1, "QTY", colQtyRight, y - 11, bold, 8.5);
+    if (!isScopeDoc) {
+      const showExGst = input.taxMode && input.taxMode !== "none";
+      rightTextOnPage(page1, "UNIT PRICE", colPriceRight, y - (showExGst ? 8 : 11), bold, 8.5);
+      rightTextOnPage(page1, "TOTAL PRICE", colAmountRight, y - (showExGst ? 8 : 11), bold, 8.5);
+      if (showExGst) {
+        rightTextOnPage(page1, "(EX GST)", colPriceRight, y - 17, font, 6.5);
+        rightTextOnPage(page1, "(EX GST)", colAmountRight, y - 17, font, 6.5);
+      }
     }
-  }
-  y -= 22;
+    y -= 22;
+  };
+
+  ensureQuoteRoom(48);
+  drawItemsHeader();
+  const newItemsPage = () => {
+    newQuotePage();
+    drawItemsHeader();
+  };
 
   const items = input.items.length
     ? input.items
@@ -396,34 +429,43 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     const rowContentH = descLines.length * 11 + scopeLines.length * 9.5;
     const rowH = Math.max(22, rowContentH + 12);
 
-    if (y - rowH < bottomLimit + 75) {
-      page1 = doc.addPage([A4.w, A4.h]);
-      drawQuoteHeader(page1);
-      drawQuoteFooter(page1);
-      y = 635;
+    // Keep ordinary rows together, but split oversized rows line by line.
+    // Moving an oversized row as a whole only overflows the next page too.
+    const freshRowSpace = 635 - 22 - bottomLimit - 75;
+    if (rowH <= freshRowSpace && y - rowH < bottomLimit + 75) {
+      newItemsPage();
     }
 
-    let ty = y - 6 - 7;
-    for (const ln of descLines) {
-      page1.drawText(cleanPdfText(ln), { x: colDescX, y: ty, size: 9, font: bold, color: INK });
-      ty -= 11;
-    }
-    for (const ln of scopeLines) {
-      if (ln.bullet) {
-        page1.drawCircle({ x: colDescX + 2, y: ty + 2.5, size: 1.2, color: INK });
+    const lines = [
+      ...descLines.map((text) => ({ text, size: 9, height: 11, font: bold, indent: 0, bullet: false, heading: false })),
+      ...scopeLines.map((line) => ({ ...line, size: 7.5, height: 9.5, font: line.heading ? bold : font })),
+    ];
+    let firstLine = true;
+    y -= 13;
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+      // Keep scope headings with at least their first following line.
+      const needed = line.height + (line.heading ? (lines[index + 1]?.height ?? 0) : 0);
+      if (y - needed < bottomLimit) {
+        newItemsPage();
+        y -= 13;
       }
-      page1.drawText(ln.text, { x: colDescX + ln.indent, y: ty, size: 7.5, font: ln.heading ? bold : font, color: INK });
-      ty -= 9.5;
+      if (firstLine) {
+        rightTextOnPage(page1, qty > 0 ? String(qty) : "1", colQtyRight, y, font, 9);
+        if (!isScopeDoc) {
+          rightTextOnPage(page1, money(price), colPriceRight, y, font, 9);
+          rightTextOnPage(page1, money(amount), colAmountRight, y, bold, 9);
+        }
+        firstLine = false;
+      }
+      if (line.bullet) {
+        page1.drawCircle({ x: colDescX + 2, y: y + 2.5, size: 1.2, color: INK });
+      }
+      page1.drawText(line.text, { x: colDescX + line.indent, y, size: line.size, font: line.font, color: INK });
+      y -= line.height;
     }
+    y -= Math.max(0, rowH - rowContentH - 13);
 
-    const midY = y - 6 - 7;
-    rightTextOnPage(page1, qty > 0 ? String(qty) : "1", colQtyRight, midY, font, 9);
-    if (!isScopeDoc) {
-      rightTextOnPage(page1, money(price), colPriceRight, midY, font, 9);
-      rightTextOnPage(page1, money(amount), colAmountRight, midY, bold, 9);
-    }
-
-    y -= rowH;
     page1.drawLine({
       start: { x: MARGIN, y },
       end: { x: A4.w - MARGIN, y },
@@ -434,6 +476,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
 
   // 4. Financial Summary (only if not a Scope of Work doc)
   if (!isScopeDoc) {
+    ensureQuoteRoom(input.statusLabel ? 80 : 65);
     y -= 20;
     rightTextOnPage(page1, `SUBTOTAL:   ${money(input.subtotal)}`, colAmountRight, y, font, 9.5);
     y -= 14;
