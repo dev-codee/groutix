@@ -1,3 +1,5 @@
+import { savedWorkSegments } from "./bookingSpan";
+import { isPrimaryBooking } from "./leadBookings";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
 import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
 import { bookingReminderCandidates } from "./bookingReminders";
@@ -233,6 +235,7 @@ export interface SubmissionDoc {
 // Serialised shape sent to the browser (ObjectId -> string, Date -> ISO).
 export type SubmissionJSON = Omit<SubmissionDoc, "_id" | "createdAt"> & {
   id: string;
+  reminderBookingId?: string;
   createdAt: string;
 };
 
@@ -627,13 +630,19 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
   const db = await getDb();
   const bookings = await db.collection<import("./bookings").BookingDoc>("bookings")
     .find({ leadId: { $in: items.map(item => item.id) } }).toArray();
-  return items.map(item => ({ ...item, bookings: bookings.filter(b => b.leadId === item.id).map(b => ({
-    type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: b.workSegments, status: b.status,
+  const needsRepair = (segments?: { time: string; scheduledMinutes: number }[]) => !!segments && segments.length > 1 && segments.some(s => s.time === "00:00" || Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3, 5)) + s.scheduledMinutes >= 1440);
+  const rules = items.some(item => needsRepair(item.jobWorkSegments)) || bookings.some(b => needsRepair(b.workSegments)) ? await getBookingRules() : undefined;
+  return items.map(item => {
+    const visits = bookings.filter(b => b.leadId === item.id);
+    const repairedLead = rules && item.jobAt && needsRepair(item.jobWorkSegments) ? { ...item, jobWorkSegments: savedWorkSegments("job", item.jobAt, item.jobEndAt, item.jobWorkSegments, rules) } : item;
+    return { ...repairedLead, bookings: visits.map(b => ({
+    bookingId: b.bookingId || b._id?.toString(), type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: rules && needsRepair(b.workSegments) ? savedWorkSegments(b.type, `${b.date}T${b.time}`, b.endAt, b.workSegments, rules) : b.workSegments, status: b.status,
     jobTotalDays: b.jobTotalDays, jobDaysDone: b.jobDaysDone,
     scheduledMinutes: b.scheduledMinutes, technicianId: b.technicianId, technician: b.technician,
     technicianUsername: b.technicianUsername, inspectorId: b.inspectorId, assigned: b.assigned,
     inspectorUsername: b.inspectorUsername,
-  })) }));
+  })) };
+  });
 }
 
 export async function listSubmissions(
@@ -698,12 +707,17 @@ export async function listReminderCandidates(): Promise<SubmissionJSON[]> {
 }
 
 /** Mark only the visit that received a reminder; never suppress a sibling visit. */
-export async function markBookingReminderSent(id: string, type: "inspection" | "job", at: string, tier: "1h" | "24h"): Promise<void> {
+export async function markBookingReminderSent(id: string, type: "inspection" | "job", at: string, tier: "1h" | "24h", bookingId?: string): Promise<void> {
   const db = await getDb();
-  await db.collection("bookings").updateOne({ leadId: id, type, date: at.slice(0, 10), time: at.slice(11, 16) },
+  await db.collection("bookings").updateOne({ leadId: id, type, date: at.slice(0, 10), time: at.slice(11, 16), ...(bookingId ? { $or: [{ bookingId }, ...(ObjectId.isValid(bookingId) ? [{ _id: new ObjectId(bookingId) }] : [])] } : {}) },
     { $set: { [tier === "1h" ? "reminder1hSent" : "reminderSent"]: true } });
   const col = await collection(false);
   const field = type === "job" ? "jobAt" : "inspectionAt";
+  if (bookingId) {
+    const lead = await getSubmission(id);
+    const primary = lead?.bookings?.find(b => b.type === type && isPrimaryBooking(lead, b));
+    if (primary?.bookingId !== bookingId) return;
+  }
   await col.updateOne({ _id: new ObjectId(id), [field]: { $in: [at, `${at.slice(0, 16)}:00`] } },
     { $set: { [`${type}Reminder${tier === "1h" ? "1h" : ""}Sent`]: true } });
 }
@@ -739,7 +753,7 @@ async function syncPrimaryBookingStatus(id: string, status?: string): Promise<vo
   const start = lead?.[type === "job" ? "jobAt" : "inspectionAt"];
   if (!start) return;
   const db = await getDb();
-  await db.collection("bookings").updateOne({ leadId: id, type, date: start.slice(0, 10), time: start.slice(11, 16), status: { $ne: "Cancelled" } },
+  await db.collection("bookings").updateOne({ leadId: id, type, date: start.slice(0, 10), time: start.slice(11, 16), ...(type === "job" ? lead.technicianId ? { technicianId: lead.technicianId } : lead.technician ? { technician: lead.technician } : {} : lead.inspectorId ? { inspectorId: lead.inspectorId } : lead.assigned ? { assigned: lead.assigned } : {}), status: { $ne: "Cancelled" } },
     { $set: { status } });
 }
 

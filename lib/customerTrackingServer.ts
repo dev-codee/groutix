@@ -4,7 +4,7 @@ import { getDb } from "@/lib/mongodb";
 import { TRACKING_TTL_MS, TRACKING_FRESH_MS, validCoordinates, type CustomerTrackingView } from "@/lib/customerTracking";
 import { siteBaseUrl } from "@/lib/bookingToken";
 
-type TrackingBooking = { type: "job" | "inspection"; start: string };
+type TrackingBooking = { bookingId?: string; type: "job" | "inspection"; start: string };
 
 interface TrackingDoc {
   booking?: TrackingBooking;
@@ -22,7 +22,7 @@ export async function startCustomerTracking(leadId: string, username: string, la
   const col = db.collection<TrackingDoc>("customer_tracking");
   await col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   // Only the current journey may expose this staff member's location.
-  await col.updateMany({ status: "en_route", $or: [{ username }, { leadId, ...(booking ? { "booking.type": booking.type, "booking.start": booking.start } : {}) }] }, { $set: { status: "ended" } });
+  await col.updateMany({ status: "en_route", $or: [{ username }, { leadId, ...(booking ? { "booking.type": booking.type, "booking.start": booking.start, ...(booking.bookingId ? { "booking.bookingId": booking.bookingId } : {}) } : {}) }] }, { $set: { status: "ended" } });
   const now = new Date();
   const token = randomBytes(24).toString("base64url");
   await col.insertOne({
@@ -41,7 +41,7 @@ export async function startCustomerTracking(leadId: string, username: string, la
 export async function stopCustomerTracking(leadId: string, booking?: TrackingBooking): Promise<void> {
   const db = await getDb();
   await db.collection<TrackingDoc>("customer_tracking").updateMany(
-    { leadId, status: "en_route", ...(booking ? { "booking.type": booking.type, "booking.start": booking.start } : {}) }, { $set: { status: "arrived" } }
+    { leadId, status: "en_route", ...(booking ? { "booking.type": booking.type, "booking.start": booking.start, ...(booking.bookingId ? { "booking.bookingId": booking.bookingId } : {}) } : {}) }, { $set: { status: "arrived" } }
   );
 }
 
@@ -72,6 +72,7 @@ export async function getCustomerTracking(token: string): Promise<CustomerTracki
   );
   // Status is authoritative even when staff choose not to send an arrival notification.
   const visit = doc.booking ? await db.collection("bookings").findOne({
+    ...(doc.booking.bookingId ? { $or: [{ bookingId: doc.booking.bookingId }, ...(ObjectId.isValid(doc.booking.bookingId) ? [{ _id: new ObjectId(doc.booking.bookingId) }] : [])] } : {}),
     leadId: doc.leadId, type: doc.booking.type, date: doc.booking.start.slice(0, 10), time: doc.booking.start.slice(11, 16),
   }) : null;
   const workflowStatus = doc.booking ? visit?.status : lead?.status;

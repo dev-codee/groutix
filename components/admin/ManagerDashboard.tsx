@@ -1,6 +1,7 @@
 "use client";
 
 import { staffBookingRules } from "@/lib/staffBookingRules";
+import { leadBookings, bookingLead } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
@@ -438,7 +439,7 @@ export function ManagerDashboard() {
       const lowerUser = (member.username || "").toLowerCase().trim();
       const sId = member.id;
 
-      const memberLeads = scopedLeads.filter((l) => {
+      const memberLeads = scopedLeads.flatMap(lead => leadBookings(lead).filter(booking => booking.type === (member.isInspector ? "inspection" : "job") && booking.status !== "Cancelled").map(booking => bookingLead(lead, booking))).filter((l) => {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
 
         if (member.isInspector) {
@@ -533,7 +534,7 @@ export function ManagerDashboard() {
       const lowerUser = (member.username || "").toLowerCase().trim();
       const sId = member.id;
 
-      const memberLeads = scopedLeads.filter((l) => {
+      const memberLeads = scopedLeads.flatMap(lead => leadBookings(lead).filter(booking => booking.type === (member.isInspector ? "inspection" : "job") && booking.status !== "Cancelled").map(booking => bookingLead(lead, booking))).filter((l) => {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
 
         if (member.isInspector) {
@@ -651,7 +652,7 @@ export function ManagerDashboard() {
       const sId = member.id;
 
       // 1. All relevant leads for this staff member
-      const memberLeads = scopedLeads.filter((l) => {
+      const memberLeads = scopedLeads.flatMap(lead => leadBookings(lead).filter(booking => booking.type === (member.isInspector ? "inspection" : "job") && booking.status !== "Cancelled").map(booking => bookingLead(lead, booking))).filter((l) => {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
         if (member.isInspector) {
           if (sId && l.inspectorId && (l.inspectorId === sId || l.inspectorId.toLowerCase() === lowerName || l.inspectorId.toLowerCase() === lowerUser)) return true;

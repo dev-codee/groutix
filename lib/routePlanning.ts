@@ -18,6 +18,7 @@ import { SUBURBS, TULLAMARINE, distanceKm, resolveArea } from "./scheduling";
 import { toMinutes, type BookingRules, type BookingType } from "./bookingRules";
 
 export interface PlannerStop {
+  scheduledMinutes?: number;
   durationMinutes?: number;
   time: string; // HH:mm
   type: BookingType;

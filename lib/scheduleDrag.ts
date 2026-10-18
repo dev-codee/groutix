@@ -13,6 +13,7 @@ interface DropAppointment extends TechnicianAssignment {
   date: string;
   time: string;
   durationMinutes?: number;
+  scheduledMinutes?: number;
 }
 
 // Resolve drops without changing appointments. The UI must confirm the returned
@@ -31,5 +32,5 @@ export function suggestedPlanningTime(rules: BookingRules, type: BookingType, da
   const occupied = (time: string) => technicians ? !bookingAvailability(entries, { ...candidate, date, time, type, leadId: candidate?.leadId || "" }, rules, technicians).available : entries.some((entry) => entry.date === date && overlapsSlot(entry, time, rules[type].slotMinutes, rules));
   const slots = slotsForDate(rules, type, date);
   if (preferred && slots.includes(preferred) && !occupied(preferred)) return preferred;
-  return slots.find((time) => !occupied(time)) || preferred || "09:00";
+  return slots.find((time) => !occupied(time)) || "";
 }

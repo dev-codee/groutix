@@ -1,5 +1,6 @@
 "use client";
 
+import { leadBookings, isPrimaryBooking } from "@/lib/leadBookings";
 import { staffPlanningRules } from "@/lib/staffBookingRules";
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,9 +11,9 @@ import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 import { useTechnicians } from "@/lib/useTechnicians";
 import { bookingAvailability, type BookingTechnician } from "@/lib/bookingCapacity";
 import type { DayAppointment } from "@/lib/bookings";
-import { WEEKDAY_SHORT, formatHHmm, slotsForDate, type BookingType } from "@/lib/bookingRules";
+import { WEEKDAY_SHORT, dayHours, weekdayOf, formatHHmm, slotsForDate, type BookingType } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
-import { melbourneYmd, resolveArea, isZoneDate, zoneDayName, ZONE_COLOR, ZONE_SHORT } from "@/lib/scheduling";
+import { formatSlotRange, melbourneYmd, resolveArea, isZoneDate, zoneDayName, ZONE_COLOR, ZONE_SHORT } from "@/lib/scheduling";
 import { useZoneRules } from "@/lib/useZoneRules";
 import {
   distanceFromBase,
@@ -94,6 +95,8 @@ export function BookingPlanner({
   }, [today, rules.minDate, rules.minNoticeDays]);
   const lastDay = addDays(today, Math.min(rules.horizonDays, MAX_DAYS));
 
+  const editingBookingId = lead.activeBooking?.bookingId || leadBookings(lead as Lead).find(b => b.type === type && isPrimaryBooking(lead as Lead, b))?.bookingId;
+
   const target = useMemo(() => locate(lead.address) ?? locate(lead.city), [lead.address, lead.city]);
   const customerLabel = target?.label || lead.city || "Unknown suburb";
 
@@ -132,12 +135,12 @@ export function BookingPlanner({
       const grid = slotsForDate(rules, type, d);
       if (!grid.length) continue;
       // This lead's own appointment of the same type is being rescheduled → not an obstacle.
-      const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type));
+      const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type && (editingBookingId ? a.bookingId === editingBookingId : !a.bookingId && `${a.date}T${a.time}` === value?.slice(0, 16))));
       const duration = appointmentDurationMinutes({ type }, rules);
       const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername, inspectorId: lead.inspectorId, assigned: lead.assigned }, rules, technicians).available));
       const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
-      const stops: PlannerStop[] = dayAppts.filter((a) => a.time >= "09:00" && a.time < "17:00").map((a) => ({
-        time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb, durationMinutes: a.durationMinutes,
+      const stops: PlannerStop[] = dayAppts.map((a) => ({
+        time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb, scheduledMinutes: a.scheduledMinutes, durationMinutes: a.durationMinutes,
       }));
       let best: SlotFit | null = null;
       if (target) {
@@ -158,7 +161,7 @@ export function BookingPlanner({
       });
     }
     return out;
-  }, [appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, lead.inspectorId, lead.assigned, technicians, target, today, area.zone, zoneRules]);
+  }, [editingBookingId, value, appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, lead.inspectorId, lead.assigned, technicians, target, today, area.zone, zoneRules]);
 
   // Top 3 days by route fit (days with existing nearby stops beat empty days).
   const topDays = useMemo(() => {
@@ -211,6 +214,8 @@ export function BookingPlanner({
     }
     return items.sort((a, b) => a.time.localeCompare(b.time));
   }, [selectedDay, selectedTime, lead.id, lead.name, lead.address, lead.city, type]);
+
+  const selectedHours = selectedDay ? dayHours(rules, type, weekdayOf(selectedDay.date), selectedDay.date) : null;
 
   const typeLabel = type === "inspection" ? "Inspection" : "Job";
   const fromBase = target ? distanceFromBase(target) : null;
@@ -307,7 +312,7 @@ export function BookingPlanner({
                 })}
               </div>
               <p className="text-[10px] text-slate-400 pb-2 flex items-center gap-1">
-                <Star className="w-3 h-3 text-amber-500 fill-amber-400" /> Working hours: 9 AM–5 PM. Top picks: days where this customer adds the least extra driving to the route already booked.
+                <Star className="w-3 h-3 text-amber-500 fill-amber-400" /> Booking hours{selectedHours ? `: ${formatHHmm(selectedHours.start)}–${formatHHmm(selectedHours.end)}` : " follow booking settings"}. Top picks: days where this customer adds the least extra driving to the route already booked.
               </p>
             </div>
 
@@ -330,7 +335,7 @@ export function BookingPlanner({
                     const km = target && p ? nearestStop(target, [row.stop])?.km : null;
                     return (
                       <div key={`s-${row.stop.leadId}-${row.stop.type}-${row.stop.time}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                        <span className="font-bold text-slate-700 w-16 shrink-0">{formatHHmm(row.stop.time)}</span>
+                        <span className="font-bold text-slate-700 w-40 shrink-0">{formatSlotRange(row.stop.time, appointmentDurationMinutes(row.stop, rules))}</span>
                         <span className={`w-2 h-2 rounded-full shrink-0 ${row.stop.type === "inspection" ? "bg-red-500" : "bg-blue-500"}`} />
                         <div className="min-w-0 flex-1">
                           <div className="font-semibold text-slate-800 truncate">{row.stop.name} <span className="font-normal text-slate-400">({row.stop.type === "inspection" ? "Inspection" : "Job"})</span></div>
@@ -354,12 +359,12 @@ export function BookingPlanner({
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-emerald-800 w-16 shrink-0">{formatHHmm(row.time)}</span>
+                        <span className="font-bold text-emerald-800 w-40 shrink-0">{formatSlotRange(row.time, rules[type].slotMinutes)}</span>
                         <span className="text-emerald-700 font-semibold">Free</span>
                         {f && <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${FIT_STYLE[f.fit].chip}`}>{FIT_STYLE[f.fit].label}</span>}
                       </div>
                       {f && (
-                        <div className="mt-1 pl-[72px] text-[10px] text-slate-600 space-y-0.5">
+                        <div className="mt-1 pl-[168px] text-[10px] text-slate-600 space-y-0.5">
                           <div className="flex items-center gap-1">
                             {f.prev.label === "Base" ? <Home className="w-3 h-3" /> : <Navigation className="w-3 h-3" />}
                             {f.prev.minutes} min ({f.prev.km} km) from {f.prev.name ? `${f.prev.name}, ${f.prev.label}` : "base"}
@@ -378,7 +383,7 @@ export function BookingPlanner({
                           onClick={(e) => { e.stopPropagation(); onPick(`${selectedDay!.date}T${row.time}`); onClose(); }}
                           className="mt-2 w-full py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold cursor-pointer"
                         >
-                          Use {dayLabel(selectedDay!.date).wd} {dayLabel(selectedDay!.date).dm}, {formatHHmm(row.time)}
+                          Use {dayLabel(selectedDay!.date).wd} {dayLabel(selectedDay!.date).dm}, {formatSlotRange(row.time, rules[type].slotMinutes)}
                         </button>
                       )}
                     </div>

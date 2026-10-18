@@ -291,13 +291,14 @@ export function DispatchView({
 
   // ── Currently Selected Lead ────────────────────────────────────────────────
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const activeLead = useMemo(() => {
     if (!selectedLeadId) return null;
     const lead = scopedLeads.find((l) => l.id === selectedLeadId);
     if (!lead) return null;
-    const booking = leadBookings(lead).find(b => b.type === selectedBookingType && `${b.date}T${b.time}` === selectedStart);
+    const booking = leadBookings(lead).find(b => b.type === selectedBookingType && (selectedBookingId ? b.bookingId === selectedBookingId : `${b.date}T${b.time}` === selectedStart));
     return booking ? bookingLead(lead, booking) : lead;
-  }, [scopedLeads, selectedLeadId, selectedStart, selectedBookingType]);
+  }, [scopedLeads, selectedLeadId, selectedStart, selectedBookingType, selectedBookingId]);
 
   // Active lead suburb
   const activeLeadSuburb = useMemo(() => {
@@ -358,7 +359,7 @@ export function DispatchView({
       const date = addDaysYmd(selectedDate, offset);
       const time = slotsForDate(bookingRules, changeBookingType, date).filter(time => parseMinutes(time) >= TIMELINE_START_MINS && parseMinutes(time) + duration <= TIMELINE_END_MINS).find((time) => bookingAvailability(
         capacityAppointments.appointments,
-        { leadId: activeLead.id, type: changeBookingType, date, time, durationMinutes: duration,
+        { bookingId: activeLead.activeBooking?.bookingId, leadId: activeLead.id, type: changeBookingType, date, time, durationMinutes: duration,
           technicianId: changeBookingTech || activeLead.technicianId, technician: changeBookingTech ? undefined : activeLead.technician,
           technicianUsername: changeBookingTech ? undefined : activeLead.technicianUsername },
         bookingRules, assignableTechnicians,
@@ -398,7 +399,7 @@ export function DispatchView({
     try {
       const segments = proposal.endAt ? bookingSegments(proposal.type, `${proposal.newDate}T${proposal.newTime}`, proposal.endAt, bookingRules) : [{ date: proposal.newDate, time: proposal.newTime }];
       for (const segment of segments) {
-        const issue = dispatchBookingIssue({ leadId: proposal.lead.id, type: proposal.type, ...segment,
+        const issue = dispatchBookingIssue({ bookingId: proposal.lead.activeBooking?.bookingId, leadId: proposal.lead.id, type: proposal.type, ...segment,
           assigned: proposal.type === "inspection" ? proposal.technician || proposal.lead.assigned : undefined,
           inspectorId: proposal.type === "inspection" && !proposal.technician ? proposal.lead.inspectorId : undefined,
           technician: proposal.technician || proposal.lead.technician,
@@ -531,7 +532,7 @@ export function DispatchView({
 
       const saveResponse = await fetch(`/api/admin/submissions/${confirmRescheduleData.lead.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updates, bookingOriginalStart: confirmRescheduleData.oldDateTime?.slice(0, 16), bookingNotifications: true }),
+        body: JSON.stringify({ ...updates, bookingId: confirmRescheduleData.lead.activeBooking?.bookingId, bookingOriginalStart: confirmRescheduleData.oldDateTime?.slice(0, 16), bookingNotifications: true }),
       });
       const saved = await saveResponse.json();
       if (saveResponse.ok) {
@@ -856,6 +857,7 @@ export function DispatchView({
                                       onClick={() => {
                                         setSelectedLeadId(item.lead.id);
                                         setSelectedBookingType(item.type);
+                                        setSelectedBookingId(item.lead.activeBooking?.bookingId || null);
                                         setSelectedStart((item.type === "job" ? item.lead.jobAt : item.lead.inspectionAt)?.slice(0, 16) || null);
                                         setIsChangeBookingOpen(true);
                                       }}
@@ -999,7 +1001,7 @@ export function DispatchView({
         </div>
       </div>
 
-      {activeLead && isChangeBookingOpen && <EditBookingModal key={`${activeLead.id}:${selectedBookingType || changeBookingType}`}
+      {activeLead && isChangeBookingOpen && <EditBookingModal key={`${activeLead.id}:${activeLead.activeBooking?.bookingId || selectedBookingType || changeBookingType}`}
         lead={activeLead} type={selectedBookingType || changeBookingType} initialDate={selectedDate}
         onClose={() => { setIsChangeBookingOpen(false); setSelectedLeadId(null); }}
         onSaved={(date, message) => { setIsChangeBookingOpen(false); setSelectedLeadId(null); setSelectedDate(date); setBookingSuccess(message); }} />}

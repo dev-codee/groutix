@@ -1002,14 +1002,14 @@ export default function CrmDashboardPage() {
   async function updateJobBooking(lead: Lead, updates: Pick<Partial<Lead>, "status" | "jobTotalDays" | "jobDaysDone">) {
     const booking = selectedJobBooking(lead);
     if (!booking) return updateLeadField(lead.id, updates, message => alert(message));
-    const key = `${lead.id}:job:${booking.date}T${booking.time}`;
+    const key = `${lead.id}:job:${booking.bookingId || `${booking.date}T${booking.time}`}`;
     if (jobUpdatesInFlight.current.has(key)) return false;
     jobUpdatesInFlight.current.add(key);
     setJobBookingsSaving(current => ({ ...current, [key]: true }));
     try {
       const response = await fetch(`/api/admin/submissions/${lead.id}/bookings`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "job", syncWorkflow: true, start: `${booking.date}T${booking.time}`, ...updates, status: updates.status || booking.status }),
+        body: JSON.stringify({ bookingId: booking.bookingId, type: "job", syncWorkflow: true, start: `${booking.date}T${booking.time}`, ...updates, status: updates.status || booking.status }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not update this booking.");
@@ -1078,7 +1078,7 @@ export default function CrmDashboardPage() {
 
     // 2. Ask staff whether to notify the customer
     const booking = !isInspection ? selectedJobBooking(lead) : undefined;
-    setNotifyPrompt({ lead: booking ? { ...lead, activeBooking: { type: "job", start: `${booking.date}T${booking.time}` } } : lead, eventType });
+    setNotifyPrompt({ lead: booking ? { ...lead, activeBooking: { type: "job", start: `${booking.date}T${booking.time}`, bookingId: booking.bookingId } } : lead, eventType });
   }
 
   async function executeOnTheWayNotification(lead: Lead, eventType: "en_route" | "arrived") {
@@ -8534,7 +8534,7 @@ export default function CrmDashboardPage() {
                   <span className="text-2xl font-black text-blue-600 w-8 text-center">{startJobDays}</span>
                   <button
                     type="button"
-                    onClick={() => setStartJobDays((d) => Math.min(14, d + 1))}
+                    onClick={() => setStartJobDays((d) => Math.min(45, d + 1))}
                     className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-black text-lg hover:bg-slate-200 transition-colors cursor-pointer"
                   >+</button>
                   <span className="text-xs text-slate-400 font-semibold">{startJobDays === 1 ? "Single day" : `${startJobDays} days`}</span>

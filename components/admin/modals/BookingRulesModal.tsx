@@ -106,7 +106,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
   return (
     <Shell onClose={onClose}>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Controls customer self-booking through email links and website forms only. Staff can book any day or time from the dashboard, including closed days. Assigned-person conflicts are still checked. Existing appointments are not moved.
+        Controls booking hours and working days across the dashboard and customer booking links. Multi-day jobs skip nights and closed days. Staff can override notice periods and roster days; assigned-person conflicts are still checked. Existing appointments are not moved.
       </p>
 
       {/* Type tabs */}

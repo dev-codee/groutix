@@ -1,3 +1,4 @@
+import { isPrimaryBooking } from "@/lib/leadBookings";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { appointmentDurationMinutes, savedLeadBookingMinutes } from "@/lib/bookingDuration";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
@@ -133,7 +134,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const durationMinutes = (type === "inspection" ? lead.inspectionAt : lead.jobAt) ? savedLeadBookingMinutes(lead, type) : appointmentDurationMinutes({ type }, rules);
   const days = shortlistDays(applyBookingCapacity(
     computeAvailability(area, new Map(), sameZoneDates, type, rules, zoneRules), appointments,
-    { leadId: id, type, scheduledMinutes: durationMinutes, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername },
+    { bookingId: lead.bookings?.find(b => b.type === type && isPrimaryBooking(lead, b))?.bookingId, leadId: id, type, scheduledMinutes: durationMinutes, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername },
     rules, technicians,
   ), { maxOptions: 14, maxDaysAhead: 35 });
   const already = type === "inspection" ? lead.inspectionAt : lead.jobAt;
@@ -239,7 +240,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     zone: area.zone,
     suburb: area.suburb || undefined,
     reference,
-  });
+  }, { bookingId: lead.bookings?.find(b => b.type === type && isPrimaryBooking(lead, b))?.bookingId });
   if (!lock.ok) {
     return NextResponse.json(
       { error: lock.error },

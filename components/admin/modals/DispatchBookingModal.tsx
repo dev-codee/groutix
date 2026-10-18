@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingTimingEditor, BookingTimingSummary } from "@/components/admin/BookingTimingEditor";
 import { staffBookingRules } from "@/lib/staffBookingRules";
 
 import { useEffect, useRef, useState } from "react";
@@ -11,7 +12,8 @@ import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import { bookingEndForDuration, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
 import { todayAU } from "@/lib/scheduling";
 
-export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialType = "inspection", onClose, onBooked }: {
+export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialType = "inspection", initialLeadId, onBeforeSave, onClose, onBooked }: {
+  initialLeadId?: string; onBeforeSave?: () => boolean;
   date: string; time: string; staffName?: string; initialType?: "inspection" | "job"; onClose: () => void; onBooked: (date: string, message: string) => void;
 }) {
   const { scopedLeads, assignableTechnicians, inspectionStaff, upsertLead } = useAdminPageCtx();
@@ -19,21 +21,19 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
   const [type, setType] = useState<"inspection" | "job">(initialType);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
-  const [timingMode, setTimingMode] = useState<"duration" | "end">("duration");
-  const [hours, setHours] = useState("1");
-  const [endDate, setEndDate] = useState(initialDate);
-  const [endTime, setEndTime] = useState("");
+  const [finish, setFinish] = useState("");
   let endAt = "", timingError = "";
   let segments: BookingSegment[] = [];
   try {
-    endAt = timingMode === "duration" ? bookingEndForDuration(type, `${date}T${time}`, Math.round(Number(hours) * 60), rules) : `${endDate}T${endTime}`;
+    endAt = finish || bookingEndForDuration(type, `${date}T${time}`, rules[type].slotMinutes, rules);
     segments = bookingSegments(type, `${date}T${time}`, endAt, rules);
   } catch (error) { timingError = error instanceof Error ? error.message : "Choose valid start and end times."; }
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [search, setSearch] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", address: "" });
-  const [service, setService] = useState("");
+  const [customerId, setCustomerId] = useState(initialLeadId || "");
+  const initialLead = scopedLeads.find(lead => lead.id === initialLeadId);
+  const [customer, setCustomer] = useState({ name: initialLead?.name || "", email: initialLead?.email || "", phone: initialLead?.phone || "", address: initialLead?.address || "" });
+  const [service, setService] = useState(initialLead?.service || "");
   const [assignee, setAssignee] = useState((initialType === "job" ? assignableTechnicians : inspectionStaff).find(person => person.active && person.name === staffName)?.id || "");
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -87,6 +87,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         savedLead.current = data.item;
         upsertLead(data.item);
       }
+      if (onBeforeSave && !onBeforeSave()) return;
       const leadId = mode === "existing" ? customerId : savedLead.current!.id;
       const specialist = choices.find(c => c.key === assignee)!;
       const updates: Partial<Lead> = {
@@ -125,21 +126,15 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
         <fieldset disabled={busy} className="p-5 space-y-4">
           {review ? <div className="space-y-3 text-sm">
             <div className="rounded-xl bg-blue-50 p-4"><p className="font-bold capitalize">{type} · {date} at {time}</p><p>Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} hours · Melbourne time</p></div>
-            <ul className="max-h-36 overflow-y-auto text-xs text-slate-600">{segments.map(segment => <li key={segment.date}>{segment.date}: {segment.time} · {segment.scheduledMinutes / 60} hours</li>)}</ul>
+            <BookingTimingSummary type={type} start={`${date}T${time}`} end={endAt} rules={rules} />
             <p><strong>{customer.name}</strong><br />{customer.address}</p>
             <p>{service}<br />Assigned to <strong>{choices.find(c => c.key === assignee)?.name}</strong></p>
             <div className="rounded-xl border p-3 space-y-1"><p className="font-semibold">Customer confirmations</p><p>Email: {customer.email || "Not available — email will not be sent"}</p><p>SMS: {customer.phone || "Not available — SMS will not be sent"}</p></div>
             <p className="text-xs text-slate-500">Confirming creates a new booking record, reserves this time and sends confirmations through the configured email and SMS services. Existing bookings remain unchanged.</p>
           </div> : <>
-            <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
-            <div className="grid grid-cols-2 gap-3"><label className="text-sm">Date<input required type="date" min={todayAU()} value={date} onChange={e => setDate(e.target.value)} className={input} /></label><label className="text-sm">Start time<input required type="time" value={time} onChange={e => setTime(e.target.value)} className={input} /></label></div>
-            <div className="rounded-xl border border-slate-200 p-3 space-y-3">
-              <label className="block text-sm">Set the finish by<select className={input} value={timingMode} onChange={e => setTimingMode(e.target.value as "duration" | "end")}><option value="duration">Duration (continuous hours)</option><option value="end">End date and time</option></select></label>
-              {timingMode === "duration" ? <label className="block text-sm">Duration (hours)<input required type="number" min="0.25" step="0.25" value={hours} onChange={e => setHours(e.target.value)} className={input} /></label> : <div className="grid grid-cols-2 gap-3"><label className="text-sm">End date<input required type="date" min={date} value={endDate} onChange={e => setEndDate(e.target.value)} className={input} /></label><label className="text-sm">End time<input required type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className={input} /></label></div>}
-              <p className="text-xs text-slate-500">Staff can book any day or time, even when customer booking is closed. Duration runs continuously; multi-day bookings reserve the full period, including overnight (up to 45 calendar days).</p>
-              {!timingError && <p className="text-sm font-semibold text-blue-700">Ends {endAt.replace("T", " at ")} · {segments.reduce((total, segment) => total + segment.scheduledMinutes, 0) / 60} hours</p>}
-              {timingError && <p className="text-xs text-amber-700">{timingError}</p>}
-            </div>
+            <div className="grid grid-cols-2 gap-3">{(["inspection", "job"] as const).map(value => <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setAssignee(""); setFinish(""); }} className={`rounded-xl border p-3 font-semibold capitalize ${type === value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}>{value}</button>)}</div>
+            <BookingTimingEditor type={type} start={`${date}T${time}`} end={finish} rules={rules} minDate={todayAU()} disabled={busy}
+              onChange={(start, end) => { setDate(start.slice(0, 10)); setTime(start.slice(11, 16)); setFinish(end); }} />
             <div className="flex gap-3">{(["existing", "new"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => { setMode(value); savedLead.current = null; setCustomerId(""); setCustomer({ name: "", email: "", phone: "", address: "" }); setService(""); }} className={`text-sm rounded-lg px-3 py-2 ${mode === value ? "bg-slate-900 text-white" : "bg-slate-100"}`}>{value === "existing" ? "Existing customer" : "New customer"}</button>)}</div>
             {mode === "existing" && <div><label className="text-sm">Find customer<input className={input} placeholder="Search name, phone, email or address" value={search} onChange={e => setSearch(e.target.value)} /></label><label className="text-sm">Customer<select required className={input} value={customerId} onChange={e => { const lead = scopedLeads.find(l => l.id === e.target.value); setCustomerId(e.target.value); if (lead) { setCustomer({ name: lead.name || "", email: lead.email || "", phone: lead.phone || "", address: lead.address || "" }); setService(lead.service || ""); } }}><option value="">Select a customer ({matches.length} matches)</option>{matches.map(l => <option key={l.id} value={l.id}>{l.name} · {l.address || l.phone} · {l.jobNo}</option>)}</select></label></div>}
             <div className="grid grid-cols-2 gap-3">{(["name", "email", "phone", "address"] as const).map(field => <label key={field} className={`text-sm capitalize ${field === "address" ? "col-span-2" : ""}`}>{field === "address" ? "Property address" : field}<input readOnly={mode === "existing"} required={field === "name" || field === "address"} type={field === "email" ? "email" : field === "phone" ? "tel" : "text"} className={input} value={customer[field]} onChange={e => setCustomer({ ...customer, [field]: e.target.value })} /></label>)}</div>

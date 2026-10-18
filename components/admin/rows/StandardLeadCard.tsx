@@ -1,7 +1,7 @@
 "use client";
 
 import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
-import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
 import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
@@ -21,7 +21,7 @@ import {
   JOB_STEPS, STATUS_LIST, MANAGER_STATUS_FILTER_LIST, fmtDate, getStepActive,
   INSPECTION_PHASE, isTerminalStatus, getEffectiveWorkflowStatus,
 } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
 
@@ -56,7 +56,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const jobStatus = jobBooking?.status || l.status;
   const jobTotalDays = jobBooking?.jobTotalDays ?? l.jobTotalDays;
   const jobDaysDone = jobBooking?.jobDaysDone ?? l.jobDaysDone;
-  const jobKey = `${l.id}:job:${l.jobAt?.slice(0, 16)}`;
+  const jobKey = `${l.id}:job:${jobBooking?.bookingId || l.jobAt?.slice(0, 16)}`;
   const jobSaving = Boolean(jobBookingsSaving[jobKey]);
   const workflowStatus = getEffectiveWorkflowStatus(l);
   const isFinanceStage = [
@@ -387,7 +387,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               })()}
               {l.inspectionAt && (
                 <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
-                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.inspectionAt, savedLeadBookingMinutes(l, "inspection") / 60)}
+                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatLeadBookingTime(l, "inspection")}
                 </div>
               )}
             </div>
@@ -599,7 +599,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
           {/* Job booked time range */}
           {l.jobAt && (
             <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
-              📅 {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
+              📅 {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatLeadBookingTime(l, "job")}
             </div>
           )}
 

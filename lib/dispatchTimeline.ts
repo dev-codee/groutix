@@ -20,7 +20,7 @@ export function dispatchResizeEndMinutes(deltaRatio: number, originalEnd: number
 }
 
 export function dispatchBookingIssue(candidate: CapacityAppointment, appointments: CapacityAppointment[], rules: BookingRules, technicians: BookingTechnician[]): string | null {
-  const outside = candidate.scheduledMinutes ? null : explainOutsideRules(rules, candidate.type, `${candidate.date}T${candidate.time}`);
+  const outside = explainOutsideRules(rules, candidate.type, `${candidate.date}T${candidate.time}`);
   if (outside) return outside;
   const hours = dayHours(rules, candidate.type, weekdayOf(candidate.date), candidate.date);
   if (toMinutes(candidate.time) + appointmentDurationMinutes(candidate, rules) > toMinutes(hours.end)) {

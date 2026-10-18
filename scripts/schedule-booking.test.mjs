@@ -126,7 +126,7 @@ test("booking store retains the prior reservation until the lead write commits",
 
 
 test("reassignment checks its booking without passing work estimates as duration", async () => {
-  const { patch, calls } = patchApi({ before: { jobAt: "2026-10-09T09:00", technicianId: "old", inspectionReport: { estimatedTime: "4–6 hrs" } } });
+  const { patch, calls } = patchApi({ before: { jobAt: "2026-10-09T10:00", technicianId: "old", inspectionReport: { estimatedTime: "4–6 hrs" } } });
   assert.equal((await patch({ technicianId: "new" })).status, 200);
   const reservation = calls.find(([action]) => action === "reserve")[1];
   assert.equal(reservation.durationMinutes, undefined);
@@ -230,4 +230,23 @@ test("appended bookings keep the original job reference and do not inherit anoth
   const reservation = calls.find(c => c[0] === "reserve")[1];
   assert.equal(reservation.reference, "JOBNO-1201");
   assert.equal(reservation.technicianUsername, "");
+});
+
+test("editing one of two same-start visits targets its ID and preserves the primary summary", async () => {
+  const before = { jobAt: "2026-10-20T09:00", technician: "Alex", technicianId: "alex", bookings: [
+    { bookingId: "visit-a", type: "job", date: "2026-10-20", time: "09:00", technicianId: "alex", technician: "Alex" },
+    { bookingId: "visit-b", type: "job", date: "2026-10-20", time: "09:00", technicianId: "sam", technician: "Sam" },
+  ] };
+  const { patch, calls } = patchApi({ before });
+  const response = await patch({ bookingId: "visit-b", bookingOriginalStart: before.jobAt, jobAt: "2026-10-20T11:00", technician: "Sam", technicianId: "sam" });
+  assert.equal(response.status, 200);
+  const reserve = calls.find(c => c[0] === "reserve");
+  assert.equal(reserve[2].bookingId, "visit-b");
+  const saved = calls.find(c => c[0] === "update")[2];
+  assert.equal(saved.jobAt, undefined);
+  assert.equal(saved.technicianId, undefined);
+  assert.equal(calls.find(c => c[0] === "release")[5].bookingId, "visit-b");
+  const ambiguous = patchApi({ before });
+  assert.equal((await ambiguous.patch({ bookingOriginalStart: before.jobAt, jobAt: "2026-10-20T11:00" })).status, 409);
+  assert.equal(ambiguous.calls.length, 0);
 });

@@ -21,7 +21,7 @@ function harness(type = "job", conflict = false) {
   } });
   const render = () => {
     cursor = 0; const nodes = [];
-    const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; nodes.push(node); visit(node.props?.children); };
+    const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; nodes.push(node); if (["BookingTimingEditor", "BookingTimingSummary"].includes(node.type?.name)) visit(node.type(node.props)); visit(node.props?.children); };
     visit(EditBookingModal({ lead, type, onClose: () => completed.push("closed"), onSaved: (...args) => completed.push(args) }));
     return nodes;
   };

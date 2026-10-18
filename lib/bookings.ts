@@ -1,6 +1,6 @@
 import { explainOutsideRules } from "./bookingRules";
 import { staffBookingRules } from "./staffBookingRules";
-import { bookingSegments, type BookingSegment } from "./bookingSpan";
+import { bookingEndForDuration, bookingSegments, savedWorkSegments, type BookingSegment } from "./bookingSpan";
 import { appointmentDurationMinutes, savedBookingMinutes } from "./bookingDuration";
 // Assigned staff cannot overlap across inspections and jobs.
 
@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 import { resolveBookingStatus, type BookingStatus } from "./bookingStatus";
 
 export interface BookingDoc extends TechnicianAssignment {
+  bookingId?: string;
   status?: BookingStatus;
   jobTotalDays?: number;
   jobDaysDone?: number;
@@ -44,12 +45,12 @@ async function collection(): Promise<Collection<BookingDoc>> {
   const col = db.collection<BookingDoc>("bookings");
   if (!indexPromise) {
     indexPromise = (async () => {
-      await col.createIndex({ date: 1, type: 1, time: 1, leadId: 1 }, { unique: true, name: "booking_identity" });
+      await col.createIndex({ date: 1, type: 1, time: 1, leadId: 1 }, { name: "booking_lookup" });
       await col.createIndex({ leadId: 1, type: 1 });
       // Upgrade the former single-crew lock. Keep all booking documents.
       const indexes = await col.listIndexes().toArray();
       for (const index of indexes) {
-        if (index.unique && Object.keys(index.key).length === 2 && index.key.date === 1 && index.key.time === 1 && index.name) {
+        if (index.unique && index.name && (index.name === "booking_identity" || Object.keys(index.key).length === 2 && index.key.date === 1 && index.key.time === 1)) {
           try { await col.dropIndex(index.name); }
           catch (err) { if (!err || typeof err !== "object" || !("code" in err) || err.code !== 27) throw err; }
         }
@@ -70,7 +71,7 @@ export async function listUpcomingBookings(options: { strict?: boolean } = {}): 
   // This also excludes cancelled/lost leads consistently and resolves legacy locks.
   const appointments = await listAppointmentsBetween(todayAU(), "9999-12-31", options);
   return appointments.map((appointment) => ({
-    leadId: appointment.leadId, type: appointment.type, date: appointment.date, time: appointment.time,
+    bookingId: appointment.bookingId, leadId: appointment.leadId, type: appointment.type, date: appointment.date, time: appointment.time,
     durationMinutes: appointment.durationMinutes, scheduledMinutes: appointment.scheduledMinutes, technicianId: appointment.technicianId,
     technician: appointment.technician, technicianUsername: appointment.technicianUsername,
     inspectorId: appointment.inspectorId, assigned: appointment.assigned, inspectorUsername: appointment.inspectorUsername,
@@ -94,7 +95,7 @@ export type CreateBookingResult =
 type BookingInput = Omit<BookingDoc, "_id" | "createdAt" | "reservationId">;
 
 /** Capacity is checked and reserved under a shared per-day/pool database lock. */
-export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean; staffOverride?: boolean; append?: boolean; replaceStart?: string; statusOnly?: boolean } = {}): Promise<CreateBookingResult> {
+export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean; staffOverride?: boolean; append?: boolean; replaceStart?: string; bookingId?: string; statusOnly?: boolean } = {}): Promise<CreateBookingResult> {
   if (!isMongoConfigured()) return { ok: false, error: "Database not configured." };
   const date = input.date.trim();
   const time = input.time.slice(0, 5);
@@ -107,7 +108,8 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
       if (outside) return { ok: false, conflict: true, error: outside };
     }
     const spanRules = options.staffOverride ? staffBookingRules(settings) : settings;
-    const segments = input.endAt ? bookingSegments(input.type, `${date}T${time}`, input.endAt, spanRules) : [{ date, time, scheduledMinutes: appointmentDurationMinutes(input, spanRules) }];
+    const finish = input.endAt || bookingEndForDuration(input.type, `${date}T${time}`, appointmentDurationMinutes(input, spanRules), spanRules);
+    const segments = options.statusOnly && input.workSegments?.length ? input.workSegments : bookingSegments(input.type, `${date}T${time}`, finish, spanRules);
     // Acquire every occupied date in chronological order before checking or writing.
     const locked = async <T,>(index: number, action: () => Promise<T>): Promise<T> => index === segments.length ? action() : withBookingCalendarLock(segments[index].date, input.type, () => locked(index + 1, action));
     return await locked(0, async () => {
@@ -115,8 +117,13 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         listAppointmentsBetween(date, segments[segments.length - 1].date, { strict: true }), listTechnicians({ strict: true }), getBookingRules(),
       ]);
       const rules = options.staffOverride ? staffBookingRules(customerRules) : customerRules;
-      const existing = await col.findOne({ leadId: input.leadId, type: input.type, date, time });
-      if (options.append && existing) return { ok: false as const, conflict: true, error: "This lead already has a booking at this start time. Edit that visit or choose another start time." };
+      const identity = options.bookingId || input.bookingId;
+      const visits = await col.find({ leadId: input.leadId, type: input.type }).toArray();
+      const siblings = visits.filter(b => b.leadId === input.leadId && b.type === input.type);
+      const bookingIdOf = (b: BookingDoc) => b.bookingId || b._id?.toString();
+      const atStart = siblings.filter(b => b.date === date && b.time.slice(0, 5) === time);
+      let existing = options.append ? null : identity ? atStart.find(b => bookingIdOf(b) === identity) || null : atStart.length === 1 ? atStart[0] : null;
+      if (!options.append && !identity && atStart.length > 1) return { ok: false as const, conflict: true, error: "Select the specific booking to edit; multiple visits start at this time." };
       const db = await getDb();
       const lead = ObjectId.isValid(input.leadId) ? await db.collection("submissions").findOne({ _id: new ObjectId(input.leadId) }) : null;
       if (options.statusOnly) {
@@ -124,7 +131,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
           return { ok: false as const, conflict: true, error: "This booking has changed. Refresh before editing." };
         }
         const fields = ["endAt", "scheduledMinutes", "technicianId", "technician", "technicianUsername", "inspectorId", "assigned", "inspectorUsername"] as const;
-        if (existing && fields.some(key => (existing[key] || "") !== (input[key] || ""))) {
+        if (existing && fields.some(key => (existing?.[key] || "") !== (input[key] || ""))) {
           return { ok: false as const, conflict: true, error: "This booking has changed. Refresh before editing." };
         }
       }
@@ -136,16 +143,20 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
       const durationMinutes = appointmentDurationMinutes(input, rules);
       // Exclude only the visit being edited. Sibling visits still reserve staff.
       const replacedStart = options.append ? undefined : options.replaceStart ?? (input.type === "job" ? lead?.jobAt : lead?.inspectionAt)?.slice(0, 16);
-      if (existing && replacedStart && replacedStart !== `${date}T${time}`) {
-        return { ok: false as const, conflict: true, error: "Another visit for this lead already starts at that time. Choose another start time." };
-      }
-      const replaced = replacedStart ? await col.findOne({ leadId: input.leadId, type: input.type, date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16) }) : null;
+      const originals = replacedStart ? siblings.filter(b => `${b.date}T${b.time.slice(0, 5)}` === replacedStart && (!identity || bookingIdOf(b) === identity)) : [];
+      if (!options.append && (identity && !originals.length && !existing || !identity && originals.length > 1)) return { ok: false as const, conflict: true, error: "This booking has changed. Select the specific visit before editing." };
+      const replaced = originals[0] || null;
+      if (replaced && existing && bookingIdOf(existing) !== bookingIdOf(replaced)) existing = null;
       const status = resolveBookingStatus(input.type, input.status ?? replaced?.status ?? existing?.status,
         lead?.status, !options.append && replacedStart === (input.type === "job" ? lead?.jobAt : lead?.inspectionAt)?.slice(0, 16));
       const previousSegments = replaced?.workSegments || (replacedStart ? [{ date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16) }] : []);
-      const competing = appointments.filter(a => !(a.leadId === input.leadId && a.type === input.type &&
-        ((!options.append && previousSegments.some(segment => segment.date === a.date && segment.time === a.time)) ||
-          (existing && a.date === date && a.time === time))));
+      const editedId = replaced ? bookingIdOf(replaced) : existing ? bookingIdOf(existing) : undefined;
+      const competing = appointments.filter(a => !(a.leadId === input.leadId && a.type === input.type && !options.append &&
+        (editedId ? a.bookingId === editedId : previousSegments.some(segment => segment.date === a.date && segment.time === a.time))));
+      if (options.append && atStart.some(b => !b.technicianId && !b.technician && !b.inspectorId && !b.assigned) &&
+          !(assignment.technicianId || assignment.technician || assignment.inspectorId || assignment.assigned)) {
+        return { ok: false as const, conflict: true, error: "Select a different available person for an additional booking at this time." };
+      }
       for (const segment of segments) {
         // Status changes retain the reserved window. Reopening a cancelled
         // visit must acquire capacity again before it becomes active.
@@ -158,12 +169,13 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         return { ok: true as const, reference: existing.reference };
       }
       const reservationId = randomUUID();
-      const document: BookingDoc = { jobTotalDays: replaced?.jobTotalDays ?? existing?.jobTotalDays, jobDaysDone: replaced?.jobDaysDone ?? existing?.jobDaysDone, ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
-        date, time, reservationId, createdAt: existing?.createdAt || new Date() };
+      const document: BookingDoc = { jobDaysDone: replaced?.jobDaysDone ?? existing?.jobDaysDone, ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+        date, time, endAt: finish, jobTotalDays: input.type === "job" ? input.jobTotalDays ?? replaced?.jobTotalDays ?? existing?.jobTotalDays ?? segments.length : undefined, bookingId: editedId || randomUUID(), reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);
       if (!options.retainPrevious && replacedStart && replacedStart !== `${date}T${time}`) await col.deleteOne({
         leadId: input.leadId, type: input.type, date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16),
+        ...(replaced?._id ? { _id: replaced._id } : {}),
       });
       return { ok: true as const, reference: existing?.reference || input.reference, acquired: !existing, reservationId, previousBooking: existing || undefined };
     });
@@ -174,9 +186,15 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
 }
 
 /** Release one attempted reservation without touching the lead's prior slots. */
-export async function releaseBookingSlot(leadId: string, type: "inspection" | "job", date: string, time: string, reservation?: { reservationId?: string; previousBooking?: BookingDoc }): Promise<void> {
+export async function releaseBookingSlot(leadId: string, type: "inspection" | "job", date: string, time: string, reservation?: { reservationId?: string; previousBooking?: BookingDoc; bookingId?: string }): Promise<void> {
   const col = await collection();
   const filter: Filter<BookingDoc> = { leadId, type, date, time };
+  if (reservation?.bookingId) {
+    const rows = await col.find({ leadId, type, date, time }).toArray();
+    const row = rows.find(b => b.leadId === leadId && b.type === type && b.date === date && b.time === time && (b.bookingId || b._id?.toString()) === reservation.bookingId);
+    if (!row) return;
+    filter._id = row._id;
+  }
   if (reservation?.reservationId) filter.reservationId = reservation.reservationId;
   if (reservation?.previousBooking) await col.replaceOne(filter, reservation.previousBooking);
   else await col.deleteOne(filter);
@@ -196,6 +214,8 @@ export async function deleteBooking(leadId: string, type?: "inspection" | "job")
 }
 
 export interface DayAppointment extends TechnicianAssignment {
+  bookingStart?: string;
+  bookingId?: string;
   date: string; // YYYY-MM-DD
   durationMinutes?: number;
   scheduledMinutes?: number;
@@ -247,7 +267,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
     ]);
 
     const out: DayAppointment[] = [];
-    const seen = new Set<string>(); // leadId|type|date|time
+    const seen = new Set<string>(); // Individual booking IDs; legacy start fallback.
     const info = new Map<string, { name: string; jobNo?: string; address?: string; suburb?: string; status?: string; technicianId?: string; technician?: string; technicianUsername?: string; durationMinutes?: number; inspectorId?: string; assigned?: string; inspectorUsername?: string }>();
     const describe = (s: Record<string, unknown>) => ({
       inspectorId: typeof s.inspectorId === "string" ? s.inspectorId : undefined,
@@ -272,23 +292,26 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         const [date, tRaw] = when.split("T");
 
         const time = tRaw.slice(0, 5).padStart(5, "0");
-        seen.add(`${id}|${type}|${date}|${time}`);
-        const lock = locks.find((booking) => booking.leadId === id && booking.type === type && booking.date === date && booking.time.slice(0, 5) === time);
+        const atStart = locks.filter(booking => booking.leadId === id && booking.type === type && booking.date === date && booking.time.slice(0, 5) === time);
+        const lock = atStart.find(booking => type === "job"
+          ? s.technicianId && booking.technicianId ? s.technicianId === booking.technicianId : s.technician && booking.technician ? s.technician.toLowerCase() === booking.technician.toLowerCase() : atStart.length === 1
+          : s.inspectorId && booking.inspectorId ? s.inspectorId === booking.inspectorId : s.assigned && booking.assigned ? s.assigned.toLowerCase() === booking.assigned.toLowerCase() : atStart.length === 1);
+        seen.add(lock ? (lock.bookingId || lock._id?.toString() || `${id}|${type}|${date}|${time}`) : `${id}|${type}|${date}|${time}`);
         if (lock?.status === "Cancelled") continue;
         const savedEnd = type === "job" ? s.jobEndAt : s.inspectionEndAt;
         const endAt = lock?.endAt && (!savedEnd || lock.endAt > savedEnd) ? lock.endAt : savedEnd;
         const storedSegments = endAt === lock?.endAt && lock?.workSegments?.length ? lock.workSegments : type === "job" ? s.jobWorkSegments : s.inspectionWorkSegments;
-        const segments = storedSegments?.length ? storedSegments : endAt ? bookingSegments(type, `${date}T${time}`, endAt, rules) : [{ date, time, scheduledMinutes: savedBookingMinutes(lock || {}) }];
+        const segments = savedWorkSegments(type, `${date}T${time}`, endAt, storedSegments, rules) || [{ date, time, scheduledMinutes: savedBookingMinutes(lock || {}) }];
         for (const segment of segments) {
           if (segment.date < from || segment.date > to) continue;
-          out.push({ ...segment, endAt, type, leadId: id, ...info.get(id)!, status: resolveBookingStatus(type, lock?.status, s.status, true), durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { inspectorId: lock.inspectorId ?? s.inspectorId, assigned: lock.assigned ?? s.assigned, inspectorUsername: lock.inspectorUsername ?? s.inspectorUsername, technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
+          out.push({ bookingStart: `${date}T${time}`, bookingId: lock?.bookingId || lock?._id?.toString(), workSegments: segments, ...segment, endAt, type, leadId: id, ...info.get(id)!, status: resolveBookingStatus(type, lock?.status, s.status, true), durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { inspectorId: lock.inspectorId ?? s.inspectorId, assigned: lock.assigned ?? s.assigned, inspectorUsername: lock.inspectorUsername ?? s.inspectorUsername, technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
         }
       }
     }
 
     // Slot locks whose lead doesn't record that time (e.g. online bookings not
     // yet reflected on the lead) — fetch their details.
-    const extra = locks.filter((b) => !seen.has(`${b.leadId}|${b.type}|${b.date}|${b.time.slice(0, 5).padStart(5, "0")}`));
+    const extra = locks.filter((b) => !seen.has(b.bookingId || b._id?.toString() || `${b.leadId}|${b.type}|${b.date}|${b.time.slice(0, 5).padStart(5, "0")}`));
     const missingIds = [...new Set(extra.map((b) => b.leadId))].filter((id) => !info.has(id) && ObjectId.isValid(id));
     if (missingIds.length) {
       const docs = await subCol
@@ -302,10 +325,11 @@ export async function listAppointmentsBetween(from: string, to: string, options:
       const i = info.get(b.leadId);
       // Lock held by a lead that's since been lost/cancelled → no longer a real appointment.
       if (i?.status === "Lost" || i?.status === "Cancelled") continue;
-      const segments = b.workSegments?.length ? b.workSegments : b.endAt ? bookingSegments(b.type, `${b.date}T${b.time.slice(0, 5)}`, b.endAt, rules) : [{ date: b.date, time: b.time.slice(0, 5), scheduledMinutes: savedBookingMinutes(b) }];
+      const segments = savedWorkSegments(b.type, `${b.date}T${b.time.slice(0, 5)}`, b.endAt, b.workSegments, rules) || [{ date: b.date, time: b.time.slice(0, 5), scheduledMinutes: savedBookingMinutes(b) }];
       for (const segment of segments) {
         if (segment.date < from || segment.date > to) continue;
       out.push({
+        bookingStart: `${b.date}T${b.time.slice(0, 5)}`, bookingId: b.bookingId || b._id?.toString(),
         type: b.type,
         leadId: b.leadId,
         name: i?.name || "Customer",
@@ -317,7 +341,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         technicianId: b.technicianId || i?.technicianId,
         technician: b.technician || i?.technician,
         technicianUsername: b.technicianUsername || i?.technicianUsername,
-        ...segment, endAt: b.endAt,
+        workSegments: segments, ...segment, endAt: b.endAt,
         durationMinutes: appointmentDurationMinutes({ ...b, ...segment }, rules),
         zone: b.zone,
         source: "online",

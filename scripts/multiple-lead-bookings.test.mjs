@@ -53,28 +53,29 @@ test("adding and rescheduling visits retains siblings and their assignments", as
   assert.equal(rows[1].time, "13:00");
 });
 
-test("same-customer bookings still prevent staff overlaps and duplicate starts cannot overwrite a visit", async () => {
+test("same-customer bookings allow different technicians at one start but prevent staff overlaps", async () => {
   const { api, rows, input } = store();
   await api.createBooking(input, { append: true, retainPrevious: true, staffOverride: true });
   const overlap = await api.createBooking({ ...input, time: "09:30" }, { append: true, retainPrevious: true, staffOverride: true });
   assert.equal(overlap.ok, false);
   assert.match(overlap.error, /overlapping/);
   const duplicate = await api.createBooking({ ...input, technician: "Sam", technicianId: "sam" }, { append: true, staffOverride: true });
-  assert.equal(duplicate.ok, false);
-  assert.equal(rows.length, 1);
+  assert.equal(duplicate.ok, true);
+  assert.equal(rows.length, 2);
   assert.equal(rows[0].technician, "Alex");
   assert.equal((await api.createBooking({ ...input, time: "11:00" }, { append: true, retainPrevious: true, staffOverride: true })).ok, true);
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 3);
 });
 
-test("moving one visit onto a sibling start cannot overwrite the sibling", async () => {
+test("moving one visit onto a different technician’s start retains both bookings", async () => {
   const { api, rows, input } = store();
   await api.createBooking(input, { append: true, retainPrevious: true, staffOverride: true });
   await api.createBooking({ ...input, time: "11:00", technicianId: "sam", technician: "Sam" }, { append: true, retainPrevious: true, staffOverride: true });
   const result = await api.createBooking({ ...input, time: "11:00" }, { replaceStart: "2026-10-20T09:00", staffOverride: true });
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
   assert.equal(rows.length, 2);
-  assert.equal(rows[1].technician, "Sam");
+  assert.equal(rows.find(b => b.technician === "Sam").time, "11:00");
+  assert.equal(rows.find(b => b.technician === "Alex").time, "11:00");
 });
 
 test("each visit owns its status and rescheduling preserves it", async () => {
@@ -147,4 +148,45 @@ test("multi-day progress persists through booking saves and rescheduling without
   assert.equal(rows.find(row => row.time === "13:00").jobDaysDone, 2);
   assert.equal(rows.find(row => row.time === "13:00").jobTotalDays, 3);
   assert.equal(JSON.stringify(rows.find(row => row.time === "11:00")), sibling);
+});
+
+test("simultaneous visits keep separate identities, capacity, status and cancellation", async () => {
+  const { api, rows, input } = store();
+  const options = { append: true, staffOverride: true };
+  assert.equal((await api.createBooking({ ...input, endAt: "2026-10-21T17:00" }, options)).ok, true);
+  assert.equal((await api.createBooking({ ...input, technicianId: "sam", technician: "Sam", endAt: "2026-10-21T17:00" }, options)).ok, true);
+  const first = { ...rows[0] }, second = { ...rows[1] };
+  assert.notEqual(first.bookingId, second.bookingId);
+  let appointments = await api.listAppointmentsBetween(input.date, "2026-10-21");
+  assert.equal(appointments.length, 4, "both multi-day visits appear on both days");
+  const { appointmentKey } = loadTs("lib/scheduleRoutes.ts");
+  assert.equal(new Set(appointments.map(appointmentKey)).size, 4);
+  const conflict = await api.createBooking({ ...input, leadId: "other", date: "2026-10-21", time: "10:00" }, options);
+  assert.equal(conflict.ok, false, "same person remains occupied on continuation days");
+  const cancel = await api.createBooking({ ...first, status: "Cancelled" }, { statusOnly: true, bookingId: first.bookingId, replaceStart: `${input.date}T${input.time}`, staffOverride: true });
+  assert.equal(cancel.ok, true);
+  assert.equal(rows[1].status, "Job Booked");
+  appointments = await api.listAppointmentsBetween(input.date, "2026-10-21");
+  assert.equal(appointments.length, 2);
+  assert.ok(appointments.every(a => a.bookingId === second.bookingId));
+  const reopen = await api.createBooking({ ...rows[0], status: "Job Booked" }, { statusOnly: true, bookingId: first.bookingId, replaceStart: `${input.date}T${input.time}`, staffOverride: true });
+  assert.equal(reopen.ok, true);
+  const sibling = JSON.stringify(rows[1]);
+  const move = await api.createBooking({ ...input, time: "10:00", endAt: "2026-10-20T11:00" }, { bookingId: first.bookingId, replaceStart: `${input.date}T${input.time}`, staffOverride: true });
+  assert.equal(move.ok, true);
+  assert.equal(JSON.stringify(rows.find(b => b.bookingId === second.bookingId)), sibling);
+  assert.equal(rows.find(b => b.bookingId === first.bookingId).time, "10:00");
+});
+
+test("same-start projections have distinct row keys and keep primary status on its technician", () => {
+  const { jobBookingRows, leadRowKey, selectedJobBooking } = loadTs("lib/leadBookings.ts");
+  const lead = { id: "lead", status: "Job Done", jobAt: "2026-10-20T09:00", technicianId: "alex", technician: "Alex", bookings: [
+    { bookingId: "first", type: "job", date: "2026-10-20", time: "09:00", technicianId: "alex", technician: "Alex" },
+    { bookingId: "second", type: "job", date: "2026-10-20", time: "09:00", technicianId: "sam", technician: "Sam" },
+  ] };
+  const rows = jobBookingRows(lead);
+  assert.equal(new Set(rows.map(leadRowKey)).size, 2);
+  assert.equal(rows[0].status, "Job Done");
+  assert.equal(rows[1].status, "Job Booked");
+  assert.equal(selectedJobBooking(rows[1]).bookingId, "second");
 });

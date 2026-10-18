@@ -23,6 +23,7 @@ export interface TechnicianAssignment {
 }
 
 export interface CapacityAppointment extends TechnicianAssignment {
+  bookingId?: string;
   leadId: string;
   type: BookingType;
   date: string;
@@ -72,7 +73,7 @@ export function bookingAvailability(
   const start = toMinutes(candidate.time);
   const end = start + appointmentDurationMinutes(candidate, rules);
   const overlapping = appointments.filter(entry => entry.date === candidate.date &&
-    !(entry.leadId === candidate.leadId && entry.type === candidate.type) &&
+    !(entry.leadId === candidate.leadId && entry.type === candidate.type && (candidate.bookingId ? entry.bookingId === candidate.bookingId : !entry.bookingId)) &&
     toMinutes(entry.time) < end && toMinutes(entry.time) + appointmentDurationMinutes(entry, rules) > start);
   const sameType = overlapping.filter(entry => entry.type === candidate.type);
   const events = sameType.flatMap(entry => [

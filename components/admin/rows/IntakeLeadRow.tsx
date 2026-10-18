@@ -1,6 +1,6 @@
 "use client";
 
-import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
 import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { STATUS_KEYS } from "@/lib/pipeline";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -63,7 +63,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.inspectionAt || l.jobAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.inspectionAt ? "inspection" : "job") / 60)}`;
+    if (v) return `${formatApptDate(v)} ${formatLeadBookingTime(l, l.inspectionAt ? "inspection" : "job")}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();
@@ -418,7 +418,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-1 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatLeadBookingTime(l, "job")}
                 </div>
               )}
             </div>
@@ -501,7 +501,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
               </div>
               {l.jobAt && (
                 <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-semibold text-emerald-700 text-center leading-tight">
-                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
+                  {formatApptDate(l.jobAt, { day: "numeric", month: "short" })} {formatLeadBookingTime(l, "job")}
                 </div>
               )}
             </div>

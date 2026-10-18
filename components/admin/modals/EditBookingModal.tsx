@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingTimingEditor, BookingTimingSummary } from "@/components/admin/BookingTimingEditor";
 import { useEffect, useRef, useState } from "react";
 import { CalendarClock, Loader2, X } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -26,7 +27,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
   const originalStart = (type === "job" ? lead.jobAt : lead.inspectionAt)?.slice(0, 16) || `${initialDate || todayAU()}T${initialTime || "09:00"}`;
   const originalEnd = (type === "job" ? lead.jobEndAt : lead.inspectionEndAt)?.slice(0, 16)
     || bookingEndForDuration(type, originalStart, savedLeadBookingMinutes(lead, type), rules);
-  const selectedBooking = leadBookings(lead).find(b => b.type === type && `${b.date}T${b.time}` === originalStart);
+  const selectedBooking = leadBookings(lead).find(b => b.type === type && `${b.date}T${b.time}` === originalStart && (!lead.activeBooking?.bookingId || b.bookingId === lead.activeBooking.bookingId));
   const [date, setDate] = useState(originalStart.slice(0, 10));
   const [time, setTime] = useState(originalStart.slice(11, 16));
   const [endAt, setEndAt] = useState(originalEnd);
@@ -59,8 +60,8 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
       if (!response.ok) throw new Error(availability.error || "Could not check availability.");
       const originalSegments = (type === "job" ? lead.jobWorkSegments : lead.inspectionWorkSegments)
         || bookingSegments(type, originalStart, originalEnd, rules);
-      const competing = availability.appointments.filter((appointment: { leadId: string; type: string; date: string; time: string }) =>
-        !(appointment.leadId === lead.id && appointment.type === type && originalSegments.some(segment => segment.date === appointment.date && segment.time === appointment.time)));
+      const competing = availability.appointments.filter((appointment: { bookingId?: string; leadId: string; type: string; date: string; time: string }) =>
+        !(appointment.leadId === lead.id && appointment.type === type && (selectedBooking?.bookingId ? appointment.bookingId === selectedBooking.bookingId : originalSegments.some(segment => segment.date === appointment.date && segment.time === appointment.time))));
       for (const segment of segments) {
         const issue = dispatchBookingIssue({ leadId: "__edited_visit__", type, ...segment,
           ...(type === "job" ? { technicianId: person.id, technician: person.name } : { inspectorId: person.id, assigned: person.name }) },
@@ -74,7 +75,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
         : { inspectionAt: startAt, inspectionEndAt: endAt, inspectionWorkSegments: segments, assigned: person.name, inspectorId: person.id };
       if (!(type === "job" ? lead.jobAt : lead.inspectionAt)) updates.status = type === "job" ? "Job Booked" : "Inspection Booked";
       const savedResponse = await fetch(`/api/admin/submissions/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updates, bookingOriginalStart: originalStart, bookingNotifications: true }) });
+        body: JSON.stringify({ ...updates, bookingId: selectedBooking?.bookingId, bookingOriginalStart: originalStart, bookingNotifications: true }) });
       const saved = await savedResponse.json();
       if (!savedResponse.ok) throw new Error(saved.error || "Could not save booking changes.");
       upsertLead(saved.item || { ...lead, ...updates });
@@ -94,14 +95,11 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
         <form onSubmit={event => { event.preventDefault(); void submit(); }} className="space-y-4 p-5">
           <div className="rounded-lg bg-slate-50 p-3"><p className="text-sm font-bold">{lead.name || "Customer"}</p><p className="text-xs text-slate-500">{lead.address || lead.city}</p><p className={`mt-1 text-xs font-bold ${type === "job" ? "text-emerald-700" : "text-blue-700"}`}>{type === "job" ? "Job" : "Inspection"} · All times are Melbourne time</p></div>
           {review ? <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
-            <p><strong>Start:</strong> {format(`${date}T${time}`)}</p><p><strong>End:</strong> {format(endAt)}</p><p><strong>Assigned to:</strong> {assignee}</p>
+            <p><strong>Start:</strong> {format(`${date}T${time}`)}</p><p><strong>End:</strong> {format(endAt)}</p><BookingTimingSummary type={type} start={`${date}T${time}`} end={endAt} rules={rules} /><p><strong>Assigned to:</strong> {assignee}</p>
             <p className="pt-2 text-xs text-slate-600">Confirm to save these changes and send the customer a booking update by email/SMS through the configured services.</p>
           </div> : <>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs font-semibold">Start date<input type="date" required value={date} disabled={busy} onChange={event => setDate(event.target.value)} className={inputClass} /></label>
-              <label className="text-xs font-semibold">Start time<input type="time" required value={time} disabled={busy} onChange={event => setTime(event.target.value)} className={inputClass} /></label>
-            </div>
-            <label className="block text-xs font-semibold">End date and time<input type="datetime-local" required value={endAt} disabled={busy} onChange={event => setEndAt(event.target.value)} className={inputClass} /></label>
+            <BookingTimingEditor type={type} start={`${date}T${time}`} end={endAt} rules={rules} disabled={busy}
+              onChange={(start, end) => { setDate(start.slice(0, 10)); setTime(start.slice(11, 16)); setEndAt(end); }} />
             <label className="block text-xs font-semibold">Assigned person<select required value={assignee} disabled={busy} onChange={event => setAssignee(event.target.value)} className={inputClass}>
               <option value="" disabled>Select person</option>{assignee && !choices.some(person => person.name === assignee) && <option value={assignee} disabled>{assignee} (inactive)</option>}
               {choices.map(person => <option key={person.id} value={person.name}>{person.name}</option>)}

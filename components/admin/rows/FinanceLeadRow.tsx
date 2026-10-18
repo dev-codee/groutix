@@ -1,6 +1,6 @@
 "use client";
 
-import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { useState } from "react";
 import {
@@ -10,7 +10,7 @@ import {
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
 
@@ -95,7 +95,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.jobAt ? "job" : "inspection") / 60)}`;
+    if (v) return `${formatApptDate(v)} ${formatLeadBookingTime(l, l.jobAt ? "job" : "inspection")}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();

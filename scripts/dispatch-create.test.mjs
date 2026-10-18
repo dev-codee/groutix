@@ -17,14 +17,14 @@ function harness({ failFirstPatch = false } = {}) {
   }, { fetch: async (url, options = {}) => { requests.push({ url, ...options });
     const failed = options.method === "PATCH" && failFirstPatch && requests.filter(r => r.method === "PATCH").length === 1;
     return { ok: !failed, json: async () => failed ? { error: "Slot taken" } : options.method === "POST" ? { item: { ...customer, id: "new" } } : options.method === "PATCH" ? { notificationWarnings: [] } : { appointments: [] } }; } });
-  const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); visit(node.props?.children); }; visit(DispatchBookingModal({ date: "2026-10-14", time: "10:15", onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
+  const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); if (["BookingTimingEditor", "BookingTimingSummary"].includes(node.type?.name)) visit(node.type(node.props)); visit(node.props?.children); }; visit(DispatchBookingModal({ date: "2026-10-14", time: "10:15", onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
   return { render, requests, saved, completed, customers };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
 test("reviewing a new booking writes nothing; final confirmation reuses the lead, assigns and requests notifications", async () => {
   const h = harness();
   let nodes = h.render();
-  const selects = nodes.filter(n => n.type === "select").slice(1);
+  const selects = nodes.filter(n => n.type === "select");
   selects[0].props.onChange({ target: { value: "old" } });
   selects[1].props.onChange({ target: { value: "inspector" } });
   nodes = h.render();
@@ -51,10 +51,10 @@ test("a multi-day job reviews and saves the computed finish", async () => {
   const h = harness();
   h.render().find(n => n.type === "button" && n.props.children === "job").props.onClick();
   let nodes = h.render();
-  const selects = nodes.filter(n => n.type === "select").slice(1);
+  const selects = nodes.filter(n => n.type === "select");
   selects[0].props.onChange({ target: { value: "old" } });
   selects[1].props.onChange({ target: { value: "tech" } });
-  nodes.find(n => n.type === "input" && n.props.type === "number").props.onChange({ target: { value: "26" } });
+  nodes.find(n => n.type === "input" && n.props["aria-label"] === "Working days").props.onChange({ target: { value: "2" } });
   h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
   await settle();
   assert.equal(h.requests.filter(r => r.method).length, 0);
@@ -62,7 +62,7 @@ test("a multi-day job reviews and saves the computed finish", async () => {
   h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
   await settle();
   const body = JSON.parse(h.requests.find(r => r.method === "PATCH").body);
-  assert.equal(body.jobEndAt, "2026-10-15T12:15");
+  assert.equal(body.jobEndAt, "2026-10-15T17:00");
 });
 
 test("a new customer still creates exactly one lead before adding the booking", async () => {
@@ -89,8 +89,8 @@ test("a new customer still creates exactly one lead before adding the booking", 
 test("an existing customer disappearing during review never creates a replacement lead or overwrites shared fields", async () => {
   const h = harness();
   let nodes = h.render();
-  nodes.filter(n => n.type === "select")[1].props.onChange({ target: { value: "old" } });
-  nodes.filter(n => n.type === "select")[2].props.onChange({ target: { value: "inspector" } });
+  nodes.filter(n => n.type === "select")[0].props.onChange({ target: { value: "old" } });
+  nodes.filter(n => n.type === "select")[1].props.onChange({ target: { value: "inspector" } });
   h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
   await settle();
   h.customers.length = 0;
@@ -107,8 +107,8 @@ test("an existing customer disappearing during review never creates a replacemen
 test("retrying an existing customer's conflicting booking never creates a lead", async () => {
   const h = harness({ failFirstPatch: true });
   const nodes = h.render();
-  nodes.filter(n => n.type === "select")[1].props.onChange({ target: { value: "old" } });
-  nodes.filter(n => n.type === "select")[2].props.onChange({ target: { value: "inspector" } });
+  nodes.filter(n => n.type === "select")[0].props.onChange({ target: { value: "old" } });
+  nodes.filter(n => n.type === "select")[1].props.onChange({ target: { value: "inspector" } });
   for (let i = 0; i < 3; i++) {
     h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
     await settle();

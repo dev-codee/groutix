@@ -3,9 +3,9 @@ import { normalizeApptString } from "@/lib/scheduling";
 
 const editableFields = [
   "name", "phone", "email", "address", "service", "status", "assigned",
-  "contacted", "follow", "inspectionAt", "jobAt", "notes",
+  "contacted", "follow", "inspectionAt", "inspectionEndAt", "jobAt", "jobEndAt", "notes",
 ] as const;
-const dateFields = new Set<string>(["contacted", "follow", "inspectionAt", "jobAt"]);
+const dateFields = new Set<string>(["contacted", "follow", "inspectionAt", "inspectionEndAt", "jobAt", "jobEndAt"]);
 
 /** Submit just the fields edited in the lead form, preserving server-owned data. */
 export function leadEditChanges(edited: Partial<Lead>, original: Partial<Lead>): Partial<Lead> {

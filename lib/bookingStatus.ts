@@ -30,5 +30,6 @@ export function combinedJobStatus(statuses: readonly string[]): BookingStatus | 
   const active = statuses.filter(status => status !== "Cancelled");
   if (!active.length) return undefined;
   if (active.every(status => status === "Job Done")) return "Job Done";
+  if (active.some(status => status === "Job Done")) return "Job In Progress";
   return ["Job In Progress", "Job Arrived", "Job En Route", "Job Booked"].find(status => active.includes(status)) as BookingStatus | undefined;
 }

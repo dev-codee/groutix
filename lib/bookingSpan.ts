@@ -48,3 +48,38 @@ export function bookingEndForDuration(type: BookingType, start: string, minutes:
   }
   throw new Error("The duration exceeds 45 calendar days of working hours.");
 }
+
+/** Finish at closing time on the requested working day, including the start day. */
+export function bookingEndForWorkingDays(type: BookingType, start: string, days: number, rules: BookingRules): string {
+  if (!validStamp(start) || !Number.isInteger(days) || days < 1 || days > 45) throw new Error("Choose between 1 and 45 working days.");
+  if (type === "inspection" && days > 1) throw new Error("An inspection must finish on the same day.");
+  let remaining = days;
+  for (let offset = 0; offset < 45; offset++) {
+    const date = addDaysYmd(start.slice(0, 10), offset);
+    const hours = dayHours(rules, type, weekdayOf(date), date);
+    if (!hours.open || closedDateInfo(rules, date)) {
+      if (!offset) throw new Error("Choose a working day for the start.");
+      continue;
+    }
+    if (!offset && (start.slice(11) < hours.start || start.slice(11) >= hours.end)) throw new Error(`Start must be within ${hours.start}–${hours.end}.`);
+    if (--remaining === 0) return `${date}T${hours.end}`;
+  }
+  throw new Error("The duration exceeds 45 calendar days of working hours.");
+}
+
+/** Keep saved working windows; repair legacy continuous spans that included midnight. */
+export function savedWorkSegments(type: BookingType, start: string, end: string | undefined, stored: BookingSegment[] | undefined, rules: BookingRules): BookingSegment[] | undefined {
+  const legacyOvernight = end && end.slice(0, 10) !== start.slice(0, 10) && stored?.some(segment => segment.time === "00:00" || toMinutes(segment.time) + segment.scheduledMinutes >= 1440);
+  if (stored?.length && !legacyOvernight) return stored;
+  if (!end) return stored;
+  if (!legacyOvernight) return bookingSegments(type, start.slice(0, 16), end.slice(0, 16), rules);
+  const result: BookingSegment[] = [];
+  for (let date = start.slice(0, 10), count = 0; date <= end.slice(0, 10) && count < 45; date = addDaysYmd(date, 1), count++) {
+    const hours = dayHours(rules, type, weekdayOf(date), date);
+    if (!hours.open || closedDateInfo(rules, date)) continue;
+    const from = Math.max(toMinutes(hours.start), date === start.slice(0, 10) ? toMinutes(start.slice(11, 16)) : 0);
+    const to = Math.min(toMinutes(hours.end), date === end.slice(0, 10) ? toMinutes(end.slice(11, 16)) : 1440);
+    if (to > from) result.push({ date, time: fromMinutes(from), scheduledMinutes: to - from });
+  }
+  return result;
+}

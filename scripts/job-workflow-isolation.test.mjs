@@ -32,9 +32,9 @@ test('same-customer same-technician visits have distinct rows, statuses, days an
 });
 
 test('a customer finishes only when every non-cancelled job is complete', () => {
-  assert.equal(combinedJobStatus(['Job Done', 'Job Booked']), 'Job Booked');
-  assert.equal(combinedJobStatus(['Job Done', 'Job En Route']), 'Job En Route');
-  assert.equal(combinedJobStatus(['Job Done', 'Job Arrived']), 'Job Arrived');
+  assert.equal(combinedJobStatus(['Job Done', 'Job Booked']), 'Job In Progress');
+  assert.equal(combinedJobStatus(['Job Done', 'Job En Route']), 'Job In Progress');
+  assert.equal(combinedJobStatus(['Job Done', 'Job Arrived']), 'Job In Progress');
   assert.equal(combinedJobStatus(['Job In Progress', 'Job Booked']), 'Job In Progress');
   assert.equal(combinedJobStatus(['Job Done', 'Job Done']), 'Job Done');
   assert.equal(combinedJobStatus(['Cancelled', 'Job Done']), 'Job Done');
@@ -118,7 +118,7 @@ test('workflow summary writes never change sibling statuses or regress finance',
   });
   const snapshot = JSON.stringify(bookings);
   assert.equal(await syncJobBookingWorkflow(id), false);
-  assert.equal(lead.status, 'Job Booked');
+  assert.equal(lead.status, 'Job In Progress');
   assert.equal(JSON.stringify(bookings), snapshot);
   bookings[1].status = 'Job Done';
   assert.equal(await syncJobBookingWorkflow(id), true);
@@ -127,7 +127,7 @@ test('workflow summary writes never change sibling statuses or regress finance',
   bookings[1].status = 'Job Booked';
   await syncJobBookingWorkflow(id);
   assert.equal(lead.status, 'Invoice Sent');
-  assert.equal(writes.length, 2);
+  assert.equal(writes.length, 1);
 });
 
 test('an unsaved legacy primary cannot inherit the sibling summary status', async () => {

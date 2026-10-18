@@ -21,13 +21,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const lead = await getSubmission(id);
   if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
   if (["Lost", "Cancelled"].includes(lead.status)) return NextResponse.json({ error: "Reopen this lead before changing its bookings." }, { status: 409 });
-  const booking = leadBookings(lead).find(b => b.type === body.type && `${b.date}T${b.time}` === body.start);
+  const matching = leadBookings(lead).filter(b => b.type === body.type && `${b.date}T${b.time}` === body.start);
+  if (!body.bookingId && matching.length > 1) return NextResponse.json({ error: "Select the specific booking before updating its status." }, { status: 409 });
+  const booking = leadBookings(lead).find(b => b.type === body.type && `${b.date}T${b.time}` === body.start && (!body.bookingId || b.bookingId === body.bookingId));
   if (!booking) return NextResponse.json({ error: "This booking has changed. Refresh before editing." }, { status: 409 });
   const progress: { jobTotalDays?: number; jobDaysDone?: number } = {};
   for (const key of ["jobTotalDays", "jobDaysDone"] as const) {
     if (body[key] === undefined) continue;
-    if (body.type !== "job" || !Number.isInteger(body[key]) || body[key] < 1 || body[key] > 14) {
-      return NextResponse.json({ error: "Job days must be whole numbers between 1 and 14." }, { status: 400 });
+    if (body.type !== "job" || !Number.isInteger(body[key]) || body[key] < 1 || body[key] > 45) {
+      return NextResponse.json({ error: "Job days must be whole numbers between 1 and 45." }, { status: 400 });
     }
     progress[key] = body[key];
   }
@@ -36,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (booking.status !== body.status || Object.entries(progress).some(([key, value]) => booking[key as keyof typeof progress] !== value)) {
     const result = await createBooking({ ...booking, ...progress, status: body.status, leadId: id, zone: "flexible", reference: lead.jobNo || `GX-ADM-${id.slice(-6)}` },
-      { staffOverride: true, retainPrevious: true, replaceStart: body.start, statusOnly: true });
+      { staffOverride: true, retainPrevious: true, replaceStart: body.start, bookingId: booking.bookingId, statusOnly: true });
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
     const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
     await appendActivity(id, { time: new Date().toISOString(), actor: session?.username || "staff", action: "Booking status changed",

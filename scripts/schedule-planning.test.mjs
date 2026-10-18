@@ -26,6 +26,10 @@ const load = (relativePath, overrides = {}, globals = {}) => {
 };
 const scheduling = load("../lib/unassignedLeads.ts");
 const calendarDependencies = {
+  "@/components/admin/BookingTimingEditor": loadTs("components/admin/BookingTimingEditor.tsx"),
+  "@/lib/bookingSpan": loadTs("lib/bookingSpan.ts"),
+  "@/components/admin/modals/DispatchBookingModal": { DispatchBookingModal: function DispatchBookingModal() { return null; } },
+  "@/lib/leadBookings": loadTs("lib/leadBookings.ts"),
   "@/lib/staffBookingRules": loadTs("lib/staffBookingRules.ts"),
   "@/components/admin/modals/EditBookingModal": { EditBookingModal: function EditBookingModal() { return null; } },
   "@/lib/useTechnicians": { useTechnicians: () => ({ technicians: [{ id: "tech", name: "Technician", active: true }] }) },
@@ -151,9 +155,12 @@ test("an unassigned drop can be cancelled without a write, and saves only after 
   ui.find(root, (el) => el.type === "button" && el.props.draggable && el.props["aria-pressed"]).props.onDragStart(ui.event());
   ui.find(root, (el) => el.props?.["data-schedule-date"]).props.onDrop(ui.event());
   dialog = ui.find(ui.render(), (el) => el.type?.name === "AddBookingDialog");
-  const form = ui.find(ui.render(dialog), (el) => el.type === "form");
-  await form.props.onSubmit(ui.event());
-  assert.equal(ui.requests.filter((req) => req.method === "PATCH").length, 1);
+  const shared = ui.render(dialog);
+  assert.equal(shared.type.name, "DispatchBookingModal");
+  assert.equal(shared.props.initialLeadId, "chosen");
+  assert.equal(shared.props.initialType, "job");
+  shared.props.onBooked("2099-10-08");
+  assert.equal(ui.find(ui.render(), el => el.type?.name === "AddBookingDialog"), undefined);
 });
 
 test("cross-day booking drops wait for confirmation and same-day reordering waits for confirmation", async () => {

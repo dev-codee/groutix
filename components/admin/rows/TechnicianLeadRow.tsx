@@ -1,7 +1,7 @@
 "use client";
 
 import { leadRowKey } from "@/lib/leadBookings";
-import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import {
   Phone, MapPin, MessageSquare, Camera,
@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -49,7 +49,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.jobAt || l.inspectionAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.jobAt ? "job" : "inspection") / 60)}`;
+    if (v) return `${formatApptDate(v)} ${formatLeadBookingTime(l, l.jobAt ? "job" : "inspection")}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();
@@ -254,7 +254,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </button>
               {l.jobAt && (
                 <div className="mt-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
+                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatLeadBookingTime(l, "job")}
                 </div>
               )}
             </div>
@@ -392,7 +392,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
               </div>
               {l.jobAt && (
                 <div className="mt-0.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-semibold text-emerald-700 text-center">
-                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatApptTimeRange(l.jobAt, savedLeadBookingMinutes(l, "job") / 60)}
+                  {formatApptDate(l.jobAt)} &nbsp;•&nbsp; {formatLeadBookingTime(l, "job")}
                 </div>
               )}
             </div>

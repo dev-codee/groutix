@@ -1,3 +1,4 @@
+import { isPrimaryBooking } from "./leadBookings";
 import type { SubmissionJSON } from "./submissions";
 import type { BookingDoc } from "./bookings";
 import { bookingNeedsReminder, resolveBookingStatus } from "./bookingStatus";
@@ -12,9 +13,9 @@ export function bookingReminderCandidates(leads: SubmissionJSON[], bookings: Boo
       const matching = visits.filter(b => b.type === type);
       for (const booking of matching) {
         const start = `${booking.date}T${booking.time}`;
-        const isPrimary = at?.slice(0, 16) === start;
+        const isPrimary = isPrimaryBooking(lead, booking);
         if (!bookingNeedsReminder(resolveBookingStatus(type, booking.status, lead.status, isPrimary))) continue;
-        result.push({ ...lead, inspectionAt: undefined, jobAt: undefined, [type === "job" ? "jobAt" : "inspectionAt"]: start,
+        result.push({ ...lead, reminderBookingId: booking.bookingId || booking._id?.toString(), inspectionAt: undefined, jobAt: undefined, [type === "job" ? "jobAt" : "inspectionAt"]: start,
           [type === "job" ? "jobReminderSent" : "inspectionReminderSent"]: booking.reminderSent ?? (isPrimary ? lead[type === "job" ? "jobReminderSent" : "inspectionReminderSent"] : false),
           [type === "job" ? "jobReminder1hSent" : "inspectionReminder1hSent"]: booking.reminder1hSent ?? (isPrimary ? lead[type === "job" ? "jobReminder1hSent" : "inspectionReminder1hSent"] : false),
         });

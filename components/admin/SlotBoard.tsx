@@ -1,5 +1,7 @@
 "use client";
 
+import type { Lead } from "@/components/admin/types";
+import { leadBookings, isPrimaryBooking } from "@/lib/leadBookings";
 import { staffBookingRules, staffPlanningRules } from "@/lib/staffBookingRules";
 
 import { useEffect, useMemo, useState } from "react";
@@ -14,7 +16,7 @@ import {
   type BookingType,
 } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
-import { melbourneYmd, resolveArea, isZoneDate, zoneDayName, ZONE_SHORT } from "@/lib/scheduling";
+import { formatSlotRange, melbourneYmd, resolveArea, isZoneDate, zoneDayName, ZONE_SHORT } from "@/lib/scheduling";
 import { useZoneRules } from "@/lib/useZoneRules";
 
 // Staff-facing availability board for one appointment field in the lead form.
@@ -71,6 +73,8 @@ function describe(a: DayAppointment, leadId?: string): string {
 /** Another lead already holding `value`'s date+time on the shared calendar, if any. */
 export function useSlotConflict(value: string | undefined, leadId: string | undefined, type?: BookingType, durationMinutes?: number, assignment: TechnicianAssignment = {}) {
   const { technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername } = assignment;
+  const lead = assignment as Lead;
+  const bookingId = lead.activeBooking?.bookingId || leadBookings(lead).find(b => b.type === type && isPrimaryBooking(lead, b))?.bookingId;
   const rules = staffBookingRules(useBookingRules());
   const { technicians, loading: rosterLoading } = useTechnicians();
   // Result is tagged with the slot it was computed for, so a stale answer for a
@@ -79,20 +83,20 @@ export function useSlotConflict(value: string | undefined, leadId: string | unde
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value || "");
   const date = m?.[1];
   const time = m?.[2];
-  const key = date && time ? `${date}T${time}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${technicianId || technician || ""}|${inspectorId || ""}|${assigned || ""}|${inspectorUsername || ""}` : "";
+  const key = date && time ? `${date}T${time}|${bookingId || ""}|${leadId || ""}|${type || ""}|${durationMinutes || ""}|${technicianId || technician || ""}|${inspectorId || ""}|${assigned || ""}|${inspectorUsername || ""}` : "";
   useEffect(() => {
     if (!date || !time || rosterLoading) return;
     let alive = true;
     fetchDay(date)
       .then(({ appointments }) => {
-        const availability = bookingAvailability(appointments, { date, time, leadId: leadId || "", type: type || "job", durationMinutes, technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername }, rules, technicians);
+        const availability = bookingAvailability(appointments, { bookingId, date, time, leadId: leadId || "", type: type || "job", durationMinutes, technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername }, rules, technicians);
         if (alive) setResult({ key, conflict: availability.available ? null : { time, label: availability.reason || "This time is unavailable." } });
       })
       .catch(() => alive && setResult({ key, conflict: null }));
     return () => {
       alive = false;
     };
-  }, [key, date, time, leadId, type, durationMinutes, technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername, rules, technicians, rosterLoading]);
+  }, [bookingId, key, date, time, leadId, type, durationMinutes, technicianId, technician, technicianUsername, inspectorId, assigned, inspectorUsername, rules, technicians, rosterLoading]);
   const conflict = key && result?.key === key ? result.conflict : null;
   return conflict;
 }
@@ -183,6 +187,7 @@ export function SlotBoard({
   const offGrid = (appts || []).filter((a) => a.time >= hours.start && a.time < hours.end && !gridTimes.includes(a.time));
   // The assignment may be a full lead; its record type must not replace the booking type.
   const availabilityAt = (time: string) => bookingAvailability(appts || [], {
+    bookingId: (assignment as Lead).activeBooking?.bookingId || leadBookings(assignment as Lead).find(b => b.type === type && isPrimaryBooking(assignment as Lead, b))?.bookingId,
     date: day, time, type, leadId: leadId || "", durationMinutes,
     technicianId: assignment.technicianId, technician: assignment.technician, technicianUsername: assignment.technicianUsername,
   }, rules, technicians);
@@ -247,7 +252,7 @@ export function SlotBoard({
                 if (!availableAt(t)) {
                   return (
                     <div key={t} title={holders.map((a) => describe(a, leadId)).join("\n")} className={`${base} ${selected ? "border-red-500 ring-2 ring-red-300" : "border-red-200"} bg-red-50 text-red-700 cursor-not-allowed`}>
-                      <div className="font-bold">{formatHHmm(t)} · {availability.capacity === 0 ? "Unavailable" : "Booked"}</div>
+                      <div className="font-bold">{formatSlotRange(t, rules[type].slotMinutes)} · {availability.capacity === 0 ? "Unavailable" : "Booked"}</div>
                       <div className="truncate">{other?.name || "Technician unavailable"}{other?.type === "job" ? " (Job)" : ""}</div>
                     </div>
                   );
@@ -278,7 +283,7 @@ export function SlotBoard({
                         : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 cursor-pointer"
                     }`}
                   >
-                    <div className="font-bold">{formatHHmm(t)}</div>
+                    <div className="font-bold">{formatSlotRange(t, rules[type].slotMinutes)}</div>
                     <div>{selected ? "Selected" : own ? `Saved (${own.type === "job" ? "job" : "insp."})` : past ? "Past" : `Free${type === "job" ? ` · ${availability.remaining} technician${availability.remaining === 1 ? "" : "s"}` : otherTypeNote}`}</div>
                   </button>
                 );
@@ -291,7 +296,7 @@ export function SlotBoard({
               <p className="font-bold text-slate-500">{gridTimes.length ? "Also booked outside the standard slots:" : "Booked this day:"}</p>
               {offGrid.map((a) => (
                 <p key={`${a.leadId}-${a.type}-${a.time}`}>
-                  <span className="font-semibold">{formatHHmm(a.time)}</span> — {describe(a, leadId)}
+                  <span className="font-semibold">{formatSlotRange(a.time, appointmentDurationMinutes(a, rules))}</span> — {describe(a, leadId)}
                 </p>
               ))}
             </div>

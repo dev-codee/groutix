@@ -123,7 +123,7 @@ async function runSweep(req: NextRequest) {
 
         // Reminder is sent via email only (no SMS).
 
-        await markBookingReminderSent(lead.id, a.kind, a.at, tier.key);
+        await markBookingReminderSent(lead.id, a.kind, a.at, tier.key, lead.reminderBookingId);
         await appendActivity(lead.id, {
           time: new Date().toISOString(),
           actor: "system",

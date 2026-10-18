@@ -74,6 +74,7 @@ export interface Lead {
   state?: string;
   assigned?: string;
   inspectorId?: string;
+  inspectorUsername?: string;
   technician?: string;
   technicianId?: string;
   technicianUsername?: string;
@@ -142,7 +143,7 @@ export interface Lead {
   jobEndAt?: string;
   inspectionAt?: string;
   /** UI-only identity for a selected visit. Never persisted on the customer. */
-  activeBooking?: { type: "job" | "inspection"; start: string };
+  activeBooking?: { type: "job" | "inspection"; start: string; bookingId?: string };
   bookings?: import("@/lib/leadBookings").LeadBooking[];
   jobAt?: string;
   inspectionReminderSent?: boolean;

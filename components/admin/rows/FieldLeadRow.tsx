@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { preferredCustomerQuote } from "@/lib/customerQuoteSelection";
 import type { CustomerQuote } from "@/lib/customerQuotes";
-import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import {
   Phone, MapPin, Wrench, Camera, Navigation,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { getFollowupPrompt, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
-import { formatApptDate, formatApptTimeRange, formatApptTime } from "@/lib/scheduling";
+import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
@@ -65,7 +65,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
   const dateTimeDisplay = (() => {
     const v = l.inspectionAt || l.jobAt;
-    if (v) return `${formatApptDate(v)} ${formatApptTimeRange(v, savedLeadBookingMinutes(l, l.inspectionAt ? "inspection" : "job") / 60)}`;
+    if (v) return `${formatApptDate(v)} ${formatLeadBookingTime(l, l.inspectionAt ? "inspection" : "job")}`;
     if (l.createdAt) return `${formatApptDate(l.createdAt)} ${formatApptTime(l.createdAt)}`;
     return "";
   })();

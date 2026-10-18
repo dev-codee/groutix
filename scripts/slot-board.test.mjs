@@ -52,7 +52,7 @@ for (const recordType of ["lead", "quote", "support_ticket"]) {
     const cleanup = effects[0]();
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.equal(results.length, 1);
-    assert.match(results[0].conflict?.label || "", /overlapping job/);
+    assert.match(results[0].conflict?.label || "", /overlapping (?:job|booking)/);
     cleanup();
   });
 }

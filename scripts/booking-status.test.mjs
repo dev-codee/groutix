@@ -101,7 +101,7 @@ test('day progress is validated and saved on the selected booking only', async (
   const h = harness();
   const sibling = JSON.stringify(h.lead.bookings[0]);
   const base = { type: 'job', start: '2026-10-21T11:00', status: 'Job In Progress' };
-  for (const progress of [{ jobTotalDays: 0 }, { jobTotalDays: 15 }, { jobTotalDays: 2.5 }, { jobTotalDays: 2, jobDaysDone: 3 }]) {
+  for (const progress of [{ jobTotalDays: 0 }, { jobTotalDays: 46 }, { jobTotalDays: 2.5 }, { jobTotalDays: 2, jobDaysDone: 3 }]) {
     assert.equal((await h.patch({ ...base, ...progress })).status, 400);
   }
   assert.equal(h.writes.length, 0);

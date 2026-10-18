@@ -9,8 +9,8 @@ export interface RouteStop {
   customer?: { address: string } | null;
 }
 
-export function appointmentKey(entry: { leadId: string; type: string; date: string; time: string }): string {
-  return `${entry.leadId}:${entry.type}:${entry.date}:${entry.time}`;
+export function appointmentKey(entry: { bookingId?: string; leadId: string; type: string; date: string; time: string }): string {
+  return `${entry.leadId}:${entry.type}:${entry.date}:${entry.time}${entry.bookingId ? `:${entry.bookingId}` : ""}`;
 }
 
 export function applyRouteOrders<T extends RouteStop>(entries: T[], orders: Record<string, string[]>): T[] {

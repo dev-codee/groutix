@@ -5,29 +5,29 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { DEFAULT_BOOKING_RULES, slotsForDate } = loadTs("lib/bookingRules.ts");
+const { formatSlotRange } = loadTs("lib/scheduling.ts");
 const { staffPlanningRules } = loadTs("lib/staffBookingRules.ts");
 
-function renderBoard(type, date, appointments = []) {
+function renderBoard(type, date, appointments = [], rules = DEFAULT_BOOKING_RULES) {
   const hooks = { ...React, useState: initial => React.useState(initial === null
     ? { key: `${date}#0`, appts: appointments, technicians: [], error: false }
     : initial) };
   const { SlotBoard } = loadTs("components/admin/SlotBoard.tsx", {
     react: hooks,
-    "@/lib/useBookingRules": { useBookingRules: () => DEFAULT_BOOKING_RULES },
+    "@/lib/useBookingRules": { useBookingRules: () => rules },
     "@/lib/useTechnicians": { useTechnicians: () => ({ technicians: [{ id: "tech", name: "Tech", active: true }] }) },
     "@/lib/useZoneRules": { useZoneRules: () => ({}) },
-    "@/lib/scheduling": { melbourneYmd: () => "2026-10-13" },
+    "@/lib/scheduling": { formatSlotRange, melbourneYmd: () => "2026-10-13" },
   });
   return renderToStaticMarkup(React.createElement(SlotBoard, { type, value: `${date}T09:00`, onPick() {} }));
 }
 
-test("both appointment boards show only 9 AM–5 PM on every day of the week", () => {
+test("both appointment boards follow configured hours for each weekday", () => {
   for (const type of ["inspection", "job"]) {
     for (const date of ["2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"]) {
       const html = renderBoard(type, date);
-      assert.match(html, /9:00 AM – 5:00 PM/);
       const times = [...html.matchAll(/<div class="font-bold">([^<]+)<\/div>/g)].map(match => match[1]);
-      assert.deepEqual(times, ["9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"]);
+      assert.deepEqual(times, Array.from(slotsForDate(DEFAULT_BOOKING_RULES, type, date), time => formatSlotRange(time, DEFAULT_BOOKING_RULES[type].slotMinutes)));
     }
   }
 });
@@ -50,4 +50,22 @@ test("suggested slots fit the window and keep configured slot lengths", () => {
   assert.equal(slotsForDate(rules, "inspection", "2026-10-14").length, 16);
   assert.equal(slotsForDate(rules, "inspection", "2026-10-14").at(-1), "16:30");
   assert.equal(slotsForDate(rules, "job", "2026-10-14").at(-1), "16:00");
+});
+
+test("planning honors closures and dated changes without rewriting configured hours", () => {
+  const configured = structuredClone(DEFAULT_BOOKING_RULES);
+  configured.job.changeovers = [{ from: "2026-10-19", days: configured.job.days.map(() => ({ open: true, start: "07:00", end: "11:00" })) }];
+  configured.closedDates = [{ date: "2026-10-20", label: "Closed" }];
+  const rules = staffPlanningRules(configured);
+  assert.equal(slotsForDate(rules, "job", "2026-10-19").join(","), "07:00,08:00,09:00,10:00");
+  assert.equal(slotsForDate(rules, "job", "2026-10-20").length, 0);
+  assert.equal(configured.job.days[1].start, "09:00");
+});
+
+test("slot labels display the configured inspection and job time ranges", () => {
+  const rules = structuredClone(DEFAULT_BOOKING_RULES);
+  rules.inspection.slotMinutes = 30;
+  rules.job.slotMinutes = 120;
+  assert.match(renderBoard("inspection", "2026-10-14", [], rules), /9:00 AM – 9:30 AM/);
+  assert.match(renderBoard("job", "2026-10-14", [], rules), /9:00 AM – 11:00 AM/);
 });

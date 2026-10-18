@@ -1,9 +1,12 @@
 "use client";
 
-import { staffBookingRules } from "@/lib/staffBookingRules";
+import { BookingTimingEditor } from "@/components/admin/BookingTimingEditor";
+import { DispatchBookingModal } from "@/components/admin/modals/DispatchBookingModal";
+import { bookingEndForDuration, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
+import { bookingLead, leadBookings } from "@/lib/leadBookings";
+import { staffBookingRules, staffPlanningRules } from "@/lib/staffBookingRules";
 
 import { useTechnicians } from "@/lib/useTechnicians";
-import type { BookingRules } from "@/lib/bookingRules";
 import { bookingAvailability } from "@/lib/bookingCapacity";
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 
@@ -51,13 +54,16 @@ import type { Lead } from "@/components/admin/types";
 import { applyRouteOrders, appointmentKey, estimateRoute, optimizeRouteStops } from "@/lib/scheduleRoutes";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { formatSlotRange } from "@/lib/scheduling";
-import { explainOutsideRules } from "@/lib/bookingRules";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type JobType = "inspection" | "job";
 
 interface ScheduleEntry {
+  bookingId?: string;
+  bookingStart?: string;
+  endAt?: string;
+  workSegments?: BookingSegment[];
   id: string;           // booking/submission _id
   leadId: string;
   type: JobType;
@@ -65,6 +71,7 @@ interface ScheduleEntry {
   time: string;         // HH:mm
   endTime?: string;     // HH:mm (derived)
   durationMinutes: number;
+  scheduledMinutes?: number;
   technicianId?: string;
   technician?: string;
   technicianUsername?: string;
@@ -132,14 +139,6 @@ function isToday(dateStr: string): boolean {
 
 function inputDateToday(): string {
   return todayStr();
-}
-
-async function checkBookingAvailability(leadId: string, type: JobType, date: string, time: string, rules: BookingRules, lead?: Lead, durationMinutes?: number) {
-  const response = await fetch(`/api/admin/slots?date=${date}`, { cache: "no-store" });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "Could not check availability.");
-  const availability = bookingAvailability(result.appointments, { leadId, type, date, time, durationMinutes: appointmentDurationMinutes({ type, durationMinutes }, rules), technicianId: lead?.technicianId, technician: lead?.technician, technicianUsername: lead?.technicianUsername, inspectorId: lead?.inspectorId, assigned: lead?.assigned }, rules, result.technicians || []);
-  if (!availability.available) throw new Error(availability.reason || "This time is already booked.");
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -213,12 +212,16 @@ function RescheduleDialog({
 }: {
   modal: RescheduleModal;
   onClose: () => void;
-  onSave: (date: string, time: string) => void;
+  onSave: (date: string, time: string, endAt?: string) => void;
 }) {
   const [date, setDate] = useState(modal.newDate);
   const [time, setTime] = useState(modal.newTime);
   const rules = staffBookingRules(useBookingRules());
-  const warning = explainOutsideRules(rules, modal.entry.type, `${date}T${time}`);
+  const totalMinutes = modal.entry.workSegments?.reduce((sum, segment) => sum + segment.scheduledMinutes, 0) || modal.entry.durationMinutes;
+  let initialEnd = "";
+  try { initialEnd = bookingEndForDuration(modal.entry.type, `${date}T${time}`, totalMinutes, rules); } catch { /* Shown by the shared editor. */ }
+  const [finish, setFinish] = useState("");
+  const endAt = finish || initialEnd;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
@@ -256,31 +259,8 @@ function RescheduleDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1.5">New Date</label>
-              <input
-                type="date"
-                value={date}
-                min={inputDateToday()}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1.5">New Time</label>
-              <input
-                type="time"
-                value={time}
-                step="60"
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all"
-              />
-            </div>
-          </div>
-
-          {warning && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">{warning} Staff may override these hours.</p>}
-          <p className="text-xs text-slate-600">Move this {modal.entry.type} to <strong>{fmtDate(date)} · {formatSlotRange(time, modal.entry.durationMinutes)}</strong>? The booking changes only after you confirm.</p>
+          <BookingTimingEditor type={modal.entry.type} start={`${date}T${time}`} end={endAt} rules={rules} disabled={modal.saving} minDate={inputDateToday()}
+            onChange={(start, end) => { setDate(start.slice(0, 10)); setTime(start.slice(11, 16)); setFinish(end); }} />
           {modal.error && (
             <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -298,7 +278,7 @@ function RescheduleDialog({
             Cancel
           </button>
           <button
-            onClick={() => onSave(date, time)}
+            onClick={() => onSave(date, time, endAt)}
             disabled={modal.saving || !date || !time || date < todayStr()}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
           >
@@ -320,81 +300,9 @@ function AddBookingDialog({ leads, initialDate, initialBooking, initialTime, onB
   onClose: () => void;
   onSaved: (date: string) => void;
 }) {
-  const [leadId, setLeadId] = useState(initialBooking?.leadId || "");
-  const [type, setType] = useState<JobType>(initialBooking?.type || "inspection");
-  const [date, setDate] = useState(initialDate < todayStr() ? todayStr() : initialDate);
-  const [time, setTime] = useState(() => {
-    if (initialTime) return initialTime;
-    const lead = leads.find((entry) => entry.id === initialBooking?.leadId);
-    const appointment = initialBooking?.type === "job" ? lead?.jobAt : lead?.inspectionAt;
-    return appointment?.split("T")[1]?.slice(0, 5) || "09:00";
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const rules = staffBookingRules(useBookingRules());
-  const warning = explainOutsideRules(rules, type, `${date}T${time}`);
-  const availableLeads = leads.filter((lead) => !["Lost", "Cancelled"].includes(lead.status));
-  const selectedLead = leads.find((lead) => lead.id === leadId);
-  const existing = type === "inspection" ? selectedLead?.inspectionAt : selectedLead?.jobAt;
-
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (saving || !onBeforeSave()) return;
-    setSaving(true);
-    setError("");
-    try {
-      await checkBookingAvailability(leadId, type, date, time, rules, selectedLead);
-      const response = await fetch(`/api/admin/submissions/${leadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [type === "inspection" ? "inspectionAt" : "jobAt"]: `${date}T${time}:00` }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not save booking.");
-      onSaved(date);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save booking. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <form onSubmit={save} role="dialog" aria-modal="true" aria-labelledby="add-booking-title" className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 id="add-booking-title" className="text-sm font-bold text-slate-900">{existing ? "Confirm Reschedule" : "Confirm Booking"}</h3>
-          <button type="button" aria-label="Close booking form" onClick={onClose} disabled={saving} className="p-1.5 text-slate-500 cursor-pointer"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="p-5 space-y-4 text-xs text-slate-700">
-          <label className="block font-semibold">Customer
-            <select required value={leadId} onChange={(event) => setLeadId(event.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 p-2.5 bg-white">
-              <option value="">Select a CRM customer</option>
-              {availableLeads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name || "Customer"} — {lead.address || lead.jobNo || lead.id}</option>)}
-            </select>
-          </label>
-          {!availableLeads.length && <p>No active customers available. Add a customer in the CRM first.</p>}
-          <label className="block font-semibold">Booking type
-            <select value={type} onChange={(event) => setType(event.target.value as JobType)} className="mt-1.5 w-full rounded-lg border border-slate-200 p-2.5 bg-white">
-              <option value="inspection">Inspection</option><option value="job">Job</option>
-            </select>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block font-semibold">Date<input required type="date" min={todayStr()} value={date} onChange={(event) => setDate(event.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 p-2.5" /></label>
-            <label className="block font-semibold">Time<input required type="time" value={time} onChange={(event) => setTime(event.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-200 p-2.5" /></label>
-          </div>
-          {existing && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">This customer already has this booking type scheduled. Saving will reschedule it and may notify the customer.</p>}
-          {warning && <p className="rounded-lg bg-amber-50 p-3 text-amber-800">{warning} Staff may override these hours.</p>}
-          {selectedLead && <p className="rounded-lg bg-blue-50 p-3 text-blue-800">{existing ? "Reschedule" : "Book"} <strong>{selectedLead.name || "Customer"}</strong> for <strong>{fmtDate(date)} · {formatSlotRange(time, appointmentDurationMinutes({ type }, rules))}</strong>? Confirm below to save.</p>}
-          {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-600">{error}</p>}
-        </div>
-        <div className="flex justify-end gap-2 border-t border-slate-100 p-4">
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Cancel</button>
-          <button disabled={saving || !leadId || !date || !time || date < todayStr()} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{saving ? "Saving…" : existing ? "Confirm Reschedule" : "Confirm Booking"}</button>
-        </div>
-      </form>
-    </div>
-  );
+  const selected = leads.find(lead => lead.id === initialBooking?.leadId);
+  return <DispatchBookingModal date={initialDate} time={initialTime ?? "09:00"} staffName={initialBooking?.type === "job" ? selected?.technician : selected?.assigned} initialType={initialBooking?.type || "inspection"}
+    initialLeadId={initialBooking?.leadId} onBeforeSave={onBeforeSave} onClose={onClose} onBooked={date => onSaved(date)} />;
 }
 
 // ─── Selected Booking Sidebar ─────────────────────────────────────────────────
@@ -843,12 +751,14 @@ export function ScheduleCalendarView({
   const [removingEntry, setRemovingEntry] = useState<ScheduleEntry | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState("");
-  const rules = staffBookingRules(useBookingRules());
+  const configuredRules = useBookingRules();
+  const rules = staffBookingRules(configuredRules);
+  const planningRules = staffPlanningRules(configuredRules);
   const { technicians } = useTechnicians();
   const suggestTime = (type: JobType, date: string, preferred?: string, leadId?: string) => {
     const lead = leads.find((lead) => lead.id === leadId);
     const entry = entries.find((entry) => entry.leadId === leadId && entry.type === type);
-    return suggestedPlanningTime(rules, type, date, entries, preferred, technicians, {
+    return suggestedPlanningTime(planningRules, type, date, entries, preferred, technicians, {
       leadId, durationMinutes: appointmentDurationMinutes({ type }, rules),
       technicianId: entry?.technicianId || lead?.technicianId,
       technician: entry?.technician || lead?.technician, technicianUsername: entry?.technicianUsername || lead?.technicianUsername,
@@ -912,11 +822,16 @@ export function ScheduleCalendarView({
       const orders = Object.assign({}, ...responses.map((response) => response.routeOrders));
       const bookings: ScheduleEntry[] = responses.flatMap((response) => response.appointments).filter((entry) => visibleDates.includes(entry.date)).map((entry) => ({
         id: appointmentKey(entry),
+        bookingId: entry.bookingId,
+        bookingStart: entry.bookingStart,
+        endAt: entry.endAt,
+        workSegments: entry.workSegments,
         leadId: entry.leadId,
         type: entry.type,
         date: entry.date,
         time: entry.time,
         durationMinutes: appointmentDurationMinutes(entry, rules),
+        scheduledMinutes: entry.scheduledMinutes,
         technicianId: entry.technicianId, technician: entry.technician, technicianUsername: entry.technicianUsername,
         customer: { name: entry.name, address: entry.address || "", phone: "", email: "", status: entry.status || "" },
         zone: "flexible",
@@ -1061,18 +976,33 @@ export function ScheduleCalendarView({
     setRescheduleModal({ entry, newDate: entry.date, newTime: entry.time, saving: false, error: "" });
   };
 
-  const saveReschedule = async (newDate: string, newTime: string) => {
+  const saveReschedule = async (newDate: string, newTime: string, newEndAt?: string) => {
     if (!rescheduleModal || rescheduleModal.saving || routeSaving) return;
     if (!newDate || !newTime || newDate < todayStr()) return;
     if (!discardChanges()) return;
     setRescheduleModal((m) => m ? { ...m, saving: true, error: "" } : m);
     try {
-      await checkBookingAvailability(rescheduleModal.entry.leadId, rescheduleModal.entry.type, newDate, newTime, rules, leads.find((lead) => lead.id === rescheduleModal.entry.leadId), rescheduleModal.entry.durationMinutes);
+      const lead = leads.find(lead => lead.id === rescheduleModal.entry.leadId);
+      const visit = lead && leadBookings(lead).find(b => rescheduleModal.entry.bookingId ? b.bookingId === rescheduleModal.entry.bookingId : b.type === rescheduleModal.entry.type && `${b.date}T${b.time}` === `${rescheduleModal.entry.date}T${rescheduleModal.entry.time}`);
+      const total = rescheduleModal.entry.workSegments?.reduce((sum, segment) => sum + segment.scheduledMinutes, 0) || rescheduleModal.entry.durationMinutes;
+      const finish = newEndAt || bookingEndForDuration(rescheduleModal.entry.type, `${newDate}T${newTime}`, total, rules);
+      const segments = bookingSegments(rescheduleModal.entry.type, `${newDate}T${newTime}`, finish, rules);
+      const response = await fetch(`/api/admin/slots?from=${newDate}&to=${finish.slice(0, 10)}`, { cache: "no-store" });
+      const available = await response.json();
+      if (!response.ok) throw new Error(available.error || "Could not check availability.");
+      for (const segment of segments) {
+        const candidate = lead && visit ? bookingLead(lead, visit) : lead;
+        const result = bookingAvailability(available.appointments, { ...candidate, ...segment, leadId: rescheduleModal.entry.leadId, type: rescheduleModal.entry.type, bookingId: rescheduleModal.entry.bookingId }, rules, available.technicians || technicians);
+        if (!result.available) throw new Error(result.reason || "The assigned person is already booked.");
+      }
       const res = await fetch(`/api/admin/submissions/${rescheduleModal.entry.leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           [rescheduleModal.entry.type === "inspection" ? "inspectionAt" : "jobAt"]: `${newDate}T${newTime}:00`,
+          [rescheduleModal.entry.type === "inspection" ? "inspectionEndAt" : "jobEndAt"]: finish,
+          bookingId: rescheduleModal.entry.bookingId,
+          bookingOriginalStart: rescheduleModal.entry.bookingStart || `${rescheduleModal.entry.date}T${rescheduleModal.entry.time}`,
         }),
       });
       const result = await res.json();
@@ -1131,14 +1061,14 @@ export function ScheduleCalendarView({
     setRemoving(true);
     setRemoveError("");
     try {
-      const response = await fetch(`/api/admin/submissions/${removingEntry.leadId}`, {
+      const response = await fetch(`/api/admin/submissions/${removingEntry.leadId}/bookings`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [removingEntry.type === "inspection" ? "inspectionAt" : "jobAt"]: "" }),
+        body: JSON.stringify({ type: removingEntry.type, bookingId: removingEntry.bookingId, start: removingEntry.bookingStart || `${removingEntry.date}T${removingEntry.time}`, status: "Cancelled" }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not remove booking.");
-      // Clear the entire appointment type, including any legacy duplicate rows.
-      const keep = (entry: ScheduleEntry) => entry.leadId !== removingEntry.leadId || entry.type !== removingEntry.type;
+      // Remove only the selected visit, including all its daily segments.
+      const keep = (entry: ScheduleEntry) => removingEntry.bookingId ? entry.bookingId !== removingEntry.bookingId : entry.id !== removingEntry.id;
       setEntries((prev) => prev.filter(keep));
       setOriginalEntries((prev) => prev.filter(keep));
       setSelectedId(null);
@@ -1409,7 +1339,11 @@ export function ScheduleCalendarView({
       </div>}
 
       {editBookingEntry && <EditBookingModal key={editBookingEntry.id}
-        lead={leads.find(lead => lead.id === editBookingEntry.leadId) || { id: editBookingEntry.leadId, name: editBookingEntry.customer?.name, address: editBookingEntry.customer?.address } as Lead}
+        lead={(() => {
+          const lead = leads.find(lead => lead.id === editBookingEntry.leadId) || { id: editBookingEntry.leadId, name: editBookingEntry.customer?.name, address: editBookingEntry.customer?.address } as Lead;
+          const booking = leadBookings(lead).find(b => editBookingEntry.bookingId ? b.bookingId === editBookingEntry.bookingId : b.type === editBookingEntry.type && `${b.date}T${b.time}` === `${editBookingEntry.date}T${editBookingEntry.time}`);
+          return booking ? bookingLead(lead, booking) : lead;
+        })()}
         type={editBookingEntry.type} initialDate={editBookingEntry.date} initialTime={editBookingEntry.time}
         onClose={() => setEditBookingEntry(null)}
         onSaved={(date, message) => { setEditBookingEntry(null); showToast(message, true); void load(); onBookingsChanged?.(); }} />}

@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     leadId: string;
-    booking?: { type: "job" | "inspection"; start: string };
+    booking?: { type: "job" | "inspection"; start: string; bookingId?: string };
     lat: number | null;
     lng: number | null;
     eventType: "en_route" | "arrived";
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 
   const booking = body.booking;
   if (booking) {
-    const visit = leadBookings(lead).find(item => item.type === booking.type && `${item.date}T${item.time}` === booking.start);
+    const visit = leadBookings(lead).find(item => item.type === booking.type && `${item.date}T${item.time}` === booking.start && (!booking.bookingId || item.bookingId === booking.bookingId));
     const expectedStatus = `${booking.type === "job" ? "Job" : "Inspection"} ${eventType === "en_route" ? "En Route" : "Arrived"}`;
     if (!visit || visit.status !== expectedStatus || ["Lost", "Cancelled"].includes(lead.status)) {
       return NextResponse.json({ error: "This booking has changed. Refresh before notifying the customer." }, { status: 409 });

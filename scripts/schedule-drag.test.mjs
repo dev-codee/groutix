@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { planScheduleDrop, suggestedPlanningTime } = loadTs("lib/scheduleDrag.ts");
-const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
+const { DEFAULT_BOOKING_RULES, slotsForDate } = loadTs("lib/bookingRules.ts");
 const entries = [
   { id: "first", leadId: "a", type: "inspection", date: "2026-10-08", time: "09:00" },
   { id: "second", leadId: "b", type: "job", date: "2026-10-08", time: "10:00" },
@@ -38,4 +38,13 @@ test("suggested times honor destination hours and bookings of both types", () =>
   assert.equal(suggestedPlanningTime(DEFAULT_BOOKING_RULES, "job", "2026-10-09", entries, "09:00"), "11:00");
   assert.equal(suggestedPlanningTime(DEFAULT_BOOKING_RULES, "inspection", "2026-10-08", entries, "10:00"), "11:00");
   assert.equal(suggestedPlanningTime(DEFAULT_BOOKING_RULES, "inspection", "2026-10-09", entries, "14:00"), "14:00");
+});
+
+test("planning never suggests a fallback outside hours when closed or full", () => {
+  const rules = structuredClone(DEFAULT_BOOKING_RULES);
+  rules.closedDates = [{ date: "2026-10-09", label: "Closed" }];
+  assert.equal(suggestedPlanningTime(rules, "job", "2026-10-09", [], "22:00"), "");
+  rules.closedDates = [];
+  const booked = slotsForDate(rules, "job", "2026-10-09").map((time, index) => ({ id: String(index), leadId: String(index), type: "job", date: "2026-10-09", time }));
+  assert.equal(suggestedPlanningTime(rules, "job", "2026-10-09", booked, "22:00"), "");
 });

@@ -1,3 +1,4 @@
+import { isPrimaryBooking } from "@/lib/leadBookings";
 import { staffBookingRules } from "@/lib/staffBookingRules";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { getBookingRules } from "@/lib/bookingRulesServer";
@@ -94,6 +95,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   const appendBooking = body.appendBooking === true;
   const bookingOriginalStart = typeof body.bookingOriginalStart === "string" ? body.bookingOriginalStart : undefined;
+  const bookingId = typeof body.bookingId === "string" ? body.bookingId : undefined;
+  delete body.bookingId;
   delete body.appendBooking;
   delete body.bookingOriginalStart;
   delete body.bookings;
@@ -132,7 +135,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const primary = { ...before };
   const bookingType = "jobAt" in body ? "job" : "inspectionAt" in body ? "inspection" : undefined;
   if (appendBooking && !bookingType) return NextResponse.json({ error: "Choose a booking type." }, { status: 400 });
-  if (bookingType && (appendBooking || bookingOriginalStart)) {
+  let selectedBookingId: string | undefined;
+  let secondaryVisit = false;
+  if (bookingType && (appendBooking || bookingOriginalStart || bookingId)) {
     const startField = bookingType === "job" ? "jobAt" : "inspectionAt";
     const endField = bookingType === "job" ? "jobEndAt" : "inspectionEndAt";
     const segmentsField = bookingType === "job" ? "jobWorkSegments" : "inspectionWorkSegments";
@@ -145,14 +150,21 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       before[endField] = undefined;
       before[segmentsField] = undefined;
       if (!primary[startField]) body.status = bookingType === "job" ? "Job Booked" : "Inspection Booked";
-    } else if (bookingOriginalStart !== primary[startField]?.slice(0, 16)) {
-      const booking = before.bookings?.find(b => b.type === bookingType && `${b.date}T${b.time}` === bookingOriginalStart);
-      if (!booking) return NextResponse.json({ error: "This booking has changed. Refresh before editing." }, { status: 409 });
-      before[startField] = bookingOriginalStart;
-      before[endField] = booking.endAt;
-      before[segmentsField] = booking.workSegments;
-      if (bookingType === "job") Object.assign(before, { technician: booking.technician, technicianId: booking.technicianId, technicianUsername: booking.technicianUsername });
-      else Object.assign(before, { assigned: booking.assigned, inspectorId: booking.inspectorId, inspectorUsername: booking.inspectorUsername });
+    } else {
+      const matches = before.bookings?.filter(b => b.type === bookingType && (bookingId ? b.bookingId === bookingId : `${b.date}T${b.time}` === bookingOriginalStart)) || [];
+      if (bookingId && matches.length !== 1 || !bookingId && matches.length > 1) return NextResponse.json({ error: "Select the specific booking before editing." }, { status: 409 });
+      const booking = matches[0];
+      if (!booking && bookingOriginalStart !== primary[startField]?.slice(0, 16)) return NextResponse.json({ error: "This booking has changed. Refresh before editing." }, { status: 409 });
+      if (booking) {
+        selectedBookingId = booking.bookingId;
+        const primaryBooking = before.bookings?.find(b => b.type === bookingType && isPrimaryBooking(primary, b));
+        secondaryVisit = booking.bookingId ? booking.bookingId !== primaryBooking?.bookingId : bookingOriginalStart !== primary[startField]?.slice(0, 16);
+        before[startField] = `${booking.date}T${booking.time}`;
+        before[endField] = booking.endAt;
+        before[segmentsField] = booking.workSegments;
+        if (bookingType === "job") Object.assign(before, { technician: booking.technician, technicianId: booking.technicianId, technicianUsername: booking.technicianUsername });
+        else Object.assign(before, { assigned: booking.assigned, inspectorId: booking.inspectorId, inspectorUsername: booking.inspectorUsername });
+      }
     }
   }
 
@@ -217,7 +229,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       }
       body[field] = value;
       const endField = type === "job" ? "jobEndAt" : "inspectionEndAt";
-      const endAt = body[endField] ?? before[endField];
+      if (value === normalizeApptString(before[field]) && (!(endField in body) || body[endField] === before[endField]) && !(type === "job" ? assignmentChanged : inspectorChanged)) continue;
+      const scheduledMinutes = before[field] ? savedLeadBookingMinutes(before, type) : (await getBookingRules())[type].slotMinutes;
+      let endAt = body[endField] || before[endField];
+      try { endAt ||= bookingEndForDuration(type, value!, scheduledMinutes, staffBookingRules(await getBookingRules())); }
+      catch (error) { await rollback(); return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid working hours." }, { status: 400 }); }
+      body[endField] = endAt;
       const segmentsField = type === "job" ? "jobWorkSegments" : "inspectionWorkSegments";
       if (endAt) {
         try { body[segmentsField] = bookingSegments(type, value!, endAt, staffBookingRules(await getBookingRules())); }
@@ -228,7 +245,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       const date = match[1];
       const time = `${match[2]}:${match[3]}`;
       const area = resolveArea((body.address ?? before.address) || (body.city ?? before.city), await getZoneRules());
-      const scheduledMinutes = before[field] ? savedLeadBookingMinutes(before, type) : (await getBookingRules())[type].slotMinutes;
       if (!endAt) body[segmentsField] = [{ date, time, scheduledMinutes }];
       const result = await createBooking({ leadId: id, type, date, time, endAt, scheduledMinutes, zone: area.zone,
         ...(type === "job" ? {
@@ -236,7 +252,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           technician: body.technician ?? before.technician,
           technicianUsername: body.technicianUsername ?? before.technicianUsername,
         } : { inspectorId: body.inspectorId ?? before.inspectorId, assigned: body.assigned ?? before.assigned, inspectorUsername: body.inspectorUsername ?? before.inspectorUsername }),
-        suburb: area.suburb || undefined, reference: primary.jobNo || `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true, append: appendBooking, replaceStart: before[field]?.slice(0, 16) });
+        suburb: area.suburb || undefined, reference: primary.jobNo || `GX-ADM-${id.slice(-6)}` }, { retainPrevious: true, staffOverride: true, append: appendBooking, bookingId: type === bookingType && selectedBookingId ? selectedBookingId : primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b))?.bookingId, replaceStart: before[field]?.slice(0, 16) });
       if (!result.ok) {
         await rollback();
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
@@ -245,7 +261,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
     const persisted = { ...body };
     if (bookingType && primary[bookingType === "job" ? "jobAt" : "inspectionAt"] &&
-        (appendBooking || bookingOriginalStart && bookingOriginalStart !== primary[bookingType === "job" ? "jobAt" : "inspectionAt"]?.slice(0, 16))) {
+        (appendBooking || secondaryVisit)) {
       const keys = bookingType === "job" ? ["jobAt", "jobEndAt", "jobWorkSegments", "technician", "technicianId", "technicianUsername"]
         : ["inspectionAt", "inspectionEndAt", "inspectionWorkSegments", "assigned", "inspectorId", "inspectorUsername"];
       for (const key of keys) delete persisted[key];
@@ -265,7 +281,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const field = type === "job" ? "jobAt" : "inspectionAt";
     const old = before[field]?.slice(0, 16);
     if (!appendBooking && old && field in body && body[field]?.slice(0, 16) !== old) {
-      await releaseBookingSlot(id, type, old.slice(0, 10), old.slice(11, 16));
+      await releaseBookingSlot(id, type, old.slice(0, 10), old.slice(11, 16), { bookingId: selectedBookingId || primary.bookings?.find(b => b.type === type && isPrimaryBooking(primary, b))?.bookingId });
     }
   }
 
