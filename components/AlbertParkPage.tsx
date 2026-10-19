@@ -1,15 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Phone, Star, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import HeroContactBadges from "@/components/HeroContactBadges";
 import AnimatedSection from "@/components/AnimatedSection";
-import type { Review, BusinessRating } from "@/lib/reviews";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import { useGoogleRating } from "@/components/useGoogleRating";
+import type { Review, BusinessRating } from "@/lib/reviews";
 
 /* ─── FAQ accordion item (matches site pattern) ─── */
 function FaqItem({ q, a }: { q: string; a: string }) {
@@ -101,32 +101,23 @@ export default function AlbertParkPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <main className="public-page">
-        {/* ═════════ 1. HERO (dark #0d1030) ═════════ */}
-        <section className="relative overflow-hidden bg-[#0d1030] pt-[90px] lg:pt-[100px]">
-          <div className="relative mx-auto grid max-w-[1460px] items-center gap-10 px-4 sm:px-6 py-8 pb-12 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-12 lg:pb-16">
-            <div className="space-y-5 text-center text-white lg:text-left">
-              <p className="text-[15px] font-black uppercase tracking-[0.2em] text-[#FBBC04]">Groutix</p>
-              <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
+        {/* ═════════ 1. HERO — live homepage (HomePageV2) pattern ═════════ */}
+        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[#0d1030] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <div className="mx-auto grid w-full max-w-[1460px] grid-cols-1 items-start gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 lg:px-10 xl:grid-cols-[minmax(0,1fr)_540px]">
+            <div className="text-center lg:text-left">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Albert Park 3206</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
                 Balcony, Verandah &amp; Shower Regrouting in Albert Park
               </h1>
-              <p className="mx-auto max-w-xl text-sm leading-relaxed text-white/85 sm:text-base lg:mx-0">
-                Albert Park is terrace country, and terraces have three places where grout gives up first: the upstairs balcony, the tiled front verandah and a bathroom often tucked at the back. We regrout all three across Albert Park 3206 without lifting your tiles, and back eligible shower work with a 10-year waterproof warranty.
+              <p className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-white/85 sm:text-base lg:mx-0">
+                Upstairs balcony leaking into the front room, or shower grout gone black and mouldy? That&apos;s what balcony regrouting in Albert Park fixes — in a single visit, no tile removal. Free quote, 10-year waterproof warranty on showers.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-1 lg:justify-start">
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges rating={rating} />
               </div>
             </div>
-            <div className="w-full">
-              {/* [TBC] Client to supply hero image (recommended 800x600). Replace src below. */}
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-sm bg-white/5">
-                <Image
-                  src="/albert-park-hero.jpg"
-                  alt="Balcony regrouting on an Albert Park terrace"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none lg:self-start">
+              <QuoteFormV2 defaultService="Balcony Regrouting" />
             </div>
           </div>
         </section>
@@ -162,30 +153,22 @@ export default function AlbertParkPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 3. LOCAL INTRO ═════════ */}
+        {/* ═════════ 3. LOCAL INTRO — direct answer ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
-                Regrouting for Albert Park&apos;s Victorian Terraces
+                Terrace Homes Are What We Do in Albert Park
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Groutix regrouts balconies, verandahs, showers and tiled floors across Albert Park 3206 in the City of Port Phillip, working from our Gowanbrae base.
-              </p>
-            </div>
-            <div className="mx-auto max-w-3xl space-y-4">
-              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Six in ten Albert Park homes are terraces or semis, many on heritage-protected streets between the lake and the beach. The houses are well over a century old. Their bathrooms, balconies and verandahs have usually been redone at least once since, and that&apos;s where the grout and silicone wear out.
-              </p>
-              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Being this close to the bay matters too. Upstairs balconies and front verandahs take the sea breeze, winter rain and summer sun, and once the grout cracks, water gets under the tiles and into the room or hallway below.
+                Six in ten Albert Park homes are terraces or semis — double-storey Victorians on streets like Danks Street, Victoria Avenue and around St Vincent Place. The grout fails in the same three places every time: the upstairs balcony, the tiled front verandah, and the bathroom. Groutix does balcony regrouting in Albert Park — plus verandahs and showers — usually in a single visit, without lifting your tiles.
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
               {[
                 { value: "62%", label: "Of Albert Park Homes Are Terraces or Semis", sub: "ABS Census 2021" },
-                { value: "61%", label: "Of Albert Park Homes Are Owner-Occupied", sub: "ABS Census 2021" },
-                { value: "3206", label: "Albert Park, From the Lake to the Beach", sub: "Covered from our Gowanbrae base" },
+                { value: "3206", label: "Albert Park, Lake to Beach", sub: "Covered from our Gowanbrae base" },
+                { value: "1 Visit", label: "For Most Regrouting Jobs", sub: "Tiles stay in place" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
                   <p className="text-2xl font-black text-neutral-900">{s.value}</p>
@@ -194,6 +177,9 @@ export default function AlbertParkPage({
                 </div>
               ))}
             </div>
+            <p className="mx-auto max-w-3xl text-center text-base leading-relaxed text-neutral-600">
+              Living this close to the bay matters: upstairs balconies and front verandahs cop the sea breeze, winter rain and summer sun. Once the grout cracks, water gets under the tiles and into the room below. Our grouting repairs in Albert Park start with the joints and junctions — never the tiles.
+            </p>
           </div>
         </AnimatedSection>
 
@@ -205,13 +191,13 @@ export default function AlbertParkPage({
                 Balcony Regrouting in Albert Park
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Most leaking balconies on Albert Park terraces and bayside apartments start with failed grout and silicone where the tiles meet the door sill, the walls and the balustrade. We cut out the old grout, reseal the junctions and regrout with a grout made for outdoor use, usually without lifting a tile.
+                Brown stain on the front-room ceiling? That&apos;s your upstairs balcony telling you the grout has failed at the door sill or the balustrade posts. Balcony regrouting in Albert Park fixes exactly that: we cut out the failed grout, reseal the junctions and regrout with an outdoor-grade grout — usually in one visit, tiles stay down.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { title: "Damp Front Room", text: "A stain on the ceiling of the room under the balcony." },
-                { title: "Washed-Out Joints", text: "Grout lines that are sandy, missing or growing moss." },
+                { title: "Damp Front Room", text: "Stain on the ceiling under the balcony — failed grout at the door sill." },
+                { title: "Washed-Out Joints", text: "Sandy, missing or mossy grout lines letting water underneath." },
                 { title: "Balustrade Post Bases", text: "Gaps and rust stains where the posts meet the tiles." },
                 { title: "Cracked Door Sill", text: "Cracked grout or silicone where the balcony meets the door." },
               ].map((c, i) => (
@@ -231,9 +217,17 @@ export default function AlbertParkPage({
             <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-white p-6">
               <h3 className="mb-2 text-lg font-bold text-neutral-900">Balcony Regrouting or Waterproofing Repair?</h3>
               <p className="text-base leading-relaxed text-neutral-600">
-                Regrouting replaces the grout and seals on top of the tiles. Waterproofing repair fixes or replaces the membrane underneath. If the membrane is sound, a regrout and reseal is all you need; if it has failed, we&apos;ll tell you before you spend money. More on{" "}
+                Regrouting replaces the grout and seals on top of the tiles. Waterproofing repair fixes the membrane underneath. If the membrane is sound, a regrout and reseal stops the leak; if it has failed, we&apos;ll tell you before you spend a cent. More on{" "}
                 <Link href="/balcony-leak-repairs" className="font-bold text-accent hover:underline">balcony leak repairs</Link>.
               </p>
+            </div>
+            <div className="text-center">
+              <Link
+                href="/contact"
+                className="inline-block rounded-sm bg-primary px-8 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+              >
+                Get a Free Balcony Quote
+              </Link>
             </div>
           </div>
         </AnimatedSection>
@@ -246,14 +240,14 @@ export default function AlbertParkPage({
                 Tiled Verandahs, Paths and Courtyards
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Many Albert Park terraces have a tiled front verandah or path, and plenty have a tiled courtyard out the back. When the joints wash out, tiles start to rock and water gets underneath.
+                Joints washed out on the front verandah? Tiles rocking on the path? Tile regrouting in Albert Park covers verandahs, paths and rear courtyards: we regrout the joints so the tiles stay put — and re-fix the odd loose tile as a small tiling job.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
-                { title: "Front Verandahs", text: "Washed-out or cracked joints regrouted so the tiles stay put." },
-                { title: "Paths and Steps", text: "The odd loose tile re-fixed as a small tiling job, matched as closely as we can." },
-                { title: "Rear Courtyards", text: "Outdoor tiles regrouted with a grout made for outdoor use." },
+                { title: "Front Verandahs", text: "Washed-out or cracked joints regrouted — the tiles stay exactly where they are." },
+                { title: "Paths and Steps", text: "The odd loose tile re-fixed and matched as closely as we can." },
+                { title: "Rear Courtyards", text: "Outdoor tiles — courtyards, patios and rear paths — regrouted with outdoor-grade grout." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -269,9 +263,18 @@ export default function AlbertParkPage({
               ))}
             </div>
             <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
-              Original encaustic and tessellated Victorian tiles need a heritage tile specialist for full restoration. We&apos;ll tell you if yours do. More on{" "}
-              <Link href="/tile-regrouting" className="font-bold text-accent hover:underline">tile regrouting</Link>.
+              Original encaustic and tessellated Victorian tiles need a heritage tile specialist for full restoration — we&apos;ll tell you if yours do. More on{" "}
+              <Link href="/tile-regrouting" className="font-bold text-accent hover:underline">tile regrouting</Link>, or{" "}
+              <Link href="/small-tiling-jobs" className="font-bold text-accent hover:underline">small tiling jobs</Link> for loose-tile refixes.
             </p>
+            <div className="text-center">
+              <Link
+                href="/contact"
+                className="inline-block rounded-sm bg-primary px-8 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+              >
+                Get a Free Verandah Quote
+              </Link>
+            </div>
           </div>
         </AnimatedSection>
 
@@ -283,12 +286,12 @@ export default function AlbertParkPage({
                 Shower Regrouting in Albert Park
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                A shower regrout replaces cracked, mouldy or missing grout and the old silicone, usually in one visit, with your tiles left in place.
+                Black silicone, mouldy grout, a musty smell that won&apos;t leave? A shower regrout fixes it in one visit: old grout cut out to depth — never painted over — silicone stripped and replaced, tiles left in place.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-6">
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                In terrace homes the bathroom is often at the back of the house, or upstairs under a sloping ceiling, with a small window and not much airflow. Steam lingers, mould moves into the grout, and the silicone along the base goes black first. Regrouting before water gets under the tiles saves the bathroom.
+                Terrace bathrooms sit at the back of the house or upstairs under a sloping ceiling, with a small window and poor airflow. Steam lingers, mould moves into the grout, and the silicone along the base goes black first. Regrouting before water gets under the tiles saves the bathroom — and the ceiling below it.
               </p>
               <div className="rounded-sm border border-neutral-200 bg-white p-6 sm:p-8">
                 <h3 className="mb-4 text-xl font-bold text-neutral-900">What a Groutix Shower Regrout Includes</h3>
@@ -326,15 +329,15 @@ export default function AlbertParkPage({
                 Leaking Shower Repair in Albert Park
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                In a two-storey terrace, an upstairs shower leak shows up downstairs: a stain on the hallway ceiling, a damp patch by the stairs or swollen timber at the bathroom door. We find where the water is escaping, fix the grout and seals, and tell you straight if it&apos;s a membrane or plumbing problem.
+                In a double-storey terrace, an upstairs shower leak shows up downstairs: a stain on the hallway ceiling, a damp patch by the stairs, swollen timber at the bathroom door. We find where the water is escaping, fix the grout and seals — and tell you straight if it&apos;s a membrane or plumbing problem instead.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { title: "Hallway Ceiling Stain", text: "A brown mark on the ceiling under the upstairs bathroom." },
+                { title: "Hallway Ceiling Stain", text: "Brown mark on the ceiling under the upstairs bathroom." },
                 { title: "Swollen Door Frame", text: "Timber at the bathroom door swelling or lifting." },
                 { title: "Drummy Tiles", text: "Floor tiles that sound hollow or rock underfoot." },
-                { title: "Musty Bathroom", text: "A damp smell that stays after the room has aired." },
+                { title: "Musty Bathroom", text: "Damp smell that stays after the room has aired." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -364,8 +367,11 @@ export default function AlbertParkPage({
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
-                Kitchen, Laundry, Epoxy and Silicone Work
+                Kitchen, Laundry, Epoxy and Silicone Work in Albert Park
               </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Beyond balconies and bathrooms, we take on the smaller wet-area jobs across Albert Park terraces.
+              </p>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
@@ -402,7 +408,7 @@ export default function AlbertParkPage({
                 Where We Work in Albert Park
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                We cover all of Albert Park 3206, from the lake to Beaconsfield Parade.
+                All of Albert Park 3206, from the lake to Beaconsfield Parade — if your street is in 3206, we come to you.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -410,21 +416,21 @@ export default function AlbertParkPage({
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Albert Park 3206</p>
                 <h3 className="text-xl font-bold text-neutral-900">Around Bridport Street</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  The streets around Bridport Street&apos;s shops and cafes are lined with single and double-storey Victorian terraces. Upstairs balconies, front verandahs and compact bathrooms are where the grout fails first, often all in the one house.
+                  The village end — Bridport Street, Victoria Avenue and Danks Street — is wall-to-wall single and double-storey Victorian terraces. Upstairs balconies, front verandahs and compact bathrooms fail first here, often all three in the one house.
                 </p>
               </div>
               <div id="st-vincent-gardens" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Albert Park 3206</p>
                 <h3 className="text-xl font-bold text-neutral-900">Around St Vincent Gardens</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  The terraces facing St Vincent Gardens sit in one of Albert Park&apos;s best-kept heritage pockets, and the gardens are registered with the National Trust. Original features matter here, so we regrout carefully around them and leave the tiles in place.
+                  The terraces facing St Vincent Gardens and St Vincent Place sit in a heritage-overlay pocket, and the gardens are National Trust registered. Original features matter here, so we regrout carefully around them and leave every tile in place.
                 </p>
               </div>
               <div id="beaconsfield-parade" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-neutral-50 p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Albert Park 3206</p>
                 <h3 className="text-xl font-bold text-neutral-900">Beaconsfield Parade and the Beach</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Along Beaconsfield Parade, near Kerferd Road pier, homes and apartments face the bay head-on. Balconies here get more salt, wind and sun than anywhere else in the suburb, so edge joints and door sills need checking more often.
+                  Along Beaconsfield Parade and Kerferd Road, homes face the bay head-on. Balconies here cop more salt, wind and sun than anywhere else in the suburb — edge joints and door sills need checking more often.
                 </p>
               </div>
             </div>
@@ -461,6 +467,9 @@ export default function AlbertParkPage({
               <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
                 Why Albert Park Owners Choose Groutix
               </h2>
+              <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
+                Groutix is a Melbourne regrouting specialist — balconies, showers, verandahs, epoxy and silicone. No renovations, no retiling quotes: the crew on your Albert Park job does this work every day.
+              </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -500,7 +509,7 @@ export default function AlbertParkPage({
                 What Does Regrouting Cost in Albert Park?
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                We quote every job after we&apos;ve seen it. These are the things that change the price.
+                Short answer: we quote after seeing the job — every terrace is different, so there&apos;s no fixed price list. These four things decide the number:
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -563,7 +572,7 @@ export default function AlbertParkPage({
               Leaking Balcony or Tired Shower in Albert Park?
             </h2>
             <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-              Send us a photo or call (03) 7023 8094 for a free quote. We cover all of Albert Park 3206.
+              Send us a photo or call (03) 7023 8094 for a free balcony or shower regrouting quote in Albert Park. We cover all of 3206 — most jobs done in a single visit.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
