@@ -4,7 +4,7 @@ import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
-import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
+import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
 
 import { useState } from "react";
 import {
@@ -32,6 +32,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     updateLeadField,
     updateJobBooking,
     jobBookingsSaving,
+    setStartJobDays,
+    setStartJobPrompt,
     callCustomer,
     openMessagesModal,
     openPhotosModal,
@@ -634,7 +636,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                             disabled={done || jobSaving || isTerminalStatus(l.status)}
                             onClick={() => {
                               if (done) return;
-                              updateJobBooking(l, { status: step.status });
+                              setStartJobDays(jobTotalDays || jobBooking?.workSegments?.length || 1);
+                              setStartJobPrompt({ lead: l });
                             }}
                             className={`px-0.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-colors truncate ${
                               done
@@ -718,10 +721,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               <div className="flex items-center justify-between text-[10px] font-bold text-blue-800">
                 <span>Day {jobDaysDone || 1} of {jobTotalDays} — {l.technician || "Technician"}</span>
                 <span className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
-                  {Math.round(((jobDaysDone || 1) / jobTotalDays) * 100)}%
+                  {Math.min(100, Math.round(((jobDaysDone || 1) / jobTotalDays) * 100))}%
                 </span>
               </div>
-              <div className="w-full bg-blue-100 rounded-full h-2">
+              <div role="progressbar" aria-label="Job day progress" aria-valuemin={0} aria-valuemax={jobTotalDays} aria-valuenow={Math.min(jobTotalDays, jobDaysDone || 1)} className="w-full bg-blue-100 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, ((jobDaysDone || 1) / jobTotalDays) * 100)}%` }}
@@ -732,6 +735,13 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   <div key={i} className={`flex-1 h-1.5 rounded-full ${i < (jobDaysDone || 1) ? "bg-blue-600" : "bg-blue-100"}`} />
                 ))}
               </div>
+              <button type="button" disabled={jobSaving || isTerminalStatus(l.status)}
+                onClick={() => void updateJobBooking(l, (jobDaysDone || 1) >= jobTotalDays
+                  ? { status: "Job Done", jobDaysDone: jobTotalDays }
+                  : { jobDaysDone: (jobDaysDone || 1) + 1 })}
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                {(jobDaysDone || 1) >= jobTotalDays ? "Complete Job" : "Complete Day"}
+              </button>
             </div>
           )}
         </div>
@@ -740,7 +750,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         <div className="space-y-2.5 min-w-0 pt-5 lg:pt-0">
           <div className="p-2 space-y-1.5">
             <DocumentDeliveryStatus label="Invoice" sentAt={l.invoiceSentAt} openedAt={l.invoiceOpenedAt} />
-            <DocumentDeliveryStatus label="Quote" {...quoteDeliveryTimes(l)} />
+            <QuoteDeliveryHistory lead={l} />
             {l.quoteAcceptedAt && (
               <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 shrink-0" />

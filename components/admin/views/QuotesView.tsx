@@ -1,7 +1,6 @@
 "use client";
 
-import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
-import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
+import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
 
 import { Search } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -81,7 +80,7 @@ export function QuotesView() {
                       >
                         {l.status}
                       </span>
-                      <DocumentDeliveryStatus label="Quote" {...quoteDeliveryTimes(l)} />
+                      <QuoteDeliveryHistory lead={l} />
                       <QuoteResponseBadge lead={l} />
                     </div>
                   </td>

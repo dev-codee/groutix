@@ -2,8 +2,7 @@
 
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
-import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
-import { quoteDeliveryTimes } from "@/lib/quoteDelivery";
+import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
 
 import {
   Phone, Mail, MapPin, Wrench, MessageSquare, Send,
@@ -528,7 +527,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
                 <span className="truncate">Quote Sent</span>
                 {isQuoteSentDone && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
               </div>
-              <DocumentDeliveryStatus label="Quote" {...quoteDeliveryTimes(l)} />
+              <QuoteDeliveryHistory lead={l} />
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@ export function JobBookingActions({ lead }: { lead: Lead }) {
             if (blocked || done) return;
             if (index < 2) void handleOnTheWay(lead, index === 0 ? "en_route" : "arrived", "job");
             else if (step.status === "Job In Progress") {
-              setStartJobDays(totalDays);
+              setStartJobDays(lead.jobTotalDays || lead.jobWorkSegments?.length || 1);
               setStartJobPrompt({ lead });
             } else void updateJobBooking(lead, { status: step.status });
           }}
@@ -43,8 +43,9 @@ export function JobBookingActions({ lead }: { lead: Lead }) {
         </button>;
       })}
     </div>
-    {lead.status === "Job In Progress" && totalDays > 1 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-      <span>Day {daysDone} of {totalDays}</span>
+    {lead.status === "Job In Progress" && totalDays > 1 && <div className="space-y-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+      <span>Day {daysDone} of {totalDays} · {Math.min(100, Math.round(daysDone / totalDays * 100))}%</span>
       <button type="button" disabled={blocked}
         className="font-semibold underline underline-offset-2 disabled:opacity-50"
         onClick={() => void updateJobBooking(lead, daysDone >= totalDays
@@ -52,6 +53,13 @@ export function JobBookingActions({ lead }: { lead: Lead }) {
           : { jobDaysDone: daysDone + 1 })}>
         {daysDone >= totalDays ? "Complete Job" : "Complete Day"}
       </button>
+      </div>
+      <div role="progressbar" aria-label="Job day progress" aria-valuemin={0} aria-valuemax={totalDays} aria-valuenow={Math.min(totalDays, daysDone)} className="h-2 overflow-hidden rounded-full bg-blue-100">
+        <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${Math.min(100, daysDone / totalDays * 100)}%` }} />
+      </div>
+      <div className="flex gap-0.5" aria-hidden="true">
+        {Array.from({ length: totalDays }, (_, index) => <div key={index} className={`h-1.5 flex-1 rounded-full ${index < daysDone ? "bg-blue-600" : "bg-blue-100"}`} />)}
+      </div>
     </div>}
     {saving && <p role="status" className="text-xs text-blue-700">Saving this booking…</p>}
   </div>;

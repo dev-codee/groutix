@@ -580,12 +580,16 @@ function RouteSummaryFooter({
 
 function RouteMapPanel({
   mapItems,
+  mapTypeFilter,
+  onMapTypeFilterChange,
   selectedLeadId,
   selectedItemId,
   onSelectItem,
   onSelectLead,
 }: {
   mapItems: DispatchMapItem[];
+  mapTypeFilter: "all" | JobType;
+  onMapTypeFilterChange: (type: "all" | JobType) => void;
   selectedLeadId: string | null;
   selectedItemId?: string | null;
   onSelectItem?: (id: string) => void;
@@ -600,7 +604,18 @@ function RouteMapPanel({
         selectedItemId={selectedItemId}
         onSelectItem={onSelectItem}
         onSelectLead={onSelectLead}
-      />
+      >
+        <div role="group" aria-label="Show on map" className="absolute bottom-7 left-3 right-3 z-10 flex w-fit max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-md">
+          {(["all", "inspection", "job"] as const).map(type => <button key={type} type="button"
+            aria-pressed={mapTypeFilter === type} onClick={() => onMapTypeFilterChange(type)}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors cursor-pointer ${mapTypeFilter === type
+              ? type === "inspection" ? "bg-blue-600 text-white" : type === "job" ? "bg-emerald-600 text-white" : "bg-slate-900 text-white"
+              : "text-slate-600 hover:bg-slate-100"}`}>
+            {type !== "all" && <span aria-hidden="true" className={`h-2 w-2 rounded-full ${mapTypeFilter === type ? "bg-white" : type === "inspection" ? "bg-blue-600" : "bg-emerald-600"}`} />}
+            {type === "all" ? "Both" : type === "inspection" ? "Inspections" : "Jobs"}
+          </button>)}
+        </div>
+      </DispatchMap>
     </div>
   );
 }
@@ -775,6 +790,7 @@ export function ScheduleCalendarView({
   const [planningSearch, setPlanningSearch] = useState("");
   const [showUnassigned, setShowUnassigned] = useState(true);
   const [showUnassignedOnMap, setShowUnassignedOnMap] = useState(true);
+  const [mapTypeFilter, setMapTypeFilter] = useState<"all" | JobType>("all");
   const dragItem = useRef<ScheduleDragItem | null>(null);
   const [dragging, setDragging] = useState(false);
   const [dropDate, setDropDate] = useState<string | null>(null);
@@ -893,7 +909,9 @@ export function ScheduleCalendarView({
       })
       .filter((x): x is DispatchMapItem => x !== null),
   [entries, leads]);
-  const mapItems = useMemo(() => buildPlanningMapItems(colorPlanningMapItems(bookedMapItems, visibleDates), showUnassigned && showUnassignedOnMap ? unassignedLeads : []), [bookedMapItems, visibleDates, unassignedLeads, showUnassigned, showUnassignedOnMap]);
+  const mapItems = useMemo(() => buildPlanningMapItems(colorPlanningMapItems(bookedMapItems, visibleDates), showUnassigned && showUnassignedOnMap ? unassignedLeads : [])
+    .filter(item => mapTypeFilter === "all" || item.type === mapTypeFilter),
+  [bookedMapItems, visibleDates, unassignedLeads, showUnassigned, showUnassignedOnMap, mapTypeFilter]);
   const bookPlanningLead = () => {
     if (!selectedPlanningLead) return;
     if (!discardChanges()) return;
@@ -1236,8 +1254,8 @@ export function ScheduleCalendarView({
             <div className="flex gap-2"><button type="button" onClick={bookPlanningLead} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 cursor-pointer">Book this lead</button><button type="button" onClick={() => onOpenLead(selectedPlanningLead.lead.id)} className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 cursor-pointer">View details</button></div>
           </div>}
           <div className="flex shrink-0 flex-wrap gap-3 border-b border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600">
-            <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" />Inspection</span>
-            <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />Job</span>
+            {mapTypeFilter !== "job" && <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" />Inspections</span>}
+            {mapTypeFilter !== "inspection" && <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />Jobs</span>}
             <span className="font-semibold">All {dayCount} selected {dayCount === 1 ? "day" : "days"} on map</span>
             {visibleDates.map((date, index) => <span key={date} className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: planningDayColor(index) }} />{new Date(date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}</span>)}
             {showUnassigned && showUnassignedOnMap && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full border border-slate-400" />Unassigned</span>}
@@ -1245,6 +1263,8 @@ export function ScheduleCalendarView({
           <div className="flex-1 min-h-0">
           <RouteMapPanel
             mapItems={mapItems}
+            mapTypeFilter={mapTypeFilter}
+            onMapTypeFilterChange={setMapTypeFilter}
             selectedLeadId={selectedPlanningLead?.lead.id || selectedEntry?.leadId || null}
             selectedItemId={selectedPlanningLead ? null : selectedId}
             onSelectItem={selectBooking}
