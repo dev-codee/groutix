@@ -9,7 +9,7 @@ import AnimatedSection from "./AnimatedSection";
 import HeroContactBadges from "./HeroContactBadges";
 import QuoteFormV2 from "./home/QuoteFormV2";
 import { useGoogleRating } from "./useGoogleRating";
-import { SERVICES, REVIEWS, BUSINESS, type Review } from "../lib/locationData";
+import type { Review, BusinessRating } from "../lib/reviews";
 import { useState } from "react";
 
 /* ------------------------------------------------------------------ */
@@ -51,7 +51,7 @@ function Faqs({ items }: { items: { question: string; answer: string }[] }) {
 /* ------------------------------------------------------------------ */
 /*  Page                                                                */
 /* ------------------------------------------------------------------ */
-export default function OurProcessPage({ reviews, rating }: { reviews: Review[]; rating: number }) {
+export default function OurProcessPage({ reviews, rating }: { reviews: Review[]; rating: BusinessRating }) {
   const { ratingLabel, countLabel } = useGoogleRating();
 
   const STEPS = [
