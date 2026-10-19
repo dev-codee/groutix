@@ -53,11 +53,21 @@ test("failed lead writes release only the newly acquired slot", async () => {
   assert.equal(calls.some(([action]) => action === "delete"), false);
 });
 
-test("booking removal clears the appointment and releases its slot", async () => {
-  const { patch, calls } = patchApi({ before: { jobAt: "2026-10-08T09:00" } });
-  assert.equal((await patch({ jobAt: "" })).status, 200);
-  assert.equal(calls.find(([action]) => action === "update")[2].jobAt, "");
-  assert.deepEqual(Array.from(calls.find(([action]) => action === "release")).slice(0, 5), ["release", "lead", "job", "2026-10-08", "09:00"]);
+test("booking removal clears all timing details and releases only its slot", async () => {
+  for (const type of ["inspection", "job"]) {
+    const field = `${type}At`, end = `${type}EndAt`, segments = `${type}WorkSegments`;
+    const { patch, calls } = patchApi({ before: {
+      [field]: "2026-10-08T09:00", [end]: "2026-10-08T11:00",
+      [segments]: [{ date: "2026-10-08", time: "09:00", scheduledMinutes: 120 }],
+    } });
+    assert.equal((await patch({ [field]: "" })).status, 200);
+    const saved = calls.find(([action]) => action === "update")[2];
+    assert.equal(saved[field], "");
+    assert.equal(saved[end], "");
+    assert.equal(saved[segments].length, 0);
+    assert.equal(calls.some(([action]) => action === "reserve"), false);
+    assert.deepEqual(Array.from(calls.find(([action]) => action === "release")).slice(0, 5), ["release", "lead", type, "2026-10-08", "09:00"]);
+  }
 });
 
 test("invalid appointment dates never update a lead", async () => {

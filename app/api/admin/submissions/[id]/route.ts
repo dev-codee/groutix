@@ -194,7 +194,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const startField = type === "job" ? "jobAt" : "inspectionAt";
     const endField = type === "job" ? "jobEndAt" : "inspectionEndAt";
     if (endField in body && !(startField in body)) body[startField] = before[startField];
-    if (startField in body && !body[startField]) body[endField] = "";
+    if (startField in body && !body[startField]) {
+      body[endField] = "";
+      body[type === "job" ? "jobWorkSegments" : "inspectionWorkSegments"] = [];
+    }
     // Older editing screens supply only a new start; preserve working hours.
     if (typeof body[startField] === "string" && body[startField] && before[startField] && before[endField] && !(endField in body)) {
       try {

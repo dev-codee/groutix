@@ -19,9 +19,9 @@ export function BookingTimingSummary({ type, start, end, rules }: { type: Bookin
 }
 
 /** The same working-day, duration and finish controls in every booking form. */
-export function BookingTimingEditor({ type, start, end, rules, onChange, disabled = false, minDate, showStart = true }: {
+export function BookingTimingEditor({ type, start, end, rules, onChange, disabled = false, minDate, showStart = true, required = true }: {
   type: BookingType; start: string; end?: string; rules: BookingRules;
-  onChange: (start: string, end: string) => void; disabled?: boolean; minDate?: string; showStart?: boolean;
+  onChange: (start: string, end: string) => void; disabled?: boolean; minDate?: string; showStart?: boolean; required?: boolean;
 }) {
   let finish = end?.slice(0, 16) || "", minutes = rules[type].slotMinutes, days = 1;
   let issue = "";
@@ -34,6 +34,7 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
     }
   } catch (error) { issue = error instanceof Error ? error.message : "Choose valid working hours."; }
   const input = "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50";
+  const timingRequired = required || Boolean(start);
   const moveStart = (next: string) => {
     try { onChange(next, next.length === 16 ? bookingEndForDuration(type, next, minutes, rules) : ""); }
     catch { onChange(next, ""); }
@@ -44,8 +45,8 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
   };
   return <div className="space-y-3">
     {showStart && <div className="grid grid-cols-2 gap-3">
-      <label className="text-xs font-semibold">Start date<input required type="date" min={minDate} value={start.slice(0, 10)} disabled={disabled} onChange={event => moveStart(`${event.target.value}T${start.slice(11, 16) || "09:00"}`)} className={input} /></label>
-      <label className="text-xs font-semibold">Start time<input required type="time" value={start.slice(11, 16)} disabled={disabled} onChange={event => moveStart(`${start.slice(0, 10)}T${event.target.value}`)} className={input} /></label>
+      <label className="text-xs font-semibold">Start date<input required={timingRequired} type="date" min={minDate} value={start.slice(0, 10)} disabled={disabled} onChange={event => moveStart(event.target.value ? `${event.target.value}T${start.slice(11, 16) || "09:00"}` : "")} className={input} /></label>
+      <label className="text-xs font-semibold">Start time<input required={timingRequired} type="time" value={start.slice(11, 16)} disabled={disabled} onChange={event => moveStart(`${start.slice(0, 10)}T${event.target.value}`)} className={input} /></label>
     </div>}
     {start && <>
       <div className="grid grid-cols-2 gap-3">

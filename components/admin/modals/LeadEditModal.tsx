@@ -318,6 +318,8 @@ export function LeadEditModal({
                       setEditingLead({
                         ...editingLead,
                         inspectionAt: "",
+                        inspectionEndAt: "",
+                        inspectionWorkSegments: [],
                         inspectionReminderSent: false,
                       });
                     }}
@@ -329,7 +331,7 @@ export function LeadEditModal({
             </div>
             <div>
               <label className="font-bold text-slate-700 block mb-1">Job Date &amp; Time</label>
-              <BookingTimingEditor type="job" start={editingLead?.jobAt?.slice(0, 16) || ""} end={editingLead?.jobEndAt} rules={bookingRules} minDate={minBookingValue?.slice(0, 10)}
+              <BookingTimingEditor type="job" required={false} start={editingLead?.jobAt?.slice(0, 16) || ""} end={editingLead?.jobEndAt} rules={bookingRules} minDate={minBookingValue?.slice(0, 10)}
                 onChange={(start, end) => setEditingLead({ ...editingLead, jobAt: start, jobEndAt: end, jobReminderSent: false })} />
               {jobWarning && (
                 <p className="text-[10px] font-semibold text-amber-700 mt-1">⚠ Outside booking hours: {jobWarning}</p>
@@ -397,6 +399,8 @@ export function LeadEditModal({
                       setEditingLead({
                         ...editingLead,
                         jobAt: "",
+                        jobEndAt: "",
+                        jobWorkSegments: [],
                         jobReminderSent: false,
                       });
                     }}
