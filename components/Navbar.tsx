@@ -438,7 +438,7 @@ export default function Navbar() {
 
             {/* Our Process */}
             <Link
-              href="/#how-it-works"
+              href="/our-process"
               className="text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1"
             >
               Our Process
@@ -700,7 +700,7 @@ export default function Navbar() {
                 </div>
 
                 <Link
-                  href="/#how-it-works"
+                  href="/our-process"
                   onClick={closeMenu}
                   className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
