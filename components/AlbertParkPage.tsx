@@ -102,7 +102,7 @@ export default function AlbertParkPage({
       />
       <main className="public-page">
         {/* ═════════ 1. HERO — live homepage (HomePageV2) pattern ═════════ */}
-        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[#0d1030] pb-12 pt-[90px] text-white lg:pb-16 lg:pt-[100px]">
+        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[#0d1030] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <div className="mx-auto grid w-full max-w-[1460px] grid-cols-1 items-start gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 lg:px-10 xl:grid-cols-[minmax(0,1fr)_540px]">
             <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Albert Park 3206</p>
