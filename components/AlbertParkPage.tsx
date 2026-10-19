@@ -1,29 +1,13 @@
-/* AlbertParkPage — v3 SERVICE-FIRST rewrite (2026-10-19).
-   Supersedes AlbertParkPage-optimized.tsx.
-   - Hero: quote form instead of image, mirroring the homepage hero
-     (components/HeroQuoteForm with defaultService="Balcony Regrouting" —
-     same component, same backend, zero new logic).
-     The [TBC] hero image is no longer needed.
-   - Rating badges use the live useGoogleRating() hook (same as the other
-     location pages) — rating/count update automatically.
-   - Copy rewritten direct-answer / service-first: the visitor wants a tradie, not an
-     article. Every section answers first, then proves, then asks for the quote.
-   - Hyper-local layer: verified terrace streets (Danks St, Victoria Ave, Moubray St,
-     St Vincent Place, Kerferd Rd), heritage-overlay angle, Grand Prix access note.
-   - FAQ wording + JSON-LD schema kept byte-identical to the content doc.
-   Drop-in replacement for components/AlbertParkPage.tsx on the main branch.
-   ALSO REQUIRED: app/locations/melbourne/[suburb]/page.tsx me albert-park ka
-   render case missing hai (south-yarra line duplicate hai) — notes dekho. */
-
 "use client";
 
 import Link from "next/link";
-import { Phone, Star, ChevronDown, Check } from "lucide-react";
+import { Phone, Star, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AnimatedSection from "@/components/AnimatedSection";
-import HeroQuoteForm from "@/components/HeroQuoteForm";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import { useGoogleRating } from "@/components/useGoogleRating";
 import type { Review, BusinessRating } from "@/lib/reviews";
 
@@ -117,45 +101,23 @@ export default function AlbertParkPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <main className="public-page">
-        {/* ═════════ 1. HERO — quote form, homepage pattern ═════════ */}
-        <section className="relative overflow-hidden bg-[#0d1030] pt-[90px] lg:pt-[100px]">
-          <div className="relative mx-auto grid max-w-[1460px] items-center gap-10 px-4 sm:px-6 py-10 pb-12 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-14 lg:pb-16">
-            <div className="space-y-5 text-center text-white lg:text-left">
-              <p className="text-[15px] font-black uppercase tracking-[0.2em] text-[#FBBC04]">Groutix · Albert Park 3206</p>
-              <h1 className="mx-auto max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl lg:mx-0 lg:text-[42px] xl:text-[48px] [text-shadow:0_2px_24px_rgba(0,0,0,0.25)]">
+        {/* ═════════ 1. HERO — live homepage (HomePageV2) pattern ═════════ */}
+        <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[#0d1030] pb-12 pt-[90px] text-white lg:pb-16 lg:pt-[100px]">
+          <div className="mx-auto grid w-full max-w-[1460px] grid-cols-1 items-start gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 lg:px-10 xl:grid-cols-[minmax(0,1fr)_540px]">
+            <div className="text-center lg:text-left">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Albert Park 3206</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
                 Balcony, Verandah &amp; Shower Regrouting in Albert Park
               </h1>
-              <p className="mx-auto max-w-xl text-sm leading-relaxed text-white/85 sm:text-base lg:mx-0">
+              <p className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-white/85 sm:text-base lg:mx-0">
                 Upstairs balcony leaking into the front room, or shower grout gone black and mouldy? That&apos;s what balcony regrouting in Albert Park fixes — in a single visit, no tile removal. Free quote, 10-year waterproof warranty on showers.
               </p>
-              <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row sm:justify-center lg:justify-start">
-                <a
-                  href="#quote"
-                  className="inline-flex w-full items-center justify-center bg-[#2F63CC] px-7 py-3.5 text-sm font-black text-white transition-all hover:bg-[#264FA3] sm:w-auto rounded-full"
-                >
-                  Get My Free Quote
-                </a>
-                <a
-                  href="tel:+61370238094"
-                  className="inline-flex w-full items-center justify-center gap-2 border border-white/30 bg-white/10 px-7 py-3.5 text-sm font-bold text-white transition-all hover:bg-white/20 sm:w-auto rounded-full"
-                >
-                  <Phone className="h-4 w-4" /> (03) 7023 8094
-                </a>
-              </div>
-              <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
-                {[
-                  `${gr.ratingLabel} ★★★★★ from ${gr.countLabel} Google reviews`,
-                  "10-year waterproof warranty on shower regrouts",
-                ].map((b, i) => (
-                  <div key={i} className="flex items-start gap-3 rounded-3xl border border-white/15 bg-white/10 px-4 py-3 text-left shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#97B1E5]" />
-                    <p className="text-[13px] leading-snug text-white/85">{b}</p>
-                  </div>
-                ))}
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges rating={rating} />
               </div>
             </div>
-            <div id="quote" className="w-full max-w-[540px] scroll-mt-28 justify-self-center lg:justify-self-end">
-              <HeroQuoteForm defaultService="Balcony Regrouting" />
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none lg:self-start">
+              <QuoteFormV2 defaultService="Balcony Regrouting" />
             </div>
           </div>
         </section>
