@@ -33,7 +33,7 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
       days = segments.length;
     }
   } catch (error) { issue = error instanceof Error ? error.message : "Choose valid working hours."; }
-  const input = "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50";
+  const input = "mt-1 min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50";
   const timingRequired = required || Boolean(start);
   const moveStart = (next: string) => {
     try { onChange(next, next.length === 16 ? bookingEndForDuration(type, next, minutes, rules) : ""); }
@@ -44,12 +44,12 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
     catch { /* Invalid intermediate numeric input leaves the saved range intact. */ }
   };
   return <div className="space-y-3">
-    {showStart && <div className="grid grid-cols-2 gap-3">
+    {showStart && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>label]:min-w-0">
       <label className="text-xs font-semibold">Start date<input required={timingRequired} type="date" min={minDate} value={start.slice(0, 10)} disabled={disabled} onChange={event => moveStart(event.target.value ? `${event.target.value}T${start.slice(11, 16) || "09:00"}` : "")} className={input} /></label>
       <label className="text-xs font-semibold">Start time<input required={timingRequired} type="time" value={start.slice(11, 16)} disabled={disabled} onChange={event => moveStart(`${start.slice(0, 10)}T${event.target.value}`)} className={input} /></label>
     </div>}
     {start && <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>label]:min-w-0">
         {type === "job" && <label className="text-xs font-semibold">Working days<input aria-label="Working days" type="number" min="1" max="45" step="1" value={days} disabled={disabled} onChange={event => setDuration(Number(event.target.value), true)} className={input} /></label>}
         <label className="text-xs font-semibold">Working hours<input aria-label="Working hours" type="number" min="0.25" step="0.25" value={minutes / 60} disabled={disabled} onChange={event => setDuration(Number(event.target.value), false)} className={input} /></label>
       </div>
