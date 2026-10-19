@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, Star, ChevronDown, ShieldCheck, Clock3, SearchCheck, Sparkles, BadgeCheck, Droplets, Ruler } from "lucide-react";
+import { Phone, Star, ChevronDown, ShieldCheck, Clock3, SearchCheck, Sparkles, BadgeCheck, Droplets, Ruler, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -24,7 +24,7 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
         className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 text-left"
       >
         <span className="font-semibold text-[#1a1f4d] text-[15px] sm:text-base">{q}</span>
-        <ChevronDown className={`w-5 h-5 text-[#0d9488] shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-5 h-5 text-[#2F63CC] shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && <p className="px-5 sm:px-6 pb-5 text-[#4a4f6e] text-[15px] leading-relaxed">{a}</p>}
     </div>
@@ -49,6 +49,24 @@ function Faqs({ items }: { items: { question: string; answer: string }[] }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Dynamic Google rating badge (for CTAs)                              */
+/* ------------------------------------------------------------------ */
+function RatingBadge({ ratingLabel, countLabel, dark = false }: { ratingLabel: string; countLabel: string; dark?: boolean }) {
+  return (
+    <div className="flex items-center justify-center gap-2" aria-label={`Rated ${ratingLabel} on Google`}>
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star key={i} className="w-4 h-4 fill-[#f5b301] text-[#f5b301]" />
+        ))}
+      </div>
+      <span className={`text-sm font-semibold ${dark ? "text-white/90" : "text-[#1a1f4d]"}`}>
+        {ratingLabel} · {countLabel} Google reviews
+      </span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Page                                                                */
 /* ------------------------------------------------------------------ */
 export default function OurProcessPage({ reviews, rating }: { reviews: Review[]; rating: BusinessRating }) {
@@ -56,39 +74,39 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
 
   const STEPS = [
     {
-      n: "1",
+      n: "01",
       icon: SearchCheck,
       title: "Free inspection & moisture test",
       time: "About 30 minutes",
       body: "We look before we quote. A technician inspects your grout, silicone and tiles, then runs a moisture-meter test to find exactly where water is escaping. You get an honest diagnosis on the spot — and a fixed written quote that lists what's included, how long it takes, and the warranty period. No obligation.",
-      included: ["Moisture-meter diagnosis", "Fixed written quote", "What's included / excluded, in writing"],
+      included: ["Moisture-meter diagnosis", "Fixed written quote", "Inclusions in writing"],
     },
     {
-      n: "2",
+      n: "02",
       icon: Sparkles,
       title: "Old grout & silicone fully removed",
       time: "The thorough part",
       body: "This is where cheap jobs cut corners. We mechanically cut out all the old, porous grout — never grout over the top (new grout over old typically cracks within 6–12 months). Every failed silicone joint is stripped back, the area is vacuumed and deep-cleaned so the new work bonds properly.",
-      included: ["Full grout removal, not grout-over-grout", "All failed silicone stripped", "Deep clean & vacuum before regrouting"],
+      included: ["Full grout removal — never grout-over-grout", "All failed silicone stripped", "Deep clean & vacuum first"],
     },
     {
-      n: "3",
+      n: "03",
       icon: Droplets,
       title: "Regrout with waterproof epoxy grout",
       time: "Colour-matched on the day",
       body: "We regrout with waterproof epoxy grout — the same class of product (e.g. Mapei Kerapoxy-type) Melbourne's specialist shower sealers use. It resists stains and mould, and never needs sealing. Colour-matched to your tiles. Internal corners and wall-to-floor junctions get flexible sanitary-grade silicone, never grout — grout in corners cracks and absorbs moisture.",
-      included: ["Waterproof epoxy grout, colour-matched", "Silicone (not grout) at every internal corner", "Edges and tap penetrations resealed"],
+      included: ["Waterproof epoxy grout, colour-matched", "Silicone — not grout — at every corner", "Tap penetrations resealed"],
     },
     {
-      n: "4",
+      n: "04",
       icon: BadgeCheck,
       title: "Seal, detail & clean up",
       time: "Finished properly",
       body: "Cement-based grout gets a penetrating sealer (epoxy grout needs none). We detail every edge, protect your shower screen and fittings throughout, and leave the bathroom clean — no dust, no mess, no half-finished joints.",
-      included: ["Penetrating sealer on cement grout", "Shower screen & fittings protected", "Full clean-up before we leave"],
+      included: ["Penetrating sealer on cement grout", "Screen & fittings protected", "Full clean-up before we leave"],
     },
     {
-      n: "5",
+      n: "05",
       icon: ShieldCheck,
       title: "Cure, aftercare & 10-year warranty",
       time: "Light use typically within 24–48 hours",
@@ -192,8 +210,9 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <Navbar />
 
       {/* ============================ HERO ============================ */}
-      <section className="relative overflow-hidden bg-[#0d1030] pt-[140px] lg:pt-[160px] pb-12 lg:pb-16">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,#1a237e_0%,transparent_55%)] opacity-60" aria-hidden />
+      <section className="relative overflow-hidden bg-[#001F97] pt-[140px] lg:pt-[160px] pb-12 lg:pb-16">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,#2F63CC_0%,transparent_55%)] opacity-70" aria-hidden />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,#0d9488_0%,transparent_45%)] opacity-25" aria-hidden />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_520px] gap-10 lg:gap-12 items-start">
             <div className="text-center lg:text-left">
@@ -202,18 +221,21 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <p className="text-[#7ef0e3] text-xs sm:text-sm font-semibold tracking-[0.18em] uppercase mb-4">
+                <p className="text-[#9db9ff] text-xs sm:text-sm font-semibold tracking-[0.18em] uppercase mb-4">
                   Groutix · Melbourne
                 </p>
                 <h1 className="text-white text-3xl sm:text-4xl lg:text-[2.9rem] font-extrabold leading-[1.12] tracking-tight mb-5">
-                  Our Shower Regrouting Process in Melbourne
+                  Our Shower Regrouting <span className="text-[#7ef0e3]">Process</span> in Melbourne
                 </h1>
-                <p className="text-[#c9cdea] text-sm sm:text-base leading-relaxed max-w-xl mx-auto lg:mx-0 mb-7">
+                <p className="text-[#d6defc] text-sm sm:text-base leading-relaxed max-w-xl mx-auto lg:mx-0 mb-6">
                   How does regrouting actually work? Five steps: a free inspection with a moisture test,
                   full removal of old grout and silicone, a waterproof epoxy regrout, sealing and clean-up —
                   then curing guidance and a 10-year waterproof warranty. No tiles removed. Most showers
                   finished in a single visit.
                 </p>
+                <div className="mb-5 flex justify-center lg:justify-start">
+                  <RatingBadge ratingLabel={ratingLabel} countLabel={countLabel} dark />
+                </div>
                 <div className="[&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                   <HeroContactBadges rating={rating} />
                 </div>
@@ -230,14 +252,14 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <section className="bg-white py-10 lg:py-14">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
-            <div className="rounded-2xl border border-[#e8eaf3] bg-[#f6f8ff] p-6 sm:p-8">
-              <h2 className="text-[#1a1f4d] text-xl sm:text-2xl font-bold mb-3">How does regrouting work, in short?</h2>
+            <div className="rounded-3xl border-2 border-[#2F63CC]/20 bg-gradient-to-br from-[#f6f8ff] to-white p-6 sm:p-8 shadow-[0_12px_40px_-16px_rgba(0,31,151,0.18)]">
+              <h2 className="text-[#001F97] text-xl sm:text-2xl font-bold mb-3">How does regrouting work, in short?</h2>
               <p className="text-[#4a4f6e] text-[15px] sm:text-base leading-relaxed">
                 Regrouting replaces the failed grout and silicone that let water escape behind your tiles.
                 The old grout is cut out completely, joints are cleaned, and new waterproof epoxy grout is
                 applied — with flexible silicone (not grout) at every internal corner, because corners move
                 and grout there cracks. Done to the waterproofing heights in{" "}
-                <span className="font-semibold text-[#1a1f4d]">AS 3740</span>, the Australian Standard for
+                <span className="font-semibold text-[#001F97]">AS 3740</span>, the Australian Standard for
                 domestic wet areas, a regrouted shower typically lasts many years with basic care.
               </p>
             </div>
@@ -245,55 +267,127 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
         </div>
       </section>
 
-      {/* ============================ THE 5 STEPS ============================ */}
-      <section id="steps" className="bg-[#f6f8ff] py-14 lg:py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-10">
-            <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold mb-3">The 5 steps, exactly as they happen</h2>
+      {/* ============================ PROCESS FLOW — PREMIUM TIMELINE ============================ */}
+      <section id="steps" className="relative bg-[#f6f8ff] py-16 lg:py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#2F63CC_0%,transparent_40%)] opacity-[0.06]" aria-hidden />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection className="text-center mb-6">
+            <p className="text-[#2F63CC] text-xs sm:text-sm font-bold tracking-[0.22em] uppercase mb-3">How it works</p>
+            <h2 className="text-[#001F97] text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3">
+              From first call to 10-year warranty
+            </h2>
             <p className="text-[#4a4f6e] text-[15px] sm:text-base max-w-2xl mx-auto">
-              No vague promises — this is the sequence your technician follows on every job, from the first
-              call to the final clean-up.
+              No vague promises — this is the exact sequence your technician follows on every job.
             </p>
           </AnimatedSection>
 
-          <div className="space-y-5">
-            {STEPS.map((s, i) => (
-              <AnimatedSection key={s.n} delay={i * 0.05}>
-                <div className="bg-white rounded-2xl border border-[#e8eaf3] p-6 sm:p-8 flex flex-col sm:flex-row gap-5">
-                  <div className="flex sm:flex-col items-center sm:items-start gap-3 sm:gap-2 shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-[#0d9488]/10 flex items-center justify-center">
-                      <s.icon className="w-6 h-6 text-[#0d9488]" />
-                    </div>
-                    <span className="text-xs font-bold text-[#0d9488] uppercase tracking-wider">Step {s.n}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-                      <h3 className="text-[#1a1f4d] text-lg sm:text-xl font-bold">{s.title}</h3>
-                      <span className="inline-flex items-center gap-1 text-xs text-[#4a4f6e] bg-[#f6f8ff] border border-[#e8eaf3] rounded-full px-2.5 py-1">
-                        <Clock3 className="w-3.5 h-3.5" /> {s.time}
-                      </span>
-                    </div>
-                    <p className="text-[#4a4f6e] text-[15px] leading-relaxed mb-3">{s.body}</p>
-                    <ul className="flex flex-wrap gap-2">
-                      {s.included.map((inc) => (
-                        <li
-                          key={inc}
-                          className="text-[13px] text-[#1a1f4d] bg-[#eef7f6] border border-[#0d9488]/20 rounded-full px-3 py-1"
-                        >
-                          {inc}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </AnimatedSection>
+          {/* summary strip */}
+          <AnimatedSection className="flex flex-wrap justify-center gap-2.5 mb-14">
+            {[
+              { icon: Sparkles, t: "5 clear steps" },
+              { icon: Clock3, t: "Most done in 1 visit" },
+              { icon: ShieldCheck, t: "10-year warranty" },
+            ].map((c, i) => (
+              <span key={i} className="inline-flex items-center gap-2 bg-white border border-[#2F63CC]/25 rounded-full px-4 py-2 text-sm font-semibold text-[#001F97] shadow-sm">
+                <c.icon className="w-4 h-4 text-[#2F63CC]" /> {c.t}
+              </span>
             ))}
+          </AnimatedSection>
+
+          {/* timeline */}
+          <div className="relative">
+            {/* connecting line */}
+            <div className="absolute left-[26px] lg:left-1/2 top-4 bottom-4 w-[3px] lg:-translate-x-1/2 rounded-full bg-gradient-to-b from-[#001F97] via-[#2F63CC] to-[#0d9488] opacity-25" aria-hidden />
+
+            <div className="space-y-8 lg:space-y-12">
+              {STEPS.map((s, i) => (
+                <AnimatedSection key={s.n} delay={Math.min(i * 0.05, 0.2)} className="relative">
+                  <div className={`grid lg:grid-cols-2 lg:gap-20 items-start ${i % 2 === 1 ? "" : ""}`}>
+                    {/* node */}
+                    <div className="absolute left-[26px] lg:left-1/2 top-1 -translate-x-1/2 z-10">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        whileInView={{ scale: 1, opacity: 1 }}
+                        viewport={{ once: true, margin: "-60px" }}
+                        transition={{ duration: 0.4 }}
+                        className="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-[#001F97] to-[#2F63CC] text-white font-extrabold text-lg flex items-center justify-center shadow-[0_10px_25px_-8px_rgba(0,31,151,0.5)] ring-4 ring-[#f6f8ff]"
+                      >
+                        {s.n}
+                      </motion.div>
+                    </div>
+
+                    {/* card */}
+                    <div className={`pl-[68px] lg:pl-0 ${i % 2 === 0 ? "lg:col-start-1 lg:pr-4" : "lg:col-start-2 lg:pl-4"}`}>
+                      <div className="group bg-white rounded-3xl border border-[#e4e9f7] p-6 sm:p-8 shadow-[0_10px_36px_-14px_rgba(0,31,151,0.18)] hover:shadow-[0_20px_50px_-14px_rgba(0,31,151,0.3)] hover:-translate-y-1 transition-all duration-300">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#001F97]/10 to-[#2F63CC]/10 flex items-center justify-center shrink-0">
+                            <s.icon className="w-6 h-6 text-[#001F97]" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#2F63CC]">Step {s.n}</p>
+                            <h3 className="text-[#001F97] text-lg sm:text-xl font-bold leading-snug">{s.title}</h3>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0d9488] bg-[#0d9488]/10 rounded-full px-3 py-1.5 mb-4">
+                          <Clock3 className="w-3.5 h-3.5" /> {s.time}
+                        </span>
+                        <p className="text-[#4a4f6e] text-[15px] leading-relaxed mb-5">{s.body}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {s.included.map((inc) => (
+                            <span
+                              key={inc}
+                              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#001F97] bg-[#eef3ff] border border-[#2F63CC]/20 rounded-full px-3 py-1.5"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488]" /> {inc}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* spacer for alternating layout */}
+                    <div className={`hidden lg:block ${i % 2 === 0 ? "lg:col-start-2" : "lg:col-start-1 lg:row-start-1"}`} aria-hidden />
+                  </div>
+                </AnimatedSection>
+              ))}
+            </div>
           </div>
+
+          {/* CTA under timeline — with dynamic reviews */}
+          <AnimatedSection className="mt-14">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#001F97] to-[#2F63CC] p-8 sm:p-10 text-center shadow-[0_20px_50px_-16px_rgba(0,31,151,0.5)]">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,#ffffff_0%,transparent_40%)] opacity-10" aria-hidden />
+              <div className="relative">
+                <div className="mb-4"><RatingBadge ratingLabel={ratingLabel} countLabel={countLabel} dark /></div>
+                <h3 className="text-white text-xl sm:text-2xl font-extrabold mb-2">
+                  Start with Step 01 — it&apos;s free
+                </h3>
+                <p className="text-[#d6defc] text-[15px] max-w-xl mx-auto mb-6">
+                  Book a free inspection and moisture test. Know exactly what&apos;s wrong, what it costs,
+                  and how long it takes — before you commit to anything.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <a
+                    href="tel:+61370238094"
+                    className="inline-flex items-center justify-center gap-2 bg-white text-[#001F97] font-bold rounded-xl px-7 py-3.5 hover:bg-[#eef3ff] transition shadow-lg"
+                  >
+                    <Phone className="w-5 h-5" /> (03) 7023 8094
+                  </a>
+                  <Link
+                    href="/contact"
+                    className="inline-flex items-center justify-center gap-2 border-2 border-white/40 hover:border-white text-white font-bold rounded-xl px-7 py-3.5 transition"
+                  >
+                    Get a free quote <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
 
           {/* image placeholder — technician at work */}
           <AnimatedSection className="mt-8">
-            <figure className="rounded-2xl overflow-hidden border border-[#e8eaf3] bg-white">
-              <div className="aspect-[21/9] bg-[#eef1fb] flex items-center justify-center text-center px-6">
+            <figure className="rounded-3xl overflow-hidden border border-[#e4e9f7] bg-white shadow-sm">
+              <div className="aspect-[21/9] bg-[#eef3ff] flex items-center justify-center text-center px-6">
                 <p className="text-[#6b7194] text-sm max-w-md">
                   [PHOTO: technician cutting out old shower grout — replace with a real Groutix job photo.
                   Alt: "Technician removing old shower grout during regrouting in a Melbourne home"]
@@ -308,7 +402,8 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <section className="bg-white py-14 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-10">
-            <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold mb-3">
+            <p className="text-[#2F63CC] text-xs sm:text-sm font-bold tracking-[0.22em] uppercase mb-3">Honest advice</p>
+            <h2 className="text-[#001F97] text-2xl sm:text-3xl font-extrabold mb-3">
               When regrouting works — and when it doesn&apos;t
             </h2>
             <p className="text-[#4a4f6e] text-[15px] sm:text-base max-w-2xl mx-auto">
@@ -319,7 +414,7 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
 
           <div className="grid md:grid-cols-2 gap-5">
             <AnimatedSection>
-              <div className="h-full rounded-2xl border-2 border-[#0d9488]/30 bg-[#f2fbf9] p-6 sm:p-8">
+              <div className="h-full rounded-3xl border-2 border-[#0d9488]/30 bg-gradient-to-br from-[#f2fbf9] to-white p-6 sm:p-8">
                 <h3 className="text-[#0b6b62] text-lg font-bold mb-4 flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5" /> Regrouting is the right fix when
                 </h3>
@@ -333,7 +428,7 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
               </div>
             </AnimatedSection>
             <AnimatedSection delay={0.08}>
-              <div className="h-full rounded-2xl border-2 border-[#e2b93b]/40 bg-[#fffdf4] p-6 sm:p-8">
+              <div className="h-full rounded-3xl border-2 border-[#e2b93b]/40 bg-gradient-to-br from-[#fffdf4] to-white p-6 sm:p-8">
                 <h3 className="text-[#8a6d1a] text-lg font-bold mb-4 flex items-center gap-2">
                   <SearchCheck className="w-5 h-5" /> We&apos;ll tell you if you need more when
                 </h3>
@@ -353,13 +448,15 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       </section>
 
       {/* ============================ NO TILE REMOVAL ============================ */}
-      <section className="bg-[#0d1030] py-14 lg:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="relative bg-[#001F97] py-14 lg:py-20 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,#2F63CC_0%,transparent_60%)] opacity-50" aria-hidden />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <AnimatedSection>
+            <div className="mb-4"><RatingBadge ratingLabel={ratingLabel} countLabel={countLabel} dark /></div>
             <h2 className="text-white text-2xl sm:text-3xl font-extrabold mb-4">
               No tiles removed. No demolition. No retiling.
             </h2>
-            <p className="text-[#c9cdea] text-[15px] sm:text-base leading-relaxed max-w-2xl mx-auto mb-8">
+            <p className="text-[#d6defc] text-[15px] sm:text-base leading-relaxed max-w-2xl mx-auto mb-8">
               The most common question we hear: <em className="text-white not-italic font-semibold">&ldquo;Do you need to remove my tiles?&rdquo;</em>{" "}
               No — the entire process works around your existing tiles, and your shower screen stays in place
               in most cases (we mask and protect it). That&apos;s why regrouting costs a fraction of a full
@@ -368,13 +465,13 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href="tel:+61370238094"
-                className="inline-flex items-center justify-center gap-2 bg-[#0d9488] hover:bg-[#0b7f76] text-white font-bold rounded-xl px-7 py-3.5 transition"
+                className="inline-flex items-center justify-center gap-2 bg-white text-[#001F97] font-bold rounded-xl px-7 py-3.5 hover:bg-[#eef3ff] transition shadow-lg"
               >
                 <Phone className="w-5 h-5" /> (03) 7023 8094
               </a>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center gap-2 border-2 border-white/30 hover:border-white/60 text-white font-bold rounded-xl px-7 py-3.5 transition"
+                className="inline-flex items-center justify-center gap-2 border-2 border-white/40 hover:border-white text-white font-bold rounded-xl px-7 py-3.5 transition"
               >
                 Get a free quote
               </Link>
@@ -388,7 +485,8 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <AnimatedSection>
-              <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold mb-4">
+              <p className="text-[#2F63CC] text-xs sm:text-sm font-bold tracking-[0.22em] uppercase mb-3">Step 03, in depth</p>
+              <h2 className="text-[#001F97] text-2xl sm:text-3xl font-extrabold mb-4">
                 Why we regrout showers with epoxy grout
               </h2>
               <p className="text-[#4a4f6e] text-[15px] sm:text-base leading-relaxed mb-4">
@@ -403,12 +501,12 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
                 <li className="flex gap-2.5"><span className="text-[#0d9488] font-bold">✓</span> Backed by our 10-year waterproof warranty</li>
               </ul>
               <p className="mt-4 text-sm text-[#6b7194]">
-                Related service: <Link href="/epoxy-grout" className="text-[#0d9488] font-semibold underline underline-offset-2">epoxy grout regrouting</Link> in detail.
+                Related service: <Link href="/epoxy-grout" className="text-[#2F63CC] font-semibold underline underline-offset-2">epoxy grout regrouting</Link> in detail.
               </p>
             </AnimatedSection>
             <AnimatedSection delay={0.08}>
-              <figure className="rounded-2xl overflow-hidden border border-[#e8eaf3]">
-                <div className="aspect-[4/3] bg-[#eef1fb] flex items-center justify-center text-center px-6">
+              <figure className="rounded-3xl overflow-hidden border border-[#e4e9f7] shadow-[0_16px_44px_-16px_rgba(0,31,151,0.22)]">
+                <div className="aspect-[4/3] bg-[#eef3ff] flex items-center justify-center text-center px-6">
                   <p className="text-[#6b7194] text-sm max-w-sm">
                     [PHOTO: before / after shower regrout — replace with a real Groutix job photo.
                     Alt: "Before and after shower regrouting in Melbourne — mouldy grout replaced with epoxy grout"]
@@ -424,7 +522,7 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <section className="bg-[#f6f8ff] py-12 lg:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-8">
-            <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold">How long does it all take?</h2>
+            <h2 className="text-[#001F97] text-2xl sm:text-3xl font-extrabold">How long does it all take?</h2>
           </AnimatedSection>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -434,9 +532,11 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
               { icon: ShieldCheck, top: "10 years", sub: "Waterproof warranty on complete regrouts" },
             ].map((s, i) => (
               <AnimatedSection key={i} delay={i * 0.06}>
-                <div className="bg-white rounded-2xl border border-[#e8eaf3] p-5 text-center h-full">
-                  <s.icon className="w-7 h-7 text-[#0d9488] mx-auto mb-2" />
-                  <p className="text-[#1a1f4d] text-xl font-extrabold">{s.top}</p>
+                <div className="bg-white rounded-3xl border border-[#e4e9f7] p-5 text-center h-full shadow-sm hover:shadow-md transition">
+                  <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-gradient-to-br from-[#001F97]/10 to-[#2F63CC]/10 flex items-center justify-center">
+                    <s.icon className="w-6 h-6 text-[#001F97]" />
+                  </div>
+                  <p className="text-[#001F97] text-xl font-extrabold">{s.top}</p>
                   <p className="text-[#6b7194] text-[13px] mt-1">{s.sub}</p>
                 </div>
               </AnimatedSection>
@@ -449,7 +549,8 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <section className="bg-white py-14 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-10">
-            <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold mb-3">
+            <p className="text-[#2F63CC] text-xs sm:text-sm font-bold tracking-[0.22em] uppercase mb-3">Why trust us</p>
+            <h2 className="text-[#001F97] text-2xl sm:text-3xl font-extrabold mb-3">
               Done to Australian standards — and guaranteed by law
             </h2>
             <p className="text-[#4a4f6e] text-[15px] sm:text-base max-w-2xl mx-auto">
@@ -480,18 +581,20 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
               },
             ].map((c, i) => (
               <AnimatedSection key={i} delay={i * 0.06}>
-                <div className="h-full bg-[#f6f8ff] rounded-2xl border border-[#e8eaf3] p-6">
-                  <c.icon className="w-8 h-8 text-[#0d9488] mb-3" />
-                  <h3 className="text-[#1a1f4d] font-bold text-[15px] mb-2">{c.title}</h3>
+                <div className="h-full bg-[#f6f8ff] rounded-3xl border border-[#e4e9f7] p-6 hover:border-[#2F63CC]/40 hover:shadow-lg transition">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#001F97] to-[#2F63CC] flex items-center justify-center mb-4 shadow-md shadow-[#001F97]/20">
+                    <c.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-[#001F97] font-bold text-[15px] mb-2">{c.title}</h3>
                   <p className="text-[#4a4f6e] text-sm leading-relaxed">{c.body}</p>
                 </div>
               </AnimatedSection>
             ))}
           </div>
           <AnimatedSection className="text-center mt-8">
+            <div className="mb-3"><RatingBadge ratingLabel={ratingLabel} countLabel={countLabel} /></div>
             <p className="text-[#6b7194] text-sm">
-              Warranty terms: <Link href="/terms-conditions" className="text-[#0d9488] font-semibold underline underline-offset-2">terms &amp; conditions</Link>
-              {" · "}Rated {ratingLabel} from {countLabel} on Google.
+              Warranty terms: <Link href="/terms-conditions" className="text-[#2F63CC] font-semibold underline underline-offset-2">terms &amp; conditions</Link>
             </p>
           </AnimatedSection>
         </div>
@@ -501,7 +604,7 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <section className="bg-[#f6f8ff] py-14 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-10">
-            <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold mb-3">
+            <h2 className="text-[#001F97] text-2xl sm:text-3xl font-extrabold mb-3">
               The same process, across every service
             </h2>
             <p className="text-[#4a4f6e] text-[15px] sm:text-base max-w-2xl mx-auto">
@@ -520,9 +623,11 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
               <AnimatedSection key={c.href} delay={i * 0.05}>
                 <Link
                   href={c.href}
-                  className="block h-full bg-white rounded-2xl border border-[#e8eaf3] p-6 hover:border-[#0d9488]/50 hover:shadow-lg transition group"
+                  className="group block h-full bg-white rounded-3xl border border-[#e4e9f7] p-6 hover:border-[#2F63CC]/50 hover:shadow-[0_16px_40px_-14px_rgba(0,31,151,0.25)] hover:-translate-y-0.5 transition-all"
                 >
-                  <h3 className="text-[#1a1f4d] font-bold text-[16px] mb-1.5 group-hover:text-[#0d9488] transition">{c.t}</h3>
+                  <h3 className="text-[#001F97] font-bold text-[16px] mb-1.5 group-hover:text-[#2F63CC] transition flex items-center gap-2">
+                    {c.t} <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition" />
+                  </h3>
                   <p className="text-[#6b7194] text-sm leading-relaxed">{c.d}</p>
                 </Link>
               </AnimatedSection>
@@ -531,7 +636,7 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
           <AnimatedSection className="text-center mt-8">
             <p className="text-[#4a4f6e] text-[15px]">
               Servicing Melbourne and regional Victoria — see{" "}
-              <Link href="/locations/melbourne" className="text-[#0d9488] font-semibold underline underline-offset-2">
+              <Link href="/locations/melbourne" className="text-[#2F63CC] font-semibold underline underline-offset-2">
                 all service areas
               </Link>
               .
@@ -544,7 +649,8 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       <section id="faq" className="bg-white py-14 lg:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-8">
-            <h2 className="text-[#1a1f4d] text-2xl sm:text-3xl font-extrabold mb-3">
+            <p className="text-[#2F63CC] text-xs sm:text-sm font-bold tracking-[0.22em] uppercase mb-3">FAQ</p>
+            <h2 className="text-[#001F97] text-2xl sm:text-3xl font-extrabold mb-3">
               Process questions, answered straight
             </h2>
             <p className="text-[#4a4f6e] text-[15px] sm:text-base">
@@ -558,34 +664,30 @@ export default function OurProcessPage({ reviews, rating }: { reviews: Review[];
       </section>
 
       {/* ============================ FINAL CTA ============================ */}
-      <section className="bg-[#0d1030] py-14 lg:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="relative bg-[#001F97] py-14 lg:py-20 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#2F63CC_0%,transparent_55%)] opacity-60" aria-hidden />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <AnimatedSection>
-            <div className="flex items-center justify-center gap-1 mb-4" aria-label={`Rated ${ratingLabel} on Google`}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-[#f5b301] text-[#f5b301]" />
-              ))}
-              <span className="ml-2 text-white/80 text-sm font-semibold">{ratingLabel} · {countLabel} Google reviews</span>
-            </div>
+            <div className="mb-4"><RatingBadge ratingLabel={ratingLabel} countLabel={countLabel} dark /></div>
             <h2 className="text-white text-2xl sm:text-3xl font-extrabold mb-4">
               See the process on your own shower — free inspection
             </h2>
-            <p className="text-[#c9cdea] text-[15px] sm:text-base max-w-xl mx-auto mb-8">
+            <p className="text-[#d6defc] text-[15px] sm:text-base max-w-xl mx-auto mb-8">
               Book a free inspection and moisture test. You&apos;ll know exactly what&apos;s wrong, what it
               costs, and how long it takes — before you commit to anything.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href="tel:+61370238094"
-                className="inline-flex items-center justify-center gap-2 bg-[#0d9488] hover:bg-[#0b7f76] text-white font-bold rounded-xl px-8 py-4 transition"
+                className="inline-flex items-center justify-center gap-2 bg-white text-[#001F97] font-bold rounded-xl px-8 py-4 hover:bg-[#eef3ff] transition shadow-lg"
               >
                 <Phone className="w-5 h-5" /> (03) 7023 8094
               </a>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center gap-2 border-2 border-white/30 hover:border-white/60 text-white font-bold rounded-xl px-8 py-4 transition"
+                className="inline-flex items-center justify-center gap-2 border-2 border-white/40 hover:border-white text-white font-bold rounded-xl px-8 py-4 transition"
               >
-                Request a free quote
+                Request a free quote <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
           </AnimatedSection>
