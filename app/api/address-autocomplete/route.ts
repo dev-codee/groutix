@@ -16,11 +16,9 @@ export async function GET(req: NextRequest) {
         "X-Goog-Api-Key": key,
       },
       body: JSON.stringify({
-        input,
-        includedRegionCodes: ["au"],
-        includedPrimaryTypes: ["street_address", "premise", "route", "locality", "sublocality"],
-
-      }),
+  input,
+  includedRegionCodes: ["au"],
+}),
     });
 
     if (res.ok) {
