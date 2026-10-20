@@ -921,7 +921,8 @@ export default function QuoteFormV2({
                   <label htmlFor={`${P}-address`} className={floatLabel}>{isPM ? "Rental property address" : "Property address or suburb"} {req}</label>
                 </div>
                 {suggestOpen && (
-                  <ul id={`${P}-address-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
+                  <ul id={`${P}-address-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 max-sm:bottom-full max-sm:top-auto max-sm:mb-1 max-sm:mt-0 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
+
                     {suggestions.map((s, i) => (
                       <li key={s} role="option" aria-selected={i === activeSuggest}>
                         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickSuggestion(s)}
