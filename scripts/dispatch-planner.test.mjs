@@ -88,8 +88,11 @@ test("plan validation rejects malformed records, unknown zones, duplicate ids an
 
 const json = (body, options = {}) => ({ body, status: options.status || 200 });
 function apiHarness({ session = { role: "manager", username: "manager" }, fail = false, entries = [appointment("a")] } = {}) {
-  const docs = new Map(), writes = [];
-  const db = { collection: () => ({
+  const docs = new Map(), writes = [], notifications = [], collections = [];
+  const db = { collection: name => {
+    collections.push(name);
+    assert.equal(name, "dispatchPlans", "dispatch plan saves must never write customer or booking collections");
+    return {
     find: ({ _id }) => ({ toArray: async () => [...docs.values()].filter(doc => doc._id >= _id.$gte && doc._id <= _id.$lte) }),
     updateOne: async (filter, update, options) => {
       writes.push({ filter, update, options });
@@ -102,14 +105,16 @@ function apiHarness({ session = { role: "manager", username: "manager" }, fail =
       docs.set(filter._id, { _id: filter._id, ...update.$set });
       return { matchedCount: current ? 1 : 0, upsertedCount: current ? 0 : 1 };
     },
-  }) };
+  }; } };
   const api = loadTs("app/api/admin/dispatch-planner/route.ts", {
     "next/server": { NextResponse: { json } },
     "@/lib/adminAuth": { verifyRequestSession: async () => session },
     "@/lib/mongodb": { getDb: async () => { if (fail) throw new Error("DB unavailable"); return db; } },
     "@/lib/bookings": { listAppointmentsBetween: async () => entries },
+    "@/lib/email": { sendEmail: async (...args) => notifications.push({ channel: "email", args }) },
+    "@/lib/sms": { sendSms: async (...args) => notifications.push({ channel: "sms", args }) },
   }, { console: { ...console, error: () => {} } });
-  return { docs, writes, entries, put: body => api.PUT({ json: async () => body }),
+  return { docs, writes, entries, notifications, collections, put: body => api.PUT({ json: async () => body }),
     get: (from = date, to = date) => api.GET({ nextUrl: new URL(`http://localhost/api/admin/dispatch-planner?from=${from}&to=${to}`) }) };
 }
 const key = appointmentKey(appointment("a"));
@@ -127,6 +132,18 @@ test("planner API saves and reloads shared order, groups and zones with an audit
   assert.equal(reloaded.body.plans[date].zones[key], "E1");
   assert.equal(reloaded.body.plans[date].groups[key], "Morning");
   assert.equal(reloaded.body.appointments.length, 1);
+});
+
+test("saving a reordered route never sends customer email/SMS or changes appointment records", async () => {
+  const entries = [appointment("a"), appointment("b", "Croydon", { time: "11:00" })];
+  const original = structuredClone(entries);
+  const api = apiHarness({ entries });
+  const saved = await api.put({ date, snapshot: entries.map(appointmentKey),
+    plan: { ...planner.emptyDispatchPlan(), order: [...entries].reverse().map(appointmentKey) } });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(api.notifications, [], "no customer notifications when a route is reordered");
+  assert.deepEqual(api.collections, ["dispatchPlans"]);
+  assert.deepEqual(entries, original, "booking dates, times, assignments and reminder state are untouched");
 });
 
 test("planner API rejects stale revisions and concurrent first saves without losing the shared plan", async () => {
@@ -261,6 +278,11 @@ test("page saves a route draft for its original date after navigating to another
   assert.equal(body.date, date);
   assert.deepEqual(body.snapshot, h.entries.map(appointmentKey));
   assert.deepEqual(body.plan.order, [...h.entries].reverse().map(appointmentKey));
+  assert.ok(h.requests.filter(request => request.method && request.method !== "GET")
+    .every(request => request.method === "PUT" && request.url === "/api/admin/dispatch-planner"),
+  "reordering must not call booking edits, email, SMS or notification endpoints");
+  assert.equal(body.bookingNotifications, undefined);
+  assert.deepEqual(h.updated, [], "customer records are not updated by route ordering");
 });
 
 test("page stages zone and grouping changes without patching customer geography", async () => {

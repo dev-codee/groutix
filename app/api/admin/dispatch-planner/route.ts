@@ -49,6 +49,8 @@ export async function PUT(req: NextRequest) {
     }
     const db = await getDb();
     const plan: DispatchPlan = { revision: body.plan.revision + 1, order: body.plan.order, zones: body.plan.zones, groups: body.plan.groups };
+    // Route planning only: never update bookings/submissions or send customer
+    // notifications here. Reordering does not change appointment dates or times.
     const result = await db.collection<PlanDoc>("dispatchPlans").updateOne({ _id: body.date, revision: body.plan.revision },
       { $set: { ...plan, updatedAt: new Date(), updatedBy: session.username } }, { upsert: body.plan.revision === 0 });
     if (!result.matchedCount && !result.upsertedCount) return NextResponse.json({ error: "Another dispatcher updated this plan. Reload to get their changes." }, { status: 409 });
