@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       body: JSON.stringify({
         input,
         includedRegionCodes: ["au"],
-        includedPrimaryTypes: ["geocode", "premise", "street_address", "route", "locality", "sublocality"],
+        includedPrimaryTypes: ["street_address", "premise", "route", "locality", "sublocality"],
 
       }),
     });
