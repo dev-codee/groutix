@@ -12,7 +12,7 @@ export function staffPlanningRules(rules: BookingRules): BookingRules & { staffS
   return result;
 }
 
-/** Staff use configured working days/hours while retaining roster and notice overrides. */
+/** Keep working windows for duration planning; CRM saves may override scheduling rules. */
 export function staffBookingRules(rules: BookingRules): BookingRules & { staffScheduling: true } {
   const existing = cache.get(rules);
   if (existing) return existing;

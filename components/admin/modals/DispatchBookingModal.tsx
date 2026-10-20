@@ -38,6 +38,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
   const savedLead = useRef<Lead | null>(null);
   const saving = useRef(false);
   const dialog = useRef<HTMLDivElement>(null);
@@ -58,18 +59,19 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
     const response = await fetch(`/api/admin/slots?from=${date}&to=${endAt.slice(0, 10)}`, { cache: "no-store" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not check availability.");
+    const issues: string[] = [];
     for (const segment of segments) {
     const issue = dispatchBookingIssue({ leadId: "new-dispatch-booking", type, ...segment,
       ...(type === "job" ? { technicianId: assignee, technician: choices.find(c => c.key === assignee)?.name } : { inspectorId: assignee, assigned: choices.find(c => c.key === assignee)?.name }) }, data.appointments, rules, assignableTechnicians);
-    if (issue) throw new Error(`${segment.date}: ${issue}`);
+    if (issue) issues.push(`${segment.date}: ${issue}`);
     }
+    setWarnings(issues);
   }
 
   async function submit() {
     if (saving.current) return;
     saving.current = true; setBusy(true); setError("");
     try {
-      if (date < todayAU()) throw new Error("Choose today or a future date.");
       if (mode === "existing" && !customerId) throw new Error("Select an existing customer, or choose New customer.");
       if (!customer.name.trim() || !customer.address.trim() || !service.trim() || !assignee) throw new Error("Enter the customer, property address, service and assigned specialist.");
       if (!customer.email.trim() && !customer.phone.trim()) throw new Error("Add an email address or phone number for the confirmation.");
@@ -141,6 +143,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
             <label className="block text-sm">Service<input readOnly={mode === "existing"} required className={input} value={service} onChange={e => setService(e.target.value)} placeholder="e.g. Shower regrouting" /></label>
             <label className="block text-sm">{type === "job" ? "Technician" : "Inspector"}<select required className={input} value={assignee} onChange={e => setAssignee(e.target.value)}><option value="">Select a specialist</option>{choices.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}</select></label>
           </>}
+          {warnings.length > 0 && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{warnings.join(" ")} Staff override: you can confirm this booking anyway.</p>}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="flex justify-between border-t pt-4"><button type="button" onClick={() => review ? setReview(false) : onClose()} className="flex items-center gap-1 text-sm"><ArrowLeft className="h-4 w-4" />{review ? "Edit details" : "Cancel"}</button><button type="submit" className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}{busy ? "Checking / saving…" : review ? "Confirm & notify customer" : "Review booking"}</button></div>
         </fieldset>

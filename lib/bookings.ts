@@ -2,7 +2,7 @@ import { explainOutsideRules } from "./bookingRules";
 import { staffBookingRules } from "./staffBookingRules";
 import { bookingEndForDuration, bookingSegments, savedWorkSegments, type BookingSegment } from "./bookingSpan";
 import { appointmentDurationMinutes, savedBookingMinutes } from "./bookingDuration";
-// Assigned staff cannot overlap across inspections and jobs.
+// Customer bookings enforce capacity; authenticated CRM bookings may override it.
 
 import { ObjectId, type Collection, type Filter } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
@@ -153,14 +153,14 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
       const editedId = replaced ? bookingIdOf(replaced) : existing ? bookingIdOf(existing) : undefined;
       const competing = appointments.filter(a => !(a.leadId === input.leadId && a.type === input.type && !options.append &&
         (editedId ? a.bookingId === editedId : previousSegments.some(segment => segment.date === a.date && segment.time === a.time))));
-      if (options.append && atStart.some(b => !b.technicianId && !b.technician && !b.inspectorId && !b.assigned) &&
+      if (!options.staffOverride && options.append && atStart.some(b => !b.technicianId && !b.technician && !b.inspectorId && !b.assigned) &&
           !(assignment.technicianId || assignment.technician || assignment.inspectorId || assignment.assigned)) {
         return { ok: false as const, conflict: true, error: "Select a different available person for an additional booking at this time." };
       }
       for (const segment of segments) {
         // Status changes retain the reserved window. Reopening a cancelled
         // visit must acquire capacity again before it becomes active.
-        if (status === "Cancelled" || options.statusOnly && existing?.status !== "Cancelled") continue;
+        if (options.staffOverride || status === "Cancelled" || options.statusOnly && existing?.status !== "Cancelled") continue;
         const availability = bookingAvailability(competing, { ...input, leadId: "__new_reservation__", ...assignment, ...segment }, rules, technicians);
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }

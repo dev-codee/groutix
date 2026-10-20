@@ -100,10 +100,8 @@ export function LeadEditModal({
         ? `Job: ${jobConflict.label}`
         : null,
     ].filter(Boolean);
-    if (clashes.length) {
-      setSaveError(clashes.join("\n"));
-      return;
-    }
+    const warnings = [...clashes, inspectionWarning, jobWarning].filter(Boolean);
+    if (warnings.length && !window.confirm(`${warnings.join("\n")}\n\nSave this staff booking anyway?`)) return;
     setSaving(true);
     try {
       const error = await handleSaveLead(e, original.current);
@@ -287,7 +285,7 @@ export function LeadEditModal({
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">⚠ Outside booking hours: {inspectionWarning}</p>
               )}
               {inspectionConflict && (
-                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">⛔ {inspectionConflict.label}</p>
+                <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">⚠ {inspectionConflict.label}</p>
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" onClick={() => setShowBoard(v => ({ ...v, inspection: !v.inspection }))}
@@ -347,7 +345,7 @@ export function LeadEditModal({
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">⚠ Outside booking hours: {jobWarning}</p>
               )}
               {jobConflict && (
-                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">⛔ {jobConflict.label}</p>
+                <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">⚠ {jobConflict.label}</p>
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" onClick={() => setShowBoard(v => ({ ...v, job: !v.job }))}

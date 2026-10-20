@@ -3,10 +3,11 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
-function harness({ failFirstPatch = false } = {}) {
+function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", closed = false } = {}) {
   const state = []; let cursor = 0;
   const requests = [], saved = [], completed = [];
   const rules = structuredClone(DEFAULT_BOOKING_RULES);
+  if (closed) rules.closedDates = [{ date, label: "Shutdown" }];
   const customer = { id: "old", name: "Jane", address: "10 Test Street", email: "jane@example.com", phone: "0400000000", service: "Regrouting" };
   const customers = [customer];
   const react = { useState: initial => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = value; }]; },
@@ -17,7 +18,7 @@ function harness({ failFirstPatch = false } = {}) {
   }, { fetch: async (url, options = {}) => { requests.push({ url, ...options });
     const failed = options.method === "PATCH" && failFirstPatch && requests.filter(r => r.method === "PATCH").length === 1;
     return { ok: !failed, json: async () => failed ? { error: "Slot taken" } : options.method === "POST" ? { item: { ...customer, id: "new" } } : options.method === "PATCH" ? { notificationWarnings: [] } : { appointments: [] } }; } });
-  const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); if (["BookingTimingEditor", "BookingTimingSummary"].includes(node.type?.name)) visit(node.type(node.props)); visit(node.props?.children); }; visit(DispatchBookingModal({ date: "2026-10-14", time: "10:15", onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
+  const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); if (["BookingTimingEditor", "BookingTimingSummary"].includes(node.type?.name)) visit(node.type(node.props)); visit(node.props?.children); }; visit(DispatchBookingModal({ date, time, onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
   return { render, requests, saved, completed, customers };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
@@ -117,3 +118,28 @@ test("retrying an existing customer's conflicting booking never creates a lead",
   assert.equal(h.requests.filter(r => r.method === "PATCH" && r.url === "/api/admin/submissions/old").length, 2);
   assert.equal(h.completed.length, 1);
 });
+
+for (const type of ["job", "inspection"]) {
+  for (const closed of [false, true]) {
+    test(`${type}: staff can review and confirm ${closed ? "a closed-day" : "an after-hours"} booking`, async () => {
+      const h = harness({ time: "20:00", closed });
+      if (type === "job") h.render().find(n => n.type === "button" && n.props.children === "job").props.onClick();
+      let nodes = h.render();
+      const selects = nodes.filter(n => n.type === "select");
+      selects[0].props.onChange({ target: { value: "old" } });
+      selects[1].props.onChange({ target: { value: type === "job" ? "tech" : "inspector" } });
+      h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+      await settle();
+      assert.equal(h.requests.filter(r => r.method).length, 0);
+      assert.ok(h.render().some(n => n.props?.role === "alert"));
+      h.render().find(n => n.type === "form").props.onSubmit({ preventDefault() {} });
+      await settle();
+      const patch = h.requests.find(r => r.method === "PATCH");
+      assert.ok(patch);
+      const body = JSON.parse(patch.body);
+      assert.equal(body[`${type}At`], "2026-10-14T20:00");
+      assert.equal(body[`${type}EndAt`], "2026-10-14T21:00");
+      assert.equal(h.completed.length, 1);
+    });
+  }
+}

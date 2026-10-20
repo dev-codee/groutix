@@ -106,7 +106,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
   return (
     <Shell onClose={onClose}>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Controls booking hours and working days across the dashboard and customer booking links. Multi-day jobs skip nights and closed days. Staff can override notice periods and roster days; assigned-person conflicts are still checked. Existing appointments are not moved.
+        Controls booking hours and working days across the dashboard and customer booking links. Multi-day jobs skip nights and closed days. Customer bookings follow these rules. Staff can confirm dashboard bookings outside hours, on closed days, or despite capacity and assigned-person conflicts. Existing appointments are not moved.
       </p>
 
       {/* Type tabs */}

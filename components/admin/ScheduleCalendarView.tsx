@@ -279,7 +279,7 @@ function RescheduleDialog({
           </button>
           <button
             onClick={() => onSave(date, time, endAt)}
-            disabled={modal.saving || !date || !time || date < todayStr()}
+            disabled={modal.saving || !date || !time}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
           >
             {modal.saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -966,7 +966,6 @@ export function ScheduleCalendarView({
     const proposal = planScheduleDrop(item, date, entries, targetId);
     if (!proposal) return;
     if (proposal.kind === "reorder") { handleReorder(proposal.from, proposal.to); return; }
-    if (date < todayStr()) { showToast("Choose today or a future day for booking.", false); return; }
     setMapDate(date);
     if (proposal.kind === "reschedule") {
       const entry = entries.find((entry) => entry.id === proposal.entry.id)!;
@@ -996,7 +995,7 @@ export function ScheduleCalendarView({
 
   const saveReschedule = async (newDate: string, newTime: string, newEndAt?: string) => {
     if (!rescheduleModal || rescheduleModal.saving || routeSaving) return;
-    if (!newDate || !newTime || newDate < todayStr()) return;
+    if (!newDate || !newTime) return;
     if (!discardChanges()) return;
     setRescheduleModal((m) => m ? { ...m, saving: true, error: "" } : m);
     try {
@@ -1011,7 +1010,10 @@ export function ScheduleCalendarView({
       for (const segment of segments) {
         const candidate = lead && visit ? bookingLead(lead, visit) : lead;
         const result = bookingAvailability(available.appointments, { ...candidate, ...segment, leadId: rescheduleModal.entry.leadId, type: rescheduleModal.entry.type, bookingId: rescheduleModal.entry.bookingId }, rules, available.technicians || technicians);
-        if (!result.available) throw new Error(result.reason || "The assigned person is already booked.");
+        if (!result.available && !window.confirm(`${result.reason || "The assigned person is already booked."}\n\nReschedule anyway?`)) {
+          setRescheduleModal(m => m ? { ...m, saving: false } : m);
+          return;
+        }
       }
       const res = await fetch(`/api/admin/submissions/${rescheduleModal.entry.leadId}`, {
         method: "PATCH",
@@ -1239,7 +1241,7 @@ export function ScheduleCalendarView({
                   onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestTime(selectedPlanningLead?.type || "inspection", date, undefined, selectedPlanningLead?.lead.id)); setBookingDate(date); }}
                   dateStr={date}
                 />}
-                {!loading && <div className={`m-2 rounded-lg border border-dashed p-2 text-center text-[11px] ${dragging ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"}`}>{date < todayStr() ? "Past day · Drag bookings to a future day" : "Drop a lead or booking here · Confirm date and time before saving"}</div>}
+                {!loading && <div className={`m-2 rounded-lg border border-dashed p-2 text-center text-[11px] ${dragging ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"}`}>{"Drop a lead or booking here · Confirm date and time before saving"}</div>}
               </div>
             );
           })}

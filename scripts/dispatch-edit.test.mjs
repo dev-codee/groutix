@@ -58,10 +58,12 @@ test("the inspection popup uses its own timing and inspector", () => {
   assert.equal(nodes.find(node => node.type === "select").props.value, "Clara");
 });
 
-test("an overlapping inspection blocks a job for the same person before any write", async () => {
+test("an overlapping inspection warns before review and staff can confirm the job", async () => {
   const h = harness("job", true);
   h.render().find(node => node.type === "select").props.onChange({ target: { value: "Bob" } });
   await h.submit();
   assert.ok(h.render().some(node => node.props?.role === "alert"));
   assert.equal(h.requests.filter(request => request.method === "PATCH").length, 0);
+  await h.submit();
+  assert.equal(h.requests.filter(request => request.method === "PATCH").length, 1);
 });

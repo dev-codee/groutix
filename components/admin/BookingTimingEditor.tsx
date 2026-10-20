@@ -1,5 +1,7 @@
 "use client";
 
+import { isStaffScheduling } from "@/lib/staffBookingRules";
+import { explainOutsideRules, dayHours, weekdayOf } from "@/lib/bookingRules";
 import type { BookingRules, BookingType } from "@/lib/bookingRules";
 import { bookingEndForDuration, bookingEndForWorkingDays, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
 import { formatApptDate, formatApptTime, formatSlotRange } from "@/lib/scheduling";
@@ -33,6 +35,8 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
       days = segments.length;
     }
   } catch (error) { issue = error instanceof Error ? error.message : "Choose valid working hours."; }
+  const warning = isStaffScheduling(rules) && start ? explainOutsideRules(rules, type, start)
+    || (finish && finish.slice(11) > dayHours(rules, type, weekdayOf(finish.slice(0, 10)), finish.slice(0, 10)).end ? "The finish is outside booking hours." : null) : null;
   const input = "mt-1 min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50";
   const timingRequired = required || Boolean(start);
   const moveStart = (next: string) => {
@@ -45,7 +49,7 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
   };
   return <div className="space-y-3">
     {showStart && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>label]:min-w-0">
-      <label className="text-xs font-semibold">Start date<input required={timingRequired} type="date" min={minDate} value={start.slice(0, 10)} disabled={disabled} onChange={event => moveStart(event.target.value ? `${event.target.value}T${start.slice(11, 16) || "09:00"}` : "")} className={input} /></label>
+      <label className="text-xs font-semibold">Start date<input required={timingRequired} type="date" min={isStaffScheduling(rules) ? undefined : minDate} value={start.slice(0, 10)} disabled={disabled} onChange={event => moveStart(event.target.value ? `${event.target.value}T${start.slice(11, 16) || "09:00"}` : "")} className={input} /></label>
       <label className="text-xs font-semibold">Start time<input required={timingRequired} type="time" value={start.slice(11, 16)} disabled={disabled} onChange={event => moveStart(`${start.slice(0, 10)}T${event.target.value}`)} className={input} /></label>
     </div>}
     {start && <>
@@ -54,7 +58,8 @@ export function BookingTimingEditor({ type, start, end, rules, onChange, disable
         <label className="text-xs font-semibold">Working hours<input aria-label="Working hours" type="number" min="0.25" step="0.25" value={minutes / 60} disabled={disabled} onChange={event => setDuration(Number(event.target.value), false)} className={input} /></label>
       </div>
       <label className="block text-xs font-semibold">Finish date and time<input required type="datetime-local" value={finish} min={start.slice(0, 16)} disabled={disabled} onChange={event => onChange(start, event.target.value)} className={input} /></label>
-      <p className="text-[10px] text-slate-500">Working days include the start day. Nights and closed days are skipped; a partial first day counts only its remaining working hours.</p>
+      <p className="text-[10px] text-slate-500">Working days include the start day and normally skip nights and closed days. Staff can enter a start or finish outside booking hours.</p>
+      {warning && <p role="alert" className="text-xs text-amber-700">{warning} Staff can still confirm this booking.</p>}
       {issue ? <p role="alert" className="text-xs text-amber-700">{issue}</p> : <BookingTimingSummary type={type} start={start} end={finish} rules={rules} />}
     </>}
   </div>;

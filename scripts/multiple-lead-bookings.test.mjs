@@ -53,18 +53,17 @@ test("adding and rescheduling visits retains siblings and their assignments", as
   assert.equal(rows[1].time, "13:00");
 });
 
-test("same-customer bookings allow different technicians at one start but prevent staff overlaps", async () => {
+test("staff can confirm overlapping visits for the same or different technicians", async () => {
   const { api, rows, input } = store();
   await api.createBooking(input, { append: true, retainPrevious: true, staffOverride: true });
   const overlap = await api.createBooking({ ...input, time: "09:30" }, { append: true, retainPrevious: true, staffOverride: true });
-  assert.equal(overlap.ok, false);
-  assert.match(overlap.error, /overlapping/);
+  assert.equal(overlap.ok, true);
   const duplicate = await api.createBooking({ ...input, technician: "Sam", technicianId: "sam" }, { append: true, staffOverride: true });
   assert.equal(duplicate.ok, true);
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 3);
   assert.equal(rows[0].technician, "Alex");
   assert.equal((await api.createBooking({ ...input, time: "11:00" }, { append: true, retainPrevious: true, staffOverride: true })).ok, true);
-  assert.equal(rows.length, 3);
+  assert.equal(rows.length, 4);
 });
 
 test("moving one visit onto a different technician’s start retains both bookings", async () => {
@@ -96,7 +95,7 @@ test("each visit owns its status and rescheduling preserves it", async () => {
   assert.equal(rows.find(b => b.time === "11:00").status, "Job Booked");
 });
 
-test("cancelling one visit frees only its slot and reopening rechecks staff capacity", async () => {
+test("cancelling one visit frees only its slot and staff can confirm reopening despite a conflict", async () => {
   const { api, rows, input } = store();
   await api.createBooking(input, { append: true, staffOverride: true });
   await api.createBooking({ ...input, time: "11:00" }, { append: true, staffOverride: true });
@@ -106,8 +105,8 @@ test("cancelling one visit frees only its slot and reopening rechecks staff capa
   assert.deepEqual(Array.from(appointments, a => a.time), ["11:00"]);
   assert.equal(rows.length, 2, "keep cancelled booking history");
   assert.equal((await api.createBooking({ ...input, leadId: "another-customer" }, { append: true, staffOverride: true })).ok, true);
-  assert.equal((await change("Job Booked")).ok, false);
-  assert.equal(rows[0].status, "Cancelled");
+  assert.equal((await change("Job Booked")).ok, true);
+  assert.equal(rows[0].status, "Job Booked");
   rows.pop();
   assert.equal((await change("Job Booked")).ok, true);
 });
@@ -162,7 +161,8 @@ test("simultaneous visits keep separate identities, capacity, status and cancell
   const { appointmentKey } = loadTs("lib/scheduleRoutes.ts");
   assert.equal(new Set(appointments.map(appointmentKey)).size, 4);
   const conflict = await api.createBooking({ ...input, leadId: "other", date: "2026-10-21", time: "10:00" }, options);
-  assert.equal(conflict.ok, false, "same person remains occupied on continuation days");
+  assert.equal(conflict.ok, true, "staff can override an occupied continuation day");
+  rows.pop(); // Keep subsequent identity/cancellation assertions focused on the original visits.
   const cancel = await api.createBooking({ ...first, status: "Cancelled" }, { statusOnly: true, bookingId: first.bookingId, replaceStart: `${input.date}T${input.time}`, staffOverride: true });
   assert.equal(cancel.ok, true);
   assert.equal(rows[1].status, "Job Booked");

@@ -251,10 +251,10 @@ export function SlotBoard({
                 const base = "rounded-lg border px-2 py-1.5 text-left text-[10px] leading-tight transition-colors";
                 if (!availableAt(t)) {
                   return (
-                    <div key={t} title={holders.map((a) => describe(a, leadId)).join("\n")} className={`${base} ${selected ? "border-red-500 ring-2 ring-red-300" : "border-red-200"} bg-red-50 text-red-700 cursor-not-allowed`}>
+                    <button type="button" onClick={() => onPick(`${day}T${t}`)} key={t} title={holders.map((a) => describe(a, leadId)).join("\n")} className={`${base} ${selected ? "border-amber-500 ring-2 ring-amber-300" : "border-amber-200"} bg-amber-50 text-amber-800 cursor-pointer`}>
                       <div className="font-bold">{formatSlotRange(t, rules[type].slotMinutes)} · {availability.capacity === 0 ? "Unavailable" : "Booked"}</div>
                       <div className="truncate">{other?.name || "Technician unavailable"}{other?.type === "job" ? " (Job)" : ""}</div>
-                    </div>
+                    </button>
                   );
                 }
                 const otherTypeNote = otherTypeHolders.length
@@ -264,7 +264,6 @@ export function SlotBoard({
                   <button
                     key={t}
                     type="button"
-                    disabled={past}
                     onClick={() => onPick(`${day}T${t}`)}
                     title={
                       own
@@ -279,7 +278,7 @@ export function SlotBoard({
                         : own
                         ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
                         : past
-                        ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"
+                        ? "border-slate-200 bg-slate-100 text-slate-500 cursor-pointer"
                         : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 cursor-pointer"
                     }`}
                   >
@@ -306,7 +305,7 @@ export function SlotBoard({
           )}
         </>
       )}
-      <p className="text-[9px] text-slate-400">Job slots allow up to 2 bookings on weekdays and 3 on weekends, subject to technician availability. Inspection availability is separate.</p>
+      <p className="text-[9px] text-slate-400">Job slots allow up to 2 bookings on weekdays and 3 on weekends, subject to technician availability. Warnings can be overridden by staff; any date and time can also be entered manually.</p>
     </div>
   );
 }

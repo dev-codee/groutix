@@ -418,7 +418,7 @@ export function DispatchView({
     } catch (error) { setActionNotice(error instanceof Error ? error.message : "Invalid time."); return; }
     if (capacityAppointments?.date !== selectedDate) { setActionNotice("Availability is still loading. Please try again shortly."); return; }
     const issue = proposalIssue(proposal, capacityAppointments.appointments);
-    if (issue) { setActionNotice(issue); return; }
+    if (issue && !window.confirm(`${issue}\n\nContinue with this staff booking?`)) return;
     setRescheduleError(null);
     setConfirmRescheduleData(proposal);
   };
@@ -502,7 +502,7 @@ export function DispatchView({
       if (!response.ok) throw new Error("Could not check availability. Please try again.");
       const availability = await response.json();
       const issue = proposalIssue(confirmRescheduleData, availability.appointments);
-      if (issue) { setRescheduleError(issue); return; }
+      if (issue && !window.confirm(`${issue}\n\nConfirm this staff booking anyway?`)) return;
       const timeFormatted = (confirmRescheduleData.newTime || "09:00").slice(0, 5).padStart(5, "0");
       const isoDateTime = `${confirmRescheduleData.newDate}T${timeFormatted}`;
       const updates: Partial<Lead> = {};

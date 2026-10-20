@@ -35,6 +35,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
   const saving = useRef(false);
   const dialog = useRef<HTMLDivElement>(null);
   const choices = (type === "job" ? assignableTechnicians : inspectionStaff).filter(person => person.active);
@@ -62,12 +63,14 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
         || bookingSegments(type, originalStart, originalEnd, rules);
       const competing = availability.appointments.filter((appointment: { bookingId?: string; leadId: string; type: string; date: string; time: string }) =>
         !(appointment.leadId === lead.id && appointment.type === type && (selectedBooking?.bookingId ? appointment.bookingId === selectedBooking.bookingId : originalSegments.some(segment => segment.date === appointment.date && segment.time === appointment.time))));
+      const issues: string[] = [];
       for (const segment of segments) {
         const issue = dispatchBookingIssue({ leadId: "__edited_visit__", type, ...segment,
           ...(type === "job" ? { technicianId: person.id, technician: person.name } : { inspectorId: person.id, assigned: person.name }) },
           competing, rules, assignableTechnicians);
-        if (issue) throw new Error(`${segment.date}: ${issue}`);
+        if (issue) issues.push(`${segment.date}: ${issue}`);
       }
+      setWarnings(issues);
       if (!review) { setReview(true); return; }
       const updates: Partial<Lead> = type === "job"
         ? { jobAt: startAt, jobEndAt: endAt, jobWorkSegments: segments, technician: person.name, technicianId: person.id,
@@ -105,6 +108,7 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
               {choices.map(person => <option key={person.id} value={person.name}>{person.name}</option>)}
             </select></label>
           </>}
+          {warnings.length > 0 && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{warnings.join(" ")} Staff override: you can confirm this booking anyway.</p>}
           {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</p>}
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
             <button type="button" disabled={busy} onClick={() => review ? setReview(false) : onClose()} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold">{review ? "Back" : "Cancel"}</button>
