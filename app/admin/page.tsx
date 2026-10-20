@@ -148,6 +148,7 @@ import { getUnassignedSchedulingType } from "@/lib/unassignedLeads";
 import { ScheduleCalendarView } from "@/components/admin/ScheduleCalendarView";
 import { ZonesView } from "@/components/admin/views/ZonesView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
+import { DispatchPlannerView } from "@/components/admin/views/DispatchPlannerView";
 import { AnalyticsView } from "@/components/admin/views/AnalyticsView";
 import { LeadsView } from "@/components/admin/views/LeadsView";
 import { QuotesView } from "@/components/admin/views/QuotesView";
@@ -181,6 +182,7 @@ type DashboardView =
   | "jobs"
   | "completed"
   | "dispatch"
+  | "dispatch-planner"
   | "schedule"
   | "zones"
   | "customers"
@@ -4279,6 +4281,13 @@ export default function CrmDashboardPage() {
         </button>
       )}
 
+      {canSee("dispatch-planner") && (
+        <button type="button" onClick={() => { navigateTo("dispatch-planner"); onItemClick?.(); }}
+          className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${currentView === "dispatch-planner" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"}`}>
+          <span className="flex items-center gap-2.5"><ClipboardList className="h-4 w-4 text-blue-500" />Dispatch Planner</span>
+        </button>
+      )}
+
       {canSee("schedule") && (
         <button
           type="button"
@@ -4560,6 +4569,8 @@ export default function CrmDashboardPage() {
                             ? "Completed Records Archive"
                             : currentView === "dispatch"
                               ? "Schedule & Dispatch"
+                              : currentView === "dispatch-planner"
+                                ? "Dispatch Planner"
                               : currentView === "customers"
                                 ? "Customer Directory"
                                 : currentView === "schedule"
@@ -4779,6 +4790,7 @@ export default function CrmDashboardPage() {
             {/* =========================================================================
               VIEW: DISPATCH
              ========================================================================= */}
+            {currentView === "dispatch-planner" && <DispatchPlannerView key={username} />}
             {currentView === "dispatch" && (
               <DispatchView
                 initialTab={dispatchInitialTab}
