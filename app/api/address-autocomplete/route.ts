@@ -5,10 +5,7 @@ export async function GET(req: NextRequest) {
   if (!input || input.length < 3) return NextResponse.json({ predictions: [] });
 
   const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) return NextResponse.json({ predictions: [], debug: "NO_API_KEY" });
-
-  const debug = req.nextUrl.searchParams.get("debug") === "1";
-  const info: Record<string, unknown> = {};
+  if (!key) return NextResponse.json({ predictions: [] });
 
   // Try new Places API (v1) first
   try {
@@ -21,10 +18,9 @@ export async function GET(req: NextRequest) {
       body: JSON.stringify({
         input,
         includedRegionCodes: ["au"],
+        includedPrimaryTypes: ["geocode", "premise", "street_address"],
       }),
     });
-
-    if (debug) info.newStatus = res.status;
 
     if (res.ok) {
       const data = await res.json();
@@ -37,12 +33,9 @@ export async function GET(req: NextRequest) {
       if (predictions.length > 0) {
         return NextResponse.json({ predictions });
       }
-      if (debug) info.newSuggestions = 0;
-    } else if (debug) {
-      info.newError = await res.text();
     }
-  } catch (e) {
-    if (debug) info.newException = String(e);
+  } catch {
+    // fall through to legacy API
   }
 
   // Fallback: legacy Places Autocomplete API
@@ -56,20 +49,15 @@ export async function GET(req: NextRequest) {
     const res = await fetch(url.toString());
     const data = await res.json();
 
-    if (debug) {
-      info.legacyStatus = data.status;
-      info.legacyError = data.error_message || null;
-    }
-
     if (data.status === "OK" || data.status === "ZERO_RESULTS") {
       const predictions = (data.predictions || []).map(
         (p: { description: string }) => p.description
       );
-      return NextResponse.json({ predictions, ...(debug ? { debug: info } : {}) });
+      return NextResponse.json({ predictions });
     }
-  } catch (e) {
-    if (debug) info.legacyException = String(e);
+  } catch {
+    // ignore
   }
 
-  return NextResponse.json({ predictions: [], ...(debug ? { debug: info } : {}) });
+  return NextResponse.json({ predictions: [] });
 }
