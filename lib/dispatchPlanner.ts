@@ -41,16 +41,21 @@ export function dispatchZoneAt(bearing: number, km: number, radius: number): Dis
   if (angle < 180) return "E2";
   return angle < 270 ? "W2" : "W1";
 }
+export function dispatchLocation(address: string | undefined, suburb: string | undefined, radius: number) {
+  const point = locate(address) || locate(suburb);
+  const km = point ? distanceKm(BASE_LOCATION, point) : null;
+  return { point, baseKm: km === null ? null : Math.round(km * 10) / 10,
+    zone: point && km !== null ? dispatchZoneAt(bearingFromBase(point), km, radius) : "unlocated" as DispatchZone };
+}
 export function dispatchStop(appointment: DayAppointment, plan: DispatchPlan, radius: number): DispatchStop {
   const id = appointmentKey(appointment);
-  const point = locate(appointment.address) || locate(appointment.suburb);
-  const km = point ? distanceKm(BASE_LOCATION, point) : null;
+  const location = dispatchLocation(appointment.address, appointment.suburb, radius);
   const crew = (appointment.type === "job" ? appointment.technician : appointment.assigned)?.trim() || "Unassigned";
   // Match an inspector and technician by username/name so a dual-role person has one route.
   const crewKey = (appointment.type === "job" ? appointment.technicianUsername : appointment.inspectorUsername)?.toLowerCase()
     || crew.toLowerCase();
-  return { ...appointment, id, point, baseKm: km === null ? null : Math.round(km * 10) / 10,
-    zone: plan.zones[id] || (point && km !== null ? dispatchZoneAt(bearingFromBase(point), km, radius) : "unlocated"),
+  return { ...appointment, ...location, id,
+    zone: plan.zones[id] || location.zone,
     crew, crewKey, group: plan.groups[id] };
 }
 export function travelLeg(from: Point | null, to: Point | null) {

@@ -6,6 +6,7 @@ import { useAdminPageCtx } from "../AdminPageContext";
 import { DispatchBookingModal } from "../modals/DispatchBookingModal";
 import { EditBookingModal } from "../modals/EditBookingModal";
 import { BookingStatusControl } from "../BookingStatusControl";
+import { DispatchLeadQueue } from "../DispatchLeadQueue";
 import type { Lead } from "../types";
 import type { DayAppointment } from "@/lib/bookings";
 import { bookingLead, leadBookings, type LeadBooking } from "@/lib/leadBookings";
@@ -62,7 +63,7 @@ function Dialog({ title, onClose, children, busy = false }: { title: string; onC
 }
 
 export function DispatchPlannerView() {
-  const { scopedLeads, upsertLead, openJobCard, assignableTechnicians, inspectionStaff, loading: leadsLoading, username } = useAdminPageCtx();
+  const { scopedLeads, upsertLead, openJobCard, setEditingLead: editCustomer, setLeadModalOpen, assignableTechnicians, inspectionStaff, loading: leadsLoading, username } = useAdminPageCtx();
   const zoneRules = useZoneRules();
   const [from, setFrom] = useState(todayAU);
   const [to, setTo] = useState(todayAU);
@@ -89,7 +90,8 @@ export function DispatchPlannerView() {
   const [showTravel, setShowTravel] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [dragged, setDragged] = useState<string | null>(null);
-  const [create, setCreate] = useState(false);
+  const [workspace, setWorkspace] = useState<"schedule" | "leads">("schedule");
+  const [create, setCreate] = useState<{ leadId?: string; type?: "inspection" | "job" } | null>(null);
   const [editor, setEditor] = useState<{ stops: DispatchStop[]; index: number; purpose: string } | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [opening, setOpening] = useState(false);
@@ -100,6 +102,7 @@ export function DispatchPlannerView() {
   const [cancelling, setCancelling] = useState(false);
   const [discard, setDiscard] = useState(false);
   const busy = saving || opening || cancelling;
+  const visibleError = error || (workspace === "schedule" ? loadError : "");
   const validRange = validScheduleDate(from) && validScheduleDate(to) && to >= from && (Date.parse(to) - Date.parse(from)) / 86400000 <= 30;
   const ready = validRange && rangeLoaded === `${from}:${to}` && !loading;
 
@@ -302,10 +305,15 @@ export function DispatchPlannerView() {
   return <div className="mx-auto w-full max-w-[1680px] space-y-4 pb-8 text-slate-800">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-blue-600">Operations / Dispatch planner</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Plan the day. Keep jobs moving.</h2><p className="mt-1 text-xs text-slate-500">Bookings, service zones and crew routes · Melbourne time</p></div>
-      <div className="flex flex-wrap gap-2"><button className={button} onClick={exportCsv} disabled={!ready || !stops.length}><Download className="h-4 w-4" />Export</button><button className={`${button} !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700`} disabled={!ready || busy} onClick={() => setCreate(true)}><Plus className="h-4 w-4" />Book a visit</button></div>
+      <div className="flex flex-wrap gap-2"><button className={button} onClick={exportCsv} disabled={workspace !== "schedule" || !ready || !stops.length}><Download className="h-4 w-4" />Export</button><button className={`${button} !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700`} disabled={busy || (workspace === "schedule" ? !ready : leadsLoading)} onClick={() => setCreate({})}><Plus className="h-4 w-4" />Book a visit</button></div>
     </div>
 
-    <div className={`${panel} flex flex-wrap items-end gap-3 p-3`}>
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Dispatch workspace">
+      <button className={`${button} ${workspace === "schedule" ? "!border-blue-600 !bg-blue-50 !text-blue-700" : ""}`} aria-pressed={workspace === "schedule"} onClick={() => setWorkspace("schedule")}>Scheduled visits</button>
+      <button className={`${button} ${workspace === "leads" ? "!border-blue-600 !bg-blue-50 !text-blue-700" : ""}`} aria-label="Leads & bookings" aria-pressed={workspace === "leads"} onClick={() => setWorkspace("leads")}>Leads & bookings <span className="rounded-full bg-slate-100 px-1.5 text-[10px]">{scopedLeads.length}</span></button>
+    </div>
+
+    {workspace === "schedule" && <div className={`${panel} flex flex-wrap items-end gap-3 p-3`}>
       <div className="flex items-end gap-1"><button className={button} aria-label="Previous day" disabled={busy || !validRange} onClick={() => { setFrom(addDaysYmd(from, -1)); setTo(addDaysYmd(to, -1)); setSelected([]); }}><ChevronLeft className="h-4 w-4" /></button><label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">From<input type="date" aria-label="Start date" className={field} value={from} disabled={busy} onChange={event => { setFrom(event.target.value); if (event.target.value > to) setTo(event.target.value); setSelected([]); }} /></label><label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">To<input type="date" aria-label="End date" className={field} value={to} min={from} max={validScheduleDate(from) ? addDaysYmd(from, 30) : undefined} disabled={busy} onChange={event => { setTo(event.target.value); setSelected([]); }} /></label><button className={button} aria-label="Next day" disabled={busy || !validRange} onClick={() => { setFrom(addDaysYmd(from, 1)); setTo(addDaysYmd(to, 1)); setSelected([]); }}><ChevronRight className="h-4 w-4" /></button></div>
       <button className={button} disabled={busy} onClick={() => { setFrom(todayAU()); setTo(todayAU()); setSelected([]); }}>Today</button>
       <label className="flex min-w-36 flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Staff<select aria-label="Filter by staff" className={field} value={crewFilter} onChange={event => setCrewFilter(event.target.value)}><option value="all">All staff</option>{crews.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
@@ -313,13 +321,27 @@ export function DispatchPlannerView() {
       <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Status<select aria-label="Filter by booking status" className={field} value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statuses.map(status => <option key={status}>{status}</option>)}</select></label>
       <label className="relative min-w-40 flex-1"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" /><input type="search" className={`${field} w-full pl-8`} aria-label="Search bookings" placeholder="Search bookings or groups" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <button className={button} aria-label="Refresh bookings" disabled={loading || busy} onClick={() => setReload(value => value + 1)}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button>
-    </div>
-    {!validRange && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Choose a valid date range of up to 31 days.</p>}
-    {(error || loadError) && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><p>{error || loadError}</p><button className={button} onClick={() => { setError(""); setReload(value => value + 1); }} disabled={busy || loading}>Reload bookings</button></div>}
+    </div>}
+    {workspace === "schedule" && !validRange && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Choose a valid date range of up to 31 days.</p>}
+    {visibleError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><p>{visibleError}</p><button className={button} onClick={() => { setError(""); setReload(value => value + 1); }} disabled={busy || loading}>Reload bookings</button></div>}
     {notice && <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"><span className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0" />{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X className="h-4 w-4" /></button></div>}
     {!!dirty.length && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-medium text-amber-900">Unsaved dispatch changes · {dirty.length} {dirty.length === 1 ? "day" : "days"}. Route order does not change appointment times.</p><div className="flex gap-2"><button className={button} disabled={busy} onClick={() => setDiscard(true)}>Discard changes</button><button className={`${button} !border-slate-900 !bg-slate-900 !text-white`} disabled={!ready || busy} onClick={() => void savePlans()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save plan</button></div></div>}
 
-    <div className="grid items-start gap-4 xl:grid-cols-[235px_minmax(0,1fr)]">
+    {workspace === "leads" && <DispatchLeadQueue leads={scopedLeads} loading={leadsLoading} busy={busy} radius={zoneRules.flexRadiusKm}
+      onBook={(lead, type) => setCreate({ leadId: lead.id, type })}
+      onView={openJobCard}
+      onEditLead={lead => { editCustomer(lead); setLeadModalOpen(true); }}
+      onEdit={(lead, booking) => {
+        const stop = dispatchStop({ ...booking, bookingStart: `${booking.date}T${booking.time}`, leadId: lead.id,
+          name: lead.name || lead.jobNo || lead.id, jobNo: lead.jobNo, address: lead.address, suburb: lead.city, source: "staff" }, emptyDispatchPlan(), zoneRules.flexRadiusKm);
+        void openEditor([stop], "Edit booking");
+      }}
+      onShowRoute={(_lead, booking) => {
+        setFrom(booking.date); setTo(booking.date); setWorkspace("schedule"); setCrewFilter("all"); setTypeFilter("all");
+        setStatusFilter("all"); setQuery(""); setZoneIds(DISPATCH_ZONES.map(zone => zone.id)); setSelected([]); setReload(value => value + 1);
+      }} />}
+
+    {workspace === "schedule" && <div className="grid items-start gap-4 xl:grid-cols-[235px_minmax(0,1fr)]">
       <aside className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
         <section className={`${panel} overflow-hidden`}>
           <div className="border-b border-slate-100 p-3"><h3 className="flex items-center gap-2 text-sm font-bold"><MapPin className="h-4 w-4 text-blue-600" />Service areas / zones</h3><div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1">{(["all", "inner", "outer"] as const).map(tab => <button key={tab} aria-pressed={zoneTab === tab} className={`rounded-md py-1.5 text-[10px] font-bold ${zoneTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`} onClick={() => setZoneTab(tab)}>{tab === "all" ? "All" : tab === "inner" ? `≤ ${zoneRules.flexRadiusKm} km` : `> ${zoneRules.flexRadiusKm} km`}</button>)}</div></div>
@@ -380,7 +402,7 @@ export function DispatchPlannerView() {
 
         <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
           <section className={`${panel} p-3`}><div className="flex items-center justify-between"><h3 className="text-xs font-bold">Actions for selected bookings</h3><span className="text-[10px] text-slate-500">{chosenVisits.length} visits selected</span></div><div className="mt-3 grid grid-cols-2 gap-2">
-            <button className={`${button} !border-emerald-600 !bg-emerald-600 !text-white`} disabled={!ready || busy} onClick={() => setCreate(true)}><Plus className="h-3.5 w-3.5" />Book a visit</button>
+            <button className={`${button} !border-emerald-600 !bg-emerald-600 !text-white`} disabled={!ready || busy} onClick={() => setCreate({})}><Plus className="h-3.5 w-3.5" />Book a visit</button>
             <button className={`${button} !border-blue-600 !bg-blue-600 !text-white`} disabled={!ready || busy || !chosen.length} onClick={() => void openEditor(chosenVisits, "Reschedule bookings")}><CalendarClock className="h-3.5 w-3.5" />Reschedule</button>
             <button className={button} disabled={!ready || busy || !chosen.length} onClick={() => void openEditor(chosenVisits, "Reassign bookings")}><Users className="h-3.5 w-3.5" />Reassign</button>
             <button className={button} disabled={!ready || busy || !chosen.length} onClick={() => { setNewZone("auto"); setMetadata("zone"); }}><MapPin className="h-3.5 w-3.5" />Change zone</button>
@@ -391,9 +413,9 @@ export function DispatchPlannerView() {
         </div>
         {ready && showTravel && chosen.length >= 2 && <section className={`${panel} overflow-hidden`}><div className="p-3"><h3 className="text-xs font-bold">Distance matrix · selected stops</h3><p className="mt-1 text-[10px] text-slate-500">Straight-line estimates between suburb centres in kilometres.{chosen.length > 20 ? " Showing the first 20 selected stops." : ""}</p></div><div className="max-h-80 overflow-auto"><table className="w-full text-center text-[10px]"><thead className="sticky top-0 bg-slate-100"><tr><th className="p-2 text-left">From / To</th>{chosen.slice(0, 20).map((stop, index) => <th key={stop.id} className="p-2" title={`${stop.name} · ${stop.date} ${stop.time}`}>{index + 1}. {reference(stop)}</th>)}</tr></thead><tbody>{chosen.slice(0, 20).map((stop, index) => <tr key={stop.id} className="border-t border-slate-100 even:bg-slate-50"><th className="whitespace-nowrap p-2 text-left">{index + 1}. {reference(stop)}</th>{chosen.slice(0, 20).map(other => <td className="p-2" key={other.id}>{stop.id === other.id ? "—" : travelLeg(stop.point, other.point)?.km.toFixed(1) ?? "Unknown"}</td>)}</tr>)}</tbody></table></div></section>}
       </main>
-    </div>
+    </div>}
     {opening && <div role="status" className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl"><Loader2 className="h-4 w-4 animate-spin" />Opening booking…</div>}
-    {create && <DispatchBookingModal date={from < todayAU() ? todayAU() : from} time="09:00" initialType={typeFilter === "job" ? "job" : "inspection"} staffName={crews.find(([key]) => key === crewFilter)?.[1]} onClose={() => setCreate(false)} onBooked={(date, message) => { setCreate(false); setNotice(message); if (date < from || date > to) { setFrom(date); setTo(date); } setReload(value => value + 1); }} />}
+    {create && <DispatchBookingModal date={workspace === "schedule" && validScheduleDate(from) && from >= todayAU() ? from : todayAU()} time="09:00" initialLeadId={create.leadId} initialType={create.type || (workspace === "schedule" && typeFilter === "job" ? "job" : "inspection")} staffName={workspace === "schedule" ? crews.find(([key]) => key === crewFilter)?.[1] : undefined} onClose={() => setCreate(null)} onBooked={(date, message) => { setCreate(null); setNotice(message); if (date < from || date > to) { setFrom(date); setTo(date); } setReload(value => value + 1); }} />}
     {editor && editingLead && <><div role="status" className="fixed left-1/2 top-3 z-[60] -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-xs text-white shadow-lg">{editor.purpose} · {editor.index + 1} of {editor.stops.length}</div><EditBookingModal key={`${editor.stops[editor.index].id}:${editor.index}`} lead={editingLead} type={editor.stops[editor.index].type} onClose={() => { setEditor(null); setEditingLead(null); setReload(value => value + 1); }} onSaved={(_date, message) => void nextEditor(message)} /></>}
     {metadata && <Dialog title={metadata === "zone" ? "Change dispatch zone" : "Group selected visits"} onClose={() => setMetadata(null)}><p className="mb-4 text-xs leading-relaxed text-slate-500">{chosen.length} selected stops. {metadata === "zone" ? "This changes the dispatch plan for these dates. Customer service-area rules are managed separately in Service Zones." : "Give these visits a shared dispatch label so staff can find and select them together."}</p>{metadata === "zone" ? <label className="block text-xs font-semibold">Dispatch zone<select className={`${field} mt-2 w-full`} value={newZone} onChange={event => setNewZone(event.target.value as DispatchZone | "auto")}><option value="auto">Automatic (from property location)</option>{DISPATCH_ZONES.map(zone => <option key={zone.id} value={zone.id}>{zone.id} · {zone.name} · {zone.direction}</option>)}</select></label> : <label className="block text-xs font-semibold">Group name<input autoFocus required maxLength={60} className={`${field} mt-2 w-full`} value={groupName} onChange={event => setGroupName(event.target.value)} placeholder="e.g. Eastern crew morning" onKeyDown={event => { if (event.key === "Enter" && groupName.trim()) applyMetadata(); }} /></label>}<div className="mt-5 flex justify-end gap-2"><button className={button} onClick={() => setMetadata(null)}>Cancel</button><button className={`${button} !bg-blue-600 !text-white`} disabled={!chosen.length || (metadata === "group" && !groupName.trim())} onClick={applyMetadata}>Apply to plan</button></div></Dialog>}
     {cancelStop && <Dialog title="Cancel this booking?" busy={cancelling} onClose={() => setCancelStop(null)}><p className="text-sm">{reference(cancelStop)} · {cancelStop.name}</p><p className="mt-2 text-xs text-slate-500">{cancelStop.type} · {formatApptDate(cancelStop.bookingStart || `${cancelStop.date}T${cancelStop.time}`)} · {formatApptTime(cancelStop.bookingStart || `${cancelStop.date}T${cancelStop.time}`)}</p><p className="mt-3 text-xs leading-relaxed text-slate-500">This cancels the entire selected visit, including its continued days, and releases its calendar slots. The customer record and other bookings are retained.</p>{error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}<div className="mt-5 flex justify-end gap-2"><button className={button} disabled={cancelling} onClick={() => setCancelStop(null)}>Keep booking</button><button className={`${button} !border-rose-600 !bg-rose-600 !text-white`} disabled={cancelling} onClick={() => void cancelBooking()}>{cancelling && <Loader2 className="h-4 w-4 animate-spin" />}Cancel booking</button></div></Dialog>}

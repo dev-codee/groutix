@@ -187,12 +187,12 @@ test("planner API validates date ranges and reports storage failures", async () 
 
 // Drive the page's actual event handlers with mocked network/React boundaries.
 // No booking notifications or real customer records are touched by these checks.
-function pageHarness({ storage = new Map(), failLoad = false, failSave = false } = {}) {
+function pageHarness({ storage = new Map(), failLoad = false, failSave = false, extraLeads = [] } = {}) {
   const states = [], effects = [], requests = [], updated = [];
   let cursor = 0;
   const entries = [appointment("a", "Ringwood"), appointment("b", "Croydon", { time: "11:00", bookingId: "visit-b" })];
   const scopedLeads = entries.map(entry => ({ id: entry.leadId, status: "Job Booked", name: entry.name, address: entry.address,
-    jobAt: `${entry.date}T${entry.time}`, bookings: [{ type: entry.type, date: entry.date, time: entry.time, bookingId: entry.bookingId, technician: entry.technician, status: "Job Booked" }] }));
+    jobAt: `${entry.date}T${entry.time}`, bookings: [{ type: entry.type, date: entry.date, time: entry.time, bookingId: entry.bookingId, technician: entry.technician, status: "Job Booked" }] })).concat(extraLeads);
   const react = {
     useState: initial => { const i = cursor++; if (!(i in states)) states[i] = typeof initial === "function" ? initial() : initial; return [states[i], value => { states[i] = typeof value === "function" ? value(states[i]) : value; }]; },
     useRef: initial => { const i = cursor++; if (!(i in states)) states[i] = { current: initial }; return states[i]; },
@@ -328,4 +328,33 @@ test("failed loading does not enable booking or route mutation actions", async (
   assert.ok(nodes.some(node => node.props?.role === "alert"));
   assert.equal(h.button(nodes, "Optimize route order").props.disabled, true);
   assert.ok(nodes.filter(node => node.type === "button" && h.text(node) === "Book a visit").every(node => node.props.disabled));
+});
+
+test("lead queue opens prefilled booking for a New lead even when the route calendar is unavailable", async () => {
+  const lead = { id: "new-lead", status: "New", name: "New lead", address: "Ringwood" };
+  const h = pageHarness({ failLoad: true, extraLeads: [lead] }); h.render(); let nodes = await h.flush();
+  h.label(nodes, "Leads & bookings").props.onClick(); nodes = h.render();
+  let queue = nodes.find(node => node.type?.name === "DispatchLeadQueue");
+  assert.ok(queue.props.leads.some(item => item.id === lead.id));
+  queue.props.onBook(lead, "job"); nodes = h.render();
+  let modal = nodes.find(node => node.type?.name === "DispatchBookingModal");
+  assert.equal(modal.props.initialLeadId, lead.id);
+  assert.equal(modal.props.initialType, "job");
+  modal.props.onClose(); nodes = h.render();
+  queue = nodes.find(node => node.type?.name === "DispatchLeadQueue");
+  queue.props.onBook(lead, "inspection"); nodes = h.render();
+  modal = nodes.find(node => node.type?.name === "DispatchBookingModal");
+  assert.equal(modal.props.initialLeadId, lead.id);
+  assert.equal(modal.props.initialType, "inspection");
+  assert.equal(h.requests.some(request => request.method), false, "opening/filtering a queue never sends notifications or writes a booking");
+});
+
+test("showing an existing queue booking opens its own route date", async () => {
+  const h = pageHarness(); h.render(); let nodes = await h.flush();
+  h.label(nodes, "Leads & bookings").props.onClick(); nodes = h.render();
+  const queue = nodes.find(node => node.type?.name === "DispatchLeadQueue");
+  queue.props.onShowRoute(queue.props.leads[0], queue.props.leads[0].bookings[0]); nodes = h.render();
+  assert.equal(h.label(nodes, "Start date").props.value, date);
+  assert.equal(h.label(nodes, "End date").props.value, date);
+  assert.equal(nodes.some(node => node.type?.name === "DispatchLeadQueue"), false);
 });

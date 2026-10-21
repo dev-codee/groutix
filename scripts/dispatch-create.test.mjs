@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
-function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", closed = false } = {}) {
+function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", closed = false, initialLeadId, initialType } = {}) {
   const state = []; let cursor = 0;
   const requests = [], saved = [], completed = [];
   const rules = structuredClone(DEFAULT_BOOKING_RULES);
@@ -18,10 +18,37 @@ function harness({ failFirstPatch = false, date = "2026-10-14", time = "10:15", 
   }, { fetch: async (url, options = {}) => { requests.push({ url, ...options });
     const failed = options.method === "PATCH" && failFirstPatch && requests.filter(r => r.method === "PATCH").length === 1;
     return { ok: !failed, json: async () => failed ? { error: "Slot taken" } : options.method === "POST" ? { item: { ...customer, id: "new" } } : options.method === "PATCH" ? { notificationWarnings: [] } : { appointments: [] } }; } });
-  const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); if (["BookingTimingEditor", "BookingTimingSummary"].includes(node.type?.name)) visit(node.type(node.props)); visit(node.props?.children); }; visit(DispatchBookingModal({ date, time, onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
+  const render = () => { cursor = 0; const result = []; const visit = node => { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; result.push(node); if (["BookingTimingEditor", "BookingTimingSummary"].includes(node.type?.name)) visit(node.type(node.props)); visit(node.props?.children); }; visit(DispatchBookingModal({ date, time, initialLeadId, initialType, onClose: () => {}, onBooked: (...args) => completed.push(args) })); return result; };
   return { render, requests, saved, completed, customers };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
+test("booking from the lead queue preselects that existing customer and adds the requested visit only after review", async () => {
+  const h = harness({ initialLeadId: "old", initialType: "job" });
+  h.customers[0].jobAt = "2026-10-13T09:00";
+  h.customers[0].bookings = [{ type: "job", date: "2026-10-13", time: "09:00", bookingId: "existing-job" }];
+  const original = structuredClone(h.customers[0]);
+  let nodes = h.render();
+  const selects = nodes.filter(node => node.type === "select");
+  assert.equal(selects[0].props.value, "old");
+  assert.ok(nodes.some(node => node.type === "input" && node.props.value === "Jane"));
+  selects[1].props.onChange({ target: { value: "tech" } });
+  h.render().find(node => node.type === "form").props.onSubmit({ preventDefault() {} });
+  await settle();
+  assert.equal(h.requests.some(request => request.method), false, "reviewing does not send notifications or create records");
+  nodes = h.render();
+  nodes.find(node => node.type === "form").props.onSubmit({ preventDefault() {} });
+  await settle();
+  const writes = h.requests.filter(request => request.method);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].method, "PATCH");
+  assert.equal(writes[0].url, "/api/admin/submissions/old");
+  const body = JSON.parse(writes[0].body);
+  assert.equal(body.appendBooking, true);
+  assert.equal(body.jobAt, "2026-10-14T10:15");
+  assert.equal(body.inspectionAt, undefined);
+  assert.deepEqual(h.customers[0], original, "existing customer identity and earlier visit are preserved");
+});
+
 test("reviewing a new booking writes nothing; final confirmation reuses the lead, assigns and requests notifications", async () => {
   const h = harness();
   let nodes = h.render();
@@ -69,7 +96,7 @@ test("a multi-day job reviews and saves the computed finish", async () => {
 test("a new customer still creates exactly one lead before adding the booking", async () => {
   const h = harness();
   h.render().find(n => n.type === "button" && n.props.children === "New customer").props.onClick();
-  let nodes = h.render();
+  h.render();
   for (const [type, value] of [["email", "new@example.com"], ["tel", "0400000000"]]) {
     h.render().find(n => n.type === "input" && n.props.type === type).props.onChange({ target: { value } });
   }
