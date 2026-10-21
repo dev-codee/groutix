@@ -128,6 +128,7 @@ export function DispatchPlannerView() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "Road distances are temporarily unavailable.");
             if (controller.signal.aborted) return;
+            setRoadError(data.distanceNotice || "");
             setMeasurements(current => ({ ...current, ...Object.fromEntries((data.measurements as WorkMeasurement[]).map(value => [value.id, value])) }));
           }
         } catch (err) { if (!controller.signal.aborted) setRoadError(err instanceof Error ? err.message : "Road distances are temporarily unavailable."); }

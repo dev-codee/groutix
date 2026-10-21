@@ -80,7 +80,7 @@ function apiHarness(session = { role: "manager", username: "manager" }) {
       if (saved && saved.revision !== filter.revision) { if (options.upsert) throw { code: 11000 }; return { matchedCount: 0 }; }
       writes.push({ name, update }); saved = update.$set; return { matchedCount: 1 };
     } } }) },
-    "@/lib/dispatchRoadDistances": { drivingLeg: async (from, to) => { legs.push([from, to]); return { km: from.length + to.length, minutes: 12 }; } },
+    "@/lib/dispatchRoadDistances": { roadDistanceNotice: () => "", drivingLeg: async (from, to) => { legs.push([from, to]); return { km: from.length + to.length, minutes: 12 }; } },
     "@/lib/email": { sendEmail: (...args) => messages.push(args) },
     "@/lib/sms": { sendSms: (...args) => messages.push(args) },
   });
@@ -138,5 +138,6 @@ test("road provider uses address-based driving, caches by direction and deduplic
     assert.equal(urls[0].searchParams.get("destinations"), "Destination");
     const denied = loadTs("lib/dispatchRoadDistances.ts", {}, { fetch: async () => ({ ok: true, json: async () => ({ status: "REQUEST_DENIED" }) }) });
     assert.equal(await denied.drivingLeg("A", "B"), null, "unavailable road measurements never become invented distances");
+    assert.match(denied.roadDistanceNotice(), /blocked.*Distance Matrix/);
   } finally { if (old === undefined) delete process.env.GOOGLE_PLACES_API_KEY; else process.env.GOOGLE_PLACES_API_KEY = old; }
 });

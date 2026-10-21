@@ -302,7 +302,7 @@ test("cancellation waits for confirmation and addresses only the selected bookin
   const h = pageHarness(); h.render(); let nodes = await h.flush();
   h.label(nodes, "Cancel booking b").props.onClick(); nodes = h.render();
   assert.equal(h.requests.some(request => request.method === "PATCH"), false);
-  await h.button(nodes, "Cancel booking").props.onClick(); await h.flush();
+  await h.button(nodes, "Cancel visit").props.onClick(); await h.flush();
   const request = h.requests.find(request => request.method === "PATCH");
   assert.equal(request.url, "/api/admin/submissions/b/bookings");
   const body = JSON.parse(request.body);

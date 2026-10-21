@@ -4,7 +4,7 @@ import { verifyRequestSession } from "@/lib/adminAuth";
 import { canView } from "@/lib/roles";
 import { getDb } from "@/lib/mongodb";
 import { DISPATCH_BASE_ADDRESS, emptyDispatchPlan, validDispatchPlan, type DispatchPlan } from "@/lib/dispatchPlanner";
-import { drivingLeg } from "@/lib/dispatchRoadDistances";
+import { drivingLeg, roadDistanceNotice } from "@/lib/dispatchRoadDistances";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +69,6 @@ export async function POST(req: NextRequest) {
         measurements[index] = { id, address, previousId, previousAddress, fromBase, fromPrevious, returnToBase };
       }
     }));
-    return NextResponse.json({ measurements }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ measurements, distanceNotice: roadDistanceNotice() }, { headers: { "Cache-Control": "no-store" } });
   } catch { return NextResponse.json({ error: "Road distances could not be checked." }, { status: 500 }); }
 }

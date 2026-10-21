@@ -31,8 +31,8 @@ export function workBookingCandidates(row: WorkRow) {
 }
 export function filterWorkBookings(rows: WorkRow[], options: {
   visitType: string; staff: string; includeUnbooked: boolean; from?: string; to?: string; validDates?: boolean;
-}) {
-  return rows.flatMap(row => {
+}): WorkRow[] {
+  return rows.flatMap<WorkRow>(row => {
     const candidates = workBookingCandidates(row);
     if (!candidates.length) return options.includeUnbooked && ["all", "unassigned"].includes(options.staff) ? [{ ...row, booking: undefined }] : [];
     const matching = candidates.filter(booking => (options.visitType === "all" || booking.type === options.visitType)
