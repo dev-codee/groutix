@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
     const ids: string[] = body.ids;
     const wanted = body.previousId ? [...ids, body.previousId] : ids;
     const docs = await (await getDb()).collection("submissions").find({ _id: { $in: wanted.map(id => new ObjectId(id)) } }).project({ address: 1, city: 1 }).toArray();
-    const addresses = new Map(docs.map(doc => [String(doc._id), String(doc.address || doc.city || "").trim()]));
+    const addresses = new Map(docs.map(doc => [String(doc._id), String(doc.address || "").trim() || String(doc.city || "").trim()]));
+    const streetAddresses = new Map(docs.map(doc => [String(doc._id), String(doc.address || "").trim()]));
     if (addresses.size !== wanted.length) return NextResponse.json({ error: "A lead was removed. Refresh the dispatch list." }, { status: 409 });
     const measurements: unknown[] = new Array(ids.length);
     let cursor = 0;
@@ -62,9 +63,11 @@ export async function POST(req: NextRequest) {
       while (cursor < ids.length) {
         const index = cursor++, id = ids[index], previousId: string | null = index ? ids[index - 1] : body.previousId || null;
         const address = addresses.get(id)!, previousAddress = previousId ? addresses.get(previousId)! : "";
+        const destination = streetAddresses.get(id)!;
+        const origin = previousId ? streetAddresses.get(previousId)! : DISPATCH_BASE_ADDRESS;
         const [fromBase, fromPrevious, returnToBase] = await Promise.all([
-          drivingLeg(DISPATCH_BASE_ADDRESS, address), drivingLeg(previousId ? previousAddress : DISPATCH_BASE_ADDRESS, address),
-          index === ids.length - 1 && body.lastBatch === true ? drivingLeg(address, DISPATCH_BASE_ADDRESS) : Promise.resolve(null),
+          drivingLeg(DISPATCH_BASE_ADDRESS, destination), drivingLeg(origin, destination),
+          index === ids.length - 1 && body.lastBatch === true ? drivingLeg(destination, DISPATCH_BASE_ADDRESS) : Promise.resolve(null),
         ]);
         measurements[index] = { id, address, previousId, previousAddress, fromBase, fromPrevious, returnToBase };
       }

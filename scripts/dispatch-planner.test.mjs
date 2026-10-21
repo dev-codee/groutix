@@ -189,7 +189,7 @@ test("planner API validates date ranges and reports storage failures", async () 
 // No booking notifications or real customer records are touched by these checks.
 function pageHarness({ storage = new Map(), failLoad = false, failSave = false, extraLeads = [], openRoute = false } = {}) {
   const states = [], effects = [], requests = [], updated = [];
-  let cursor = 0; let initialized = false;
+  let cursor = 0; let initialized = false; let touchTarget = null;
   const entries = [appointment("a", "Ringwood"), appointment("b", "Croydon", { time: "11:00", bookingId: "visit-b" })];
   const scopedLeads = entries.map(entry => ({ id: entry.leadId, status: "Job Booked", name: entry.name, address: entry.address,
     jobAt: `${entry.date}T${entry.time}`, bookings: [{ type: entry.type, date: entry.date, time: entry.time, bookingId: entry.bookingId, technician: entry.technician, status: "Job Booked" }] })).concat(extraLeads);
@@ -214,7 +214,7 @@ function pageHarness({ storage = new Map(), failLoad = false, failSave = false, 
     "../BookingStatusControl": { BookingStatusControl: function BookingStatusControl() {} },
   }, { window: { addEventListener() {}, removeEventListener() {}, sessionStorage: {
     getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key),
-  } }, setTimeout: () => 0, clearTimeout() {}, fetch: async (url, options = {}) => {
+  } }, document: { elementFromPoint: () => ({ closest: () => ({ dataset: { dispatchRow: touchTarget } }) }) }, setTimeout: () => 0, clearTimeout() {}, fetch: async (url, options = {}) => {
     requests.push({ url, ...options });
     if (url.startsWith("/api/admin/dispatch-workspace") && !options.method) {
       if (failLoad) return { ok: false, json: async () => ({ error: "Could not load dispatch bookings. Please retry." }) };
@@ -239,7 +239,7 @@ function pageHarness({ storage = new Map(), failLoad = false, failSave = false, 
   const text = node => typeof node === "string" ? node : Array.isArray(node) ? node.map(text).join("") : node?.props ? text(node.props.children) : "";
   const button = (nodes, label) => nodes.find(node => node.type === "button" && text(node) === label);
   const label = (nodes, name) => nodes.find(node => node.props?.["aria-label"] === name);
-  return { render, flush, requests, updated, button, label, entries, text, storage };
+  return { render, flush, requests, updated, button, label, entries, text, storage, setTouchTarget: id => { touchTarget = id; } };
 }
 
 
@@ -325,4 +325,30 @@ test("loading failure blocks reorder but preserves useful booking actions", asyn
   assert.equal(h.label(nodes, "Drag lead a").props.disabled, true);
   assert.equal(h.button(nodes, "Suggest route order").props.disabled, true);
   assert.equal(h.label(nodes, "Book inspection for a").props.disabled, false);
+});
+
+test("zone and grouping actions save planning metadata without changing customer records", async () => {
+  const h = pageHarness(); h.render(); let nodes = await h.flush();
+  h.label(nodes, "Select all visible leads").props.onChange({ target: { checked: true } }); nodes = h.render();
+  h.button(nodes, "Group").props.onClick(); nodes = h.render();
+  nodes.find(node => node.type === "input" && node.props.maxLength === 60).props.onChange({ target: { value: "Eastern run" } });
+  h.button(h.render(), "Apply to plan").props.onClick(); nodes = h.render();
+  h.button(nodes, "Change zone").props.onClick(); nodes = h.render();
+  h.label(nodes, "Dispatch zone").props.onChange({ target: { value: "E2" } });
+  h.button(h.render(), "Apply to plan").props.onClick(); nodes = h.render();
+  await h.button(nodes, "Save plan").props.onClick(); await h.flush();
+  const plan = JSON.parse(h.requests.find(request => request.method === "PUT").body).plan;
+  assert.deepEqual(plan.groups, { a: "Eastern run", b: "Eastern run" });
+  assert.deepEqual(plan.zones, { a: "E2", b: "E2" }); assert.deepEqual(h.updated, []);
+});
+
+test("touch drag uses the same customer order and preserves unbooked leads", async () => {
+  const h = pageHarness(); h.render(); let nodes = await h.flush();
+  h.label(nodes, "Drag lead b").props.onPointerDown({ pointerType: "touch", pointerId: 1, currentTarget: { setPointerCapture() {} } });
+  nodes = h.render();
+  h.setTouchTarget("a");
+  h.label(nodes, "Drag lead b").props.onPointerMove({ clientX: 100, clientY: 100, currentTarget: { closest: () => null } });
+  h.label(nodes, "Drag lead b").props.onPointerUp(); nodes = h.render();
+  assert.deepEqual(rowIds(nodes), ["b", "a"]);
+  assert.equal(h.requests.some(request => request.method === "PATCH"), false);
 });
