@@ -187,9 +187,9 @@ test("planner API validates date ranges and reports storage failures", async () 
 
 // Drive the page's actual event handlers with mocked network/React boundaries.
 // No booking notifications or real customer records are touched by these checks.
-function pageHarness({ storage = new Map(), failLoad = false, failSave = false, extraLeads = [] } = {}) {
+function pageHarness({ storage = new Map(), failLoad = false, failSave = false, extraLeads = [], openRoute = true } = {}) {
   const states = [], effects = [], requests = [], updated = [];
-  let cursor = 0;
+  let cursor = 0; let initialized = false;
   const entries = [appointment("a", "Ringwood"), appointment("b", "Croydon", { time: "11:00", bookingId: "visit-b" })];
   const scopedLeads = entries.map(entry => ({ id: entry.leadId, status: "Job Booked", name: entry.name, address: entry.address,
     jobAt: `${entry.date}T${entry.time}`, bookings: [{ type: entry.type, date: entry.date, time: entry.time, bookingId: entry.bookingId, technician: entry.technician, status: "Job Booked" }] })).concat(extraLeads);
@@ -232,6 +232,7 @@ function pageHarness({ storage = new Map(), failLoad = false, failSave = false, 
     function visit(node) { if (Array.isArray(node)) return node.forEach(visit); if (!node || typeof node !== "object") return; nodes.push(node); visit(node.props?.children); }
     visit(DispatchPlannerView());
     effects.splice(0).forEach(effect => effect());
+    if (!initialized) { initialized = true; if (openRoute) { nodes.find(node => node.props?.["aria-label"] === "Toggle route details").props.onClick(); return render(); } }
     return nodes;
   }
   const flush = async () => { await new Promise(setImmediate); return render(); };
@@ -323,17 +324,16 @@ test("unsaved route drafts recover after navigating away and remain available af
   assert.ok(nodes.some(node => node.props?.role === "alert" && returning.text(node).includes("Another dispatcher")));
 });
 
-test("failed loading does not enable booking or route mutation actions", async () => {
+test("failed route loading blocks route mutation while lead booking remains available", async () => {
   const h = pageHarness({ failLoad: true }); h.render(); const nodes = await h.flush();
   assert.ok(nodes.some(node => node.props?.role === "alert"));
   assert.equal(h.button(nodes, "Optimize route order").props.disabled, true);
-  assert.ok(nodes.filter(node => node.type === "button" && h.text(node) === "Book a visit").every(node => node.props.disabled));
+  assert.ok(nodes.filter(node => node.type === "button" && h.text(node) === "Book a visit").some(node => !node.props.disabled));
 });
 
 test("lead queue opens prefilled booking for a New lead even when the route calendar is unavailable", async () => {
   const lead = { id: "new-lead", status: "New", name: "New lead", address: "Ringwood" };
   const h = pageHarness({ failLoad: true, extraLeads: [lead] }); h.render(); let nodes = await h.flush();
-  h.label(nodes, "Leads & bookings").props.onClick(); nodes = h.render();
   let queue = nodes.find(node => node.type?.name === "DispatchLeadQueue");
   assert.ok(queue.props.leads.some(item => item.id === lead.id));
   queue.props.onBook(lead, "job"); nodes = h.render();
@@ -351,10 +351,76 @@ test("lead queue opens prefilled booking for a New lead even when the route cale
 
 test("showing an existing queue booking opens its own route date", async () => {
   const h = pageHarness(); h.render(); let nodes = await h.flush();
-  h.label(nodes, "Leads & bookings").props.onClick(); nodes = h.render();
   const queue = nodes.find(node => node.type?.name === "DispatchLeadQueue");
   queue.props.onShowRoute(queue.props.leads[0], queue.props.leads[0].bookings[0]); nodes = h.render();
   assert.equal(h.label(nodes, "Start date").props.value, date);
   assert.equal(h.label(nodes, "End date").props.value, date);
-  assert.equal(nodes.some(node => node.type?.name === "DispatchLeadQueue"), false);
+  assert.equal(h.label(nodes, "Toggle route details").props["aria-expanded"], true);
+  assert.equal(nodes.some(node => node.type?.name === "DispatchLeadQueue"), true);
+});
+
+test("zone cards and the requested status filter control one lead list across all dates", async () => {
+  const { dispatchLocation } = planner;
+  const eastZone = dispatchLocation("Ringwood", undefined, 15).zone;
+  const westZone = dispatchLocation("Werribee", undefined, 15).zone;
+  assert.notEqual(eastZone, westZone);
+  const extraLeads = [
+    { id: "east-new", name: "East new", status: "New", address: "Ringwood" },
+    { id: "west-new", name: "West new", status: "New", address: "Werribee" },
+    { id: "east-complete", name: "East completed", status: "Inspection Completed", address: "Ringwood" },
+    { id: "east-quote", name: "East quote", status: "Quote Sent", address: "Ringwood" },
+    { id: "east-pending", name: "East pending", status: "Quote Pending", address: "Ringwood" },
+  ];
+  const h = pageHarness({ openRoute: false, extraLeads }); h.render(); let nodes = await h.flush();
+  const queue = () => nodes.find(node => node.type?.name === "DispatchLeadQueue");
+  assert.equal(h.label(nodes, "Leads & bookings"), undefined, "there is no separate lead tab");
+  h.label(nodes, `Show ${eastZone} leads`).props.onClick(); nodes = h.render();
+  assert.ok(queue().props.leads.every(lead => dispatchLocation(lead.address, lead.city, 15).zone === eastZone));
+  assert.equal(queue().props.leads.some(lead => lead.id === "east-complete"), false, "completed inspections are opt-in");
+  const priorKey = queue().key;
+  h.label(nodes, "Filter leads by status").props.onChange({ target: { value: "new" } }); nodes = h.render();
+  assert.deepEqual(queue().props.leads.map(lead => lead.id), ["east-new"]);
+  assert.notEqual(queue().key, priorKey, "filter changes reset lead pagination");
+  h.label(nodes, "Filter leads by status").props.onChange({ target: { value: "quote-waiting" } }); nodes = h.render();
+  assert.deepEqual(queue().props.leads.map(lead => lead.id), ["east-pending"]);
+  h.label(nodes, "Filter leads by status").props.onChange({ target: { value: "quote" } }); nodes = h.render();
+  assert.deepEqual(queue().props.leads.map(lead => lead.id), ["east-quote"]);
+  h.label(nodes, "Filter leads by status").props.onChange({ target: { value: "inspection-completed" } }); nodes = h.render();
+  assert.deepEqual(queue().props.leads.map(lead => lead.id), ["east-complete"]);
+  h.label(nodes, "Filter leads by status").props.onChange({ target: { value: "new" } }); nodes = h.render();
+  h.label(nodes, `Include ${westZone} in selection`).props.onChange(); nodes = h.render();
+  assert.deepEqual(new Set(queue().props.leads.map(lead => lead.id)), new Set(["east-new", "west-new"]));
+  h.label(nodes, `Show ${westZone} leads`).props.onClick(); nodes = h.render();
+  assert.deepEqual(queue().props.leads.map(lead => lead.id), ["west-new"], "clicking a zone selects only that zone");
+  h.label(nodes, "Search zone leads").props.onChange({ target: { value: "does not exist" } }); nodes = h.render();
+  assert.equal(queue().props.leads.length, 0);
+  h.button(nodes, "Reset lead filters").props.onClick(); nodes = h.render();
+  assert.deepEqual(queue().props.leads.map(lead => lead.id), ["west-new"], "resetting status/search retains the chosen zone");
+  assert.equal(h.requests.some(request => request.method), false, "browsing never updates bookings or sends customer messages");
+});
+
+test("completed inspection visits leave route rows, previews and totals while saves retain the full calendar snapshot", async () => {
+  const h = pageHarness();
+  const finished = appointment("a", "Ringwood", { type: "inspection", status: "Inspection Completed", assigned: "Alex", bookingId: "finished" });
+  const active = appointment("a", "Ringwood", { type: "inspection", status: "Inspection Booked", assigned: "Alex", bookingId: "active", time: "12:00" });
+  h.entries.push(finished, active);
+  let nodes = h.render();
+  h.label(nodes, "Start date").props.onChange({ target: { value: date } });
+  h.label(h.render(), "End date").props.onChange({ target: { value: date } });
+  h.render(); nodes = await h.flush();
+  const rowIds = () => nodes.filter(node => node.type === "tr" && node.props["data-booking-id"]).map(node => node.props["data-booking-id"]);
+  assert.equal(rowIds().includes(appointmentKey(finished)), false);
+  assert.equal(rowIds().includes(appointmentKey(active)), true);
+  const control = nodes.find(node => node.type?.name === "BookingStatusControl" && node.props.booking.bookingId === "active");
+  assert.equal(control.props.compact, true);
+  control.props.onSaved("Inspection Completed"); nodes = h.render();
+  assert.equal(rowIds().includes(appointmentKey(active)), false, "a confirmed completion disappears immediately");
+  assert.equal(rowIds().length, 2, "other visits for the same customer remain");
+  h.label(nodes, "Move B up").props.onClick(); nodes = h.render();
+  await h.button(nodes, "Save plan").props.onClick(); await h.flush();
+  const body = JSON.parse(h.requests.find(request => request.method === "PUT").body);
+  assert.equal(body.snapshot.includes(appointmentKey(finished)), true);
+  assert.equal(body.snapshot.includes(appointmentKey(active)), true);
+  assert.equal(body.plan.order.includes(appointmentKey(finished)), false);
+  assert.equal(body.plan.order.includes(appointmentKey(active)), false);
 });

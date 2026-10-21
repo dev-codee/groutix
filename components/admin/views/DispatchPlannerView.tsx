@@ -7,13 +7,14 @@ import { DispatchBookingModal } from "../modals/DispatchBookingModal";
 import { EditBookingModal } from "../modals/EditBookingModal";
 import { BookingStatusControl } from "../BookingStatusControl";
 import { DispatchLeadQueue } from "../DispatchLeadQueue";
+import { DISPATCH_LEAD_FILTERS, matchesDispatchLeadStatus, type DispatchLeadFilter } from "@/lib/dispatchLeads";
 import type { Lead } from "../types";
 import type { DayAppointment } from "@/lib/bookings";
 import { bookingLead, leadBookings, type LeadBooking } from "@/lib/leadBookings";
 import { todayAU, addDaysYmd, formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { useZoneRules } from "@/lib/useZoneRules";
 import { appointmentKey, validScheduleDate } from "@/lib/scheduleRoutes";
-import { DISPATCH_BASE_ADDRESS, DISPATCH_ZONES, dispatchBase, dispatchStop, emptyDispatchPlan, mergeDispatchOrder, routeLanes, sortDispatchStops, stopMinutes, travelLeg, validDispatchPlan, type DispatchPlan, type DispatchStop, type DispatchZone, type PlannerSort } from "@/lib/dispatchPlanner";
+import { DISPATCH_BASE_ADDRESS, DISPATCH_ZONES, dispatchBase, dispatchLocation, dispatchStop, emptyDispatchPlan, mergeDispatchOrder, routeLanes, sortDispatchStops, stopMinutes, travelLeg, validDispatchPlan, type DispatchPlan, type DispatchStop, type DispatchZone, type PlannerSort } from "@/lib/dispatchPlanner";
 
 const button = "inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600";
 const field = "rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-2 focus:outline-blue-500 disabled:opacity-50";
@@ -90,7 +91,9 @@ export function DispatchPlannerView() {
   const [showTravel, setShowTravel] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [dragged, setDragged] = useState<string | null>(null);
-  const [workspace, setWorkspace] = useState<"schedule" | "leads">("schedule");
+  const [leadStatusFilter, setLeadStatusFilter] = useState<DispatchLeadFilter>("active");
+  const [routeOpen, setRouteOpen] = useState(false);
+  const routeRef = useRef<HTMLElement>(null);
   const [create, setCreate] = useState<{ leadId?: string; type?: "inspection" | "job" } | null>(null);
   const [editor, setEditor] = useState<{ stops: DispatchStop[]; index: number; purpose: string } | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -102,7 +105,7 @@ export function DispatchPlannerView() {
   const [cancelling, setCancelling] = useState(false);
   const [discard, setDiscard] = useState(false);
   const busy = saving || opening || cancelling;
-  const visibleError = error || (workspace === "schedule" ? loadError : "");
+  const visibleError = error || (routeOpen ? loadError : "");
   const validRange = validScheduleDate(from) && validScheduleDate(to) && to >= from && (Date.parse(to) - Date.parse(from)) / 86400000 <= 30;
   const ready = validRange && rangeLoaded === `${from}:${to}` && !loading;
 
@@ -158,17 +161,25 @@ export function DispatchPlannerView() {
   const allStops = useMemo(() => appointments
     .filter(appointment => !(appointment.type === "inspection" && appointment.status === "Inspection Completed"))
     .map(appointment => dispatchStop(appointment, plans[appointment.date] || emptyDispatchPlan(), zoneRules.flexRadiusKm)), [appointments, plans, zoneRules.flexRadiusKm]);
-  const filtered = useMemo(() => allStops.filter(stop =>
-    (crewFilter === "all" || stop.crewKey === crewFilter) && (typeFilter === "all" || stop.type === typeFilter)
-    && (statusFilter === "all" || stop.status === statusFilter)
-    && `${stop.name} ${stop.jobNo || ""} ${stop.address || ""} ${stop.suburb || ""} ${stop.crew} ${stop.group || ""}`.toLowerCase().includes(query.trim().toLowerCase())), [allStops, crewFilter, typeFilter, statusFilter, query]);
-  const stops = useMemo(() => sortDispatchStops(filtered.filter(stop => zoneIds.includes(stop.zone)), sort, plans), [filtered, zoneIds, sort, plans]);
+  const leadRows = useMemo(() => scopedLeads.map(lead => ({ lead, location: dispatchLocation(lead.address, lead.city, zoneRules.flexRadiusKm) })), [scopedLeads, zoneRules.flexRadiusKm]);
+  const searchedLeads = useMemo(() => leadRows.filter(({ lead }) =>
+    [lead.id, lead.name, lead.jobNo, lead.email, lead.phone, lead.address, lead.city, lead.service, lead.assigned, lead.technician,
+      ...allStops.filter(stop => stop.leadId === lead.id).map(stop => stop.group)]
+      .some(value => value?.toLowerCase().includes(query.trim().toLowerCase()))), [leadRows, allStops, query]);
+  const matchingLeads = useMemo(() => searchedLeads.filter(({ lead }) => matchesDispatchLeadStatus(lead.status, leadStatusFilter)), [searchedLeads, leadStatusFilter]);
+  const zoneLeads = useMemo(() => matchingLeads.filter(row => zoneIds.includes(row.location.zone)).map(row => row.lead), [matchingLeads, zoneIds]);
+  const zoneLeadIds = useMemo(() => new Set(zoneLeads.map(lead => lead.id)), [zoneLeads]);
+  const filtered = useMemo(() => allStops.filter(stop => zoneLeadIds.has(stop.leadId)
+    && (crewFilter === "all" || stop.crewKey === crewFilter) && (typeFilter === "all" || stop.type === typeFilter)
+    && (statusFilter === "all" || stop.status === statusFilter)), [allStops, zoneLeadIds, crewFilter, typeFilter, statusFilter]);
+  const stops = useMemo(() => sortDispatchStops(filtered, sort, plans), [filtered, sort, plans]);
   const lanes = useMemo(() => routeLanes(stops), [stops]);
   const chosen = stops.filter(stop => selected.includes(stop.id));
   const chosenVisits = [...new Map(chosen.map(stop => [`${stop.leadId}:${stop.type}:${stop.bookingId || stop.bookingStart || `${stop.date}T${stop.time}`}`, stop])).values()];
   const crews = [...new Map(allStops.map(stop => [stop.crewKey, stop.crew])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
   const statuses = [...new Set(allStops.map(stop => stop.status).filter(Boolean))] as string[];
-  const zoneCounts = new Map(DISPATCH_ZONES.map(zone => [zone.id, filtered.filter(stop => stop.zone === zone.id).length]));
+  const zoneCounts = new Map(DISPATCH_ZONES.map(zone => [zone.id, matchingLeads.filter(row => row.location.zone === zone.id).length]));
+  const statusCount = (filter: DispatchLeadFilter) => searchedLeads.filter(row => zoneIds.includes(row.location.zone) && matchesDispatchLeadStatus(row.lead.status, filter)).length;
   const summary = lanes.reduce((sum, lane) => {
     const points = [dispatchBase, ...lane.map(stop => stop.point), dispatchBase];
     points.slice(1).forEach((point, index) => {
@@ -310,34 +321,52 @@ export function DispatchPlannerView() {
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }));
     const link = document.createElement("a"); link.href = url; link.download = `dispatch-${from}-${to}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  const availableZones = DISPATCH_ZONES.filter(zone => zone.id === "unlocated" ? (zoneCounts.get(zone.id) || 0) > 0 : zoneTab === "all" || (zoneTab === "inner" ? zone.inner : !zone.inner));
+  const availableZones = DISPATCH_ZONES.filter(zone => zone.id === "unlocated" ? leadRows.some(row => row.location.zone === "unlocated") : zoneTab === "all" || (zoneTab === "inner" ? zone.inner : !zone.inner));
 
   return <div className="mx-auto w-full max-w-[1680px] space-y-4 pb-8 text-slate-800">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-blue-600">Operations / Dispatch planner</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Dispatch planner</h2><p className="mt-1 text-xs text-slate-500">Bookings, service zones and crew routes · Melbourne time</p></div>
-      <div className="flex flex-wrap gap-2"><button className={button} onClick={exportCsv} disabled={workspace !== "schedule" || !ready || !stops.length}><Download className="h-4 w-4" />Export</button><button className={`${button} !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700`} disabled={busy || (workspace === "schedule" ? !ready : leadsLoading)} onClick={() => setCreate({})}><Plus className="h-4 w-4" />Book a visit</button></div>
+      <div className="flex flex-wrap gap-2"><button className={button} onClick={exportCsv} disabled={!ready || !stops.length}><Download className="h-4 w-4" />Export route</button><button className={`${button} !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700`} disabled={busy || leadsLoading} onClick={() => setCreate({})}><Plus className="h-4 w-4" />Book a visit</button></div>
     </div>
 
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Dispatch workspace">
-      <button className={`${button} ${workspace === "schedule" ? "!border-blue-600 !bg-blue-50 !text-blue-700" : ""}`} aria-pressed={workspace === "schedule"} onClick={() => setWorkspace("schedule")}>Scheduled visits</button>
-      <button className={`${button} ${workspace === "leads" ? "!border-blue-600 !bg-blue-50 !text-blue-700" : ""}`} aria-label="Leads & bookings" aria-pressed={workspace === "leads"} onClick={() => setWorkspace("leads")}>Leads & bookings <span className="rounded-full bg-slate-100 px-1.5 text-[10px]">{scopedLeads.length}</span></button>
+    <div className={`${panel} flex flex-wrap items-end gap-3 p-3`}>
+      <label className="flex min-w-52 flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Lead status
+        <select aria-label="Filter leads by status" className={field} value={leadStatusFilter} onChange={event => { setLeadStatusFilter(event.target.value as DispatchLeadFilter); setSelected([]); }}>
+          <option value="active">All active leads ({statusCount("active")})</option>
+          {DISPATCH_LEAD_FILTERS.map(stage => <option key={stage.id} value={stage.id}>{stage.label} ({statusCount(stage.id)})</option>)}
+        </select>
+      </label>
+      <label className="relative min-w-56 flex-1"><Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" /><input type="search" className={`${field} w-full pl-9`} aria-label="Search zone leads" placeholder="Search name, reference, phone, email or address" value={query} onChange={event => { setQuery(event.target.value); setSelected([]); }} /></label>
+      <button className={button} onClick={() => { setLeadStatusFilter("active"); setQuery(""); setSelected([]); }}>Reset lead filters</button>
     </div>
-
-    {workspace === "schedule" && <div className={`${panel} flex flex-wrap items-end gap-3 p-3`}>
-      <div className="flex items-end gap-1"><button className={button} aria-label="Previous day" disabled={busy || !validRange} onClick={() => { setFrom(addDaysYmd(from, -1)); setTo(addDaysYmd(to, -1)); setSelected([]); }}><ChevronLeft className="h-4 w-4" /></button><label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">From<input type="date" aria-label="Start date" className={field} value={from} disabled={busy} onChange={event => { setFrom(event.target.value); if (event.target.value > to) setTo(event.target.value); setSelected([]); }} /></label><label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">To<input type="date" aria-label="End date" className={field} value={to} min={from} max={validScheduleDate(from) ? addDaysYmd(from, 30) : undefined} disabled={busy} onChange={event => { setTo(event.target.value); setSelected([]); }} /></label><button className={button} aria-label="Next day" disabled={busy || !validRange} onClick={() => { setFrom(addDaysYmd(from, 1)); setTo(addDaysYmd(to, 1)); setSelected([]); }}><ChevronRight className="h-4 w-4" /></button></div>
-      <button className={button} disabled={busy} onClick={() => { setFrom(todayAU()); setTo(todayAU()); setSelected([]); }}>Today</button>
-      <label className="flex min-w-36 flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Staff<select aria-label="Filter by staff" className={field} value={crewFilter} onChange={event => setCrewFilter(event.target.value)}><option value="all">All staff</option>{crews.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
-      <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Visit type<select aria-label="Filter by visit type" className={field} value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option value="all">All visits</option><option value="job">Jobs</option><option value="inspection">Inspections</option></select></label>
-      <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Status<select aria-label="Filter by booking status" className={field} value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statuses.map(status => <option key={status}>{status}</option>)}</select></label>
-      <label className="relative min-w-40 flex-1"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" /><input type="search" className={`${field} w-full pl-8`} aria-label="Search bookings" placeholder="Search bookings or groups" value={query} onChange={event => setQuery(event.target.value)} /></label>
-      <button className={button} aria-label="Refresh bookings" disabled={loading || busy} onClick={() => setReload(value => value + 1)}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button>
-    </div>}
-    {workspace === "schedule" && !validRange && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Choose a valid date range of up to 31 days.</p>}
     {visibleError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><p>{visibleError}</p><button className={button} onClick={() => { setError(""); setReload(value => value + 1); }} disabled={busy || loading}>Reload bookings</button></div>}
     {notice && <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"><span className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0" />{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice("")}><X className="h-4 w-4" /></button></div>}
     {!!dirty.length && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-medium text-amber-900">Unsaved dispatch changes · {dirty.length} {dirty.length === 1 ? "day" : "days"}. Route order does not change appointment times.</p><div className="flex gap-2"><button className={button} disabled={busy} onClick={() => setDiscard(true)}>Discard changes</button><button className={`${button} !border-slate-900 !bg-slate-900 !text-white`} disabled={!ready || busy} onClick={() => void savePlans()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save plan</button></div></div>}
 
-    {workspace === "leads" && <DispatchLeadQueue leads={scopedLeads} loading={leadsLoading} busy={busy} radius={zoneRules.flexRadiusKm}
+    <div className="grid items-start gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+      <aside className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+        <section className={`${panel} overflow-hidden`}>
+          <div className="border-b border-slate-100 p-3"><h3 className="flex items-center gap-2 text-sm font-bold"><MapPin className="h-4 w-4 text-blue-600" />Service areas / zones</h3><div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1">{(["all", "inner", "outer"] as const).map(tab => <button key={tab} aria-pressed={zoneTab === tab} className={`rounded-md py-1.5 text-[10px] font-bold ${zoneTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`} onClick={() => setZoneTab(tab)}>{tab === "all" ? "All" : tab === "inner" ? `≤ ${zoneRules.flexRadiusKm} km` : `> ${zoneRules.flexRadiusKm} km`}</button>)}</div></div>
+          <div className="space-y-1.5 p-2">{availableZones.map(zone => <div key={zone.id} className="flex items-center rounded-lg border transition" style={{ backgroundColor: zoneIds.includes(zone.id) ? `${zone.color}0c` : "white", borderColor: zoneIds.includes(zone.id) ? `${zone.color}40` : "#f1f5f9" }}>
+            <button type="button" aria-label={`Show ${zone.id} leads`} aria-pressed={zoneIds.length === 1 && zoneIds[0] === zone.id} onClick={() => { setZoneIds([zone.id]); setSelected([]); }} className="flex min-w-0 flex-1 items-center gap-2 p-2.5 text-left hover:bg-slate-50/50"><ZoneBadge id={zone.id} /><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold">{zone.name}</span><span className="block text-[10px] text-slate-500">{zoneCounts.get(zone.id) || 0} leads</span></span></button>
+            <input type="checkbox" aria-label={`Include ${zone.id} in selection`} title="Include this zone in a multiple-zone selection" className="mr-3 h-3.5 w-3.5 shrink-0 accent-blue-600" checked={zoneIds.includes(zone.id)} onChange={() => { setZoneIds(ids => ids.includes(zone.id) ? ids.filter(id => id !== zone.id) : [...ids, zone.id]); setSelected([]); }} />
+          </div>)}</div>
+          <div className="flex justify-between border-t border-slate-100 px-3 py-2"><button className="text-[11px] font-semibold text-blue-600" onClick={() => setZoneIds(DISPATCH_ZONES.map(zone => zone.id))}>Select all zones</button><button className="text-[11px] font-semibold text-slate-500" onClick={() => setZoneIds([])}>Clear zones</button></div>
+        </section>
+        <div className="space-y-3">
+          {routeOpen && <section className={`${panel} p-3`}><h3 className="flex items-center gap-2 text-xs font-bold"><Settings2 className="h-4 w-4 text-slate-500" />Sort & route options</h3><div className="mt-3 space-y-2.5">{([
+            ["schedule", "Appointment time"], ["nearest", "Nearest to base first"], ["farthest", "Farthest from base first"], ["smart", "Smart route (estimated)"], ["manual", "Manual order"],
+          ] as const).map(([value, label]) => <label key={value} className="flex cursor-pointer items-center gap-2 text-[11px]"><input type="radio" name="dispatch-sort" value={value} checked={sort === value} onChange={() => setSort(value)} className="accent-blue-600" />{label}</label>)}</div>
+            <label className="mt-4 flex cursor-pointer items-center gap-2 border-t border-slate-100 pt-3 text-[11px]"><input type="checkbox" checked={showTravel} onChange={event => setShowTravel(event.target.checked)} className="accent-blue-600" />Show distance & travel time</label>
+            <button className={`${button} mt-3 w-full !border-blue-200 !bg-blue-50 !text-blue-700`} disabled={!ready || stops.length < 2 || busy} onClick={() => { rememberOrder(sortDispatchStops(stops, "smart", plans)); setNotice("Route optimized by staff and day. Review timings, then save the plan."); }}><WandSparkles className="h-4 w-4" />Optimize route order</button>
+            <button className={`${button} mt-2 w-full`} disabled={!ready || !stops.length || busy} onClick={() => rememberOrder(stops)}>Keep displayed order</button>
+          </section>}
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center gap-2 text-xs font-bold"><Home className="h-4 w-4 text-blue-600" />Dispatch base</div><p className="mt-2 text-[11px] leading-relaxed text-slate-600">{DISPATCH_BASE_ADDRESS}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">Zones and distances use suburb centres. Travel times are estimates, exclude live traffic, and include return to base for each crew/day.</p></section>
+        </div>
+      </aside>
+
+      <main className="min-w-0 space-y-4" aria-busy={leadsLoading || busy}>
+    <DispatchLeadQueue key={`${zoneIds.join(",")}:${leadStatusFilter}:${query}`} leads={zoneLeads} loading={leadsLoading} busy={busy} radius={zoneRules.flexRadiusKm} title={zoneIds.length === 1 ? `Leads in ${zoneIds[0] === "unlocated" ? "unlocated properties" : zoneIds[0]}` : "Leads in selected zones"}
       onBook={(lead, type) => setCreate({ leadId: lead.id, type })}
       onView={openJobCard}
       onEditLead={lead => { editCustomer(lead); setLeadModalOpen(true); }}
@@ -347,32 +376,26 @@ export function DispatchPlannerView() {
         void openEditor([stop], "Edit booking");
       }}
       onShowRoute={(_lead, booking) => {
-        setFrom(booking.date); setTo(booking.date); setWorkspace("schedule"); setCrewFilter("all"); setTypeFilter("all");
-        setStatusFilter("all"); setQuery(""); setZoneIds(DISPATCH_ZONES.map(zone => zone.id)); setSelected([]); setReload(value => value + 1);
-      }} />}
+        setFrom(booking.date); setTo(booking.date); setRouteOpen(true); setCrewFilter("all"); setTypeFilter("all");
+        setStatusFilter("all"); setSelected([]); setReload(value => value + 1);
+        setTimeout(() => routeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+      }} />
 
-    {workspace === "schedule" && <div className="grid items-start gap-4 xl:grid-cols-[235px_minmax(0,1fr)]">
-      <aside className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-        <section className={`${panel} overflow-hidden`}>
-          <div className="border-b border-slate-100 p-3"><h3 className="flex items-center gap-2 text-sm font-bold"><MapPin className="h-4 w-4 text-blue-600" />Service areas / zones</h3><div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1">{(["all", "inner", "outer"] as const).map(tab => <button key={tab} aria-pressed={zoneTab === tab} className={`rounded-md py-1.5 text-[10px] font-bold ${zoneTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`} onClick={() => setZoneTab(tab)}>{tab === "all" ? "All" : tab === "inner" ? `≤ ${zoneRules.flexRadiusKm} km` : `> ${zoneRules.flexRadiusKm} km`}</button>)}</div></div>
-          <div className="space-y-1 p-2">{availableZones.map(zone => <label key={zone.id} className="flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 transition hover:brightness-[.98]" style={{ backgroundColor: zoneIds.includes(zone.id) ? `${zone.color}0c` : "white", borderColor: zoneIds.includes(zone.id) ? `${zone.color}35` : "#f1f5f9" }}>
-            <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={zoneIds.includes(zone.id)} onChange={() => setZoneIds(ids => ids.includes(zone.id) ? ids.filter(id => id !== zone.id) : [...ids, zone.id])} /><ZoneBadge id={zone.id} /><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold">{zone.name}</span><span className="block text-[10px] text-slate-500">{zoneCounts.get(zone.id) || 0} visits</span></span>
-          </label>)}</div>
-          <div className="flex justify-between border-t border-slate-100 px-3 py-2"><button className="text-[11px] font-semibold text-blue-600" onClick={() => setZoneIds(DISPATCH_ZONES.map(zone => zone.id))}>Select all zones</button><button className="text-[11px] font-semibold text-slate-500" onClick={() => setZoneIds([])}>Clear zones</button></div>
-        </section>
-        <div className="space-y-3">
-          <section className={`${panel} p-3`}><h3 className="flex items-center gap-2 text-xs font-bold"><Settings2 className="h-4 w-4 text-slate-500" />Sort & route options</h3><div className="mt-3 space-y-2.5">{([
-            ["schedule", "Appointment time"], ["nearest", "Nearest to base first"], ["farthest", "Farthest from base first"], ["smart", "Smart route (estimated)"], ["manual", "Manual order"],
-          ] as const).map(([value, label]) => <label key={value} className="flex cursor-pointer items-center gap-2 text-[11px]"><input type="radio" name="dispatch-sort" value={value} checked={sort === value} onChange={() => setSort(value)} className="accent-blue-600" />{label}</label>)}</div>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 border-t border-slate-100 pt-3 text-[11px]"><input type="checkbox" checked={showTravel} onChange={event => setShowTravel(event.target.checked)} className="accent-blue-600" />Show distance & travel time</label>
-            <button className={`${button} mt-3 w-full !border-blue-200 !bg-blue-50 !text-blue-700`} disabled={!ready || stops.length < 2 || busy} onClick={() => { rememberOrder(sortDispatchStops(stops, "smart", plans)); setNotice("Route optimized by staff and day. Review timings, then save the plan."); }}><WandSparkles className="h-4 w-4" />Optimize route order</button>
-            <button className={`${button} mt-2 w-full`} disabled={!ready || !stops.length || busy} onClick={() => rememberOrder(stops)}>Keep displayed order</button>
-          </section>
-          <section className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center gap-2 text-xs font-bold"><Home className="h-4 w-4 text-blue-600" />Dispatch base</div><p className="mt-2 text-[11px] leading-relaxed text-slate-600">{DISPATCH_BASE_ADDRESS}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-500">Zones and distances use suburb centres. Travel times are estimates, exclude live traffic, and include return to base for each crew/day.</p></section>
-        </div>
-      </aside>
+        <section ref={routeRef} className="scroll-mt-20 space-y-3">
+          <button type="button" aria-label="Toggle route details" aria-expanded={routeOpen} onClick={() => setRouteOpen(value => !value)} className={`${panel} flex w-full items-center justify-between gap-3 p-4 text-left`}>
+            <span><span className="block text-sm font-bold">Routes & scheduled visits</span><span className="mt-1 block text-[11px] text-slate-500">{stops.length} visits for the selected zone leads · {from === to ? formatApptDate(`${from}T12:00`) : `${from} – ${to}`}</span></span><span className="text-xs font-semibold text-blue-600">{routeOpen ? "Hide route" : "Plan route"}</span>
+          </button>
+          {routeOpen && <div className="space-y-4">
+    <div className={`${panel} flex flex-wrap items-end gap-3 p-3`}>
+      <div className="flex items-end gap-1"><button className={button} aria-label="Previous day" disabled={busy || !validRange} onClick={() => { setFrom(addDaysYmd(from, -1)); setTo(addDaysYmd(to, -1)); setSelected([]); }}><ChevronLeft className="h-4 w-4" /></button><label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">From<input type="date" aria-label="Start date" className={field} value={from} disabled={busy} onChange={event => { setFrom(event.target.value); if (event.target.value > to) setTo(event.target.value); setSelected([]); }} /></label><label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">To<input type="date" aria-label="End date" className={field} value={to} min={from} max={validScheduleDate(from) ? addDaysYmd(from, 30) : undefined} disabled={busy} onChange={event => { setTo(event.target.value); setSelected([]); }} /></label><button className={button} aria-label="Next day" disabled={busy || !validRange} onClick={() => { setFrom(addDaysYmd(from, 1)); setTo(addDaysYmd(to, 1)); setSelected([]); }}><ChevronRight className="h-4 w-4" /></button></div>
+      <button className={button} disabled={busy} onClick={() => { setFrom(todayAU()); setTo(todayAU()); setSelected([]); }}>Today</button>
+      <label className="flex min-w-36 flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Staff<select aria-label="Filter by staff" className={field} value={crewFilter} onChange={event => setCrewFilter(event.target.value)}><option value="all">All staff</option>{crews.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+      <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Visit type<select aria-label="Filter by visit type" className={field} value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option value="all">All visits</option><option value="job">Jobs</option><option value="inspection">Inspections</option></select></label>
+      <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase text-slate-500">Visit status<select aria-label="Filter by booking status" className={field} value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statuses.map(status => <option key={status}>{status}</option>)}</select></label>
+      <button className={button} aria-label="Refresh bookings" disabled={loading || busy} onClick={() => setReload(value => value + 1)}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button>
+    </div>
+          {!validRange && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">Choose a valid route date range of up to 31 days.</p>}
 
-      <main className="min-w-0 space-y-4" aria-busy={loading || busy}>
         <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">{[
           { label: "Visits in selected zones", value: ready ? String(stops.length) : "—", detail: `${lanes.length} crew / day routes`, icon: <Truck className="h-4 w-4" /> },
           { label: "Route distance · estimated", value: ready ? `${summary.km.toFixed(1)} km` : "—", detail: summary.missing ? "Partial · unlocated stops excluded" : "Includes outward & return travel", icon: <MapPin className="h-4 w-4" /> },
@@ -385,11 +408,11 @@ export function DispatchPlannerView() {
           {!loading && !ready && <div className="p-8 text-center text-sm text-slate-500">Bookings are unavailable. Check the date range or retry loading.</div>}
           {ready && stops.length === 0 && <div className="p-10 text-center"><Layers className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-sm font-semibold">No bookings match this view</p><p className="mt-1 text-xs text-slate-500">Choose another date, select zones, or adjust the filters.</p><button className={`${button} mt-4`} onClick={() => { setZoneIds(DISPATCH_ZONES.map(zone => zone.id)); setCrewFilter("all"); setTypeFilter("all"); setStatusFilter("all"); setQuery(""); }}>Reset filters</button></div>}
           {ready && !!stops.length && <div className="overflow-x-auto">
-            <table className={`w-full table-fixed border-collapse text-left text-[11px] ${showTravel ? "min-w-[1060px]" : "min-w-[920px]"}`} aria-label="Dispatch route bookings">
+            <table className={`w-full table-fixed border-collapse text-left text-[11px] ${showTravel ? "min-w-[1088px]" : "min-w-[948px]"}`} aria-label="Dispatch route bookings">
               <colgroup>
                 <col style={{ width: 36 }} /><col style={{ width: 72 }} /><col style={{ width: 220 }} />
                 <col style={{ width: 150 }} />{showTravel && <col style={{ width: 140 }} />}
-                <col style={{ width: 156 }} /><col style={{ width: 190 }} /><col style={{ width: 106 }} />
+                <col style={{ width: 156 }} /><col style={{ width: 190 }} /><col style={{ width: 122 }} />
               </colgroup>
               <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
@@ -481,10 +504,12 @@ export function DispatchPlannerView() {
           <section className={`${panel} p-3`}><h3 className="text-xs font-bold">Zone summary</h3><div className="mt-3 grid grid-cols-2 gap-2">{DISPATCH_ZONES.filter(zone => stops.some(stop => stop.zone === zone.id)).map(zone => { const members = stops.filter(stop => stop.zone === zone.id); return <button key={zone.id} className="rounded-lg border p-3 text-left" style={{ backgroundColor: `${zone.color}08`, borderColor: `${zone.color}25` }} onClick={() => setSelected(members.map(stop => stop.id))}><div className="flex items-center gap-2"><ZoneBadge id={zone.id} /><span className="text-[10px] font-bold">{zone.name}</span></div><p className="mt-2 text-[11px] font-bold">{members.length} visits · {duration(members.reduce((sum, stop) => sum + stopMinutes(stop), 0))}</p><p className="mt-1 text-[9px] text-slate-500">Select these bookings</p></button>; })}</div>{!stops.length && <p className="py-4 text-xs text-slate-500">Select zones with bookings to see their totals.</p>}</section>
         </div>
         {ready && showTravel && chosen.length >= 2 && <section className={`${panel} overflow-hidden`}><div className="p-3"><h3 className="text-xs font-bold">Distance matrix · selected stops</h3><p className="mt-1 text-[10px] text-slate-500">Straight-line estimates between suburb centres in kilometres.{chosen.length > 20 ? " Showing the first 20 selected stops." : ""}</p></div><div className="max-h-80 overflow-auto"><table className="w-full text-center text-[10px]"><thead className="sticky top-0 bg-slate-100"><tr><th className="p-2 text-left">From / To</th>{chosen.slice(0, 20).map((stop, index) => <th key={stop.id} className="p-2" title={`${stop.name} · ${stop.date} ${stop.time}`}>{index + 1}. {reference(stop)}</th>)}</tr></thead><tbody>{chosen.slice(0, 20).map((stop, index) => <tr key={stop.id} className="border-t border-slate-100 even:bg-slate-50"><th className="whitespace-nowrap p-2 text-left">{index + 1}. {reference(stop)}</th>{chosen.slice(0, 20).map(other => <td className="p-2" key={other.id}>{stop.id === other.id ? "—" : travelLeg(stop.point, other.point)?.km.toFixed(1) ?? "Unknown"}</td>)}</tr>)}</tbody></table></div></section>}
+          </div>}
+        </section>
       </main>
-    </div>}
+    </div>
     {opening && <div role="status" className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl"><Loader2 className="h-4 w-4 animate-spin" />Opening booking…</div>}
-    {create && <DispatchBookingModal date={workspace === "schedule" && validScheduleDate(from) && from >= todayAU() ? from : todayAU()} time="09:00" initialLeadId={create.leadId} initialType={create.type || (workspace === "schedule" && typeFilter === "job" ? "job" : "inspection")} staffName={workspace === "schedule" ? crews.find(([key]) => key === crewFilter)?.[1] : undefined} onClose={() => setCreate(null)} onBooked={(date, message) => { setCreate(null); setNotice(message); if (date < from || date > to) { setFrom(date); setTo(date); } setReload(value => value + 1); }} />}
+    {create && <DispatchBookingModal date={routeOpen && validScheduleDate(from) && from >= todayAU() ? from : todayAU()} time="09:00" initialLeadId={create.leadId} initialType={create.type || (routeOpen && typeFilter === "job" ? "job" : "inspection")} staffName={routeOpen ? crews.find(([key]) => key === crewFilter)?.[1] : undefined} onClose={() => setCreate(null)} onBooked={(date, message) => { setCreate(null); setNotice(message); if (date < from || date > to) { setFrom(date); setTo(date); } setReload(value => value + 1); }} />}
     {editor && editingLead && <><div role="status" className="fixed left-1/2 top-3 z-[60] -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-xs text-white shadow-lg">{editor.purpose} · {editor.index + 1} of {editor.stops.length}</div><EditBookingModal key={`${editor.stops[editor.index].id}:${editor.index}`} lead={editingLead} type={editor.stops[editor.index].type} onClose={() => { setEditor(null); setEditingLead(null); setReload(value => value + 1); }} onSaved={(_date, message) => void nextEditor(message)} /></>}
     {metadata && <Dialog title={metadata === "zone" ? "Change dispatch zone" : "Group selected visits"} onClose={() => setMetadata(null)}><p className="mb-4 text-xs leading-relaxed text-slate-500">{chosen.length} selected stops. {metadata === "zone" ? "This changes the dispatch plan for these dates. Customer service-area rules are managed separately in Service Zones." : "Give these visits a shared dispatch label so staff can find and select them together."}</p>{metadata === "zone" ? <label className="block text-xs font-semibold">Dispatch zone<select className={`${field} mt-2 w-full`} value={newZone} onChange={event => setNewZone(event.target.value as DispatchZone | "auto")}><option value="auto">Automatic (from property location)</option>{DISPATCH_ZONES.map(zone => <option key={zone.id} value={zone.id}>{zone.id} · {zone.name} · {zone.direction}</option>)}</select></label> : <label className="block text-xs font-semibold">Group name<input autoFocus required maxLength={60} className={`${field} mt-2 w-full`} value={groupName} onChange={event => setGroupName(event.target.value)} placeholder="e.g. Eastern crew morning" onKeyDown={event => { if (event.key === "Enter" && groupName.trim()) applyMetadata(); }} /></label>}<div className="mt-5 flex justify-end gap-2"><button className={button} onClick={() => setMetadata(null)}>Cancel</button><button className={`${button} !bg-blue-600 !text-white`} disabled={!chosen.length || (metadata === "group" && !groupName.trim())} onClick={applyMetadata}>Apply to plan</button></div></Dialog>}
     {cancelStop && <Dialog title="Cancel this booking?" busy={cancelling} onClose={() => setCancelStop(null)}><p className="text-sm">{reference(cancelStop)} · {cancelStop.name}</p><p className="mt-2 text-xs text-slate-500">{cancelStop.type} · {formatApptDate(cancelStop.bookingStart || `${cancelStop.date}T${cancelStop.time}`)} · {formatApptTime(cancelStop.bookingStart || `${cancelStop.date}T${cancelStop.time}`)}</p><p className="mt-3 text-xs leading-relaxed text-slate-500">This cancels the entire selected visit, including its continued days, and releases its calendar slots. The customer record and other bookings are retained.</p>{error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}<div className="mt-5 flex justify-end gap-2"><button className={button} disabled={cancelling} onClick={() => setCancelStop(null)}>Keep booking</button><button className={`${button} !border-rose-600 !bg-rose-600 !text-white`} disabled={cancelling} onClick={() => void cancelBooking()}>{cancelling && <Loader2 className="h-4 w-4 animate-spin" />}Cancel booking</button></div></Dialog>}

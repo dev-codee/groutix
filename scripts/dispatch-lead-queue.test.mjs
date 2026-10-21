@@ -39,35 +39,28 @@ function harness(source = leads) {
   return { render, props, actions, label, rows, change };
 }
 
-test("new leads and bookings outside the route dates are visible, once per customer", () => {
+test("the selected zone's leads render once per customer in compact rows", () => {
   const h = harness(), nodes = h.render();
   assert.deepEqual(h.rows(nodes), leads.map(lead => lead.id));
   assert.equal(h.rows(nodes).filter(id => id === "job").length, 1);
-  const statuses = h.label(nodes, "Filter leads by status").props.children.flat();
-  for (const status of ["New", "Inspection Booked", "Job Booked", "Won", "Custom CRM stage"]) {
-    assert.ok(statuses.some(option => option?.props?.value === status), `${status} is a selectable live CRM status`);
-  }
+  assert.equal(nodes.some(node => node.type === "select"), false, "status filtering is owned by the main zone workspace");
+  assert.equal(h.label(nodes, "Edit job:job:job-two"), undefined, "extra visits start collapsed");
   assert.deepEqual(h.actions, []);
 });
 
-test("status, contact search and booking availability filters use live lead/visit data", () => {
-  const h = harness();
-  h.change("Filter leads by status", "New");
-  assert.deepEqual(h.rows(h.render()), ["new"]);
-  h.change("Filter leads by status", "Inspection Booked");
-  assert.deepEqual(h.rows(h.render()), ["inspection"]);
-  h.change("Filter leads by status", "Job Booked");
-  assert.deepEqual(h.rows(h.render()), ["job"]);
-  h.change("Filter leads by status", "all");
-  h.change("Search leads to book", "0400000000");
-  assert.deepEqual(h.rows(h.render()), ["job"]);
-  h.change("Search leads to book", "");
-  h.change("Filter leads by bookings", "unbooked");
-  assert.deepEqual(h.rows(h.render()), ["new", "cancelled-visit", "done", "lost", "other"]);
-  h.change("Filter leads by bookings", "inspection");
-  assert.deepEqual(h.rows(h.render()), ["inspection"], "completed/cancelled visits do not count as open inspections");
-  h.change("Filter leads by bookings", "job");
-  assert.deepEqual(h.rows(h.render()), ["job"], "lost lead does not have an actionable open job");
+test("the requested dispatch labels map to saved CRM stages without modifying statuses", () => {
+  const { DISPATCH_LEAD_FILTERS, matchesDispatchLeadStatus } = loadTs("lib/dispatchLeads.ts");
+  assert.deepEqual(Array.from(DISPATCH_LEAD_FILTERS, stage => stage.label), ["New Lead", "Contacted", "Waiting for Info", "Inspection Booked", "Inspection Completed", "Quote", "Quote Waiting", "Job Booked"]);
+  assert.equal(matchesDispatchLeadStatus("New", "new"), true);
+  assert.equal(matchesDispatchLeadStatus("Quote Sent", "quote"), true);
+  assert.equal(matchesDispatchLeadStatus("Won", "quote"), true);
+  assert.equal(matchesDispatchLeadStatus("Quote Pending", "quote-waiting"), true);
+  assert.equal(matchesDispatchLeadStatus("Quote Waiting", "quote-waiting"), true);
+  assert.equal(matchesDispatchLeadStatus("Inspection In Progress", "inspection-booked"), true);
+  assert.equal(matchesDispatchLeadStatus("Job In Progress", "job-booked"), true);
+  assert.equal(matchesDispatchLeadStatus("Inspection Completed", "active"), false);
+  assert.equal(matchesDispatchLeadStatus("Inspection Completed", "inspection-completed"), true);
+  for (const status of ["Lost", "Cancelled", "Completed", "Invoice Sent"]) assert.equal(matchesDispatchLeadStatus(status, "active"), false);
 });
 
 test("booking actions select the existing lead and correct visit type without writing anything", () => {
@@ -81,8 +74,9 @@ test("booking actions select the existing lead and correct visit type without wr
   assert.equal(h.actions[1][2], "job");
 });
 
-test("edit and route actions preserve the specific visit when one customer has multiple jobs", () => {
+test("expanded visit history preserves the exact job identity for edit and route actions", () => {
   const h = harness();
+  h.label(h.render(), "Toggle bookings for job").props.onClick();
   h.label(h.render(), "Edit job:job:job-two").props.onClick();
   assert.equal(h.actions[0][1], leads[2]);
   assert.equal(h.actions[0][2].bookingId, "job-two");
@@ -102,23 +96,22 @@ test("closed leads block new bookings and allow editing details to reopen or fix
   assert.equal(h.actions[0][1].id, "lost");
 });
 
-test("unknown addresses stay visible and can be filtered for review", () => {
-  const h = harness(); h.change("Filter leads by zone", "unlocated");
-  assert.deepEqual(h.rows(h.render()), ["cancelled-visit"]);
-  assert.equal(h.label(h.render(), "Book inspection for cancelled-visit").props.disabled, false);
+test("completed inspections can progress to a new job without putting the finished inspection on the route", () => {
+  const h = harness([leads[4]]), nodes = h.render();
+  assert.deepEqual(h.rows(nodes), ["done"]);
+  assert.equal(nodes.some(node => node.props?.["aria-label"]?.startsWith("Show route")), false);
+  h.label(nodes, "Book job for done").props.onClick();
+  assert.equal(h.actions[0][1].id, "done");
+  assert.equal(h.actions[0][2], "job");
 });
 
-test("pagination resets on filtering and clamps safely when the live lead list shrinks", () => {
-  const source = Array.from({ length: 45 }, (_, index) => ({ ...leads[0], id: `lead-${index}`, status: index === 44 ? "Contacted" : "New" }));
+test("pagination clamps safely when changing zones or statuses reduces the visible lead list", () => {
+  const source = Array.from({ length: 45 }, (_, index) => ({ ...leads[0], id: `lead-${index}` }));
   const h = harness(source);
   assert.equal(h.rows(h.render()).length, 20);
   h.label(h.render(), "Next leads page").props.onClick();
   h.label(h.render(), "Next leads page").props.onClick();
   assert.equal(h.rows(h.render()).length, 5);
-  h.change("Filter leads by status", "Contacted");
-  assert.deepEqual(h.rows(h.render()), ["lead-44"]);
-  h.change("Filter leads by status", "all");
-  h.label(h.render(), "Next leads page").props.onClick();
   h.props.leads = source.slice(0, 1);
   assert.deepEqual(h.rows(h.render()), ["lead-0"]);
   assert.equal(h.label(h.render(), "Next leads page").props.disabled, true);
