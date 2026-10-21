@@ -155,7 +155,9 @@ export function DispatchPlannerView() {
     return () => window.removeEventListener("beforeunload", guard);
   }, [dirty.length]);
 
-  const allStops = useMemo(() => appointments.map(appointment => dispatchStop(appointment, plans[appointment.date] || emptyDispatchPlan(), zoneRules.flexRadiusKm)), [appointments, plans, zoneRules.flexRadiusKm]);
+  const allStops = useMemo(() => appointments
+    .filter(appointment => !(appointment.type === "inspection" && appointment.status === "Inspection Completed"))
+    .map(appointment => dispatchStop(appointment, plans[appointment.date] || emptyDispatchPlan(), zoneRules.flexRadiusKm)), [appointments, plans, zoneRules.flexRadiusKm]);
   const filtered = useMemo(() => allStops.filter(stop =>
     (crewFilter === "all" || stop.crewKey === crewFilter) && (typeFilter === "all" || stop.type === typeFilter)
     && (statusFilter === "all" || stop.status === statusFilter)
@@ -226,6 +228,14 @@ export function DispatchPlannerView() {
       setNotice(`Dispatch plan saved for ${savedCount} ${savedCount === 1 ? "day" : "days"}.`);
     } catch (err) { setError(`${savedCount ? `${savedCount} day(s) saved. ` : ""}${err instanceof Error ? err.message : "Could not save."}`); }
     finally { setSaving(false); }
+  }
+  function updateBookingStatus(stop: DispatchStop, status: string) {
+    const start = stop.bookingStart || `${stop.date}T${stop.time}`;
+    setAppointments(current => current.map(appointment => {
+      const sameVisit = appointment.leadId === stop.leadId && appointment.type === stop.type
+        && (stop.bookingId ? appointment.bookingId === stop.bookingId : (appointment.bookingStart || `${appointment.date}T${appointment.time}`) === start);
+      return sameVisit ? { ...appointment, status } : appointment;
+    }));
   }
   const resolveLead = useCallback(async (stop: DispatchStop) => {
     const response = await fetch(`/api/admin/submissions/${stop.leadId}`, { cache: "no-store" });
@@ -304,7 +314,7 @@ export function DispatchPlannerView() {
 
   return <div className="mx-auto w-full max-w-[1680px] space-y-4 pb-8 text-slate-800">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-blue-600">Operations / Dispatch planner</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Plan the day. Keep jobs moving.</h2><p className="mt-1 text-xs text-slate-500">Bookings, service zones and crew routes · Melbourne time</p></div>
+      <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-blue-600">Operations / Dispatch planner</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Dispatch planner</h2><p className="mt-1 text-xs text-slate-500">Bookings, service zones and crew routes · Melbourne time</p></div>
       <div className="flex flex-wrap gap-2"><button className={button} onClick={exportCsv} disabled={workspace !== "schedule" || !ready || !stops.length}><Download className="h-4 w-4" />Export</button><button className={`${button} !border-blue-600 !bg-blue-600 !text-white hover:!bg-blue-700`} disabled={busy || (workspace === "schedule" ? !ready : leadsLoading)} onClick={() => setCreate({})}><Plus className="h-4 w-4" />Book a visit</button></div>
     </div>
 
@@ -370,32 +380,91 @@ export function DispatchPlannerView() {
           { label: "Booked work duration", value: ready ? duration(summary.work) : "—", detail: "Saved booking windows", icon: <CalendarClock className="h-4 w-4" /> },
         ].map(stat => <div key={stat.label} className={`${panel} p-3.5`}><div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-slate-500">{stat.label}<span className="text-blue-500">{stat.icon}</span></div><p className="mt-2 text-xl font-bold tracking-tight text-slate-900">{stat.value}</p><p className="mt-1 text-[10px] text-slate-400">{stat.detail}</p></div>)}</div>
         <section className={`${panel} overflow-hidden`}>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-3"><div><h3 className="text-sm font-bold">Bookings in selected zones</h3><p className="mt-0.5 text-[10px] text-slate-500">{zoneIds.filter(id => id !== "unlocated").join(" + ") || "No geographic zones selected"}{zoneIds.includes("unlocated") ? " · unlocated included" : ""}</p></div><div className="flex items-center gap-3 text-xs"><span className="font-semibold text-blue-600">{chosen.length} selected</span><button className="text-slate-500 hover:text-slate-900" onClick={() => setSelected([])}>Clear selection</button></div></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-3"><div><h3 className="text-sm font-bold">Scheduled visits</h3><p className="mt-0.5 text-[10px] text-slate-500">{zoneIds.filter(id => id !== "unlocated").join(" · ") || "No geographic zones selected"}{zoneIds.includes("unlocated") ? " · unlocated included" : ""}</p></div><div className="flex items-center gap-3 text-xs"><span className="font-semibold text-blue-600">{chosen.length} selected</span><button className="text-slate-500 hover:text-slate-900" onClick={() => setSelected([])}>Clear selection</button></div></div>
           {loading && <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Loading bookings…</div>}
           {!loading && !ready && <div className="p-8 text-center text-sm text-slate-500">Bookings are unavailable. Check the date range or retry loading.</div>}
           {ready && stops.length === 0 && <div className="p-10 text-center"><Layers className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-sm font-semibold">No bookings match this view</p><p className="mt-1 text-xs text-slate-500">Choose another date, select zones, or adjust the filters.</p><button className={`${button} mt-4`} onClick={() => { setZoneIds(DISPATCH_ZONES.map(zone => zone.id)); setCrewFilter("all"); setTypeFilter("all"); setStatusFilter("all"); setQuery(""); }}>Reset filters</button></div>}
-          {ready && !!stops.length && <div className="overflow-x-auto"><table className="w-full min-w-[1020px] border-collapse text-left text-[11px]"><thead className="bg-slate-50 text-[10px] text-slate-500"><tr><th className="w-9 px-3 py-2.5"><input type="checkbox" aria-label="Select all displayed bookings" checked={stops.length > 0 && chosen.length === stops.length} onChange={event => setSelected(event.target.checked ? stops.map(stop => stop.id) : [])} className="accent-blue-600" /></th><th className="p-2">Order</th><th className="p-2">Booking / Customer</th><th className="p-2">Suburb / Zone</th>{showTravel && <><th className="p-2">From base</th><th className="p-2">From previous</th></>}<th className="p-2">Date & time</th><th className="p-2">Duration</th><th className="p-2">Status</th><th className="p-2 text-right">Actions</th></tr></thead>
-            {lanes.map(lane => <tbody key={`${lane[0].date}:${lane[0].crewKey}:${lane[0].id}`}>
-              <tr className="border-y border-slate-200 bg-slate-100/80"><th colSpan={showTravel ? 10 : 8} className="px-3 py-2"><div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-[11px]"><Users className="h-3.5 w-3.5 text-blue-600" />{lane[0].crew}<span className="font-normal text-slate-500">· {formatApptDate(`${lane[0].date}T12:00`)} · {lane.length} visits</span></span><span className="text-[10px] font-normal text-slate-500">{sort === "manual" ? "Drag handle or use arrows to reorder" : "Route order preview"}</span></div></th></tr>
-              {lane.map((stop, index) => {
-                const previous = index ? lane[index - 1].point : dispatchBase;
-                const leg = travelLeg(previous, stop.point);
-                const next = lane[index + 1];
-                const conflict = !!next && (stop.time > next.time || Number(stop.time.slice(0, 2)) * 60 + Number(stop.time.slice(3, 5)) + stopMinutes(stop) + (travelLeg(stop.point, next.point)?.minutes || 0) > Number(next.time.slice(0, 2)) * 60 + Number(next.time.slice(3, 5)));
-                return <tr key={stop.id} onDragOver={event => { if (dragged && lane.some(item => item.id === dragged)) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (dragged) moveStop(dragged, stop.id); setDragged(null); }} className={`border-b border-slate-100 ${selected.includes(stop.id) ? "bg-blue-50/70" : "hover:bg-slate-50/60"}`}>
-                  <td className="px-3 py-3 align-top"><input type="checkbox" aria-label={`Select ${reference(stop)} ${stop.type} ${stop.time}`} checked={selected.includes(stop.id)} onChange={() => setSelected(ids => ids.includes(stop.id) ? ids.filter(id => id !== stop.id) : [...ids, stop.id])} className="accent-blue-600" /></td>
-                  <td className="p-2 align-top"><div className="flex items-center gap-1"><button draggable={!busy} disabled={busy} aria-label={`Drag ${reference(stop)} to reorder`} title="Drag within the same crew and day" className="cursor-grab rounded p-1 text-slate-400 active:cursor-grabbing" onDragStart={event => { setDragged(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }} onDragEnd={() => setDragged(null)}><GripVertical className="h-4 w-4" /></button><span className="w-3 font-bold">{index + 1}</span><span className="flex flex-col"><button aria-label={`Move ${reference(stop)} up`} disabled={!index || busy} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 disabled:opacity-20" onClick={() => moveStop(stop.id, lane[index - 1].id)}><ArrowUp className="h-3 w-3" /></button><button aria-label={`Move ${reference(stop)} down`} disabled={index === lane.length - 1 || busy} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 disabled:opacity-20" onClick={() => moveStop(stop.id, lane[index + 1].id)}><ArrowDown className="h-3 w-3" /></button></span></div></td>
-                  <td className="p-2 align-top"><button className="font-bold text-blue-700 hover:underline" disabled={busy} onClick={() => void openEditor([stop], "Edit booking")}>{reference(stop)}</button><p className="mt-1 font-semibold">{stop.name}</p><p className="mt-1 max-w-48 truncate text-[10px] text-slate-500" title={stop.address}>{stop.address || "Address missing"}</p><span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold ${stop.type === "job" ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}>{stop.type === "job" ? "Job" : "Inspection"}</span>{stop.group && <span className="ml-1 inline-block rounded bg-violet-50 px-1.5 py-0.5 text-[9px] text-violet-700">{stop.group}</span>}</td>
-                  <td className="p-2 align-top"><div className="flex items-center gap-2"><ZoneBadge id={stop.zone} /><span className="max-w-28 capitalize">{stop.suburb || stop.point?.label || "Unlocated"}</span></div>{!stop.point && <p className="mt-1 text-[9px] text-amber-700">Address needs review</p>}</td>
-                  {showTravel && <><td className="p-2 align-top font-medium">{stop.baseKm === null ? "Unavailable" : `~${stop.baseKm.toFixed(1)} km`}</td><td className="p-2 align-top">{leg ? <><p className="font-semibold text-blue-700">~{leg.km.toFixed(1)} km</p><p className="mt-1 text-[10px] text-slate-500">{leg.minutes} min{index ? "" : " from base"}</p></> : <span className="text-slate-400">Unavailable</span>}</td></>}
-                  <td className="whitespace-nowrap p-2 align-top"><p>{formatApptDate(`${stop.date}T${stop.time}`)}</p><p className="mt-1 font-bold">{formatApptTime(`${stop.date}T${stop.time}`)}</p>{stop.bookingStart && !stop.bookingStart.startsWith(stop.date) && <p className="mt-1 text-[9px] text-slate-400">Continued visit</p>}{conflict && <p className="mt-1 max-w-32 whitespace-normal text-[9px] text-amber-700">Timing / travel conflicts with next stop</p>}</td>
-                  <td className="p-2 align-top">{duration(stopMinutes(stop))}</td><td className="max-w-40 p-2 align-top"><BookingStatusControl leadId={stop.leadId} booking={selectedBooking(stop)} disabled={busy} /></td>
-                  <td className="p-2 align-top"><div className="flex justify-end gap-1"><button className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40" title="Open customer job card" aria-label={`View customer ${stop.name}`} disabled={busy || leadsLoading} onClick={() => { setOpening(true); void resolveLead(stop).then(openJobCard).catch(err => setError(err.message)).finally(() => setOpening(false)); }}><Eye className="h-3.5 w-3.5" /></button><button className="rounded-md border border-slate-200 p-1.5 text-blue-600 hover:bg-blue-50 disabled:opacity-40" title="Reschedule or reassign booking" aria-label={`Edit booking ${reference(stop)}`} disabled={busy} onClick={() => void openEditor([stop], "Edit booking")}><CalendarClock className="h-3.5 w-3.5" /></button><button className="rounded-md border border-rose-100 p-1.5 text-rose-500 hover:bg-rose-50 disabled:opacity-40" title="Cancel this booking" aria-label={`Cancel booking ${reference(stop)}`} disabled={busy} onClick={() => { setError(""); setCancelStop(stop); }}><Trash2 className="h-3.5 w-3.5" /></button></div></td>
-                </tr>;
-              })}
-              {showTravel && <tr className="border-b border-slate-200 bg-slate-50/70"><td colSpan={10} className="px-4 py-2"><div className="flex items-center gap-2 text-[10px] text-slate-500"><Home className="h-3.5 w-3.5 text-blue-600" />Return to base · {DISPATCH_BASE_ADDRESS}<span className="ml-auto font-semibold">{(() => { const leg = travelLeg(lane[lane.length - 1].point, dispatchBase); return leg ? `~${leg.km.toFixed(1)} km · ${leg.minutes} min` : "Distance unavailable"; })()}</span></div></td></tr>}
-            </tbody>)}
-          </table></div>}
+          {ready && !!stops.length && <div className="overflow-x-auto">
+            <table className={`w-full table-fixed border-collapse text-left text-[11px] ${showTravel ? "min-w-[1060px]" : "min-w-[920px]"}`} aria-label="Dispatch route bookings">
+              <colgroup>
+                <col style={{ width: 36 }} /><col style={{ width: 72 }} /><col style={{ width: 220 }} />
+                <col style={{ width: 150 }} />{showTravel && <col style={{ width: 140 }} />}
+                <col style={{ width: 156 }} /><col style={{ width: 190 }} /><col style={{ width: 106 }} />
+              </colgroup>
+              <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-3 py-3"><input type="checkbox" aria-label="Select all displayed bookings" checked={stops.length > 0 && chosen.length === stops.length} onChange={event => setSelected(event.target.checked ? stops.map(stop => stop.id) : [])} className="accent-blue-600" /></th>
+                  <th className="p-2">Order</th><th className="px-3 py-3">Booking / Customer</th><th className="px-3 py-3">Area / Zone</th>
+                  {showTravel && <th className="px-3 py-3">Travel · estimated</th>}
+                  <th className="px-3 py-3">Appointment</th><th className="px-3 py-3">Status</th>
+                  <th className="sticky right-0 border-l border-slate-200 bg-slate-50 px-3 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              {lanes.map(lane => <tbody key={`${lane[0].date}:${lane[0].crewKey}:${lane[0].id}`}>
+                <tr className="border-y border-slate-200 bg-slate-50/80">
+                  <th colSpan={showTravel ? 8 : 7} className="px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 text-[11px]"><Users className="h-3.5 w-3.5 text-blue-600" />{lane[0].crew}<span className="font-normal text-slate-500">· {formatApptDate(`${lane[0].date}T12:00`)} · {lane.length} visits</span></span>
+                      <span className="text-[10px] font-normal text-slate-400">{sort === "manual" ? "Drag or use arrows to reorder" : "Route order preview"}</span>
+                    </div>
+                  </th>
+                </tr>
+                {lane.map((stop, index) => {
+                  const previous = index ? lane[index - 1].point : dispatchBase;
+                  const leg = travelLeg(previous, stop.point);
+                  const next = lane[index + 1];
+                  const conflict = !!next && (stop.time > next.time || Number(stop.time.slice(0, 2)) * 60 + Number(stop.time.slice(3, 5)) + stopMinutes(stop) + (travelLeg(stop.point, next.point)?.minutes || 0) > Number(next.time.slice(0, 2)) * 60 + Number(next.time.slice(3, 5)));
+                  const isSelected = selected.includes(stop.id);
+                  return <tr key={stop.id} data-booking-id={stop.id}
+                    onDragOver={event => { if (dragged && lane.some(item => item.id === dragged)) event.preventDefault(); }}
+                    onDrop={event => { event.preventDefault(); if (dragged) moveStop(dragged, stop.id); setDragged(null); }}
+                    className={`border-b border-slate-100 ${isSelected ? "bg-blue-50/70" : "hover:bg-slate-50/60"}`}>
+                    <td className="px-3 py-3 align-middle"><input type="checkbox" aria-label={`Select ${reference(stop)} ${stop.type} ${stop.time}`} checked={isSelected} onChange={() => setSelected(ids => ids.includes(stop.id) ? ids.filter(id => id !== stop.id) : [...ids, stop.id])} className="accent-blue-600" /></td>
+                    <td className="p-2 align-middle">
+                      <div className="flex items-center gap-1">
+                        <button draggable={!busy} disabled={busy} aria-label={`Drag ${reference(stop)} to reorder`} title="Drag within the same crew and day" className="cursor-grab rounded p-0.5 text-slate-300 hover:text-slate-500 active:cursor-grabbing" onDragStart={event => { setDragged(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }} onDragEnd={() => setDragged(null)}><GripVertical className="h-3.5 w-3.5" /></button>
+                        <span className="w-3 text-center font-semibold text-slate-500">{index + 1}</span>
+                        <span className="flex flex-col">
+                          <button aria-label={`Move ${reference(stop)} up`} disabled={!index || busy} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 disabled:opacity-20" onClick={() => moveStop(stop.id, lane[index - 1].id)}><ArrowUp className="h-3 w-3" /></button>
+                          <button aria-label={`Move ${reference(stop)} down`} disabled={index === lane.length - 1 || busy} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 disabled:opacity-20" onClick={() => moveStop(stop.id, lane[index + 1].id)}><ArrowDown className="h-3 w-3" /></button>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center gap-2"><button className="font-bold text-blue-700 hover:underline" disabled={busy} onClick={() => void openEditor([stop], "Edit booking")}>{reference(stop)}</button><span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${stop.type === "job" ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}>{stop.type === "job" ? "Job" : "Inspection"}</span></div>
+                      <p className="mt-1 truncate font-semibold text-slate-800" title={stop.name}>{stop.name}</p>
+                      <p className="mt-0.5 truncate text-[10px] text-slate-400" title={stop.address}>{stop.address || "Address missing"}</p>
+                      {stop.group && <span className="mt-1 inline-block max-w-full truncate rounded bg-violet-50 px-1.5 py-0.5 text-[9px] text-violet-700">{stop.group}</span>}
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center gap-2"><ZoneBadge id={stop.zone} /><span className="min-w-0 truncate capitalize" title={stop.suburb || stop.point?.label}>{stop.suburb || stop.point?.label || "Unlocated"}</span></div>
+                      {!stop.point && <p className="mt-1 text-[10px] text-amber-700">Address needs review</p>}
+                    </td>
+                    {showTravel && <td className="px-3 py-3 align-middle">
+                      <p className="font-semibold text-blue-700">{leg ? `~${leg.km.toFixed(1)} km · ${leg.minutes} min` : "Travel unavailable"}</p>
+                      <p className="mt-0.5 text-[9px] text-slate-400">{index ? "From previous stop" : "From base"}</p>
+                      {index > 0 && <p className="mt-1 text-[10px] text-slate-500">{stop.baseKm === null ? "Base distance unavailable" : `~${stop.baseKm.toFixed(1)} km from base`}</p>}
+                    </td>}
+                    <td className="px-3 py-3 align-middle">
+                      <p className="font-semibold text-slate-800">{formatApptTime(`${stop.date}T${stop.time}`)} <span className="font-normal text-slate-400">· {duration(stopMinutes(stop))}</span></p>
+                      <p className="mt-1 text-[10px] text-slate-500">{formatApptDate(`${stop.date}T${stop.time}`)}</p>
+                      {stop.bookingStart && !stop.bookingStart.startsWith(stop.date) && <p className="mt-1 text-[9px] text-slate-400">Continued visit</p>}
+                      {conflict && <p className="mt-1 text-[9px] text-amber-700">Timing / travel conflicts with next stop</p>}
+                    </td>
+                    <td className="px-3 py-3 align-middle"><BookingStatusControl leadId={stop.leadId} booking={selectedBooking(stop)} disabled={busy} compact onSaved={status => updateBookingStatus(stop, status)} /></td>
+                    <td className={`sticky right-0 border-l border-slate-100 px-2 py-3 align-middle ${isSelected ? "bg-blue-50" : "bg-white"}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40" title="Open customer job card" aria-label={`View customer ${stop.name}`} disabled={busy || leadsLoading} onClick={() => { setOpening(true); void resolveLead(stop).then(openJobCard).catch(err => setError(err.message)).finally(() => setOpening(false)); }}><Eye className="h-3.5 w-3.5" /></button>
+                        <button className="rounded-md p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-40" title="Reschedule or reassign booking" aria-label={`Edit booking ${reference(stop)}`} disabled={busy} onClick={() => void openEditor([stop], "Edit booking")}><CalendarClock className="h-3.5 w-3.5" /></button>
+                        <button className="rounded-md p-2 text-rose-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40" title="Cancel this booking" aria-label={`Cancel booking ${reference(stop)}`} disabled={busy} onClick={() => { setError(""); setCancelStop(stop); }}><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>;
+                })}
+                {showTravel && <tr className="border-b border-slate-200 bg-slate-50/50"><td colSpan={8} className="px-4 py-2"><div className="flex items-center gap-2 text-[10px] text-slate-400"><Home className="h-3.5 w-3.5" />Return to base · {DISPATCH_BASE_ADDRESS}<span className="ml-auto font-medium text-slate-500">{(() => { const leg = travelLeg(lane[lane.length - 1].point, dispatchBase); return leg ? `~${leg.km.toFixed(1)} km · ${leg.minutes} min` : "Distance unavailable"; })()}</span></div></td></tr>}
+              </tbody>)}
+            </table>
+          </div>}
         </section>
 
         {ready && !!stops.length && <section className={`${panel} p-3`}><h3 className="mb-3 text-xs font-bold">Route preview <span className="font-normal text-slate-400">· visual order per crew / day</span></h3><div className="space-y-4">{lanes.map(lane => <div key={`${lane[0].id}:preview`}><p className="mb-2 text-[10px] font-semibold text-slate-500">{lane[0].crew} · {formatApptDate(`${lane[0].date}T12:00`)}</p><div className="flex items-center gap-2 overflow-x-auto pb-1"><div className="shrink-0 rounded-lg bg-slate-100 p-3 text-center text-[10px]"><Home className="mx-auto mb-1 h-4 w-4 text-blue-600" />Base</div>{lane.map((stop, index) => { const leg = travelLeg(index ? lane[index - 1].point : dispatchBase, stop.point); return <div className="flex shrink-0 items-center gap-2" key={stop.id}><div className="text-center text-[9px] text-slate-400"><ArrowRight className="mx-auto h-4 w-4" />{showTravel && (leg ? `~${leg.km} km` : "Unknown")}</div><button className="min-w-28 rounded-lg border p-2 text-left" disabled={busy} style={{ borderColor: `${zoneInfo(stop.zone).color}30`, backgroundColor: `${zoneInfo(stop.zone).color}08` }} onClick={() => void openEditor([stop], "Edit booking")}><p className="text-[10px] font-bold" style={{ color: zoneInfo(stop.zone).color }}>{index + 1}. {reference(stop)}</p><p className="mt-1 max-w-36 truncate text-[10px] capitalize">{stop.suburb || stop.point?.label || "Unlocated"}</p><p className="mt-1 text-[9px] text-slate-500">{formatApptTime(`${stop.date}T${stop.time}`)}</p></button></div>; })}<div className="shrink-0 text-center text-[9px] text-slate-400"><ArrowRight className="mx-auto h-4 w-4" />{showTravel && (() => { const leg = travelLeg(lane[lane.length - 1].point, dispatchBase); return leg ? `~${leg.km} km` : "Unknown"; })()}</div><div className="shrink-0 rounded-lg bg-blue-50 p-3 text-center text-[10px] text-blue-700"><Home className="mx-auto mb-1 h-4 w-4" />Base</div></div></div>)}</div></section>}
