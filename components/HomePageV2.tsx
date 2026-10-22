@@ -27,12 +27,12 @@ const PRICES: { label: string; from: string; note: string }[] = [
 ];
 
 const CORE = [
-  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/img53.jpeg",
-    alt: "Groutix technician finishing new grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/img41.jpeg",
-    alt: "Water damage behind shower tiles", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/img54.jpeg",
-    alt: "Cracked and failing grout on outdoor tiles", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
+  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/shower-regrouting-tiled-interior.webp",
+    alt: "Freshly regrouted shower interior with white subway tiles and a brown feature wall", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/white-tile-shower-regrouting-floor-view before.webp",
+    alt: "Leaking shower with water damage and stained grout before repair", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-tiles.webp",
+    alt: "Balcony after leak repair and regrouting with large-format outdoor tiles", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
   { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
@@ -41,21 +41,21 @@ const MORE = [
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
 const SYMPTOMS = [
-  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/img56.jpeg", alt: "Cracked grout line between floor tiles" },
-  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/img50.jpeg", alt: "Silicone being replaced around a shower screen" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/img37.jpeg", alt: "Water damage on a wall next to a bathroom" },
-  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/img23.jpeg", alt: "Stained, mouldy grout in a shower corner" },
+  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Cracked and crumbling grout line between floor tiles, close-up" },
+  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Black mould in shower grout and silicone next to a glass screen" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a bathroom" },
+  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/shower-regrouting-signs-black-mould.webp", alt: "Stained, mouldy grout in a shower corner" },
 ];
 const BALCONY = [
-  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/img78.jpeg", alt: "Signs of balcony water failure: staining, mould and lifting tiles" },
-  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/img92.jpeg", alt: "Cracked outdoor tile grout before and after regrouting" },
-  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/img97.jpeg", alt: "Water damage on a wall and ceiling below a leaking balcony" },
-  { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/img77.jpeg", alt: "Balcony after epoxy regrouting and resealing" },
+  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Signs of balcony water failure: staining, mould and lifting tiles" },
+  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with cracked and missing grout around the drain, before regrouting" },
+  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/water stains on the ceiling below.webp", alt: "Mould and water damage behind a missing bathroom tile" },
+  { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
 ];
 const JOBS = [
-  { src: "/img12.jpeg", title: "Shower floor regrout" },
-  { src: "/img59.jpeg", title: "Floor tile regrout" },
-  { src: "/img13.jpeg", title: "Shower base regrout" },
+  { before: "/beige-shower-floor-regrouting-top-view before.webp", after: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout" },
+  { before: "/tiled-shower-floor-regrouting-wide before.webp", after: "/tiled-shower-floor-regrouting-wide after .webp", title: "Floor tile regrout" },
+  { before: "/grey-shower-base-regrouting-overhead-view before .webp", after: "/grey-shower-floor-regrouting-top-view after.webp", title: "Shower base regrout" },
 ];
 const STEPS = [
   { no: "01", k: "CALL", title: "Send Photos or Call", desc: "Tell us what's happening. You get honest advice, even if a full regrout isn't needed." },
@@ -87,22 +87,22 @@ const lead = "mt-3 text-[17px] leading-relaxed text-slate-600";
 const box = "rounded-lg border border-slate-200 bg-white";
 const btn = "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 text-base font-bold transition-colors";
 
-/* Drag-to-compare slider. Each job photo is one side-by-side image (before on the left,
-   after on the right), so each layer shows one half of the same file. */
-function BeforeAfter({ src, title }: { src: string; title: string }) {
+/* Drag-to-compare slider. Each job has a separate before and after photo;
+   dragging reveals the after photo over the before photo. */
+function BeforeAfter({ before, after, title }: { before: string; after: string; title: string }) {
   // Starts with the full "before" photo; dragging left reveals the "after".
   const [pos, setPos] = useState(100);
   const handle = Math.min(96, Math.max(4, pos));
-  const half = (side: "before" | "after") => (
-    <div className="absolute inset-y-0 w-[200%]" style={{ left: side === "before" ? "0" : "-100%" }}>
-      <Image src={src} alt="" fill sizes="(min-width:768px) 66vw, 200vw" className="object-cover" />
+  const layer = (src: string) => (
+    <div className="absolute inset-0">
+      <Image src={src} alt="" fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover" />
     </div>
   );
   return (
     <figure className="m-0">
       <div className="relative aspect-square select-none overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:aspect-[4/4.2]">
-        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{half("before")}</div>
-        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{half("after")}</div>
+        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
+        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
         <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
         <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
         <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
@@ -313,7 +313,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               <Link href="/shower-regrouting" className={`${btn} border border-slate-300 bg-white text-[#001F97] hover:border-[#001F97]`}>See more jobs</Link>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {JOBS.map((j) => <BeforeAfter key={j.src} src={j.src} title={j.title} />)}
+              {JOBS.map((j) => <BeforeAfter key={j.title} before={j.before} after={j.after} title={j.title} />)}
             </div>
           </div>
         </section>
