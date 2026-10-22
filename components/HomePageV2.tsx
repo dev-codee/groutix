@@ -231,8 +231,8 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
               {CORE.map((s) => (
                 <Link key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} href={`/${s.slug}`} className={`${box} group flex flex-col overflow-hidden text-slate-900`}>
-                  <div className="relative h-[300px]">
-                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-90" />
+                  <div className="relative h-[375px]">
+                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-110" />
                   </div>
                   <div className="flex flex-1 flex-col gap-2.5 p-6">
                     <span className={`self-start rounded px-2 py-1 text-xs font-bold ${s.hot ? "bg-[#FFF4D1] text-[#7A5600]" : "bg-[#EEF3FF] text-[#001F97]"}`}>{s.tag}</span>
@@ -264,10 +264,10 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         <section id="shower-grout-problems" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
           <div className={wrap}>
             <SectionHead k="Shower grout problems" title="What Are You Seeing in Your Shower?" sub="Pick the closest sign and we'll point you to the right repair." />
-            <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:gap-6">
               {SYMPTOMS.map((s) => (
                 <Link key={s.title} href={s.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
-                  <div className="relative h-[210px]"><Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-90" /></div>
+                  <div className="relative h-[263px]"><Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
                   <div className="p-5">
                     <b className="block text-[17px] leading-snug">{s.title}</b>
                     <span className="mt-2 block text-sm font-bold text-[#2F63CC]">Likely: {s.next} →</span>
@@ -284,10 +284,10 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
           <div className={wrap}>
             <SectionHead k="Balcony specialists" title="Balcony Regrouting & Leak Repairs in Melbourne"
               sub="Melbourne's rain and temperature swings crack balcony grout, and water then seeps through to the slab and the ceiling below. We regrout with waterproof epoxy and reseal the edges, with no retiling." />
-            <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:gap-6">
               {BALCONY.map((b) => (
                 <Link key={b.title} href="/balcony-leak-repairs" className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
-                  <div className="relative h-[210px]"><Image src={b.img} alt={b.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-90" /></div>
+                  <div className="relative h-[263px]"><Image src={b.img} alt={b.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
                   <div className="p-5">
                     <b className="block text-[17px] leading-snug">{b.title}</b>
                     <span className="mt-2 block text-sm font-bold text-[#2F63CC]">{b.next} →</span>
