@@ -12,8 +12,9 @@ import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import { bookingEndForDuration, bookingSegments, type BookingSegment } from "@/lib/bookingSpan";
 import { todayAU } from "@/lib/scheduling";
 
-export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialType = "inspection", initialLeadId, onBeforeSave, onClose, onBooked }: {
+export function DispatchBookingModal({ date: initialDate, time: initialTime, staffName, initialEnd, initialType = "inspection", initialLeadId, onBeforeSave, onClose, onBooked }: {
   initialLeadId?: string; onBeforeSave?: () => boolean;
+  initialEnd?: string;
   date: string; time: string; staffName?: string; initialType?: "inspection" | "job"; onClose: () => void; onBooked: (date: string, message: string) => void;
 }) {
   const { scopedLeads, assignableTechnicians, inspectionStaff, upsertLead } = useAdminPageCtx();
@@ -21,7 +22,7 @@ export function DispatchBookingModal({ date: initialDate, time: initialTime, sta
   const [type, setType] = useState<"inspection" | "job">(initialType);
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
-  const [finish, setFinish] = useState("");
+  const [finish, setFinish] = useState(initialEnd || "");
   let endAt = "", timingError = "";
   let segments: BookingSegment[] = [];
   try {

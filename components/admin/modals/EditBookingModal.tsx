@@ -14,11 +14,13 @@ import { dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import { leadBookings } from "@/lib/leadBookings";
 import { BookingStatusControl } from "../BookingStatusControl";
 
-export function EditBookingModal({ lead, type, initialDate, initialTime, onClose, onSaved }: {
+export function EditBookingModal({ lead, type, initialDate, initialTime, proposedStart, proposedEnd, onClose, onSaved }: {
   lead: Lead;
   type: "inspection" | "job";
   initialDate?: string;
   initialTime?: string;
+  proposedStart?: string;
+  proposedEnd?: string;
   onClose: () => void;
   onSaved: (date: string, message: string) => void;
 }) {
@@ -28,9 +30,9 @@ export function EditBookingModal({ lead, type, initialDate, initialTime, onClose
   const originalEnd = (type === "job" ? lead.jobEndAt : lead.inspectionEndAt)?.slice(0, 16)
     || bookingEndForDuration(type, originalStart, savedLeadBookingMinutes(lead, type), rules);
   const selectedBooking = leadBookings(lead).find(b => b.type === type && `${b.date}T${b.time}` === originalStart && (!lead.activeBooking?.bookingId || b.bookingId === lead.activeBooking.bookingId));
-  const [date, setDate] = useState(originalStart.slice(0, 10));
-  const [time, setTime] = useState(originalStart.slice(11, 16));
-  const [endAt, setEndAt] = useState(originalEnd);
+  const [date, setDate] = useState((proposedStart || originalStart).slice(0, 10));
+  const [time, setTime] = useState((proposedStart || originalStart).slice(11, 16));
+  const [endAt, setEndAt] = useState(proposedEnd || originalEnd);
   const [assignee, setAssignee] = useState((type === "job" ? lead.technician : lead.assigned) || "");
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
