@@ -29,8 +29,8 @@ const PRICES: { label: string; from: string; note: string }[] = [
 const CORE = [
   { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/shower-regrouting-tiled-interior.webp",
     alt: "Freshly regrouted shower interior with white subway tiles and a brown feature wall", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/water stains on the ceiling below.webp",
-    alt: "Mould growth behind a missing shower tile caused by a leaking shower", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/white-tile-shower-regrouting-floor-view before.webp",
+    alt: "Leaking shower with water damage and stained grout before repair", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
   { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-tiles.webp",
     alt: "Balcony after leak repair and regrouting with large-format outdoor tiles", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
@@ -48,14 +48,14 @@ const SYMPTOMS = [
 ];
 const BALCONY = [
   { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Signs of balcony water failure: staining, mould and lifting tiles" },
-  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/beige-shower-floor-regrouting-top-view before.webp", alt: "Old grout removed from a shower floor, ready for regrouting" },
-  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/white-tile-shower-regrouting-floor-view before.webp", alt: "Water-damaged shower with dark floor tiles before regrouting" },
+  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with cracked and missing grout around the drain, before regrouting" },
+  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/water stains on the ceiling below.webp", alt: "Mould and water damage behind a missing bathroom tile" },
   { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
 ];
 const JOBS = [
-  { src: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout" },
-  { src: "/grey-shower-floor-regrouting-top-view after.webp", title: "Floor tile regrout" },
-  { src: "/white-tile-shower-regrouting-overhead after.webp", title: "Shower base regrout" },
+  { before: "/beige-shower-floor-regrouting-top-view before.webp", after: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout" },
+  { before: "/tiled-shower-floor-regrouting-wide before.webp", after: "/tiled-shower-floor-regrouting-wide after .webp", title: "Floor tile regrout" },
+  { before: "/grey-shower-base-regrouting-overhead-view before .webp", after: "/grey-shower-floor-regrouting-top-view after.webp", title: "Shower base regrout" },
 ];
 const STEPS = [
   { no: "01", k: "CALL", title: "Send Photos or Call", desc: "Tell us what's happening. You get honest advice, even if a full regrout isn't needed." },
@@ -87,22 +87,22 @@ const lead = "mt-3 text-[17px] leading-relaxed text-slate-600";
 const box = "rounded-lg border border-slate-200 bg-white";
 const btn = "inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 text-base font-bold transition-colors";
 
-/* Drag-to-compare slider. Each job photo is one side-by-side image (before on the left,
-   after on the right), so each layer shows one half of the same file. */
-function BeforeAfter({ src, title }: { src: string; title: string }) {
+/* Drag-to-compare slider. Each job has a separate before and after photo;
+   dragging reveals the after photo over the before photo. */
+function BeforeAfter({ before, after, title }: { before: string; after: string; title: string }) {
   // Starts with the full "before" photo; dragging left reveals the "after".
   const [pos, setPos] = useState(100);
   const handle = Math.min(96, Math.max(4, pos));
-  const half = (side: "before" | "after") => (
-    <div className="absolute inset-y-0 w-[200%]" style={{ left: side === "before" ? "0" : "-100%" }}>
-      <Image src={src} alt="" fill sizes="(min-width:768px) 66vw, 200vw" className="object-cover" />
+  const layer = (src: string) => (
+    <div className="absolute inset-0">
+      <Image src={src} alt="" fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover" />
     </div>
   );
   return (
     <figure className="m-0">
       <div className="relative aspect-square select-none overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:aspect-[4/4.2]">
-        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{half("before")}</div>
-        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{half("after")}</div>
+        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
+        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
         <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
         <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
         <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
@@ -313,7 +313,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               <Link href="/shower-regrouting" className={`${btn} border border-slate-300 bg-white text-[#001F97] hover:border-[#001F97]`}>See more jobs</Link>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {JOBS.map((j) => <BeforeAfter key={j.src} src={j.src} title={j.title} />)}
+              {JOBS.map((j) => <BeforeAfter key={j.title} before={j.before} after={j.after} title={j.title} />)}
             </div>
           </div>
         </section>
