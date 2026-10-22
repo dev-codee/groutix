@@ -27,12 +27,12 @@ const PRICES: { label: string; from: string; note: string }[] = [
 ];
 
 const CORE = [
-  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/img53.jpeg",
-    alt: "Groutix technician finishing new grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/img41.jpeg",
-    alt: "Water damage behind shower tiles", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/img54.jpeg",
-    alt: "Cracked and failing grout on outdoor tiles", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
+  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/shower-regrouting-tiled-interior.webp",
+    alt: "Freshly regrouted shower interior with white subway tiles and a brown feature wall", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/water stains on the ceiling below.webp",
+    alt: "Mould growth behind a missing shower tile caused by a leaking shower", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-tiles.webp",
+    alt: "Balcony after leak repair and regrouting with large-format outdoor tiles", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
   { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
@@ -41,21 +41,21 @@ const MORE = [
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
 const SYMPTOMS = [
-  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/img56.jpeg", alt: "Cracked grout line between floor tiles" },
-  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/img50.jpeg", alt: "Silicone being replaced around a shower screen" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/img37.jpeg", alt: "Water damage on a wall next to a bathroom" },
-  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/img23.jpeg", alt: "Stained, mouldy grout in a shower corner" },
+  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Cracked and crumbling grout line between floor tiles, close-up" },
+  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Black mould in shower grout and silicone next to a glass screen" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a bathroom" },
+  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/shower-regrouting-signs-black-mould.webp", alt: "Stained, mouldy grout in a shower corner" },
 ];
 const BALCONY = [
-  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/img78.jpeg", alt: "Signs of balcony water failure: staining, mould and lifting tiles" },
-  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/img92.jpeg", alt: "Cracked outdoor tile grout before and after regrouting" },
-  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/img97.jpeg", alt: "Water damage on a wall and ceiling below a leaking balcony" },
-  { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/img77.jpeg", alt: "Balcony after epoxy regrouting and resealing" },
+  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Signs of balcony water failure: staining, mould and lifting tiles" },
+  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/beige-shower-floor-regrouting-top-view before.webp", alt: "Old grout removed from a shower floor, ready for regrouting" },
+  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/white-tile-shower-regrouting-floor-view before.webp", alt: "Water-damaged shower with dark floor tiles before regrouting" },
+  { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
 ];
 const JOBS = [
-  { src: "/img12.jpeg", title: "Shower floor regrout" },
-  { src: "/img59.jpeg", title: "Floor tile regrout" },
-  { src: "/img13.jpeg", title: "Shower base regrout" },
+  { src: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout" },
+  { src: "/grey-shower-floor-regrouting-top-view after.webp", title: "Floor tile regrout" },
+  { src: "/white-tile-shower-regrouting-overhead after.webp", title: "Shower base regrout" },
 ];
 const STEPS = [
   { no: "01", k: "CALL", title: "Send Photos or Call", desc: "Tell us what's happening. You get honest advice, even if a full regrout isn't needed." },
