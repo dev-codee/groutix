@@ -576,7 +576,7 @@ function RouteSummaryFooter({
   );
 }
 
-// ─── Map Panel (real Google Maps via DispatchMap) ────────────────────────────
+// ─── Map Panel (OpenStreetMap via DispatchMap) ────────────────────────────
 
 function RouteMapPanel({
   mapItems,

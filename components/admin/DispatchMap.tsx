@@ -1,25 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
-import { Layers, Navigation2, Maximize2, Minimize2 } from "lucide-react";
+import type * as Leaflet from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { mapRouteGroups } from "@/lib/scheduleDays";
+import type { MapPosition } from "@/lib/mapGeocode";
 import type { Lead } from "@/components/admin/types";
 
 export interface DispatchMapItem {
   lead: Lead;
   type: "inspection" | "job";
   time: string;
-  /** The customer currently being scheduled (booking planner) — drawn as a green "NEW" stop. */
   proposed?: boolean;
-  /** A lead being planned; show a pin without adding it to the booked route. */
   unassigned?: boolean;
   date?: string;
   color?: string;
   stopNumber?: number;
   appointmentId?: string;
 }
-
 interface DispatchMapProps {
   items: DispatchMapItem[];
   hqAddress: string;
@@ -27,461 +26,175 @@ interface DispatchMapProps {
   selectedItemId?: string | null;
   onSelectItem?: (id: string) => void;
   onSelectLead: (id: string) => void;
-  /** Rendered inside the map's own container so it's still visible in fullscreen (e.g. the legend). */
   children?: ReactNode;
 }
-
-const HQ_CENTER = { lat: -37.6988298, lng: 144.9004405 };
-
-let loaderPromise: Promise<typeof google> | null = null;
-function loadGoogleMaps(apiKey: string): Promise<typeof google> {
-  if (!loaderPromise) {
-    setOptions({ key: apiKey, v: "weekly" });
-    loaderPromise = Promise.all([
-      importLibrary("maps"),
-      importLibrary("marker"),
-      importLibrary("routes"),
-    ]).then(() => google);
-  }
-  return loaderPromise;
-}
-
-function fullAddress(lead: Lead): string {
-  return `${lead.address || lead.city || "Melbourne"}, VIC, Australia`;
-}
-
-function fmtApptTime(t: string): string {
-  const [hStr, mStr] = t.split(":");
-  const h = parseInt(hStr, 10);
-  const m = parseInt(mStr || "0", 10);
-  if (isNaN(h)) return t;
-  const period = h >= 12 ? "PM" : "AM";
-  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  return `${dh}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-function pinIcon(g: typeof google, color: string, selected = false): google.maps.Icon {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
-    <path d="M15 0C6.7 0 0 6.7 0 15c0 11.2 15 25 15 25s15-13.8 15-25C30 6.7 23.3 0 15 0z" fill="${color}"/>
-    <circle cx="15" cy="15" r="10.5" fill="white" stroke="${selected ? "#0F172A" : "white"}" stroke-width="${selected ? 3 : 0}"/>
-  </svg>`;
-  return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new g.maps.Size(selected ? 38 : 30, selected ? 50 : 40),
-    anchor: new g.maps.Point(selected ? 19 : 15, selected ? 50 : 40),
-    labelOrigin: new g.maps.Point(selected ? 19 : 15, selected ? 19 : 15),
-  };
-}
-
-function homeIcon(g: typeof google): google.maps.Icon {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">
-    <path d="M17 0C7.6 0 0 7.6 0 17c0 12.7 17 27 17 27s17-14.3 17-27C34 7.6 26.4 0 17 0z" fill="#0F172A"/>
-    <circle cx="17" cy="17" r="12" fill="white"/>
-    <path d="M17 9.5l7.5 6v9.5h-5v-6h-5v6h-5V15.5z" fill="#0F172A"/>
-  </svg>`;
-  return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new g.maps.Size(34, 44),
-    anchor: new g.maps.Point(17, 44),
-  };
-}
-
-// A small, fully custom map label — deliberately not a google.maps.InfoWindow.
-// InfoWindows ship ~14px of default chrome/padding per instance and there's no
-// reliable way to scope a CSS override to one of several open at once (they
-// share global classnames), which is what made the old bubbles balloon in
-// size. A plain OverlayView div gives full control over size/shape instead.
-type LabelOverlay = google.maps.OverlayView & { div: HTMLDivElement | null };
-
-function createLabelOverlay(
-  g: typeof google,
-  map: google.maps.Map,
-  position: google.maps.LatLng | google.maps.LatLngLiteral,
-  html: string
-): LabelOverlay {
-  const overlay = new g.maps.OverlayView() as LabelOverlay;
-  overlay.div = null;
-  const latLng = position instanceof g.maps.LatLng ? position : new g.maps.LatLng(position);
-
-  overlay.onAdd = function (this: LabelOverlay) {
-    const div = document.createElement("div");
-    div.innerHTML = html;
-    div.style.position = "absolute";
-    div.style.transform = "translate(-50%, calc(-100% - 10px))";
-    div.style.pointerEvents = "none";
-    this.div = div;
-    this.getPanes()!.floatPane.appendChild(div);
-  };
-  overlay.draw = function (this: LabelOverlay) {
-    if (!this.div) return;
-    const point = this.getProjection()?.fromLatLngToDivPixel(latLng);
-    if (point) {
-      this.div.style.left = `${point.x}px`;
-      this.div.style.top = `${point.y}px`;
-    }
-  };
-  overlay.onRemove = function (this: LabelOverlay) {
-    this.div?.parentNode?.removeChild(this.div);
-    this.div = null;
-  };
-  overlay.setMap(map);
-  return overlay;
+const HQ_CENTER: Leaflet.LatLngTuple = [-37.6988298, 144.9004405];
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const point = (position: MapPosition): Leaflet.LatLngTuple => [position.lat, position.lng];
+function pinIcon(L: typeof Leaflet, text: string, color: string, selected = false) {
+  return L.divIcon({
+    className: "dispatch-pin",
+    html: `<div style="width:30px;height:36px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:${color};border:3px solid ${selected ? "#0f172a" : "white"};box-shadow:0 2px 5px #0005"><span style="display:flex;align-items:center;justify-content:center;width:24px;height:30px;transform:rotate(45deg);color:white;font:800 12px system-ui">${escapeHtml(text)}</span></div>`,
+    iconSize: [30, 40], iconAnchor: [15, 40], tooltipAnchor: [0, -38],
+  });
 }
 
 export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, onSelectItem, onSelectLead, children }: DispatchMapProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const markerByLeadIdRef = useRef<Map<string, google.maps.Marker>>(new Map());
-  const bubblesRef = useRef<LabelOverlay[]>([]);
-  const directionsRenderersRef = useRef<google.maps.DirectionsRenderer[]>([]);
-  const trafficLayerRef = useRef<google.maps.TrafficLayer | null>(null);
+  const mapRef = useRef<Leaflet.Map | null>(null);
+  const libraryRef = useRef<typeof Leaflet | null>(null);
+  const markersRef = useRef<{ marker: Leaflet.Marker; item: DispatchMapItem; index: number }[]>([]);
+  const callbacksRef = useRef({ onSelectItem, onSelectLead, selectedItemId, selectedLeadId });
   const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showTraffic, setShowTraffic] = useState(false);
-  const [mapType, setMapType] = useState<"roadmap" | "satellite">("roadmap");
+  const [notice, setNotice] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const itemsKey = JSON.stringify(items.map((i) => [i.lead.id, i.lead.name, i.lead.address, i.lead.city, i.type, i.time, i.proposed, i.unassigned, i.date, i.color, i.appointmentId, i.stopNumber]));
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  // `items` and `onSelectLead` get new references on every parent re-render
-  // (e.g. the admin page's background lead-refresh poll), even when nothing
-  // relevant to the map actually changed. Rebuilding markers + re-fetching
-  // Directions on every one of those renders is what caused the pins to
-  // flicker. Only rebuild when the actual stop content (ids/type/time/address)
-  // changes, and read the latest onSelectLead via a ref so it never forces a
-  // rebuild on its own.
-  const itemsKey = items.map((i) => `${i.lead.id}:${i.type}:${i.time}:${i.lead.address || i.lead.city || ""}:${i.proposed ? 1 : 0}:${i.unassigned ? 1 : 0}:${i.date || ""}:${i.color || ""}:${i.appointmentId || ""}:${i.stopNumber || ""}`).join("|");
-  const selectedItemIdRef = useRef(selectedItemId);
-  useEffect(() => { selectedItemIdRef.current = selectedItemId; }, [selectedItemId]);
-  const onSelectItemRef = useRef(onSelectItem);
-  useEffect(() => { onSelectItemRef.current = onSelectItem; }, [onSelectItem]);
-  const selectedLeadIdRef = useRef(selectedLeadId);
-  useEffect(() => { selectedLeadIdRef.current = selectedLeadId; }, [selectedLeadId]);
-  const onSelectLeadRef = useRef(onSelectLead);
-  useEffect(() => { onSelectLeadRef.current = onSelectLead; }, [onSelectLead]);
-
-  // Init map once.
   useEffect(() => {
-    if (!apiKey || !containerRef.current) return;
+    callbacksRef.current = { onSelectItem, onSelectLead, selectedItemId, selectedLeadId };
+  }, [onSelectItem, onSelectLead, selectedItemId, selectedLeadId]);
+
+  useEffect(() => {
     let cancelled = false;
-    loadGoogleMaps(apiKey)
-      .then((g) => {
-        if (cancelled || !containerRef.current) return;
-        const map = new g.maps.Map(containerRef.current, {
-          center: HQ_CENTER,
-          zoom: 11,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          zoomControl: true,
-          zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_BOTTOM },
-        });
-        mapRef.current = map;
-        trafficLayerRef.current = new g.maps.TrafficLayer();
-        setReady(true);
-      })
-      .catch((err) => {
-        console.error("Google Maps failed to load:", err);
-        if (!cancelled) setError("Failed to load Google Maps. Check the API key and enabled APIs.");
-      });
-    return () => { cancelled = true; };
-  }, [apiKey]);
-
-  // Traffic layer toggle.
-  useEffect(() => {
-    if (!ready || !trafficLayerRef.current || !mapRef.current) return;
-    trafficLayerRef.current.setMap(showTraffic ? mapRef.current : null);
-  }, [showTraffic, ready]);
-
-  // Map / Satellite toggle.
-  useEffect(() => {
-    if (!ready || !mapRef.current) return;
-    mapRef.current.setMapTypeId(mapType);
-  }, [mapType, ready]);
-
-  // Fullscreen — track browser fullscreen state (so pressing Esc also updates
-  // our button) and nudge Google Maps to re-measure its container once the
-  // resize actually happens, otherwise it keeps rendering at the old size.
-  useEffect(() => {
-    const handleChange = () => setIsFullscreen(document.fullscreenElement === wrapperRef.current);
-    document.addEventListener("fullscreenchange", handleChange);
-    return () => document.removeEventListener("fullscreenchange", handleChange);
+    let observer: ResizeObserver | undefined;
+    let map: Leaflet.Map | undefined;
+    import("leaflet").then((L) => {
+      if (cancelled || !containerRef.current) return;
+      libraryRef.current = L;
+      map = L.map(containerRef.current, { center: HQ_CENTER, zoom: 11, zoomControl: false });
+      mapRef.current = map;
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.tileLayer(process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: process.env.NEXT_PUBLIC_MAP_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).on("tileerror", () => {
+        if (!cancelled) setError("Map tiles could not load. Check your internet connection.");
+      }).on("load", () => { if (!cancelled) setError(null); }).addTo(map);
+      observer = new ResizeObserver(() => map?.invalidateSize());
+      observer.observe(containerRef.current);
+      setReady(true);
+    }).catch(() => { if (!cancelled) { setError("The map could not load. Refresh to try again."); setLoading(false); } });
+    return () => { cancelled = true; observer?.disconnect(); map?.remove(); mapRef.current = null; };
   }, []);
 
   useEffect(() => {
-    if (!ready || !mapRef.current) return;
-    const center = mapRef.current.getCenter();
-    const timer = setTimeout(() => {
-      const g = window.google;
-      g.maps.event.trigger(mapRef.current, "resize");
-      if (center) mapRef.current?.setCenter(center);
-    }, 60);
-    return () => clearTimeout(timer);
-  }, [isFullscreen, ready]);
+    const update = () => setIsFullscreen(document.fullscreenElement === wrapperRef.current);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = libraryRef.current;
+    if (!ready || !map || !L) return;
+    const controller = new AbortController();
+    const layers = L.layerGroup().addTo(map);
+    markersRef.current = [];
+    setLoading(true);
+    setNotice(null);
+    const base = L.marker(HQ_CENTER, { icon: pinIcon(L, "H", "#0f172a"), title: `Base — ${hqAddress}` }).addTo(layers);
+    base.bindTooltip("Base", { direction: "top" });
+    const positions: (MapPosition | null)[] = items.map(() => null);
+    let basePosition = HQ_CENTER;
+    let routeLayers: Leaflet.Polyline[] = [];
+    const fit = () => {
+      const bounds = L.latLngBounds([basePosition, ...positions.filter((p): p is MapPosition => !!p).map(point)]);
+      map.fitBounds(bounds, { padding: [65, 65], maxZoom: positions.some(Boolean) ? 15 : 12 });
+    };
+    fit();
+    const renderRoutes = () => {
+      routeLayers.forEach((line) => layers.removeLayer(line));
+      routeLayers = mapRouteGroups(items, positions).map((group) => L.polyline([basePosition, ...group.positions.map(point)], {
+        color: group.color, weight: 3, opacity: 0.75, dashArray: "6 8", interactive: false,
+      }).addTo(layers));
+    };
+    const fetchBatch = async (addresses: string[]) => {
+      const response = await fetch("/api/admin/geocode", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addresses }), signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Geocoding failed");
+      const data = await response.json();
+      if (!Array.isArray(data.results) || data.results.length !== addresses.length) throw new Error("Invalid coordinates");
+      return data.results as (MapPosition | null)[];
+    };
+    const addStop = (position: MapPosition, index: number) => {
+      const item = items[index];
+      const color = item.proposed ? "#16a34a" : item.type === "inspection" ? "#2563eb" : "#059669";
+      const label = item.proposed ? "NEW" : item.unassigned ? (item.type === "inspection" ? "I" : "J") : String(item.stopNumber || index + 1);
+      const current = callbacksRef.current;
+      const selected = current.selectedItemId ? item.appointmentId === current.selectedItemId : item.lead.id === current.selectedLeadId;
+      const title = `${item.lead.name || "Customer"} · ${item.unassigned ? "Unassigned" : `${item.date || ""} ${item.time}`} ${position.approximate ? "· Approximate location" : ""}`;
+      const marker = L.marker(point(position), { icon: pinIcon(L, label, color, selected), title, zIndexOffset: selected ? 2200 : index })
+        .bindTooltip(escapeHtml(title), { permanent: true, direction: "top", className: "dispatch-label" })
+        .on("click", () => {
+          const callbacks = callbacksRef.current;
+          if (item.appointmentId && callbacks.onSelectItem) callbacks.onSelectItem(item.appointmentId);
+          else callbacks.onSelectLead(item.lead.id);
+        }).addTo(layers);
+      markersRef.current.push({ marker, item, index });
+    };
+    const load = async () => {
+      // Small batches display pins progressively while public geocoding is throttled.
+      const addresses = [hqAddress, ...items.map((i) => `${i.lead.address || i.lead.city || "Melbourne"}, VIC, Australia`)];
+      for (let offset = 0; offset < addresses.length; offset += 5) {
+        const results = await fetchBatch(addresses.slice(offset, offset + 5));
+        if (controller.signal.aborted) return;
+        results.forEach((position, index) => {
+          if (offset + index === 0) {
+            if (position) { basePosition = point(position); base.setLatLng(basePosition); }
+          } else {
+            const itemIndex = offset + index - 1;
+            positions[itemIndex] = position;
+            if (position) addStop(position, itemIndex);
+          }
+        });
+        renderRoutes();
+        fit();
+      }
+      const missing = positions.filter((p) => !p).length;
+      const approximate = positions.filter((p) => p?.approximate).length;
+      setNotice([missing ? `${missing} address(es) could not be placed.` : "", approximate ? `${approximate} pin(s) show approximate locations.` : ""].filter(Boolean).join(" ") || null);
+    };
+    void load().catch(() => {
+      if (!controller.signal.aborted) setNotice("Some addresses could not load. Refresh to try again.");
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => { controller.abort(); layers.remove(); markersRef.current = []; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable content key prevents rebuilds during lead polling
+  }, [ready, itemsKey, hqAddress]);
+
+  useEffect(() => {
+    const L = libraryRef.current;
+    if (!L) return;
+    let selectedMarker: Leaflet.Marker | undefined;
+    markersRef.current.forEach(({ marker, item, index }) => {
+      const selected = selectedItemId ? item.appointmentId === selectedItemId : item.lead.id === selectedLeadId;
+      const color = item.proposed ? "#16a34a" : item.type === "inspection" ? "#2563eb" : "#059669";
+      const label = item.proposed ? "NEW" : item.unassigned ? (item.type === "inspection" ? "I" : "J") : String(item.stopNumber || index + 1);
+      marker.setIcon(pinIcon(L, label, color, selected)).setZIndexOffset(selected ? 2200 : index);
+      if (selected) selectedMarker = marker;
+    });
+    if (selectedMarker) mapRef.current?.panTo(selectedMarker.getLatLng());
+  }, [selectedItemId, selectedLeadId, loading]);
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      wrapperRef.current?.requestFullscreen().catch((err) => console.error("Fullscreen request failed:", err));
-    }
+    const action = document.fullscreenElement ? document.exitFullscreen() : wrapperRef.current?.requestFullscreen();
+    action?.catch(() => setNotice("Fullscreen is unavailable in this browser."));
   };
-
-  // Rebuild markers, bubbles and the route whenever the stop list changes.
-  // Selection highlighting is handled by a separate, cheaper effect below so
-  // clicking between appointments doesn't re-fetch directions every time.
-  useEffect(() => {
-    if (!ready || !mapRef.current || !apiKey) return;
-    const g = window.google;
-    const map = mapRef.current;
-    let cancelled = false;
-
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
-    markerByLeadIdRef.current.clear();
-    bubblesRef.current.forEach((b) => b.setMap(null));
-    bubblesRef.current = [];
-    directionsRenderersRef.current.forEach((renderer) => renderer.setMap(null));
-    directionsRenderersRef.current = [];
-
-    const addStopMarker = (position: google.maps.LatLng | google.maps.LatLngLiteral, idx: number, item: DispatchMapItem) => {
-      const color = item.type === "inspection" ? "#2563EB" : "#059669";
-      const selected = selectedItemIdRef.current ? selectedItemIdRef.current === item.appointmentId : selectedLeadIdRef.current === item.lead.id;
-      const stopNumber = item.stopNumber || idx + 1;
-      const marker = new g.maps.Marker({
-        position,
-        map,
-        icon: pinIcon(g, color, selected),
-        label: { text: item.unassigned ? (item.type === "inspection" ? "I" : "J") : String(stopNumber), color: "#0F172A", fontWeight: "800", fontSize: "12px" },
-        title: `${item.lead.name || "Customer"} · ${item.unassigned ? `Unassigned ${item.type}` : `${item.date || ""} ${fmtApptTime(item.time)}`}`,
-        zIndex: selected ? 2200 : item.proposed ? 1500 : 100 + idx,
-      });
-      marker.set("stopColor", color);
-      marker.set("stopZIndex", item.proposed ? 1500 : 100 + idx);
-      marker.set("stopLeadId", item.lead.id);
-      marker.addListener("click", () => {
-        if (item.appointmentId && onSelectItemRef.current) onSelectItemRef.current(item.appointmentId);
-        else onSelectLeadRef.current(item.lead.id);
-      });
-      markersRef.current.push(marker);
-      markerByLeadIdRef.current.set(item.appointmentId || item.lead.id, marker);
-
-      const customerName = (item.lead.name || "Customer").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character] || character));
-      const bubbleHtml = `<div style="display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;background:#fff;border-radius:6px;box-shadow:0 1px 4px rgba(15,23,42,0.22);padding:2px 6px;font:600 10px/1.3 system-ui,sans-serif;color:#0F172A;">
-        <span style="color:${color};font-weight:800;">${item.unassigned ? "Unassigned" : `${stopNumber}.`}</span>
-        <span>${item.proposed ? "NEW · " : ""}${customerName}</span>
-        <span style="font-weight:500;color:#64748B;font-size:9px;">· ${item.unassigned ? (item.type === "inspection" ? "Inspection" : "Job") : `${item.date || ""} ${fmtApptTime(item.time)}`}</span>
-      </div>`;
-      const bubble = createLabelOverlay(g, map, position, bubbleHtml);
-      bubblesRef.current.push(bubble);
-    };
-
-    const addHomeMarker = (position: google.maps.LatLng | google.maps.LatLngLiteral) => {
-      const marker = new g.maps.Marker({
-        position,
-        map,
-        icon: homeIcon(g),
-        title: `Base — ${hqAddress}`,
-        zIndex: 2000,
-      });
-      markersRef.current.push(marker);
-    };
-
-    if (items.length === 0) {
-      addHomeMarker(HQ_CENTER);
-      map.setCenter(HQ_CENTER);
-      map.setZoom(12);
-      return;
-    }
-
-    // Geocode all stops individually and place pins — this is the guaranteed
-    // fallback that always shows every job/inspection on the map, regardless of
-    // whether the Directions API can build a route between them. Unassigned jobs,
-    // jobs in areas the Directions API can't route, or quota-exceeded responses
-    // previously wiped all markers. Now we geocode first, then attempt to overlay
-    // a driving route on top as a bonus.
-    // Geocode server-side: the browser Geocoder needs the Geocoding API enabled
-    // on the public Maps key, and when it is not, every stop silently resolves
-    // to null and the map shows nothing but the base pin. The server route can
-    // fall back to Places Text Search. The browser Geocoder stays as a backup
-    // in case the route itself is unreachable.
-    const geocoder = new g.maps.Geocoder();
-    const geocodeStopInBrowser = (addr: string): Promise<google.maps.LatLngLiteral | null> =>
-      new Promise((resolve) => {
-        geocoder.geocode({ address: addr, componentRestrictions: { country: "AU" } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
-          if (status === "OK" && results?.[0]) {
-            const loc = results[0].geometry.location;
-            resolve({ lat: loc.lat(), lng: loc.lng() });
-          } else {
-            resolve(null);
-          }
-        });
-      });
-
-    const geocodeAll = async (addresses: string[]): Promise<(google.maps.LatLngLiteral | null)[]> => {
-      // The server accepts up to 60 addresses per request.
-      if (addresses.length > 60) {
-        const batches = Array.from({ length: Math.ceil(addresses.length / 60) }, (_, index) => addresses.slice(index * 60, (index + 1) * 60));
-        return (await Promise.all(batches.map(geocodeAll))).flat();
-      }
-      try {
-        const res = await fetch("/api/admin/geocode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ addresses }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data?.results) && data.results.length === addresses.length) {
-            return data.results.map((r: { lat?: number; lng?: number } | null) =>
-              r && typeof r.lat === "number" && typeof r.lng === "number"
-                ? { lat: r.lat, lng: r.lng }
-                : null
-            );
-          }
-        }
-      } catch {
-        // fall through to the browser geocoder
-      }
-      return Promise.all(addresses.map(geocodeStopInBrowser));
-    };
-
-    // Geocode HQ + all stops, then place pins and attempt the route.
-    geocodeAll([hqAddress, ...items.map((item) => fullAddress(item.lead))]).then((positions) => {
-      if (cancelled) return;
-      const [hqPos, ...stopPositions] = positions;
-      const bounds = new g.maps.LatLngBounds();
-
-      // Place HQ marker
-      const hqLatLng = hqPos ?? HQ_CENTER;
-      addHomeMarker(hqLatLng);
-      bounds.extend(hqLatLng);
-
-      // Place a pin for every stop that geocoded successfully
-      stopPositions.forEach((pos, i) => {
-        if (!pos) return; // skip ungeocodable addresses but keep others
-        addStopMarker(pos, i, items[i]);
-        bounds.extend(pos);
-      });
-
-      // Fit map to all placed pins. With only the base pin there is nothing to
-      // fit — fitBounds on a single point zooms to street level and hides the
-      // fact that no stop could be placed.
-      const placedCount = stopPositions.filter(Boolean).length;
-      if (bounds.isEmpty() || placedCount === 0) {
-        map.setCenter(hqLatLng);
-        map.setZoom(12);
-      } else {
-        map.fitBounds(bounds, 64);
-      }
-
-      // A stop that cannot be placed is invisible to the dispatcher, so say so
-      // rather than quietly drawing a map that looks fine.
-      const geocodeNotice =
-        placedCount === 0
-          ? "Could not place any stop on the map — check the addresses and that the Maps key can geocode."
-          : placedCount < items.length
-            ? `${items.length - placedCount} of ${items.length} addresses could not be placed on the map.`
-            : null;
-      setError(geocodeNotice);
-
-      // Every selected date gets its own route. Planning pins are never routed.
-      mapRouteGroups(items, stopPositions).forEach(({ color, positions: routePositions }) => {
-        const renderer = new g.maps.DirectionsRenderer({
-          map, suppressMarkers: true, preserveViewport: true,
-          polylineOptions: { strokeColor: color, strokeWeight: 4, strokeOpacity: 0.9 },
-        });
-        directionsRenderersRef.current.push(renderer);
-        const directionsService = new g.maps.DirectionsService();
-        directionsService.route({
-          origin: hqLatLng,
-          destination: routePositions[routePositions.length - 1],
-          waypoints: routePositions.slice(0, -1).map((position) => ({ location: position, stopover: true })),
-          optimizeWaypoints: false,
-          travelMode: g.maps.TravelMode.DRIVING,
-        }, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
-          if (cancelled) return;
-          if (status === "OK" && result) renderer.setDirections(result);
-          else renderer.setMap(null);
-        });
-      });
-    });
-    return () => { cancelled = true; directionsRenderersRef.current.forEach((renderer) => renderer.setMap(null)); directionsRenderersRef.current = []; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuild is keyed on itemsKey (content), not the items array reference
-  }, [ready, itemsKey, hqAddress, apiKey]);
-
-  // Keep selection visible, including a lead selected before geocoding finishes.
-  useEffect(() => {
-    if (!ready) return;
-    const g = window.google;
-    markerByLeadIdRef.current.forEach((marker, id) => {
-      const selected = selectedItemId ? id === selectedItemId : marker.get("stopLeadId") === selectedLeadId;
-      marker.setIcon(pinIcon(g, marker.get("stopColor"), selected));
-      marker.setZIndex(selected ? 2200 : marker.get("stopZIndex"));
-      marker.setAnimation(null);
-    });
-    if (!selectedLeadId && !selectedItemId) return;
-    const marker = selectedItemId ? markerByLeadIdRef.current.get(selectedItemId) : [...markerByLeadIdRef.current.values()].find((item) => item.get("stopLeadId") === selectedLeadId);
-    if (!marker) return;
-    marker.setAnimation(g.maps.Animation.BOUNCE);
-    const pos = marker.getPosition();
-    if (pos) mapRef.current?.panTo(pos);
-    const timer = setTimeout(() => marker.setAnimation(null), 1400);
-    return () => { clearTimeout(timer); marker.setAnimation(null); };
-  }, [selectedLeadId, selectedItemId, ready]);
-
-  if (!apiKey) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-50 text-center p-6">
-        <div className="max-w-xs space-y-2">
-          <Navigation2 className="w-8 h-8 text-slate-300 mx-auto" />
-          <div className="text-xs font-bold text-slate-500">Live map isn&apos;t configured yet</div>
-          <div className="text-[11px] text-slate-400">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local to enable the interactive dispatch map.</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div ref={wrapperRef} className={`relative w-full h-full ${isFullscreen ? "bg-white" : ""}`}>
-      <div ref={containerRef} className="w-full h-full" />
-
-      {/* Map / Satellite toggle — top-left */}
-      <div className="absolute top-3 left-3 z-10 bg-white rounded-lg shadow-sm border border-slate-200 flex overflow-hidden text-[11px] font-bold">
-        <button type="button" onClick={() => setMapType("roadmap")}
-          className={`px-3 py-1.5 flex items-center gap-1 cursor-pointer ${mapType === "roadmap" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}>
-          <Layers className="w-3 h-3" />Map
-        </button>
-        <button type="button" onClick={() => setMapType("satellite")}
-          className={`px-3 py-1.5 cursor-pointer ${mapType === "satellite" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}>
-          Satellite
-        </button>
+    <div ref={wrapperRef} className="relative isolate w-full h-full bg-slate-100">
+      <div ref={containerRef} className="relative z-0 w-full h-full" aria-label="Schedule dispatch map" />
+      <div className="absolute top-3 left-3 z-10 max-w-[calc(100%-4rem)] rounded-lg bg-white/95 px-3 py-2 text-[10px] font-semibold text-slate-600 shadow-sm">
+        {loading ? "Locating stops…" : "Dashed lines show stop order · not driving directions"}
       </div>
-
-      {/* Traffic + Fullscreen toggles — top-right */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-        <label className="bg-white rounded-lg shadow-sm border border-slate-200 px-2.5 py-1.5 flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer select-none">
-          <input type="checkbox" checked={showTraffic} onChange={(e) => setShowTraffic(e.target.checked)} className="cursor-pointer" />
-          Traffic
-        </label>
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          className="bg-white rounded-lg shadow-sm border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 cursor-pointer"
-        >
-          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-        </button>
-      </div>
-
-      {error && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-sm max-w-md text-center">
-          {error}
-        </div>
-      )}
-
+      <button type="button" onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+        className="absolute top-3 right-3 z-10 rounded-lg border border-slate-200 bg-white p-2 text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer">
+        {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+      </button>
+      {(error || notice) && <div role="status" className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 max-w-md rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-semibold text-amber-700 shadow-sm">{error || notice}</div>}
       {children}
     </div>
   );

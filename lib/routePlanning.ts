@@ -12,7 +12,7 @@ import { appointmentDurationMinutes } from "./bookingDuration";
 //
 // Distances use the suburb catalogue in lib/scheduling.ts (straight-line between
 // suburb centroids, same model as lib/dispatch.ts) so scoring is instant and free;
-// the planner map shows real Google driving routes for the chosen day.
+// the planner map shows stop order for the chosen day.
 
 import { SUBURBS, TULLAMARINE, distanceKm, resolveArea } from "./scheduling";
 import { toMinutes, type BookingRules, type BookingType } from "./bookingRules";
