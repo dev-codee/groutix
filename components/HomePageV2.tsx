@@ -151,7 +151,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         {/* ── HERO + QUOTE FORM ── */}
         <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-80" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
           <div className={`${heroWrap} relative grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Melbourne Wet-Area Specialists</p>
