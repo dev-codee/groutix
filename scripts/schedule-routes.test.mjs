@@ -86,3 +86,42 @@ test("route storage reads back the exact saved order", async () => {
   const reloaded = await api.getScheduleRouteOrders(appointment.date, appointment.date);
   assert.deepEqual(Array.from(reloaded[appointment.date]), ["second", "first"]);
 });
+
+test("round-trip optimization matches the best complete tour for a small Melbourne day", () => {
+  const entries = ["Ringwood", "Werribee", "Croydon", "Keilor", "Sunshine", "Gowanbrae"].map((address, index) => stop(String(index), address));
+  const permutations = (items) => items.length < 2 ? [items] : items.flatMap((entry, index) => permutations(items.filter((_, i) => i !== index)).map((tail) => [entry, ...tail]));
+  const bestKm = Math.min(...permutations(entries).map((order) => estimateRoute(order).km));
+  const planned = optimizeRouteStops(entries);
+  assert.equal(estimateRoute(planned).km, bestKm);
+  assert.deepEqual(new Set(planned.map((entry) => entry.id)), new Set(entries.map((entry) => entry.id)));
+  assert.deepEqual(entries.map((entry) => entry.id), ["0", "1", "2", "3", "4", "5"], "planning does not mutate the saved input");
+});
+
+test("planning a large day never worsens its round trip or drops repeated locations", () => {
+  const suburbs = ["Werribee", "Ringwood", "Sunshine", "Croydon", "Keilor", "Gowanbrae"];
+  const entries = Array.from({ length: 36 }, (_, index) => stop(String(index), suburbs[index % suburbs.length]));
+  const planned = optimizeRouteStops(entries);
+  assert.ok(estimateRoute(planned).km <= estimateRoute(entries).km);
+  assert.equal(new Set(planned.map((entry) => entry.id)).size, entries.length);
+  assert.deepEqual(Array.from(optimizeRouteStops([])), []);
+  assert.equal(optimizeRouteStops([entries[0]])[0], entries[0]);
+});
+
+test("upcoming schedule uses the same saved order as the calendar", async () => {
+  const appointments = [
+    { ...appointment, name: "First", address: "Ringwood", time: "09:00" },
+    { ...appointment, leadId: "second", name: "Second", address: "Keilor", time: "10:00" },
+  ];
+  const savedOrder = appointments.map(appointmentKey).reverse();
+  const api = loadTs("app/api/admin/bookings/route.ts", {
+    "next/server": { NextResponse: { json } },
+    "@/lib/adminAuth": { SESSION_COOKIE: "session", verifySession: async () => ({ username: "manager" }) },
+    "@/lib/bookings": { listAppointmentsBetween: async () => appointments },
+    "@/lib/submissions": { getSubmission: async () => null },
+    "@/lib/scheduleRoutesServer": { getScheduleRouteOrders: async () => ({ [appointment.date]: savedOrder }) },
+  });
+  const response = await api.GET({ cookies: { get: () => ({ value: "token" }) } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(Array.from(response.body.bookings, (booking) => booking.id), savedOrder);
+  assert.deepEqual(Array.from(response.body.bookings, (booking) => booking.time), ["10:00", "09:00"]);
+});

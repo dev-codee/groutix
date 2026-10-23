@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
+import { AutoPlanRouteButton } from "@/components/admin/AutoPlanRouteButton";
 import { buildPlanningMapItems, type UnassignedPlanningLead } from "@/lib/unassignedLeads";
 import { MAX_PLANNING_DAYS, addPlanningDate, colorPlanningMapItems, offsetPlanningDate, planningDateRanges, planningDayColor, shiftPlanningDates } from "@/lib/scheduleDays";
 import { planScheduleDrop, suggestedPlanningTime, type ScheduleDragItem } from "@/lib/scheduleDrag";
@@ -540,7 +541,7 @@ function RouteSummaryFooter({
 
       <div className="flex items-center gap-1.5 text-xs text-slate-600">
         <CalendarDays className="w-3.5 h-3.5 text-blue-400" />
-        <span>Est. Distance: <b className="text-slate-900">{km} km</b></span>
+        <span>Est. Round Trip: <b className="text-slate-900">{km} km</b></span>
         {diff !== 0 && (
           <span className={`font-semibold ${diff < 0 ? "text-emerald-600" : "text-rose-600"}`}>
             ({diff > 0 ? "+" : ""}{diff} km)
@@ -564,6 +565,7 @@ function RouteSummaryFooter({
       </div>
 
       {estimate.missing > 0 && <span className="text-[10px] text-amber-700">{estimate.missing} stops have no known suburb; estimates exclude them.</span>}
+      <span className="text-[10px] text-slate-500">Includes return to base · suburb estimates</span>
       <button
         onClick={onPreviewSave}
         disabled={!hasChanges}
@@ -1146,16 +1148,24 @@ export function ScheduleCalendarView({
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <AutoPlanRouteButton disabled={loading || routeSaving || !!loadError} onBeforePlan={discardChanges} onSaved={(date) => {
+            if (visibleDates.length === 1 && currentDate === date) void load();
+            else setVisibleDates([date]);
+            setMapDate(date);
+            onBookingsChanged?.();
+            showToast("Today’s round trip saved, including the return to base.", true);
+          }} />
           <button type="button" aria-pressed={showUnassigned} onClick={() => { setShowUnassigned((show) => !show); setSelectedPlanningLeadId(null); }} className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
             {showUnassigned ? "Hide" : "Show"} unassigned leads ({unassignedLeads.length})
           </button>
           {/* Optimize Route */}
           <button
             onClick={optimizeRoute}
+            disabled={loading || routeSaving || !!loadError || entries.length < 2}
             className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <Route className="w-3.5 h-3.5" />
-            Optimize Route
+            Optimize shown days
           </button>
 
           {/* Refresh */}

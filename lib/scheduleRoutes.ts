@@ -25,27 +25,60 @@ export function applyRouteOrders<T extends RouteStop>(entries: T[], orders: Reco
 const base = () => locate("Gowanbrae") || TULLAMARINE;
 const position = (entry: RouteStop) => locate(entry.customer?.address) || locate(entry.suburb);
 
-/** Suggest a driving order per day; unknown locations retain their positions. */
+/** Improve a closed tour: try several starting stops, then remove crossing detours.
+ * Unknown locations retain their slots. Dates and appointment times stay intact.
+ */
 export function optimizeRouteStops<T extends RouteStop>(entries: T[]): T[] {
-  const days = [...new Set(entries.map((entry) => entry.date))];
-  return days.flatMap((date) => {
+  return [...new Set(entries.map((entry) => entry.date))].flatMap((date) => {
     const day = entries.filter((entry) => entry.date === date);
-    const remaining = day.filter((entry) => position(entry));
-    const ordered: T[] = [];
-    let previous = base();
-    while (remaining.length) {
-      let closest = 0;
-      remaining.forEach((entry, index) => {
-        if (distanceKm(previous, position(entry)!) < distanceKm(previous, position(remaining[closest])!)) closest = index;
-      });
-      const [next] = remaining.splice(closest, 1);
-      ordered.push(next);
-      previous = position(next)!;
+    const located = day.filter((entry) => position(entry));
+    if (located.length < 2) return day;
+    const points = [base(), ...located.map((entry) => position(entry)!)];
+    const distances = points.map((from) => points.map((to) => distanceKm(from, to)));
+    const cost = (order: number[]) => {
+      const path = [0, ...order, 0];
+      return path.slice(1).reduce((sum, to, index) => sum + distances[path[index]][to], 0);
+    };
+    let best = located.map((_, index) => index + 1);
+    let bestCost = cost(best);
+    // Bound work on very large days while sampling starts throughout the list.
+    const seedCount = Math.min(located.length, 24);
+    for (let seed = 0; seed < seedCount; seed++) {
+      const first = 1 + Math.floor(seed * located.length / seedCount);
+      const remaining = new Set(best.filter((index) => index !== first));
+      const order = [first];
+      while (remaining.size) {
+        const previous = order[order.length - 1];
+        let next = remaining.values().next().value!;
+        for (const candidate of remaining) {
+          if (distances[previous][candidate] < distances[previous][next]) next = candidate;
+        }
+        order.push(next);
+        remaining.delete(next);
+      }
+      // Symmetric distances let us evaluate a reversal using its two boundary
+      // edges, including the edges leaving and returning to base.
+      for (let pass = 0; pass < 50; pass++) {
+        let improved = false;
+        for (let start = 0; start < order.length - 1; start++) {
+          for (let end = start + 1; end < order.length; end++) {
+            const before = start ? order[start - 1] : 0;
+            const after = end + 1 < order.length ? order[end + 1] : 0;
+            const saving = distances[before][order[start]] + distances[order[end]][after]
+              - distances[before][order[end]] - distances[order[start]][after];
+            if (saving > 0.000001) {
+              order.splice(start, end - start + 1, ...order.slice(start, end + 1).reverse());
+              improved = true;
+            }
+          }
+        }
+        if (!improved) break;
+      }
+      const candidateCost = cost(order);
+      if (candidateCost + 0.000001 < bestCost) { best = order; bestCost = candidateCost; }
     }
     let index = 0;
-    const proposed = day.map((entry) => position(entry) ? ordered[index++] : entry);
-    // Never replace an existing order with a longer estimated route.
-    return estimateRoute(proposed).km < estimateRoute(day).km ? proposed : day;
+    return day.map((entry) => position(entry) ? located[best[index++] - 1] : entry);
   });
 }
 

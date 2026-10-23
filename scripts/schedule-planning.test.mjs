@@ -26,6 +26,7 @@ const load = (relativePath, overrides = {}, globals = {}) => {
 };
 const scheduling = load("../lib/unassignedLeads.ts");
 const calendarDependencies = {
+  "@/components/admin/AutoPlanRouteButton": loadTs("components/admin/AutoPlanRouteButton.tsx"),
   "@/components/admin/BookingTimingEditor": loadTs("components/admin/BookingTimingEditor.tsx"),
   "@/lib/bookingSpan": loadTs("lib/bookingSpan.ts"),
   "@/components/admin/modals/DispatchBookingModal": { DispatchBookingModal: function DispatchBookingModal() { return null; } },

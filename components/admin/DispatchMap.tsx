@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { LocateFixed, Maximize2, Minimize2 } from "lucide-react";
 import { mapRouteGroups } from "@/lib/scheduleDays";
 import type { MapPosition } from "@/lib/mapGeocode";
 import type { Lead } from "@/components/admin/types";
@@ -43,6 +43,9 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
+  const hasInteractedRef = useRef(false);
+  const fitAllRef = useRef<(() => void) | null>(null);
+  const focusedSelectionRef = useRef<string | null>(null);
   const libraryRef = useRef<typeof Leaflet | null>(null);
   const markersRef = useRef<{ marker: Leaflet.Marker; item: DispatchMapItem; index: number }[]>([]);
   const callbacksRef = useRef({ onSelectItem, onSelectLead, selectedItemId, selectedLeadId });
@@ -61,6 +64,18 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
     let cancelled = false;
     let observer: ResizeObserver | undefined;
     let map: Leaflet.Map | undefined;
+    const container = containerRef.current;
+    // Capture gestures before Leaflet handles them. Programmatic map movements
+    // also fire zoom/move events, so those events cannot identify user intent.
+    const preserveViewport = (event: Event) => {
+      if (event instanceof KeyboardEvent && !["+", "=", "-", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      hasInteractedRef.current = true;
+      const { selectedItemId, selectedLeadId } = callbacksRef.current;
+      focusedSelectionRef.current = JSON.stringify([selectedItemId, selectedLeadId]);
+      map?.stop();
+    };
+    const gestureEvents = ["pointerdown", "wheel", "keydown"];
+    gestureEvents.forEach((event) => container?.addEventListener(event, preserveViewport, { capture: true, passive: true }));
     import("leaflet").then((L) => {
       if (cancelled || !containerRef.current) return;
       libraryRef.current = L;
@@ -73,11 +88,17 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
       }).on("tileerror", () => {
         if (!cancelled) setError("Map tiles could not load. Check your internet connection.");
       }).on("load", () => { if (!cancelled) setError(null); }).addTo(map);
-      observer = new ResizeObserver(() => map?.invalidateSize());
+      observer = new ResizeObserver(() => map?.invalidateSize({ pan: false }));
       observer.observe(containerRef.current);
       setReady(true);
     }).catch(() => { if (!cancelled) { setError("The map could not load. Refresh to try again."); setLoading(false); } });
-    return () => { cancelled = true; observer?.disconnect(); map?.remove(); mapRef.current = null; };
+    return () => {
+      cancelled = true;
+      gestureEvents.forEach((event) => container?.removeEventListener(event, preserveViewport, true));
+      observer?.disconnect();
+      map?.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -100,14 +121,16 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
     const positions: (MapPosition | null)[] = items.map(() => null);
     let basePosition = HQ_CENTER;
     let routeLayers: Leaflet.Polyline[] = [];
-    const fit = () => {
+    const fitAll = () => {
       const bounds = L.latLngBounds([basePosition, ...positions.filter((p): p is MapPosition => !!p).map(point)]);
-      map.fitBounds(bounds, { padding: [65, 65], maxZoom: positions.some(Boolean) ? 15 : 12 });
+      map.fitBounds(bounds, { padding: [65, 65], maxZoom: positions.some(Boolean) ? 15 : 12, animate: false });
     };
+    fitAllRef.current = fitAll;
+    const fit = () => { if (!hasInteractedRef.current) fitAll(); };
     fit();
     const renderRoutes = () => {
       routeLayers.forEach((line) => layers.removeLayer(line));
-      routeLayers = mapRouteGroups(items, positions).map((group) => L.polyline([basePosition, ...group.positions.map(point)], {
+      routeLayers = mapRouteGroups(items, positions).map((group) => L.polyline([basePosition, ...group.positions.map(point), basePosition], {
         color: group.color, weight: 3, opacity: 0.75, dashArray: "6 8", interactive: false,
       }).addTo(layers));
     };
@@ -162,7 +185,7 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
     void load().catch(() => {
       if (!controller.signal.aborted) setNotice("Some addresses could not load. Refresh to try again.");
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { controller.abort(); layers.remove(); markersRef.current = []; };
+    return () => { controller.abort(); layers.remove(); markersRef.current = []; fitAllRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stable content key prevents rebuilds during lead polling
   }, [ready, itemsKey, hqAddress]);
 
@@ -177,7 +200,12 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
       marker.setIcon(pinIcon(L, label, color, selected)).setZIndexOffset(selected ? 2200 : index);
       if (selected) selectedMarker = marker;
     });
-    if (selectedMarker) mapRef.current?.panTo(selectedMarker.getLatLng());
+    const selectionKey = JSON.stringify([selectedItemId, selectedLeadId]);
+    if (selectedMarker && focusedSelectionRef.current !== selectionKey) {
+      mapRef.current?.panTo(selectedMarker.getLatLng());
+      focusedSelectionRef.current = selectionKey;
+    }
+    if (!selectedItemId && !selectedLeadId) focusedSelectionRef.current = null;
   }, [selectedItemId, selectedLeadId, loading]);
 
   const toggleFullscreen = () => {
@@ -190,6 +218,10 @@ export function DispatchMap({ items, hqAddress, selectedLeadId, selectedItemId, 
       <div className="absolute top-3 left-3 z-10 max-w-[calc(100%-4rem)] rounded-lg bg-white/95 px-3 py-2 text-[10px] font-semibold text-slate-600 shadow-sm">
         {loading ? "Locating stops…" : "Dashed lines show stop order · not driving directions"}
       </div>
+      <button type="button" onClick={() => fitAllRef.current?.()} title="Fit all stops" aria-label="Fit all stops"
+        className="absolute top-14 right-3 z-10 rounded-lg border border-slate-200 bg-white p-2 text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer">
+        <LocateFixed className="w-3.5 h-3.5" />
+      </button>
       <button type="button" onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         className="absolute top-3 right-3 z-10 rounded-lg border border-slate-200 bg-white p-2 text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer">
         {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { listAppointmentsBetween } from "@/lib/bookings";
 import { getSubmission } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
-import { appointmentKey } from "@/lib/scheduleRoutes";
+import { applyRouteOrders, appointmentKey } from "@/lib/scheduleRoutes";
+import { getScheduleRouteOrders } from "@/lib/scheduleRoutesServer";
 import { todayAU, resolveArea } from "@/lib/scheduling";
 
 export const runtime = "nodejs";
@@ -14,7 +15,11 @@ export async function GET(req: NextRequest) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const bookings = await listAppointmentsBetween(todayAU(), "9999-12-31", { strict: true });
+    const from = todayAU();
+    const [bookings, routeOrders] = await Promise.all([
+      listAppointmentsBetween(from, "9999-12-31", { strict: true }),
+      getScheduleRouteOrders(from, "9999-12-31"),
+    ]);
     const leadIds = [...new Set(bookings.map((entry) => entry.leadId))];
     const leads = new Map(await Promise.all(leadIds.map(async (id) => [id, await getSubmission(id)] as const)));
 
@@ -41,7 +46,7 @@ export async function GET(req: NextRequest) {
                 name: lead.name || "",
                 phone: lead.phone || "",
                 email: lead.email || "",
-                address: lead.address || "",
+                address: b.address || lead.address || "",
                 status: lead.status || "",
               }
             : { name: b.name, phone: "", email: "", address: b.address || "", status: b.status || "" },
@@ -49,13 +54,8 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    // Sort by date asc, then time asc.
-    enriched.sort((a, b) => {
-      const d = a.date.localeCompare(b.date);
-      return d !== 0 ? d : a.time.localeCompare(b.time);
-    });
-
-    return NextResponse.json({ bookings: enriched }, { headers: { "Cache-Control": "no-store" } });
+    // Share the saved visit order with the calendar; unsaved days use time order.
+    return NextResponse.json({ bookings: applyRouteOrders(enriched, routeOrders) }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("GET /api/admin/bookings failed:", err);
     return NextResponse.json({ error: "Failed to load bookings." }, { status: 500 });
