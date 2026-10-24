@@ -192,7 +192,7 @@ export default function GalleryPage({ reviews, rating }: { reviews: Review[]; ra
         {/* PHOTO GALLERY — no hero; straight into the photos */}
         <section id="gallery" className="scroll-mt-28 bg-white pb-14 pt-[140px] md:pb-20 lg:pt-[160px]">
           <div className={wrap}>
-            <h1 className={`${h2} text-center`}>Regrouting Gallery: Real Shower &amp; Balcony Results in Melbourne</h1>
+            <h1 className={`${h2} text-center`}>Real Shower &amp; Balcony Results in Melbourne</h1>
             <p className={`${lead} mb-9 mt-3.5 text-center`}>
               Every photo here is from a real Groutix job — no stock photos. Filter by job type, then tap any photo to view it full screen.
             </p>
