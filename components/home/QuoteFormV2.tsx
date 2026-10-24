@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { CalendarDays, Camera, Check, ChevronDown, ImagePlus, Info, MapPin, X } from "lucide-react";
-import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
+import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
 
@@ -489,11 +489,9 @@ export default function QuoteFormV2({
       notes.push(`"${f.name}" is over the ${formatBytes(MAX_FILE_SIZE_BYTES)} per-photo limit — skipped.`);
       return false;
     });
-    const room = Math.max(0, MAX_PHOTO_COUNT - photos.length);
-    let picked = sized.slice(0, room);
-    if (sized.length > room) {
-      notes.push(room === 0 ? `You can add up to ${MAX_PHOTO_COUNT} photos.` : `Only the first ${room} could be added — the limit is ${MAX_PHOTO_COUNT} photos.`);
-    }
+    // No photo-count limit: customers can add as many photos as they like.
+    // The per-photo size check above and the total size check below still apply.
+    const picked = sized;
     let all = [...photos, ...picked];
     let total = all.reduce((a, f) => a + f.size, 0);
     if (total > MAX_TOTAL_BYTES) {
@@ -1148,11 +1146,9 @@ export default function QuoteFormV2({
                             </button>
                           </li>
                         ))}
-                        {photos.length < MAX_PHOTO_COUNT && (
                           <li className="flex h-9 w-9 items-center justify-center rounded-md border-[1.5px] border-dashed border-[#B8C5DC] text-lg leading-none text-[#1A2A8C]" aria-hidden="true">+</li>
-                        )}
                         <li className="text-[11px] leading-tight text-neutral-500">
-                          {photos.length}/{MAX_PHOTO_COUNT} photos
+                          {photos.length} photos
                           <br />
                           {formatBytes(photoBytes)} of {formatBytes(MAX_TOTAL_BYTES)}
                         </li>
@@ -1162,7 +1158,7 @@ export default function QuoteFormV2({
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF2F8]"><ImagePlus className="h-4 w-4 text-[#1A2A8C]" aria-hidden="true" /></span>
                         <span className="min-w-0 flex-1 text-[13px] font-semibold leading-tight">
                           Upload photos<span className="hidden sm:inline"> of the problem</span>
-                          <small className="block truncate text-[11px] font-normal text-neutral-500"><span className="sm:hidden">Tap to add · up to {MAX_PHOTO_COUNT}</span><span className="hidden sm:inline">Click or drag · up to {MAX_PHOTO_COUNT} photos, {formatBytes(MAX_TOTAL_BYTES)}</span></small>
+                          <small className="block truncate text-[11px] font-normal text-neutral-500"><span className="sm:hidden">Tap to add</span><span className="hidden sm:inline">Click or drag · {formatBytes(MAX_TOTAL_BYTES)} max in total</span></small>
                         </span>
                       </>
                     )}
