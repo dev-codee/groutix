@@ -374,7 +374,7 @@ export default function SupportChatWidget() {
         onClick={() => setIsOpen(true)}
         aria-label="Support Chat"
         title="Support Chat"
-        className="group fixed bottom-5 right-4 z-50 inline-flex h-14 min-w-14 items-center justify-center rounded-full bg-primary px-[18px] text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,31,151,0.35)] transition-colors duration-300 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30"
+        className="group fixed bottom-5 right-4 z-50 inline-flex h-14 min-w-14 items-center justify-center rounded-full bg-[#FBBC04] px-[18px] text-sm font-bold text-black shadow-[0_16px_36px_rgba(251,188,4,0.4)] transition-colors duration-300 hover:bg-[#E5AA00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FBBC04]/40"
       >
         <MessageCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
         <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 ease-out group-hover:ml-2.5 group-hover:max-w-[120px] group-hover:opacity-100 group-focus-visible:ml-2.5 group-focus-visible:max-w-[120px] group-focus-visible:opacity-100">
