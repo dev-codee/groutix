@@ -316,6 +316,8 @@ export default function QuoteFormV2({
   const [noteOpen, setNoteOpen] = useState(false);
   const [photoAsk, setPhotoAsk] = useState(false);
   const photoAskBtnRef = useRef<HTMLButtonElement>(null);
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const photoMenuBtnRef = useRef<HTMLButtonElement>(null);
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [loading, setLoading] = useState(false);
@@ -466,19 +468,44 @@ export default function QuoteFormV2({
   };
 
   /* ---------- photos (same limits as HeroQuoteForm) ---------- */
+  // Some Android galleries / cloud pickers hand back image files with an empty
+  // MIME type, so fall back to the file extension before calling a file "not an image".
+  const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)$/i;
+  const isImageFile = (f: File) => f.type.startsWith("image/") || (f.type === "" && IMAGE_EXT_RE.test(f.name));
+
+  // Forgiving picker: keep every usable photo and report only what was skipped,
+  // instead of rejecting the whole selection because of one bad file.
   const addFiles = (list: FileList | File[]) => {
     const files = Array.from(list);
     if (!files.length) return;
-    const bad = files.find((f) => !f.type.startsWith("image/"));
-    if (bad) return setPhotoError(`"${bad.name}" isn't an image. Please add photos only.`);
-    if (photos.length + files.length > MAX_PHOTO_COUNT) return setPhotoError(`You can add up to ${MAX_PHOTO_COUNT} photos.`);
-    const big = files.find((f) => f.size > MAX_FILE_SIZE_BYTES);
-    if (big) return setPhotoError(`"${big.name}" is over the ${formatBytes(MAX_FILE_SIZE_BYTES)} per-photo limit.`);
-    const all = [...photos, ...files];
-    const total = all.reduce((a, f) => a + f.size, 0);
-    if (total > MAX_TOTAL_BYTES) return setPhotoError(`Photos add up to ${formatBytes(total)}. The limit is ${formatBytes(MAX_TOTAL_BYTES)}.`);
-    setPhotoError("");
-    setPhotos(all);
+    const notes: string[] = [];
+    const images = files.filter((f) => {
+      if (isImageFile(f)) return true;
+      notes.push(`"${f.name}" isn't an image — skipped.`);
+      return false;
+    });
+    const sized = images.filter((f) => {
+      if (f.size <= MAX_FILE_SIZE_BYTES) return true;
+      notes.push(`"${f.name}" is over the ${formatBytes(MAX_FILE_SIZE_BYTES)} per-photo limit — skipped.`);
+      return false;
+    });
+    const room = Math.max(0, MAX_PHOTO_COUNT - photos.length);
+    let picked = sized.slice(0, room);
+    if (sized.length > room) {
+      notes.push(room === 0 ? `You can add up to ${MAX_PHOTO_COUNT} photos.` : `Only the first ${room} could be added — the limit is ${MAX_PHOTO_COUNT} photos.`);
+    }
+    let all = [...photos, ...picked];
+    let total = all.reduce((a, f) => a + f.size, 0);
+    if (total > MAX_TOTAL_BYTES) {
+      while (picked.length && total > MAX_TOTAL_BYTES) {
+        const dropped = picked.pop() as File;
+        total -= dropped.size;
+        notes.push(`"${dropped.name}" would take the total over ${formatBytes(MAX_TOTAL_BYTES)} — skipped.`);
+      }
+      all = [...photos, ...picked];
+    }
+    if (picked.length) setPhotos(all);
+    setPhotoError(notes.join(" "));
   };
   const removePhoto = (i: number) => {
     setPhotos((p) => p.filter((_, x) => x !== i));
@@ -488,6 +515,16 @@ export default function QuoteFormV2({
   useEffect(() => () => thumbs.forEach((u) => URL.revokeObjectURL(u)), [thumbs]);
   const photoBytes = photos.reduce((a, f) => a + f.size, 0);
 
+  // Tapping the upload box: on touch devices (phones/tablets) open the source
+  // chooser popup first — jumping straight into the gallery picker leaves no way
+  // to reach the camera. On desktop/laptop keep the one-click file dialog and
+  // never show a camera option.
+  const openPhotoPicker = () => {
+    const touch = typeof window !== "undefined" && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024);
+    if (touch) setPhotoMenu(true);
+    else fileRef.current?.click();
+  };
+
   useEffect(() => {
     if (!photoAsk) return;
     photoAskBtnRef.current?.focus();
@@ -495,6 +532,14 @@ export default function QuoteFormV2({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [photoAsk]);
+
+  useEffect(() => {
+    if (!photoMenu) return;
+    photoMenuBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPhotoMenu(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [photoMenu]);
 
   /* ---------- submit ---------- */
   const canBook = mode === "insp" && avail.status === "ok" && avail.days.length > 0;
@@ -1086,8 +1131,8 @@ export default function QuoteFormV2({
                     role="button"
                     tabIndex={0}
                     aria-label={photos.length ? "Add more photos" : "Add photos"}
-                    onClick={() => fileRef.current?.click()}
-                    onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); fileRef.current?.click(); } }}
+                    onClick={() => openPhotoPicker()}
+                    onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPhotoPicker(); } }}
                     onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                     onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
                     onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
@@ -1121,10 +1166,6 @@ export default function QuoteFormV2({
                         </span>
                       </>
                     )}
-                    <button type="button" onClick={(e) => { e.stopPropagation(); camRef.current?.click(); }}
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-[#CDD8EA] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#1A2A8C] hover:border-[#2F63CC]">
-                      <Camera className="h-3.5 w-3.5" aria-hidden="true" />Camera
-                    </button>
                     <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
                     <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
                   </div>
@@ -1158,6 +1199,31 @@ export default function QuoteFormV2({
             </div>
           )}
 
+          {/* Photo source chooser (mobile/tablet only): the box tap — and the reminder
+              popup's Upload button — open this instead of jumping straight into the
+              gallery picker, which has no camera option. Never shown on desktop. */}
+          {photoMenu && (
+            <div className="absolute inset-0 z-40 flex items-end justify-center rounded-2xl bg-[#0A123F]/45 p-4 backdrop-blur-[2px] sm:items-center" onClick={() => setPhotoMenu(false)}>
+              <div role="dialog" aria-modal="true" data-qf-popup aria-labelledby={`${P}-photo-menu`} onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-[380px] rounded-2xl bg-white p-5 text-center shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+                <h3 id={`${P}-photo-menu`} className="text-lg font-bold text-[#001F97]">Add photos</h3>
+                <p className="mt-1.5 text-sm text-slate-600">Take a new photo or pick from your gallery.</p>
+                <button ref={photoMenuBtnRef} type="button" onClick={() => { setPhotoMenu(false); camRef.current?.click(); }}
+                  className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
+                  <Camera className="h-4 w-4" aria-hidden="true" /> Take a photo
+                </button>
+                <button type="button" onClick={() => { setPhotoMenu(false); fileRef.current?.click(); }}
+                  className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-[#DBE3F0] text-[15px] font-semibold text-neutral-700 hover:border-[#2F63CC] hover:text-neutral-900">
+                  <ImagePlus className="h-4 w-4" aria-hidden="true" /> Pick from gallery
+                </button>
+                <button type="button" onClick={() => setPhotoMenu(false)}
+                  className="mt-2 h-10 w-full rounded-xl text-sm font-semibold text-neutral-500 hover:text-neutral-800">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Photos are required: shown when they submit without photos. */}
           {photoAsk && (
             <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-[#0A123F]/45 p-4 backdrop-blur-[2px]" onClick={() => setPhotoAsk(false)}>
@@ -1170,7 +1236,7 @@ export default function QuoteFormV2({
                 <p className="mt-1.5 text-sm text-slate-600">
                   Photos of the shower, grout or leak are required — they help us understand the problem and give you an accurate quote faster.
                 </p>
-                <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); fileRef.current?.click(); }}
+                <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); openPhotoPicker(); }}
                   className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
                   <ImagePlus className="h-4 w-4" aria-hidden="true" /> Upload photos
                 </button>
