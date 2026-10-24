@@ -385,7 +385,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               <Link href="/contact" className={`${btnNavy} mt-6`}>Book Your Free Quote</Link>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/grey-shower-floor-envelope-cut-regrouting before.webp" alt="Shower floor being prepared for regrouting — old grout cut out around the drain before new epoxy grout is applied" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/Shower regrouting Melbourne Process.webp" alt="Shower floor being prepared for regrouting — old grout cut out around the drain before new epoxy grout is applied" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
