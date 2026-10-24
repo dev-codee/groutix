@@ -446,7 +446,7 @@ export default function Navbar() {
 
             {/* Gallery */}
             <Link
-              href="/#gallery"
+              href="/gallery"
               className="text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1"
             >
               Gallery
@@ -708,7 +708,7 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  href="/#gallery"
+                  href="/gallery"
                   onClick={closeMenu}
                   className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
