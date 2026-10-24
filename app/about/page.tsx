@@ -1,26 +1,26 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import AboutClient from "./AboutClient";
+import { getReviews, getBusinessRating } from "@/lib/reviews";
+import AboutPage from "@/components/AboutPage";
 
-export const metadata: Metadata = {
-  title: "About Us",
-  description: "Learn how Groutix helps homeowners solve grout failure, leaking showers and worn wet areas with specialist regrouting and sealing services.",
-  alternates: { canonical: "/about" },
-  openGraph: {
-    title: "About Groutix",
-    description: "Meet the team behind Groutix and our specialist approach to shower regrouting, grout repair and wet-area restoration.",
-    url: "/about",
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "About Groutix | Melbourne Shower & Balcony Regrouting Specialists",
+    description:
+      "Meet Groutix, Melbourne's shower and balcony regrouting specialists. Waterproof epoxy regrouting with no tile removal, a 10-year warranty and 8,000+ bathrooms restored across Melbourne.",
+    alternates: { canonical: "/about" },
+    openGraph: {
+      title: "About Groutix | Melbourne Shower & Balcony Regrouting Specialists",
+      description:
+        "Meet Groutix, Melbourne's shower and balcony regrouting specialists. Waterproof epoxy regrouting with no tile removal, a 10-year warranty and 8,000+ bathrooms restored across Melbourne.",
+      url: "/about",
+      type: "website",
+      images: ["/shower-regrouting-tiled-interior.webp"],
+    },
+    robots: "index, follow",
+  };
+}
 
-export default function AboutPage() {
-  return (
-    <>
-      <Navbar />
-      <AboutClient />
-      <Footer />
-    </>
-  );
+export default async function AboutRoute() {
+  const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
+  return <AboutPage reviews={reviews} rating={rating} />;
 }
