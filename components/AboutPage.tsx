@@ -17,7 +17,7 @@ import { abs, faqJsonLd } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import {
   FaqList, MobileCallBar, ReviewsMarquee, Section, SectionHead,
-  box, btnGhost, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap,
+  box, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap,
 } from "@/components/v2/ui";
 
 const googleReviewsUrl = "https://www.google.com/maps/place/Groutix";
@@ -141,56 +141,29 @@ export default function AboutPage({ reviews, rating }: { reviews: Review[]; rati
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
 
-        {/* INTRO */}
+        {/* INTRO — no hero image; heading, text and CTA centred, full width */}
         <section className="scroll-mt-28 bg-white pb-14 pt-[140px] md:pb-20 lg:pt-[160px]">
-          <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-14`}>
-            <div>
-              <nav aria-label="Breadcrumb" className="mb-4 text-sm font-semibold text-slate-500">
-                <Link href="/" className="hover:text-[#001F97] hover:underline">Home</Link>
-                <span className="mx-2 text-[#FBBC04]" aria-hidden="true">›</span>
-                <span aria-current="page" className="text-slate-900">About</span>
-              </nav>
-              <p className={eyebrow}>About Groutix</p>
-              <h1 className={`${h2} [text-wrap:balance]`}>Melbourne’s Shower &amp; Balcony Regrouting Specialists</h1>
-              <p className={`${lead} mt-4`}>
-                Groutix fixes the problem most Melbourne bathrooms eventually have: grout and silicone that crack,
-                stain, grow mould and let water through. Instead of demolishing your bathroom, we remove the failed
-                grout, rebuild it with waterproof epoxy, and reseal every joint — your tiles stay exactly where they are.
-              </p>
-              <p className={`${lead} mt-4`}>
-                It is a narrower trade than tiling, and that focus is the point. It is all we do, on showers and
-                balconies across Melbourne, most jobs finished in a single visit.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3 [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
-                <HeroContactBadges rating={rating} />
-              </div>
-              <div className="mt-7 flex flex-wrap items-center gap-4">
-                <Link href="/#quote-form" className={btnNavy}>Get a Free Quote</Link>
-                <a href={tel} className="inline-flex items-center gap-2 font-bold text-[#001F97] hover:underline">
-                  <Phone className="h-4 w-4" aria-hidden="true" />{phone}
-                </a>
-              </div>
+          <div className={`${wrap} text-center`}>
+            <p className={eyebrow}>About Groutix</p>
+            <h1 className={`${h2} [text-wrap:balance]`}>Melbourne’s Shower &amp; Balcony Regrouting Specialists</h1>
+            <p className={`${lead} mt-4`}>
+              Groutix fixes the problem most Melbourne bathrooms eventually have: grout and silicone that crack,
+              stain, grow mould and let water through. Instead of demolishing your bathroom, we remove the failed
+              grout, rebuild it with waterproof epoxy, and reseal every joint — your tiles stay exactly where they are.
+            </p>
+            <p className={`${lead} mt-4`}>
+              It is a narrower trade than tiling, and that focus is the point. It is all we do, on showers and
+              balconies across Melbourne, most jobs finished in a single visit.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3 [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+              <HeroContactBadges rating={rating} />
             </div>
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-200 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-              <Image src="/shower-regrouting-tiled-interior.webp" alt="Freshly regrouted tiled shower interior by Groutix in a Melbourne home" fill priority sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
+              <Link href="/#quote-form" className={btnNavy}>Get a Free Quote</Link>
+              <a href={tel} className="inline-flex items-center gap-2 font-bold text-[#001F97] hover:underline">
+                <Phone className="h-4 w-4" aria-hidden="true" />{phone}
+              </a>
             </div>
-          </div>
-        </section>
-
-        {/* STATS */}
-        <section className="bg-[#001F97] py-10 text-white md:py-12">
-          <div className={`${wrap} grid grid-cols-2 gap-8 lg:grid-cols-4`}>
-            {[
-              { big: "8,000+", small: "Bathrooms Restored" },
-              { big: "10-Year", small: "Waterproof Warranty" },
-              { big: `${rating.value.toFixed(1)} ★`, small: "Google Rating" },
-              { big: `${rating.count}+`, small: "Google Reviews" },
-            ].map((s) => (
-              <div key={s.small} className="text-center lg:text-left">
-                <b className="block text-[clamp(28px,3vw,38px)] font-black leading-none text-white">{s.big}</b>
-                <span className="mt-1.5 block text-sm font-semibold text-[#D6DCF5]">{s.small}</span>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -371,15 +344,15 @@ export default function AboutPage({ reviews, rating }: { reviews: Review[]; rati
         {/* FINAL CTA */}
         <section className="bg-white pb-14 md:pb-20">
           <div className={wrap}>
-            <div className="grid grid-cols-1 items-center gap-7 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
+            <div className="grid grid-cols-1 items-center gap-7 rounded-xl border-2 border-[#001F97] bg-white p-7 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
               <div>
-                <h2 className={`${h2} text-white`}>Get Your Free Quote Today</h2>
-                <p className="mt-3 text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
-                <p className="mt-1 text-[#D6DCF5]">Free quote · Tiles stay in place · 10-year waterproof warranty</p>
+                <h2 className={h2}>Get Your Free Quote Today</h2>
+                <p className="mt-3 text-slate-600">Honest advice and workmanship you can rely on.</p>
+                <p className="mt-1 text-slate-600">Free quote · Tiles stay in place · 10-year waterproof warranty</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <a href="/#quote-form" className={`${btnGold} min-h-[54px] w-full sm:w-auto`}>Request A Quote</a>
-                <a href={tel} className={`${btnGhost} min-h-[54px] w-full sm:w-auto`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+                <a href="/#quote-form" className="inline-flex min-h-[54px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg border-[1.5px] border-[#001F97] px-6 text-base font-bold text-[#001F97] transition-colors hover:bg-[#EEF3FF] sm:w-auto">Request A Quote</a>
+                <a href={tel} className="inline-flex min-h-[54px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg border-[1.5px] border-[#001F97] px-6 text-base font-bold text-[#001F97] transition-colors hover:bg-[#EEF3FF] sm:w-auto"><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
               </div>
             </div>
           </div>
