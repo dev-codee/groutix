@@ -500,7 +500,7 @@ export default function QuoteFormV2({
   const canBook = mode === "insp" && avail.status === "ok" && avail.days.length > 0;
   const submitLabel = mode === "quote" ? "Get My Free Quote" : canBook ? "Book My Free Inspection" : "Submit Details";
 
-  const submit = async (skipPhotoCheck = false) => {
+  const submit = async () => {
     setSubmitError("");
     setInspError("");
     if (mode === "insp" && avail.status === "loading") {
@@ -511,8 +511,9 @@ export default function QuoteFormV2({
       setInspError(!date ? "Please pick a day for your free inspection." : "Please choose an arrival time.");
       return;
     }
-    // No photos yet: ask once (upload or skip) before sending.
-    if (!photos.length && !skipPhotoCheck) {
+    // Photos are required: without photos the form does not proceed.
+    if (!photos.length) {
+      setPhotoError("Please add at least one photo — photos are required.");
       setPhotoAsk(true);
       return;
     }
@@ -1157,7 +1158,7 @@ export default function QuoteFormV2({
             </div>
           )}
 
-          {/* Photo reminder: shown when they submit without photos. */}
+          {/* Photos are required: shown when they submit without photos. */}
           {photoAsk && (
             <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-[#0A123F]/45 p-4 backdrop-blur-[2px]" onClick={() => setPhotoAsk(false)}>
               <div role="dialog" aria-modal="true" data-qf-popup aria-labelledby={`${P}-photo-ask`} onClick={(e) => e.stopPropagation()}
@@ -1167,15 +1168,11 @@ export default function QuoteFormV2({
                 </span>
                 <h3 id={`${P}-photo-ask`} className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
                 <p className="mt-1.5 text-sm text-slate-600">
-                  A few photos of the shower, grout or leak help us understand the problem and give you an accurate quote faster.
+                  Photos of the shower, grout or leak are required — they help us understand the problem and give you an accurate quote faster.
                 </p>
                 <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); fileRef.current?.click(); }}
                   className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">
                   <ImagePlus className="h-4 w-4" aria-hidden="true" /> Upload photos
-                </button>
-                <button type="button" onClick={() => { setPhotoAsk(false); submit(true); }}
-                  className="mt-2 h-10 w-full rounded-xl border-[1.5px] border-[#DBE3F0] text-sm font-semibold text-neutral-600 hover:border-[#2F63CC] hover:text-neutral-900">
-                  Skip &amp; submit without photos
                 </button>
               </div>
             </div>
