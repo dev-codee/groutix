@@ -333,6 +333,7 @@ export default function CrmDashboardPage() {
   const [dispatchInitialAction, setDispatchInitialAction] = useState<"view" | "reschedule" | undefined>(undefined);
   // Schedule view tab switcher: "upcoming" (Upcoming Bookings List) vs. "calendar" (Day Calendar & Route)
   const [scheduleBookingRequest, setScheduleBookingRequest] = useState<{ leadId: string; type: "inspection" | "job"; date?: string } | null>(null);
+  const [scheduleRouteRequest, setScheduleRouteRequest] = useState<{ date: string; bookingId?: string } | null>(null);
   const [scheduleTab, setScheduleTab] = useState<"upcoming" | "calendar">("upcoming");
   const scheduleHeader = (
     <>
@@ -4064,6 +4065,7 @@ export default function CrmDashboardPage() {
   const openSchedule = useCallback((leadId?: string, type: "inspection" | "job" = "inspection") => {
     const lead = leads.find((entry) => entry.id === leadId);
     const appointment = type === "inspection" ? lead?.inspectionAt : lead?.jobAt;
+    setScheduleRouteRequest(null);
     setScheduleBookingRequest(leadId ? { leadId, type, date: appointment?.split("T")[0] } : null);
     setScheduleTab("calendar");
     navigateTo("schedule");
@@ -4819,9 +4821,13 @@ export default function CrmDashboardPage() {
                 {/* Tab 1: Old Schedule View (Upcoming bookings list grouped by date) */}
                 {scheduleTab === "upcoming" && (
                   <ScheduleView
-                    onOpenLead={(id: string, date?: string, action?: "view" | "reschedule") => {
-                      if (date) {
-                        openDispatch("all", "all", date, id, action || "reschedule");
+                    leads={leads}
+                    onBookingsChanged={() => { void loadData({ silent: true }); }}
+                    onOpenLead={(id: string, date?: string, action?: "view" | "reschedule", bookingId?: string) => {
+                      if (date && action === "view") {
+                        setScheduleBookingRequest(null);
+                        setScheduleRouteRequest({ date, bookingId });
+                        setScheduleTab("calendar");
                       } else {
                         const lead = leads.find((l) => l.id === id);
                         if (lead) {
@@ -4839,6 +4845,7 @@ export default function CrmDashboardPage() {
                     <ScheduleCalendarView
                       header={scheduleHeader}
                       initialBooking={scheduleBookingRequest || undefined}
+                      initialRoute={scheduleRouteRequest || undefined}
                       onBookingRequestHandled={() => setScheduleBookingRequest(null)}
                       leads={leads}
                       unassignedLeads={unassignedPlanningLeads}

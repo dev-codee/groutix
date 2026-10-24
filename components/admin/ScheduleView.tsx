@@ -7,9 +7,17 @@ import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { AutoPlanRouteButton } from "@/components/admin/AutoPlanRouteButton";
+import { useTechnicians } from "@/lib/useTechnicians";
+import { scheduleListDetails, scheduleDistanceLabel } from "@/lib/scheduleList";
+import type { TechnicianAssignment } from "@/lib/bookingCapacity";
+import { CopyableAddress } from "@/components/admin/CopyableAddress";
+import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
+import { bookingLead, leadBookings } from "@/lib/leadBookings";
+import type { Lead } from "@/components/admin/types";
 
-type BookingEntry = {
+type BookingEntry = TechnicianAssignment & {
   id: string;
+  bookingId?: string;
   leadId: string;
   type: "inspection" | "job";
   date: string;
@@ -48,15 +56,21 @@ function fmtScheduleDate(dateStr: string) {
 
 export function ScheduleView({
   onOpenLead,
+  leads = [],
+  onBookingsChanged,
 }: {
-  onOpenLead: (id: string, date?: string, action?: "view" | "reschedule") => void;
+  onOpenLead: (id: string, date?: string, action?: "view" | "reschedule", bookingId?: string) => void;
+  leads?: Lead[];
+  onBookingsChanged?: () => void;
 }) {
   const rules = useBookingRules();
+  const { technicians } = useTechnicians();
   const [bookings, setBookings] = useState<BookingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [type, setType] = useState<"all" | "inspection" | "job">("all");
+  const [editingBooking, setEditingBooking] = useState<BookingEntry | null>(null);
   const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
@@ -83,10 +97,11 @@ export function ScheduleView({
     return () => { active = false; };
   }, [load]);
 
+  const listDetails = useMemo(() => scheduleListDetails(bookings, technicians), [bookings, technicians]);
   const filteredBookings = useMemo(() => bookings.filter((booking) =>
     (type === "all" || booking.type === type) &&
-    `${booking.customer?.name || ""} ${booking.customer?.address || ""} ${booking.reference} ${booking.customer?.phone || ""}`.toLowerCase().includes(search.trim().toLowerCase()),
-  ), [bookings, type, search]);
+    `${booking.customer?.name || ""} ${booking.customer?.address || ""} ${booking.reference} ${booking.customer?.phone || ""} ${listDetails.get(booking.id)?.assignee || ""}`.toLowerCase().includes(search.trim().toLowerCase()),
+  ), [bookings, type, search, listDetails]);
 
   const stopNumbers = useMemo(() => {
     const numbers = new Map<string, number>();
@@ -134,7 +149,7 @@ export function ScheduleView({
         <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 flex-1 min-w-[180px]"><Search className="w-4 h-4 text-slate-400" /><input aria-label="Search upcoming bookings" placeholder="Search customer, address or reference" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full text-xs outline-none" /></label>
         <select aria-label="Filter booking type" value={type} onChange={(event) => setType(event.target.value as typeof type)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white"><option value="all">All bookings</option><option value="inspection">Inspections</option><option value="job">Jobs</option></select>
       </div>
-      <p className="text-[11px] text-slate-500">Visit order is shared with the calendar. Routes start and finish at Gowanbrae base; booked appointment times stay unchanged.</p>
+      <p className="text-[11px] text-slate-500">Visit order is shared with the calendar. Distances are suburb estimates from the assigned person’s previous customer that day, or Gowanbrae base for their first visit.</p>
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{error} Use Refresh to try again.</p>}
 
       {loading ? (
@@ -160,7 +175,7 @@ export function ScheduleView({
                 {entries[0] && (
                   <button
                     type="button"
-                    onClick={() => onOpenLead(entries[0].leadId, date, "view")}
+                    onClick={() => onOpenLead(entries[0].leadId, date, "view", entries[0].id)}
                     className="text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <MapPin className="w-3 h-3" /> View Day Route Map
@@ -195,12 +210,14 @@ export function ScheduleView({
                       </div>
                       <div className="flex items-center gap-x-3 gap-y-0.5 mt-0.5 flex-wrap">
                         {b.customer?.address && (
-                          <span className="text-[11px] text-slate-500 truncate">{b.customer.address}</span>
+                          <span className="text-[11px] min-w-0 max-w-full"><CopyableAddress address={b.customer.address} /></span>
                         )}
                         <span className="text-[10px] text-slate-400">
                           {ZONE_LABELS[b.zone] || b.zone} · {b.reference}
                         </span>
                       </div>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-700">Assigned: {listDetails.get(b.id)?.assignee}</p>
+                      <p className="text-[10px] text-slate-500">{scheduleDistanceLabel(listDetails.get(b.id)!)}</p>
                     </div>
                     {/* Action buttons */}
                     <div className="flex items-center gap-2 shrink-0">
@@ -208,7 +225,7 @@ export function ScheduleView({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenLead(b.leadId, b.date, "reschedule");
+                          setEditingBooking(b);
                         }}
                         className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
                         title="Change Booking / Reschedule"
@@ -220,10 +237,10 @@ export function ScheduleView({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenLead(b.leadId, b.date, "view");
+                          onOpenLead(b.leadId, b.date, "view", b.id);
                         }}
                         className="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                        title="Open Map & Dispatch for this day"
+                        title="Open Calendar & Route for this booking"
                       >
                         <MapPin className="w-3.5 h-3.5 text-blue-600" />
                         <span>View Map</span>
@@ -239,6 +256,18 @@ export function ScheduleView({
           ))}
         </div>
       )}
+      {editingBooking && <EditBookingModal key={editingBooking.id}
+        lead={(() => {
+          const lead = leads.find(lead => lead.id === editingBooking.leadId)
+            || { id: editingBooking.leadId, name: editingBooking.customer?.name, address: editingBooking.customer?.address } as Lead;
+          const booking = leadBookings(lead).find(booking => editingBooking.bookingId
+            ? booking.bookingId === editingBooking.bookingId
+            : booking.type === editingBooking.type && booking.date === editingBooking.date && booking.time === editingBooking.time);
+          return booking ? bookingLead(lead, booking) : lead;
+        })()}
+        type={editingBooking.type} initialDate={editingBooking.date} initialTime={editingBooking.time}
+        onClose={() => setEditingBooking(null)}
+        onSaved={() => { setEditingBooking(null); void load(); onBookingsChanged?.(); }} />}
     </div>
   );
 }

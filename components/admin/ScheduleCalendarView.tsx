@@ -55,12 +55,15 @@ import type { Lead } from "@/components/admin/types";
 import { applyRouteOrders, appointmentKey, estimateRoute, optimizeRouteStops } from "@/lib/scheduleRoutes";
 import { useBookingRules } from "@/lib/useBookingRules";
 import { formatSlotRange } from "@/lib/scheduling";
+import { scheduleListDetails, scheduleDistanceLabel } from "@/lib/scheduleList";
+import type { TechnicianAssignment, BookingTechnician } from "@/lib/bookingCapacity";
+import { CopyableAddress } from "@/components/admin/CopyableAddress";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type JobType = "inspection" | "job";
 
-interface ScheduleEntry {
+interface ScheduleEntry extends TechnicianAssignment {
   bookingId?: string;
   bookingStart?: string;
   endAt?: string;
@@ -626,6 +629,7 @@ function RouteMapPanel({
 
 function JobListPanel({
   entries,
+  technicians,
   selectedId,
   onSelect,
   onDragStart,
@@ -639,6 +643,7 @@ function JobListPanel({
   disabled,
 }: {
   entries: ScheduleEntry[];
+  technicians: BookingTechnician[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onDragStart: (event: React.DragEvent, item: ScheduleDragItem) => void;
@@ -651,7 +656,7 @@ function JobListPanel({
   color: string;
   disabled: boolean;
 }) {
-
+  const listDetails = useMemo(() => scheduleListDetails(entries, technicians), [entries, technicians]);
   return (
     <div className="flex flex-col bg-white w-full">
       {/* Header */}
@@ -717,7 +722,9 @@ function JobListPanel({
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <TypeBadge type={entry.type} />
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 truncate">{entry.customer?.address}</p>
+                <div className="text-[10px] mt-0.5"><CopyableAddress address={entry.customer?.address} /></div>
+                <p className="text-[10px] font-semibold text-slate-700 mt-1">Assigned: {listDetails.get(entry.id)?.assignee}</p>
+                <p className="text-[10px] text-slate-500" title="Estimated distance between suburbs in visit order">{scheduleDistanceLabel(listDetails.get(entry.id)!)}</p>
               </div>
 
               <button type="button" aria-label={`Edit booking for ${entry.customer?.name || "Customer"}`}
@@ -742,6 +749,7 @@ export function ScheduleCalendarView({
   onBookingsChanged,
   onBookingRequestHandled,
   initialBooking,
+  initialRoute,
   unassignedLeads = [],
 }: {
   header?: ReactNode;
@@ -750,9 +758,11 @@ export function ScheduleCalendarView({
   onBookingsChanged?: () => void;
   onBookingRequestHandled?: () => void;
   initialBooking?: { leadId: string; type: JobType; date?: string };
+  initialRoute?: { date: string; bookingId?: string };
   unassignedLeads?: UnassignedPlanningLead[];
 }) {
-  const [visibleDates, setVisibleDates] = useState(() => [initialBooking?.date || todayStr()]);
+  const [visibleDates, setVisibleDates] = useState(() => [initialRoute?.date || initialBooking?.date || todayStr()]);
+  const pendingRouteSelection = useRef(initialRoute?.bookingId);
   const currentDate = visibleDates[0];
   const endDate = visibleDates[visibleDates.length - 1];
   const dayCount = visibleDates.length;
@@ -851,6 +861,7 @@ export function ScheduleCalendarView({
         durationMinutes: appointmentDurationMinutes(entry, rules),
         scheduledMinutes: entry.scheduledMinutes,
         technicianId: entry.technicianId, technician: entry.technician, technicianUsername: entry.technicianUsername,
+        inspectorId: entry.inspectorId, assigned: entry.assigned, inspectorUsername: entry.inspectorUsername,
         customer: { name: entry.name, address: entry.address || "", phone: "", email: "", status: entry.status || "" },
         zone: "flexible",
         suburb: entry.suburb || null,
@@ -859,6 +870,14 @@ export function ScheduleCalendarView({
       const ordered = applyRouteOrders(bookings, orders);
       setEntries(ordered);
       setOriginalEntries(ordered);
+      if (pendingRouteSelection.current) {
+        const target = ordered.find(entry => entry.id === pendingRouteSelection.current);
+        if (target) {
+          setSelectedId(target.id);
+          setMapDate(target.date);
+        }
+        pendingRouteSelection.current = undefined;
+      }
     } catch (err) {
       if (request !== loadRequest.current) return;
       setLoadError(err instanceof Error ? err.message : "Could not load schedule.");
@@ -1239,6 +1258,7 @@ export function ScheduleCalendarView({
                 </div>
                 {loading ? <div className="flex-1 flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div> : <JobListPanel
                   entries={dayEntries}
+                  technicians={technicians}
                   selectedId={selectedId}
                   onSelect={selectBooking}
                   onDragStart={startDrag}
