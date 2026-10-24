@@ -16,7 +16,7 @@ import { abs, faqJsonLd } from "@/lib/seo";
 import type { Review, BusinessRating } from "@/lib/reviews";
 import {
   FaqList, MobileCallBar, ReviewsMarquee, Section, SectionHead,
-  box, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap,
+  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap,
 } from "@/components/v2/ui";
 
 const googleReviewsUrl = "https://www.google.com/maps/place/Groutix";
@@ -59,6 +59,11 @@ const steps = [
   { title: "Remove & Prepare", text: "Failed grout and old silicone are fully removed. Skipping this step is why quick regrouts fail early, so we never skip it." },
   { title: "Regrout & Seal", text: "New waterproof epoxy grout and fresh silicone are applied and finished so the surface is sealed properly again." },
   { title: "Cure & Warranty", text: "We tell you exactly when the shower can be used again, and complete regrouts are backed by the written 10-year warranty." },
+];
+
+const team = [
+  { name: "Johnny", initial: "J", role: "Technician", note: "On the tools for shower and balcony regrouting across Melbourne." },
+  { name: "Max", initial: "M", role: "Technician", note: "Part of the same small crew — inspections, regrouting and finishing." },
 ];
 
 const services = [
@@ -191,6 +196,9 @@ export default function AboutPage({ reviews, rating }: { reviews: Review[]; rati
           <SectionHead k="How We Work" title="The Groutix Standard">
             <p className={lead}>Six commitments that shape every quote, every job and every warranty we write.</p>
           </SectionHead>
+          <div className="relative mb-8 h-[240px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-200 md:h-[320px]">
+            <Image src="/grey-shower-floor-envelope-cut-regrouting after.webp" alt="Shower floor with envelope-cut falls to the drain, finished with fresh epoxy grout by Groutix" fill sizes="100vw" className="object-cover" />
+          </div>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {principles.map(({ Icon, title, text }) => (
               <div key={title} className={`${box} p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
@@ -218,10 +226,42 @@ export default function AboutPage({ reviews, rating }: { reviews: Review[]; rati
               </li>
             ))}
           </ol>
+          <div className="relative mt-8 h-[240px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-200 md:h-[320px]">
+            <Image src="/grey-shower-floor-envelope-cut-regrouting before.webp" alt="Shower floor being prepared for regrouting — the old grout cut out before new epoxy grout is applied" fill sizes="100vw" className="object-cover" />
+          </div>
           <div className="mt-8 text-center">
             <Link href="/our-process" className={btnNavy}>See the Full Process<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
           </div>
         </Section>
+
+        {/* MEET THE TEAM (restores the /about#team anchor used by the nav and footer) */}
+        <section id="team" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-20">
+          <div className={wrap}>
+            <div className="mx-auto mb-10 max-w-[760px] text-center">
+              <p className={`${eyebrow} text-[#FBBC04]`}>The People Behind The Work</p>
+              <h2 className={`${h2} text-white`}>Meet the Groutix Team</h2>
+              <p className="mt-3.5 text-[17px] leading-relaxed text-[#D6DCF5]">
+                The same small team handles your job from the first inspection through to the finished work —
+                no hand-offs, no strangers. Here’s who you’ll actually deal with.
+              </p>
+            </div>
+            <div className="mx-auto grid max-w-3xl grid-cols-1 gap-5 md:grid-cols-2">
+              {team.map((m) => (
+                <div key={m.name} className="flex items-center gap-5 rounded-xl border border-white/15 bg-white/[0.07] p-6">
+                  <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-[#FBBC04] bg-[#FBBC04]/15 text-[28px] font-black text-[#FBBC04]" aria-hidden="true">{m.initial}</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{m.name}</h3>
+                    <p className="mt-0.5 text-[13px] font-bold uppercase tracking-wider text-[#FBBC04]">{m.role}</p>
+                    <p className="mt-1.5 text-[15px] leading-relaxed text-[#D6DCF5]">{m.note}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-9 text-center">
+              <Link href="/contact" className={btnGold}>Talk to Our Team</Link>
+            </div>
+          </div>
+        </section>
 
         {/* PHOTO STRIP */}
         <Section id="results">
@@ -260,6 +300,9 @@ export default function AboutPage({ reviews, rating }: { reviews: Review[]; rati
           <SectionHead k="What We Do" title="Our Services">
             <p className={lead}>One specialty, done properly. Each service page explains the problem, the fix and the cost factors.</p>
           </SectionHead>
+          <div className="relative mb-8 h-[240px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-200 md:h-[300px]">
+            <Image src="/balcony-regrouting-tiles.webp" alt="Balcony tiles regrouted by Groutix in Melbourne" fill sizes="100vw" className="object-cover" />
+          </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s) => (
               <Link key={s.href} href={s.href} className={`${box} group flex flex-col p-6 text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
