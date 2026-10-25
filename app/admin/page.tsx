@@ -470,6 +470,7 @@ export default function CrmDashboardPage() {
     "Final scope is subject to the details stated in this quotation. Any additional work not listed will require approval before proceeding."
   );
   const [quoteScope, setQuoteScope] = useState<string>("");
+  const templateSaveInFlight = useRef(false);
   const [savingTemplateIndex, setSavingTemplateIndex] = useState<number | null>(null);
   const [templateSaveFeedback, setTemplateSaveFeedback] = useState<{ idx: number; message: string; ok: boolean } | null>(null);
 
@@ -1967,8 +1968,9 @@ export default function CrmDashboardPage() {
   }
 
   // Save an item from the quote builder directly to the template library for future reuse
-  async function handleSaveQuoteItemToLibrary(idx: number) {
-    const item = quoteItems[idx];
+  async function handleSaveQuoteItemToLibrary(idx: number, mode: "new" | "replace" = "new") {
+    if (templateSaveInFlight.current) return;
+    const item = quoteItems[idx] ? { ...quoteItems[idx] } : null;
     if (!item) return;
 
     const service = (item.service || "").trim();
@@ -1984,31 +1986,36 @@ export default function CrmDashboardPage() {
     const scope = (item.scope || "").trim();
     const price = Number(item.price) || 0;
 
+    if (mode === "replace") {
+      if (!item.templateNo || !item.code) return;
+      if (!window.confirm(`Update library item ${item.code} (#${item.templateNo}) with this title, scope and price? Future selections will use these details. Existing saved quotes will keep their current details.`)) return;
+    }
+    const session = quoteSaveSession.current;
+    templateSaveInFlight.current = true;
     setSavingTemplateIndex(idx);
     setTemplateSaveFeedback(null);
     try {
       const res = await fetch("/api/admin/quote-templates", {
-        method: "POST",
+        method: mode === "replace" ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, service, scope, price })
+        body: JSON.stringify(mode === "replace"
+          ? { targetNo: String(item.templateNo), targetCode: item.code, service, scope, price }
+          : { code, service, scope, price })
       });
       const data = await res.json();
-      if (res.ok && data.success && data.template) {
-        const updated = [...quoteItems];
-        updated[idx] = {
-          ...updated[idx],
-          code: data.template.code,
-          templateNo: data.template.no
-        };
-        setQuoteItems(updated);
-        setTemplateSaveFeedback({ idx, message: "Saved to Library!", ok: true });
-        setTimeout(() => setTemplateSaveFeedback(null), 3000);
-      } else {
+      if (res.ok && data.template) {
+        window.dispatchEvent(new CustomEvent("quote-library-updated", { detail: data.template }));
+        if (quoteSaveSession.current !== session) return;
+        setQuoteItems(items => items.map((current, index) => index === idx && current.code === item.code && current.templateNo === item.templateNo
+          ? { ...current, code: data.template.code, templateNo: data.template.no } : current));
+        setTemplateSaveFeedback({ idx, message: mode === "replace" ? "Library item updated!" : "Saved as a new library item!", ok: true });
+      } else if (quoteSaveSession.current === session) {
         setTemplateSaveFeedback({ idx, message: data.error || "Failed to save", ok: false });
       }
     } catch (err: any) {
-      setTemplateSaveFeedback({ idx, message: err?.message || "Error saving", ok: false });
+      if (quoteSaveSession.current === session) setTemplateSaveFeedback({ idx, message: err?.message || "Error saving", ok: false });
     } finally {
+      templateSaveInFlight.current = false;
       setSavingTemplateIndex(null);
     }
   }
@@ -5555,6 +5562,20 @@ export default function CrmDashboardPage() {
                                       placeholder="Detailed scope of works (supports **bold**, *italic*, <u>underline</u>, • bullets)..."
                                     />
                                   </div>
+                                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                                    {item.templateNo && item.code && <button type="button"
+                                      onClick={() => handleSaveQuoteItemToLibrary(idx, "replace")}
+                                      disabled={savingTemplateIndex !== null}
+                                      className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
+                                      <Save className="h-3 w-3" />Update library item
+                                    </button>}
+                                    <button type="button" onClick={() => handleSaveQuoteItemToLibrary(idx, "new")}
+                                      disabled={savingTemplateIndex !== null}
+                                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">
+                                      <BookmarkPlus className="h-3 w-3" />Save as new item
+                                    </button>
+                                    {savingTemplateIndex === idx && <Loader2 className="h-3 w-3 animate-spin text-blue-600" />}
+                                  </div>
                                 </td>
 
                                 {/* Qty */}
@@ -5607,25 +5628,13 @@ export default function CrmDashboardPage() {
                                 {/* Remove */}
                                 <td className="py-2 px-2 text-center">
                                   <div className="flex items-center justify-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveQuoteItemToLibrary(idx)}
-                                      disabled={savingTemplateIndex === idx}
-                                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
-                                      title="Save this item to Template Library for future quotes"
-                                    >
-                                      {savingTemplateIndex === idx ? (
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                                      ) : (
-                                        <BookmarkPlus className="w-3.5 h-3.5" />
-                                      )}
-                                    </button>
                                     {quoteItems.length > 1 && (
                                       <button
                                         type="button"
                                         onClick={() => setQuoteItems(quoteItems.filter((_, i) => i !== idx))}
                                         className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer shadow-2xs"
                                         title="Remove item"
+                                        disabled={savingTemplateIndex !== null}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>

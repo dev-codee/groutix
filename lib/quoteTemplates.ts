@@ -1,6 +1,7 @@
 import { ObjectId, type Collection } from "mongodb";
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
 import { SERVICE_TEMPLATES, type ServiceTemplate } from "@/lib/serviceTemplates";
+import { getTemplateCategory } from "@/lib/serviceMatching";
 
 export interface CustomQuoteTemplateDoc {
   _id?: ObjectId;
@@ -12,6 +13,8 @@ export interface CustomQuoteTemplateDoc {
   price: number;
   category?: string;
   isCustom: boolean;
+  replacesNo?: string;
+  isLibraryCopy?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +24,8 @@ export type QuoteTemplateJSON = ServiceTemplate & {
   category?: string;
   isCustom?: boolean;
   createdAt?: string;
+  replacesNo?: string;
+  isLibraryCopy?: boolean;
 };
 
 // In-memory fallback if MongoDB is not configured or in development
@@ -41,7 +46,9 @@ export function toQuoteTemplateJSON(doc: CustomQuoteTemplateDoc): QuoteTemplateJ
     description: doc.description || doc.service,
     price: Number(doc.price) || 0,
     category: doc.category || "Custom",
-    isCustom: true,
+    isCustom: !doc.replacesNo,
+    replacesNo: doc.replacesNo,
+    isLibraryCopy: doc.isLibraryCopy,
     createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt || ""),
   };
 }
@@ -70,6 +77,7 @@ export async function getAllQuoteTemplates(): Promise<QuoteTemplateJSON[]> {
   const custom = await listCustomQuoteTemplates();
   const standard: QuoteTemplateJSON[] = SERVICE_TEMPLATES.map((t) => ({
     ...t,
+    ...custom.find(item => item.replacesNo === t.no && item.code === t.code),
     isCustom: false,
   }));
   // The revised catalog owns its item codes, including codes saved as custom
@@ -79,7 +87,7 @@ export async function getAllQuoteTemplates(): Promise<QuoteTemplateJSON[]> {
   for (const code of ["MB", "MB SINGLE SHOWER WALLS & FLOOR", "MB SHOWER WALLS-FLOOR", "CT - GROUTIX TO SUPPLY & INSTA"]) {
     standardCodes.add(code);
   }
-  return [...custom.filter((template) => !standardCodes.has(template.code.toUpperCase())), ...standard];
+  return [...custom.filter((template) => !template.replacesNo && (template.isLibraryCopy || !standardCodes.has(template.code.toUpperCase()))), ...standard];
 }
 
 /**
@@ -94,6 +102,7 @@ export async function saveCustomQuoteTemplate(data: {
   price: number;
   category?: string;
   description?: string;
+  isLibraryCopy?: boolean;
 }): Promise<QuoteTemplateJSON> {
   const now = new Date();
   const code = (data.code || "CUSTOM").trim().toUpperCase();
@@ -140,6 +149,7 @@ export async function saveCustomQuoteTemplate(data: {
         price,
         category,
         isCustom: true,
+        isLibraryCopy: data.isLibraryCopy,
         createdAt: now,
         updatedAt: now,
       };
@@ -164,6 +174,7 @@ export async function saveCustomQuoteTemplate(data: {
     price,
     category,
     isCustom: true,
+    isLibraryCopy: data.isLibraryCopy,
     createdAt: now.toISOString(),
   };
 
@@ -177,6 +188,53 @@ export async function saveCustomQuoteTemplate(data: {
   }
 
   return newItem;
+}
+
+/** Explicitly replace one selected row; a repeated item code never identifies a row alone. */
+export async function replaceQuoteTemplate(data: {
+  targetNo: string;
+  targetCode: string;
+  service: string;
+  scope: string;
+  price: number;
+}): Promise<QuoteTemplateJSON | null> {
+  const standard = SERVICE_TEMPLATES.find(item => item.no === data.targetNo && item.code === data.targetCode);
+  const now = new Date();
+  const col = isMongoConfigured() ? await collection() : null;
+  const previous = col
+    ? await col.findOne(standard ? { replacesNo: standard.no } : { no: data.targetNo, code: data.targetCode, replacesNo: { $exists: false } })
+    : memoryCustomTemplates.find(item => standard ? item.replacesNo === standard.no : item.no === data.targetNo && item.code === data.targetCode && !item.replacesNo);
+  if (!standard && !previous) return null;
+  const updated = {
+    no: data.targetNo,
+    code: data.targetCode,
+    service: data.service.trim(),
+    scope: data.scope.trim(),
+    description: `${data.service.trim()}\n${data.scope.trim()}`.trim(),
+    price: data.price,
+    category: previous?.category || (standard ? getTemplateCategory(standard) : "Custom"),
+    isCustom: true,
+    ...(standard ? { replacesNo: standard.no } : {}),
+    ...(!standard ? { isLibraryCopy: true } : {}),
+    updatedAt: now,
+  };
+  if (col) {
+    const filter = standard ? { replacesNo: standard.no } : { _id: (previous as CustomQuoteTemplateDoc)._id };
+    await col.updateOne(filter, { $set: updated, $setOnInsert: { createdAt: now } }, { upsert: Boolean(standard) });
+    const saved = await col.findOne(filter);
+    if (!saved) throw new Error("Library item could not be saved.");
+    return toQuoteTemplateJSON(saved);
+  }
+  const saved: QuoteTemplateJSON = {
+    ...updated,
+    id: previous && "id" in previous ? previous.id : `override-${data.targetNo}`,
+    createdAt: previous?.createdAt ? String(previous.createdAt) : now.toISOString(),
+    isCustom: !standard,
+  };
+  const index = memoryCustomTemplates.findIndex(item => standard ? item.replacesNo === standard.no : item.no === data.targetNo && item.code === data.targetCode);
+  if (index >= 0) memoryCustomTemplates[index] = saved;
+  else memoryCustomTemplates.push(saved);
+  return saved;
 }
 
 /**

@@ -71,6 +71,18 @@ export function TemplatePicker({
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const onLibraryUpdated = (event: Event) => {
+      const template = (event as CustomEvent<QuoteTemplateJSON>).detail;
+      if (!template?.no) return;
+      setAllTemplates(items => items.some(item => item.no === template.no)
+        ? items.map(item => item.no === template.no ? template : item)
+        : [template, ...items]);
+    };
+    window.addEventListener("quote-library-updated", onLibraryUpdated);
+    return () => window.removeEventListener("quote-library-updated", onLibraryUpdated);
+  }, []);
+
   // Load custom templates from API whenever the picker modal is opened
   const fetchTemplates = useCallback(async () => {
     setLoadingTemplates(true);

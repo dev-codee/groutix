@@ -5,6 +5,7 @@ import {
   listCustomQuoteTemplates,
   saveCustomQuoteTemplate,
   deleteCustomQuoteTemplate,
+  replaceQuoteTemplate,
 } from "@/lib/quoteTemplates";
 
 export const runtime = "nodejs";
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     templates: all,
-    customTemplates: custom,
+    customTemplates: custom.filter(item => !item.replacesNo),
   });
 }
 
@@ -31,14 +32,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: Record<string, any>;
+  let body: Parameters<typeof saveCustomQuoteTemplate>[0];
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.service || typeof body.service !== "string") {
+  if (!body || !body.service || typeof body.service !== "string") {
     return NextResponse.json({ error: "Service title is required" }, { status: 400 });
   }
 
@@ -51,9 +52,32 @@ export async function POST(req: NextRequest) {
     price: Number(body.price) || 0,
     category: body.category || "Custom",
     description: body.description || body.service,
+    isLibraryCopy: true,
   });
 
-  return NextResponse.json({ ok: true, template: saved });
+  return NextResponse.json({ ok: true, success: true, template: saved });
+}
+
+export async function PATCH(req: NextRequest) {
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let body;
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
+  if (!body || typeof body.targetNo !== "string" || !body.targetNo.trim() || typeof body.targetCode !== "string" ||
+    typeof body.service !== "string" || !body.service.trim() || typeof body.scope !== "string" ||
+    typeof body.price !== "number" || !Number.isFinite(body.price) || body.price < 0) {
+    return NextResponse.json({ error: "Select a library item and enter a title, scope and valid price." }, { status: 400 });
+  }
+  try {
+    const saved = await replaceQuoteTemplate({ targetNo: body.targetNo, targetCode: body.targetCode,
+      service: body.service, scope: body.scope, price: body.price });
+    if (!saved) return NextResponse.json({ error: "The selected library item no longer exists. Select it again before updating." }, { status: 404 });
+    return NextResponse.json({ ok: true, success: true, template: saved });
+  } catch (error) {
+    console.error("Failed to replace library item:", error);
+    return NextResponse.json({ error: "Could not update the library. Your quote edits are still available. Try again." }, { status: 503 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {
