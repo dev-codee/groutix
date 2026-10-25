@@ -161,13 +161,21 @@ export const GROUTIX_QUOTE_TERMS = GROUTIX_OFFICIAL_TERMS;
 
 export const SERVICE_TEMPLATES: ServiceTemplate[] = refinedQuoteCatalog;
 
+/** Repeated document codes require a row selection because their scopes/prices differ. */
+export function uniqueTemplateForCode(code: string): ServiceTemplate | null {
+  const matches = SERVICE_TEMPLATES.filter(template => template.code === code.trim().toUpperCase());
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function bestTemplateForTask(
   task: string,
   extraText = '',
   usedCodes = new Set<string>()
 ): ServiceTemplate | null {
-  const exact = SERVICE_TEMPLATES.find((template) => template.code === String(task || '').trim().toUpperCase());
-  if (exact) return exact;
+  const requested = String(task || '').trim().toUpperCase();
+  if (SERVICE_TEMPLATES.some(template => template.code === requested)) return uniqueTemplateForCode(requested);
+  const titles = SERVICE_TEMPLATES.filter(template => template.service.toUpperCase() === requested);
+  if (titles.length > 1 && new Set(titles.map(template => template.code)).size === 1) return null;
   const text = (String(task || '') + ' ' + String(extraText || '')).toLowerCase();
   const tokens = text.replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter((w) => w.length > 2);
   const stop = new Set([
@@ -179,6 +187,7 @@ export function bestTemplateForTask(
   let bestScore = -1;
 
   SERVICE_TEMPLATES.forEach((t) => {
+    if (!uniqueTemplateForCode(t.code)) return;
     const hay = ((t.code || '') + ' ' + (t.service || '') + ' ' + (t.scope || '')).toLowerCase();
     let score = 0;
     tokens.forEach((w) => {

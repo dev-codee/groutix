@@ -106,7 +106,10 @@ export function TemplatePicker({
 
   // Find currently selected template
   const currentTemplate = useMemo(() => {
-    if (selectedTemplateCode) return allTemplates.find((t) => t.code.toUpperCase() === selectedTemplateCode.toUpperCase()) || null;
+    if (selectedTemplateCode) {
+      const matches = allTemplates.filter((t) => t.code.toUpperCase() === selectedTemplateCode.toUpperCase());
+      return matches.find((t) => String(t.no) === String(selectedTemplateNo)) || (matches.length === 1 ? matches[0] : null);
+    }
     if (!selectedTemplateNo) return null;
     return allTemplates.find((t) => String(t.no) === String(selectedTemplateNo)) || null;
   }, [selectedTemplateNo, selectedTemplateCode, allTemplates]);
@@ -592,9 +595,7 @@ export function TemplatePicker({
                 </div>
               ) : (
                 filteredTemplates.map((t) => {
-                  const isSelected = selectedTemplateCode
-                    ? selectedTemplateCode.toUpperCase() === t.code.toUpperCase()
-                    : String(selectedTemplateNo) === String(t.no);
+                  const isSelected = currentTemplate === t;
                   const isExpanded = expandedScopeNo === t.no;
                   const category = t.category || getTemplateCategory(t);
                   const hasPrice = Number(t.price) > 0;
@@ -620,6 +621,9 @@ export function TemplatePicker({
                             }`}>
                               {t.code}
                             </span>
+                            {allTemplates.filter(template => template.code === t.code).length > 1 && (
+                              <span className="text-[10px] font-semibold text-slate-500">Item #{t.no}</span>
+                            )}
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
                               {category}
                             </span>

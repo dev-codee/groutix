@@ -57,7 +57,7 @@ MB-SS-FO-EG
 MB-DS-FO-EG
 MB-SS-FO-PG
 MB-DS-FO-PG
-MB SINGLE SHOWER WALLS & FLOOR
+MB-SS-WF-SH-PG
 MB-SS-WB-TC-EG
 MB-SS-WB-TC-PG
 MB-SS-WB-SH-EG
@@ -75,12 +75,11 @@ MB-SS-WP-TC-PG
 MB-SS-WP-SH-EG
 MB-SS-WP-SH-PG
 MB-DS-WO-SH-PG
-MB
-MB SHOWER WALLS-FLOOR
+MB-SS-WF-SH-PG
 MB-DS-WO-SH-EG
 BALCONY
 CT - (CLIENT TO SOURCE)
-CT - GROUTIX TO SUPPLY & INSTA
+CT - GROUTIX TO SUPPLY & INSTALL
 MT - MOULD TREATMENT
 S - SEALANT
 PRESSURE WASH
@@ -92,21 +91,23 @@ C-H-O
 C-V-I
 SEALER
 SEALER MAIN BATHROOM
-SCREEN REPLECEMENT`.split("\n");
+SCREEN REPLECEMENT
+TILE REPAIR`.split("\n");
 
-test("the supplied 83 codes match rows 2–84 and all provided prices", () => {
+test("the final document has 83 rows, preserves its row numbers and provided prices", () => {
   assert.deepEqual(Array.from(SERVICE_TEMPLATES, item => item.code), expectedCodes);
-  assert.deepEqual(Array.from(SERVICE_TEMPLATES, item => item.no), Array.from({ length: 83 }, (_, i) => String(i + 2)));
-  const prices = { GUYS: 1250, "MB SINGLE SHOWER WALLS & FLOOR": 1400, "MB-DS-WO-SH-EG": 750,
+  assert.deepEqual(Array.from(SERVICE_TEMPLATES, item => item.no), Array.from({ length: 84 }, (_, i) => String(i + 2)).filter(no => no !== "67"));
+  const prices = { GUYS: 1250, "MB-DS-WO-SH-EG": 750,
     "PRESSURE WASH": 450, "EPOXY UPGRADE": 125, PP: 20, "C-V-I": 58, SEALER: 97.9, "SEALER MAIN BATHROOM": 89 };
-  for (const item of SERVICE_TEMPLATES.filter(item => item.no !== "84")) {
-    assert.equal(item.price, prices[item.code] || 0, item.code);
+  for (const item of SERVICE_TEMPLATES) {
+    assert.equal(item.price, item.no === "49" ? 1400 : prices[item.code] || 0, item.code);
   }
 });
 
 test("each code selects its own complete scope and price through both matchers", () => {
   for (const item of SERVICE_TEMPLATES) {
     for (const match of [findBestTemplateForService(item.code.toLowerCase()), bestTemplateForTask(item.code.toLowerCase())]) {
+      if (item.code === "MB-SS-WF-SH-PG") { assert.equal(match, null, "ambiguous codes require manual row selection"); continue; }
       assert.equal(match.code, item.code);
       assert.equal(match.scope, item.scope);
       assert.equal(match.price, item.price);
@@ -120,6 +121,9 @@ test("grouting and silicone removal stay separate, with the supplied special dry
 • Removal of existing grout from double shower wall tiles and surrounding bath tiled areas to ceiling height (excluding mosaic tiles, if any)
 • Removal of existing grout from all tile-to-tile junctions and tile-to-bath junctions (excluding mosaic tiles, if any)
 • Cleaning and preparation of grout joints and movement joints prior to installation
+• Mould treatment to kill existing mould.
+• Use of a commercial wet and dry vacuum to extract trapped moisture from beneath the tiled surface and grout joints where possible.
+• Use of high-pressure air blowers to assist in removing residual moisture and drying the substrate prior to regrouting.
 • Regrouting using premium polymer fortified mould-resistant flex grout
 SILICONE WORK
 • Removal of existing silicone from all tile-to-tile junctions and tile-to-bath junctions (excluding mosaic tiles, if any)
@@ -132,10 +136,10 @@ COMPLETION / OTHER
     assert.match(item.scope, /\nCOMPLETION \/ OTHER\n• Final clean/);
     assert.doesNotMatch(item.scope, /failed grout and silicone/);
   }
-  const drying = ["EN-DS-WP-TC-EG", "EN-DS-FO-EG", "EN-SS-WF-TC-EG", "EN-SS-WP-TC-EG",
-    "MB-DS-WF-TC-PG", "MB-DS-FO-PG", "MB-SS-WB-TC-PG", "MB-SS-WF-SH-PG"];
   for (const item of SERVICE_TEMPLATES.filter(item => /^(EN|MB)-(SS|DS)-/.test(item.code))) {
-    assert.equal(item.scope.includes("commercial wet and dry vacuum"), drying.includes(item.code), item.code);
+    assert.match(item.scope, /commercial wet and dry vacuum/, item.code);
+    assert.match(item.scope, /high-pressure air blowers/, item.code);
+    assert.match(item.scope, /Mould treatment to kill existing mould/, item.code);
   }
   assert.match(byCode("EN-DS-WB-TC-EG").scope, /highly water-resistant/);
   assert.doesNotMatch(byCode("EN-DS-WB-TC-EG").scope, /permanently waterproof/);
@@ -146,7 +150,7 @@ COMPLETION / OTHER
 test("automatic recommendations use codes after rows move, including specified shower variants", () => {
   const cases = [
     ["Balcony regrouting", "", "BALCONY"], ["Balcony pressure washing", "", "PRESSURE WASH"],
-    ["Cracked tile repair", "", "CT - GROUTIX TO SUPPLY & INSTA"], ["Mould treatment", "", "MT - MOULD TREATMENT"],
+    ["Cracked tile repair", "", "CT - GROUTIX TO SUPPLY & INSTALL"], ["Drummy tile repair", "", "TILE REPAIR"], ["Loose tile repair", "", "TILE REPAIR"], ["Mould treatment", "", "MT - MOULD TREATMENT"],
     ["Penetrating sealer", "", "S - SEALANT"], ["Shower screen replacement", "", "SCREEN REPLECEMENT"],
     ["Shower regrouting", "Guest bathroom", "GUYS"], ["Shower regrouting", "Ensuite", "EN-SS-WF-SH-EG"],
     ["Shower floor only", "Main bathroom", "MB-SS-FO-EG"], ["Shower regrouting", "", "MB-SS-WF-SH-EG"],
@@ -239,4 +243,34 @@ test("the live library uses the revised scope instead of custom duplicates of ol
   assert.equal(revised.length, 1);
   assert.equal(revised[0].scope, byCode("EN-DS-WB-TC-PG").scope);
   assert.ok(templates.some(template => template.code === "CUSTOM-NEW"));
+});
+
+
+test("the three repeated codes keep their own row, scope and price", () => {
+  const variants = SERVICE_TEMPLATES.filter(item => item.code === "MB-SS-WF-SH-PG");
+  assert.deepEqual(Array.from(variants, item => [item.no, item.price]), [["49", 1400], ["57", 0], ["68", 0]]);
+  assert.equal(new Set(variants.map(item => item.scope)).size, 3);
+  assert.equal(findBestTemplateForService(variants[0].service), null);
+  assert.equal(bestTemplateForTask(variants[0].service), null);
+  const { TemplatePicker } = loadTs("components/admin/TemplatePicker.tsx");
+  for (const item of variants) {
+    const html = renderToStaticMarkup(React.createElement(TemplatePicker, {
+      selectedTemplateNo: item.no, selectedTemplateCode: item.code, onSelectTemplate() {},
+    }));
+    assert.ok(html.includes(item.service.replaceAll("&", "&amp;")));
+  }
+});
+
+test("new repair sections render as headings and repaired tiles are categorized correctly", () => {
+  const { isQuoteScopeHeading } = loadTs("lib/quoteScope.ts");
+  const { getTemplateCategory } = loadTs("lib/serviceMatching.ts");
+  for (const heading of ["COLOURS:", "TILE REPAIR WORK", "EPOXY REGROUTING WORK", "COMPLETION / OTHER"]) {
+    assert.equal(isQuoteScopeHeading(heading), true);
+  }
+  const repair = byCode("TILE REPAIR");
+  assert.equal(getTemplateCategory(repair), "Tile & Grout Repairs");
+  assert.match(repair.scope, /Injection of specialist epoxy adhesive/);
+  assert.equal(repair.price, 0);
+  assert.equal(byCode("SCREEN REPLECEMENT").price, 0);
+  assert.equal(getTemplateCategory(byCode("SCREEN REPLECEMENT")), "Screens & Upgrades");
 });

@@ -1,4 +1,4 @@
-import { SERVICE_TEMPLATES, type ServiceTemplate } from "@/lib/serviceTemplates";
+import { SERVICE_TEMPLATES, uniqueTemplateForCode, type ServiceTemplate } from "@/lib/serviceTemplates";
 
 export interface MatchedQuoteItem {
   templateNo: string;
@@ -56,7 +56,7 @@ export function getTemplateCategory(template: ServiceTemplate): TemplateCategory
   ) {
     return "Balcony";
   }
-  if (code.startsWith("CT -") || title.includes("CRACKED TILE")) return "Tile & Grout Repairs";
+  if (code.startsWith("CT -") || code === "TILE REPAIR" || title.includes("CRACKED TILE")) return "Tile & Grout Repairs";
   if (
     code.startsWith("C-") ||
     code === "PP" ||
@@ -127,10 +127,10 @@ export function findBestTemplateForService(
   areaHint?: string
 ): ServiceTemplate | null {
   const requested = String(serviceName || "").trim().toUpperCase();
-  const exact = SERVICE_TEMPLATES.find((template) => template.code === requested);
-  if (exact) return exact;
+  if (SERVICE_TEMPLATES.some(template => template.code === requested)) return uniqueTemplateForCode(requested);
   const titles = SERVICE_TEMPLATES.filter((template) => template.service.toUpperCase() === requested);
   if (titles.length === 1) return titles[0];
+  if (titles.length > 1 && new Set(titles.map(template => template.code)).size === 1) return null;
 
   const normSvc = (serviceName || "").toLowerCase();
   const normArea = (areaHint || "").toLowerCase();
@@ -151,9 +151,11 @@ export function findBestTemplateForService(
     normSvc.includes("cracked") ||
     normSvc.includes("tile repair") ||
     normSvc.includes("loose tile") ||
-    normSvc.includes("drummy")
+    normSvc.includes("drummy") ||
+    normSvc.includes("adhesive injection")
   ) {
-    const t = SERVICE_TEMPLATES.find((x) => x.code === "CT - GROUTIX TO SUPPLY & INSTA");
+    const code = /loose|drummy|injection/.test(normSvc) ? "TILE REPAIR" : "CT - GROUTIX TO SUPPLY & INSTALL";
+    const t = uniqueTemplateForCode(code);
     if (t) return t;
   }
 
@@ -218,8 +220,9 @@ export function findBestTemplateForService(
       : /\bpan\b/.test(normSvc) ? "WP"
       : /\bbath\b/.test(normSvc) ? "WB" : "WF";
     const code = surface === "FO" ? `${room}-${shower}-FO-${grout}` : `${room}-${shower}-${surface}-${extent}-${grout}`;
-    const specified = SERVICE_TEMPLATES.find((template) => template.code === code);
+    const specified = uniqueTemplateForCode(code);
     if (specified) return specified;
+    if (SERVICE_TEMPLATES.some(template => template.code === code)) return null;
 
     // Never replace an unavailable specified variant with a different scope.
     if (shower === "DS" || grout === "PG" || extent === "TC" || surface === "WO" || surface === "WP" || surface === "WB") return null;
@@ -241,9 +244,7 @@ export function findBestTemplateForService(
     }
 
     // Match stable item codes; catalog row numbers can change.
-    const t =
-      SERVICE_TEMPLATES.find((x) => x.code === "MB-SS-WF-SH-EG") ||
-      SERVICE_TEMPLATES.find((x) => x.code === "MB SINGLE SHOWER WALLS & FLOOR");
+    const t = uniqueTemplateForCode("MB-SS-WF-SH-EG");
     if (t) return t;
   }
 
@@ -253,6 +254,7 @@ export function findBestTemplateForService(
   let bestScore = 0;
 
   for (const t of SERVICE_TEMPLATES) {
+    if (!uniqueTemplateForCode(t.code)) continue;
     let score = 0;
     const tTitle = t.service.toLowerCase();
     const tCode = t.code.toLowerCase();
@@ -323,10 +325,11 @@ export function getMatchedQuoteItemsForLead(lead: {
   const damaged = (lead.damagedTiles || "").toLowerCase();
   if (
     (damaged.includes("cracked") || damaged.includes("loose") || damaged.includes("drummy")) &&
-    !usedTemplateCodes.has("CT - GROUTIX TO SUPPLY & INSTA") &&
+    !usedTemplateCodes.has("CT - GROUTIX TO SUPPLY & INSTALL") &&
+    !usedTemplateCodes.has("TILE REPAIR") &&
     !usedTemplateCodes.has("CT - (CLIENT TO SOURCE)")
   ) {
-    const ctTemplate = SERVICE_TEMPLATES.find((x) => x.code === "CT - GROUTIX TO SUPPLY & INSTA");
+    const ctTemplate = uniqueTemplateForCode(/loose|drummy/.test(damaged) ? "TILE REPAIR" : "CT - GROUTIX TO SUPPLY & INSTALL");
     if (ctTemplate) {
       items.push({
         templateNo: ctTemplate.no,

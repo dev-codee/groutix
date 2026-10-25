@@ -75,6 +75,10 @@ export async function getAllQuoteTemplates(): Promise<QuoteTemplateJSON[]> {
   // The revised catalog owns its item codes, including codes saved as custom
   // templates under the previous catalog. Do not offer a stale duplicate scope.
   const standardCodes = new Set(standard.map((template) => template.code.toUpperCase()));
+  // Retired built-in codes must not reappear through old saved copies.
+  for (const code of ["MB", "MB SINGLE SHOWER WALLS & FLOOR", "MB SHOWER WALLS-FLOOR", "CT - GROUTIX TO SUPPLY & INSTA"]) {
+    standardCodes.add(code);
+  }
   return [...custom.filter((template) => !standardCodes.has(template.code.toUpperCase())), ...standard];
 }
 
