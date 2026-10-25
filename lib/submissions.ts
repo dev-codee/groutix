@@ -187,6 +187,7 @@ export interface SubmissionDoc {
   quoteNumber?: string;
   quoteReference?: string;
   hasCustomerQuotes?: boolean;
+  acceptedCustomerQuoteCount?: number;
   quoteSentAt?: string;
   quoteOpenedAt?: string;
   quoteAcceptedAt?: string; // ISO time the customer accepted the quote online
@@ -628,14 +629,21 @@ function escapeRegex(value: string): string {
 async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> {
   if (!items.length) return items;
   const db = await getDb();
-  const bookings = await db.collection<import("./bookings").BookingDoc>("bookings")
-    .find({ leadId: { $in: items.map(item => item.id) } }).toArray();
+  const leadIds = items.map(item => item.id);
+  const [bookings, acceptedQuotes] = await Promise.all([
+    db.collection<import("./bookings").BookingDoc>("bookings")
+      .find({ leadId: { $in: leadIds } }).toArray(),
+    db.collection<import("./customerQuotes").CustomerQuote>("customer_quotes")
+      .find({ leadId: { $in: leadIds }, state: "accepted" }, { projection: { leadId: 1 } }).toArray(),
+  ]);
+  const acceptedCounts = new Map<string, number>();
+  for (const quote of acceptedQuotes) acceptedCounts.set(quote.leadId, (acceptedCounts.get(quote.leadId) || 0) + 1);
   const needsRepair = (segments?: { time: string; scheduledMinutes: number }[]) => !!segments && segments.length > 1 && segments.some(s => s.time === "00:00" || Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3, 5)) + s.scheduledMinutes >= 1440);
   const rules = items.some(item => needsRepair(item.jobWorkSegments)) || bookings.some(b => needsRepair(b.workSegments)) ? await getBookingRules() : undefined;
   return items.map(item => {
     const visits = bookings.filter(b => b.leadId === item.id);
     const repairedLead = rules && item.jobAt && needsRepair(item.jobWorkSegments) ? { ...item, jobWorkSegments: savedWorkSegments("job", item.jobAt, item.jobEndAt, item.jobWorkSegments, rules) } : item;
-    return { ...repairedLead, bookings: visits.map(b => ({
+    return { ...repairedLead, acceptedCustomerQuoteCount: acceptedCounts.get(item.id) || 0, bookings: visits.map(b => ({
     bookingId: b.bookingId || b._id?.toString(), type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: rules && needsRepair(b.workSegments) ? savedWorkSegments(b.type, `${b.date}T${b.time}`, b.endAt, b.workSegments, rules) : b.workSegments, status: b.status,
     jobTotalDays: b.jobTotalDays, jobDaysDone: b.jobDaysDone,
     scheduledMinutes: b.scheduledMinutes, technicianId: b.technicianId, technician: b.technician,

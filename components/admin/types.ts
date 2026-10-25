@@ -123,6 +123,7 @@ export interface Lead {
   quoteReference?: string;
   quoteNumber?: string;
   hasCustomerQuotes?: boolean;
+  acceptedCustomerQuoteCount?: number;
   quoteSentAt?: string;
   quoteOpenedAt?: string;
   quoteAcceptedAt?: string;

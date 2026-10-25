@@ -1,6 +1,7 @@
 "use client";
 
 import { staffBookingRules } from "@/lib/staffBookingRules";
+import { hasAcceptedQuote, isQuoteWaiting, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } from "@/lib/quoteAcceptance";
 import { leadBookings, bookingLead } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
@@ -831,23 +832,21 @@ export function ManagerDashboard() {
     {
       label: "Quote waiting for approval",
       // Quote sent → waiting for customer to accept / negotiate.
-      count: scopedLeads.filter((l) =>
-        l.status === "Quote Sent" || l.status === "Negotiation"
-      ).length,
+      count: scopedLeads.filter(isQuoteWaiting).length,
       icon: <Briefcase className="w-4 h-4 text-amber-700" />,
       iconBg: "bg-amber-200/70",
       cardBg: "bg-amber-100/70 border-amber-300 text-amber-900",
       countColor: "text-amber-700",
-      statuses: ["Quote Sent", "Negotiation"],
+      statuses: [QUOTE_WAITING_FILTER],
     },
     {
       label: "Quote Accepted",
-      count: scopedLeads.filter((l) => l.status === "Won").length,
+      count: scopedLeads.filter(hasAcceptedQuote).length,
       icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
       iconBg: "bg-emerald-100",
       cardBg: "bg-emerald-50/80 border-emerald-200/90 text-emerald-800",
       countColor: "text-emerald-600",
-      statuses: ["Won"],
+      statuses: [QUOTE_ACCEPTED_FILTER],
     },
     {
       label: "Job Booked",

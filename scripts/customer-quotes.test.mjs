@@ -156,7 +156,7 @@ test("the public PDF and signature routes resolve the selected quote and keep it
     },
     "@/lib/bookingToken": { buildBookingUrl: id => { bookingIds.push(id); return `https://groutix.com/book/${id}`; }, buildBookingSmsUrl: id => `https://groutix.com/b/${id}` },
     "@/lib/quoteOpenTracking": { recordQuoteOpen: async () => {} },
-    "@/lib/email": { sendEmail: async () => {}, wrapEmailHtml: value => value, getEmailLogoUrl: async () => "" },
+    "@/lib/email": { sendEmail: async () => {}, isInternalEmailAlertEnabled: () => false, wrapEmailHtml: value => value, getEmailLogoUrl: async () => "" },
     "@/lib/sms": { sendSms: async () => {} },
   };
   const pdf = loadTs("app/api/quote/pdf/[id]/route.ts", overrides);

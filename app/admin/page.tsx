@@ -1,6 +1,7 @@
 "use client";
 
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
+import { matchesQuoteStatusFilter } from "@/lib/quoteAcceptance";
 
 import { jobBookingRows, selectedJobBooking, leadRowKey } from "@/lib/leadBookings";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -1632,8 +1633,7 @@ export default function CrmDashboardPage() {
         // new status no longer belongs to that tab, follow the lead to whichever tab
         // it now belongs to instead of letting it disappear from view.
         if (typeof updates.status === "string" && statusFilter) {
-          const activeStatuses = statusFilter.split("|");
-          if (!activeStatuses.includes(updates.status)) {
+          if (!matchesQuoteStatusFilter({ ...leads.find(lead => lead.id === id), ...updates }, statusFilter)) {
             const nextGroup = findJobsGroupForStatus(role, updates.status);
             if (nextGroup) setStatusFilter(nextGroup.statuses.join("|"));
           }
@@ -3871,7 +3871,7 @@ export default function CrmDashboardPage() {
         if (wanted.includes("Inspection Completed") && (role === "inspection" || role === "field")) {
           return isFlowCompleted(role, l.status, l);
         }
-        return wanted.includes(l.status);
+        return matchesQuoteStatusFilter(l, statusFilter);
       });
     }
     if (priorityFilter) {

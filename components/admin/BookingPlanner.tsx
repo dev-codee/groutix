@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { X, Loader2, MapPin, Star, AlertTriangle, Home, Navigation, RefreshCw } from "lucide-react";
 import { useAdminPageCtx } from "./AdminPageContext";
 import { PlannerLeadPicker } from "./PlannerLeadPicker";
+import { BookingPlannerFilters } from "./BookingPlannerFilters";
+import { defaultPlannerFilters, filterPlannerLeads, matchesPlannerLead, matchesPlannerVisit, plannerStaff, validPlannerDates, type PlannerFilters } from "@/lib/bookingPlannerFilters";
 import { EditBookingModal } from "./modals/EditBookingModal";
 import { bookingEndForDuration } from "@/lib/bookingSpan";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
@@ -88,6 +90,16 @@ type BookingPlannerProps = {
 
 export function BookingPlanner(props: BookingPlannerProps) {
   const { leads } = useAdminPageCtx();
+  const [filters, setFilters] = useState(defaultPlannerFilters);
+  const filteredLeads = useMemo(() => filterPlannerLeads(leads, filters), [leads, filters]);
+  const staffChoices = useMemo(() => {
+    const names = new Map<string, string>();
+    leads.flatMap(lead => leadBookings(lead)).forEach(visit => {
+      const name = plannerStaff(visit);
+      if (name !== "Unassigned") names.set(name.toLowerCase(), name);
+    });
+    return [...names.values()].sort();
+  }, [leads]);
   const rules = staffBookingRules(useBookingRules());
   const [selection, setSelection] = useState<{ lead: Lead; type: BookingType } | null>(null);
   const [proposedStart, setProposedStart] = useState<string>();
@@ -114,7 +126,9 @@ export function BookingPlanner(props: BookingPlannerProps) {
 
   return <>
     <BookingPlannerView key={`${lead.id}:${type}:${revision}`} type={type} lead={lead} value={value}
-      headerControls={<PlannerLeadPicker leads={leads} currentLead={lead} type={type} onSelect={switchLead} />}
+      filters={filters} leads={leads}
+      filterControls={<BookingPlannerFilters value={filters} onChange={setFilters} staff={staffChoices} count={filteredLeads.length} />}
+      headerControls={<PlannerLeadPicker leads={filteredLeads} currentLead={lead} type={type} onSelect={switchLead} />}
       onPick={value => {
         if (!selection) { props.onPick(value); return; }
         picked.current = true;
@@ -138,7 +152,10 @@ function BookingPlannerView({
   onPick,
   onClose,
   headerControls,
-}: BookingPlannerProps & { headerControls?: ReactNode }) {
+  filterControls,
+  filters,
+  leads,
+}: BookingPlannerProps & { headerControls?: ReactNode; filterControls?: ReactNode; filters: PlannerFilters; leads: Lead[] }) {
   const rules = staffPlanningRules(useBookingRules());
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
@@ -217,6 +234,16 @@ function BookingPlannerView({
     return out;
   }, [editingBookingId, value, appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, lead.inspectorId, lead.assigned, technicians, target, today, area.zone, zoneRules]);
 
+  const visibleDays = useMemo(() => days.filter(day => filters.dateMode === "all"
+    || (validPlannerDates(filters) && day.date >= filters.from && day.date <= filters.to)), [days, filters]);
+  const visibleStops = useMemo(() => {
+    const customers = new Map(leads.map(customer => [customer.id, customer]));
+    return new Set((appts || []).filter(appointment => {
+      const customer = customers.get(appointment.leadId) || { id: appointment.leadId, name: appointment.name, address: appointment.address, city: appointment.suburb };
+      return matchesPlannerLead(customer, filters) && matchesPlannerVisit(appointment, filters);
+    }).map(appointment => `${appointment.leadId}:${appointment.type}:${appointment.date}:${appointment.time}`));
+  }, [appts, leads, filters]);
+
   // Top 3 days by route fit (days with existing nearby stops beat empty days).
   const topDays = useMemo(() => {
     const rank = (s: DaySummary) => {
@@ -227,33 +254,33 @@ function BookingPlannerView({
       return s.offZone ? base + 10000 : base;
     };
     return new Set(
-      [...days].filter((s) => rank(s) < Infinity).sort((a, b) => rank(a) - rank(b)).slice(0, 3).map((s) => s.date)
+      [...visibleDays].filter((s) => rank(s) < Infinity).sort((a, b) => rank(a) - rank(b)).slice(0, 3).map((s) => s.date)
     );
-  }, [days]);
+  }, [visibleDays]);
 
   // ── Selection ──
   const valueDate = /^(\d{4}-\d{2}-\d{2})/.exec(value || "")?.[1];
   const valueTime = /T(\d{2}:\d{2})/.exec(value || "")?.[1];
   const [chosenDay, setChosenDay] = useState<string | null>(valueDate ?? null);
-  const selectedDay = days.find((d) => d.date === chosenDay) ?? days.find((d) => topDays.has(d.date)) ?? days[0];
+  const selectedDay = visibleDays.find((d) => d.date === chosenDay) ?? visibleDays.find((d) => topDays.has(d.date)) ?? visibleDays[0];
   const [chosenTime, setChosenTime] = useState<string | null>(valueTime ?? null);
-  const selectedTime = selectedDay && chosenTime && selectedDay.free.includes(chosenTime) ? chosenTime : null;
+  const selectedTime = selectedDay && selectedDay.date === chosenDay && chosenTime && selectedDay.free.includes(chosenTime) ? chosenTime : null;
 
   const timeline = useMemo(() => {
     if (!selectedDay) return [];
     const rows: ({ kind: "stop"; stop: PlannerStop } | { kind: "free"; time: string; fit: SlotFit | null })[] = [
-      ...selectedDay.stops.map((stop) => ({ kind: "stop" as const, stop })),
+      ...selectedDay.stops.filter(stop => visibleStops.has(`${stop.leadId}:${stop.type}:${selectedDay.date}:${stop.time}`)).map((stop) => ({ kind: "stop" as const, stop })),
       ...selectedDay.free.map((time) => ({ kind: "free" as const, time, fit: target ? scoreSlot(target, time, selectedDay.stops, rules, type) : null })),
     ];
     return rows.sort((a, b) => (a.kind === "stop" ? a.stop.time : a.time).localeCompare(b.kind === "stop" ? b.stop.time : b.time));
-  }, [selectedDay, target, rules, type]);
+  }, [selectedDay, target, rules, type, visibleStops]);
 
   const mapItems: DispatchMapItem[] = useMemo(() => {
     if (!selectedDay) return [];
     const asLead = (id: string, name: string, address?: string, suburb?: string) =>
       ({ id, name, address: address || suburb || "", city: suburb || "" }) as unknown as Lead;
     const items: DispatchMapItem[] = selectedDay.stops
-      .filter((s) => s.address || s.suburb)
+      .filter((s) => (s.address || s.suburb) && visibleStops.has(`${s.leadId}:${s.type}:${selectedDay.date}:${s.time}`))
       .map((s) => ({ lead: asLead(s.leadId, s.name, s.address, s.suburb), type: s.type, time: s.time }));
     // Always show the customer's address marker — even before a slot is picked.
     // If a slot is selected, use that time so the marker lands in timeline order;
@@ -267,7 +294,7 @@ function BookingPlannerView({
       });
     }
     return items.sort((a, b) => a.time.localeCompare(b.time));
-  }, [selectedDay, selectedTime, lead.id, lead.name, lead.address, lead.city, type]);
+  }, [selectedDay, selectedTime, lead.id, lead.name, lead.address, lead.city, type, visibleStops]);
 
   const selectedHours = selectedDay ? dayHours(rules, type, weekdayOf(selectedDay.date), selectedDay.date) : null;
 
@@ -278,6 +305,7 @@ function BookingPlannerView({
     <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-stretch justify-center p-0 sm:p-4">
       <div className="bg-white sm:rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col overflow-hidden text-xs">
         {/* Header */}
+        <div className="shrink-0 max-h-[45dvh] overflow-y-auto">
         <div className="flex flex-wrap items-start gap-3 px-4 py-3 border-b border-slate-100">
           <div className="min-w-0">
             <h2 className="text-base font-black text-slate-900">Plan {typeLabel.toLowerCase()} — {lead.name || "Customer"}</h2>
@@ -294,6 +322,8 @@ function BookingPlannerView({
           <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer" aria-label="Close planner">
             <X className="w-5 h-5" />
           </button>
+        </div>
+        {filterControls}
         </div>
 
         <div className={`mx-4 mt-3 p-2.5 rounded-xl border flex flex-wrap items-center gap-x-2 gap-y-1 ${zoneStyle.bg} border-slate-200`}>
@@ -325,12 +355,14 @@ function BookingPlannerView({
           <div className="p-10 flex items-center justify-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading bookings…</div>
         ) : days.length === 0 ? (
           <div className="p-10 text-center text-slate-500">No bookable {typeLabel.toLowerCase()} days in the next {MAX_DAYS} days. Check Settings → Booking Hours.</div>
+        ) : visibleDays.length === 0 ? (
+          <div className="p-10 text-center text-slate-500">No planning days match this date range. Choose dates within the next {MAX_DAYS} days or reset filters.</div>
         ) : (
           <>
             {/* Day strip */}
             <div className="px-4 pt-3">
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {days.map((d) => {
+                {visibleDays.map((d) => {
                   const { wd, dm } = dayLabel(d.date);
                   const active = d.date === selectedDay?.date;
                   const fit = d.best?.fit;
@@ -347,7 +379,7 @@ function BookingPlannerView({
                         <span className="font-black text-slate-900">{wd} {dm}</span>
                         {topDays.has(d.date) && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 ml-auto" aria-label="Top pick" />}
                       </div>
-                      <div className="text-[10px] text-slate-500">{d.free.length} free · {d.stops.length} booked</div>
+                      <div className="text-[10px] text-slate-500">{d.free.length} free · {d.stops.filter(stop => visibleStops.has(`${stop.leadId}:${stop.type}:${d.date}:${stop.time}`)).length} shown / {d.stops.length} booked</div>
                       {d.offZone && (
                         <div className="mt-0.5 text-[10px] font-bold text-amber-700 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3 shrink-0" /> Off-zone
@@ -407,8 +439,12 @@ function BookingPlannerView({
                       key={`f-${row.time}`}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setChosenTime(row.time)}
-                      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setChosenTime(row.time)}
+                      onClick={() => { setChosenDay(selectedDay!.date); setChosenTime(row.time); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault(); setChosenDay(selectedDay!.date); setChosenTime(row.time);
+                        }
+                      }}
                       className={`rounded-xl border px-3 py-2 cursor-pointer transition-colors ${
                         active ? "border-green-600 ring-2 ring-green-200 bg-green-50" : "border-dashed border-emerald-300 hover:bg-emerald-50/60"
                       }`}
