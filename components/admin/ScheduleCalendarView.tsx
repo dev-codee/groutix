@@ -44,6 +44,7 @@ import {
   AlertCircle,
   Search,
 } from "lucide-react";
+import { BookingMapPlanner } from "@/components/admin/BookingMapPlanner";
 import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import { AutoPlanRouteButton } from "@/components/admin/AutoPlanRouteButton";
@@ -321,6 +322,7 @@ function SelectedBookingSidebar({
   onMoveToAnotherDay,
   onRemoveFromRoute,
   onViewDetails,
+  onPlanOnMap,
   onUpdateRoute,
   hasChanges,
 }: {
@@ -333,6 +335,7 @@ function SelectedBookingSidebar({
   onMoveToAnotherDay: () => void;
   onRemoveFromRoute: () => void;
   onViewDetails: () => void;
+  onPlanOnMap: () => void;
   onUpdateRoute: () => void;
   hasChanges: boolean;
 }) {
@@ -384,6 +387,11 @@ function SelectedBookingSidebar({
           View Details
         </button>
       </div>
+
+      <button type="button" onClick={onPlanOnMap}
+        className="mx-4 mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+        <MapPin className="h-3.5 w-3.5" />Plan on Map
+      </button>
 
       {/* Quick actions */}
       <div className="p-4 space-y-2 border-b border-slate-100">
@@ -636,6 +644,7 @@ function JobListPanel({
   onDragEnd,
   onDropBooking,
   onReschedule,
+  onPlanOnMap,
   onRemove,
   onAddBooking,
   dateStr,
@@ -650,6 +659,7 @@ function JobListPanel({
   onDragEnd: () => void;
   onDropBooking: (event: React.DragEvent, date: string, targetId?: string) => void;
   onReschedule: (entry: ScheduleEntry) => void;
+  onPlanOnMap: (entry: ScheduleEntry) => void;
   onRemove: (entry: ScheduleEntry) => void;
   onAddBooking: () => void;
   dateStr: string;
@@ -727,6 +737,11 @@ function JobListPanel({
                 <p className="text-[10px] text-slate-500" title="Estimated distance between suburbs in visit order">{scheduleDistanceLabel(listDetails.get(entry.id)!)}</p>
               </div>
 
+              <button type="button" disabled={disabled}
+                onClick={event => { event.stopPropagation(); onPlanOnMap(entry); }}
+                className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
+                Plan on Map
+              </button>
               <button type="button" aria-label={`Edit booking for ${entry.customer?.name || "Customer"}`}
                 disabled={disabled} onClick={event => { event.stopPropagation(); onReschedule(entry); }}
                 className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50">
@@ -791,6 +806,7 @@ export function ScheduleCalendarView({
       technician: entry?.technician || lead?.technician, technicianUsername: entry?.technicianUsername || lead?.technicianUsername,
     });
   };
+  const [plannerBooking, setPlannerBooking] = useState<ScheduleEntry | null>(null);
   const [editBookingEntry, setEditBookingEntry] = useState<ScheduleEntry | null>(null);
   const [rescheduleModal, setRescheduleModal] = useState<RescheduleModal | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -1266,6 +1282,7 @@ export function ScheduleCalendarView({
                   onDropBooking={dropBooking}
                   color={planningDayColor(dayIndex)}
                   disabled={routeSaving || !!loadError}
+                  onPlanOnMap={entry => { if (discardChanges()) setPlannerBooking(entry); }}
                   onReschedule={entry => { if (discardChanges()) setEditBookingEntry(entry); }}
                   onRemove={openRemove}
                   onAddBooking={() => { setBookingPreset(selectedPlanningLead ? { leadId: selectedPlanningLead.lead.id, type: selectedPlanningLead.type } : undefined); setBookingTime(suggestTime(selectedPlanningLead?.type || "inspection", date, undefined, selectedPlanningLead?.lead.id)); setBookingDate(date); }}
@@ -1322,6 +1339,7 @@ export function ScheduleCalendarView({
               onRemoveFromRoute={() => openRemove(selectedEntry)}
               onUpdateRoute={previewSave}
               hasChanges={hasChanges}
+              onPlanOnMap={() => { if (discardChanges()) setPlannerBooking(selectedEntry); }}
               onViewDetails={() => onOpenLead(selectedEntry.leadId)}
             />
           </div>
@@ -1389,6 +1407,10 @@ export function ScheduleCalendarView({
           <div className="flex justify-end gap-2"><button type="button" disabled={removing} onClick={() => setRemovingEntry(null)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Keep Booking</button><button type="button" disabled={removing} onClick={() => void removeFromRoute()} className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer">{removing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{removing ? "Removing…" : "Remove Booking"}</button></div>
         </div>
       </div>}
+
+      {plannerBooking && <BookingMapPlanner key={plannerBooking.id} booking={plannerBooking} leads={leads}
+        onClose={() => setPlannerBooking(null)}
+        onSaved={(date, message) => { setPlannerBooking(null); showToast(message, true); if (visibleDates.includes(date)) void load(); else setCurrentDate(date); onBookingsChanged?.(); }} />}
 
       {editBookingEntry && <EditBookingModal key={editBookingEntry.id}
         lead={(() => {

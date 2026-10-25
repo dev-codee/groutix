@@ -1,10 +1,16 @@
 "use client";
 
-import { leadBookings, isPrimaryBooking } from "@/lib/leadBookings";
+import { bookingLead, leadBookings, isPrimaryBooking } from "@/lib/leadBookings";
 import { staffPlanningRules } from "@/lib/staffBookingRules";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { X, Loader2, MapPin, Star, AlertTriangle, Home, Navigation, RefreshCw } from "lucide-react";
+import { useAdminPageCtx } from "./AdminPageContext";
+import { PlannerLeadPicker } from "./PlannerLeadPicker";
+import { EditBookingModal } from "./modals/EditBookingModal";
+import { bookingEndForDuration } from "@/lib/bookingSpan";
+import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
+import { staffBookingRules } from "@/lib/staffBookingRules";
 import { DispatchMap, type DispatchMapItem } from "@/components/admin/DispatchMap";
 import type { Lead } from "@/components/admin/types";
 import { appointmentDurationMinutes } from "@/lib/bookingDuration";
@@ -72,19 +78,67 @@ interface DaySummary {
   offZone: boolean;
 }
 
-export function BookingPlanner({
-  type,
-  lead,
-  value,
-  onPick,
-  onClose,
-}: {
+type BookingPlannerProps = {
   type: BookingType;
   lead: Partial<Lead>;
   value: string | undefined;
   onPick: (value: string) => void;
   onClose: () => void;
-}) {
+};
+
+export function BookingPlanner(props: BookingPlannerProps) {
+  const { leads } = useAdminPageCtx();
+  const rules = staffBookingRules(useBookingRules());
+  const [selection, setSelection] = useState<{ lead: Lead; type: BookingType } | null>(null);
+  const [proposedStart, setProposedStart] = useState<string>();
+  const [revision, setRevision] = useState(0);
+  const picked = useRef(false);
+  const type = selection?.type || props.type;
+  const refreshed = selection && leads.find(lead => lead.id === selection.lead.id);
+  const refreshedVisit = refreshed && leadBookings(refreshed).find(visit => visit.type === type &&
+    (selection?.lead.activeBooking?.bookingId ? visit.bookingId === selection.lead.activeBooking.bookingId : isPrimaryBooking(refreshed, visit)));
+  const lead = refreshed && refreshedVisit ? bookingLead(refreshed, refreshedVisit) : selection?.lead || props.lead;
+  const value = selection ? (type === "job" ? lead.jobAt : lead.inspectionAt) : props.value;
+
+  const switchLead = (customer: Lead, bookingType: BookingType) => {
+    picked.current = false;
+    setProposedStart(undefined);
+    if (customer.id === props.lead.id && bookingType === props.type) {
+      setSelection(null);
+      return;
+    }
+    const visits = leadBookings(customer).filter(visit => visit.type === bookingType);
+    const visit = visits.find(visit => isPrimaryBooking(customer, visit)) || visits[0];
+    setSelection({ lead: visit ? bookingLead(customer, visit) : customer, type: bookingType });
+  };
+
+  return <>
+    <BookingPlannerView key={`${lead.id}:${type}:${revision}`} type={type} lead={lead} value={value}
+      headerControls={<PlannerLeadPicker leads={leads} currentLead={lead} type={type} onSelect={switchLead} />}
+      onPick={value => {
+        if (!selection) { props.onPick(value); return; }
+        picked.current = true;
+        setProposedStart(value);
+      }}
+      onClose={() => { if (!picked.current) props.onClose(); }} />
+    {proposedStart && selection && <div className="fixed inset-0 z-[80]">
+      <EditBookingModal lead={lead as Lead} type={type} proposedStart={proposedStart}
+        proposedEnd={bookingEndForDuration(type, proposedStart, savedLeadBookingMinutes(lead, type), rules)}
+        onClose={() => { setProposedStart(undefined); picked.current = false; }}
+        onSaved={() => { setProposedStart(undefined); picked.current = false; setRevision(value => value + 1); }} />
+    </div>}
+  </>;
+}
+
+function BookingPlannerView({
+
+  type,
+  lead,
+  value,
+  onPick,
+  onClose,
+  headerControls,
+}: BookingPlannerProps & { headerControls?: ReactNode }) {
   const rules = staffPlanningRules(useBookingRules());
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
@@ -224,7 +278,7 @@ export function BookingPlanner({
     <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-stretch justify-center p-0 sm:p-4">
       <div className="bg-white sm:rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col overflow-hidden text-xs">
         {/* Header */}
-        <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-100">
+        <div className="flex flex-wrap items-start gap-3 px-4 py-3 border-b border-slate-100">
           <div className="min-w-0">
             <h2 className="text-base font-black text-slate-900">Plan {typeLabel.toLowerCase()} — {lead.name || "Customer"}</h2>
             <p className="text-slate-500 flex items-center gap-1 truncate">
@@ -233,7 +287,8 @@ export function BookingPlanner({
               {fromBase != null && <span className="text-slate-400">· {fromBase} km ({driveMinutes(fromBase)} min) from base</span>}
             </p>
           </div>
-          <button type="button" onClick={() => setTick((n) => n + 1)} className="ml-auto p-2 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer" title="Refresh bookings" aria-label="Refresh">
+          {headerControls}
+          <button type="button" onClick={() => setTick((n) => n + 1)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer" title="Refresh bookings" aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer" aria-label="Close planner">

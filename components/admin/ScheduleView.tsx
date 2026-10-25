@@ -11,6 +11,7 @@ import { useTechnicians } from "@/lib/useTechnicians";
 import { scheduleListDetails, scheduleDistanceLabel } from "@/lib/scheduleList";
 import type { TechnicianAssignment } from "@/lib/bookingCapacity";
 import { CopyableAddress } from "@/components/admin/CopyableAddress";
+import { BookingMapPlanner } from "@/components/admin/BookingMapPlanner";
 import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
 import { bookingLead, leadBookings } from "@/lib/leadBookings";
 import type { Lead } from "@/components/admin/types";
@@ -71,6 +72,7 @@ export function ScheduleView({
   const [search, setSearch] = useState("");
   const [type, setType] = useState<"all" | "inspection" | "job">("all");
   const [editingBooking, setEditingBooking] = useState<BookingEntry | null>(null);
+  const [plannerBooking, setPlannerBooking] = useState<BookingEntry | null>(null);
   const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
@@ -237,13 +239,13 @@ export function ScheduleView({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenLead(b.leadId, b.date, "view", b.id);
+                          setPlannerBooking(b);
                         }}
                         className="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                        title="Open Calendar & Route for this booking"
+                        title="Plan on Map for this booking"
                       >
                         <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                        <span>View Map</span>
+                        <span>Plan on Map</span>
                       </button>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity hidden lg:block text-slate-400">
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -256,6 +258,9 @@ export function ScheduleView({
           ))}
         </div>
       )}
+      {plannerBooking && <BookingMapPlanner key={plannerBooking.id} booking={plannerBooking} leads={leads}
+        onClose={() => setPlannerBooking(null)}
+        onSaved={() => { setPlannerBooking(null); void load(); onBookingsChanged?.(); }} />}
       {editingBooking && <EditBookingModal key={editingBooking.id}
         lead={(() => {
           const lead = leads.find(lead => lead.id === editingBooking.leadId)
