@@ -3,7 +3,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
 import type { SupportMessage } from "@/lib/supportKnowledge";
-import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
+import { sendEmail, isInternalEmailAlertEnabled, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 
 export const runtime = "nodejs";
 // Room for the send retry sequence before the platform tears the instance down.
@@ -150,15 +150,19 @@ export async function POST(req: NextRequest) {
       ${transcriptHtml(transcript)}`;
 
   const logoUrl = await getEmailLogoUrl();
+  let internalSent = false;
   try {
-    await sendEmail({
-      toEmail: TO_EMAIL,
-      fromName: "Groutix Support Chat",
-      fromEmail: FROM_EMAIL,
-      replyTo: email,
-      subject: `New Support Request: ${name}`,
-      html: wrapEmailHtml(internalHtml, `New support request received from ${name}.`, logoUrl),
-    });
+    if (isInternalEmailAlertEnabled()) {
+      await sendEmail({
+        toEmail: TO_EMAIL,
+        fromName: "Groutix Support Chat",
+        fromEmail: FROM_EMAIL,
+        replyTo: email,
+        subject: `New Support Request: ${name}`,
+        html: wrapEmailHtml(internalHtml, `New support request received from ${name}.`, logoUrl),
+      });
+      internalSent = true;
+    }
   } catch (error) {
     console.error("Support ticket email error:", error);
     return NextResponse.json(
@@ -177,7 +181,7 @@ export async function POST(req: NextRequest) {
     transcript,
     ip,
     userAgent: req.headers.get("user-agent") || undefined,
-    emailDelivered: true,
+    emailDelivered: internalSent,
   });
 
   const CONTACT_PHONE =

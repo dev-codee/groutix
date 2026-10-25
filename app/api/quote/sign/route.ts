@@ -6,7 +6,7 @@ import { verifyQuoteToken } from "@/lib/quoteToken";
 import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
-import { sendEmail, wrapEmailHtml, getEmailLogoUrl, EmailAttachment } from "@/lib/email";
+import { sendEmail, isInternalEmailAlertEnabled, wrapEmailHtml, getEmailLogoUrl, EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 
 export const runtime = "nodejs";
@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    sendEmail({
+    if (isInternalEmailAlertEnabled()) sendEmail({
       toEmail: adminEmail,
       subject: `🎉 Signed Quote Returned: ${quoteNumber} — ${resolvedSignerName}`,
       html: adminHtml,

@@ -25,6 +25,11 @@ export type SendEmailArgs = {
 
 let cachedTransporter: nodemailer.Transporter | null = null;
 
+/** Internal CRM alerts are opt-in; customer emails are always sent normally. */
+export function isInternalEmailAlertEnabled(): boolean {
+  return process.env.CRM_EMAIL_ALERTS_ENABLED === "true";
+}
+
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
@@ -187,7 +192,7 @@ export async function sendReplyNotification(args: {
   snippet?: string;
   leadId?: string;
 }): Promise<void> {
-  if (!isEmailConfigured()) return;
+  if (!isInternalEmailAlertEnabled() || !isEmailConfigured()) return;
   const recipients = getNotifyRecipients();
   if (recipients.length === 0) return;
 
@@ -234,7 +239,7 @@ export async function sendInternalAlert(args: {
   leadId?: string;
   accent?: string; // header colour
 }): Promise<void> {
-  if (!isEmailConfigured()) return;
+  if (!isInternalEmailAlertEnabled() || !isEmailConfigured()) return;
   const recipients = getNotifyRecipients();
   if (recipients.length === 0) return;
 

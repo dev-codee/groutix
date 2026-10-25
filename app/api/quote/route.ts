@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
 import { recordSubmission, updateEmailDelivered } from "@/lib/submissions";
 import { getSiteContent } from "@/lib/siteContentServer";
-import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
+import { sendEmail, isInternalEmailAlertEnabled, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildBookingUrl, buildBookingSmsUrl } from "@/lib/bookingToken";
 import { resolveArea, getAvailableDaysSummary, computeAvailability, shortlistDays, isSlotOffered, inspectionDaysText } from "@/lib/scheduling";
@@ -451,16 +451,18 @@ export async function POST(req: NextRequest) {
     let internalSent = false;
     const logoUrl = await getEmailLogoUrl();
     try {
-      await sendEmail({
-        toEmail: TO_EMAIL,
-        fromName: INTERNAL_FROM_NAME,
-        fromEmail: FROM_EMAIL,
-        replyTo: email || undefined,
-        subject: `New Quote Request: ${fullName || "Website"}`,
-        html: wrapEmailHtml(internalHtml, undefined, logoUrl),
-        attachments: attachments.length ? attachments : undefined,
-      });
-      internalSent = true;
+      if (isInternalEmailAlertEnabled()) {
+        await sendEmail({
+          toEmail: TO_EMAIL,
+          fromName: INTERNAL_FROM_NAME,
+          fromEmail: FROM_EMAIL,
+          replyTo: email || undefined,
+          subject: `New Quote Request: ${fullName || "Website"}`,
+          html: wrapEmailHtml(internalHtml, undefined, logoUrl),
+          attachments: attachments.length ? attachments : undefined,
+        });
+        internalSent = true;
+      }
     } catch (err) {
       logSendError("internal notification", err);
     }
