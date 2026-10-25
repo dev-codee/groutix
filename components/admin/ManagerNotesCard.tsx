@@ -10,7 +10,7 @@ export function ManagerNotesCard() {
   const [savedSecondaryText, setSavedSecondaryText] = useState("");
   const [columns, setColumns] = useState<1 | 2>(1);
   const [savedColumns, setSavedColumns] = useState<1 | 2>(1);
-  const [visibility, setVisibility] = useState<"expanded" | "minimized" | "hidden">("expanded");
+  const [visibility, setVisibility] = useState<"expanded" | "minimized" | "hidden">("hidden");
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

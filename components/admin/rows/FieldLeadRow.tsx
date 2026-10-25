@@ -170,9 +170,9 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
-            <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
+          <div className="flex items-start gap-1.5 text-xs text-slate-700 font-medium min-w-0">
+            <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+            <span className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
 
           <div className="pt-1 flex gap-1.5">

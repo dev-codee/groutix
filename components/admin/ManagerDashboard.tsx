@@ -829,37 +829,34 @@ export function ManagerDashboard() {
       statuses: ["Inspection Completed"],
     },
     {
-      label: "Quote",
-      // Inspection done → quote must be built and sent now.
-      count: scopedLeads.filter((l) =>
-        l.status === "Inspection Completed" || l.status === "Quote Pending"
-      ).length,
-      icon: <FileText className="w-4 h-4 text-orange-600" />,
-      iconBg: "bg-orange-100",
-      cardBg: "bg-orange-50/80 border-orange-200/90 text-orange-800",
-      countColor: "text-orange-600",
-      statuses: ["Inspection Completed", "Quote Pending"],
-    },
-    {
       label: "Quote waiting for approval",
       // Quote sent → waiting for customer to accept / negotiate.
       count: scopedLeads.filter((l) =>
-        l.status === "Quote Sent" || l.status === "Negotiation" || l.status === "Won"
+        l.status === "Quote Sent" || l.status === "Negotiation"
       ).length,
       icon: <Briefcase className="w-4 h-4 text-amber-700" />,
       iconBg: "bg-amber-200/70",
       cardBg: "bg-amber-100/70 border-amber-300 text-amber-900",
       countColor: "text-amber-700",
-      statuses: ["Quote Sent", "Negotiation", "Won"],
+      statuses: ["Quote Sent", "Negotiation"],
+    },
+    {
+      label: "Quote Accepted",
+      count: scopedLeads.filter((l) => l.status === "Won").length,
+      icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
+      iconBg: "bg-emerald-100",
+      cardBg: "bg-emerald-50/80 border-emerald-200/90 text-emerald-800",
+      countColor: "text-emerald-600",
+      statuses: ["Won"],
     },
     {
       label: "Job Booked",
-      count: scopedLeads.filter((l) => l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed" || l.status === "Won").length,
+      count: scopedLeads.filter((l) => l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed").length,
       icon: <CalendarDays className="w-4 h-4 text-blue-600" />,
       iconBg: "bg-blue-100",
       cardBg: "bg-blue-50/80 border-blue-200/90 text-blue-800",
       countColor: "text-blue-600",
-      statuses: ["Job Booked", "Scheduled", "Job Confirmed", "Won"],
+      statuses: ["Job Booked", "Scheduled", "Job Confirmed"],
     },
     {
       label: "Job In Progress",
