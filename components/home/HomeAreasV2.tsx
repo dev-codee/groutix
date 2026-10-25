@@ -1,18 +1,16 @@
 "use client";
 
-// Service areas block for the new homepage.
-// - Availability comes from the same live lookup as before (/api/suburb-check).
-// - The map is Google Maps (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, the key the dispatch and
-//   tracking maps already use). It only loads when the section scrolls into view.
-// - Searched suburbs are placed using the coordinates in lib/scheduling (SUBURBS),
-//   falling back to Google's geocoder for anything not in that list.
+// Service areas block for the new homepage (also used on the V2 service pages).
+// - Availability comes from the live lookup (/api/suburb-check).
+// - The map is a no-key Google Maps embed of the business location
+//   (82A Marigold Cres, Gowanbrae). It replaces the previous JS-API map, whose
+//   browser key sits in a Google Cloud project that Google has disabled —
+//   the embed needs no API key, so it cannot break that way again.
+// - The suburb checker, regions and popular-suburb links are unchanged.
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
-import { LocateFixed } from "lucide-react";
 import { useContact } from "@/components/SiteContentProvider";
-import { BASE_LOCATION, SUBURBS } from "@/lib/scheduling";
 
 const REGIONS: [string, string][] = [
   ["Melbourne", "/locations/melbourne"],
@@ -39,149 +37,26 @@ const POPULAR: [string, string][] = [
   ["Brunswick", "/locations/melbourne/brunswick"],
 ];
 
-const SERVICE_RADIUS_M = 50_000;
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-let mapsPromise: Promise<typeof google> | null = null;
-function loadMaps(key: string): Promise<typeof google> {
-  if (!mapsPromise) {
-    setOptions({ key, v: "weekly" });
-    mapsPromise = Promise.all([importLibrary("maps"), importLibrary("geocoding")])
-      .then(() => google)
-      .catch((err) => {
-        mapsPromise = null;
-        throw err;
-      });
-  }
-  return mapsPromise;
-}
-
 type Result = { available: boolean; suburb: string } | { error: true };
-type LatLng = { lat: number; lng: number };
 
 const pill =
   "inline-flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium text-slate-900 transition-colors hover:border-[#001F97] hover:text-[#001F97]";
 
-/* ───────────── Map ───────────── */
-function ServiceMap({ target }: { target: (LatLng & { label: string; ok: boolean }) | null }) {
-  const box = useRef<HTMLDivElement>(null);
-  const map = useRef<google.maps.Map | null>(null);
-  const pin = useRef<google.maps.Marker | null>(null);
-  const me = useRef<google.maps.Marker | null>(null);
-  const [visible, setVisible] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(!MAPS_KEY);
-  const [locating, setLocating] = useState(false);
-  const [locError, setLocError] = useState("");
+const MAP_EMBED_SRC =
+  "https://www.google.com/maps?q=Groutix,%2082A%20Marigold%20Cres,%20Gowanbrae%20VIC%203043&z=13&output=embed";
 
-  // Load Google Maps only once the map is near the viewport.
-  useEffect(() => {
-    const el = box.current;
-    if (!el || !MAPS_KEY) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        setVisible(true);
-        io.disconnect();
-      }
-    }, { rootMargin: "300px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  const showMe = useCallback((pos: GeolocationPosition) => {
-    if (!map.current) return;
-    const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    if (!me.current) {
-      me.current = new google.maps.Marker({
-        map: map.current,
-        position: p,
-        title: "Your location",
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#2F63CC", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 3 },
-      });
-    } else me.current.setPosition(p);
-    map.current.panTo(p);
-    map.current.setZoom(12);
-  }, []);
-
-  useEffect(() => {
-    if (!visible || !MAPS_KEY) return;
-    let cancelled = false;
-    loadMaps(MAPS_KEY)
-      .then((g) => {
-        if (cancelled || !box.current || map.current) return;
-        map.current = new g.maps.Map(box.current, {
-          center: { lat: -37.83, lng: 144.96 },
-          zoom: 9,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          clickableIcons: false,
-          gestureHandling: "cooperative",
-        });
-        new g.maps.Circle({
-          map: map.current,
-          center: BASE_LOCATION,
-          radius: SERVICE_RADIUS_M,
-          strokeColor: "#2F63CC",
-          strokeOpacity: 0.6,
-          strokeWeight: 1.5,
-          fillColor: "#2F63CC",
-          fillOpacity: 0.08,
-          clickable: false,
-        });
-        new g.maps.Marker({ map: map.current, position: BASE_LOCATION, title: "Groutix base, Gowanbrae" });
-        setReady(true);
-        // Centre on the visitor only if they've already allowed location for this site (no surprise prompt).
-        navigator.permissions?.query({ name: "geolocation" as PermissionName })
-          .then((st) => { if (st.state === "granted") navigator.geolocation.getCurrentPosition(showMe, () => {}); })
-          .catch(() => {});
-      })
-      .catch(() => !cancelled && setFailed(true));
-    return () => { cancelled = true; };
-  }, [visible, showMe]);
-
-  // Move to the searched suburb.
-  useEffect(() => {
-    if (!ready || !map.current || !target) return;
-    const p = { lat: target.lat, lng: target.lng };
-    if (!pin.current) pin.current = new google.maps.Marker({ map: map.current, position: p, title: target.label });
-    else {
-      pin.current.setPosition(p);
-      pin.current.setTitle(target.label);
-    }
-    map.current.panTo(p);
-    map.current.setZoom(13);
-  }, [ready, target]);
-
-  const locate = () => {
-    if (!navigator.geolocation) return setLocError("Your browser can't share its location.");
-    setLocating(true);
-    setLocError("");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setLocating(false); showMe(pos); },
-      () => { setLocating(false); setLocError("Location is turned off for this site. Search your suburb instead."); },
-      { enableHighAccuracy: false, timeout: 10000 }
-    );
-  };
-
+/* ───────────── Map (no-key embed of the business location) ───────────── */
+function ServiceMap() {
   return (
     <div className="relative h-full min-h-[320px] overflow-hidden rounded-xl border border-slate-300 bg-[#E3E6EC] lg:min-h-[560px]">
-      <div ref={box} className="absolute inset-0" role="region" aria-label="Map of the Groutix service area" />
-      {!ready && (
-        <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-slate-600">
-          {failed ? "Map unavailable right now. Use the suburb checker to confirm your area." : "Loading map…"}
-        </div>
-      )}
-      {ready && (
-        <div className="absolute left-3 top-3 flex flex-col items-start gap-2">
-          <button type="button" onClick={locate} disabled={locating}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#001F97] shadow-[0_2px_10px_rgba(15,23,42,0.18)] hover:bg-slate-50 disabled:opacity-70">
-            <LocateFixed className="h-4 w-4" aria-hidden="true" />
-            {locating ? "Finding you…" : "Show my location"}
-          </button>
-          {locError && <span className="max-w-[260px] rounded-lg bg-white px-3 py-2 text-xs text-slate-700 shadow">{locError}</span>}
-        </div>
-      )}
+      <iframe
+        src={MAP_EMBED_SRC}
+        title="Map showing the Groutix location — 82A Marigold Cres, Gowanbrae VIC 3043"
+        className="absolute inset-0 h-full w-full border-0"
+        loading="lazy"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
+      />
     </div>
   );
 }
@@ -192,21 +67,6 @@ export default function HomeAreasV2() {
   const [query, setQuery] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
-  const [target, setTarget] = useState<(LatLng & { label: string; ok: boolean }) | null>(null);
-
-  const locateQuery = async (q: string, suburb: string): Promise<LatLng | null> => {
-    const known = SUBURBS.find((s) => s.name === suburb.toLowerCase()) || SUBURBS.find((s) => s.name === q.toLowerCase());
-    if (known) return { lat: known.lat, lng: known.lng };
-    if (!MAPS_KEY) return null;
-    try {
-      const g = await loadMaps(MAPS_KEY);
-      const { results } = await new g.maps.Geocoder().geocode({ address: `${q}, VIC, Australia`, componentRestrictions: { country: "AU" } });
-      const loc = results[0]?.geometry.location;
-      return loc ? { lat: loc.lat(), lng: loc.lng() } : null;
-    } catch {
-      return null;
-    }
-  };
 
   const check = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,10 +81,7 @@ export default function HomeAreasV2() {
       if (!r.ok) throw new Error();
       const d = await r.json();
       const suburb: string = d.suburb || q;
-      const ok = Boolean(d.available);
-      setResult({ available: ok, suburb });
-      const p = await locateQuery(q, suburb);
-      if (p) setTarget({ ...p, label: suburb, ok });
+      setResult({ available: Boolean(d.available), suburb });
     } catch {
       setResult({ error: true });
     } finally {
@@ -239,7 +96,7 @@ export default function HomeAreasV2() {
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-8">
-      <ServiceMap target={target} />
+      <ServiceMap />
 
       <div className="flex flex-col gap-7">
         {/* Suburb checker */}
