@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   const status = body.status === "Paid" ? "Paid" : "Unpaid";
   const bankName = body.bankName || "ANZ";
   const accountName = body.accountName || "Groutix Pty Ltd";
-  const accountNumber = body.accountNumber || "123456789";
+  const accountNumber = body.accountNumber?.replace(/\s+/g, "") || "";
   const bsb = body.bsb || "013442";
   const dueDate = body.dueDate || "Within 7 days of invoice date";
 

@@ -968,7 +968,7 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   iy -= 12;
   page.drawCircle({ x: bulletX, y: iy + 2.5, size: 1.5, color: INK });
   text("Account Number: ", textX, iy, { size: 8.5, color: INK });
-  text(input.accountNumber || "123456789", textX + font.widthOfTextAtSize("Account Number: ", 8.5), iy, { font: bold, size: 8.5, color: INK });
+  text(input.accountNumber?.replace(/\s+/g, "") || "", textX + font.widthOfTextAtSize("Account Number: ", 8.5), iy, { font: bold, size: 8.5, color: INK });
 
   iy -= 12;
   page.drawCircle({ x: bulletX, y: iy + 2.5, size: 1.5, color: INK });
