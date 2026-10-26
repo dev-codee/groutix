@@ -3,10 +3,12 @@
 // Redesigned /leaking-shower-repair page (also used by /cracked-grout-or-a-leaking-shower).
 // Copy, links and FAQs are the same as components/LeakingShowerPage.tsx (kept for a
 // one-line rollback); only the layout follows the new homepage.
+// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
+// under the hero); every photo live-verified with SEO alt text.
 
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Wrench } from "lucide-react";
+import { Check, Building2, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomeAreasV2 from "@/components/home/HomeAreasV2";
@@ -14,21 +16,23 @@ import { useContact } from "@/components/SiteContentProvider";
 import type { Review } from "@/lib/reviews";
 import { LEAKING_SHOWER_FAQS } from "@/lib/leakingShowerContent";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
+  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
+  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
 const googleReviews = "https://www.google.com/maps/place/Groutix";
 
 /* ───────────── Content (unchanged from the live page) ───────────── */
 // Sign text is the live copy; the photo and link are new for the card layout.
 const signs: PhotoCardData[] = [
-  { title: "Stains or bubbling paint on the wall behind the shower", img: "/img58.jpeg", alt: "Damp, stained wall next to a bathroom", href: "#leak-damage", link: "What a leak can damage" },
-  { title: "A damp or musty smell in the bathroom or next room", img: "/img23.jpeg", alt: "Mould and staining in a damp shower corner", href: "#leak-sources", link: "Where the water comes from" },
-  { title: "A wet patch, swollen skirting or lifting floor near the bathroom", img: "/img37.jpeg", alt: "Water damage on skirting and flooring beside a bathroom", href: "#what-to-do", link: "What to do right now" },
-  { title: "A stain or drip on the ceiling below the shower", img: "/img97.jpeg", alt: "Water damage on a wall and ceiling below a leak", href: "#property-services", link: "Leaks in rentals and apartments", half: true },
-  { title: "Cracked, missing or crumbling grout, or black or peeling silicone", img: "/img54.jpeg", alt: "Cracked, crumbling grout between shower tiles", href: "/shower-regrouting/", link: "Shower regrouting" },
-  { title: "Tiles that sound hollow or feel loose", img: "/img41.jpeg", alt: "Loose and broken tiles on a shower wall", href: "/small-tiling-jobs/", link: "Small tiling jobs" },
+  { title: "Stains or bubbling paint on the wall behind the shower", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage and damp staining on a wall behind a leaking shower in a Melbourne home", href: "#leak-damage", link: "What a leak can damage" },
+  { title: "A damp or musty smell in the bathroom or next room", img: "/shower-regrouting-signs-black-mould.webp", alt: "Mould and staining in a damp shower corner", href: "#leak-sources", link: "Where the water comes from" },
+  { title: "A wet patch, swollen skirting or lifting floor near the bathroom", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Swollen skirting and water damage on flooring beside a leaking bathroom", href: "#what-to-do", link: "What to do right now" },
+  { title: "A stain or drip on the ceiling below the shower", img: "/water stains on the ceiling below.webp", alt: "Water stains on the ceiling below a leaking shower — a classic sign of a shower leak upstairs", href: "#property-services", link: "Leaks in rentals and apartments", half: true },
+  { title: "Cracked, missing or crumbling grout, or black or peeling silicone", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Cracked, crumbling grout between shower tiles", href: "/shower-regrouting/", link: "Shower regrouting" },
+  { title: "Tiles that sound hollow or feel loose", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Cracked, stained grout in a shower corner — loose or hollow tiles often start with grout failure like this", href: "/small-tiling-jobs/", link: "Small tiling jobs" },
 ];
 
 const sources: Array<[string, string, string]> = [
@@ -68,18 +72,18 @@ const whyGroutix = [
 
 // Real Groutix before/after jobs (the live page still shows empty photo placeholders here).
 const beforeAfter = [
-  { src: "/img95.jpeg", alt: "Shower floor before and after repair" },
-  { src: "/img91.jpeg", alt: "Dark tiled shower floor before and after regrouting" },
-  { src: "/img10.jpeg", alt: "Stained floor grout before and after repair" },
-  { src: "/img61.jpeg", alt: "Mouldy wall grout before and after regrouting" },
+  { src: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with failed grout cut out around the drain before a leaking shower repair" },
+  { src: "/shower-floor-regrouting-dark-tiles.webp", alt: "Dark tiled shower floor after regrouting and resealing — the leak source repaired" },
+  { src: "/beige-shower-floor-regrouting-top-view before.webp", alt: "Stained, worn shower floor grout before a leaking shower repair in a Melbourne home" },
+  { src: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Black mould in shower grout and silicone — a common leaking shower sign before repair" },
 ];
 
 const related: PhotoCardData[] = [
-  { text: "Regrouting the whole shower", title: "Shower Regrouting", href: "/shower-regrouting/", img: "/img53.jpeg", alt: "New grout being applied to shower floor tiles", link: "View service" },
-  { text: "Peeling or mouldy silicone", title: "Silicone and Recaulking", href: "/silicone-recaulking", img: "/img50.jpeg", alt: "Old silicone being replaced around a shower screen", link: "View service" },
-  { text: "Balcony leaks", title: "Balcony Leak Repairs and Regrouting", href: "/balcony-leak-repairs", img: "/img76.jpeg", alt: "Tiled balcony in a Melbourne apartment", link: "View service" },
-  { text: "Epoxy grout details", title: "Epoxy Grout", href: "/epoxy-grout", img: "/img59.jpeg", alt: "Floor tiles regrouted with epoxy grout", link: "View service", half: true },
-  { text: "Broken or loose tiles", title: "Small Tiling Jobs", href: "/small-tiling-jobs/", img: "/img2.jpeg", alt: "Tiles being set and grouted on a wall", link: "View service" },
+  { text: "Regrouting the whole shower", title: "Shower Regrouting", href: "/shower-regrouting/", img: "/walk-in-shower-regrouting-wide-view.webp", alt: "Walk-in shower after regrouting in a Melbourne home — fresh epoxy grout and resealed joints", link: "View service" },
+  { text: "Peeling or mouldy silicone", title: "Silicone and Recaulking", href: "/silicone-recaulking", img: "/white-tile-shower-regrouting-overhead after.webp", alt: "Shower screen freshly sealed with new silicone", link: "View service" },
+  { text: "Balcony leaks", title: "Balcony Leak Repairs and Regrouting", href: "/balcony-leak-repairs", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Tiled balcony in a Melbourne apartment", link: "View service" },
+  { text: "Epoxy grout details", title: "Epoxy Grout", href: "/epoxy-grout", img: "/beige-shower-floor-regrouting-top-view after.webp", alt: "Shower floor regrouted with waterproof epoxy grout by Groutix Melbourne", link: "View service", half: true },
+  { text: "Broken or loose tiles", title: "Small Tiling Jobs", href: "/small-tiling-jobs/", img: "/shower-niche-regrouting-close-up.webp", alt: "Tiled shower niche up close — small tiling jobs and niche repairs in Melbourne", link: "View service" },
 ];
 
 /* ───────────── Page ───────────── */
@@ -97,10 +101,63 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO */}
-        <ServiceHero title="Leaking Shower Repairs Melbourne" warrantyNote="On eligible completed repairs">
-          <p>Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
-        </ServiceHero>
+        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        <section className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
+          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div className="text-center lg:text-left">
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Leaking Shower Repairs Melbourne</h1>
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+                <p>Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
+              </div>
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges />
+              </div>
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
+                  <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
+                  <div>
+                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <span className="text-sm text-[#D6DCF5]">On eligible completed repairs</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-white/25 sm:pl-6">
+                  <b className="block text-[28px] font-black leading-none">8,000+</b>
+                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
+              <Image src="/corner-shower-regrouting-worn-grout.webp" alt="Leaking shower repair in Melbourne — a corner shower with worn, failing grout that lets water escape behind the tiles" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
+          </div>
+        </section>
+
+        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
+          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div>
+              <p className={eyebrow}>Free Quote</p>
+              <h2 className={h2}>Get Your Free Leaking Shower Repair Quote</h2>
+              <p className={`${lead} mt-3.5`}>Tell us where the water is showing up and add photos of the stains, grout and silicone. Photos are required, so we can see the problem before we quote.</p>
+              <ul className="mt-6 space-y-2.5">
+                {["Free quote, no obligation", "10-year waterproof warranty on eligible completed repairs", "We find the cause before we repair it"].map((x) => (
+                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+              <QuoteFormV2 />
+            </div>
+          </div>
+        </section>
 
         {/* 3. SIGNS */}
         <Section id="leak-signs" alt>
@@ -108,7 +165,7 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
             <p className={lead}>A leak often shows up away from the shower first. Look for these signs.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} />)}
+            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl md:text-center`}>
             One sign is worth checking. Two or more together mean water is probably getting out. For grout related signs, see our{" "}
@@ -198,7 +255,7 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
               </ol>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/img85.jpeg" alt="Groutix technician repairing shower floor grout" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/grey-shower-floor-envelope-cut-regrouting after.webp" alt="Shower floor after a leaking shower repair — regrouted and resealed with waterproof epoxy" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
@@ -288,7 +345,7 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
         <Section id="related-services" alt>
           <SectionHead title="Related Services" />
           <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-5">
-            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[150px]" sizes="(min-width:1024px) 20vw, 50vw" />)}
+            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" sizes="(min-width:1024px) 20vw, 50vw" />)}
           </div>
         </Section>
 
