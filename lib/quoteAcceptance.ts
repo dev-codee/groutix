@@ -32,16 +32,12 @@ export function isJobBooked(lead: QuoteLead): boolean {
     || Boolean(lead.bookings?.some(booking => booking.type === "job" && (!booking.status || booking.status === "Job Booked"))));
 }
 
-/** Current work queue: inspection finished, quote accepted, job still to book. */
+/** Current work queue: quote accepted, job still to book. */
 export function isAcceptedQuoteAwaitingBooking(lead: QuoteLead): boolean {
-  const inspectionCompleted = lead.status === "Inspection Completed"
-    || lead.inspectionReport?.status === "completed"
-    || (lead.inspectionReport?.status !== "draft" && Boolean(lead.inspectionReport?.completedAt))
-    || lead.bookings?.some(booking => booking.type === "inspection" && booking.status === "Inspection Completed");
   const jobBooked = Boolean(lead.jobAt)
     || lead.bookings?.some(booking => booking.type === "job" && booking.status !== "Cancelled");
   const beforeJob = BEFORE_JOB_STATUSES.includes(lead.status || "");
-  return hasAcceptedQuote(lead) && Boolean(inspectionCompleted) && !jobBooked && beforeJob;
+  return hasAcceptedQuote(lead) && !jobBooked && beforeJob;
 }
 
 /** Used by both dashboard cards and their destination lead list. */

@@ -18,7 +18,7 @@ import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
   getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
-  JOB_STEPS, STATUS_LIST, MANAGER_STATUS_FILTER_LIST, fmtDate, getStepActive,
+  JOB_STEPS, STATUS_LIST, MANAGER_STATUS_OPTIONS_LIST, fmtDate, getStepActive,
   INSPECTION_PHASE, isTerminalStatus, getEffectiveWorkflowStatus,
 } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
@@ -157,11 +157,11 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               {(role === "intake"
                 ? getRoleStatusOptions(role, l.status)
                 : role === "manager" || role === "super_admin"
-                  ? Array.from(new Set([l.status, ...MANAGER_STATUS_FILTER_LIST])).filter(Boolean)
-                  : Array.from(new Set([l.status, ...STATUS_LIST, "Payment Request"])).filter(Boolean)
+                  ? Array.from(new Set([...MANAGER_STATUS_OPTIONS_LIST, l.status])).filter(Boolean)
+                  : Array.from(new Set([...STATUS_LIST, "Payment Request", l.status])).filter(Boolean)
               ).map((s) => (
                 <option key={s} value={s}>
-                  {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Won (Quote Accepted)" : s === "Lost" ? "Lost / Closed" : s}
+                  {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Quote Accepted" : s === "Lost" ? "Lost / Closed" : s}
                 </option>
               ))}
             </select>

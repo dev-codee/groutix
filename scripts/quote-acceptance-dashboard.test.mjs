@@ -4,7 +4,7 @@ import { loadTs } from "./test-ts-loader.mjs";
 
 const { hasAcceptedQuote, isAcceptedQuoteAwaitingBooking, isQuoteWaiting, matchesQuoteStatusFilter, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } = loadTs("lib/quoteAcceptance.ts");
 
-test("acceptance history survives booking but only completed inspections awaiting jobs enter the accepted queue", () => {
+test("acceptance history survives booking but booked, early-stage and progressed leads stay outside the accepted queue", () => {
   for (const status of ["Job Booked", "Inspection Booked", "Payment Pending", "Payment Received", "Completed"]) {
     for (const evidence of [{ quoteAcceptedAt: "2026-10-25" }, { quoteSignedAt: "2026-10-25" }, { quoteSignature: "signature" }, { acceptedCustomerQuoteCount: 1 }]) {
       const lead = { status, ...evidence };
@@ -35,12 +35,12 @@ test("accepted quotes cannot remain in the waiting card or its destination list"
   assert.equal(matchesQuoteStatusFilter({ status: "Scheduled" }, "Job Booked|Scheduled|Job Confirmed"), true);
 });
 
-test("accepted queue requires a completed inspection and excludes booked, progressed and closed jobs", () => {
+test("accepted queue does not require an inspection record and excludes booked, progressed and closed jobs", () => {
   const ready = { status: "Won", quoteAcceptedAt: "2026-10-25", inspectionReport: { status: "completed" } };
   assert.equal(isAcceptedQuoteAwaitingBooking(ready), true);
   assert.equal(matchesQuoteStatusFilter(ready, QUOTE_ACCEPTED_FILTER), true);
-  assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Won" }), false);
-  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, inspectionReport: { status: "draft" } }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Won" }), true);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, inspectionReport: { status: "draft" } }), true);
   assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Inspection Completed", acceptedCustomerQuoteCount: 2 }), true);
   assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Quote Sent", inspectionReport: ready.inspectionReport }), false);
   assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Won", bookings: [{ type: "inspection", status: "Inspection Completed" }] }), true);
@@ -60,6 +60,18 @@ test("accepted queue requires a completed inspection and excludes booked, progre
     assert.equal(matchesQuoteStatusFilter(legacyBooked, "Job Booked|Scheduled|Job Confirmed"), true);
   }
   assert.equal(matchesQuoteStatusFilter({ ...booked, status: "Completed" }, "Job Booked|Scheduled|Job Confirmed"), false);
+});
+
+test("JobNo-1770 appears in both the accepted card and its destination without a completed inspection record", () => {
+  const lead = {
+    jobNo: "JobNo-1770",
+    status: "Won",
+    quoteSentAt: "2026-10-26T19:44:00+11:00",
+    quoteAcceptedAt: "2026-10-26T20:54:00+11:00",
+  };
+  assert.equal(isAcceptedQuoteAwaitingBooking(lead), true);
+  assert.equal(matchesQuoteStatusFilter(lead, QUOTE_ACCEPTED_FILTER), true);
+  assert.equal(isQuoteWaiting(lead), false);
 });
 
 test("admin list loads accepted quote records even when the lead has no acceptance fields", async () => {

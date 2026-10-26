@@ -1,6 +1,7 @@
 import { getDb, isMongoConfigured } from "@/lib/mongodb";
 import { EMAIL_TEMPLATES, type EmailTemplate } from "@/lib/emailTemplates";
 import { cleanEmailText } from "@/lib/email";
+import { CATEGORIZED_EMAIL_TEMPLATES } from "@/lib/categorizedEmailTemplates";
 
 export interface EmailTemplateDoc {
   id: string;
@@ -33,7 +34,22 @@ export async function listDbTemplates(): Promise<EmailTemplate[]> {
         updatedAt: new Date().toISOString(),
       }));
       await col.insertMany(docs);
-      return EMAIL_TEMPLATES;
+    }
+
+    // Apply this catalog once to existing installations. Insert-only updates
+    // preserve staff edits; a migration marker also preserves later deletions.
+    const migrations = db.collection<{ _id: string; appliedAt: string }>("crm_migrations");
+    const migrationId = "categorized_customer_email_templates_2026_10_26";
+    if (!await migrations.findOne({ _id: migrationId })) {
+      const now = new Date().toISOString();
+      await col.bulkWrite(CATEGORIZED_EMAIL_TEMPLATES.map(template => ({
+        updateOne: {
+          filter: { id: template.id },
+          update: { $setOnInsert: { ...template, isCustom: false, createdAt: now, updatedAt: now } },
+          upsert: true,
+        },
+      })));
+      await migrations.updateOne({ _id: migrationId }, { $set: { appliedAt: now } }, { upsert: true });
     }
     const docs = await col.find({}).sort({ createdAt: 1 }).toArray();
 

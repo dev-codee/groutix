@@ -1,5 +1,6 @@
 import { formatEmailPresentation } from "./emailPresentation";
 import { formatAppt } from "./scheduling";
+import { CATEGORIZED_EMAIL_TEMPLATES } from "./categorizedEmailTemplates";
 
 export interface EmailTemplate {
   id: string;
@@ -31,6 +32,8 @@ export interface TemplateContext {
   invoiceNumber?: string;
   inspectionAt?: string;
   jobAt?: string;
+  bookingTime?: string;
+  document?: string;
   amountPaid?: number;
   companyName?: string;
   companyPhone?: string;
@@ -59,11 +62,13 @@ export const DYNAMIC_EMAIL_TAGS: DynamicTagInfo[] = [
   { tag: "{service}", label: "Service", category: "Job & Location", description: "Primary service required or quoted", example: "Shower Regrouting & Sealing" },
   { tag: "{address}", label: "Full Address", category: "Job & Location", description: "Service property address", example: "14 Elm St, Hawthorn VIC 3122" },
   { tag: "{suburb}", label: "Suburb / City", category: "Job & Location", description: "Customer's suburb or locality", example: "Hawthorn" },
+  { tag: "{document}", label: "Document Link", category: "Job & Location", description: "Quote or invoice link; replace manually when no document link is provided", example: "{document}" },
 
   // Schedule
   { tag: "{technician_name}", label: "Specialist / Tech", category: "Schedule", description: "Assigned technician or inspector name", example: "Marco Rossi" },
   { tag: "{inspection_date}", label: "Inspection Date/Time", category: "Schedule", description: "Formatted on-site inspection appointment", example: "Wed, 23 Sep, 10:00 AM" },
   { tag: "{booking_date}", label: "Booking Date/Time", category: "Schedule", description: "Formatted job execution date & time", example: "Fri, 25 Sep, 8:30 AM" },
+  { tag: "{booking_time}", label: "Arrival Time", category: "Schedule", description: "Arrival time for the job or inspection appointment", example: "8:30 am" },
 
   // Billing
   { tag: "{quote_number}", label: "Quote #", category: "Billing", description: "Official quotation reference", example: "GX-9402" },
@@ -107,6 +112,7 @@ export const SAMPLE_TEMPLATE_CONTEXT: TemplateContext = {
 };
 
 export const EMAIL_TEMPLATES: EmailTemplate[] = [
+  ...CATEGORIZED_EMAIL_TEMPLATES,
   {
     id: "initial_enquiry",
     category: "Enquiries & Leads",
@@ -396,6 +402,13 @@ export function renderEmailTemplate(
   const tech = ctx.technician?.trim() || ctx.technicianName?.trim() || ctx.assigned?.trim() || "our specialist";
   const inspectionDate = formatDateTime(ctx.inspectionAt, "Upcoming Inspection (Date TBC)");
   const bookingDate = formatDateTime(ctx.jobAt, "Scheduled Booking (Date TBC)");
+  const templateText = `${template.subject || ""} ${template.body || ""}`;
+  const inspectionOnly = extractTemplateTags(templateText).includes("inspection_date")
+    && !extractTemplateTags(templateText).includes("booking_date");
+  const arrivalAt = inspectionOnly ? ctx.inspectionAt : ctx.jobAt;
+  const bookingTime = ctx.bookingTime?.trim() || formatAppt(arrivalAt, {
+    hour: "numeric", minute: "2-digit", hour12: true,
+  }) || "Arrival time TBC";
   const quoteNum = ctx.quoteNumber?.trim() || "Quote";
   const quoteAmountStr =
     ctx.quoteAmount && ctx.quoteAmount > 0
@@ -455,6 +468,7 @@ export function renderEmailTemplate(
     suburb: suburb,
     city: suburb,
     area: suburb,
+    document: ctx.document?.trim() || "{document}",
     state: ctx.state || "VIC",
 
     // Schedule & Staff
@@ -469,7 +483,7 @@ export function renderEmailTemplate(
     inspectiondatetime: inspectionDate,
     inspection: inspectionDate,
     bookingdate: bookingDate,
-    bookingtime: bookingDate,
+    bookingtime: bookingTime,
     servicedate: bookingDate,
     jobdate: bookingDate,
 

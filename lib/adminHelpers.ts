@@ -27,6 +27,11 @@ export const MANAGER_STATUS_FILTER_LIST: string[] = STATUS_LIST.filter(
   (s) => !MANAGER_STATUS_FILTER_HIDDEN.has(s)
 );
 
+// Manual status changes include quote acceptance in its pipeline position.
+export const MANAGER_STATUS_OPTIONS_LIST: string[] = STATUS_LIST.filter(
+  (s) => s === "Won" || MANAGER_STATUS_FILTER_LIST.includes(s)
+);
+
 // The technician status dropdown only needs the stages a technician actually
 // works through (Job Booked -> En Route -> Arrived -> In Progress -> Done),
 // plus the inspection stages for dual-role staff. Micro-stages that overlap
