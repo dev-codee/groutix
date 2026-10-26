@@ -3,6 +3,8 @@
 // Redesigned /silicone-recaulking page. Copy, links and FAQs are the same as
 // components/SiliconeRecaulkingPage.tsx (kept for a one-line rollback); only the
 // layout follows the new homepage.
+// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
+// under the hero); every photo live-verified with SEO alt text.
 
 import Image from "next/image";
 import Link from "next/link";
@@ -16,21 +18,23 @@ import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { siliconeFaqs, siliconeSteps } from "@/lib/siliconeRecaulkingContent";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
+  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
+  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
 type IconCard = { title: string; body: ReactNode; Icon: ComponentType<{ className?: string }> };
 
 /* ───────────── Content (unchanged from the live page) ───────────── */
 // Card title and text are the live copy; the photo and link are new for the card layout.
 const signs: PhotoCardData[] = [
-  { title: "Black or Pink Mould", text: "Mould in the silicone bead.", img: "/img23.jpeg", alt: "Mould and staining along a shower corner joint", href: "#why-silicone-fails", link: "Why silicone fails" },
-  { title: "Peeling or Lifting Edges", text: "The seal pulls away from the surface.", img: "/img88.jpeg", alt: "Silicone lifting along the edge of a shower base", href: "#process", link: "How we reseal" },
-  { title: "Cracked or Split Silicone", text: "Cracks and splits through the bead.", img: "/img29.jpg", alt: "Cracked, dirty silicone around a shower base", href: "/leaking-shower-repair/", link: "Leaking shower repair" },
-  { title: "Yellow or Hardened Silicone", text: "Silicone that has gone yellow or hard.", img: "/img89.jpeg", alt: "Old, discoloured silicone along a shower screen base", href: "#cost", link: "What it costs", half: true },
-  { title: "Gaps at the Tile", text: "Gaps between the bead and the tile.", img: "/img73.jpeg", alt: "Failed silicone and mould at a shower wall junction", href: "#silicone-or-grout", link: "Silicone or grout?", half: true },
-  { title: "Shrinking at Corners", text: "A bead that has shrunk or pulled away at corners.", img: "/img95.jpeg", alt: "Shower corner where the silicone has pulled away", href: "/shower-regrouting/", link: "Shower regrouting", half: true },
+  { title: "Black or Pink Mould", text: "Mould in the silicone bead.", img: "/shower-regrouting-signs-black-mould.webp", alt: "Mould and staining along a shower corner joint", href: "#why-silicone-fails", link: "Why silicone fails" },
+  { title: "Peeling or Lifting Edges", text: "The seal pulls away from the surface.", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Silicone lifting along the edge of a shower base", href: "#process", link: "How we reseal" },
+  { title: "Cracked or Split Silicone", text: "Cracks and splits through the bead.", img: "/shower-regrouting-old-silicone-strips.webp", alt: "Old, cracked silicone stripped from a shower base — split beads let water behind the tiles", href: "/leaking-shower-repair/", link: "Leaking shower repair" },
+  { title: "Yellow or Hardened Silicone", text: "Silicone that has gone yellow or hard.", img: "/bath-shower-corner-grout-close-up.webp", alt: "Old, discoloured silicone along a shower screen base", href: "#cost", link: "What it costs", half: true },
+  { title: "Gaps at the Tile", text: "Gaps between the bead and the tile.", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Failed silicone and mould at a shower wall junction letting water through the joint", href: "#silicone-or-grout", link: "Silicone or grout?", half: true },
+  { title: "Shrinking at Corners", text: "A bead that has shrunk or pulled away at corners.", img: "/shower-over-bath-regrouting-patterned-tiles.webp", alt: "Shower over a bath where the silicone bead has shrunk and pulled away at the corners", href: "/shower-regrouting/", link: "Shower regrouting", half: true },
 ];
 
 const whereCards: IconCard[] = [
@@ -71,17 +75,17 @@ const whyGroutix: IconCard[] = [
 
 // Real Groutix jobs (the live page still shows "photos coming soon" boxes here).
 const beforeAfter = [
-  { src: "/img89.jpeg", alt: "Shower screen base before and after resealing" },
-  { src: "/img95.jpeg", alt: "Shower corner before and after resealing" },
-  { src: "/img15.jpeg", alt: "Bathroom before and after silicone and grout repairs" },
-  { src: "/img13.jpeg", alt: "Shower base before and after resealing" },
+  { src: "/shower-base-regrouting-corner-close-up.webp", alt: "Shower base corner after resealing — a clean new silicone bead along the base" },
+  { src: "/shower-over-bath-regrouting-heritage-tiles.webp", alt: "Shower over a bath after resealing with fresh mould resistant silicone" },
+  { src: "/shower-regrouting-white-tiles-acrylic-base.webp", alt: "Bathroom shower after silicone replacement and grout repairs by Groutix" },
+  { src: "/shower-base-regrouting-beige-tiles.webp", alt: "Shower base after resealing — a clean new silicone bead around the acrylic base" },
 ];
 
 const related: PhotoCardData[] = [
-  { title: "Shower Regrouting", text: "Grout joints throughout the shower.", href: "/shower-regrouting/", img: "/img42.jpeg", alt: "Groutix technician regrouting a shower", link: "View service" },
-  { title: "Leaking Shower Repair", text: "Find and repair where water is getting out.", href: "/leaking-shower-repair/", img: "/img37.jpeg", alt: "Water damage on a wall next to a leaking shower", link: "View service" },
-  { title: "Tile Regrouting", text: "Floors, kitchens and laundries.", href: "/tile-regrouting/", img: "/img36.jpeg", alt: "Kitchen floor tiles with worn grout lines", link: "View service" },
-  { title: "Epoxy Grout", text: "Stain resistant grout for wet areas.", href: "/epoxy-grout/", img: "/img85.jpeg", alt: "Epoxy grout being applied to floor tiles", link: "View service" },
+  { title: "Shower Regrouting", text: "Grout joints throughout the shower.", href: "/shower-regrouting/", img: "/shower-regrouting-in-progress.webp", alt: "Shower regrouting in progress with old grout removed", link: "View service" },
+  { title: "Leaking Shower Repair", text: "Find and repair where water is getting out.", href: "/leaking-shower-repair/", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a leaking shower", link: "View service" },
+  { title: "Tile Regrouting", text: "Floors, kitchens and laundries.", href: "/tile-regrouting/", img: "/shower-floor-regrouting-dark-tiles.webp", alt: "Dark floor tiles with fresh grout lines — tile regrouting across Melbourne", link: "View service" },
+  { title: "Epoxy Grout", text: "Stain resistant grout for wet areas.", href: "/epoxy-grout/", img: "/grey-shower-floor-envelope-cut-regrouting after.webp", alt: "Floor tiles with epoxy grout", link: "View service" },
 ];
 
 // FAQ answers 5 and 6 carry the same in-text links as the live page.
@@ -112,10 +116,63 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO */}
-        <ServiceHero title="Silicone Replacement Melbourne" rating={rating} defaultService="Silicone Replacement" warrantyNote="On eligible completed work">
-          <p>Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds.</p>
-        </ServiceHero>
+        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        <section className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
+          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div className="text-center lg:text-left">
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Silicone Replacement Melbourne</h1>
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+                <p>Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds.</p>
+              </div>
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges />
+              </div>
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
+                  <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
+                  <div>
+                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <span className="text-sm text-[#D6DCF5]">On eligible completed work</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-white/25 sm:pl-6">
+                  <b className="block text-[28px] font-black leading-none">8,000+</b>
+                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
+              <Image src="/shower-regrouting-silicone-removal-in-progress.webp" alt="Silicone recaulking in Melbourne — old, failed silicone being removed from a shower base before resealing" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
+          </div>
+        </section>
+
+        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
+          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div>
+              <p className={eyebrow}>Free Quote</p>
+              <h2 className={h2}>Get Your Free Silicone Replacement Quote</h2>
+              <p className={`${lead} mt-3.5`}>Tell us where the silicone is peeling or mouldy and add photos of the joints. Photos are required, so we can see the bead and the surfaces before we quote.</p>
+              <ul className="mt-6 space-y-2.5">
+                {["Free quote, no obligation", "Old silicone fully removed — never laid over", "Mould resistant silicone finish"].map((x) => (
+                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+              <QuoteFormV2 />
+            </div>
+          </div>
+        </section>
 
         {/* 2. SIGNS */}
         <Section id="signs" alt>
@@ -123,7 +180,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
             <p className={lead}>Silicone wears out before almost anything else in a bathroom. Look for these signs.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} />)}
+            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>Mould only on the surface may clean off. Mould through the bead, or a bead that has lifted, means it needs replacing.</p>
         </Section>
@@ -204,7 +261,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
               <a href="#quote-form" className={`${btnNavy} mt-6`}>Book Your Free Quote →</a>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/img50.jpeg" alt="Groutix technician applying fresh silicone around a shower screen" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/white-tile-shower-regrouting-overhead after.webp" alt="White tiled shower freshly resealed with new mould resistant silicone by Groutix Melbourne" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
@@ -298,7 +355,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
         <Section id="related-services" alt>
           <SectionHead k="More ways we can help" title="Related Services" />
           <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
-            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[160px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
+            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
           </div>
         </Section>
 
