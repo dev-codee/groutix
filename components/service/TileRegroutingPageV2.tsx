@@ -3,7 +3,10 @@
 // Redesigned /tile-regrouting page. Copy, links and FAQs are the same as
 // components/TileRegroutingPage.tsx (kept for a one-line rollback); only the
 // layout follows the new homepage.
+// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
+// under the hero); every photo live-verified with SEO alt text.
 
+import Image from "next/image";
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { Check, Droplets, Footprints, Grid2x2, Home, Paintbrush, Phone, ShieldCheck, Sparkles, Utensils, Wrench } from "lucide-react";
@@ -15,21 +18,23 @@ import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { tileGroutRows, tileRegroutingFaqs } from "@/lib/tileRegroutingContent";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
+  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
+  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
 type IconCard = { title: string; body: ReactNode; Icon: ComponentType<{ className?: string }> };
 
 /* ───────────── Content (unchanged from the live page) ───────────── */
 // Card title and text are the live copy; the photo and link are new for the card layout.
 const signs: PhotoCardData[] = [
-  { title: "Cracked or Crumbling Grout", text: "Grout that cracks or breaks apart when you touch it.", img: "/img56.jpeg", alt: "Cracked, crumbling grout between floor tiles", href: "#spot-or-full", link: "Spot repair or full regrout?" },
-  { title: "Stains That Stay", text: "Grout that stays stained after a proper clean.", img: "/img10.jpeg", alt: "Stained grout lines on a tiled floor", href: "#clean-or-regrout", link: "Clean first, or regrout?", half: true },
-  { title: "Sunken or Missing Grout", text: "Low spots, missing grout or gaps between your tiles.", img: "/img16.jpeg", alt: "Floor tiles with cracked and missing grout", href: "#process", link: "How we regrout", half: true },
-  { title: "Returning Mould", text: "Mould or mildew that keeps coming back.", img: "/img61.jpeg", alt: "Mouldy grout lines on wall tiles", href: "/epoxy-grout/", link: "Epoxy grout", half: true },
-  { title: "Loose Tiles", text: "Tiles that feel loose or move underfoot.", img: "/img41.jpeg", alt: "Loose and broken tiles lifting from a wall", href: "/small-tiling-jobs/", link: "Small tiling jobs" },
-  { title: "Dirty Floor Lines", text: "Dark, dirty lines on kitchen and laundry floors.", img: "/img36.jpeg", alt: "Kitchen floor tiles with worn, dirty grout lines", href: "#grout-types", link: "Which grout suits which area?" },
+  { title: "Cracked or Crumbling Grout", text: "Grout that cracks or breaks apart when you touch it.", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Cracked, crumbling grout between floor tiles", href: "#spot-or-full", link: "Spot repair or full regrout?" },
+  { title: "Stains That Stay", text: "Grout that stays stained after a proper clean.", img: "/beige-shower-floor-regrouting-top-view before.webp", alt: "Stained grout lines on a tiled floor", href: "#clean-or-regrout", link: "Clean first, or regrout?", half: true },
+  { title: "Sunken or Missing Grout", text: "Low spots, missing grout or gaps between your tiles.", img: "/shower-regrouting-rust-stained-tiles.webp", alt: "Tiles with rust-stained, cracked and missing grout lines that let water through", href: "#process", link: "How we regrout", half: true },
+  { title: "Returning Mould", text: "Mould or mildew that keeps coming back.", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Mouldy grout lines on wall tiles", href: "/epoxy-grout/", link: "Epoxy grout", half: true },
+  { title: "Loose Tiles", text: "Tiles that feel loose or move underfoot.", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Cracked, failing grout in a tile corner — loose tiles often start with grout failure like this", href: "/small-tiling-jobs/", link: "Small tiling jobs" },
+  { title: "Dirty Floor Lines", text: "Dark, dirty lines on kitchen and laundry floors.", img: "/tiled-shower-floor-regrouting-wide before.webp", alt: "Dark, dirty grout lines on kitchen and laundry floor tiles worn by foot traffic", href: "#grout-types", link: "Which grout suits which area?" },
 ];
 
 const rooms: IconCard[] = [
@@ -76,17 +81,17 @@ const whyGroutix: IconCard[] = [
 
 // Real Groutix floor regrouting jobs (the live page still shows "photos coming soon" boxes here).
 const beforeAfter = [
-  { src: "/img59.jpeg", alt: "Floor tiles before and after regrouting" },
-  { src: "/img10.jpeg", alt: "Stained floor grout before and after regrouting" },
-  { src: "/img90.jpeg", alt: "Hexagon floor tiles before and after regrouting" },
-  { src: "/img92.jpeg", alt: "Outdoor floor tiles before and after regrouting" },
+  { src: "/beige-shower-floor-regrouting-top-view after.webp", alt: "Floor tiles after regrouting — clean, even grout lines across the whole floor" },
+  { src: "/beige-shower-floor-regrouting-top-view before.webp", alt: "Stained floor grout before regrouting" },
+  { src: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Hexagonal mosaic floor tiles after regrouting with fresh waterproof grout" },
+  { src: "/balcony-regrouting-herringbone-tiles.webp", alt: "Herringbone balcony tiles after regrouting in a Melbourne home" },
 ];
 
 const related: PhotoCardData[] = [
-  { title: "Shower Regrouting", text: "Worn grout throughout the shower.", href: "/shower-regrouting/", img: "/img42.jpeg", alt: "Groutix technician regrouting a shower", link: "View service" },
-  { title: "Balcony Leak Repairs", text: "Repair options for leaking balconies.", href: "/balcony-leak-repairs/", img: "/img77.jpeg", alt: "Tiled balcony after regrouting", link: "View service" },
-  { title: "Epoxy Grout", text: "Stain resistant grout for wet areas.", href: "/epoxy-grout/", img: "/img85.jpeg", alt: "Epoxy grout being applied to floor tiles", link: "View service" },
-  { title: "Small Tiling Jobs", text: "Individual tiles repaired or replaced.", href: "/small-tiling-jobs/", img: "/img2.jpeg", alt: "Tiles being set and grouted on a wall", link: "View service" },
+  { title: "Shower Regrouting", text: "Worn grout throughout the shower.", href: "/shower-regrouting/", img: "/shower-regrouting-in-progress-close-up.webp", alt: "Tile regrouting in progress — old grout being removed before the new grout goes in", link: "View service" },
+  { title: "Balcony Leak Repairs", text: "Repair options for leaking balconies.", href: "/balcony-leak-repairs/", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony after regrouting", link: "View service" },
+  { title: "Epoxy Grout", text: "Stain resistant grout for wet areas.", href: "/epoxy-grout/", img: "/grey-shower-floor-envelope-cut-regrouting after.webp", alt: "Floor tiles with epoxy grout", link: "View service" },
+  { title: "Small Tiling Jobs", text: "Individual tiles repaired or replaced.", href: "/small-tiling-jobs/", img: "/shower-regrouting-mosaic-strip-linear-drain.webp", alt: "Mosaic strip tiling with a linear drain — small tiling jobs in Melbourne", link: "View service" },
 ];
 
 /* ───────────── Small pieces ───────────── */
@@ -109,10 +114,63 @@ export default function TileRegroutingPageV2({ rating, reviews }: { rating: Busi
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO */}
-        <ServiceHero title="Tile Regrouting Melbourne" rating={rating} defaultService="Tile Regrouting" warrantyNote="On eligible waterproof work">
-          <p>Groutix removes worn grout from floors, kitchens, laundries and bathrooms and rebuilds the joints. Your tiles look clean and keep water out. Your tiles stay in place. We tell you honestly when a clean is enough.</p>
-        </ServiceHero>
+        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        <section className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
+          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div className="text-center lg:text-left">
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Tile Regrouting Melbourne</h1>
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+                <p>Groutix removes worn grout from floors, kitchens, laundries and bathrooms and rebuilds the joints. Your tiles look clean and keep water out. Your tiles stay in place. We tell you honestly when a clean is enough.</p>
+              </div>
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges />
+              </div>
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
+                  <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
+                  <div>
+                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <span className="text-sm text-[#D6DCF5]">On eligible waterproof work</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-white/25 sm:pl-6">
+                  <b className="block text-[28px] font-black leading-none">8,000+</b>
+                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
+              <Image src="/tile-regrouting-dark-floor-tiles-close-up.webp" alt="Tile regrouting in Melbourne — dark floor tiles finished with fresh, clean grout lines" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
+          </div>
+        </section>
+
+        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
+          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div>
+              <p className={eyebrow}>Free Quote</p>
+              <h2 className={h2}>Get Your Free Tile Regrouting Quote</h2>
+              <p className={`${lead} mt-3.5`}>Tell us which room is wearing out and add photos of the grout lines. Photos are required, so we can see the tiles and joints before we quote.</p>
+              <ul className="mt-6 space-y-2.5">
+                {["Free quote, no obligation", "10-year warranty on eligible waterproof work", "Grout colour matched to your tiles"].map((x) => (
+                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+              <QuoteFormV2 />
+            </div>
+          </div>
+        </section>
 
         {/* 2. SIGNS */}
         <Section id="signs" alt>
@@ -120,7 +178,7 @@ export default function TileRegroutingPageV2({ rating, reviews }: { rating: Busi
             <p className={lead}>Grout wears out slowly, so it is easy to miss. Look for these signs.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} />)}
+            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>One or two signs on a small area may only need a spot repair. Widespread wear means a full regrout.</p>
         </Section>
@@ -299,7 +357,7 @@ export default function TileRegroutingPageV2({ rating, reviews }: { rating: Busi
         <Section id="related" alt>
           <SectionHead k="More ways we can help" title="Related Services" />
           <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
-            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[160px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
+            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
           </div>
         </Section>
 

@@ -3,6 +3,8 @@
 // Redesigned /epoxy-grout page. Copy, links, reviews logic and both JSON-LD blocks
 // (Service + FAQPage) are the same as components/EpoxyGroutPage.tsx (kept for a
 // one-line rollback); only the layout follows the new homepage.
+// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
+// under the hero); every photo live-verified with SEO alt text.
 
 import Image from "next/image";
 import Link from "next/link";
@@ -15,9 +17,11 @@ import { useContact } from "@/components/SiteContentProvider";
 import { faqJsonLd } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
+  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
+  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
 /* Used for the Service JSON-LD (unchanged). */
 const SITE_URL = "https://groutix.com";
@@ -75,17 +79,17 @@ const WHY: { Icon: Icon; title: string; desc?: string }[] = [
 
 // Real Groutix regrouting jobs (the live page still shows empty "Add photo manually" boxes here).
 const BEFORE_AFTER = [
-  { src: "/img12.jpeg", alt: "Shower floor before and after epoxy regrouting" },
-  { src: "/img14.jpeg", alt: "Dark tiled shower walls before and after epoxy regrouting" },
-  { src: "/img59.jpeg", alt: "Floor tiles before and after epoxy regrouting" },
-  { src: "/img91.jpeg", alt: "Dark shower floor before and after epoxy regrouting" },
+  { src: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with old cement grout cut out before epoxy regrouting" },
+  { src: "/tiled-shower-floor-regrouting-wide after .webp", alt: "Tiled shower floor after epoxy regrouting — fresh, even epoxy grout lines" },
+  { src: "/beige-shower-floor-regrouting-top-view after.webp", alt: "Beige floor tiles after epoxy regrouting — grout that does not absorb water or stain" },
+  { src: "/shower-floor-regrouting-tile-insert-drain.webp", alt: "Shower floor with a tile-insert drain finished with waterproof epoxy grout" },
 ];
 
 const RELATED: PhotoCardData[] = [
-  { title: "Shower Regrouting", href: "/shower-regrouting", img: "/img42.jpeg", alt: "Groutix technician regrouting a shower", link: "Learn more" },
-  { title: "Tile Regrouting", href: "/tile-regrouting", img: "/img36.jpeg", alt: "Kitchen floor tiles with worn grout lines", link: "Learn more" },
-  { title: "Silicone and Recaulking", href: "/silicone-recaulking", img: "/img50.jpeg", alt: "Fresh silicone being applied around a shower screen", link: "Learn more" },
-  { title: "Balcony Leak Repairs", href: "/balcony-leak-repairs", img: "/img77.jpeg", alt: "Tiled balcony after regrouting", link: "Learn more" },
+  { title: "Shower Regrouting", href: "/shower-regrouting", img: "/shower-regrouting-in-progress.webp", alt: "Shower regrouting in progress with old grout removed", link: "Learn more" },
+  { title: "Tile Regrouting", href: "/tile-regrouting", img: "/shower-regrouting-white-walls-dark-floor.webp", alt: "White wall tiles and a dark tiled floor regrouted in a Melbourne bathroom", link: "Learn more" },
+  { title: "Silicone and Recaulking", href: "/silicone-recaulking", img: "/white-tile-shower-regrouting-overhead after.webp", alt: "Shower screen freshly sealed with new silicone", link: "Learn more" },
+  { title: "Balcony Leak Repairs", href: "/balcony-leak-repairs", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony after regrouting", link: "Learn more" },
 ];
 
 /* `link` only renders an in-text link on the page. `a` stays plain text for the FAQPage schema. */
@@ -155,10 +159,63 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(EPOXY_FAQS)) }} />
 
-        {/* 1. HERO */}
-        <ServiceHero title="Epoxy Grout Melbourne" rating={rating} defaultService="Epoxy Grout" warrantyNote="On eligible completed work">
-          <p>Groutix removes old cement grout and replaces it with epoxy grout. It is a resin grout that does not absorb water and resists stains and mould. We tell you honestly where epoxy is the right choice and where it is not.</p>
-        </ServiceHero>
+        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        <section className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
+          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div className="text-center lg:text-left">
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Epoxy Grout Melbourne</h1>
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+                <p>Groutix removes old cement grout and replaces it with epoxy grout. It is a resin grout that does not absorb water and resists stains and mould. We tell you honestly where epoxy is the right choice and where it is not.</p>
+              </div>
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges />
+              </div>
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
+                  <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
+                  <div>
+                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <span className="text-sm text-[#D6DCF5]">On eligible completed work</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-white/25 sm:pl-6">
+                  <b className="block text-[28px] font-black leading-none">8,000+</b>
+                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
+              <Image src="/shower-floor-regrouting-hex-mosaic-tiles.webp" alt="Epoxy grout in Melbourne — a hexagonal mosaic shower floor finished with waterproof epoxy grout" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
+          </div>
+        </section>
+
+        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
+          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div>
+              <p className={eyebrow}>Free Quote</p>
+              <h2 className={h2}>Get Your Free Epoxy Grout Quote</h2>
+              <p className={`${lead} mt-3.5`}>Tell us where the old grout is failing and add photos of the joints. Photos are required, so we can check the tiles and grout colour before we quote.</p>
+              <ul className="mt-6 space-y-2.5">
+                {["Free quote, no obligation", "10-year warranty on eligible completed work", "Grout colour matched to your tiles"].map((x) => (
+                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+              <QuoteFormV2 />
+            </div>
+          </div>
+        </section>
 
         {/* 2. WHAT IS EPOXY GROUT */}
         <Section id="what-is" alt>
@@ -278,7 +335,7 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
               <Link href="/contact" className={`${btnNavy} mt-6`}>Book Your Free Quote</Link>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/img85.jpeg" alt="Groutix technician applying epoxy grout to floor tiles" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/grey-shower-floor-envelope-cut-regrouting after.webp" alt="Shower floor regrouted with waterproof epoxy grout by Groutix Melbourne" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
@@ -373,7 +430,7 @@ export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: R
         <Section id="related" alt>
           <SectionHead k="Related Services" title="Related Services" />
           <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
-            {RELATED.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[160px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
+            {RELATED.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
           </div>
         </Section>
 
