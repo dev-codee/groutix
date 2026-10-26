@@ -4,6 +4,8 @@
 // selectors (#balcony-intro, .balcony-faq-answer) are the same as
 // components/BalconyLeakRepairsPage.tsx (kept for a one-line rollback);
 // only the layout follows the new homepage.
+// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
+// under the hero); every photo live-verified with SEO alt text.
 
 import Image from "next/image";
 import Link from "next/link";
@@ -19,9 +21,11 @@ import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { balconyFaqs, balconyIntro } from "@/lib/balconyLeakContent";
 import {
-  FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
-  box, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
+  FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
+  box, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
 import { useGoogleRating } from "@/components/useGoogleRating";
 
 type IconCard = { title: string; body: string; Icon: ComponentType<{ className?: string }> };
@@ -29,12 +33,12 @@ type IconCard = { title: string; body: string; Icon: ComponentType<{ className?:
 /* ───────────── Content (unchanged from the live page) ───────────── */
 // Card title and text are the live copy; the photo and link are new for the card layout.
 const signs: PhotoCardData[] = [
-  { title: "White Chalky Stains", text: "On tiles or walls. This is efflorescence. It can indicate water moving through the surface.", img: "/img78.jpeg", alt: "Balcony with staining, efflorescence and water damage", href: "#diagnose", link: "How we find the cause", half: true },
-  { title: "Mould or Dark Grout", text: "Mould or dark stains in grout lines that return after cleaning.", img: "/img92.jpeg", alt: "Dark, stained grout lines on outdoor balcony tiles", href: "/tile-regrouting/", link: "Mould and stains in grout lines", half: true },
-  { title: "Hollow Sounding Tiles", text: "Tiles that sound hollow when tapped. Builders call these drummy tiles.", img: "/img102.jpeg", alt: "Tiled balcony floor checked for drummy tiles", href: "#no-tile-removal", link: "Can the tiles stay down?" },
-  { title: "Ceiling Water Stains", text: "Water stains on the ceiling of the room below your balcony.", img: "/img97.jpeg", alt: "Water damage on a wall and ceiling below a leaking balcony", href: "#strata", link: "Apartments and strata", half: true },
-  { title: "Bubbling or Peeling Paint", text: "Paint that bubbles or peels on walls under the balcony.", img: "/img58.jpeg", alt: "Bubbling paint and damp patches on a wall", href: "#repair-options", link: "Balcony repair options" },
-  { title: "Pooling Water", text: "Water that pools for hours after rain instead of draining away.", img: "/img76.jpeg", alt: "Narrow tiled balcony where water can pool", href: "#causes", link: "What causes balcony leaks" },
+  { title: "White Chalky Stains", text: "On tiles or walls. This is efflorescence. It can indicate water moving through the surface.", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Efflorescence — white chalky stains on balcony tiles, a sign water is moving through the balcony surface", href: "#diagnose", link: "How we find the cause", half: true },
+  { title: "Mould or Dark Grout", text: "Mould or dark stains in grout lines that return after cleaning.", img: "/shower-floor-regrouting-dark-tiles-top-view.webp", alt: "Dark, stained grout lines on balcony tiles that keep coming back after cleaning", href: "/tile-regrouting/", link: "Mould and stains in grout lines", half: true },
+  { title: "Hollow Sounding Tiles", text: "Tiles that sound hollow when tapped. Builders call these drummy tiles.", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony floor checked for drummy tiles", href: "#no-tile-removal", link: "Can the tiles stay down?" },
+  { title: "Ceiling Water Stains", text: "Water stains on the ceiling of the room below your balcony.", img: "/water stains on the ceiling below.webp", alt: "Water stains on the ceiling below a leaking balcony — often the first sign of a balcony leak", href: "#strata", link: "Apartments and strata", half: true },
+  { title: "Bubbling or Peeling Paint", text: "Paint that bubbles or peels on walls under the balcony.", img: "/leaking-shower-water-damage-wall.webp", alt: "Bubbling paint and damp patches on a wall under a leaking balcony in a Melbourne apartment", href: "#repair-options", link: "Balcony repair options" },
+  { title: "Pooling Water", text: "Water that pools for hours after rain instead of draining away.", img: "/grey-shower-base-regrouting-overhead-view before .webp", alt: "Water pooling on a tiled surface for hours after rain instead of draining to the waste", href: "#causes", link: "What causes balcony leaks" },
 ];
 
 const causes: IconCard[] = [
@@ -87,9 +91,9 @@ const strataCards: IconCard[] = [
 ];
 
 const related: PhotoCardData[] = [
-  { title: "Shower Regrouting", text: "Leak coming from the bathroom instead? Our grout specialists assess whether repairs can keep your tiles in place.", href: "/shower-regrouting/", img: "/img53.jpeg", alt: "New grout being applied to bathroom floor tiles", link: "Shower Regrouting" },
-  { title: "Leaking Shower Repair", text: "We trace the leak to its source before recommending a repair.", href: "/leaking-shower-repair/", img: "/img37.jpeg", alt: "Water damage on a wall next to a leaking shower", link: "Leaking Shower Repair" },
-  { title: "Efflorescence and Mould in Grout Lines", text: "White stains and black spots can signal moisture problems. We inspect the cause before recommending tile regrouting.", href: "/tile-regrouting/", img: "/img16.jpeg", alt: "Floor tiles with stained, mouldy grout and efflorescence", link: "Tile Regrouting", half: true },
+  { title: "Shower Regrouting", text: "Leak coming from the bathroom instead? Our grout specialists assess whether repairs can keep your tiles in place.", href: "/shower-regrouting/", img: "/walk-in-shower-regrouting-bench-linear-drain.webp", alt: "Walk-in shower with a bench seat and linear drain, regrouted by Groutix Melbourne", link: "Shower Regrouting" },
+  { title: "Leaking Shower Repair", text: "We trace the leak to its source before recommending a repair.", href: "/leaking-shower-repair/", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Cracked, water-stained grout in a leaking shower corner", link: "Leaking Shower Repair" },
+  { title: "Efflorescence and Mould in Grout Lines", text: "White stains and black spots can signal moisture problems. We inspect the cause before recommending tile regrouting.", href: "/tile-regrouting/", img: "/shower-regrouting-rust-stained-tiles.webp", alt: "Floor tiles with stained, mouldy grout and efflorescence", link: "Tile Regrouting", half: true },
 ];
 
 /* ───────────── Small pieces ───────────── */
@@ -132,10 +136,63 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO */}
-        <ServiceHero title="Balcony Leak Repair Melbourne" rating={rating} defaultService="Balcony Leak Repair" warrantyNote="On eligible waterproof work">
-          <p id="balcony-intro">{balconyIntro}</p>
-        </ServiceHero>
+        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        <section className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
+          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div className="text-center lg:text-left">
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Balcony Leak Repair Melbourne</h1>
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+                <p id="balcony-intro">{balconyIntro}</p>
+              </div>
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges />
+              </div>
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
+                  <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
+                  <div>
+                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <span className="text-sm text-[#D6DCF5]">On eligible waterproof work</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-white/25 sm:pl-6">
+                  <b className="block text-[28px] font-black leading-none">8,000+</b>
+                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
+              <Image src="/balcony-regrouting-herringbone-tiles.webp" alt="Balcony leak repairs in Melbourne — herringbone balcony tiles regrouted and resealed with waterproof epoxy grout" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
+          </div>
+        </section>
+
+        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
+          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div>
+              <p className={eyebrow}>Free Quote</p>
+              <h2 className={h2}>Get Your Free Balcony Leak Repair Quote</h2>
+              <p className={`${lead} mt-3.5`}>Tell us what your balcony is doing and add photos of the stains, grout lines and drainage. Photos are required, so we can see the problem before we quote.</p>
+              <ul className="mt-6 space-y-2.5">
+                {["Free inspection, no obligation", "10-year waterproof warranty on eligible waterproof work", "Fixed written quote before work starts"].map((x) => (
+                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+              <QuoteFormV2 />
+            </div>
+          </div>
+        </section>
 
         {/* 2. SIGNS */}
         <Section id="signs" alt>
@@ -143,7 +200,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
             <p className={lead}>Balconies rarely fail overnight. They warn you first. Here is what to look for.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} />)}
+            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
           </div>
           <p className={`${lead} mt-8 text-center`}>Spot even one sign? Book a free inspection. Small leaks can turn into bigger damage.</p>
           {inspectionCta()}
@@ -245,7 +302,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
         <section id="process" className="scroll-mt-28 bg-white py-14 md:py-20">
           <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:gap-14`}>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/img77.jpeg" alt="Balcony after Groutix regrouting and resealing" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Melbourne — balcony tiles regrouted and resealed by Groutix" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
             <div>
               <p className={eyebrow}>Our process</p>
@@ -349,7 +406,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
         <Section id="related">
           <SectionHead k="Related services" title="Related Issues We Fix" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {related.map((c) => <PhotoCard key={c.href} c={c} />)}
+            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" />)}
           </div>
           <p className={`${lead} mt-7 text-center`}>Not sure where your leak starts? Call us to arrange a free inspection.</p>
           {inspectionCta()}
