@@ -1,7 +1,7 @@
 "use client";
 
 import { staffBookingRules } from "@/lib/staffBookingRules";
-import { hasAcceptedQuote, isQuoteWaiting, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } from "@/lib/quoteAcceptance";
+import { isAcceptedQuoteAwaitingBooking, isJobBooked, isQuoteWaiting, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } from "@/lib/quoteAcceptance";
 import { leadBookings, bookingLead } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
@@ -841,7 +841,7 @@ export function ManagerDashboard() {
     },
     {
       label: "Quote Accepted",
-      count: scopedLeads.filter(hasAcceptedQuote).length,
+      count: scopedLeads.filter(isAcceptedQuoteAwaitingBooking).length,
       icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
       iconBg: "bg-emerald-100",
       cardBg: "bg-emerald-50/80 border-emerald-200/90 text-emerald-800",
@@ -850,7 +850,7 @@ export function ManagerDashboard() {
     },
     {
       label: "Job Booked",
-      count: scopedLeads.filter((l) => l.status === "Job Booked" || l.status === "Scheduled" || l.status === "Job Confirmed").length,
+      count: scopedLeads.filter(isJobBooked).length,
       icon: <CalendarDays className="w-4 h-4 text-blue-600" />,
       iconBg: "bg-blue-100",
       cardBg: "bg-blue-50/80 border-blue-200/90 text-blue-800",

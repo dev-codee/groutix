@@ -75,6 +75,7 @@ export interface CustomerMessage {
     url?: string;
     secureUrl?: string;
     publicId?: string;
+    contentId?: string;
   }[];
 }
 
@@ -664,7 +665,7 @@ export async function listSubmissions(
   const [docs, total] = await Promise.all([
     col
       .find(filter, { projection: { "photos.dataUrl": 0 } })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)
       .toArray(),
@@ -677,7 +678,7 @@ export async function listSubmissions(
 /** Stream-friendly export: every matching doc, newest first, no pagination. */
 export async function exportSubmissions(params: ListParams): Promise<SubmissionJSON[]> {
   const col = await collection();
-  const docs = await col.find(buildFilter(params)).sort({ createdAt: -1 }).toArray();
+  const docs = await col.find(buildFilter(params)).sort({ createdAt: -1, _id: -1 }).toArray();
   return docs.map(toJSON);
 }
 

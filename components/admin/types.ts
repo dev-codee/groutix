@@ -26,6 +26,7 @@ export interface CustomerMessage {
     url?: string;
     secureUrl?: string;
     publicId?: string;
+    contentId?: string;
   }[];
 }
 

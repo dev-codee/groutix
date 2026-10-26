@@ -5,10 +5,10 @@ import { loadTs } from "./test-ts-loader.mjs";
 const customer = (id = "lead-1", extra = {}) => ({ _id: { toString: () => id }, name: "Customer", email: "customer@example.com", status: "Quote Sent", quoteNumber: "QT-1482", createdAt: "2026-10-01", messages: [], activity: [], ...extra });
 const mail = (uid, extra = {}) => ({ uid, seen: false, from: "customer@example.com", subject: "Re: Quote QT-1482", messageId: `<reply-${uid}@example.com>`, text: `Reply ${uid}`, ...extra });
 
-function fixture({ messages = [mail(1)], leads = [customer()], failUid, state: initialState, failNotification = false, allMail = true } = {}) {
+function fixture({ messages = [mail(1)], leads = [customer()], failUid, state: initialState, failNotification = false, allMail = true, uploads = false } = {}) {
   let state = initialState;
   let failure = failUid;
-  const calls = { searches: [], fetches: [], locks: [], connections: 0, notifications: 0, flags: 0 };
+  const calls = { searches: [], fetches: [], locks: [], connections: 0, notifications: 0, flags: 0, uploads: [] };
   const col = {
     find(query) {
       const match = query.$or[0].email;
@@ -31,6 +31,8 @@ function fixture({ messages = [mail(1)], leads = [customer()], failUid, state: i
         if (lead.messages.some(existing => existing.id === message.id)) return { modifiedCount: 0 };
         lead.messages.push(message);
         lead.activity.push(update.$push.activity);
+      } else if (update.$set?.["messages.$.attachments"]) {
+        lead.messages.find(message => message.id === query["messages.id"]).attachments = update.$set["messages.$.attachments"];
       } else if (update.$set && lead.status === query.status) Object.assign(lead, update.$set);
       return { modifiedCount: 1 };
     },
@@ -62,7 +64,13 @@ function fixture({ messages = [mail(1)], leads = [customer()], failUid, state: i
     } }) },
     "@/lib/submissions": {},
     "@/lib/email": { getNotifyRecipients: () => ["staff@example.com"], sendReplyNotification: async () => { calls.notifications++; if (failNotification) throw new Error("SMTP unavailable"); } },
-    "@/lib/cloudinary": { isCloudinaryConfigured: () => false },
+    "@/lib/cloudinary": {
+      isCloudinaryConfigured: () => uploads,
+      uploadBufferToCloudinary: async (content, options) => {
+        calls.uploads.push(options.filename);
+        return { secureUrl: `https://res.cloudinary.com/test/${options.filename}`, publicId: options.filename };
+      },
+    },
   }, { process: { env: { SMTP_USER: "info@groutix.com", SMTP_PASS: "fixture-only" } }, console: { error() {}, log() {} } });
   return { sync: syncUnreadEmails, calls, leads, cursor: () => state, clearFailure: () => { failure = undefined; } };
 }
@@ -163,4 +171,54 @@ test("the sync route reports mailbox failures as failures rather than success", 
   assert.equal(response.status, 503);
   assert.equal(response.body.ok, false);
   assert.equal(response.body.syncedCount, 1);
+});
+
+test("embedded customer photos are uploaded with CID metadata and shown alongside regular attachments", async () => {
+  const f = fixture({ uploads: true, messages: [mail(1, { attachments: [
+    { related: true, contentId: "<bathroom-photo>", contentType: "image/jpeg", size: 1234, content: Buffer.from("photo") },
+    { related: true, filename: "styles.css", contentType: "text/css", content: Buffer.from("css") },
+    { filename: "quote.pdf", contentType: "application/pdf", content: Buffer.from("pdf") },
+  ] })] });
+  assert.equal((await f.sync()).syncedCount, 1);
+  const attachments = f.leads[0].messages[0].attachments;
+  assert.equal(attachments.length, 2);
+  assert.equal(attachments[0].contentId, "bathroom-photo");
+  assert.match(attachments[0].secureUrl, /image-1.jpg$/);
+  assert.equal(attachments[1].name, "quote.pdf");
+  assert.equal(f.calls.uploads.length, 2);
+});
+
+test("recent previously imported messages recover photos without duplicate messages, notifications or read changes", async () => {
+  const lead = customer();
+  lead.messages.push({ id: "<reply-1@example.com>", text: "[cid:photo]", read: true, attachments: [
+    { name: "old.jpg", url: "https://res.cloudinary.com/test/old.jpg" },
+    { name: "new.jpg", contentId: "photo", contentType: "image/jpeg" },
+  ] });
+  const f = fixture({ leads: [lead], uploads: true, messages: [mail(1, { attachments: [
+    { related: true, filename: "new.jpg", contentId: "<photo>", contentType: "image/jpeg", content: Buffer.from("photo") },
+  ] })] });
+  assert.equal((await f.sync()).syncedCount, 0);
+  assert.equal(lead.messages.length, 1);
+  assert.equal(lead.messages[0].read, true);
+  assert.equal(lead.messages[0].attachments.length, 2);
+  assert.match(lead.messages[0].attachments[1].secureUrl, /new.jpg$/);
+  assert.equal(lead.activity.length, 0);
+  assert.equal(f.calls.notifications, 0);
+  assert.match(f.cursor().key, /:media-v2$/);
+});
+
+test("media recovery keeps legacy fallback IDs and adds CIDs to existing uploads without reuploading", async () => {
+  const lead = customer();
+  lead.messages.push({
+    id: "imap:info@groutix.com:[Gmail]/All Mail:7:1", read: true,
+    attachments: [{ name: "photo.jpg", url: "https://res.cloudinary.com/test/photo.jpg" }],
+  });
+  const f = fixture({ leads: [lead], uploads: true, messages: [mail(1, {
+    messageId: undefined, attachments: [{ filename: "photo.jpg", contentId: "<photo>", contentType: "image/jpeg", content: Buffer.from("photo") }],
+  })] });
+  assert.equal((await f.sync()).syncedCount, 0);
+  assert.equal(lead.messages.length, 1);
+  assert.equal(lead.messages[0].attachments.length, 1);
+  assert.equal(lead.messages[0].attachments[0].contentId, "photo");
+  assert.equal(f.calls.uploads.length, 0);
 });

@@ -56,9 +56,12 @@ async function syncEmails(): Promise<EmailSyncResult> {
       const db = await getDb();
       const col = db.collection<SubmissionDoc>("submissions");
       const states = db.collection<SyncState>("email_sync_state");
+      // A new cursor rechecks the recent mailbox once to recover inline photos
+      // discarded by the previous importer. Existing messages are enriched only.
       const key = `${user.toLowerCase()}:${mailbox}`;
+      const cursorKey = `${key}:media-v2`;
       const uidValidity = client.mailbox ? String(client.mailbox.uidValidity) : "";
-      const state = await states.findOne({ key, uidValidity });
+      const state = await states.findOne({ key: cursorKey, uidValidity });
       const lastUid = state?.lastUid || 0;
       const since = new Date(Date.now() - 30 * 86400000);
       step = "searching";
@@ -89,61 +92,77 @@ async function syncEmails(): Promise<EmailSyncResult> {
             // Fetch bodies only for known customers, skipping unrelated mail.
             const message = await client.fetchOne(String(uid), { source: true }, { uid: true });
             if (!message || !message.source) throw new Error(`Missing source for UID ${uid}`);
-            const parsed = await simpleParser(message.source);
+            const parsed = await simpleParser(message.source, { skipImageLinks: true });
             const messageId = parsed.messageId || `imap:${key}:${uidValidity}:${uid}`;
             const existing = await col.findOne({ "messages.id": messageId });
-            if (!existing) {
+            const existingMessage = existing?.messages?.find(item => item.id === messageId);
+            if (!existing || (existing._id.toString() === lead._id.toString() && parsed.attachments?.length)) {
               step = `attachments_${uid}`;
-              const attachments: NonNullable<CustomerMessage["attachments"]> = [];
+              const attachments: NonNullable<CustomerMessage["attachments"]> = [...(existingMessage?.attachments || [])];
               for (const att of parsed.attachments || []) {
-                if (att.related) continue;
-                const name = att.filename || "attachment";
+                // Related images are photos embedded in the email body.
+                if (att.related && !att.contentType?.startsWith("image/")) continue;
+                const name = att.filename || (att.contentType?.startsWith("image/") ? `image-${attachments.length + 1}.${att.contentType.split("/")[1] === "jpeg" ? "jpg" : att.contentType.split("/")[1]}` : "attachment");
+                const contentId = att.contentId?.replace(/^<|>$/g, "");
+                const previousIndex = attachments.findIndex(item => (contentId && item.contentId === contentId) || (!item.contentId && item.name === name));
+                if (previousIndex >= 0 && (attachments[previousIndex].url || attachments[previousIndex].secureUrl)) {
+                  if (contentId) attachments[previousIndex] = { ...attachments[previousIndex], contentId };
+                  continue;
+                }
+                const metadata = { name, contentType: att.contentType, size: att.size, ...(contentId ? { contentId } : {}) };
+                let imported: (typeof attachments)[number] = metadata;
                 if (isCloudinaryConfigured() && att.content && Date.now() < deadline) {
                   try {
                     const up = await bounded(uploadBufferToCloudinary(att.content, { folder: "groutix/inbound", filename: name, tags: ["inbound-email"] }), Math.min(10000, deadline - Date.now()));
-                    attachments.push({ name, contentType: att.contentType, size: att.size, url: up.secureUrl, secureUrl: up.secureUrl, publicId: up.publicId });
-                    continue;
+                    imported = { ...metadata, url: up.secureUrl, secureUrl: up.secureUrl, publicId: up.publicId };
                   } catch (error) { console.error("[IMAP] attachment upload failed:", error); }
                 }
-                attachments.push({ name, contentType: att.contentType, size: att.size });
+                if (previousIndex >= 0) attachments[previousIndex] = imported;
+                else attachments.push(imported);
               }
-              const body = parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<br\s*\/?\s*>|<\/p>/gi, "\n").replace(/<[^>]*>/g, " ") : "");
-              const text = stripQuotedReply(body) || body || "No text content.";
-              const crmMessage: CustomerMessage = {
-                id: messageId, from: "customer", channel: "email", subject: parsed.subject,
-                text, time: (parsed.date || new Date()).toISOString(), read: false,
-                ...(attachments.length ? { attachments } : {}),
-              };
-              step = `saving_${uid}`;
-              if (!lead.messages || !lead.activity) {
-                // Legacy documents can have null conversation/activity fields.
-                // Normalize against the current DB value, preserving messages
-                // another sync may have appended since this lead was fetched.
-                await col.updateOne({ _id: lead._id }, [{ $set: {
-                  messages: { $ifNull: ["$messages", []] }, activity: { $ifNull: ["$activity", []] },
-                } }]);
-              }
-              // Atomic conditional push also prevents duplicate activity when
-              // cron and the dashboard import the same message concurrently.
-              const saved = await col.updateOne({ _id: lead._id, "messages.id": { $ne: messageId } }, {
-                $push: { messages: crmMessage, activity: {
-                  time: new Date().toISOString(), actor: "system", action: "Customer replied via Email", detail: parsed.subject,
-                } },
-              });
-              if (saved.modifiedCount) {
-                syncedCount++;
-                await col.updateOne({ _id: lead._id, status: "Quote Sent" }, { $set: { status: "In Progress" } });
-                // Alerts are best effort; a failure cannot block later replies.
-                try {
-                  if (Date.now() < deadline) await bounded(sendReplyNotification({ leadName: lead.name, leadEmail: fromEmail, subject: parsed.subject, snippet: text, leadId: lead._id.toString() }), Math.min(5000, deadline - Date.now()));
-                } catch (error) { console.error("[IMAP] reply notification failed:", error); }
+              if (existing) {
+                await col.updateOne({ _id: lead._id, "messages.id": messageId }, {
+                  $set: { "messages.$.attachments": attachments },
+                });
+              } else {
+                const body = parsed.text || (typeof parsed.html === "string" ? parsed.html.replace(/<br\s*\/?\s*>|<\/p>/gi, "\n").replace(/<[^>]*>/g, " ") : "");
+                const text = stripQuotedReply(body) || body || "No text content.";
+                const crmMessage: CustomerMessage = {
+                  id: messageId, from: "customer", channel: "email", subject: parsed.subject,
+                  text, time: (parsed.date || new Date()).toISOString(), read: false,
+                  ...(attachments.length ? { attachments } : {}),
+                };
+                step = `saving_${uid}`;
+                if (!lead.messages || !lead.activity) {
+                  // Legacy documents can have null conversation/activity fields.
+                  // Normalize against the current DB value, preserving messages
+                  // another sync may have appended since this lead was fetched.
+                  await col.updateOne({ _id: lead._id }, [{ $set: {
+                    messages: { $ifNull: ["$messages", []] }, activity: { $ifNull: ["$activity", []] },
+                  } }]);
+                }
+                // Atomic conditional push also prevents duplicate activity when
+                // cron and the dashboard import the same message concurrently.
+                const saved = await col.updateOne({ _id: lead._id, "messages.id": { $ne: messageId } }, {
+                  $push: { messages: crmMessage, activity: {
+                    time: new Date().toISOString(), actor: "system", action: "Customer replied via Email", detail: parsed.subject,
+                  } },
+                });
+                if (saved.modifiedCount) {
+                  syncedCount++;
+                  await col.updateOne({ _id: lead._id, status: "Quote Sent" }, { $set: { status: "In Progress" } });
+                  // Alerts are best effort; a failure cannot block later replies.
+                  try {
+                    if (Date.now() < deadline) await bounded(sendReplyNotification({ leadName: lead.name, leadEmail: fromEmail, subject: parsed.subject, snippet: text, leadId: lead._id.toString() }), Math.min(5000, deadline - Date.now()));
+                  } catch (error) { console.error("[IMAP] reply notification failed:", error); }
+                }
               }
             }
           }
         }
         // Advance only after persistence succeeds; failures retry next run.
         // Dashboard syncing never changes Gmail's Seen flags.
-        await states.updateOne({ key, uidValidity }, { $max: { lastUid: uid }, $set: { key, uidValidity } }, { upsert: true });
+        await states.updateOne({ key: cursorKey, uidValidity }, { $max: { lastUid: uid }, $set: { key: cursorKey, uidValidity } }, { upsert: true });
         processed++;
       }
       return { syncedCount, hasMore: processed < uids.length, ...(timedOut ? { error: "timeout", step } : {}) };

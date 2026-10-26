@@ -1,4 +1,5 @@
 import { isPrimaryBooking } from "@/lib/leadBookings";
+import { statusAfterBooking } from "@/lib/pipeline";
 import { staffBookingRules } from "@/lib/staffBookingRules";
 import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { getBookingRules } from "@/lib/bookingRulesServer";
@@ -261,6 +262,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
       }
       if (result.acquired || result.previousBooking) reserved.push({ type, date, time, reservationId: result.reservationId, previousBooking: result.previousBooking });
+    }
+    // Booking through any staff screen advances the workflow even when that
+    // screen sends only appointment details. Explicit status changes still win.
+    if (!body.status || body.status === primary.status) {
+      for (const type of ["inspection", "job"] as const) {
+        const field = type === "job" ? "jobAt" : "inspectionAt";
+        if (body[field] && body[field] !== normalizeApptString(primary[field]) && !secondaryVisit) {
+          body.status = statusAfterBooking(type, body.status || primary.status) || body.status;
+        }
+      }
     }
     const persisted = { ...body };
     if (bookingType && primary[bookingType === "job" ? "jobAt" : "inspectionAt"] &&

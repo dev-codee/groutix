@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
-const { hasAcceptedQuote, isQuoteWaiting, matchesQuoteStatusFilter, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } = loadTs("lib/quoteAcceptance.ts");
+const { hasAcceptedQuote, isAcceptedQuoteAwaitingBooking, isQuoteWaiting, matchesQuoteStatusFilter, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } = loadTs("lib/quoteAcceptance.ts");
 
-test("accepted quotes remain counted after their leads progress beyond Won", () => {
+test("acceptance history survives booking but only completed inspections awaiting jobs enter the accepted queue", () => {
   for (const status of ["Job Booked", "Inspection Booked", "Payment Pending", "Payment Received", "Completed"]) {
     for (const evidence of [{ quoteAcceptedAt: "2026-10-25" }, { quoteSignedAt: "2026-10-25" }, { quoteSignature: "signature" }, { acceptedCustomerQuoteCount: 1 }]) {
       const lead = { status, ...evidence };
       assert.equal(hasAcceptedQuote(lead), true);
-      assert.equal(matchesQuoteStatusFilter(lead, QUOTE_ACCEPTED_FILTER), true);
+      assert.equal(matchesQuoteStatusFilter(lead, QUOTE_ACCEPTED_FILTER), false);
       assert.equal(isQuoteWaiting(lead), false);
     }
   }
@@ -29,10 +29,37 @@ test("accepted quotes cannot remain in the waiting card or its destination list"
   assert.equal(leads.filter(hasAcceptedQuote).length, 3, "multiple accepted quotes count once per customer");
   assert.equal(leads.filter(isQuoteWaiting).length, 2);
   for (const lead of leads) {
-    assert.equal(matchesQuoteStatusFilter(lead, QUOTE_ACCEPTED_FILTER), hasAcceptedQuote(lead));
+    assert.equal(matchesQuoteStatusFilter(lead, QUOTE_ACCEPTED_FILTER), isAcceptedQuoteAwaitingBooking(lead));
     assert.equal(matchesQuoteStatusFilter(lead, QUOTE_WAITING_FILTER), isQuoteWaiting(lead));
   }
   assert.equal(matchesQuoteStatusFilter({ status: "Scheduled" }, "Job Booked|Scheduled|Job Confirmed"), true);
+});
+
+test("accepted queue requires a completed inspection and excludes booked, progressed and closed jobs", () => {
+  const ready = { status: "Won", quoteAcceptedAt: "2026-10-25", inspectionReport: { status: "completed" } };
+  assert.equal(isAcceptedQuoteAwaitingBooking(ready), true);
+  assert.equal(matchesQuoteStatusFilter(ready, QUOTE_ACCEPTED_FILTER), true);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Won" }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, inspectionReport: { status: "draft" } }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Inspection Completed", acceptedCustomerQuoteCount: 2 }), true);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Quote Sent", inspectionReport: ready.inspectionReport }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ status: "Won", bookings: [{ type: "inspection", status: "Inspection Completed" }] }), true);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, jobAt: "2026-10-28T09:00" }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, bookings: [{ type: "job", status: "Job Booked" }] }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, bookings: [{ type: "job", status: "Job Done" }] }), false);
+  assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, bookings: [{ type: "job", status: "Cancelled" }] }), true);
+  for (const status of ["Job Booked", "Scheduled", "Job Confirmed", "Job In Progress", "Job Done", "Payment Pending", "Completed", "Lost", "Cancelled"]) {
+    assert.equal(isAcceptedQuoteAwaitingBooking({ ...ready, status }), false, status);
+  }
+  const booked = { ...ready, status: "Job Booked", jobAt: "2026-10-28T09:00" };
+  assert.equal(matchesQuoteStatusFilter(booked, QUOTE_ACCEPTED_FILTER), false);
+  assert.equal(matchesQuoteStatusFilter(booked, "Job Booked|Scheduled|Job Confirmed"), true);
+  for (const booking of [{ jobAt: "2026-10-28T09:00" }, { bookings: [{ type: "job", status: "Job Booked" }] }]) {
+    const legacyBooked = { ...ready, ...booking };
+    assert.equal(matchesQuoteStatusFilter(legacyBooked, QUOTE_ACCEPTED_FILTER), false);
+    assert.equal(matchesQuoteStatusFilter(legacyBooked, "Job Booked|Scheduled|Job Confirmed"), true);
+  }
+  assert.equal(matchesQuoteStatusFilter({ ...booked, status: "Completed" }, "Job Booked|Scheduled|Job Confirmed"), false);
 });
 
 test("admin list loads accepted quote records even when the lead has no acceptance fields", async () => {

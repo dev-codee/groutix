@@ -46,6 +46,22 @@ test("inspection and job pools can share a start time", async () => {
   assert.equal(calls[0][0], "reserve");
 });
 
+test("booking an accepted quote through appointment-only saves advances it to Job Booked", async () => {
+  for (const status of ["Won", "Quote Accepted"]) {
+    const { patch, calls } = patchApi({ before: { status, quoteAcceptedAt: "2026-10-25" } });
+    assert.equal((await patch({ jobAt: "2026-10-28T09:00" })).status, 200);
+    const saved = calls.find(([action]) => action === "update")[2];
+    assert.equal(saved.status, "Job Booked");
+    assert.equal(saved.jobAt, "2026-10-28T09:00");
+  }
+});
+
+test("rescheduling a progressed job does not move its workflow backwards", async () => {
+  const { patch, calls } = patchApi({ before: { status: "Job In Progress", jobAt: "2026-10-28T09:00" } });
+  assert.equal((await patch({ jobAt: "2026-10-29T09:00" })).status, 200);
+  assert.ok(!calls.find(([action]) => action === "update")[2].status);
+});
+
 test("failed lead writes release only the newly acquired slot", async () => {
   const { patch, calls } = patchApi({ updateFails: true, before: { inspectionAt: "2026-10-08T09:00" } });
   assert.equal((await patch({ inspectionAt: "2026-10-09T10:00" })).status, 500);

@@ -1,6 +1,8 @@
 "use client";
 
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
+import { newestLeadsFirst } from "@/lib/leadOrder";
+import { EmailMessageText } from "@/components/admin/EmailMessageText";
 import { matchesQuoteStatusFilter } from "@/lib/quoteAcceptance";
 
 import { jobBookingRows, selectedJobBooking, leadRowKey } from "@/lib/leadBookings";
@@ -125,7 +127,7 @@ import {
   type EmailTemplate,
   type DynamicTagInfo,
 } from "@/lib/emailTemplates";
-import { formatAppt, formatApptDate, formatApptTime, formatApptTimeRange, apptInstantMs } from "@/lib/scheduling";
+import { formatAppt, formatApptDate, formatApptTime, formatApptTimeRange } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { AdminPageProvider } from "@/components/admin/AdminPageContext";
 import { IntakeLeadRow } from "@/components/admin/rows/IntakeLeadRow";
@@ -3771,9 +3773,9 @@ export default function CrmDashboardPage() {
           if (!inRoleQueue(role, l.status) && !isFlowInProgress(role, l.status, l) && !isFlowCompleted(role, l.status, l)) return false;
           return true;
         });
-    if (showLegacyLeads) return roleScoped;
-    if (newLeadsCutoffMs <= 0) return roleScoped;
-    return roleScoped.filter((l) => (role === "technician" ? true : !isLegacyLead(l, newLeadsCutoffMs)));
+    const visible = showLegacyLeads || newLeadsCutoffMs <= 0 ? roleScoped
+      : roleScoped.filter((l) => (role === "technician" ? true : !isLegacyLead(l, newLeadsCutoffMs)));
+    return newestLeadsFirst(visible);
   }, [leads, role, showLegacyLeads, newLeadsCutoffMs, staff, username, viewAs, assignableTechnicians]);
 
   // Expand only work queues; customer, inbox and dispatch lists retain one customer each.
@@ -3821,27 +3823,6 @@ export default function CrmDashboardPage() {
     return pool.filter((l) => isLegacyLead(l, newLeadsCutoffMs)).length;
   }, [leads, role, newLeadsCutoffMs]);
 
-  function getLeadAppointmentTimestamp(l: Lead): { hasAppt: boolean; timestamp: number } {
-    const dtStr = l.inspectionAt || l.jobAt;
-    if (dtStr) {
-      // Appointments are naive Melbourne wall-clock strings; new Date() would read
-      // them in the viewer's timezone and mis-order the inspector's day on any
-      // machine not set to Melbourne time. apptInstantMs resolves them properly.
-      const t = apptInstantMs(dtStr);
-      if (!isNaN(t) && t > 0) {
-        return { hasAppt: true, timestamp: t };
-      }
-    }
-    const fallback = l.received || l.createdAt;
-    if (fallback) {
-      const t = new Date(fallback).getTime();
-      if (!isNaN(t) && t > 0) {
-        return { hasAppt: false, timestamp: t };
-      }
-    }
-    return { hasAppt: false, timestamp: 0 };
-  }
-
   // Filtering & Search
   const filteredLeads = useMemo(() => {
     let list = jobWorkflowLeads;
@@ -3883,37 +3864,7 @@ export default function CrmDashboardPage() {
       );
     }
 
-    // For inspection & field roles: sort leads chronologically by appointment date and time (closest first)
-    if (role === "inspection" || role === "field") {
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const startOfTodayMs = startOfToday.getTime();
-
-      list = [...list].sort((a, b) => {
-        const apptA = getLeadAppointmentTimestamp(a);
-        const apptB = getLeadAppointmentTimestamp(b);
-
-        if (apptA.hasAppt && apptB.hasAppt) {
-          const isUpcomingA = apptA.timestamp >= startOfTodayMs;
-          const isUpcomingB = apptB.timestamp >= startOfTodayMs;
-
-          if (isUpcomingA && !isUpcomingB) return -1; // Today and upcoming appointments first
-          if (!isUpcomingA && isUpcomingB) return 1;
-
-          if (isUpcomingA && isUpcomingB) {
-            return apptA.timestamp - apptB.timestamp; // Chronological ascending: closest appointment comes first
-          }
-          return apptB.timestamp - apptA.timestamp; // Most recent past appointment first
-        }
-
-        if (apptA.hasAppt && !apptB.hasAppt) return -1;
-        if (!apptA.hasAppt && apptB.hasAppt) return 1;
-
-        return apptB.timestamp - apptA.timestamp;
-      });
-    }
-
-    return list;
+    return newestLeadsFirst(list);
   }, [jobWorkflowLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role]);
 
   // Leads with at least one unread customer reply — drives the header bell badge.
@@ -6399,7 +6350,9 @@ export default function CrmDashboardPage() {
                             const hasQuoted = isCustomerEmail && cleanText !== msg.text;
                             return (
                               <div className="space-y-1">
-                                <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>
+                                {isCustomerEmail && msg.channel === "email" ? (
+                                  <EmailMessageText text={cleanText} attachments={msg.attachments} />
+                                ) : <div className="whitespace-pre-wrap leading-relaxed">{cleanText}</div>}
                                 {hasQuoted && (
                                   <details className="mt-1 text-[10px] text-slate-400">
                                     <summary className="cursor-pointer hover:text-slate-600 select-none font-medium">
