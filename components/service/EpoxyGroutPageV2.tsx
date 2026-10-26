@@ -1,406 +1,439 @@
 "use client";
 
-// Redesigned /epoxy-grout page. Copy, links, reviews logic and both JSON-LD blocks
-// (Service + FAQPage) are the same as components/EpoxyGroutPage.tsx (kept for a
-// one-line rollback); only the layout follows the new homepage.
+// Redesigned /balcony-leak-repairs page. Copy, links, FAQs and the speakable
+// selectors (#balcony-intro, .balcony-faq-answer) are the same as
+// components/BalconyLeakRepairsPage.tsx (kept for a one-line rollback);
+// only the layout follows the new homepage.
+// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
+// under the hero); every photo live-verified with SEO alt text.
 
 import Image from "next/image";
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { AlertTriangle, Building2, Check, ClipboardCheck, Droplets, Grid2x2, Home, Layers, Phone, Search, ShieldCheck, ShowerHead } from "lucide-react";
+import {
+  Building2, Check, ClipboardCheck, Clock, Droplets, Eye, Grid2x2, Layers, Phone, Search, ShieldCheck, Sparkles, Sun, Waves, Wind, Wrench,
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact } from "@/components/SiteContentProvider";
-import { faqJsonLd } from "@/lib/seo";
+import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
+import { balconyFaqs, balconyIntro } from "@/lib/balconyLeakContent";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead, ServiceHero,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, inlineLink, lead, wrap, type PhotoCardData,
+  FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
+  box, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
 } from "@/components/v2/ui";
+import HeroContactBadges from "@/components/HeroContactBadges";
+import QuoteFormV2 from "@/components/home/QuoteFormV2";
+import { useGoogleRating } from "@/components/useGoogleRating";
 
-/* Used for the Service JSON-LD (unchanged). */
-const SITE_URL = "https://groutix.com";
-
-type Icon = ComponentType<{ className?: string }>;
+type IconCard = { title: string; body: string; Icon: ComponentType<{ className?: string }> };
 
 /* ───────────── Content (unchanged from the live page) ───────────── */
-const WHAT_IS: { Icon: Icon; title: string; desc: string }[] = [
-  { Icon: Layers, title: "Resin, Not Cement", desc: "Epoxy grout is a two part resin grout, not a cement one." },
-  { Icon: Droplets, title: "Does Not Absorb Water", desc: "Once it sets, it does not soak up water." },
-  { Icon: ShieldCheck, title: "Resists Stains and Mould", desc: "There is nothing inside the joint for mould to grow in." },
+// Card title and text are the live copy; the photo and link are new for the card layout.
+const signs: PhotoCardData[] = [
+  { title: "White Chalky Stains", text: "On tiles or walls. This is efflorescence. It can indicate water moving through the surface.", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Efflorescence — white chalky stains on balcony tiles, a sign water is moving through the balcony surface", href: "#diagnose", link: "How we find the cause", half: true },
+  { title: "Mould or Dark Grout", text: "Mould or dark stains in grout lines that return after cleaning.", img: "/shower-floor-regrouting-dark-tiles-top-view.webp", alt: "Dark, stained grout lines on balcony tiles that keep coming back after cleaning", href: "/tile-regrouting/", link: "Mould and stains in grout lines", half: true },
+  { title: "Hollow Sounding Tiles", text: "Tiles that sound hollow when tapped. Builders call these drummy tiles.", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony floor checked for drummy tiles", href: "#no-tile-removal", link: "Can the tiles stay down?" },
+  { title: "Ceiling Water Stains", text: "Water stains on the ceiling of the room below your balcony.", img: "/water stains on the ceiling below.webp", alt: "Water stains on the ceiling below a leaking balcony — often the first sign of a balcony leak", href: "#strata", link: "Apartments and strata", half: true },
+  { title: "Bubbling or Peeling Paint", text: "Paint that bubbles or peels on walls under the balcony.", img: "/leaking-shower-water-damage-wall.webp", alt: "Bubbling paint and damp patches on a wall under a leaking balcony in a Melbourne apartment", href: "#repair-options", link: "Balcony repair options" },
+  { title: "Pooling Water", text: "Water that pools for hours after rain instead of draining away.", img: "/grey-shower-base-regrouting-overhead-view before .webp", alt: "Water pooling on a tiled surface for hours after rain instead of draining to the waste", href: "#causes", link: "What causes balcony leaks" },
 ];
 
-const BENEFITS = ["Stain resistant.", "Non porous.", "Handles grease and cleaning products better.", "Colour stays even."];
-const TRADE_OFFS = [
-  "Costs more upfront than cement.",
-  "Sets quickly, so it needs skilled application.",
-  "Not right for every outdoor or stone surface. We check first.",
+const causes: IconCard[] = [
+  { title: "Failed Waterproof Membrane", body: "Water can pass through a damaged or incorrectly installed membrane beneath the tiles.", Icon: Layers },
+  { title: "Cracked or Missing Grout", body: "Open joints let water pass beneath the tiled surface.", Icon: Grid2x2 },
+  { title: "Split Movement Joints", body: "Buildings shift with heat and cold. Flexible joints must accommodate that movement.", Icon: Wrench },
+  { title: "Poor Drainage", body: "Blocked drains or inadequate falls leave water sitting on the balcony.", Icon: Waves },
+  { title: "Worn Sealant", body: "Gaps around edges, drains and balustrade posts create vulnerable entry points.", Icon: Droplets },
+  { title: "UV Damage", body: "Harsh sun breaks down unsuitable sealants year after year.", Icon: Sun },
 ];
 
-const WORKS_BEST: { Icon: Icon; title: string; link?: string }[] = [
-  { Icon: ShowerHead, title: "Showers and bathrooms", link: "/shower-regrouting" },
-  { Icon: Grid2x2, title: "Kitchens and splashbacks" },
-  { Icon: Droplets, title: "Laundries" },
-  { Icon: Layers, title: "Busy floors" },
-  { Icon: Building2, title: "Commercial kitchens and food areas" },
-  { Icon: Home, title: "Rentals and property managers" },
+const diagnoseSteps = [
+  "We check grout lines, joints, drains and edges up close.",
+  "We tap tiles to find hollow drummy spots.",
+  "We assess moisture and where water may be travelling.",
+  "We trace stains back towards the entry point, not just the visible damage.",
 ];
 
-const COLOURS = ["Match the Existing", "Refresh with a New Colour", "Choose a Contrast"];
-
-const MYTHS = [
-  { myth: "Epoxy replaces waterproofing.", truth: "It does not. It seals the joint. It is not a membrane." },
-  { myth: "It never needs cleaning.", truth: "Dirt can still sit on the surface. A gentle clean keeps it fresh." },
-  { myth: "You can put it over old grout.", truth: "No. The old grout is removed first." },
-  { myth: "All epoxy jobs are the same.", truth: "It sets fast, so the result depends on who applies it." },
+const repairOptions = [
+  { tag: "Grout failed, membrane sound", title: "Epoxy Regrouting With No Tile Removal", body: "We cut out old grout and replace it with epoxy grout suited to the outdoor area. Your tiles stay where they are. Flexible movement joints are repaired separately.", Icon: Grid2x2, pill: "bg-[#EEF3FF] text-[#001F97]" },
+  { tag: "Early leaks and tired seals", title: "Waterproof Sealing Treatment", body: "We renew silicone joints and seal vulnerable edges where appropriate. This addresses failed seals without treating a surface seal as a substitute for a sound membrane.", Icon: Droplets, pill: "bg-[#E8EDFE] text-[#2F63CC]" },
+  { tag: "The membrane has failed", title: "Full Rebuild With New Membrane and Tiles", body: "Tiles are lifted, the base repaired and a new external waterproofing membrane installed before retiling. We explain the rebuild scope and applicable AS 4654 requirements in your quote.", Icon: Layers, pill: "bg-[#FFF4D1] text-[#7A5600]" },
 ];
 
-const PROCESS = [
-  { title: "Inspect and Match", desc: "Check the joints, tiles and colour." },
-  { title: "Remove the Old Grout", desc: "All old grout is taken out, not covered." },
-  { title: "Apply the Epoxy", desc: "Small batches, applied and cleaned off the same day, before it sets." },
-  { title: "Cure and Recheck", desc: "The epoxy cures before water. We tell you the exact wait before we start." },
+const weatherRisks: Array<[string, string]> = [
+  ["Cement grout", "Cement grout can absorb moisture and deteriorate in exposed joints."],
+  ["Unsuitable sealants", "Sealants without suitable UV resistance can peel and break down outdoors."],
+  ["Rigid repairs", "A rigid repair across a movement joint can crack as the building moves."],
 ];
 
-const CARE = ["Wait for the cure.", "Use gentle cleaners.", "Wipe dirt off the surface early."];
-const COST_FACTORS = ["Area", "Tile size and joint width", "Colour and product", "Condition of the old grout"];
-
-const WHY: { Icon: Icon; title: string; desc?: string }[] = [
-  { Icon: Search, title: "Honest Advice", desc: "Including where epoxy is not right." },
-  { Icon: Layers, title: "Full Removal" },
-  { Icon: ClipboardCheck, title: "Colour Matched" },
-  { Icon: ShieldCheck, title: "10 Year Warranty", desc: "On eligible work." },
+const processSteps: Array<[string, string]> = [
+  ["Free inspection", "We visit, check the signs and trace the source."],
+  ["Fixed quote", "You approve a written price and repair scope before we start."],
+  ["Repair day", "We regrout, reseal or plan a rebuild based on the diagnosis."],
+  ["Test and tidy", "We check our work, explain the finished repair and leave the place clean."],
 ];
 
-// Real Groutix regrouting jobs (the live page still shows empty "Add photo manually" boxes here).
-const BEFORE_AFTER = [
-  { src: "/img12.jpeg", alt: "Shower floor before and after epoxy regrouting" },
-  { src: "/img14.jpeg", alt: "Dark tiled shower walls before and after epoxy regrouting" },
-  { src: "/img59.jpeg", alt: "Floor tiles before and after epoxy regrouting" },
-  { src: "/img91.jpeg", alt: "Dark shower floor before and after epoxy regrouting" },
+const priceFactors: IconCard[] = [
+  { title: "Size", body: "Size of the balcony and tiled area.", Icon: Grid2x2 },
+  { title: "What Failed", body: "Grout, seals, base or membrane.", Icon: Search },
+  { title: "Access", body: "High rise access and building requirements can add setup time.", Icon: Building2 },
+  { title: "Repair Tier", body: "Regrout, seal or full rebuild.", Icon: Wrench },
 ];
 
-const RELATED: PhotoCardData[] = [
-  { title: "Shower Regrouting", href: "/shower-regrouting", img: "/img42.jpeg", alt: "Groutix technician regrouting a shower", link: "Learn more" },
-  { title: "Tile Regrouting", href: "/tile-regrouting", img: "/img36.jpeg", alt: "Kitchen floor tiles with worn grout lines", link: "Learn more" },
-  { title: "Silicone and Recaulking", href: "/silicone-recaulking", img: "/img50.jpeg", alt: "Fresh silicone being applied around a shower screen", link: "Learn more" },
-  { title: "Balcony Leak Repairs", href: "/balcony-leak-repairs", img: "/img77.jpeg", alt: "Tiled balcony after regrouting", link: "Learn more" },
+const strataCards: IconCard[] = [
+  { title: "Inspection Documentation", body: "Discuss the photos and written report your committee or insurer needs.", Icon: ClipboardCheck },
+  { title: "Relevant Standards", body: "External membrane work is assessed against applicable AS 4654 requirements. AS 3740 relates to internal wet areas.", Icon: ShieldCheck },
+  { title: "Building Approved Hours", body: "We discuss access, approvals and the building's permitted work hours.", Icon: Clock },
+  { title: "A Clear Contact", body: "Repair scope and scheduling explained from the first call to the final check.", Icon: Phone },
 ];
 
-/* `link` only renders an in-text link on the page. `a` stays plain text for the FAQPage schema. */
-const EPOXY_FAQS: { q: string; a: string; link?: { text: string; href: string } }[] = [
-  { q: "What is epoxy grout?", a: "A two part resin grout. Once set, it does not absorb water." },
-  {
-    q: "Is epoxy grout better than cement grout?",
-    a: "In wet areas, usually, because it does not absorb water or stain easily. It costs more and needs skilled application. See shower regrouting for the shower detail.",
-    link: { text: "shower regrouting", href: "/shower-regrouting" },
-  },
-  { q: "Can you put epoxy over my existing grout?", a: "No. The old grout is removed first so the epoxy bonds." },
-  { q: "Does epoxy grout need sealing?", a: "Not like cement grout does. We tell you how to care for it." },
-  { q: "Will epoxy grout still get dirty?", a: "Dirt can sit on the surface, but it scrubs off. Mould has nothing to grow in inside the joint." },
-  { q: "What colours does epoxy grout come in?", a: "Many. We can match your current colour or change it." },
-  {
-    q: "Can epoxy grout be used outdoors?",
-    a: "Sometimes. Direct sun can affect how epoxy sets, so we check first. For balconies, see balcony leak repairs.",
-    link: { text: "balcony leak repairs", href: "/balcony-leak-repairs" },
-  },
-  { q: "How long does epoxy grout last?", a: "Done properly, it holds up well in wet areas. Eligible completed work is backed by our 10 year waterproof warranty." },
-  { q: "How long before I can use the area?", a: "It depends on the product. We tell you the exact wait before we start." },
-  { q: "How much does epoxy grout cost in Melbourne?", a: "It depends on the area, tile size, colour and condition. We quote after we see it." },
+const related: PhotoCardData[] = [
+  { title: "Shower Regrouting", text: "Leak coming from the bathroom instead? Our grout specialists assess whether repairs can keep your tiles in place.", href: "/shower-regrouting/", img: "/walk-in-shower-regrouting-bench-linear-drain.webp", alt: "Walk-in shower with a bench seat and linear drain, regrouted by Groutix Melbourne", link: "Shower Regrouting" },
+  { title: "Leaking Shower Repair", text: "We trace the leak to its source before recommending a repair.", href: "/leaking-shower-repair/", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Cracked, water-stained grout in a leaking shower corner", link: "Leaking Shower Repair" },
+  { title: "Efflorescence and Mould in Grout Lines", text: "White stains and black spots can signal moisture problems. We inspect the cause before recommending tile regrouting.", href: "/tile-regrouting/", img: "/shower-regrouting-rust-stained-tiles.webp", alt: "Floor tiles with stained, mouldy grout and efflorescence", link: "Tile Regrouting", half: true },
 ];
 
-function faqAnswer(a: string, link?: { text: string; href: string }) {
-  if (!link || !a.includes(link.text)) return a;
-  const [before, ...rest] = a.split(link.text);
-  return <>{before}<Link href={link.href} className={inlineLink}>{link.text}</Link>{rest.join(link.text)}</>;
+/* ───────────── Small pieces ───────────── */
+function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: string }) {
+  const { Icon } = c;
+  return (
+    <div className={`${box} border-t-4 ${accent} p-6`}>
+      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
+      <h3 className={`${cardTitle} mt-4`}>{c.title}</h3>
+      <p className={cardText}>{c.body}</p>
+    </div>
+  );
 }
 
-/* The fixed Kirat Singh review shown on the live page. */
-const KIRAT: Review = {
-  name: "Kirat Singh",
-  suburb: "Epoxy Regrouting",
-  stars: 5,
-  review: "Bathroom looks amazing after epoxy regrouting. Johnny did a great job. Highly professional and polite.",
-};
-
 /* ───────────── Page ───────────── */
-export default function EpoxyGroutPageV2({ reviews = [], rating }: { reviews?: Review[]; rating?: BusinessRating }) {
+export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
+  const gr = useGoogleRating();
   const { phone, tel } = useContact();
+  // Balcony reviews first, same as the live page.
+  const isBalcony = (r: Review) => /balcon(?:y|ies)/i.test(r.review);
+  const orderedReviews = [...reviews.filter(isBalcony), ...reviews.filter((r) => !isBalcony(r))];
 
-  // Same rule as the live page: Kirat first, then real reviews that mention epoxy.
-  // The other live reviews follow so the scrolling row stays full.
-  const isKirat = (r: Review) => JSON.stringify(r).toLowerCase().includes("kirat");
-  const mentionsEpoxy = (r: Review) => JSON.stringify(r).toLowerCase().includes("epoxy");
-  const orderedReviews = [
-    KIRAT,
-    ...reviews.filter((r) => mentionsEpoxy(r) && !isKirat(r)),
-    ...reviews.filter((r) => !mentionsEpoxy(r) && !isKirat(r)),
+  const inspectionCta = (label = "Book Your Free Inspection") => (
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-5">
+      <a href="#quote-form" className={btnNavy}>{label} →</a>
+      <a href={tel} className="inline-flex items-center gap-2 font-bold text-[#001F97] hover:underline"><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+    </div>
+  );
+
+  const whyGroutix: IconCard[] = [
+    { title: "10 Year Waterproof Warranty", body: "On eligible completed waterproof work. Scope and terms confirmed in your quote.", Icon: ShieldCheck },
+    { title: `${rating.value.toFixed(1)} Star Google Rating`, body: `Based on ${gr.countLabel} Google reviews through our existing business review source.`, Icon: Sparkles },
+    { title: "Leak and Grout Specialists", body: "Practical repairs for failed grout, silicone and leaking tiled areas.", Icon: Wrench },
+    { title: "Free Inspections", body: "Fixed written quotes before the agreed work starts.", Icon: Search },
+    { title: "Real Customer Reviews", body: "Read existing feedback from customers we have helped.", Icon: ClipboardCheck },
+    { title: "Finished Work Walkthrough", body: "We explain the completed repair and the care it needs before we leave.", Icon: Eye },
   ];
-
-  const serviceJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Service",
-    serviceType: "Epoxy grouting",
-    name: "Epoxy Grout Melbourne",
-    areaServed: { "@type": "City", name: "Melbourne" },
-    provider: { "@type": "LocalBusiness", name: "Groutix", url: SITE_URL },
-    url: `${SITE_URL}/epoxy-grout`,
-  };
 
   return (
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(EPOXY_FAQS)) }} />
-
-        {/* 1. HERO */}
-        <ServiceHero title="Epoxy Grout Melbourne" rating={rating} defaultService="Epoxy Grout" warrantyNote="On eligible completed work">
-          <p>Groutix removes old cement grout and replaces it with epoxy grout. It is a resin grout that does not absorb water and resists stains and mould. We tell you honestly where epoxy is the right choice and where it is not.</p>
-        </ServiceHero>
-
-        {/* 2. WHAT IS EPOXY GROUT */}
-        <Section id="what-is" alt>
-          <SectionHead k="The Basics" title="What Is Epoxy Grout?">
-            <p className={lead}>Epoxy grout is a two part resin grout, not a cement one. Once it sets, it does not soak up water.</p>
-          </SectionHead>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {WHAT_IS.map(({ Icon, title, desc }) => (
-              <div key={title} className={`${box} border-t-4 border-t-[#001F97] p-6`}>
-                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
-                <h3 className={`${cardTitle} mt-4`}>{title}</h3>
-                <p className={cardText}>{desc}</p>
+        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        <section className="relative scroll-mt-28 overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
+          <Image src="/Shower regrouting cover .webp" alt="" fill priority sizes="100vw" className="object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,#06124F_0%,#0A1F7A_55%,#001F97_100%)] opacity-85" />
+          <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div className="text-center lg:text-left">
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Balcony Leak Repair Melbourne</h1>
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+                <p id="balcony-intro">{balconyIntro}</p>
               </div>
-            ))}
+              <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
+                <HeroContactBadges />
+              </div>
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="flex items-center gap-3.5 text-left">
+                  <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
+                  <div>
+                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <span className="text-sm text-[#D6DCF5]">On eligible waterproof work</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-white/25 sm:pl-6">
+                  <b className="block text-[28px] font-black leading-none">8,000+</b>
+                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
+              <Image src="/balcony-regrouting-herringbone-tiles.webp" alt="Balcony leak repairs in Melbourne — herringbone balcony tiles regrouted and resealed with waterproof epoxy grout" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
           </div>
-          <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>Dirt can still sit on the surface, but it scrubs off. There is nothing inside the joint for mould to grow in.</p>
-        </Section>
+        </section>
 
-        {/* 3. BENEFITS AND TRADE-OFFS */}
-        <Section id="benefits">
-          <SectionHead k="The Honest Picture" title="Benefits and Trade-offs">
-            <p className={lead}>Epoxy is not the answer to everything. Here is the honest picture.</p>
+        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
+          <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
+            <div>
+              <p className={eyebrow}>Free Quote</p>
+              <h2 className={h2}>Get Your Free Balcony Leak Repair Quote</h2>
+              <p className={`${lead} mt-3.5`}>Tell us what your balcony is doing and add photos of the stains, grout lines and drainage. Photos are required, so we can see the problem before we quote.</p>
+              <ul className="mt-6 space-y-2.5">
+                {["Free inspection, no obligation", "10-year waterproof warranty on eligible waterproof work", "Fixed written quote before work starts"].map((x) => (
+                  <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              <a href={tel} className={`${btnNavy} mt-7`}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+            <div className="mx-auto w-full max-w-[560px] lg:max-w-none">
+              <QuoteFormV2 />
+            </div>
+          </div>
+        </section>
+
+        {/* 2. SIGNS */}
+        <Section id="signs" alt>
+          <SectionHead k="Signs to check" title="Signs Your Balcony Needs Leak Repair">
+            <p className={lead}>Balconies rarely fail overnight. They warn you first. Here is what to look for.</p>
           </SectionHead>
-          <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="grid gap-3">
-              <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#001F97]">Benefits</p>
-              {BENEFITS.map((b) => (
-                <div key={b} className={`${box} flex items-center gap-4 p-5`}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#001F97] text-white"><Check className="h-5 w-5" aria-hidden="true" /></span>
-                  <p className="text-base font-bold text-slate-900">{b}</p>
-                </div>
-              ))}
-            </div>
-            <div className="grid content-start gap-3">
-              <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#7A5600]">Trade-offs</p>
-              {TRADE_OFFS.map((t) => (
-                <div key={t} className={`${box} flex items-center gap-4 border-l-4 border-l-[#FBBC04] p-5`}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFF4D1] text-[#7A5600]"><AlertTriangle className="h-5 w-5" aria-hidden="true" /></span>
-                  <p className="text-base font-bold text-slate-900">{t}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <p className="mt-8 text-center text-base text-slate-600">For the full shower comparison, see <Link href="/shower-regrouting" className={inlineLink}>shower regrouting</Link>.</p>
-        </Section>
-
-        {/* 4. WHERE IT WORKS BEST */}
-        <Section id="where" alt>
-          <SectionHead k="Where It Fits" title="Where Epoxy Grout Works Best" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {WORKS_BEST.map(({ Icon, title, link }) => {
-              const inner = (
-                <>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
-                  <h3 className="text-lg font-bold leading-snug text-slate-900">{title}{link && <span className="ml-1 text-[#2F63CC]">→</span>}</h3>
-                </>
-              );
-              return link ? (
-                <Link key={title} href={link} className={`${box} flex items-center gap-4 p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>{inner}</Link>
-              ) : (
-                <div key={title} className={`${box} flex items-center gap-4 p-6`}>{inner}</div>
-              );
-            })}
+            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
           </div>
-          <div className={`${box} mx-auto mt-6 max-w-[1000px] border-l-4 border-l-[#FBBC04] p-6`}>
-            <h3 className={cardTitle}>Where We Are Careful</h3>
-            <p className={cardText}>Outdoors in direct sun, and some natural or polished stone, need a closer look first. For balconies, see <Link href="/balcony-leak-repairs" className={inlineLink}>balcony leak repairs</Link>.</p>
-          </div>
+          <p className={`${lead} mt-8 text-center`}>Spot even one sign? Book a free inspection. Small leaks can turn into bigger damage.</p>
+          {inspectionCta()}
         </Section>
 
-        {/* 5. COLOURS */}
-        <Section id="colours">
-          <SectionHead k="Colour" title="Epoxy Grout Colours">
-            <p className={lead}>Epoxy comes in many colours. We match your current grout or change it.</p>
+        {/* 3. CAUSES */}
+        <Section id="causes">
+          <SectionHead k="Find the cause" title="What Causes Balconies to Leak in Melbourne">
+            <p className={lead}>Melbourne weather punishes outdoor tiles. Summer sun bakes them. Winter rain soaks them. Bay winds drive water into gaps.</p>
           </SectionHead>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {COLOURS.map((c, i) => (
-              <div key={c} className={`${box} flex items-center gap-4 p-6`}>
-                <span className="text-[32px] font-black leading-none text-[#2F63CC]">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className={cardTitle}>{c}</h3>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {causes.map((c) => <IconBox key={c.title} c={c} />)}
+          </div>
+          <p className={`${lead} mt-8 text-center`}>Most leaks have more than one cause. That is why we diagnose before we repair.</p>
+        </Section>
+
+        {/* 4. DIAGNOSE */}
+        <Section id="diagnose" alt>
+          <SectionHead k="An honest diagnosis" title="Is It the Grout or the Membrane? How We Diagnose the Real Cause">
+            <p className={lead}>This question decides your repair. Get it wrong and the leak returns.</p>
+          </SectionHead>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-9">
+              <Search className="h-9 w-9 text-[#FBBC04]" aria-hidden="true" />
+              <h3 className="mt-5 text-2xl font-bold">The right fix starts with the source</h3>
+              <div className="mt-6 space-y-5">
+                <div className="border-b border-white/20 pb-5">
+                  <p className="font-bold text-[#FBBC04]">Failed grout</p>
+                  <p className="mt-2 text-[#D6DCF5]">May need regrouting when the membrane and base remain sound.</p>
+                </div>
+                <div>
+                  <p className="font-bold text-[#FBBC04]">Failed membrane</p>
+                  <p className="mt-2 text-[#D6DCF5]">Needs a rebuild. Grout alone cannot repair a failed membrane.</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-5 text-xl font-bold text-slate-900">Our inspection finds the cause</h3>
+              <ol className="grid gap-3">
+                {diagnoseSteps.map((step, i) => (
+                  <li key={step} className={`${box} flex items-start gap-4 p-4`}>
+                    <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#001F97] text-sm font-black text-white">{i + 1}</span>
+                    <p className="pt-1.5 leading-relaxed text-slate-700">{step}</p>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-6 leading-relaxed text-slate-600">You get a straight answer. We explain what failed and which fix suits it. Ask us about photos and inspection documentation for your property.</p>
+            </div>
+          </div>
+        </Section>
+
+        {/* 5. REPAIR OPTIONS */}
+        <Section id="repair-options">
+          <SectionHead k="Repair options" title="Balcony Leak Repair Options: Choose the Right Fix">
+            <p className={lead}>One size never fits all. We match the repair to the cause we found.</p>
+          </SectionHead>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {repairOptions.map(({ tag, title, body, Icon, pill }) => (
+              <div key={title} className={`${box} flex flex-col gap-3 p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`w-fit rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${pill}`}>{tag}</span>
+                  <Icon className="h-6 w-6 shrink-0 text-[#2F63CC]" aria-hidden="true" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+                <p className="text-base leading-relaxed text-slate-600">{body}</p>
               </div>
             ))}
           </div>
-          <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>Colours look different on screen and on the wall, so we show you a sample before we start.</p>
+          <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>We only recommend what your balcony needs. The inspection decides, not a sales script. We explain why we picked the repair.</p>
+          <p className="mt-4 text-center text-slate-600">
+            Learn more about <Link href="/#balcony" className={inlineLink}>balcony regrouting</Link> or our <Link href="/epoxy-grout/" className={inlineLink}>epoxy grout service</Link>.
+          </p>
         </Section>
 
-        {/* 6. MYTHS */}
-        <Section id="myths" alt>
-          <SectionHead k="Clearing It Up" title="Myths About Epoxy Grout" />
-          <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-5 md:grid-cols-2">
-            {MYTHS.map((m) => (
-              <div key={m.myth} className={`${box} p-6`}>
-                <span className="inline-block rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide bg-[#FFF4D1] text-[#7A5600]">Myth</span>
-                <h3 className={`${cardTitle} mt-3`}>&ldquo;{m.myth}&rdquo;</h3>
-                <p className={cardText}>{m.truth}</p>
-              </div>
-            ))}
+        {/* 6. WEATHER */}
+        <Section id="weather" alt>
+          <SectionHead k="Outdoor durability" title="Built for Melbourne Weather: UV, Heat and Movement">
+            <p className={lead}>A balcony can face full sun, cold snaps and salty bay air in one year. The materials must match the exposure.</p>
+          </SectionHead>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="grid gap-4">
+              {weatherRisks.map(([title, body]) => (
+                <div key={title} className={`${box} border-l-4 border-l-[#FBBC04] p-6`}>
+                  <h3 className={cardTitle}>{title}</h3>
+                  <p className={cardText}>{body}</p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-9">
+              <Wind className="h-9 w-9 text-[#FBBC04]" aria-hidden="true" />
+              <h3 className="mt-5 text-2xl font-bold">Materials matched to your balcony</h3>
+              <p className="mt-5 leading-relaxed text-[#D6DCF5]">We select grout and sealants suited to outdoor exposure and confirm suitable products in your quote. Flexible perimeter and movement joints accommodate building movement; epoxy grout does not replace those joints.</p>
+              <p className="mt-5 leading-relaxed text-[#D6DCF5]">Think bay facing apartments in St Kilda. Think sun baked rooftops in the CBD. Drainage, UV exposure and coastal conditions all help determine the repair.</p>
+            </div>
           </div>
         </Section>
 
         {/* 7. PROCESS */}
         <section id="process" className="scroll-mt-28 bg-white py-14 md:py-20">
-          <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-14`}>
+          <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:gap-14`}>
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+              <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Melbourne — balcony tiles regrouted and resealed by Groutix" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+            </div>
             <div>
-              <p className={eyebrow}>Our Process</p>
-              <h2 className={h2}>Our Epoxy Grout Process</h2>
+              <p className={eyebrow}>Our process</p>
+              <h2 className={h2}>Our Balcony Leak Repair Process</h2>
+              <p className={lead}>Simple, clean and clearly explained. Here is how it works.</p>
               <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {PROCESS.map((s, i) => (
-                  <li key={s.title} className={`${box} p-5`}>
+                {processSteps.map(([title, body], i) => (
+                  <li key={title} className={`${box} p-5`}>
                     <div className="text-[32px] font-black leading-none text-[#2F63CC]">{String(i + 1).padStart(2, "0")}</div>
-                    <h3 className="mt-2 text-lg font-bold text-slate-900">{s.title}</h3>
-                    <p className="mt-1 text-[15px] leading-relaxed text-slate-600">{s.desc}</p>
+                    <h3 className="mt-2 text-lg font-bold text-slate-900">{title}</h3>
+                    <p className="mt-1 text-[15px] leading-relaxed text-slate-600">{body}</p>
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 border-l-[3px] border-[#FBBC04] pl-3 font-semibold text-slate-700">Eligible work is backed by our 10 year waterproof warranty.</p>
-              <Link href="/contact" className={`${btnNavy} mt-6`}>Book Your Free Quote</Link>
-            </div>
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/img85.jpeg" alt="Groutix technician applying epoxy grout to floor tiles" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <p className="mt-6 rounded-lg bg-slate-100 p-5 text-sm leading-relaxed text-slate-600">The repair timeframe and cure time depend on the scope, materials and weather. We confirm the schedule and when you can use your balcony before we start.</p>
             </div>
           </div>
+          <div className={wrap}>{inspectionCta()}</div>
         </section>
 
-        {/* 8. AFTERCARE */}
-        <Section id="aftercare" alt>
-          <SectionHead k="Aftercare" title="Looking After Epoxy Grout" />
-          <div className={`${box} mx-auto mb-6 max-w-[1000px] border-l-4 border-l-[#2F63CC] p-6`}>
-            <p className="text-[17px] leading-relaxed text-slate-700">Epoxy does not need sealing the way cement grout does. A gentle clean is usually enough.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {CARE.map((c) => (
-              <div key={c} className={`${box} flex items-center gap-4 p-6`}>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" /></span>
-                <h3 className="text-lg font-bold leading-snug text-slate-900">{c}</h3>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* 9. COST */}
-        <Section id="cost">
-          <SectionHead k="Pricing" title="What Does Epoxy Grout Cost?">
-            <p className={lead}>Epoxy costs more upfront than cement because the material and the application are more demanding. We quote after we see the job.</p>
+        {/* 8. COST */}
+        <Section id="cost" alt>
+          <SectionHead k="Pricing" title="Balcony Leak Repair Cost in Melbourne">
+            <p className={lead}>No two balconies cost the same. Your price depends on:</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {COST_FACTORS.map((c) => (
-              <div key={c} className={`${box} border-t-4 border-t-[#001F97] p-6`}>
-                <h3 className={cardTitle}>{c}</h3>
-              </div>
-            ))}
+            {priceFactors.map((c) => <IconBox key={c.title} c={c} />)}
           </div>
           <div className="mt-7 flex flex-col items-start gap-6 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:flex-row sm:items-center sm:justify-between sm:p-9">
             <div>
-              <h3 className="text-2xl font-bold">A Clear Quote First</h3>
-              <p className="mt-2 text-[#D6DCF5]">For shower prices, see <Link href="/shower-regrouting" className="font-bold text-white underline">shower regrouting</Link>.</p>
+              <h3 className="text-2xl font-bold">Fixed Written Quote</h3>
+              <p className="mt-2 max-w-[720px] text-[#D6DCF5]">After inspection you get a fixed written quote for the agreed scope. Any additional work is discussed and approved before it proceeds.</p>
             </div>
-            <Link href="/contact" className={`${btnGold} shrink-0`}>Get a Free Quote</Link>
+            <a href="#quote-form" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#FBBC04] px-6 text-base font-bold text-[#0F172A] transition-colors hover:bg-[#E5AA00]">Get a Free Quote →</a>
           </div>
         </Section>
 
-        {/* 10. PROPERTY */}
-        <section id="property" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
-          <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12`}>
-            <div>
-              <p className={`${eyebrow} text-[#FBBC04]`}>For Property Professionals</p>
-              <h2 className={`${h2} text-white`}>Landlords, Agents and Commercial</h2>
-              <p className="mt-3.5 max-w-[760px] text-[17px] text-[#D6DCF5]">Easy to clean grout suits rentals and commercial kitchens.</p>
-              <p className="mt-4 flex items-start gap-3 text-lg font-bold">
-                <Home className="mt-1 h-5 w-5 shrink-0 text-[#FBBC04]" aria-hidden="true" />
-                <span>Most jobs are completed in a single visit<span className="block text-base font-normal text-[#D6DCF5]">Scheduled around tenants and trading hours.</span></span>
-              </p>
-            </div>
-            <Link href="/real-estate-property-services" className={`${btnGold} shrink-0`}>Discuss a Property Job</Link>
+        {/* 9. STRATA */}
+        <Section id="strata">
+          <SectionHead k="For property professionals" title="Strata, Body Corporate and Property Managers">
+            <p className={lead}>Apartment balcony leaks raise a tough question. Who pays for the repair?</p>
+          </SectionHead>
+          <aside className={`${box} mb-7 border-l-4 border-l-[#2F63CC] bg-[#F4F6FB] p-6 sm:p-8`}>
+            <h3 className="text-xl font-bold text-slate-900">Who Maintains What in Victoria</h3>
+            <p className="mt-3 leading-relaxed text-slate-600">The owners corporation is responsible for maintaining common property. Whether a balcony membrane or surface is common property depends on the plan of subdivision. Confirm the boundaries and responsibility with your owners corporation before arranging repairs.</p>
+            <a href="https://www.consumer.vic.gov.au/housing/owners-corporations/property-maintenance/maintaining-and-improving-common-property" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-bold text-[#2F63CC] hover:underline">Read Consumer Affairs Victoria guidance →</a>
+          </aside>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {strataCards.map((c) => <IconBox key={c.title} c={c} accent="border-t-[#2F63CC]" />)}
           </div>
-        </section>
+          <p className={`${lead} mt-7 text-center`}>Need a report for a claim or a meeting? Tell us what is required.</p>
+          {inspectionCta("Request an Inspection")}
+        </Section>
+
+        {/* 10. NO TILE REMOVAL */}
+        <Section id="no-tile-removal" alt>
+          <SectionHead k="Keep your existing tiles" title="Can a Leaking Balcony Be Fixed Without Removing Tiles?" />
+          <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-5 md:grid-cols-2">
+            <div className={`${box} border-t-4 border-t-[#FBBC04] p-7`}>
+              <Check className="mb-4 h-7 w-7 text-[#2F63CC]" aria-hidden="true" />
+              <h3 className="text-xl font-bold text-slate-900">Yes, in many cases</h3>
+              <p className="mt-3 leading-relaxed text-slate-600">When the membrane is sound and only grout or seals failed, regrouting and resealing may fix it. Tiles stay down.</p>
+            </div>
+            <div className={`${box} border-t-4 border-t-[#001F97] p-7`}>
+              <Layers className="mb-4 h-7 w-7 text-[#001F97]" aria-hidden="true" />
+              <h3 className="text-xl font-bold text-slate-900">When tiles must come up</h3>
+              <p className="mt-3 leading-relaxed text-slate-600">A failed membrane or damaged base needs a rebuild. We tell you upfront. A surface fix cannot restore a failed membrane.</p>
+            </div>
+          </div>
+          <p className={`${lead} mt-7 text-center`}>No pressure. Just an honest diagnosis.</p>
+        </Section>
 
         {/* 11. WHY GROUTIX */}
         <Section id="why-groutix">
-          <SectionHead k="Why Groutix" title="Why Choose Groutix" />
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {WHY.map((w) => (
-              <div key={w.title} className={`${box} flex items-start gap-4 p-6`}>
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><w.Icon className="h-5 w-5" aria-hidden="true" /></span>
+          <SectionHead k="Why Groutix" title="Why Melbourne Homeowners Choose Groutix" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {whyGroutix.map((c) => (
+              <div key={c.title} className={`${box} flex items-start gap-4 p-6`}>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><c.Icon className="h-6 w-6" aria-hidden="true" /></span>
                 <span>
-                  <h3 className={cardTitle}>{w.title}</h3>
-                  {w.desc && <p className="mt-1 text-[15px] leading-relaxed text-slate-600">{w.desc}</p>}
+                  <h3 className={cardTitle}>{c.title}</h3>
+                  <p className="mt-1 text-[15px] leading-relaxed text-slate-600">{c.body}</p>
                 </span>
               </div>
             ))}
           </div>
         </Section>
 
-        {/* 12. BEFORE & AFTER */}
-        <Section id="before-after" alt>
-          <SectionHead k="Real Work" title="Before and After" />
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {BEFORE_AFTER.map((p) => <BeforeAfter key={p.src} src={p.src} title="" alt={p.alt} />)}
-          </div>
-        </Section>
-
-        {/* 13. REVIEWS */}
-        <Section id="reviews">
-          <SectionHead k="Reviews" title="Customer Feedback" />
+        {/* 12. REVIEWS */}
+        <Section id="reviews" alt>
+          <SectionHead k="Customer feedback" title="What Our Customers Say">
+            <p className={lead}>Google feedback from customers we have helped across Melbourne, in their own words.</p>
+          </SectionHead>
           <ReviewsMarquee reviews={orderedReviews} rating={rating} />
           <div className="mt-6 text-center">
-            <a href="https://www.google.com/maps/place/Groutix" target="_blank" rel="noopener noreferrer" className="font-bold text-[#2F63CC] hover:underline">Read More Verified Reviews on Google →</a>
+            <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className="font-bold text-[#2F63CC] hover:underline">Read More Reviews on Google →</a>
           </div>
         </Section>
 
-        {/* 14. RELATED */}
-        <Section id="related" alt>
-          <SectionHead k="Related Services" title="Related Services" />
-          <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
-            {RELATED.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[160px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
+        {/* 13. RELATED */}
+        <Section id="related">
+          <SectionHead k="Related services" title="Related Issues We Fix" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" />)}
           </div>
+          <p className={`${lead} mt-7 text-center`}>Not sure where your leak starts? Call us to arrange a free inspection.</p>
+          {inspectionCta()}
         </Section>
 
-        {/* 15. SERVICE AREAS (homepage layout: map + live suburb check) */}
-        <Section id="service-areas">
-          <p className={eyebrow}>Service Areas</p>
-          <h2 className={`${h2} mb-3`}>Which Melbourne Suburbs Do We Apply Epoxy Grout In?</h2>
-          <p className="mb-8 text-[17px] leading-relaxed text-slate-600">
-            Coverage can vary by suburb, so it&apos;s best to confirm your area before booking. See all <Link href="/locations" className={inlineLink}>locations</Link>.
-          </p>
+        {/* 14. SERVICE AREAS (homepage layout: map + live suburb check) */}
+        <Section id="service-areas" alt>
+          <p className={eyebrow}>Service areas</p>
+          <h2 className={`${h2} mb-3`}>Balcony Leak Repairs Across Melbourne</h2>
+          <p className="mb-8 text-[17px] leading-relaxed text-slate-600">Check your suburb before booking a balcony inspection.</p>
           <HomeAreasV2 />
         </Section>
 
-        {/* 16. FAQ */}
-        <Section id="faq" alt>
-          <SectionHead title="Epoxy Grout FAQs" />
-          <FaqList items={EPOXY_FAQS.map((f) => ({ q: f.q, a: faqAnswer(f.a, f.link) }))} />
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-5">
-            <Link href="/contact" className={btnNavy}>Still Have Questions? Get a Free Quote</Link>
-            <a href={tel} className="inline-flex items-center gap-2 font-bold text-[#001F97] hover:underline"><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
-          </div>
+        {/* 15. FAQ (FAQPage + speakable schema are added by the route, as before) */}
+        <Section id="balcony-faqs">
+          <SectionHead k="Your questions, answered" title="Balcony Leak Repair FAQs" />
+          <FaqList items={balconyFaqs} answerClassName="balcony-faq-answer" />
+          {inspectionCta("Still Have Questions? Get a Free Quote")}
         </Section>
 
-        {/* 17. FINAL CTA */}
+        {/* 16. FINAL CTA */}
         <FinalCta
-          title="Get Your Free Quote Today"
-          lines={["Honest advice and workmanship you can rely on.", "Full removal · Colour matched · 10 year warranty on eligible work"]}
+          title="Book Your Free Balcony Inspection"
+          lines={[
+            <>For balcony leak repairs across Melbourne, call <a href={tel} className="font-bold text-white underline">{phone}</a> now. Or request a quote online.</>,
+            "Free inspection. Fixed written quote. 10 year warranty on eligible waterproof work.",
+          ]}
         />
       </main>
       <Footer />
