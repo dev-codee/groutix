@@ -34,11 +34,11 @@ type IconCard = { title: string; body: string; Icon: ComponentType<{ className?:
 // Card title and text are the live copy; the photo and link are new for the card layout.
 const signs: PhotoCardData[] = [
   { title: "White Chalky Stains", text: "On tiles or walls. This is efflorescence. It can indicate water moving through the surface.", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Efflorescence — white chalky stains on balcony tiles, a sign water is moving through the balcony surface", href: "#diagnose", link: "How we find the cause", half: true },
-  { title: "Mould or Dark Grout", text: "Mould or dark stains in grout lines that return after cleaning.", img: "/tiled-shower-floor-regrouting-wide before.webp", alt: "Dark, mould-stained grout lines on tiles that keep coming back after cleaning", href: "/tile-regrouting/", link: "Mould and stains in grout lines", half: true },
+  { title: "Mould or Dark Grout", text: "Mould or dark stains in grout lines that return after cleaning.", img: "/shower-floor-regrouting-dark-tiles-top-view.webp", alt: "Dark, stained grout lines on balcony tiles that keep coming back after cleaning", href: "/tile-regrouting/", link: "Mould and stains in grout lines", half: true },
   { title: "Hollow Sounding Tiles", text: "Tiles that sound hollow when tapped. Builders call these drummy tiles.", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony floor checked for drummy tiles", href: "#no-tile-removal", link: "Can the tiles stay down?" },
   { title: "Ceiling Water Stains", text: "Water stains on the ceiling of the room below your balcony.", img: "/water stains on the ceiling below.webp", alt: "Water stains on the ceiling below a leaking balcony — often the first sign of a balcony leak", href: "#strata", link: "Apartments and strata", half: true },
   { title: "Bubbling or Peeling Paint", text: "Paint that bubbles or peels on walls under the balcony.", img: "/leaking-shower-water-damage-wall.webp", alt: "Bubbling paint and damp patches on a wall under a leaking balcony in a Melbourne apartment", href: "#repair-options", link: "Balcony repair options" },
-  { title: "Pooling Water", text: "Water that pools for hours after rain instead of draining away.", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Tiled balcony in Melbourne where water pools after rain instead of draining to the waste", href: "#causes", link: "What causes balcony leaks" },
+  { title: "Pooling Water", text: "Water that pools for hours after rain instead of draining away.", img: "/grey-shower-base-regrouting-overhead-view before .webp", alt: "Water pooling on a tiled surface for hours after rain instead of draining to the waste", href: "#causes", link: "What causes balcony leaks" },
 ];
 
 const causes: IconCard[] = [
@@ -91,8 +91,8 @@ const strataCards: IconCard[] = [
 ];
 
 const related: PhotoCardData[] = [
-  { title: "Shower Regrouting", text: "Leak coming from the bathroom instead? Our grout specialists assess whether repairs can keep your tiles in place.", href: "/shower-regrouting/", img: "/shower-regrouting-in-progress.webp", alt: "Shower floor during regrouting with old grout removed", link: "Shower Regrouting" },
-  { title: "Leaking Shower Repair", text: "We trace the leak to its source before recommending a repair.", href: "/leaking-shower-repair/", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a leaking shower", link: "Leaking Shower Repair" },
+  { title: "Shower Regrouting", text: "Leak coming from the bathroom instead? Our grout specialists assess whether repairs can keep your tiles in place.", href: "/shower-regrouting/", img: "/walk-in-shower-regrouting-bench-linear-drain.webp", alt: "Walk-in shower with a bench seat and linear drain, regrouted by Groutix Melbourne", link: "Shower Regrouting" },
+  { title: "Leaking Shower Repair", text: "We trace the leak to its source before recommending a repair.", href: "/leaking-shower-repair/", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Cracked, water-stained grout in a leaking shower corner", link: "Leaking Shower Repair" },
   { title: "Efflorescence and Mould in Grout Lines", text: "White stains and black spots can signal moisture problems. We inspect the cause before recommending tile regrouting.", href: "/tile-regrouting/", img: "/shower-regrouting-rust-stained-tiles.webp", alt: "Floor tiles with stained, mouldy grout and efflorescence", link: "Tile Regrouting", half: true },
 ];
 
@@ -200,7 +200,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
             <p className={lead}>Balconies rarely fail overnight. They warn you first. Here is what to look for.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} />)}
+            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
           </div>
           <p className={`${lead} mt-8 text-center`}>Spot even one sign? Book a free inspection. Small leaks can turn into bigger damage.</p>
           {inspectionCta()}
@@ -406,7 +406,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
         <Section id="related">
           <SectionHead k="Related services" title="Related Issues We Fix" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {related.map((c) => <PhotoCard key={c.href} c={c} />)}
+            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" />)}
           </div>
           <p className={`${lead} mt-7 text-center`}>Not sure where your leak starts? Call us to arrange a free inspection.</p>
           {inspectionCta()}
