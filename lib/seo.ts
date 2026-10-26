@@ -12,7 +12,7 @@ export const SITE_URL = (
 export const OG_IMAGE = "/img11.jpeg";
 
 // Shared marketing review count; keep every badge and metadata label consistent.
-export const GOOGLE_REVIEW_COUNT = 292;
+export const GOOGLE_REVIEW_COUNT = 296;
 export const GOOGLE_REVIEW_COUNT_LABEL = `${GOOGLE_REVIEW_COUNT}+`;
 
 export const BUSINESS = {
