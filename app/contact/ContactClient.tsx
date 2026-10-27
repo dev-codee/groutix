@@ -103,67 +103,27 @@ export default function ContactClient() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="bg-primary py-16 lg:py-20 text-white"
+        className="bg-primary py-20 text-white text-center"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-          <div className="space-y-5 text-center lg:text-left">
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.05 }}
-              className="text-[12px] font-bold uppercase tracking-[0.2em] text-white/70"
-            >
-              Contact Groutix — Melbourne &amp; Victoria
-            </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl sm:text-5xl font-black tracking-tight leading-[1.05]"
-            >
-              Request a Shower Regrouting or Repair Quote
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-white/80 text-lg max-w-xl mx-auto lg:mx-0"
-            >
-              Tell us a little about your shower, the problem you&apos;re seeing and your suburb.
-              Add photos so we can assess it properly — inspections are free, and every quote is
-              upfront before any work begins.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-wrap items-center justify-center lg:justify-start gap-3"
-            >
-              <a
-                href={tel}
-                className="inline-flex items-center gap-2 rounded-full bg-white text-primary font-bold px-5 py-3 hover:bg-neutral-100 transition-colors"
-              >
-                <Phone className="h-4 w-4" /> {phone}
-              </a>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-3 text-sm font-semibold text-white/90">
-                <Star className="h-4 w-4 fill-current" /> Rated 5.0 from 296+ Google reviews
-              </span>
-            </motion.div>
-          </div>
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-            className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl hidden lg:block"
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl sm:text-5xl font-black tracking-tight"
           >
-            <Image
-              src="/shower-regrouting-tiled-interior.webp"
-              alt="Freshly regrouted tiled shower by Groutix in Melbourne"
-              fill
-              className="object-cover"
-              priority
-            />
-          </motion.div>
+            Request a Shower Regrouting or Repair Quote
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-white/80 text-lg max-w-2xl mx-auto"
+          >
+            Tell us a little about your shower, the problem you&apos;re seeing and your suburb.
+            Add photos so we can assess it properly — inspections are free, and every quote is
+            upfront before any work begins.
+          </motion.p>
         </div>
       </motion.section>
 
