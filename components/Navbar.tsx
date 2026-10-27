@@ -446,7 +446,7 @@ export default function Navbar() {
 
             {/* Gallery */}
             <Link
-              href="/gallery"
+              href="/#gallery"
               className="text-slate-800 hover:text-[#001f97] font-semibold text-[15px] transition-colors py-1"
             >
               Gallery
@@ -482,6 +482,13 @@ export default function Navbar() {
                     className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
                   >
                     About Groutix
+                  </Link>
+                  <Link
+                    href="/contact"
+                    onClick={closeDesktopMenu}
+                    className="block px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-accent/10 hover:text-accent rounded-lg transition-colors"
+                  >
+                    Contact Us
                   </Link>
                   <Link
                     href="/about#team"
@@ -708,7 +715,7 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  href="/gallery"
+                  href="/#gallery"
                   onClick={closeMenu}
                   className="block rounded-md px-3 py-3 text-base font-semibold text-neutral-700 hover:bg-accent/10 hover:text-accent"
                 >
@@ -740,6 +747,13 @@ export default function Navbar() {
                             className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
                           >
                             About Groutix
+                          </Link>
+                          <Link
+                            href="/contact"
+                            onClick={closeMenu}
+                            className="block py-2 text-base font-medium text-neutral-600 hover:text-accent"
+                          >
+                            Contact Us
                           </Link>
                           <Link
                             href="/about#team"
