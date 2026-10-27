@@ -1,7 +1,7 @@
 "use client";
 
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
-import { newestLeadsFirst } from "@/lib/leadOrder";
+import { dashboardLeadsFirst } from "@/lib/leadOrder";
 import { EmailMessageText } from "@/components/admin/EmailMessageText";
 import { matchesQuoteStatusFilter } from "@/lib/quoteAcceptance";
 
@@ -3775,13 +3775,13 @@ export default function CrmDashboardPage() {
         });
     const visible = showLegacyLeads || newLeadsCutoffMs <= 0 ? roleScoped
       : roleScoped.filter((l) => (role === "technician" ? true : !isLegacyLead(l, newLeadsCutoffMs)));
-    return newestLeadsFirst(visible);
+    return dashboardLeadsFirst(visible, role);
   }, [leads, role, showLegacyLeads, newLeadsCutoffMs, staff, username, viewAs, assignableTechnicians]);
 
   // Expand only work queues; customer, inbox and dispatch lists retain one customer each.
   const jobWorkflowLeads = useMemo(() => {
     if (role !== "technician") return scopedLeads;
-    return scopedLeads.flatMap(jobBookingRows).filter(l => {
+    return dashboardLeadsFirst(scopedLeads.flatMap(jobBookingRows).filter(l => {
       const targetStaffRecord = viewAs
         ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)
         : staff.find((s) => s.username === username);
@@ -3814,7 +3814,7 @@ export default function CrmDashboardPage() {
         );
 
       return isAssigned;
-    });
+    }), role);
   }, [scopedLeads, role, staff, username, viewAs, assignableTechnicians]);
 
   const hiddenLegacyCount = useMemo(() => {
@@ -3864,7 +3864,7 @@ export default function CrmDashboardPage() {
       );
     }
 
-    return newestLeadsFirst(list);
+    return dashboardLeadsFirst(list, role);
   }, [jobWorkflowLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role]);
 
   // Leads with at least one unread customer reply — drives the header bell badge.
