@@ -4,12 +4,10 @@ import HomePageV2 from "@/components/HomePageV2";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const rating = await getBusinessRating();
   return {
     title: "Shower Regrouting Melbourne | Epoxy & Leaking Shower Repairs | Groutix",
-description: "The Groutix team restores leaking showers & balconies professionally in Melbourne with epoxy regrouting & resealing. No tiles removed. 10-year warranty. Book a free inspection today.",
-Do chhoti baatein:
- };
+    description: "The Groutix team restores leaking showers & balconies professionally in Melbourne with epoxy regrouting & resealing. No tiles removed. 10-year warranty. Book a free inspection today.",
+  };
 }
 
 export default async function Home() {
