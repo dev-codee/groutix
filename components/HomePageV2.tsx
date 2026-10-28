@@ -233,12 +233,8 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <div className="mb-10 flex flex-col gap-6 lg:gap-8">
               {CORE.map((s, i) => (
                 <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]`}>
-                  <div className={`relative aspect-[5/4] w-full overflow-hidden bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] ${i === 1 ? "lg:order-2" : ""}`}>
-                    <div className="absolute inset-0 flex items-center justify-center p-5 sm:p-7">
-                      <div className="relative h-full" style={{ aspectRatio: "3 / 4" }}>
-                        <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="rounded-md border-4 border-white object-cover shadow-2xl" />
-                      </div>
-                    </div>
+                  <div className={`relative aspect-[5/4] w-full overflow-hidden ${i === 1 ? "lg:order-2" : ""}`}>
+                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
                   </div>
                   <div className={`flex flex-col items-center justify-center p-7 text-center sm:p-10 lg:p-12 ${i === 1 ? "lg:order-1" : ""}`}>
                     <p className={eyebrow}>{s.tag}</p>
