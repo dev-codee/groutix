@@ -233,8 +233,9 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <div className="mb-10 flex flex-col gap-6 lg:gap-8">
               {CORE.map((s, i) => (
                 <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]`}>
-                  <div className={`relative aspect-[3/4] w-full ${i === 1 ? "lg:order-2" : ""}`}>
-                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
+                  <div className={`relative aspect-[5/4] w-full overflow-hidden bg-slate-900 ${i === 1 ? "lg:order-2" : ""}`}>
+                    <Image src={s.img} alt="" aria-hidden="true" fill sizes="(min-width:1024px) 45vw, 100vw" className="scale-110 object-cover opacity-40 blur-md" />
+                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="object-contain" />
                   </div>
                   <div className={`flex flex-col items-center justify-center p-7 text-center sm:p-10 lg:p-12 ${i === 1 ? "lg:order-1" : ""}`}>
                     <p className={eyebrow}>{s.tag}</p>
