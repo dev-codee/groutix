@@ -27,12 +27,12 @@ const PRICES: { label: string; from: string; note: string }[] = [
 ];
 
 const CORE = [
-  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/shower-regrouting-tiled-interior.webp",
-    alt: "Freshly regrouted shower interior with white subway tiles and a brown feature wall", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/shower-regrouting-mouldy-grout-corner.webp",
-    alt: "Black mould in shower grout and silicone next to a glass screen", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-tiles.webp",
-    alt: "Balcony after leak repair and regrouting with large-format outdoor tiles", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
+  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/walk-in-shower-regrouting-glass-screen-view.webp",
+    alt: "Walk-in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking Shower repair.webp",
+    alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/Balcony Leak Repair.webp",
+    alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
   { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
@@ -41,15 +41,15 @@ const MORE = [
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
 const SYMPTOMS = [
-  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Cracked and crumbling grout line between floor tiles, close-up" },
+  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Collage of cracked and crumbling grout lines between dark shower floor tiles" },
   { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Shower over a bath with stained grout lines and silicone edges" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a bathroom" },
-  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/shower-regrouting-signs-black-mould.webp", alt: "Stained, mouldy grout in a shower corner" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Walk-in shower with beige tiles, a mosaic feature strip and a tiled niche" },
+  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/Moulds that coming back.webp", alt: "White tiled shower corner with chrome taps and a grey tiled floor" },
 ];
 const BALCONY = [
-  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Signs of balcony water failure: staining, mould and lifting tiles" },
+  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/White chalky staining on tiles.webp", alt: "Stained shower drain and worn grout and silicone in tiled shower corners" },
   { title: "Cracked or missing grout", next: "Balcony regrout", img: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with cracked and missing grout around the drain, before regrouting" },
-  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/water stains on the ceiling below.webp", alt: "Mould and water damage behind a missing bathroom tile" },
+  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/Water stains on the ceiling below.webp", alt: "Bathroom floor and frosted glass shower screen in a Melbourne home" },
   { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
 ];
 const JOBS = [
@@ -230,21 +230,22 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         <section id="services" className="scroll-mt-28 bg-white py-14 md:py-20">
           <div className={wrap}>
             <SectionHead k="What we do" title="Shower, Balcony & Grout Repair Services" sub="Fix the cause of the leak, not the whole bathroom." />
-            <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-              {CORE.map((s) => (
-                <Link key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} href={`/${s.slug}`} className={`${box} group flex flex-col overflow-hidden text-slate-900`}>
-                  <div className="relative h-[375px]">
-                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="mb-10 flex flex-col gap-6 lg:gap-8">
+              {CORE.map((s, i) => (
+                <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden ${i === 1 ? "lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]" : "lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]"}`}>
+                  <div className={`relative aspect-[5/4] w-full overflow-hidden ${i === 1 ? "lg:order-2" : ""}`}>
+                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
                   </div>
-                  <div className="flex flex-1 flex-col gap-2.5 p-6">
-                    <span className={`self-start rounded px-2 py-1 text-xs font-bold ${s.hot ? "bg-[#FFF4D1] text-[#7A5600]" : "bg-[#EEF3FF] text-[#001F97]"}`}>{s.tag}</span>
-                    <h3 className="text-[22px] font-bold text-slate-900">{s.title}</h3>
-                    <p className="text-[15px] text-slate-600">{s.desc}</p>
-                    <div className="mt-auto flex items-center justify-between border-t border-slate-200 pt-3.5">
-                      <span className="text-[15px] font-bold text-[#2F63CC] group-hover:underline">Learn more →</span>
+                  <div className={`flex flex-col items-center justify-center p-7 text-center sm:p-10 lg:p-12 ${i === 1 ? "lg:order-1" : ""}`}>
+                    <p className={eyebrow}>{s.tag}</p>
+                    <h2 className={h2}>{s.title}</h2>
+                    <p className={`${lead} max-w-[52ch]`}>{s.desc}</p>
+                    <div className="mt-6 flex flex-wrap justify-center gap-3">
+                      <Link href={`/${s.slug}`} className={`${btn} bg-[#001F97] text-white hover:bg-[#00167A]`}>Learn more →</Link>
+                      <a href="#quote-form" className={`${btn} bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00]`}>Get a Free Quote</a>
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
