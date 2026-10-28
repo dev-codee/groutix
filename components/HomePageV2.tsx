@@ -29,27 +29,27 @@ const PRICES: { label: string; from: string; note: string }[] = [
 const CORE = [
   { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/walk-in-shower-regrouting-glass-screen-view.webp",
     alt: "Walk-in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking_Shower_repair.webp",
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking Shower repair.webp",
     alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/Balcony_Leak_Repair.webp",
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/Balcony Leak Repair.webp",
     alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
-  { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2, img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Close-up of cracked grout lines between tiles before regrouting" },
-  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould-resistant reseal", Icon: Wrench, img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Mouldy grout and silicone in a shower corner next to a glass screen" },
-  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain-resistant upgrade", Icon: Layers, img: "/shower-regrouting-tiled-interior.webp", alt: "Freshly regrouted shower interior with white subway tiles and a brown feature wall" },
-  { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer, img: "/balcony-regrouting-tiles.webp", alt: "Large-format tiles on a balcony after regrouting" },
+  { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
+  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould-resistant reseal", Icon: Wrench },
+  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain-resistant upgrade", Icon: Layers },
+  { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
 const SYMPTOMS = [
-  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked_or_crumbling_grout.webp", alt: "Collage of cracked and crumbling grout lines between dark shower floor tiles" },
+  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Collage of cracked and crumbling grout lines between dark shower floor tiles" },
   { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Shower over a bath with stained grout lines and silicone edges" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water_outside_the_shower_or_a_stain_below.webp", alt: "Walk-in shower with beige tiles, a mosaic feature strip and a tiled niche" },
-  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/Moulds_that_coming_back.webp", alt: "White tiled shower corner with chrome taps and a grey tiled floor" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below.webp", alt: "Walk-in shower with beige tiles, a mosaic feature strip and a tiled niche" },
+  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/Moulds that coming back.webp", alt: "White tiled shower corner with chrome taps and a grey tiled floor" },
 ];
 const BALCONY = [
-  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/White_chalky_staining_on_tiles.webp", alt: "Stained shower drain and worn grout and silicone in tiled shower corners" },
+  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/White chalky staining on tiles.webp", alt: "Stained shower drain and worn grout and silicone in tiled shower corners" },
   { title: "Cracked or missing grout", next: "Balcony regrout", img: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with cracked and missing grout around the drain, before regrouting" },
-  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/Water_stains_on_the_ceiling_below.webp", alt: "Bathroom floor and frosted glass shower screen in a Melbourne home" },
+  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/Water stains on the ceiling below.webp", alt: "Bathroom floor and frosted glass shower screen in a Melbourne home" },
   { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
 ];
 const JOBS = [
@@ -232,8 +232,8 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <SectionHead k="What we do" title="Shower, Balcony & Grout Repair Services" sub="Fix the cause of the leak, not the whole bathroom." />
             <div className="mb-10 flex flex-col gap-6 lg:gap-8">
               {CORE.map((s, i) => (
-                <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)]`}>
-                  <div className={`relative mx-auto aspect-[3/4] w-full max-w-[380px] lg:mx-0 lg:max-w-none ${i === 1 ? "lg:order-2" : ""}`}>
+                <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]`}>
+                  <div className={`relative aspect-[3/4] w-full ${i === 1 ? "lg:order-2" : ""}`}>
                     <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
                   </div>
                   <div className={`flex flex-col items-center justify-center p-7 text-center sm:p-10 lg:p-12 ${i === 1 ? "lg:order-1" : ""}`}>
@@ -249,16 +249,14 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               ))}
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {MORE.map(({ slug, title, desc, img, alt }) => (
-                <Link key={slug} href={`/${slug}`} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
-                  <div className="relative aspect-[3/4] w-full">
-                    <Image src={img} alt={alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                  </div>
-                  <div className="flex flex-1 flex-col p-5">
+              {MORE.map(({ slug, title, desc, Icon }) => (
+                <Link key={slug} href={`/${slug}`} className={`${box} group flex items-start gap-4 p-5 text-slate-900 transition hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+                  <span>
                     <b className="block text-[17px]">{title}</b>
-                    <span className="mt-1 block text-sm text-slate-600">{desc}</span>
-                    <span className="mt-3 block text-sm font-bold text-[#2F63CC] group-hover:underline">Learn more →</span>
-                  </div>
+                    <span className="block text-sm text-slate-600">{desc}</span>
+                    <span className="mt-2 block text-sm font-bold text-[#2F63CC] group-hover:underline">Learn more →</span>
+                  </span>
                 </Link>
               ))}
             </div>
@@ -269,10 +267,10 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         <section id="shower-grout-problems" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
           <div className={wrap}>
             <SectionHead k="Shower grout problems" title="What Are You Seeing in Your Shower?" sub="Pick the closest sign and we'll point you to the right repair." />
-            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:gap-6">
               {SYMPTOMS.map((s) => (
                 <Link key={s.title} href={s.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
-                  <div className="relative aspect-[3/4] w-full"><Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
+                  <div className="relative h-[263px]"><Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
                   <div className="p-5">
                     <b className="block text-[17px] leading-snug">{s.title}</b>
                     <span className="mt-2 block text-sm font-bold text-[#2F63CC]">Likely: {s.next} →</span>
@@ -289,10 +287,10 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
           <div className={wrap}>
             <SectionHead k="Balcony specialists" title="Balcony Regrouting & Leak Repairs in Melbourne"
               sub="Melbourne's rain and temperature swings crack balcony grout, and water then seeps through to the slab and the ceiling below. We regrout with waterproof epoxy and reseal the edges, with no retiling." />
-            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:gap-6">
               {BALCONY.map((b) => (
                 <Link key={b.title} href="/balcony-leak-repairs" className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
-                  <div className="relative aspect-[3/4] w-full"><Image src={b.img} alt={b.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
+                  <div className="relative h-[263px]"><Image src={b.img} alt={b.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
                   <div className="p-5">
                     <b className="block text-[17px] leading-snug">{b.title}</b>
                     <span className="mt-2 block text-sm font-bold text-[#2F63CC]">{b.next} →</span>
