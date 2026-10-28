@@ -43,7 +43,7 @@ const MORE = [
 const SYMPTOMS = [
   { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Collage of cracked and crumbling grout lines between dark shower floor tiles" },
   { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Shower over a bath with stained grout lines and silicone edges" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below.webp", alt: "Walk-in shower with beige tiles, a mosaic feature strip and a tiled niche" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Walk-in shower with beige tiles, a mosaic feature strip and a tiled niche" },
   { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/Moulds that coming back.webp", alt: "White tiled shower corner with chrome taps and a grey tiled floor" },
 ];
 const BALCONY = [
