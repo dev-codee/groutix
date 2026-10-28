@@ -232,7 +232,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <SectionHead k="What we do" title="Shower, Balcony & Grout Repair Services" sub="Fix the cause of the leak, not the whole bathroom." />
             <div className="mb-10 flex flex-col gap-6 lg:gap-8">
               {CORE.map((s, i) => (
-                <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]`}>
+                <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden ${i === 1 ? "lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]" : "lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]"}`}>
                   <div className={`relative aspect-[5/4] w-full overflow-hidden ${i === 1 ? "lg:order-2" : ""}`}>
                     <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
                   </div>
