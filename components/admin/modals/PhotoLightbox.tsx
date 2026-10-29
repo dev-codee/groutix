@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadAttachment } from "@/lib/downloadAttachment";
 import { useEffect, useCallback } from "react";
 import { X, Download, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -59,6 +60,7 @@ export function PhotoLightbox({ photos, index, onClose, onNavigate }: Props) {
             <a
               href={`/api/admin/download-photo?url=${encodeURIComponent(photo.url)}&name=${encodeURIComponent(photo.name)}`}
               download
+              onClick={(event) => { event.preventDefault(); void downloadAttachment(photo.url, photo.name); }}
               className="flex items-center gap-1 text-xs px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-white transition-colors"
             >
               <Download className="w-3.5 h-3.5" />

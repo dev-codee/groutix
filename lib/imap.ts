@@ -5,6 +5,7 @@ import { type CustomerMessage, type SubmissionDoc } from "@/lib/submissions";
 import { sendReplyNotification, getNotifyRecipients } from "@/lib/email";
 import { uploadBufferToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { stripQuotedReply } from "@/lib/emailClean";
+import { needsPdfRecovery } from "@/lib/pdfAttachment";
 
 type SyncState = { key: string; uidValidity: string; lastUid: number };
 export type EmailSyncResult = { error?: string; syncedCount: number; hasMore?: boolean; step?: string };
@@ -59,7 +60,7 @@ async function syncEmails(): Promise<EmailSyncResult> {
       // A new cursor rechecks the recent mailbox once to recover inline photos
       // discarded by the previous importer. Existing messages are enriched only.
       const key = `${user.toLowerCase()}:${mailbox}`;
-      const cursorKey = `${key}:media-v2`;
+      const cursorKey = `${key}:media-v3-original-pdf`;
       const uidValidity = client.mailbox ? String(client.mailbox.uidValidity) : "";
       const state = await states.findOne({ key: cursorKey, uidValidity });
       const lastUid = state?.lastUid || 0;
@@ -105,12 +106,12 @@ async function syncEmails(): Promise<EmailSyncResult> {
                 const name = att.filename || (att.contentType?.startsWith("image/") ? `image-${attachments.length + 1}.${att.contentType.split("/")[1] === "jpeg" ? "jpg" : att.contentType.split("/")[1]}` : "attachment");
                 const contentId = att.contentId?.replace(/^<|>$/g, "");
                 const previousIndex = attachments.findIndex(item => (contentId && item.contentId === contentId) || (!item.contentId && item.name === name));
-                if (previousIndex >= 0 && (attachments[previousIndex].url || attachments[previousIndex].secureUrl)) {
+                if (previousIndex >= 0 && (attachments[previousIndex].url || attachments[previousIndex].secureUrl) && !needsPdfRecovery(attachments[previousIndex])) {
                   if (contentId) attachments[previousIndex] = { ...attachments[previousIndex], contentId };
                   continue;
                 }
                 const metadata = { name, contentType: att.contentType, size: att.size, ...(contentId ? { contentId } : {}) };
-                let imported: (typeof attachments)[number] = metadata;
+                let imported: (typeof attachments)[number] = previousIndex >= 0 ? { ...attachments[previousIndex], ...metadata } : metadata;
                 if (isCloudinaryConfigured() && att.content && Date.now() < deadline) {
                   try {
                     const up = await bounded(uploadBufferToCloudinary(att.content, { folder: "groutix/inbound", filename: name, tags: ["inbound-email"] }), Math.min(10000, deadline - Date.now()));

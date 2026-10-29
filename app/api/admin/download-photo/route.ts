@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasPdfHeader } from "@/lib/pdfAttachment";
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
@@ -12,6 +13,7 @@ export async function GET(req: NextRequest) {
     if (!match) return NextResponse.json({ error: "Invalid data URL" }, { status: 400 });
     const contentType = match[1] || "application/octet-stream";
     const buffer = Buffer.from(match[2], "base64");
+    if (/\.pdf$/i.test(name) && !hasPdfHeader(buffer)) return NextResponse.json({ error: "This attachment is not a valid PDF. Recover the original attachment from the customer email." }, { status: 422 });
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentType,
@@ -32,10 +34,13 @@ export async function GET(req: NextRequest) {
 
     const contentType = res.headers.get("content-type") || "application/octet-stream";
     const buffer = await res.arrayBuffer();
+    if (/\.pdf$/i.test(name) && !hasPdfHeader(new Uint8Array(buffer))) {
+      return NextResponse.json({ error: "This PDF was stored as an image. Sync customer emails to recover the original PDF, then download it again." }, { status: 422 });
+    }
 
     return new NextResponse(buffer, {
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": /\.pdf$/i.test(name) ? "application/pdf" : contentType,
         "Content-Disposition": `attachment; filename="${name.replace(/"/g, "")}"`,
         "Cache-Control": "no-store",
       },

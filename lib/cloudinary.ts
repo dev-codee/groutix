@@ -1,4 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
+import { randomUUID } from "node:crypto";
+import { hasPdfHeader } from "./pdfAttachment";
 
 let isConfigured = false;
 
@@ -48,17 +50,20 @@ export async function uploadBufferToCloudinary(
 ): Promise<CloudinaryUploadResult> {
   const cld = getCloudinary();
   const folder = options.folder || "groutix/submissions";
+  const isPdf = /\.pdf$/i.test(options.filename || "") || hasPdfHeader(buffer);
+  if (isPdf && !hasPdfHeader(buffer)) throw new Error("The uploaded PDF does not contain a PDF document.");
 
   return new Promise((resolve, reject) => {
     const uploadStream = cld.uploader.upload_stream(
       {
         folder,
-        resource_type: "auto",
+        resource_type: isPdf ? "raw" : "auto",
         tags: options.tags,
         use_filename: true,
         unique_filename: true,
-        quality: "auto",
-        fetch_format: "auto",
+        ...(isPdf
+          ? { public_id: `${randomUUID()}.pdf` }
+          : { quality: "auto", fetch_format: "auto" }),
       },
       (error, result) => {
         if (error || !result) {

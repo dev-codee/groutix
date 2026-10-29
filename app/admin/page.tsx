@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadAttachment } from "@/lib/downloadAttachment";
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
 import { dashboardLeadsFirst } from "@/lib/leadOrder";
 import { EmailMessageText } from "@/components/admin/EmailMessageText";
@@ -6392,12 +6393,7 @@ export default function CrmDashboardPage() {
                                       msg.attachments?.forEach((att) => {
                                         const href = att.secureUrl || att.url;
                                         if (href) {
-                                          const downloadLink = document.createElement("a");
-                                          downloadLink.href = `/api/admin/download-photo?url=${encodeURIComponent(href)}&name=${encodeURIComponent(att.name)}`;
-                                          downloadLink.download = att.name;
-                                          document.body.appendChild(downloadLink);
-                                          downloadLink.click();
-                                          document.body.removeChild(downloadLink);
+                                          void downloadAttachment(href, att.name);
                                         }
                                       });
                                     }}
@@ -6472,6 +6468,7 @@ export default function CrmDashboardPage() {
                                             <a
                                               href={downloadUrl!}
                                               download={att.name}
+                                              onClick={(event) => { event.preventDefault(); if (href) void downloadAttachment(href, att.name); }}
                                               className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${isCustomer
                                                 ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                                                 : "bg-white text-blue-900 hover:bg-blue-50 font-bold"
@@ -6531,6 +6528,7 @@ export default function CrmDashboardPage() {
                                             <a
                                               href={downloadUrl!}
                                               download={att.name}
+                                              onClick={(event) => { event.preventDefault(); if (href) void downloadAttachment(href, att.name); }}
                                               className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${isCustomer ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white text-blue-900 hover:bg-blue-50"
                                                 }`}
                                               title={`Download ${att.name}`}

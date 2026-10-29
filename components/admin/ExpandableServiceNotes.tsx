@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { ChevronDown, MessageSquare } from "lucide-react";
 
 export function ExpandableServiceNotes({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const contentId = useId();
 
   return (

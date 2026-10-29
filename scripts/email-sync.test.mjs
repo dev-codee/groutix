@@ -204,7 +204,7 @@ test("recent previously imported messages recover photos without duplicate messa
   assert.match(lead.messages[0].attachments[1].secureUrl, /new.jpg$/);
   assert.equal(lead.activity.length, 0);
   assert.equal(f.calls.notifications, 0);
-  assert.match(f.cursor().key, /:media-v2$/);
+  assert.match(f.cursor().key, /:media-v3-original-pdf$/);
 });
 
 test("media recovery keeps legacy fallback IDs and adds CIDs to existing uploads without reuploading", async () => {
@@ -221,4 +221,15 @@ test("media recovery keeps legacy fallback IDs and adds CIDs to existing uploads
   assert.equal(lead.messages[0].attachments.length, 1);
   assert.equal(lead.messages[0].attachments[0].contentId, "photo");
   assert.equal(f.calls.uploads.length, 0);
+});
+
+test("sync replaces a PDF converted to PNG using the original email without duplicate messages or notifications", async () => {
+  const lead = customer();
+  lead.messages.push({ id: "<reply-1@example.com>", attachments: [{ name: "report.pdf", contentType: "application/pdf", url: "https://res.cloudinary.com/test/image/upload/v1/inbound/file.png" }] });
+  const f = fixture({ leads: [lead], uploads: true, messages: [mail(1, { attachments: [{ filename: "report.pdf", contentType: "application/pdf", content: Buffer.from("%PDF-1.7"), size: 8 }] })] });
+  await f.sync();
+  assert.deepEqual(f.calls.uploads, ["report.pdf"]);
+  assert.match(lead.messages[0].attachments[0].url, /report\.pdf$/);
+  assert.equal(lead.messages.length, 1);
+  assert.equal(f.calls.notifications, 0);
 });

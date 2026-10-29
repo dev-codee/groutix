@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadAttachment } from "@/lib/downloadAttachment";
 import { useRef } from "react";
 import { X, Camera, Upload, Loader2, ZoomIn, Download, ExternalLink, Trash2 } from "lucide-react";
 import { Image as ImageIcon } from "lucide-react";
@@ -159,7 +160,7 @@ export function PhotosModal({
                           download
                           className="text-slate-400 hover:text-emerald-600 p-1"
                           title="Download photo"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void downloadAttachment(imgSrc, photo.name || `photo-${i + 1}`); }}
                         >
                           <Download className="w-3.5 h-3.5" />
                         </a>

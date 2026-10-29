@@ -578,7 +578,7 @@ export default function QuoteFormV2({
               fd.append("file", file);
               fd.append("upload_preset", preset);
               fd.append("folder", "groutix/quotes");
-              const r = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: fd });
+              const r = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${file.type === "application/pdf" || /\.pdf$/i.test(file.name) ? "raw" : "image"}/upload`, { method: "POST", body: fd });
               if (!r.ok) throw new Error(`Upload failed for ${file.name}`);
               const j = await r.json();
               return {
