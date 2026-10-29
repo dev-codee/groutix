@@ -4,7 +4,7 @@ import { leadRowKey } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import {
-  Phone, MapPin, MessageSquare, Camera,
+  Phone, MapPin, Camera,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -13,6 +13,7 @@ import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
+import { ExpandableServiceNotes } from "@/components/admin/ExpandableServiceNotes";
 
 export function TechnicianLeadRow({ l }: { l: Lead }) {
   const distanceKm = useDistanceKm(l.address);
@@ -138,10 +139,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
-            <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
-          </div>
+          <ExpandableServiceNotes text={serviceDisplay} />
 
           <div className="pt-1 grid grid-cols-2 gap-1.5">
             <button

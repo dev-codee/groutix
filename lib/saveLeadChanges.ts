@@ -1,13 +1,16 @@
 import type { Lead } from "@/components/admin/types";
 
-export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promise<{ ok: true; recycled?: boolean } | { ok: false; error: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
     const response = await fetch(`/api/admin/submissions/${encodeURIComponent(id)}`, {
       signal: controller.signal, method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates),
     });
-    if (response.ok) return { ok: true };
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return data.recycled === true ? { ok: true, recycled: true } : { ok: true };
+    }
     const data = await response.json().catch(() => ({}));
     const error = response.status === 401 ? "Your session has expired. Please sign in again to save the quote."
       : typeof data.error === "string" ? data.error : "Could not save changes. Please try again.";

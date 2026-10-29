@@ -66,14 +66,11 @@ function dayLabel(date: string): { wd: string; dm: string } {
   };
 }
 
-function nowMelbourneHHmm(): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "Australia/Melbourne", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
-}
-
 interface DaySummary {
   date: string;
   stops: PlannerStop[];
   free: string[];
+  conflicts: Set<string>;
   best: SlotFit | null;
   nearest: { stop: PlannerStop; km: number } | null;
   /** Outside this customer's day-wise zone day — bookable, but off-route. */
@@ -160,11 +157,14 @@ function BookingPlannerView({
   const { technicians } = useTechnicians();
   const zoneRules = useZoneRules();
   const today = melbourneYmd();
-  const firstDay = useMemo(() => {
+  const earliestSlotDay = useMemo(() => {
     const byNotice = addDays(today, Math.max(rules.minNoticeDays, 0));
     return rules.minDate && rules.minDate > byNotice ? rules.minDate : byNotice;
   }, [today, rules.minDate, rules.minNoticeDays]);
-  const lastDay = addDays(today, Math.min(rules.horizonDays, MAX_DAYS));
+  // Map browsing must remain available even when booking settings offer no slots.
+  const firstDay = today;
+  const lastDay = addDays(today, MAX_DAYS);
+  const lastSlotDay = addDays(today, rules.horizonDays);
 
   const editingBookingId = lead.activeBooking?.bookingId || leadBookings(lead as Lead).find(b => b.type === type && isPrimaryBooking(lead as Lead, b))?.bookingId;
 
@@ -200,22 +200,20 @@ function BookingPlannerView({
   // ── Build per-day summaries ──
   const days: DaySummary[] = useMemo(() => {
     if (!appts || lastDay < firstDay) return [];
-    const nowHHmm = nowMelbourneHHmm();
     const out: DaySummary[] = [];
     for (let d = firstDay; d <= lastDay; d = addDays(d, 1)) {
-      const grid = slotsForDate(rules, type, d);
-      if (!grid.length) continue;
+      const grid = d >= earliestSlotDay && d <= lastSlotDay ? slotsForDate(rules, type, d) : [];
       // This lead's own appointment of the same type is being rescheduled → not an obstacle.
       const dayAppts = appts.filter((a) => a.date === d && !(a.leadId === lead.id && a.type === type && (editingBookingId ? a.bookingId === editingBookingId : !a.bookingId && `${a.date}T${a.time}` === value?.slice(0, 16))));
       const duration = appointmentDurationMinutes({ type }, rules);
       const taken = new Set(grid.filter((time) => !bookingAvailability(dayAppts, { date: d, time, type, leadId: lead.id || "", durationMinutes: duration, technicianId: lead.technicianId, technician: lead.technician, technicianUsername: lead.technicianUsername, inspectorId: lead.inspectorId, assigned: lead.assigned }, rules, technicians).available));
-      const free = grid.filter((t) => !taken.has(t) && !(d === today && t <= nowHHmm));
+      const free = grid; // Staff may select any suggested time; conflicts are warnings.
       const stops: PlannerStop[] = dayAppts.map((a) => ({
         time: a.time, type: a.type, leadId: a.leadId, name: a.name, address: a.address, suburb: a.suburb, scheduledMinutes: a.scheduledMinutes, durationMinutes: a.durationMinutes,
       }));
       let best: SlotFit | null = null;
       if (target) {
-        for (const t of free) {
+        for (const t of free.filter(time => !taken.has(time))) {
           const f = scoreSlot(target, t, stops, rules, type, duration);
           // Prefer slots that are reachable in time, then the smallest detour.
           const better = !best || (f.tight !== best.tight ? !f.tight : f.detourKm < best.detourKm);
@@ -226,13 +224,14 @@ function BookingPlannerView({
         date: d,
         stops,
         free,
+        conflicts: taken,
         best,
         nearest: target ? nearestStop(target, stops) : null,
         offZone: !isZoneDate(area.zone, d, zoneRules),
       });
     }
     return out;
-  }, [editingBookingId, value, appts, firstDay, lastDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, lead.inspectorId, lead.assigned, technicians, target, today, area.zone, zoneRules]);
+  }, [editingBookingId, value, appts, firstDay, lastDay, earliestSlotDay, lastSlotDay, rules, type, lead.id, lead.technicianId, lead.technician, lead.technicianUsername, lead.inspectorId, lead.assigned, technicians, target, area.zone, zoneRules]);
 
   const visibleDays = useMemo(() => days.filter(day => filters.dateMode === "all"
     || (validPlannerDates(filters) && day.date >= filters.from && day.date <= filters.to)), [days, filters]);
@@ -353,8 +352,6 @@ function BookingPlannerView({
           <div className="p-6 text-red-600">Couldn&apos;t load bookings: {current.error}</div>
         ) : !appts ? (
           <div className="p-10 flex items-center justify-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading bookings…</div>
-        ) : days.length === 0 ? (
-          <div className="p-10 text-center text-slate-500">No bookable {typeLabel.toLowerCase()} days in the next {MAX_DAYS} days. Check Settings → Booking Hours.</div>
         ) : visibleDays.length === 0 ? (
           <div className="p-10 text-center text-slate-500">No planning days match this date range. Choose dates within the next {MAX_DAYS} days or reset filters.</div>
         ) : (
@@ -379,7 +376,7 @@ function BookingPlannerView({
                         <span className="font-black text-slate-900">{wd} {dm}</span>
                         {topDays.has(d.date) && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 ml-auto" aria-label="Top pick" />}
                       </div>
-                      <div className="text-[10px] text-slate-500">{d.free.length} free · {d.stops.filter(stop => visibleStops.has(`${stop.leadId}:${stop.type}:${d.date}:${stop.time}`)).length} shown / {d.stops.length} booked</div>
+                      <div className="text-[10px] text-slate-500">{d.free.length - d.conflicts.size} free · {d.stops.filter(stop => visibleStops.has(`${stop.leadId}:${stop.type}:${d.date}:${stop.time}`)).length} shown / {d.stops.length} booked</div>
                       {d.offZone && (
                         <div className="mt-0.5 text-[10px] font-bold text-amber-700 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3 shrink-0" /> Off-zone
@@ -415,7 +412,11 @@ function BookingPlannerView({
                     </span>
                   </div>
                 )}
-                {timeline.length === 0 && <p className="text-slate-400 p-2">Nothing on this day.</p>}
+                {selectedDay && selectedDay.free.length === 0 && (
+                  <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+                    No suggested {typeLabel.toLowerCase()} times on this day. Booking hours, closures, booking date limits, or staff availability may restrict suggestions. You can still review the map and booked stops, choose another day, or enter a time manually in Edit Lead.
+                  </p>
+                )}
                 {timeline.map((row) => {
                   if (row.kind === "stop") {
                     const p = stopPoint(row.stop);
@@ -451,7 +452,7 @@ function BookingPlannerView({
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-emerald-800 w-40 shrink-0">{formatSlotRange(row.time, rules[type].slotMinutes)}</span>
-                        <span className="text-emerald-700 font-semibold">Free</span>
+                        <span className={selectedDay?.conflicts.has(row.time) ? "text-amber-700 font-semibold" : "text-emerald-700 font-semibold"}>{selectedDay?.conflicts.has(row.time) ? "Conflict — staff can override" : "Free"}</span>
                         {f && <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${FIT_STYLE[f.fit].chip}`}>{FIT_STYLE[f.fit].label}</span>}
                       </div>
                       {f && (
@@ -493,7 +494,7 @@ function BookingPlannerView({
                 </DispatchMap>
                 {!selectedTime && (
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-white/95 border border-slate-200 rounded-full px-3 py-1 shadow-sm text-[11px] font-semibold text-slate-600">
-                    Pick a free slot to see this customer placed in the route
+                    Pick a time to see this customer placed in the route
                   </div>
                 )}
               </div>

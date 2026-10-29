@@ -1534,6 +1534,12 @@ export default function CrmDashboardPage() {
         });
         if (res.ok) {
           const result = await res.json().catch(() => ({}));
+          if (result.recycled) {
+            setLeads(prev => prev.filter(lead => lead.id !== payload.id));
+            setRecycleBinCount(count => count + 1);
+            setLeadModalOpen(false);
+            return;
+          }
           setLeads((prev) =>
             prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes } as Lead) : l))
           );
@@ -1629,6 +1635,11 @@ export default function CrmDashboardPage() {
     try {
       const result = await saveLeadChanges(id, updates);
       if (!result.ok) { onError?.(result.error); return false; }
+      if (result.recycled) {
+        setLeads(prev => prev.filter(lead => lead.id !== id));
+        setRecycleBinCount(count => count + 1);
+        return true;
+      }
       if (result.ok) {
         setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
         // If a lead's status changes while a Jobs-view filter tab is active, and the

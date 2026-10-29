@@ -87,3 +87,13 @@ test("CRM override permits conflicting saves while customer reservations still e
     assert.equal(appointments.filter(a => a.leadId === "late").reduce((sum, a) => sum + a.scheduledMinutes, 0), 120);
   }
 });
+
+test("customer booking restrictions do not produce staff booking warnings", () => {
+  const { explainOutsideRules } = loadTs("lib/bookingRules.ts");
+  for (const type of ["job", "inspection"]) {
+    for (const value of ["2026-10-18T06:00", "2026-10-19T23:00"]) {
+      assert.ok(explainOutsideRules(configured, type, value));
+      assert.equal(explainOutsideRules(staff, type, value), null);
+    }
+  }
+});

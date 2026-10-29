@@ -6,7 +6,7 @@ import type { CustomerQuote } from "@/lib/customerQuotes";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import {
-  Phone, MapPin, Wrench, Camera, Navigation,
+  Phone, MapPin, Camera, Navigation,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -16,6 +16,7 @@ import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { ZoneBadge } from "@/components/admin/ZoneBadge";
+import { ExpandableServiceNotes } from "@/components/admin/ExpandableServiceNotes";
 
 export function FieldLeadRow({ l }: { l: Lead }) {
   const distanceKm = useDistanceKm(l.address);
@@ -170,10 +171,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             </div>
           )}
 
-          <div className="flex items-start gap-1.5 text-xs text-slate-700 font-medium min-w-0">
-            <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-            <span className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]" title={serviceDisplay}>{serviceDisplay}</span>
-          </div>
+          <ExpandableServiceNotes text={serviceDisplay} />
 
           <div className="pt-1 flex gap-1.5">
             {/* Directions: an inspector drives to every one of these, so the map

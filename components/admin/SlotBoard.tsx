@@ -125,7 +125,7 @@ export function SlotBoard({
   const today = melbourneYmd();
   const valueDate = /^(\d{4}-\d{2}-\d{2})/.exec(value || "")?.[1];
   const valueTime = /T(\d{2}:\d{2})/.exec(value || "")?.[1];
-  const firstDay = rules.minDate && rules.minDate > today ? rules.minDate : addDays(today, 1);
+  const firstDay = today;
 
   const [day, setDay] = useState<string>(valueDate || firstDay);
   // Follow the field when staff type a different date into it.

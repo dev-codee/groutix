@@ -3,7 +3,7 @@ import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 test("quote edits are sent completely and a successful save reports success", async () => {
   let request;
-  const { saveLeadChanges } = loadTs("lib/saveLeadChanges.ts", {}, { fetch: async (url, options) => { request = { url, ...options }; return { ok: true }; } });
+  const { saveLeadChanges } = loadTs("lib/saveLeadChanges.ts", {}, { fetch: async (url, options) => { request = { url, ...options }; return { ok: true, json: async () => ({ ok: true }) }; } });
   const updates = { quoteItems: [{ service: "Regrouting", qty: 2, price: 300 }], quoteScope: "Shower", agency: "Agency", tenants: [{ name: "Tenant", phone: "0400000000" }] };
   assert.equal((await saveLeadChanges("lead-1", updates)).ok, true);
   assert.equal(request.method, "PATCH");

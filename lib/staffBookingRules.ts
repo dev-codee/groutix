@@ -3,11 +3,25 @@ import type { BookingRules } from "./bookingRules";
 const cache = new WeakMap<BookingRules, BookingRules & { staffScheduling: true }>();
 const planningCache = new WeakMap<BookingRules, BookingRules & { staffScheduling: true }>();
 
-/** Suggestions follow configured booking hours; staff can still book manually. */
+/** Staff can plan on every day; customer closures and date limits do not apply. */
 export function staffPlanningRules(rules: BookingRules): BookingRules & { staffScheduling: true } {
   const existing = planningCache.get(rules);
   if (existing) return existing;
-  const result = { ...rules, staffScheduling: true as const };
+  // Retain familiar time ranges and durations as suggestions, but open every
+  // weekday, including dates covered by a customer-only schedule changeover.
+  const openDays = (type: BookingRules["job"]): BookingRules["job"] => ({
+    ...type,
+    days: type.days.map(day => ({ ...day, open: true })),
+    changeovers: type.changeovers?.map(change => ({
+      ...change, days: change.days.map(day => ({ ...day, open: true })),
+    })),
+  });
+  const result = {
+    ...staffBookingRules(rules),
+    inspection: openDays(rules.inspection),
+    job: openDays(rules.job),
+    closedDates: [],
+  };
   planningCache.set(rules, result);
   return result;
 }
