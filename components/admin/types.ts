@@ -134,6 +134,8 @@ export interface Lead {
   quoteSignedAt?: string;
   followUpStage?: number;
   followUpNext?: string;
+  paymentReceipt?: import("@/lib/paymentReceipt").PaymentReceipt;
+  receiptSentAt?: string;
   invoiceAmount?: number;
   invoiceNumber?: string;
   invoiceSentAt?: string;

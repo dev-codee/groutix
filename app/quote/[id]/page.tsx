@@ -1,5 +1,6 @@
 "use client";
 
+import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
 import { useEffect, useState, useRef, use } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -429,6 +430,8 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
                   </div>
                 </div>
               )}
+
+              <QuoteCuringNotice />
 
               {/* Itemized Pricing Table */}
               <div className="space-y-2">

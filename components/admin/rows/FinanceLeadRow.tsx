@@ -1,8 +1,10 @@
 "use client";
 
+import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
+
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Phone, Mail, MapPin, MessageSquare, Send,
   ShieldAlert, ShieldCheck, Check, Eye, DollarSign, X, StickyNote,
@@ -55,6 +57,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   type PaymentStep = "idle" | "ask_type" | "ask_amount";
   const [payStep, setPayStep] = useState<PaymentStep>("idle");
   const [partialAmt, setPartialAmt] = useState<string>("");
+  const paymentSaving = useRef(false);
 
   const quoteTotal = getLeadQuoteTotal(l);
   const invoiceTotal = l.invoiceAmount ?? (quoteTotal && quoteTotal > 0 ? quoteTotal : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
@@ -80,7 +83,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
     return window.confirm(msg);
   }
 
-  function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
+  async function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
     const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
     const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
@@ -88,7 +91,11 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
       paymentType: isFull ? "full" : "partial",
       amountPaid: finalAmt,
     };
-    updateLeadField(l.id, updates);
+    if (paymentSaving.current) return;
+    paymentSaving.current = true;
+    const saved = await updateLeadField(l.id, updates).finally(() => { paymentSaving.current = false; });
+    if (saved === false) { alert("Could not record payment. Ensure this customer has a saved invoice with a valid total, then try again."); return; }
+    if (isFull) openPaymentReceipt(l.id);
     setPayStep("idle");
     setPartialAmt("");
   }
@@ -109,6 +116,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
       key={l.id}
       className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
     >
+      {(l.paymentType === "full" || l.paymentReceipt) && <button type="button" onClick={() => openPaymentReceipt(l.id)} className="mb-3 text-sm font-semibold text-teal-800 underline">View / email payment receipt</button>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-6 items-start w-full divide-y divide-slate-100 lg:divide-y-0">
         {/* COLUMN 1: CLIENT */}
         <div className="col-span-12 lg:col-span-4 min-w-0 space-y-2.5">

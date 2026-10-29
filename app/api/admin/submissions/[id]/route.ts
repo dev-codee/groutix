@@ -1,3 +1,4 @@
+import { receiptFromInvoice } from "@/lib/paymentReceipt";
 import { isPrimaryBooking } from "@/lib/leadBookings";
 import { statusAfterBooking } from "@/lib/pipeline";
 import { staffBookingRules } from "@/lib/staffBookingRules";
@@ -131,6 +132,19 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const current = await getSubmission(id);
   const before = current ? { ...current } : null;
   if (!before) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  // Receipt fields are server-owned snapshots of the saved invoice.
+  delete body.paymentReceipt;
+  delete body.receiptSentAt;
+  if (body.paymentType === "full") {
+    try {
+      body.paymentReceipt = before.paymentReceipt || receiptFromInvoice(before);
+      body.amountPaid = body.paymentReceipt.total;
+      body.invoiceStatus = "Paid";
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
+  }
 
   // Lost is an archive action, not a workflow transition. Move the saved
   // snapshot without changing its status, visit progress, or completion flags.

@@ -1,12 +1,14 @@
 "use client";
 
+import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
+
 import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
 import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Camera, Phone, Mail, MessageSquare, Trash2, Check,
   Navigation, Eye, CheckCircle2, ShieldCheck, ShieldAlert,
@@ -86,9 +88,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   type PaymentStep = "idle" | "ask_type" | "ask_amount";
   const [payStep, setPayStep] = useState<PaymentStep>("idle");
   const [partialAmt, setPartialAmt] = useState<string>("");
+  const paymentSaving = useRef(false);
 
   const totalQuote = getLeadQuoteTotal(l);
-  const invoiceTotal = totalQuote && totalQuote > 0 ? totalQuote : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null);
+  const invoiceTotal = l.invoiceAmount ?? (totalQuote && totalQuote > 0 ? totalQuote : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
   const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
   const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
@@ -113,7 +116,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     return window.confirm(msg);
   }
 
-  function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
+  async function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
     const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
     const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
@@ -121,13 +124,18 @@ export function StandardLeadCard({ l }: { l: Lead }) {
       paymentType: isFull ? "full" : "partial",
       amountPaid: finalAmt,
     };
-    updateLeadField(l.id, updates);
+    if (paymentSaving.current) return;
+    paymentSaving.current = true;
+    const saved = await updateLeadField(l.id, updates).finally(() => { paymentSaving.current = false; });
+    if (saved === false) { alert("Could not record payment. Ensure this customer has a saved invoice with a valid total, then try again."); return; }
+    if (isFull) openPaymentReceipt(l.id);
     setPayStep("idle");
     setPartialAmt("");
   }
 
   return (
     <div className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl">
+      {(l.paymentType === "full" || l.paymentReceipt) && <button type="button" onClick={() => openPaymentReceipt(l.id)} className="mb-3 text-sm font-semibold text-teal-800 underline">View / email payment receipt</button>}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start divide-y divide-slate-100 lg:divide-y-0">
 
         {/* COLUMN 0: CLIENT */}

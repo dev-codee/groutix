@@ -474,6 +474,17 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     });
   }
 
+  // Keep the curing notice compact and together beneath the quotation's scope.
+  if (!input.docType || input.docType === "quote") {
+    const notice = await doc.embedJpg(fs.readFileSync(path.join(process.cwd(), "public/groutix-curing-time.jpeg")));
+    const width = Math.min(360, contentW);
+    const height = width * notice.height / notice.width;
+    ensureQuoteRoom(height + 12);
+    y -= 6;
+    page1.drawImage(notice, { x: MARGIN, y: y - height, width, height });
+    y -= height + 6;
+  }
+
   // 4. Financial Summary (only if not a Scope of Work doc)
   if (!isScopeDoc) {
     ensureQuoteRoom(input.statusLabel ? 80 : 65);

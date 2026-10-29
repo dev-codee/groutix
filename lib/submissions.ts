@@ -197,6 +197,8 @@ export interface SubmissionDoc {
   quoteSignedName?: string; // Name entered/confirmed on signature
   quoteSignedAt?: string; // ISO time the signature was captured
   quoteSignedIp?: string; // IP address of the signer
+  paymentReceipt?: import("@/lib/paymentReceipt").PaymentReceipt;
+  receiptSentAt?: string;
   invoiceAmount?: number;
   invoiceNumber?: string;
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer

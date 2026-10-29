@@ -1,5 +1,7 @@
 "use client";
 
+import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
+import { PaymentReceiptModal } from "@/components/admin/PaymentReceiptModal";
 import { downloadAttachment } from "@/lib/downloadAttachment";
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
 import { dashboardLeadsFirst } from "@/lib/leadOrder";
@@ -5876,6 +5878,8 @@ export default function CrmDashboardPage() {
                       </tbody>
                     </table>
 
+                    {!isTechnician && <QuoteCuringNotice />}
+
                     {/* 5. Totals with Round Figure Final Price */}
                     {!isTechnician && (
                       <div className="pt-3 flex flex-col items-end text-xs space-y-1 text-slate-800">
@@ -8753,6 +8757,7 @@ export default function CrmDashboardPage() {
           </div>
         )}
       </div>
+      <PaymentReceiptModal />
     </AdminPageProvider>
   );
 }
