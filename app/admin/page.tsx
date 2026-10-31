@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_INVOICE_ACCOUNT_NUMBER, invoiceAccountNumber as resolveInvoiceAccountNumber } from "@/lib/invoicePayment";
+
 import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
 import { PaymentReceiptModal } from "@/components/admin/PaymentReceiptModal";
 import { downloadAttachment } from "@/lib/downloadAttachment";
@@ -718,7 +720,7 @@ export default function CrmDashboardPage() {
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [invoiceBankName, setInvoiceBankName] = useState("ANZ");
   const [invoiceAccountName, setInvoiceAccountName] = useState("Groutix Pty Ltd");
-  const [invoiceAccountNumber, setInvoiceAccountNumber] = useState("");
+  const [invoiceAccountNumber, setInvoiceAccountNumber] = useState(DEFAULT_INVOICE_ACCOUNT_NUMBER);
   const [invoiceBsb, setInvoiceBsb] = useState("013442");
   const [invoiceDueDate, setInvoiceDueDate] = useState("Within 7 days of invoice date");
 
@@ -1054,7 +1056,10 @@ export default function CrmDashboardPage() {
       };
       const cur = order[lead.status] ?? 0;
       const target = eventType === "en_route" ? 1 : 2;
-      if (cur >= target) return;
+      if (cur >= target) {
+        if (eventType === "en_route" && cur === target) setNotifyPrompt({ lead, eventType });
+        return;
+      }
     } else {
       const order: Record<string, number> = {
         "Job Booked": 0,
@@ -1069,7 +1074,13 @@ export default function CrmDashboardPage() {
       };
       const cur = order[selectedJobBooking(lead)?.status || lead.status] ?? 0;
       const target = eventType === "en_route" ? 1 : 2;
-      if (cur >= target) return;
+      if (cur >= target) {
+        if (eventType === "en_route" && cur === target) {
+          const booking = selectedJobBooking(lead);
+          setNotifyPrompt({ lead: booking ? { ...lead, activeBooking: { type: "job", start: `${booking.date}T${booking.time}`, bookingId: booking.bookingId } } : lead, eventType });
+        }
+        return;
+      }
     }
 
     // Save the selected visit before offering a customer notification.
@@ -3651,10 +3662,11 @@ export default function CrmDashboardPage() {
     setInvoiceGst(10);
     // Default to Unpaid; only pre-mark Paid if payment was already recorded.
     setInvoiceStatus(lead.status === "Payment Received" ? "Paid" : "Unpaid");
+    setInvoiceAccountNumber(DEFAULT_INVOICE_ACCOUNT_NUMBER);
     try {
       setInvoiceBankName(localStorage.getItem("groutix_inv_bank") || "ANZ");
       setInvoiceAccountName(localStorage.getItem("groutix_inv_acc_name") || "Groutix Pty Ltd");
-      setInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num")?.replace(/\s+/g, "") || "");
+      setInvoiceAccountNumber(resolveInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num")));
       setInvoiceBsb(localStorage.getItem("groutix_inv_bsb") || "013442");
       setInvoiceDueDate(localStorage.getItem("groutix_inv_due_date") || "Within 7 days of invoice date");
     } catch { }
@@ -8361,7 +8373,7 @@ export default function CrmDashboardPage() {
                       <div className="font-black text-[11px] text-slate-900 pb-0.5">PAYMENT INFORMATION</div>
                       <div className="text-slate-700">• Bank Name: <span className="font-bold text-slate-900">{invoiceBankName || "ANZ"}</span></div>
                       <div className="text-slate-700">• Account Name: <span className="font-bold text-slate-900">{invoiceAccountName || "Groutix Pty Ltd"}</span></div>
-                      <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">{invoiceAccountNumber}</span></div>
+                      <div className="text-slate-700">• Account Number: <span className="font-bold text-slate-900">{resolveInvoiceAccountNumber(invoiceAccountNumber)}</span></div>
                       <div className="text-slate-700">• BSB: <span className="font-bold text-slate-900">{invoiceBsb || "013442"}</span></div>
                     </div>
                   </div>

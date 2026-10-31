@@ -45,13 +45,13 @@ test('the submission write boundary rejects zeroing an accepted quote and guards
 });
 
 test('sending an invoice saves its own amount and never overwrites the accepted quote',async()=>{
-  const writes=[], emails=[];
+  const writes=[], emails=[], pdfInputs=[];
   const lead={id:'lead',jobNo:'JOBNO-1',email:'customer@example.com',quoteAmount:3130,quoteSignedAt:'signed',quoteSignature:'signature'};
   const {POST}=loadTs('app/api/admin/invoice/send/route.ts',{
     '@/lib/submissions':{getSubmission:async()=>lead,updateSubmission:async(_id,patch)=>{writes.push(patch);return true;},appendActivity:async()=>{}},
     '@/lib/adminAuth':{verifyRequestSession:async()=>({username:'manager'})},
     '@/lib/email':{isEmailConfigured:()=>true,wrapEmailHtml:x=>x,getEmailLogoUrl:async()=>'',sendEmail:async x=>emails.push(x)},
-    '@/lib/quotePdf':{buildQuotePdfBase64:async()=>''},
+    '@/lib/quotePdf':{buildQuotePdfBase64:async input=>{pdfInputs.push(input);return '';}},
     '@/lib/automations':{invoiceTrackingPixel:()=>''},
     '@/lib/quickbooks':{isQboConfigured:()=>false},
   });
@@ -63,4 +63,16 @@ test('sending an invoice saves its own amount and never overwrites the accepted 
   const invalid=await POST({json:async()=>({id:'lead'})});
   assert.equal(invalid.status,400);
   assert.equal(emails.length,1);
+  assert.match(emails[0].html, /Account Number: <b>669909988<\/b>/);
+  assert.equal(pdfInputs[0].accountNumber,"669909988");
+});
+
+
+test('invoice account defaults cover missing and blank values while preserving overrides', () => {
+  const { invoiceAccountNumber } = loadTs('lib/invoicePayment.ts');
+  for (const value of [undefined, null, '', '   ']) {
+    assert.equal(invoiceAccountNumber(value), '669909988');
+  }
+  assert.equal(invoiceAccountNumber('669 909 988'), '669909988');
+  assert.equal(invoiceAccountNumber('123 456'), '123456');
 });

@@ -1,3 +1,4 @@
+import { invoiceAccountNumber } from "@/lib/invoicePayment";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission } from "@/lib/submissions";
 import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const sp = req.nextUrl.searchParams;
   const bankName = sp.get("bankName") || "ANZ";
   const accountName = sp.get("accountName") || "Groutix Pty Ltd";
-  const accountNumber = sp.get("accountNumber") || "";
+  const accountNumber = invoiceAccountNumber(sp.get("accountNumber"));
   const bsb = sp.get("bsb") || "013442";
   const dueDate = sp.get("dueDate") || "within 7 days of invoice date";
   const overridePrice = sp.get("price") ? parseFloat(sp.get("price")!) : undefined;

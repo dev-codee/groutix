@@ -1,3 +1,4 @@
+import { invoiceAccountNumber } from "./invoicePayment";
 // Server-side quotation PDF builder (pdf-lib — pure JS, safe on serverless).
 // Produces the official branded Groutix A4 quote with customer details,
 // job description, itemized pricing table, full 20-clause terms & conditions,
@@ -979,7 +980,7 @@ export async function buildInvoicePdfBase64(input: QuotePdfInput): Promise<strin
   iy -= 12;
   page.drawCircle({ x: bulletX, y: iy + 2.5, size: 1.5, color: INK });
   text("Account Number: ", textX, iy, { size: 8.5, color: INK });
-  text(input.accountNumber?.replace(/\s+/g, "") || "", textX + font.widthOfTextAtSize("Account Number: ", 8.5), iy, { font: bold, size: 8.5, color: INK });
+  text(invoiceAccountNumber(input.accountNumber), textX + font.widthOfTextAtSize("Account Number: ", 8.5), iy, { font: bold, size: 8.5, color: INK });
 
   iy -= 12;
   page.drawCircle({ x: bulletX, y: iy + 2.5, size: 1.5, color: INK });

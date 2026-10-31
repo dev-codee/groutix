@@ -4,7 +4,7 @@ import { leadRowKey } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import {
-  Phone, MapPin, Camera,
+  Phone, MapPin, Camera, Navigation,
   ShieldAlert, ShieldCheck, Check, ClipboardList,
 } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -141,7 +141,14 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
 
           <ExpandableServiceNotes text={serviceDisplay} />
 
-          <div className="pt-1 grid grid-cols-2 gap-1.5">
+          <div className="pt-1 grid grid-cols-3 gap-1.5">
+            <a
+              href={l.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${l.address}, VIC, Australia`)}` : undefined}
+              target="_blank" rel="noopener noreferrer" aria-disabled={!l.address}
+              onClick={e => { if (!l.address) e.preventDefault(); }}
+              className={`w-full flex items-center justify-center gap-1.5 py-1.5 px-2 border rounded-lg text-[10px] xl:text-[11px] font-semibold min-w-0 shadow-2xs ${l.address ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80" : "bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed"}`}
+              title={l.address ? "Open driving directions" : "No address provided"}
+            ><Navigation className="w-3 h-3 text-emerald-600 shrink-0"/><span>Navigate</span></a>
             <button
               type="button"
               onClick={() => callCustomer(l)}

@@ -1,3 +1,4 @@
+import { invoiceAccountNumber } from "@/lib/invoicePayment";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
 import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
   const status = body.status === "Paid" ? "Paid" : "Unpaid";
   const bankName = body.bankName || "ANZ";
   const accountName = body.accountName || "Groutix Pty Ltd";
-  const accountNumber = body.accountNumber?.replace(/\s+/g, "") || "";
+  const accountNumber = invoiceAccountNumber(body.accountNumber);
   const bsb = body.bsb || "013442";
   const dueDate = body.dueDate || "Within 7 days of invoice date";
 
