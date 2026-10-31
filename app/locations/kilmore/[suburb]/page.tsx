@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { KILMORE_SUBURB_SLUGS } from "@/lib/locationRoutes";
+import { LILYDALE_SUBURB_SLUGS } from "@/lib/locationRoutes";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CityPageClient from "@/app/locations/CityPageClient";
@@ -21,50 +21,49 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { suburb } = await params;
-  if (!(KILMORE_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
+  if (!(LILYDALE_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const name = formatSuburbName(suburb);
   return {
-    title: `Shower Regrouting ${name} | Kilmore | GROUTIX`,
-    description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Kilmore. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
-    alternates: { canonical: `/locations/kilmore/${suburb}` },
+    title: `Shower Regrouting ${name} | Lilydale | GROUTIX`,
+    description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Lilydale. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
+    alternates: { canonical: `/locations/lilydale/${suburb}` },
     openGraph: {
-      title: `Shower Regrouting ${name} | Kilmore | GROUTIX`,
-      description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Kilmore. Free quotes and specialist workmanship.`,
-      url: `/locations/kilmore/${suburb}`,
+      title: `Shower Regrouting ${name} | Lilydale | GROUTIX`,
+      description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Lilydale. Free quotes and specialist workmanship.`,
+      url: `/locations/lilydale/${suburb}`,
       type: "website",
     },
   };
 }
 
-const kilmoreSuburbs: SuburbGroup[] = [
+const lilydaleSuburbs: SuburbGroup[] = [
   {
-    "title": "Local Kilmore Suburbs",
+    "title": "Local Lilydale Suburbs",
     "suburbs": [
-      "Bylands",
-      "Hidden Valley",
-      "Kilmore Central",
-      "Kilmore East",
-      "Wandong",
-      "Willowmavin"
+      "Chirnside Park",
+      "Coldstream",
+      "Lilydale Central",
+      "Mooroolbark",
+      "Mount Evelyn"
     ]
   },
   {
-    "title": "Nearby Service Areas (Towards Lilydale)",
+    "title": "Hills & Yarra Valley Suburbs",
     "suburbs": [
-      "Eden Park",
-      "Wallan",
-      "Whittlesea",
-      "Yan Yean"
+      "Emerald",
+      "Macclesfield",
+      "Monbulk",
+      "Silvan"
     ]
   },
   {
-    "title": "Nearby Service Areas (Towards Ballarat)",
+    "title": "Northern Yarra Ranges Suburbs",
     "suburbs": [
-      "Hesket",
-      "Lancefield",
-      "Romsey",
-      "Tylden",
-      "Woodend"
+      "Doreen",
+      "Hurstbridge",
+      "Kangaroo Ground",
+      "Nutfield",
+      "Watsons Creek"
     ]
   }
 ];
@@ -79,13 +78,13 @@ GROUTIX provides specialist grout repair, shower regrouting, leaking shower repa
 
 export default async function SuburbPage({ params }: Props) {
   const { suburb } = await params;
-  if (!(KILMORE_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
+  if (!(LILYDALE_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const suburbName = formatSuburbName(suburb);
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
   const explanation = getSuburbExplanation(suburbName);
 
-  const serviceAreaText = `GROUTIX provides shower regrouting, grout repair, silicone replacement and leaking shower repairs across ${suburbName} and the greater Kilmore region. We target failed grout joints and worn seals without turning a repair into a full renovation.
+  const serviceAreaText = `GROUTIX provides shower regrouting, grout repair, silicone replacement and leaking shower repairs across ${suburbName} and the greater Lilydale region. We target failed grout joints and worn seals without turning a repair into a full renovation.
 
 Bathrooms in ${suburbName} commonly develop cracked grout, mouldy joints and failed silicone as surfaces age and building movement takes its toll. Addressing these issues early helps protect the substrate behind the tiles and keeps shower areas watertight.
 
@@ -97,12 +96,12 @@ Our specialist team delivers practical wet-area repairs with quality materials, 
       <CityPageClient
         cityName={suburbName}
         heroHeading={`Shower Regrouting & Grout Repair in ${suburbName}`}
-        heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Kilmore. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
+        heroSubtitle={`Professional shower regrouting, grout repair and leaking shower services in ${suburbName}, Lilydale. GROUTIX restores wet areas without unnecessary tile removal and backs full shower regrouting with a 10-year waterproof warranty.`}
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img68.jpg"
-        heroImage="/img67.jpg"
-        suburbGroups={kilmoreSuburbs}
-        parentSlug="kilmore"
+        serviceAreaMapImage="/img66.jpg"
+        heroImage="/img100.jpg"
+        suburbGroups={lilydaleSuburbs}
+        parentSlug="lilydale"
         reviews={reviews}
         rating={rating}
         googleMapsApiKey={apiKey}
