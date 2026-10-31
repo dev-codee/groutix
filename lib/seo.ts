@@ -64,7 +64,7 @@ export const SERVICE_SLUGS = [
   "shower-screens",
 ] as const;
 
-export const STATIC_ROUTES = ["/", "/about", "/services", "/locations", "/faq", "/contact", "/gallery"] as const;
+export const STATIC_ROUTES = ["/", "/about", "/services", "/locations", "/faq", "/contact", "/gallery", "/our-process", "/privacy-policy", "/terms-conditions"] as const;
 
 /** Absolute URL helper. */
 export function abs(path: string): string {
