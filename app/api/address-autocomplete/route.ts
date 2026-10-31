@@ -5,8 +5,10 @@ export async function GET(req: NextRequest) {
   if (!input || input.length < 3) return NextResponse.json({ predictions: [] });
 
   const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) return NextResponse.json({ predictions: [] });
 
+  // Try Google first when configured. If it is unavailable or rejects the
+  // request, Photon (OpenStreetMap) provides a lightweight server-side fallback.
+  if (key) {
   // Try new Places API (v1) first
   try {
     const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
@@ -18,7 +20,7 @@ export async function GET(req: NextRequest) {
       body: JSON.stringify({
         input,
         includedRegionCodes: ["au"],
-        includedPrimaryTypes: ["geocode", "premise", "street_address"],
+        includedPrimaryTypes: ["premise", "street_address"],
       }),
     });
 
@@ -49,14 +51,36 @@ export async function GET(req: NextRequest) {
     const res = await fetch(url.toString());
     const data = await res.json();
 
-    if (data.status === "OK" || data.status === "ZERO_RESULTS") {
+    if (data.status === "OK") {
       const predictions = (data.predictions || []).map(
         (p: { description: string }) => p.description
       );
-      return NextResponse.json({ predictions });
+      if (predictions.length) return NextResponse.json({ predictions });
     }
   } catch {
-    // ignore
+    // continue to the provider fallback below
+  }
+  }
+
+  try {
+    const url = new URL("https://photon.komoot.io/api/");
+    url.searchParams.set("q", input);
+    url.searchParams.set("lat", "-37.8136");
+    url.searchParams.set("lon", "144.9631");
+    url.searchParams.set("limit", "5");
+    url.searchParams.set("lang", "en");
+    const res = await fetch(url, { headers: { "User-Agent": "GroutixAddressAutocomplete/1.0 (groutix.com)" }, signal: AbortSignal.timeout(4500) });
+    if (res.ok) {
+      const data = await res.json();
+      const predictions = (data.features || []).map((feature: { properties?: Record<string, string> }) => {
+        const p = feature.properties || {};
+        const street = [p.housenumber, p.street || p.name].filter(Boolean).join(" ");
+        return [street, p.suburb || p.city || p.locality, p.state, p.postcode].filter(Boolean).join(", ");
+      }).filter((value: string) => value && /victoria|vic|australia/i.test(value));
+      if (predictions.length) return NextResponse.json({ predictions: [...new Set(predictions)].slice(0, 5), attribution: "OpenStreetMap contributors" });
+    }
+  } catch {
+    // Suggestions remain optional; allow free-form address entry if both providers fail.
   }
 
   return NextResponse.json({ predictions: [] });
