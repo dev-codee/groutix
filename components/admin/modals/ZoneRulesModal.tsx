@@ -109,6 +109,20 @@ export function ZoneRulesModal({ onClose }: { onClose: () => void }) {
         </span>
       </label>
 
+      {/* Daily-flex inspection availability */}
+      <label className="flex items-start gap-2.5 p-3 rounded-xl border border-emerald-200 bg-emerald-50/60 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={rules.flexRadiusKm > 0}
+          onChange={(e) => update({ ...rules, flexRadiusKm: e.target.checked ? (rules.flexRadiusKm || 15) : 0 })}
+          className="mt-0.5"
+        />
+        <span className="text-xs">
+          <span className="font-bold text-slate-800">Allow inspections within a daily-flex radius</span>
+          <span className="block text-slate-500 mt-0.5">Customers inside the radius can choose any inspection working day, regardless of their service zone.</span>
+        </span>
+      </label>
+
       {/* Radii */}
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
@@ -122,10 +136,11 @@ export function ZoneRulesModal({ onClose }: { onClose: () => void }) {
             max={200}
             step={0.5}
             value={rules.flexRadiusKm}
+            disabled={rules.flexRadiusKm === 0}
             onChange={(e) => update({ ...rules, flexRadiusKm: Number(e.target.value) })}
-            className="w-full p-2 border border-slate-200 rounded-lg"
+            className="w-full p-2 border border-slate-200 rounded-lg disabled:bg-slate-100 disabled:text-slate-400"
           />
-          <p className="text-[10px] text-slate-400 mt-1">Inside this, any open day can be booked.</p>
+          <p className="text-[10px] text-slate-400 mt-1">Default is 15 km. Inside this, any inspection working day can be booked.</p>
         </div>
         <div>
           <label htmlFor="max-km" className="font-bold text-slate-700 block mb-1">
