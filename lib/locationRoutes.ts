@@ -8,7 +8,7 @@
 
 export const MELBOURNE_SUBURB_SLUGS = [
   "carlton", "carlton-north", "collingwood", "docklands", "east-melbourne", "fitzroy",
-  "fitzroy-north", "melbourne-cbd", "north-melbourne", "parkville", "richmond", "south-melbourne",
+  "fitzroy-north", "footscray", "melbourne-cbd", "north-melbourne", "parkville", "richmond", "south-melbourne",
   "south-yarra", "southbank", "west-melbourne", "abbotsford", "camberwell", "canterbury",
   "cremorne", "glen-iris", "hawthorn", "hawthorn-east", "kew", "kew-east",
   "malvern", "malvern-east", "toorak", "windsor", "brunswick", "brunswick-east",
@@ -30,12 +30,12 @@ export const MELBOURNE_SUBURB_SLUGS = [
   "frankston", "glen-waverley", "hallam", "hampton-park", "keysborough", "mount-waverley",
   "mulgrave", "narre-warren", "noble-park", "oakleigh", "pakenham", "patterson-lakes",
   "seaford", "springvale", "wheelers-hill", "altona", "altona-meadows", "altona-north",
-  "brooklyn", "hoppers-crossing", "laverton", "point-cook", "truganina", "werribee",
+  "brooklyn", "hobsons-bay", "hoppers-crossing", "laverton", "point-cook", "truganina", "werribee",
   "williams-landing", "williamstown", "williamstown-north", "bayswater", "boronia", "croydon",
   "croydon-hills", "croydon-north", "croydon-south", "ferntree-gully", "kilsyth", "knox",
   "lilydale", "mooroolbark", "mount-evelyn", "ringwood", "ringwood-east", "ringwood-north",
   "vermont", "vermont-south", "wantirna", "wantirna-south", "caroline-springs", "deer-park",
-  "derrimut", "melton", "melton-south", "plumpton", "sunbury", "sydenham",
+  "derrimut", "melton", "melton-south", "plumpton", "st-albans", "sunbury", "sydenham",
   "tarneit", "wyndham-vale",
 ] as const;
 export const GEELONG_SUBURB_SLUGS = [
