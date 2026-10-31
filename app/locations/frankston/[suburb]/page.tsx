@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { FRANKSTON_SUBURB_SLUGS } from "@/lib/locationRoutes";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CityPageClient from "@/app/locations/CityPageClient";
@@ -19,6 +21,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { suburb } = await params;
+  if (!(FRANKSTON_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const name = formatSuburbName(suburb);
   return {
     title: `Shower Regrouting ${name} | Frankston | GROUTIX`,
@@ -68,6 +71,7 @@ GROUTIX provides specialist grout repair, shower regrouting, leaking shower repa
 
 export default async function SuburbPage({ params }: Props) {
   const { suburb } = await params;
+  if (!(FRANKSTON_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const suburbName = formatSuburbName(suburb);
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";

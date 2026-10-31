@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { MELBOURNE_SUBURB_SLUGS } from "@/lib/locationRoutes";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CityPageClient from "@/app/locations/CityPageClient";
@@ -23,6 +25,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { suburb } = await params;
+  if (!(MELBOURNE_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const liveRating = await getBusinessRating();
   const reviewsText = `${formatRating(liveRating.value)} from ${formatReviewCount(liveRating.count)} reviews`;
   if (suburb === "st-kilda") {  return {    title: "Shower & Balcony Regrouting St Kilda | 10-Yr Warranty | Groutix",    description: `Shower and balcony regrouting in St Kilda, Elwood and St Kilda East. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/st-kilda" },    openGraph: {      title: "Shower & Balcony Regrouting in St Kilda | Groutix",      description: `Shower and balcony regrouting in St Kilda, Elwood and St Kilda East. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/st-kilda",      type: "website",    },    robots: "index, follow",  };}
@@ -165,6 +168,7 @@ GROUTIX provides specialist grout repair, shower regrouting, leaking shower repa
 
 export default async function SuburbPage({ params }: Props) {
   const { suburb } = await params;
+  if (!(MELBOURNE_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const suburbName = formatSuburbName(suburb);
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   if (suburb === "st-kilda") {  return <StKildaPage reviews={reviews} rating={rating} />;}
