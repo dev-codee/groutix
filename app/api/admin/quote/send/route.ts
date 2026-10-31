@@ -104,26 +104,21 @@ export async function POST(req: NextRequest) {
   const acceptUrl = buildQuoteResponseUrl(reference, "accept");
 
   const html = `
-    <p style="margin:0 0 24px;font-size:15px;color:#334155;">Hi ${esc(lead.name?.split(" ")[0] || "there")},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#334155;">Hi ${esc(lead.name?.split(" ")[0] || "there")},</p>
 
-    <p style="margin:0 0 32px;font-size:15px;color:#334155;">Please find your Groutix quotation <strong>${esc(quoteNumber)}</strong> attached to this email.</p>
+    <div style="margin:0 0 8px;padding:18px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;text-align:center;">
+      <p style="margin:0 0 14px;font-size:16px;font-weight:800;color:#166534;">Ready to go ahead? Review and sign your quote here:</p>
+      <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:16px 30px;border-radius:10px;">Review &amp; Sign Quote</a>
+      <p style="margin:12px 0 0;font-size:13px;color:#475569;">Tap the green button to review the details and approve your quote online.</p>
+    </div>
+    <p style="margin:0 0 24px;text-align:center;font-size:13px;color:#64748b;">Prefer a copy first? <a href="${siteBaseUrl()}/api/quote/pdf/${reference}?token=${signQuoteToken(reference)}" style="color:#001f97;font-weight:700;text-decoration:underline;">Download the quote PDF</a></p>
 
-    <!-- Tagline -->
+    <p style="margin:0 0 24px;font-size:15px;color:#334155;">Your Groutix quotation <strong>${esc(quoteNumber)}</strong> is also attached as a PDF for your reference.</p>
+
     <div style="margin:0 0 32px;padding:24px;background:#001f97;border-radius:12px;text-align:center;">
       <p style="margin:0;font-size:22px;font-weight:900;color:#ffffff;line-height:1.3;">Don&apos;t Let It Cost You More.<br/>Get It Sorted Now!</p>
     </div>
 
-    <!-- Review and sign button -->
-    <table cellpadding="0" cellspacing="0" style="margin:0 auto 12px;">
-      <tr>
-        <td style="padding-right:12px;">
-          <a href="${signUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">Review &amp; Sign Quote</a>
-        </td>
-        <td>
-          <a href="${siteBaseUrl()}/api/quote/pdf/${reference}?token=${signQuoteToken(reference)}" style="display:inline-block;background:#f8fafc;color:#001f97;text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid #001f97;">Download PDF</a>
-        </td>
-      </tr>
-    </table>
     <p style="margin:24px 0 0;font-size:14px;color:#64748b;">
       Questions about your quote? Call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">(03) 7023 8094</a>, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or simply reply to this email.
     </p>`;

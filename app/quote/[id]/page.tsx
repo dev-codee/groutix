@@ -49,6 +49,7 @@ interface QuoteData {
   quoteSignature?: string;
   quoteSignedName?: string;
   bookingUrl: string;
+  customerJobBookingEnabled?: boolean;
 }
 
 const SIGNATURE_FONTS = [
@@ -341,20 +342,16 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
               </p>
             </div>
 
-            {/* Next Step Call to Action */}
+            {/* Next step follows the customer job-booking hours setting. */}
             <div className="p-6 rounded-2xl bg-white border border-slate-200 max-w-lg mx-auto space-y-4 text-left">
-              <div className="flex items-center gap-2 text-[#001f97] font-bold text-sm">
-                <Calendar className="w-4 h-4" /> Next Step: Pick your service date
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Choose a day and time that suits your schedule. Our certified technician will arrive on time with all specialised equipment.
-              </p>
-              <a
-                href={quote.bookingUrl}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#001f97] hover:bg-[#001777] text-white text-sm font-bold shadow-md transition-all cursor-pointer"
-              >
-                📅 Select Job Date &amp; Time <ArrowRight className="w-4 h-4" />
-              </a>
+              {quote.customerJobBookingEnabled ? <>
+                <div className="flex items-center gap-2 text-[#001f97] font-bold text-sm"><Calendar className="w-4 h-4" /> Next Step: Pick your service date</div>
+                <p className="text-xs text-slate-600 leading-relaxed">Choose a day and time that suits your schedule. Our team will confirm your booking.</p>
+                <a href={quote.bookingUrl} className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#001f97] hover:bg-[#001777] text-white text-sm font-bold shadow-md transition-all cursor-pointer">📅 Select Job Date &amp; Time <ArrowRight className="w-4 h-4" /></a>
+              </> : <>
+                <div className="flex items-center gap-2 text-[#001f97] font-bold text-sm"><CheckCircle2 className="w-4 h-4" /> What happens next?</div>
+                <p className="text-sm text-slate-600 leading-relaxed">Your quote is accepted and your place is confirmed. Online job booking is currently closed, so there’s nothing else you need to book. Our team will contact you to arrange a suitable job date and time.</p>
+              </>}
             </div>
 
             {/* Download PDF button */}

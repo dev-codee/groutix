@@ -8,6 +8,7 @@ import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
 import { DEFAULT_QUOTE_CONDITIONS, GROUTIX_OFFICIAL_TERMS } from "@/lib/serviceTemplates";
 import { sendEmail, isInternalEmailAlertEnabled, wrapEmailHtml, getEmailLogoUrl, EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
+import { getBookingRules } from "@/lib/bookingRulesServer";
 
 export const runtime = "nodejs";
 
@@ -50,7 +51,9 @@ export async function GET(req: NextRequest) {
     (items[0]?.scope || items[0]?.description || "");
 
   await recordQuoteOpen(id).catch(error => console.error("Quote open tracking failed:", error));
-  const bookingUrl = buildBookingUrl(quoteLeadId(id), "job");
+  const bookingRules = await getBookingRules();
+  const customerJobBookingEnabled = bookingRules.job.days.some(day => day.open) || (bookingRules.job.changeovers || []).some(period => period.days.some(day => day.open));
+  const bookingUrl = customerJobBookingEnabled ? buildBookingUrl(quoteLeadId(id), "job") : "";
 
   return NextResponse.json({
     ok: true,
@@ -76,6 +79,7 @@ export async function GET(req: NextRequest) {
       quoteSignature: lead.quoteSignature,
       quoteSignedName: lead.quoteSignedName,
       bookingUrl,
+      customerJobBookingEnabled,
     },
   });
 }
@@ -99,7 +103,11 @@ export async function POST(req: NextRequest) {
     if (!lead) {
       return NextResponse.json({ error: "Quotation record not found." }, { status: 404 });
     }
-    if (lead.quoteSignedAt) return NextResponse.json({ ok: true, quoteNumber: lead.quoteNumber, bookingUrl: buildBookingUrl(quoteLeadId(id), "job") });
+    if (lead.quoteSignedAt) {
+      const rules = await getBookingRules();
+      const customerJobBookingEnabled = rules.job.days.some(day => day.open) || (rules.job.changeovers || []).some(period => period.days.some(day => day.open));
+      return NextResponse.json({ ok: true, quoteNumber: lead.quoteNumber, customerJobBookingEnabled, ...(customerJobBookingEnabled ? { bookingUrl: buildBookingUrl(quoteLeadId(id), "job") } : {}) });
+    }
     if (lead.quoteDeclinedAt) return NextResponse.json({ error: "This quotation was declined. Please contact us for a new quote." }, { status: 409 });
 
     const quoteNumber = lead.quoteNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "QT-") : `Job No-${lead.id.slice(-6).toUpperCase()}`);
@@ -191,7 +199,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const bookingUrl = buildBookingUrl(quoteLeadId(id), "job");
+    const bookingRules = await getBookingRules();
+    const customerJobBookingEnabled = bookingRules.job.days.some(day => day.open) || (bookingRules.job.changeovers || []).some(period => period.days.some(day => day.open));
+    const bookingUrl = customerJobBookingEnabled ? buildBookingUrl(quoteLeadId(id), "job") : "";
 
     // 5. Send confirmation email to Customer
     if (lead.email) {
@@ -208,10 +218,15 @@ export async function POST(req: NextRequest) {
           <div><strong>Signed on:</strong> ${new Date().toLocaleDateString("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric" })}</div>
         </div>
 
-        <p style="font-weight:700;color:#0f172a;margin:24px 0 8px;">Next Step: Select your preferred day and time for the job.</p>
-        <div style="margin:16px 0 24px;">
-          <a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book My Job Day &amp; Time</a>
-        </div>
+        ${customerJobBookingEnabled ? `
+          <p style="font-weight:700;color:#0f172a;margin:24px 0 8px;">Next step: choose your preferred day and time.</p>
+          <div style="margin:16px 0 24px;"><a href="${bookingUrl}" style="display:inline-block;background:#001f97;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">📅 Book My Job Day &amp; Time</a></div>
+        ` : `
+          <div style="margin:24px 0;padding:16px 20px;background:#eff6ff;border-left:4px solid #2563eb;border-radius:6px;border:1px solid #bfdbfe;">
+            <p style="margin:0 0 6px;font-weight:700;color:#1e3a8a;">What happens next?</p>
+            <p style="margin:0;color:#334155;">Your quote is accepted and your place is confirmed. Online job booking is currently closed, so there’s nothing else you need to book. Our team will contact you to arrange a suitable job date and time.</p>
+          </div>
+        `}
 
         <p style="font-size:14px;color:#64748b;margin-top:28px;">If you have any questions or need to speak with our team, call us on <a href="tel:+61370238094" style="color:#001f97;font-weight:700;text-decoration:none;">(03) 7023 8094</a>, visit <a href="https://groutix.com" target="_blank" style="color:#001f97;font-weight:700;text-decoration:underline;">groutix.com</a>, or simply reply to this email.</p>
       `;
@@ -224,15 +239,15 @@ export async function POST(req: NextRequest) {
       }).catch((e) => console.error("Customer sign email failed:", e));
     }
 
-    // 5b. Text the customer the same job-booking link. The email carries the
-    // signed PDF, but the booking link is the action we actually need from
-    // them, so it goes out on both channels.
+    // Send the job-booking link by SMS only while customer job booking is enabled.
     if (lead.phone) {
       const firstName = (resolvedSignerName || lead.name || "there").trim().split(/\s+/)[0];
       await sendSms({
         to: lead.phone,
         // Multipart SMS keeps the signed booking link and contact footer intact.
-        body: `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Book your job time: ${buildBookingSmsUrl(quoteLeadId(id), "job")}`,
+        body: customerJobBookingEnabled
+          ? `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Book your job time: ${buildBookingSmsUrl(quoteLeadId(id), "job")}`
+          : `Groutix: Thanks ${firstName}, quote ${quoteNumber} accepted. Online job booking is currently closed. Our team will contact you to arrange a suitable date and time. Call (03) 7023 8094 if you need help.`,
       }).catch((e) => console.error("Customer sign SMS failed:", e));
     }
 
@@ -268,7 +283,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       quoteNumber,
-      bookingUrl,
+      customerJobBookingEnabled,
+      ...(customerJobBookingEnabled ? { bookingUrl } : {}),
     });
   } catch (err: any) {
     console.error("Error signing quote:", err);
