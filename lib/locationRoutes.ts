@@ -26,20 +26,20 @@ export const MELBOURNE_SUBURB_SLUGS = [
   "maribyrnong", "moonee-ponds", "niddrie", "oak-park", "strathmore", "tullamarine",
   "bentleigh", "bentleigh-east", "brighton", "brighton-east", "cheltenham", "hampton",
   "highett", "mckinnon", "mentone", "moorabbin", "ormond", "sandringham",
-  "berwick", "carrum-downs", "chelsea", "clayton", "cranbourne", "dandenong",
-  "frankston", "glen-waverley", "hallam", "hampton-park", "keysborough", "mount-waverley",
-  "mulgrave", "narre-warren", "noble-park", "oakleigh", "pakenham", "patterson-lakes",
-  "seaford", "springvale", "wheelers-hill", "altona", "altona-meadows", "altona-north",
+  "carrum-downs", "chelsea", "clayton", "dandenong",
+  "glen-waverley", "keysborough", "mount-waverley",
+  "mulgrave", "noble-park", "oakleigh", "patterson-lakes",
+  "springvale", "wheelers-hill", "altona", "altona-meadows", "altona-north",
   "brooklyn", "hobsons-bay", "hoppers-crossing", "laverton", "point-cook", "truganina", "werribee",
   "williams-landing", "williamstown", "williamstown-north", "bayswater", "boronia", "croydon",
   "croydon-hills", "croydon-north", "croydon-south", "ferntree-gully", "kilsyth", "knox",
-  "lilydale", "mooroolbark", "mount-evelyn", "ringwood", "ringwood-east", "ringwood-north",
+  "ringwood", "ringwood-east", "ringwood-north",
   "vermont", "vermont-south", "wantirna", "wantirna-south", "caroline-springs", "deer-park",
   "derrimut", "melton", "melton-south", "plumpton", "st-albans", "sunbury", "sydenham",
   "tarneit", "wyndham-vale",
 ] as const;
 export const GEELONG_SUBURB_SLUGS = [
-  "geelong", "geelong-west", "south-geelong", "newtown", "drumcondra", "manifold-heights",
+  "geelong-west", "south-geelong", "newtown", "drumcondra", "manifold-heights",
   "herne-hill", "belmont", "east-geelong", "grovedale", "highton", "marshall",
   "wandana-heights", "waurn-ponds", "fyansford", "bell-park", "bell-post-hill", "corio",
   "norlane", "north-geelong", "north-shore", "anakie", "lara", "lovely-banks",
@@ -55,8 +55,15 @@ export const BALLARAT_SUBURB_SLUGS = [
 ] as const;
 export const FRANKSTON_SUBURB_SLUGS = [
   "frankston-central", "frankston-north", "frankston-south", "karingal", "langwarrin", "seaford",
-  "beaconsfield", "berwick", "clyde", "cranbourne", "harkaway", "officer",
+  "beaconsfield", "clyde", "harkaway", "officer",
 ] as const;
+// Batch 4 (2026-10-31): Casey is a new region. Berwick/Cranbourne moved here from the
+// Melbourne + Frankston lists; Narre Warren/Hallam/Hampton Park/Pakenham from Melbourne.
+// The old URLs 301 to the Casey URLs in next.config.ts.
+export const CASEY_SUBURB_SLUGS = [
+  "berwick", "cranbourne", "hallam", "hampton-park", "narre-warren", "pakenham",
+] as const;
+
 export const KILMORE_SUBURB_SLUGS = [
   "bylands", "hidden-valley", "kilmore-central", "kilmore-east", "wandong", "willowmavin",
   "eden-park", "wallan", "whittlesea", "yan-yean", "hesket", "lancefield",
@@ -79,6 +86,8 @@ export const LOCATION_ROUTES: string[] = [
   ...BALLARAT_SUBURB_SLUGS.map((s) => `/locations/ballarat/${s}`),
   "/locations/frankston",
   ...FRANKSTON_SUBURB_SLUGS.map((s) => `/locations/frankston/${s}`),
+  "/locations/casey",
+  ...CASEY_SUBURB_SLUGS.map((s) => `/locations/casey/${s}`),
   "/locations/kilmore",
   ...KILMORE_SUBURB_SLUGS.map((s) => `/locations/kilmore/${s}`),
   "/locations/lilydale",
