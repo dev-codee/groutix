@@ -1,84 +1,22 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import CityPageClient from "@/app/locations/CityPageClient";
-import type { SuburbGroup } from "@/app/locations/CityPageClient";
+import LilydaleHubPage from "@/components/LilydaleHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Shower Regrouting Lilydale | Groutix",
+  title: "Regrouting Lilydale | Shower, Tile & Balcony | Groutix",
   description:
-    "Professional shower regrouting, grout repair and leaking shower solutions across Lilydale. Groutix services homes and apartments throughout Lilydale with a 10-year waterproof warranty.",
+    "Shower, bathroom and balcony regrouting in Lilydale, Mooroolbark and Chirnside Park. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/lilydale" },
   openGraph: {
-    title: "Shower Regrouting Lilydale | Groutix",
+    title: "Regrouting in Lilydale | Groutix",
     description:
-      "Lilydale shower regrouting, grout repair and leaking shower services with specialist workmanship and free quotes.",
+      "Shower, bathroom and balcony regrouting in Lilydale, Mooroolbark and Chirnside Park. No tile removal, 10-year waterproof warranty. Free quote.",
     url: "/locations/lilydale",
     type: "website",
   },
 };
 
-const lilydaleSuburbs: SuburbGroup[] = [
-  {
-    "title": "Local Lilydale Suburbs",
-    "suburbs": [
-      "Chirnside Park",
-      "Coldstream",
-      "Lilydale Central",
-      "Mooroolbark",
-      "Mount Evelyn"
-    ]
-  },
-  {
-    "title": "Hills & Yarra Valley Suburbs",
-    "suburbs": [
-      "Emerald",
-      "Macclesfield",
-      "Monbulk",
-      "Silvan"
-    ]
-  },
-  {
-    "title": "Northern Yarra Ranges Suburbs",
-    "suburbs": [
-      "Doreen",
-      "Hurstbridge",
-      "Kangaroo Ground",
-      "Nutfield",
-      "Watsons Creek"
-    ]
-  }
-];
-
-const serviceAreaText = `Lilydale properties place heavy demands on grout joints, silicone seals and shower waterproofing. From older homes to new developments, worn grout and leaking shower bases are common issues that can quickly lead to hidden moisture damage.
-
-Groutix services the full Lilydale region with specialist shower regrouting, leaking shower repair, silicone replacement and tile restoration. In most cases, we repair the failed grout and sealing system without removing the existing tiles, helping you avoid the cost of a full bathroom renovation.
-
-Cold winters, condensation, daily use and natural movement all contribute to grout cracking and seal breakdown across Lilydale bathrooms. Our team focuses on resolving the source of the problem so your shower is restored properly, not just cosmetically improved.
-
-Every quote is clear, every repair is completed with long-term performance in mind, and full shower regrouting work is backed by a 10-year waterproof warranty. Book Groutix for specialist grout and shower repairs across Lilydale.`;
-
-export default async function LilydalePage() {
+export default async function LilydaleRoute() {
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
-  return (
-    <>
-      <Navbar />
-      <CityPageClient
-        cityName="Lilydale"
-        heroHeading="Shower Regrouting & Grout Repair Specialists Lilydale"
-        heroSubtitle="Groutix provides specialist shower regrouting, grout repair and leaking shower services across Lilydale. We restore failed grout lines, worn seals and wet-area waterproofing issues without unnecessary tile removal."
-        serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img66.jpg"
-        heroImage="/img100.jpg"
-        suburbGroups={lilydaleSuburbs}
-        parentSlug="lilydale"
-        reviews={reviews}
-        rating={rating}
-        googleMapsApiKey={apiKey}
-      />
-      <Footer />
-    </>
-  );
+  return <LilydaleHubPage reviews={reviews} rating={rating} />;
 }
