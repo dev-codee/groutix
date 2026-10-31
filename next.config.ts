@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
 { source: '/locations/melbourne/black-rock', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/beaumaris', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/highett', destination: '/locations/melbourne/brighton', permanent: true },
+      { source: '/locations/melbourne/malvern-east', destination: '/locations/melbourne/malvern', permanent: true },
+{ source: '/locations/melbourne/glen-iris', destination: '/locations/melbourne/malvern', permanent: true },
       { source: '/locations/melbourne/prahran', destination: '/locations/melbourne/south-yarra', permanent: true },
       {
         source: '/contact-us',

@@ -11,6 +11,7 @@ import StKildaPage from "@/components/StKildaPage";
 import BrightonPage from "@/components/BrightonPage";
 import SouthYarraPage from "@/components/SouthYarraPage";
 import AlbertParkPage from "@/components/AlbertParkPage";
+import MalvernPage from "@/components/MalvernPage";
 // Helper to format suburb slug to readable name (e.g. fitzroy-north -> Fitzroy North)
 function formatSuburbName(slug: string): string {
   return slug
@@ -33,6 +34,7 @@ if (suburb === "brighton") {  return {    title: "Shower & Balcony Regrouting Br
   const name = formatSuburbName(suburb);
   if (suburb === "south-yarra") {  return {    title: "Balcony & Shower Regrouting South Yarra | Groutix",    description: `Balcony and shower regrouting in South Yarra and Prahran apartments. Epoxy or cement grout, no tile removal, 10-year waterproof warranty. ${reviewsText}.`,    alternates: { canonical: "/locations/melbourne/south-yarra" },    openGraph: {      title: "Balcony & Shower Regrouting in South Yarra | Groutix",      description: `Balcony and shower regrouting in South Yarra and Prahran apartments. Epoxy or cement grout, no tile removal, 10-year waterproof warranty. ${reviewsText}.`,      url: "/locations/melbourne/south-yarra",      type: "website",    },    robots: "index, follow",  };}
   if (suburb === "albert-park") {  return {    title: "Albert Park Balcony & Shower Regrouting | Groutix",    description: `Balcony, verandah and shower regrouting for Albert Park terraces and apartments. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/albert-park" },    openGraph: {      title: "Balcony & Shower Regrouting in Albert Park | Groutix",      description: `Balcony, verandah and shower regrouting for Albert Park terraces and apartments. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/albert-park",      type: "website",    },    robots: "index, follow",  };}
+  if (suburb === "malvern") {  return {    title: "Regrouting Malvern | Shower, Tile & Balcony | Groutix",    description: `Shower, floor, tile and balcony regrouting in Malvern, Armadale and Glen Iris homes. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/malvern" },    openGraph: {      title: "Regrouting in Malvern | Groutix",      description: `Shower, floor, tile and balcony regrouting in Malvern, Armadale and Glen Iris homes. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/malvern",      type: "website",    },    robots: "index, follow",  };}
   return {
     title: `Shower Regrouting ${name} | Melbourne | GROUTIX`,
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Melbourne. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
@@ -175,6 +177,7 @@ export default async function SuburbPage({ params }: Props) {
   if (suburb === "brighton") {  return <BrightonPage reviews={reviews} rating={rating} />;}
   if (suburb === "south-yarra") {  return <SouthYarraPage reviews={reviews} rating={rating} />;}
   if (suburb === "albert-park") { return <AlbertParkPage reviews={reviews} rating={rating} />; }
+  if (suburb === "malvern") {  return <MalvernPage reviews={reviews} rating={rating} />;}
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
   const explanation = getSuburbExplanation(suburbName);
 
