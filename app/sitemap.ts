@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL, STATIC_ROUTES, SERVICE_SLUGS } from "@/lib/seo";
+import { LOCATION_ROUTES } from "@/lib/locationRoutes";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -18,5 +19,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...servicePages];
+  const locationPages: MetadataRoute.Sitemap = LOCATION_ROUTES.map((route) => ({
+    url: `${SITE_URL}${route}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
+  return [...staticPages, ...servicePages, ...locationPages];
 }
