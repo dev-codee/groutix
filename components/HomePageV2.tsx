@@ -209,7 +209,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 </div>
                 <div className="sm:border-l sm:border-white/25 sm:pl-6">
                   <b className="block text-[28px] font-black leading-none">8,000+</b>
-                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <b className="block text-base font-bold">Showers & Balconies Restored</b>
                   <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
                 </div>
               </div>
