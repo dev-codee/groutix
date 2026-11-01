@@ -1,5 +1,6 @@
 "use client";
 
+import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
@@ -182,6 +183,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
             <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
+          <LeadServiceAreas areas={l.areas} />
 
           {(l.technicianNotes || l.scopeNotes) && (
             <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 text-xs shadow-2xs">

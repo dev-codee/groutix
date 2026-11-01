@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Paperclip, Info, X, AlertCircle, Plus, Trash2, Users, ChevronDown } from "lucide-react";
+import { CheckCircle2, Paperclip, X, AlertCircle, Plus, Trash2, Users, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { formatBytes, MAX_TOTAL_BYTES, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT } from "@/lib/imageCompression";
 import { formatSlotRange } from "@/lib/scheduling";
+import PhotoUploadTips from "@/components/PhotoUploadTips";
+import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -129,7 +131,6 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
   const [inspectionError, setInspectionError] = useState("");
   const timeSelectRef = useRef<HTMLSelectElement>(null);
 
-  const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -227,6 +228,9 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
       error = "This field is required";
     } else {
       switch (name) {
+        case "address":
+          if (!isCompletePropertyAddress(value)) error = PROPERTY_ADDRESS_ERROR;
+          break;
         case "email":
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(value.trim())) {
@@ -923,11 +927,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                     onFocus={() => {
                       if (addressSuggestions.length > 0) setAddressSuggestionsOpen(true);
                     }}
-                    placeholder={
-                      isPropertyManager
-                        ? "Rental Property Address *"
-                        : "Address *"
-                    }
+                    placeholder="Full address *"
                     autoComplete="off"
                     className={`${fieldStyle} ${touched.address && errors.address
                       ? "border-red-500 focus:ring-red-500/20"
@@ -1241,44 +1241,8 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                     7. Attach photos of the area{" "}
                     <span className="text-[11px] font-medium text-neutral-400">(Optional)</span>
                   </p>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowInfo((s) => !s)}
-                      aria-label="How to take photos"
-                      className="flex h-5 w-5 items-center justify-center rounded-full border border-accent text-accent transition-all duration-200 hover:bg-accent hover:text-white"
-                    >
-                      <Info className="h-3.5 w-3.5" />
-                    </button>
-                    <AnimatePresence>
-                      {showInfo && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute left-0 top-7 z-20 w-64 rounded-md border border-neutral-200 bg-white p-3 text-[13px] leading-relaxed text-neutral-600 shadow-lg"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setShowInfo(false)}
-                            className="absolute right-2 top-2 text-neutral-400 hover:text-neutral-700 transition-colors"
-                            aria-label="Close"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                          <p className="pr-4 font-semibold text-neutral-900">
-                            How to take good photos
-                          </p>
-                          <p className="mt-1">
-                            Take clear, well-lit photos of the affected area (a wide shot
-                            of the whole shower/balcony plus a close-up of any cracks,
-                            mould or damaged tiles.
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
                 </div>
+                <PhotoUploadTips />
 
                 <p className="text-[13px] text-neutral-600 leading-snug">
                   If you would like an initial estimate, please upload clear photos showing the
@@ -1410,7 +1374,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                         <p className="text-[12px] text-neutral-600 leading-snug">
                           Free on site inspections are available across our service area. Addresses within 15 km of
                           our base can be booked on any day; further out we visit one part of Melbourne per day, so
-                          you'll see the days our inspector is already in your area. For properties more than 50 km
+                          you&apos;ll see the days our inspector is already in your area. For properties more than 50 km
                           away, or in coastal areas, our team arranges the time with you directly.
                         </p>
                         {inspectionZoneDay && (
@@ -1433,8 +1397,8 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                                 : "More Than 50 km From Our Base"}
                             </p>
                             <p className="text-[12px] text-amber-800 leading-snug">
-                              Online times aren't offered for this address, our team will arrange your inspection
-                              directly. Submit your details and we'll contact you to organise a suitable time.
+                              Online times aren&apos;t offered for this address, our team will arrange your inspection
+                              directly. Submit your details and we&apos;ll contact you to organise a suitable time.
                             </p>
                           </div>
                         ) : inspectionDays.length === 0 ? (

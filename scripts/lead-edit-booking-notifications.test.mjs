@@ -38,6 +38,56 @@ async function save(original, changes, response = {}) {
 }
 
 const lead = { id: "lead-1", name: "Sam", status: "Won" };
+test("Edit Lead uses the server's booked status instead of a stale local New status", async () => {
+  const original = { id: "lead-1", name: "Sam", status: "Inspection Booked", inspectionAt: "2026-10-20T09:00" };
+  const item = { ...original, inspectionAt: "2026-10-21T09:00" };
+  const state = await save(original, { status: "New", inspectionAt: item.inspectionAt }, { item });
+  assert.equal(state.leads[0].status, "Inspection Booked");
+  assert.equal(state.leads[0].inspectionAt, item.inspectionAt);
+});
+
+test("dashboard status saves retain the current view, filter and page", async () => {
+  let updateHandler;
+  const find = node => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === "updateLeadField") updateHandler = node.getText(tree);
+    ts.forEachChild(node, find);
+  };
+  find(tree);
+  const compiled = ts.transpileModule(`${updateHandler}\nmodule.exports = updateLeadField;`, {
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  for (const [view, from, requested, saved] of [
+    ["leads", "Inspection Booked", "New", "Inspection Booked"],
+    ["leads", "Inspection Completed", "Waiting for Info", "Waiting for Info"],
+    ["completed", "Inspection Completed", "Waiting for Info", "Waiting for Info"],
+    ["jobs", "Job Booked", "Job In Progress", "Job In Progress"],
+  ]) {
+    const module = { exports: {} };
+    const original = { id: "lead-1", name: "Sam", status: from, inspectionAt: "2026-10-20T09:00" };
+    const item = { ...original, status: saved, inspectionAt: "2026-10-21T09:00" };
+    let visible = [original];
+    let filter = from;
+    let currentView = view;
+    let page = 2;
+    vm.runInNewContext(compiled, {
+      module, quoteModalOpen: false, leads: visible, role: "manager", statusFilter: filter, currentView, page,
+      saveLeadChanges: async () => ({ ok: true, item }),
+      setLeads: update => { visible = update(visible); },
+      matchesQuoteStatusFilter: (lead, value) => lead.status === value,
+      findJobsGroupForStatus: (_role, status) => ({ statuses: [status] }),
+      setStatusFilter: value => { filter = value; },
+      navigateTo: value => { currentView = value; },
+      setCurrentView: value => { currentView = value; },
+      setPage: value => { page = value; },
+    });
+    assert.equal(await module.exports(original.id, { status: requested, inspectionAt: item.inspectionAt }), true);
+    assert.equal(visible[0].status, saved);
+    assert.equal(visible[0].inspectionAt, item.inspectionAt);
+    assert.equal(filter, from, `${from} to ${saved} keeps the selected filter`);
+    assert.equal(currentView, view);
+    assert.equal(page, 2);
+  }
+});
 test("Edit Lead opts in to confirmation when saving the first job date", async () => {
   const state = await save(lead, { jobAt: "2026-10-20T09:00" });
   assert.equal(state.request.bookingNotifications, true);

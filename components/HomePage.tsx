@@ -383,6 +383,7 @@ function SuburbCheckerWidget({
     form.set("phone", phoneNum.trim());
     form.set("email", emailAddress.trim());
     form.set("city", query.trim());
+    form.set("enquiryType", "coverage");
     form.set("service", "Coverage & Callback Request");
     form.set("sourcePage", "/#service-areas");
     form.set("message", `Please confirm coverage for ${query.trim()} and contact me about my repair.`);

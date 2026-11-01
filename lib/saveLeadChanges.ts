@@ -1,6 +1,6 @@
 import type { Lead } from "@/components/admin/types";
 
-export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promise<{ ok: true; recycled?: boolean } | { ok: false; error: string }> {
+export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promise<{ ok: true; recycled?: boolean; item?: Lead } | { ok: false; error: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
@@ -9,7 +9,7 @@ export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promi
     });
     if (response.ok) {
       const data = await response.json().catch(() => ({}));
-      return data.recycled === true ? { ok: true, recycled: true } : { ok: true };
+      return data.recycled === true ? { ok: true, recycled: true } : { ok: true, ...(data.item ? { item: data.item } : {}) };
     }
     const data = await response.json().catch(() => ({}));
     const error = response.status === 401 ? "Your session has expired. Please sign in again to save the quote."

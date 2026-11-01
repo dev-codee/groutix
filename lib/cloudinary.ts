@@ -29,6 +29,26 @@ export function isCloudinaryConfigured(): boolean {
   );
 }
 
+/** Fetch originals through the signed API when public PDF delivery is blocked. */
+export function getCloudinaryOriginalDownloadUrl(value: string): string | null {
+  if (!isCloudinaryConfigured()) return null;
+  let url: URL;
+  try { url = new URL(value); } catch { return null; }
+  if (url.protocol !== "https:" || url.hostname !== "res.cloudinary.com" || url.port) return null;
+  const match = url.pathname.match(/^\/([^/]+)\/(raw|image)\/(upload|private|authenticated)\/(?:v\d+\/)?(.+)$/);
+  if (!match || match[1] !== process.env.CLOUDINARY_CLOUD_NAME) return null;
+  const [, , resourceType, type, encodedId] = match;
+  let publicId: string;
+  try { publicId = decodeURIComponent(encodedId); } catch { return null; }
+  // Only original PDF URLs are supported; never sign arbitrary transformations.
+  if (!/\.pdf$/i.test(publicId)) return null;
+  return getCloudinary().utils.private_download_url(
+    resourceType === "raw" ? publicId : publicId.replace(/\.pdf$/i, ""),
+    resourceType === "raw" ? "" : "pdf",
+    { resource_type: resourceType as "raw" | "image", type: type as "upload" | "private" | "authenticated", expires_at: Math.floor(Date.now() / 1000) + 60, attachment: true },
+  );
+}
+
 export interface CloudinaryUploadResult {
   url: string;
   secureUrl: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { leadRowKey } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
@@ -140,6 +141,7 @@ export function TechnicianLeadRow({ l }: { l: Lead }) {
           </div>
 
           <ExpandableServiceNotes text={serviceDisplay} />
+          <LeadServiceAreas areas={l.areas} />
 
           <div className="pt-1 grid grid-cols-3 gap-1.5">
             <a

@@ -45,3 +45,53 @@ test("failed downloads show the server error without saving a fake PDF", async (
   await downloadAttachment("https://example.test/broken.png", "customer.pdf");
   assert.equal(message, "Recover the original PDF");
 });
+
+test("Cloudinary PDF originals use a short-lived signed API download for this account only", () => {
+  const calls = [];
+  const { getCloudinaryOriginalDownloadUrl } = loadTs("lib/cloudinary.ts", {
+    cloudinary: { v2: {
+      config() {},
+      utils: { private_download_url: (...args) => { calls.push(args); return "https://api.cloudinary.com/signed"; } },
+    } },
+  }, { process: { env: { CLOUDINARY_CLOUD_NAME: "test", CLOUDINARY_API_KEY: "key", CLOUDINARY_API_SECRET: "secret" } } });
+  assert.equal(getCloudinaryOriginalDownloadUrl("https://res.cloudinary.com/test/raw/upload/v123/inbound/customer%20report.pdf"), "https://api.cloudinary.com/signed");
+  assert.equal(calls[0][0], "inbound/customer report.pdf");
+  assert.equal(calls[0][1], "");
+  assert.equal(calls[0][2].resource_type, "raw");
+  assert.equal(calls[0][2].type, "upload");
+  assert.ok(calls[0][2].expires_at > Date.now() / 1000);
+  assert.ok(calls[0][2].expires_at <= Date.now() / 1000 + 60);
+  getCloudinaryOriginalDownloadUrl("https://res.cloudinary.com/test/image/upload/v123/inbound/report.pdf");
+  assert.equal(calls[1][0], "inbound/report");
+  assert.equal(calls[1][1], "pdf");
+  for (const url of [
+    "https://res.cloudinary.com/other/raw/upload/file.pdf",
+    "https://example.test/test/raw/upload/file.pdf",
+    "https://res.cloudinary.com.evil.test/test/raw/upload/file.pdf",
+    "http://res.cloudinary.com/test/raw/upload/file.pdf",
+    "https://res.cloudinary.com/test/raw/upload/file.jpg",
+  ]) assert.equal(getCloudinaryOriginalDownloadUrl(url), null);
+  assert.equal(calls.length, 2);
+});
+
+test("dashboard PDF downloads and previews proxy signed original bytes without exposing the signed URL", async () => {
+  const requests = [];
+  const signedUrl = "https://api.cloudinary.com/signed?signature=server-only";
+  const { GET } = loadTs("app/api/admin/download-photo/route.ts", {
+    "@/lib/cloudinary": { getCloudinaryOriginalDownloadUrl: () => signedUrl },
+  }, {
+    fetch: async (url) => {
+      requests.push(url);
+      return new Response(pdf, { headers: { "content-type": "application/octet-stream" } });
+    },
+  });
+  for (const inline of [false, true]) {
+    const response = await GET({ nextUrl: new URL(`https://example.test/api?url=https://res.cloudinary.com/test/raw/upload/report.pdf&name=report.pdf${inline ? "&inline=1" : ""}`) });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "application/pdf");
+    assert.equal(response.headers.get("content-disposition"), `${inline ? "inline" : "attachment"}; filename="report.pdf"`);
+    assert.equal(response.headers.get("location"), null);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), pdf);
+  }
+  assert.deepEqual(requests, [signedUrl, signedUrl]);
+});

@@ -1,4 +1,5 @@
 import { inspectionConfirmationHtml, inspectionConfirmationSms } from "@/lib/inspectionConfirmation";
+import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 import { applyBookingCapacity } from "@/lib/bookingAvailabilityDays";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rateLimit";
@@ -182,6 +183,11 @@ export async function POST(req: NextRequest) {
   // Minimal server-side validation mirroring the client.
   if (!firstName || !lastName || !email || !phone) {
     return NextResponse.json({ error: "Please complete the required fields." }, { status: 400 });
+  }
+  // The separate suburb-coverage callback form does not book a property visit.
+  const coverageOnly = get("enquiryType") === "coverage" && !address && !!city && !inspectionDate && !inspectionTime;
+  if (!coverageOnly && !isCompletePropertyAddress(address)) {
+    return NextResponse.json({ error: PROPERTY_ADDRESS_ERROR, field: "address" }, { status: 400 });
   }
 
   // If the customer chose an inspection slot, validate & confirm it's still free

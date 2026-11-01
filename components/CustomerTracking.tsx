@@ -1,57 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
-import { MapPin, Navigation, Phone, Mail, RefreshCw, CheckCircle2 } from "lucide-react";
+import CustomerLiveMap from "@/components/CustomerLiveMap";
+import { Navigation, Phone, Mail, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useContact } from "@/components/SiteContentProvider";
 import type { CustomerTrackingView } from "@/lib/customerTracking";
-
-let mapsPromise: Promise<typeof google> | null = null;
-function loadMaps(key: string): Promise<typeof google> {
-  if (!mapsPromise) {
-    setOptions({ key, v: "weekly" });
-    mapsPromise = importLibrary("maps").then(() => google).catch((err) => { mapsPromise = null; throw err; });
-  }
-  return mapsPromise;
-}
-
-function LiveMap({ location }: { location: NonNullable<CustomerTrackingView["location"]> }) {
-  const container = useRef<HTMLDivElement>(null);
-  const map = useRef<google.maps.Map | null>(null);
-  const marker = useRef<google.maps.Marker | null>(null);
-  const [failed, setFailed] = useState(false);
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  useEffect(() => {
-    if (!key) return;
-    let cancelled = false;
-    loadMaps(key).then((g) => {
-      if (cancelled || !container.current) return;
-      const position = { lat: location.lat, lng: location.lng };
-      if (!map.current) {
-        map.current = new g.maps.Map(container.current, { center: position, zoom: 14, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
-        marker.current = new g.maps.Marker({ map: map.current, position, title: "Your Groutix specialist" });
-      } else {
-        marker.current?.setPosition(position);
-        map.current.panTo(position);
-      }
-    }).catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
-  }, [key, location.lat, location.lng]);
-
-  const mapsUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200">
-      {key && !failed ? <div ref={container} className="h-[360px] w-full sm:h-[430px]" aria-label="Live map showing your specialist's latest location" /> : (
-        <div className="flex min-h-48 flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center">
-          <MapPin className="h-10 w-10 text-primary" />
-          <p className="text-sm text-slate-600">Your specialist&apos;s latest location is available in Google Maps.</p>
-        </div>
-      )}
-      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="block bg-white px-4 py-3 text-center text-sm font-bold text-primary hover:bg-slate-50">Open latest location in Google Maps</a>
-    </div>
-  );
-}
 
 export default function CustomerTracking({ token }: { token: string }) {
   const contact = useContact();
@@ -112,7 +66,7 @@ export default function CustomerTracking({ token }: { token: string }) {
             ) : finished ? (
               <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-600">{arrived ? "Your specialist is at your property. Live location sharing has stopped." : "This journey is no longer being shared. Please contact us if you need an update."}</p>
             ) : data?.location ? (
-              <><LiveMap location={data.location} /><p className="mt-3 text-xs text-slate-500">Last location update: {new Date(data.location.updatedAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", second: "2-digit" })}. This page refreshes automatically.</p></>
+              <><CustomerLiveMap location={data.location} /><p className="mt-3 text-xs text-slate-500">Last location update: {new Date(data.location.updatedAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", second: "2-digit" })}. This page refreshes automatically.</p></>
             ) : <p className="rounded-xl bg-blue-50 p-5 text-sm text-slate-600">Waiting for a fresh location update from your specialist. This page will update automatically when GPS is available.</p>}
           </div>
           <div className="mt-7 flex flex-wrap gap-3 border-t border-slate-100 pt-5">

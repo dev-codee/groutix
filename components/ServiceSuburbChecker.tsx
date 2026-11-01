@@ -51,6 +51,7 @@ export default function ServiceSuburbChecker({ service = "Leaking Shower Repair"
     form.set("firstName", names[0]);
     form.set("lastName", names.slice(1).join(" "));
     form.set("city", query.trim());
+    form.set("enquiryType", "coverage");
     form.set("service", service);
     form.set("sourcePage", sourcePage);
     form.set("message", `Please confirm ${service.toLowerCase()} coverage and contact me about ${query.trim()}.`);

@@ -15,6 +15,7 @@ import {
   Clock, ChevronRight, Send, DollarSign, X, StickyNote,
 } from "lucide-react";
 import { LeadRequestDetails } from "@/components/admin/LeadRequestDetails";
+import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import {
@@ -243,6 +244,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             <div className="font-bold text-xs text-slate-900 line-clamp-2 uppercase tracking-tight" title={l.service}>
               {l.service || "Standard Work"}
             </div>
+            <LeadServiceAreas areas={l.areas} />
           </div>
 
           {(role === "manager" || role === "super_admin") && (

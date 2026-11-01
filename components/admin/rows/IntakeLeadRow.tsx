@@ -1,5 +1,6 @@
 "use client";
 
+import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
@@ -169,6 +170,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
             <Wrench className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate" title={serviceDisplay}>{serviceDisplay}</span>
           </div>
+          <LeadServiceAreas areas={l.areas} />
 
           {/* Row 5: Notes */}
           {notesDisplay ? (

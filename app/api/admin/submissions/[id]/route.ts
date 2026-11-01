@@ -287,14 +287,18 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       }
       if (result.acquired || result.previousBooking) reserved.push({ type, date, time, reservationId: result.reservationId, previousBooking: result.previousBooking });
     }
-    // Booking through any staff screen advances the workflow even when that
-    // screen sends only appointment details. Explicit status changes still win.
-    if (!body.status || body.status === primary.status) {
-      for (const type of ["inspection", "job"] as const) {
-        const field = type === "job" ? "jobAt" : "inspectionAt";
-        if (body[field] && body[field] !== normalizeApptString(primary[field]) && !secondaryVisit) {
-          body.status = statusAfterBooking(type, body.status || primary.status) || body.status;
-        }
+    // An active appointment cannot move back into the pre-booking queues.
+    // Older editors can send a stale New/Contacted status with a reschedule.
+    // Also repair early-stage records whose booking already exists, including
+    // selected additional visits and saves that only change the end time.
+    const intakeStatuses = new Set(["New", "New Lead", "Contacted", "Waiting for Info", "Waiting for Information", "Pending Info"]);
+    for (const type of ["inspection", "job"] as const) {
+      const field = type === "job" ? "jobAt" : "inspectionAt";
+      if (!body[field] || /^(lost|cancelled|closed|no response)/i.test(body.status || primary.status || "")) continue;
+      if (intakeStatuses.has(body.status)) {
+        body.status = statusAfterBooking(type, primary.status) || primary.status;
+      } else if (!body.status || body.status === primary.status) {
+        body.status = statusAfterBooking(type, body.status || primary.status) || body.status;
       }
     }
     const persisted = { ...body };

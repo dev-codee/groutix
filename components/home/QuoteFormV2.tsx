@@ -13,6 +13,8 @@ import { CalendarDays, Camera, Check, ChevronDown, ImagePlus, Info, MapPin, X } 
 import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
+import PhotoUploadTips from "@/components/PhotoUploadTips";
+import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -429,7 +431,7 @@ export default function QuoteFormV2({
     if (!data.lastName.trim()) e.lastName = "Please enter a last name";
     if (!PHONE_RE.test(data.phone.trim())) e.phone = "Enter a valid mobile, e.g. 0412 345 678";
     if (!EMAIL_RE.test(data.email.trim())) e.email = "Enter a valid email address";
-    if (data.address.trim().length < 3) e.address = isPM ? "Please enter the rental property address" : "Please enter the property address";
+    if (!isCompletePropertyAddress(data.address)) e.address = PROPERTY_ADDRESS_ERROR;
     setErrors(e);
     const first0 = Object.keys(e)[0];
     if (first0) document.getElementById(`${P}-${first0}`)?.focus();
@@ -481,12 +483,12 @@ export default function QuoteFormV2({
     const notes: string[] = [];
     const images = files.filter((f) => {
       if (isImageFile(f)) return true;
-      notes.push(`"${f.name}" isn't an image — skipped.`);
+      notes.push(`"${f.name}" isn't an image. It was skipped.`);
       return false;
     });
     const sized = images.filter((f) => {
       if (f.size <= MAX_FILE_SIZE_BYTES) return true;
-      notes.push(`"${f.name}" is over the ${formatBytes(MAX_FILE_SIZE_BYTES)} per-photo limit — skipped.`);
+      notes.push(`"${f.name}" is over the ${formatBytes(MAX_FILE_SIZE_BYTES)} per-photo limit. It was skipped.`);
       return false;
     });
     // No photo-count limit: customers can add as many photos as they like.
@@ -498,7 +500,7 @@ export default function QuoteFormV2({
       while (picked.length && total > MAX_TOTAL_BYTES) {
         const dropped = picked.pop() as File;
         total -= dropped.size;
-        notes.push(`"${dropped.name}" would take the total over ${formatBytes(MAX_TOTAL_BYTES)} — skipped.`);
+        notes.push(`"${dropped.name}" would take the total over ${formatBytes(MAX_TOTAL_BYTES)}. It was skipped.`);
       }
       all = [...photos, ...picked];
     }
@@ -546,6 +548,7 @@ export default function QuoteFormV2({
   const submit = async () => {
     setSubmitError("");
     setInspError("");
+    if (!validateDetails()) { goTo("details"); return; }
     if (mode === "insp" && avail.status === "loading") {
       setInspError("Loading inspection times, one moment…");
       return;
@@ -556,7 +559,7 @@ export default function QuoteFormV2({
     }
     // Photos are required: without photos the form does not proceed.
     if (!photos.length) {
-      setPhotoError("Please add at least one photo — photos are required.");
+      setPhotoError("Please add at least one photo. Photos are required.");
       setPhotoAsk(true);
       return;
     }
@@ -962,7 +965,7 @@ export default function QuoteFormV2({
                     placeholder=" "
                     className={`${floatField} ${errors.address ? fieldBad : ""}`}
                   />
-                  <label htmlFor={`${P}-address`} className={floatLabel}>{isPM ? "Rental property address" : "Property address or suburb"} {req}</label>
+                  <label htmlFor={`${P}-address`} className={floatLabel}>Full address {req}</label>
                 </div>
                 {suggestOpen && (
                   <ul id={`${P}-address-list`} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-0.5 max-sm:bottom-full max-sm:top-auto max-sm:mb-1 max-sm:mt-0 overflow-hidden rounded-[10px] border-[1.5px] border-[#DBE3F0] bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.16)]">
@@ -979,6 +982,7 @@ export default function QuoteFormV2({
                   </ul>
                 )}
                 <FieldError msg={errors.address} />
+                <p className="mt-1 text-[11px] text-neutral-500">Street number, street name and suburb, e.g. 12 Smith Street, Richmond VIC 3121.</p>
               </div>
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
             </div>
@@ -1173,6 +1177,7 @@ export default function QuoteFormV2({
                   )}
                   </div>
                   <FieldError msg={photoError} />
+                  <PhotoUploadTips />
 
                   {(noteOpen || data.message) && (
                     <div className="mt-2">
@@ -1230,7 +1235,7 @@ export default function QuoteFormV2({
                 </span>
                 <h3 id={`${P}-photo-ask`} className="text-lg font-bold text-[#001F97]">Please upload photos</h3>
                 <p className="mt-1.5 text-sm text-slate-600">
-                  Photos of the shower, grout or leak are required — they help us understand the problem and give you an accurate quote faster.
+                  Please add photos of the shower, grout or leak so we can assess the problem and prepare your quote.
                 </p>
                 <button ref={photoAskBtnRef} type="button" onClick={() => { setPhotoAsk(false); openPhotoPicker(); }}
                   className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2F63CC] to-[#001F97] text-[15px] font-bold text-white">

@@ -14,6 +14,15 @@ test("failed quote saves return the server error instead of silently reporting s
   const result = await saveLeadChanges("lead-1", {});
   assert.equal(result.ok, false); assert.equal(result.error, "Booking conflict");
 });
+test("successful booking saves return the canonical lead so the dashboard uses its booked status", async () => {
+  const item = { id: "lead-1", status: "Inspection Booked", inspectionAt: "2026-10-29T09:00" };
+  const { saveLeadChanges } = loadTs("lib/saveLeadChanges.ts", {}, {
+    fetch: async () => ({ ok: true, json: async () => ({ ok: true, item }) }),
+  });
+  const result = await saveLeadChanges("lead-1", { status: "New", inspectionAt: item.inspectionAt });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.item, item);
+});
 test("expired sessions and connection errors give actionable messages", async () => {
   for (const [fetch, expected] of [
     [async () => ({ ok: false, status: 401, json: async () => ({ error: "Unauthorized" }) }), /session has expired/],

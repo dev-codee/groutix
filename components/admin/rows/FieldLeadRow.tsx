@@ -1,5 +1,6 @@
 "use client";
 
+import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { useEffect, useState } from "react";
 import { preferredCustomerQuote } from "@/lib/customerQuoteSelection";
 import type { CustomerQuote } from "@/lib/customerQuotes";
@@ -172,6 +173,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
           )}
 
           <ExpandableServiceNotes text={serviceDisplay} />
+          <LeadServiceAreas areas={l.areas} />
 
           <div className="pt-1 flex gap-1.5">
             {/* Directions: an inspector drives to every one of these, so the map

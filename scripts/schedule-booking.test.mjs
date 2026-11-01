@@ -62,6 +62,46 @@ test("rescheduling a progressed job does not move its workflow backwards", async
   assert.ok(!calls.find(([action]) => action === "update")[2].status);
 });
 
+test("rescheduled inspections remain booked even when an older editor sends New", async () => {
+  for (const status of ["New", "New Lead", "Contacted", "Waiting for Info", "Inspection Booked"]) {
+    const { patch, calls } = patchApi({ before: { status, inspectionAt: "2026-10-28T09:00" } });
+    assert.equal((await patch({ inspectionAt: "2026-10-29T09:00", status: "New" })).status, 200);
+    const saved = calls.find(([action]) => action === "update")[2];
+    assert.equal(saved.status, "Inspection Booked", status);
+    assert.equal(saved.inspectionAt, "2026-10-29T09:00");
+  }
+});
+
+test("an active inspection repairs an early-stage status on end-time edits and same-time saves", async () => {
+  for (const updates of [
+    { inspectionAt: "2026-10-28T09:00" },
+    { inspectionEndAt: "2026-10-28T12:00" },
+  ]) {
+    const { patch, calls } = patchApi({ before: { status: "New", inspectionAt: "2026-10-28T09:00" } });
+    assert.equal((await patch(updates)).status, 200);
+    assert.equal(calls.find(([action]) => action === "update")[2].status, "Inspection Booked");
+  }
+});
+
+test("a stale early status during rescheduling does not erase inspection progress or later workflow", async () => {
+  for (const status of ["Inspection En Route", "Inspection In Progress", "Inspection Completed", "Quote Sent", "Job In Progress"]) {
+    const { patch, calls } = patchApi({ before: { status, inspectionAt: "2026-10-28T09:00" } });
+    assert.equal((await patch({ inspectionAt: "2026-10-29T09:00", status: "New" })).status, 200);
+    assert.equal(calls.find(([action]) => action === "update")[2].status, status);
+  }
+});
+
+test("moving a selected additional inspection out of an early-stage lead keeps it in Inspection Booked", async () => {
+  const { patch, calls } = patchApi({ before: { status: "New", inspectionAt: "2026-10-28T09:00", bookings: [
+    { bookingId: "primary", type: "inspection", date: "2026-10-28", time: "09:00" },
+    { bookingId: "second", type: "inspection", date: "2026-10-29", time: "09:00" },
+  ] } });
+  assert.equal((await patch({ bookingId: "second", inspectionAt: "2026-10-30T09:00" })).status, 200);
+  const saved = calls.find(([action]) => action === "update")[2];
+  assert.equal(saved.status, "Inspection Booked");
+  assert.equal(saved.inspectionAt, undefined, "the primary inspection time stays unchanged");
+});
+
 test("failed lead writes release only the newly acquired slot", async () => {
   const { patch, calls } = patchApi({ updateFails: true, before: { inspectionAt: "2026-10-08T09:00" } });
   assert.equal((await patch({ inspectionAt: "2026-10-09T10:00" })).status, 500);

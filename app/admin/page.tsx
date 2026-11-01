@@ -149,7 +149,7 @@ import {
   getRoleStatusOptions, normalizeStatus, esc, fmtDate, fmtDateOnly,
   fmtDateBadge, fmtTimeBadge, getLeadQuoteTotal, getWhatsAppLink,
   getStepActive, getLatestStepIndex, calcResponseTime, isRedundantScope,
-  getFollowupPrompt, findJobsGroupForStatus,
+  getFollowupPrompt,
 } from "@/lib/adminHelpers";
 import { ScheduleView } from "@/components/admin/ScheduleView";
 import { getUnassignedSchedulingType } from "@/lib/unassignedLeads";
@@ -1555,7 +1555,7 @@ export default function CrmDashboardPage() {
             return;
           }
           setLeads((prev) =>
-            prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes } as Lead) : l))
+            prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes, ...result.item } as Lead) : l))
           );
           setLeadModalOpen(false);
           if (confirmJobBooking) {
@@ -1655,16 +1655,8 @@ export default function CrmDashboardPage() {
         return true;
       }
       if (result.ok) {
-        setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
-        // If a lead's status changes while a Jobs-view filter tab is active, and the
-        // new status no longer belongs to that tab, follow the lead to whichever tab
-        // it now belongs to instead of letting it disappear from view.
-        if (typeof updates.status === "string" && statusFilter) {
-          if (!matchesQuoteStatusFilter({ ...leads.find(lead => lead.id === id), ...updates }, statusFilter)) {
-            const nextGroup = findJobsGroupForStatus(role, updates.status);
-            if (nextGroup) setStatusFilter(nextGroup.statuses.join("|"));
-          }
-        }
+        setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates, ...result.item } : l)));
+        // Saving a record must not change the user's current page or filters.
         return true;
       }
     } catch {
@@ -6532,7 +6524,7 @@ export default function CrmDashboardPage() {
                                         {href ? (
                                           <>
                                             <a
-                                              href={href}
+                                              href={`${downloadUrl}&inline=1`}
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors ${isCustomer ? "bg-slate-100 hover:bg-slate-200 text-slate-600" : "bg-white/20 hover:bg-white/30 text-white"
