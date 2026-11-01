@@ -28,22 +28,22 @@ const PRICES: { label: string; from: string; note: string }[] = [
 
 const CORE = [
   { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/walk-in-shower-regrouting-glass-screen-view.webp",
-    alt: "Walk-in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
+    alt: "Walk in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
   { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking Shower repair.webp",
-    alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We find where water is actually getting in, then repair the cause, usually without removing tiles." },
+    alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
   { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/Balcony Leak Repair.webp",
     alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
   { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
-  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould-resistant reseal", Icon: Wrench },
-  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain-resistant upgrade", Icon: Layers },
+  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould resistant reseal", Icon: Wrench },
+  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain resistant upgrade", Icon: Layers },
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
 const SYMPTOMS = [
   { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Collage of cracked and crumbling grout lines between dark shower floor tiles" },
   { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Shower over a bath with stained grout lines and silicone edges" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Walk-in shower with beige tiles, a mosaic feature strip and a tiled niche" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Walk in shower with beige tiles, a mosaic feature strip and a tiled niche" },
   { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/Moulds that coming back.webp", alt: "White tiled shower corner with chrome taps and a grey tiled floor" },
 ];
 const BALCONY = [
@@ -60,19 +60,19 @@ const JOBS = [
 const STEPS = [
   { no: "01", k: "CALL", title: "Send Photos or Call", desc: "Tell us what's happening. You get honest advice, even if a full regrout isn't needed." },
   { no: "02", k: "VISIT", title: "We Assess & Repair", desc: "Old grout and silicone removed, joints prepared and sealed again, usually in one visit." },
-  { no: "03", k: "PROTECTED", title: "Your Warranty Starts", desc: "Complete shower regrouts are covered by our 10-year waterproof warranty from day one." },
+  { no: "03", k: "PROTECTED", title: "Your Warranty Starts", desc: "Complete shower regrouts are covered by our 10 year waterproof warranty from day one." },
 ];
 const COMPARE = [
   ["Fixes the leak without retiling", "✓ In most cases", "Often quotes a retile", "Surface only"],
   ["Time to finish", "Usually 1 visit", "Varies by job", "Weekend + cure time"],
-  ["Warranty on the grout", "10-year waterproof", "Varies", "None"],
-  ["Focus", "Grout, silicone & wet areas only", "Whole renovations", "One-off product"],
+  ["Warranty on the grout", "10 year waterproof", "Varies", "None"],
+  ["Focus", "Grout, silicone & wet areas only", "Whole renovations", "One off product"],
 ];
 const FAQS = [
   { q: "Will You Need to Remove My Tiles to Regrout a Shower?", a: "No, in most cases. Standard regrouting works around your existing tiles, so there's no full tear out." },
   { q: "How Do I Know If I Need Regrouting or Recaulking?", a: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both, and catching it early saves money." },
   { q: "How Do I Fix Shower Grout Mould?", a: "Cleaning only masks it for a while. If mould keeps coming back in the same spot, the grout underneath has usually failed and needs replacing, not just scrubbing." },
-  { q: "How Long Does Shower Regrouting Last?", a: "Done properly, it holds up for years of daily use. That's why we back every complete shower regrout with a 10-year waterproof warranty." },
+  { q: "How Long Does Shower Regrouting Last?", a: "Done properly, it holds up for years of daily use. That's why we back every complete shower regrout with a 10 year waterproof warranty." },
   { q: "Do I Have to Stop Using My Shower Afterward?", a: "Yes, for a short period while the grout and silicone cure. We'll tell you exactly how long before we start." },
   { q: "Can You Repair a Shower While Tenants Are Living There?", a: "Yes. Most jobs are completed in a single visit with minimal disruption, which works well for occupied rentals, agents and strata managers. We work around your timelines." },
   { q: "Do You Work on Showers, Kitchens, and Balconies?", a: "Yes. We handle grout and silicone repairs across bathrooms, kitchens, laundries and balconies." },
@@ -122,6 +122,41 @@ function BeforeAfter({ before, after, title }: { before: string; after: string; 
   );
 }
 
+const CORE_SLIDERS: Record<string, { before: string; after: string }> = {
+  "shower-regrouting": { before: "/shower-regrouting-before.webp", after: "/shower-regrouting-after.webp" },
+  "leaking-shower-repair": { before: "/leaking-shower-before.webp", after: "/leaking-shower-after.webp" },
+};
+
+function CoreSlider({ before, after, title, flip }: { before: string; after: string; title: string; flip?: boolean }) {
+  // Same drag compare as the "Real work" sliders, shaped to fill the service photo panel.
+  const [pos, setPos] = useState(100);
+  const handle = Math.min(96, Math.max(4, pos));
+  const layer = (src: string) => (
+    <div className="absolute inset-0">
+      <Image src={src} alt="" fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
+    </div>
+  );
+  return (
+    <div className={`relative aspect-[5/4] w-full select-none overflow-hidden ${flip ? "lg:order-2" : ""}`}>
+      <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${title}, before`}>{layer(before)}</div>
+      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${title}, after`}>{layer(after)}</div>
+      <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+      <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
+      <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">↔</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={pos}
+        onChange={(e) => setPos(Number(e.target.value))}
+        aria-label={`Drag to compare before and after: ${title}`}
+        className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
+      />
+    </div>
+  );
+}
+
 function SectionHead({ k, title, sub }: { k: string; title: React.ReactNode; sub?: string }) {
   return (
     <div className="mx-auto mb-10 max-w-[760px] text-left md:text-center">
@@ -154,7 +189,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
           <div className={`${heroWrap} relative grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div className="text-center lg:text-left">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Melbourne Wet-Area Specialists</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Melbourne Wet Area Specialists</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
                 #1 Shower Regrouting &amp; Leak Repairs in Melbourne
               </h1>
@@ -168,7 +203,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 <div className="flex items-center gap-3.5 text-left">
                   <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
                   <div>
-                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <b className="block text-lg font-black leading-tight">10 Year Waterproof Warranty</b>
                     <span className="text-sm text-[#D6DCF5]">On every complete shower regrout</span>
                   </div>
                 </div>
@@ -196,13 +231,13 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                 <p className={eyebrow}>Groutix at a glance</p>
                 <h2 className="mb-3 text-[26px] font-bold text-slate-900">What Does Groutix Do?</h2>
                 <p className="max-w-[62ch] leading-[1.7] text-slate-600">
-                  Groutix is a Melbourne wet-area specialist that repairs failed grout and silicone in showers, bathrooms and balconies. We regrout with waterproof epoxy instead of retiling, finish most jobs in one visit, and back complete shower regrouts with a 10-year waterproof warranty.
+                  Groutix is a Melbourne wet area specialist that repairs failed grout and silicone in showers, bathrooms and balconies. We regrout with waterproof epoxy instead of retiling, finish most jobs in one visit, and back complete shower regrouts with a 10 year waterproof warranty.
                 </p>
               </div>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
                 {[
                   ["Service area", "Melbourne + regional VIC"],
-                  ["Warranty", "10-year waterproof"],
+                  ["Warranty", "10 year waterproof"],
                   ["Typical job", "Single visit"],
                   ["Google rating", `${rating.value.toFixed(1)} from ${gr.countLabel} reviews`],
                   ...(PRICES[0] ? [["Starting price", `From ${PRICES[0].from}`]] : []),
@@ -229,13 +264,17 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         {/* ── SERVICES ── */}
         <section id="services" className="scroll-mt-28 bg-white py-14 md:py-20">
           <div className={wrap}>
-            <SectionHead k="What we do" title="Shower, Balcony & Grout Repair Services" sub="Fix the cause of the leak, not the whole bathroom." />
+            <SectionHead k="What we do" title="Shower and Balcony Regrouting Services" sub="Fix the cause of the leak, not the whole bathroom." />
             <div className="mb-10 flex flex-col gap-6 lg:gap-8">
               {CORE.map((s, i) => (
                 <div key={s.slug} id={s.slug === "balcony-leak-repairs" ? "balcony-service" : undefined} className={`${box} grid grid-cols-1 overflow-hidden ${i === 1 ? "lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]" : "lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]"}`}>
-                  <div className={`relative aspect-[5/4] w-full overflow-hidden ${i === 1 ? "lg:order-2" : ""}`}>
-                    <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
-                  </div>
+                  {CORE_SLIDERS[s.slug] ? (
+                    <CoreSlider before={CORE_SLIDERS[s.slug].before} after={CORE_SLIDERS[s.slug].after} title={s.title} flip={i === 1} />
+                  ) : (
+                    <div className={`relative aspect-[5/4] w-full overflow-hidden ${i === 1 ? "lg:order-2" : ""}`}>
+                      <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />
+                    </div>
+                  )}
                   <div className={`flex flex-col items-center justify-center p-7 text-center sm:p-10 lg:p-12 ${i === 1 ? "lg:order-1" : ""}`}>
                     <p className={eyebrow}>{s.tag}</p>
                     <h2 className={h2}>{s.title}</h2>
@@ -392,7 +431,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
         <section id="why-groutix" className="scroll-mt-28 bg-white py-14 md:py-20">
           <div className={wrap}>
             <SectionHead k="Why Groutix" title="Why Choose a Grout Specialist Instead of a General Tradesperson?"
-              sub="We focus only on grout, silicone and wet-area waterproofing, so we fix the cause and not just the surface." />
+              sub="We focus only on grout, silicone and wet area waterproofing, so we fix the cause and not just the surface." />
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
               <table className="w-full min-w-[640px] border-collapse text-[15px]">
                 <thead>
@@ -428,7 +467,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               <p className={`${eyebrow} text-[#FBBC04]`}>For property professionals</p>
               <h2 className={`${h2} text-white`}>Real Estate &amp; Property Services</h2>
               <p className="mb-6 mt-3.5 text-[17px] text-[#D6DCF5]">
-                Wet-area repairs for landlords, agents and strata managers across Melbourne, scheduled around tenants.
+                Wet area repairs for landlords, agents and strata managers across Melbourne, scheduled around tenants.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a href="#quote-form" className={`${btn} bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00]`}>Discuss a Property Job</a>
@@ -438,7 +477,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <ul className="grid gap-3.5">
               {[
                 { Icon: Users, t: "Scheduled Around Tenants", d: "Most jobs completed in a single visit with minimal disruption." },
-                { Icon: ClipboardCheck, t: "Clear Assessments for Owners", d: "Plain-English findings you can pass straight on." },
+                { Icon: ClipboardCheck, t: "Clear Assessments for Owners", d: "Plain English findings you can pass straight on." },
                 { Icon: HomeIcon, t: "One Specialist for Every Wet Area", d: "Showers, laundries, kitchens and balconies." },
               ].map(({ Icon, t, d }) => (
                 <li key={t} className="flex gap-3.5 rounded-lg border border-white/20 bg-white/[0.08] px-5 py-4">
@@ -507,7 +546,7 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
             <div className="grid grid-cols-1 items-center gap-7 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:p-[52px]">
               <div>
                 <h2 className={`${h2} text-white`}>Stop the Leak Before It Becomes a Renovation</h2>
-                <p className="mt-3 text-[#D6DCF5]">Free quote · Most jobs in one visit · 10-year waterproof warranty</p>
+                <p className="mt-3 text-[#D6DCF5]">Free quote · Most jobs in one visit · 10 year waterproof warranty</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <a href="#quote-form" className={`${btn} min-h-[54px] w-full bg-[#FBBC04] text-[#0F172A] hover:bg-[#E5AA00] sm:w-auto`}>Request A Quote</a>
