@@ -316,8 +316,11 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
 
   // 1. Customer Details / Billing Address («job.instantpost_billing_address»)
   if (input.customerName) {
-    page1.drawText(cleanPdfText(input.customerName), { x: MARGIN, y, size: 10, font, color: INK });
-    y -= 13;
+    for (const line of wrapLines(input.customerName, font, 10, contentW)) {
+      ensureQuoteRoom(13);
+      page1.drawText(line, { x: MARGIN, y, size: 10, font, color: INK });
+      y -= 13;
+    }
   }
   if (input.address) {
     const addrLines = wrapLines(input.address, font, 10, contentW / 2);
@@ -331,8 +334,11 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
   if (input.phone) contactParts.push(input.phone);
   if (input.email) contactParts.push(input.email);
   if (contactParts.length > 0) {
-    page1.drawText(cleanPdfText(contactParts.join("   *   ")), { x: MARGIN, y, size: 9, font, color: MUTED });
-    y -= 13;
+    for (const line of wrapLines(contactParts.join("   *   "), font, 9, contentW)) {
+      ensureQuoteRoom(13);
+      page1.drawText(line, { x: MARGIN, y, size: 9, font, color: MUTED });
+      y -= 13;
+    }
   }
   y -= 10;
 
@@ -388,8 +394,6 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     y -= 22;
   };
 
-  ensureQuoteRoom(48);
-  drawItemsHeader();
   const newItemsPage = () => {
     newQuotePage();
     drawItemsHeader();
@@ -409,8 +413,8 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     return !nc || nl.includes(nc) || nc.includes(nl);
   };
 
-  for (const it of items) {
-    const label = it.service || it.description || "Regrouting & waterproof resealing";
+  for (const [itemIndex, it] of items.entries()) {
+    const label = cleanPdfText(it.service || it.description || "").trim() || "Regrouting & waterproof resealing";
     const descMaxWidth = isScopeDoc ? colQtyRight - colDescX - 35 : colQtyRight - colDescX - 15;
     const descLines = wrapLines(label, bold, 9, descMaxWidth).filter(Boolean);
 
@@ -427,29 +431,48 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     const price = input.items.length ? quoteUnitPriceExGst(it.price, input.taxMode, input.taxRate ?? 10) : Number(it.price || 0);
     const amount = price * qty;
 
-    const rowContentH = descLines.length * 11 + scopeLines.length * 9.5;
-    const rowH = Math.max(22, rowContentH + 12);
-
-    // Keep ordinary rows together, but split oversized rows line by line.
-    // Moving an oversized row as a whole only overflows the next page too.
-    const freshRowSpace = 635 - 22 - bottomLimit - 75;
-    if (rowH <= freshRowSpace && y - rowH < bottomLimit + 75) {
+    const lines = [
+      ...descLines.map((text) => ({ text, size: 9, height: 11, font: bold, indent: 0, bullet: false, heading: false, title: true })),
+      ...scopeLines.map((line) => ({ ...line, size: 7.5, height: 9.5, font: line.heading ? bold : font, title: false })),
+    ];
+    const rowTopPadding = 13;
+    const rowBottomPadding = 4;
+    const rowH = rowTopPadding + lines.reduce((height, line) => height + line.height, 0) + rowBottomPadding;
+    const neededAtLine = (index: number): number => {
+      const line = lines[index];
+      if (line.title) {
+        let end = index;
+        let height = rowBottomPadding;
+        while (end < lines.length && (lines[end].title || lines[end].heading)) {
+          height += lines[end++].height;
+        }
+        height += lines[end]?.height ?? 0;
+        // Exceptionally long titles can themselves span more than one page.
+        if (height <= 635 - 22 - rowTopPadding - bottomLimit) return height;
+      }
+      const next = lines[index + 1];
+      // A title or section heading must not be stranded at the foot of a page.
+      const followingHeight = next && (line.title || line.heading)
+        ? next.height + (next.heading ? (lines[index + 2]?.height ?? 0) : 0)
+        : 0;
+      return line.height + followingHeight + rowBottomPadding;
+    };
+    // Only compact rows stay together. Long rows use the remaining page space,
+    // even when the complete row would fit on a fresh page.
+    const startHeight = rowH <= 72 ? rowH : rowTopPadding + neededAtLine(0);
+    if (itemIndex === 0) {
+      ensureQuoteRoom(22 + startHeight);
+      drawItemsHeader();
+    } else if (y - startHeight < bottomLimit) {
       newItemsPage();
     }
-
-    const lines = [
-      ...descLines.map((text) => ({ text, size: 9, height: 11, font: bold, indent: 0, bullet: false, heading: false })),
-      ...scopeLines.map((line) => ({ ...line, size: 7.5, height: 9.5, font: line.heading ? bold : font })),
-    ];
     let firstLine = true;
-    y -= 13;
+    y -= rowTopPadding;
     for (let index = 0; index < lines.length; index++) {
       const line = lines[index];
-      // Keep scope headings with at least their first following line.
-      const needed = line.height + (line.heading ? (lines[index + 1]?.height ?? 0) : 0);
-      if (y - needed < bottomLimit) {
+      if (y - neededAtLine(index) < bottomLimit) {
         newItemsPage();
-        y -= 13;
+        y -= rowTopPadding;
       }
       if (firstLine) {
         rightTextOnPage(page1, qty > 0 ? String(qty) : "1", colQtyRight, y, font, 9);
@@ -465,7 +488,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       page1.drawText(line.text, { x: colDescX + line.indent, y, size: line.size, font: line.font, color: INK });
       y -= line.height;
     }
-    y -= Math.max(0, rowH - rowContentH - 13);
+    y -= rowBottomPadding;
 
     page1.drawLine({
       start: { x: MARGIN, y },
@@ -558,6 +581,9 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       }
 
       const wrapped = wrapLines(raw, f, sz, contentW);
+      if ((isMainTitle || isClauseHeading) && ty - wrapped.length * lh - 2 * 12.3 < bottomLimit) {
+        newTermsPage();
+      }
       for (const w of wrapped) {
         if (ty - lh < bottomLimit) {
           newTermsPage();
@@ -574,8 +600,23 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
       ty -= 3.5;
     }
 
-    // Customer Acceptance & Signature Block
-    const sigNeeded = input.customerSignatureImage ? 110 : 70;
+    // Measure the signature before reserving space, including its date/caption.
+    // Constrain both dimensions so tall uploads cannot run through the footer.
+    let signature: { image: Awaited<ReturnType<typeof doc.embedPng>>; width: number; height: number } | undefined;
+    if (input.customerSignatureImage) {
+      try {
+        const raw = input.customerSignatureImage.trim();
+        const base64Data = raw.replace(/^data:image\/\w+;base64,/, "");
+        const imgBytes = Uint8Array.from(Buffer.from(base64Data, "base64"));
+        const image = /^data:image\/jpe?g/i.test(raw) ? await doc.embedJpg(imgBytes) : await doc.embedPng(imgBytes);
+        const scale = Math.min(0.35, 160 / image.width, 60 / image.height);
+        signature = { image, width: image.width * scale, height: image.height * scale };
+      } catch (e) {
+        console.warn("Could not embed signature image in quote PDF:", e);
+      }
+    }
+    const sigNeeded = 14 + 20 + (signature ? signature.height + 6 : 0) + 12
+      + (input.customerSignedAt ? 10 + (signature ? 9 : 0) : 0) + 9;
     if (ty - sigNeeded < bottomLimit) {
       newTermsPage();
     }
@@ -590,26 +631,14 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     });
     ty -= 20;
 
-    if (input.customerSignatureImage) {
-      try {
-        const raw = input.customerSignatureImage.trim();
-        const base64Data = raw.replace(/^data:image\/\w+;base64,/, "");
-        const imgBytes = Uint8Array.from(Buffer.from(base64Data, "base64"));
-        const isJpg = /^data:image\/jpe?g/i.test(raw);
-        const img = isJpg ? await doc.embedJpg(imgBytes) : await doc.embedPng(imgBytes);
-        const dims = img.scale(0.35);
-        const drawW = Math.min(dims.width, 160);
-        const drawH = (dims.height / dims.width) * drawW;
-        curPage.drawImage(img, {
-          x: MARGIN,
-          y: ty - drawH,
-          width: drawW,
-          height: drawH,
-        });
-        ty -= drawH + 6;
-      } catch (e) {
-        console.warn("Could not embed signature image in quote PDF:", e);
-      }
+    if (signature) {
+      curPage.drawImage(signature.image, {
+        x: MARGIN,
+        y: ty - signature.height,
+        width: signature.width,
+        height: signature.height,
+      });
+      ty -= signature.height + 6;
     }
 
     curPage.drawText("………………………………………………..", {
@@ -636,7 +665,7 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
         font,
         color: MUTED,
       });
-      if (input.customerSignatureImage) {
+      if (signature) {
         ty -= 9;
         curPage.drawText("Digitally accepted & signed online via Groutix Secure Portal", {
           x: MARGIN,

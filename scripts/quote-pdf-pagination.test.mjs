@@ -14,16 +14,20 @@ function fixture() {
       doc.addPage = (...args) => {
         const page = addPage(...args.map(arg => Array.isArray(arg) ? Array.from(arg) : arg));
         const calls = [];
+        calls.images = [];
+        calls.rules = [];
         pages.push(calls);
         const drawText = page.drawText.bind(page);
         const drawLine = page.drawLine.bind(page);
+        const drawImage = page.drawImage.bind(page);
         page.drawText = (text, options) => { calls.push({ text, ...options }); return drawText(text, options); };
-        page.drawLine = options => drawLine({ ...options, start: { ...options.start }, end: { ...options.end } });
+        page.drawLine = options => { calls.rules.push(options); return drawLine({ ...options, start: { ...options.start }, end: { ...options.end } }); };
+        page.drawImage = (image, options) => { calls.images.push(options); return drawImage(image, options); };
         return page;
       };
       return doc;
     } } },
-  });
+  }, { Uint8Array });
   return { ...builder, pages };
 }
 
@@ -72,4 +76,58 @@ test("long unbroken text wraps within the description column", async () => {
   const lines = pages.flat().filter(call => call.size === 7.5);
   assert.equal(lines.map(call => call.text).join(""), "x".repeat(1800));
   assert.ok(lines.every(call => call.font.widthOfTextAtSize(call.text, call.size) <= 298.28 + 0.01));
+});
+
+for (const docType of ["quote", "scope"]) {
+  test(`${docType}: a long row that fits a fresh page uses the current page before continuing`, async () => {
+    const { buildQuotePdfBase64, pages } = fixture();
+    const scope = Array.from({ length: 44 }, (_, i) => `Medium step ${String(i + 1).padStart(3, "0")}`).join("\n");
+    const base64 = await buildQuotePdfBase64({ docType, quoteNumber: "MEDIUM-ROW", date: "2 Nov 2026",
+      customerName: "Page Break Test", items: [
+        { service: "Initial preparation", scope: Array.from({ length: 12 }, (_, i) => `Preparation ${i + 1}`).join("\n"), price: 100 },
+        { service: "Detailed restoration", scope, price: 200 },
+      ], subtotal: 300, gst: 30, total: 330, taxMode: "exclusive" });
+    assert.ok(pages[0].some(call => call.text === "Medium step 001"), "a long second item must start in the available space");
+    assert.ok(pages[1].some(call => call.text === "Medium step 044"), "the remaining scope continues on the next page");
+    assert.equal(pages.flat().filter(call => call.text === "$200.00").length, docType === "quote" ? 2 : 0);
+    for (let i = 1; i <= 44; i++) {
+      assert.equal(pages.flat().filter(call => call.text === `Medium step ${String(i).padStart(3, "0")}`).length, 1);
+    }
+    if (process.env.QUOTE_PDF_PREVIEW_DIR) fs.writeFileSync(`${process.env.QUOTE_PDF_PREVIEW_DIR}/${docType}-medium.pdf`, Buffer.from(base64, "base64"));
+  });
+}
+
+test("a moderately long first item does not leave the first page empty", async () => {
+  const { buildQuotePdfBase64, pages } = fixture();
+  await buildQuotePdfBase64({ quoteNumber: "FIRST-ROW", date: "2 Nov 2026", customerName: "Page Break Test",
+    items: [{ service: "Restoration", scope: Array.from({ length: 44 }, (_, i) => `First step ${i + 1}`).join("\n"), price: 100 }],
+    subtotal: 100, gst: 10, total: 110 });
+  assert.ok(pages[0].some(call => call.text === "First step 1"));
+  assert.ok(pages[0].some(call => call.text === "First step 44"), "use the bottom space previously reserved below every row");
+});
+
+test("row borders, images, totals, and signed acceptance stay above the footer at page boundaries", async () => {
+  // A valid 10 x 1000 PNG exercises the signature height limit as well as its width.
+  const tallSignature = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAPoCAIAAABoNPj+AAAANUlEQVR4nO3BgQAAAADDoPlTX+EAVQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHwGeRgAAbAahAwAAAAASUVORK5CYII=";
+  for (const count of [39, 43, 46, 50, 55, 98]) {
+    const { buildQuotePdfBase64, pages } = fixture();
+    const base64 = await buildQuotePdfBase64({ quoteNumber: `BOTTOM-${count}`, date: "2 Nov 2026",
+      items: [{ service: "Restoration", scope: Array.from({ length: count }, (_, i) => `Boundary step ${i + 1}`).join("\n"), price: 100 }],
+      subtotal: 100, gst: 10, total: 110, statusLabel: "UNPAID",
+      terms: `Groutix terms and conditions\n${Array.from({ length: 37 }, (_, i) => `Clause detail ${i + 1}: ${"Agreed work and warranty provisions. ".repeat(2)}`).join("\n")}`,
+      customerSignatureImage: `data:image/png;base64,${tallSignature}`, customerSignedAt: "2 Nov 2026" });
+    for (const calls of pages) {
+      assert.ok(calls.filter(call => !call.text.startsWith("Thank you for choosing")).every(call => call.y >= 55), "all content clears the footer");
+      assert.ok(calls.rules.every(rule => rule.start.y >= 55 && rule.end.y >= 55), "row borders clear the footer");
+      assert.ok(calls.images.every(image => image.y >= 55), "images clear the footer");
+      if (calls.some(call => call.text === "DESCRIPTION")) {
+        assert.ok(calls.some(call => call.size === 7.5 || (call.size === 9 && call.font.name === "Helvetica-Bold")), "table headings are followed by item content");
+      }
+    }
+    const lastPage = pages.at(-1);
+    assert.equal(lastPage.images.length, 1);
+    assert.ok(lastPage.images[0].height <= 60);
+    assert.ok(lastPage.some(call => call.text === "Customer Signature"));
+    if (count === 46 && process.env.QUOTE_PDF_PREVIEW_DIR) fs.writeFileSync(`${process.env.QUOTE_PDF_PREVIEW_DIR}/signed-boundary.pdf`, Buffer.from(base64, "base64"));
+  }
 });

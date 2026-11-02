@@ -27,7 +27,7 @@ test("scope bullets and hanging indents render on the second quote page", async 
     } } },
   });
   const items = [
-    { service: "Shower regrouting", scope: Array.from({ length: 28 }, (_, i) => `• Scope step ${i + 1}`).join("\n"), price: 1600 },
+    { service: "Shower regrouting", scope: Array.from({ length: 44 }, (_, i) => `• Scope step ${i + 1}`).join("\n"), price: 1600 },
     { service: "Remove & Dispose Off Existing Shower Screen - Supply & Install Semi-Frameless Shower Screen (Silver)", price: 1245,
       scope: "SILICONE WORK\nRemove and dispose of the existing shower screen.\n• Supply and install a new semi-frameless shower screen with a brushed gold frame with handle.\n- Supply and install new toughened safety glass in accordance with Australian Standards.\no Secure the shower screen using appropriate fixings and brackets. Apply premium sanitary-grade, mould-resistant silicone to all required internal and external junctions.\nCOMPLETION / OTHER\nEnsure the shower screen is correctly aligned, levelled and operates smoothly. Remove all installation debris and leave the work area clean upon completion." },
   ];
