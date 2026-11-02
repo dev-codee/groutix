@@ -31,8 +31,7 @@ const CORE = [
     alt: "Walk in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
   { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking Shower repair.webp",
     alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-leak-repair-watermarked.webp
-",
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/Balcony Leak Repair.webp",
     alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
@@ -42,14 +41,14 @@ const MORE = [
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
 const SYMPTOMS = [
-  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Collage of cracked and crumbling grout lines between dark shower floor tiles" },
-  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Shower over a bath with stained grout lines and silicone edges" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Walk in shower with beige tiles, a mosaic feature strip and a tiled niche" },
-  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/Moulds that coming back.webp", alt: "White tiled shower corner with chrome taps and a grey tiled floor" },
+  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Cracked and crumbling grout being removed from a dark tiled shower floor" },
+  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-old-silicone-strips.webp", alt: "Old silicone strips peeled from a tiled shower floor during recaulking" },
+  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Water staining inside a bath below a tiled shower wall" },
+  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Mould staining along the grout lines of a white tiled shower corner" },
 ];
 const BALCONY = [
-  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/White chalky staining on tiles.webp", alt: "Stained shower drain and worn grout and silicone in tiled shower corners" },
-  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/grey-shower-floor-envelope-cut-regrouting before.webp", alt: "Shower floor with cracked and missing grout around the drain, before regrouting" },
+  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/White chalky staining on tiles.webp", alt: "White chalky staining along balcony tile grout lines" },
+  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/balcony-regrouting-cracked-grout-drain.webp", alt: "Cracked grout and rust staining around a balcony floor drain, before regrouting" },
   { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/Water stains on the ceiling below.webp", alt: "Bathroom floor and frosted glass shower screen in a Melbourne home" },
   { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
 ];
