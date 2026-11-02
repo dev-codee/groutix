@@ -40,18 +40,6 @@ const MORE = [
   { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain resistant upgrade", Icon: Layers },
   { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
 ];
-const SYMPTOMS = [
-  { title: "Cracked or crumbling grout", next: "Shower regrouting", href: "/shower-regrouting", img: "/Cracked or crumbling grout.webp", alt: "Cracked and crumbling grout being removed from a dark tiled shower floor" },
-  { title: "Peeling or black silicone", next: "Recaulking", href: "/silicone-recaulking", img: "/shower-regrouting-old-silicone-strips.webp", alt: "Old silicone strips peeled from a tiled shower floor during recaulking" },
-  { title: "Water outside the shower or a stain below", next: "Leak assessment", href: "/leaking-shower-repair", img: "/Water outside the shower or a stain below .webp", alt: "Water staining inside a bath below a tiled shower wall" },
-  { title: "Mould that keeps coming back", next: "Grout & silicone check", href: "/cracked-grout-or-a-leaking-shower", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Mould staining along the grout lines of a white tiled shower corner" },
-];
-const BALCONY = [
-  { title: "White chalky staining on tiles", next: "Balcony regrout", img: "/White chalky staining on tiles.webp", alt: "White chalky staining along balcony tile grout lines" },
-  { title: "Cracked or missing grout", next: "Balcony regrout", img: "/balcony-regrouting-cracked-grout-drain.webp", alt: "Cracked grout and rust staining around a balcony floor drain, before regrouting" },
-  { title: "Water stains on the ceiling below", next: "Balcony leak repair", img: "/Water stains on the ceiling below.webp", alt: "Bathroom floor and frosted glass shower screen in a Melbourne home" },
-  { title: "Fixed with epoxy, no retiling", next: "How we repair balconies", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony after epoxy regrouting and resealing" },
-];
 const JOBS = [
   { before: "/beige-shower-floor-regrouting-top-view before.webp", after: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout" },
   { before: "/tiled-shower-floor-regrouting-wide before.webp", after: "/tiled-shower-floor-regrouting-wide after .webp", title: "Floor tile regrout" },
@@ -298,47 +286,6 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
                   </span>
                 </Link>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── SYMPTOMS ── */}
-        <section id="shower-grout-problems" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
-          <div className={wrap}>
-            <SectionHead k="Shower grout problems" title="What Are You Seeing in Your Shower?" sub="Pick the closest sign and we'll point you to the right repair." />
-            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:gap-6">
-              {SYMPTOMS.map((s) => (
-                <Link key={s.title} href={s.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
-                  <div className="relative h-[263px]"><Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
-                  <div className="p-5">
-                    <b className="block text-[17px] leading-snug">{s.title}</b>
-                    <span className="mt-2 block text-sm font-bold text-[#2F63CC]">Likely: {s.next} →</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <p className="mt-5 text-center text-sm text-slate-500">General guidance, not a diagnosis. An inspection confirms the cause.</p>
-          </div>
-        </section>
-
-        {/* ── BALCONY ── */}
-        <section id="balcony" className="scroll-mt-28 bg-white py-14 md:py-20">
-          <div className={wrap}>
-            <SectionHead k="Balcony specialists" title="Balcony Regrouting & Leak Repairs in Melbourne"
-              sub="Melbourne's rain and temperature swings crack balcony grout, and water then seeps through to the slab and the ceiling below. We regrout with waterproof epoxy and reseal the edges, with no retiling." />
-            <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:gap-6">
-              {BALCONY.map((b) => (
-                <Link key={b.title} href="/balcony-leak-repairs" className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC]`}>
-                  <div className="relative h-[263px]"><Image src={b.img} alt={b.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-110" /></div>
-                  <div className="p-5">
-                    <b className="block text-[17px] leading-snug">{b.title}</b>
-                    <span className="mt-2 block text-sm font-bold text-[#2F63CC]">{b.next} →</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="mt-6 text-center">
-              <Link href="/balcony-leak-repairs" className="font-bold text-[#2F63CC] hover:underline">Read more about balcony leak repairs in Melbourne →</Link>
             </div>
           </div>
         </section>
