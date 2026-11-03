@@ -293,18 +293,37 @@ export async function listAppointmentsBetween(from: string, to: string, options:
 
         const time = tRaw.slice(0, 5).padStart(5, "0");
         const atStart = locks.filter(booking => booking.leadId === id && booking.type === type && booking.date === date && booking.time.slice(0, 5) === time);
-        const lock = atStart.find(booking => type === "job"
-          ? s.technicianId && booking.technicianId ? s.technicianId === booking.technicianId : s.technician && booking.technician ? s.technician.toLowerCase() === booking.technician.toLowerCase() : atStart.length === 1
-          : s.inspectorId && booking.inspectorId ? s.inspectorId === booking.inspectorId : s.assigned && booking.assigned ? s.assigned.toLowerCase() === booking.assigned.toLowerCase() : atStart.length === 1);
+        const lock = atStart.find(booking => {
+          const fields = type === "job" ? ["technicianId", "technicianUsername", "technician"] as const
+            : ["inspectorId", "inspectorUsername", "assigned"] as const;
+          for (const field of fields) {
+            const leadValue = s[field]?.trim().toLowerCase();
+            const savedValue = booking[field]?.trim().toLowerCase();
+            if (leadValue && leadValue !== "unassigned" && savedValue && savedValue !== "unassigned") return leadValue === savedValue;
+          }
+          return atStart.length === 1;
+        });
         seen.add(lock ? (lock.bookingId || lock._id?.toString() || `${id}|${type}|${date}|${time}`) : `${id}|${type}|${date}|${time}`);
         if (lock?.status === "Cancelled") continue;
         const savedEnd = type === "job" ? s.jobEndAt : s.inspectionEndAt;
         const endAt = lock?.endAt && (!savedEnd || lock.endAt > savedEnd) ? lock.endAt : savedEnd;
         const storedSegments = endAt === lock?.endAt && lock?.workSegments?.length ? lock.workSegments : type === "job" ? s.jobWorkSegments : s.inspectionWorkSegments;
         const segments = savedWorkSegments(type, `${date}T${time}`, endAt, storedSegments, rules) || [{ date, time, scheduledMinutes: savedBookingMinutes(lock || {}) }];
+        // Older primary reservations may lack staff fields even after the lead
+        // was assigned. Keep each identity together instead of mixing staff.
+        const hasSavedTechnician = [lock?.technicianId, lock?.technician, lock?.technicianUsername]
+          .some(value => value?.trim() && value.trim().toLowerCase() !== "unassigned");
+        const technicianAssignment = hasSavedTechnician
+          ? { technicianId: lock!.technicianId, technician: lock!.technician, technicianUsername: lock!.technicianUsername }
+          : { technicianId: s.technicianId, technician: s.technician, technicianUsername: s.technicianUsername };
+        const hasSavedInspector = [lock?.inspectorId, lock?.assigned, lock?.inspectorUsername]
+          .some(value => value?.trim() && value.trim().toLowerCase() !== "unassigned");
+        const inspectorAssignment = hasSavedInspector
+          ? { inspectorId: lock!.inspectorId, assigned: lock!.assigned, inspectorUsername: lock!.inspectorUsername }
+          : { inspectorId: s.inspectorId, assigned: s.assigned, inspectorUsername: s.inspectorUsername };
         for (const segment of segments) {
           if (segment.date < from || segment.date > to) continue;
-          out.push({ bookingStart: `${date}T${time}`, bookingId: lock?.bookingId || lock?._id?.toString(), workSegments: segments, ...segment, endAt, type, leadId: id, ...info.get(id)!, status: resolveBookingStatus(type, lock?.status, s.status, true), durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...(lock ? { inspectorId: lock.inspectorId ?? s.inspectorId, assigned: lock.assigned ?? s.assigned, inspectorUsername: lock.inspectorUsername ?? s.inspectorUsername, technicianId: lock.technicianId, technician: lock.technician, technicianUsername: lock.technicianUsername } : {}), zone: lock?.zone || "flexible", source: "staff" });
+          out.push({ bookingStart: `${date}T${time}`, bookingId: lock?.bookingId || lock?._id?.toString(), workSegments: segments, ...segment, endAt, type, leadId: id, ...info.get(id)!, status: resolveBookingStatus(type, lock?.status, s.status, true), durationMinutes: appointmentDurationMinutes({ type, ...segment }, rules), ...inspectorAssignment, ...technicianAssignment, zone: lock?.zone || "flexible", source: "staff" });
         }
       }
     }

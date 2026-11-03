@@ -10,7 +10,7 @@ import { dashboardLeadsFirst } from "@/lib/leadOrder";
 import { EmailMessageText } from "@/components/admin/EmailMessageText";
 import { matchesQuoteStatusFilter } from "@/lib/quoteAcceptance";
 
-import { jobBookingRows, selectedJobBooking, leadRowKey } from "@/lib/leadBookings";
+import { jobBookingRows, selectedJobBooking, leadRowKey, visibleInRole } from "@/lib/leadBookings";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { normalizeBusinessPhoneText } from "@/lib/phone";
@@ -3715,10 +3715,11 @@ export default function CrmDashboardPage() {
   // owns. Managers see the whole book. Legacy leads are hidden by default
   // unless the manager explicitly toggles showLegacyLeads.
   const scopedLeads = useMemo(() => {
+    const visibleLeads = leads.filter(lead => visibleInRole(lead, role));
     const roleScoped =
       role === "manager" || role === "super_admin"
-        ? leads
-        : leads.filter((l) => {
+        ? visibleLeads
+        : visibleLeads.filter((l) => {
           if (role === "technician") {
             const targetStaffRecord = viewAs
               ? staff.find((s) => s.name === viewAs.name || s.username === viewAs.name)

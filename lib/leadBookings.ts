@@ -1,5 +1,6 @@
 import type { Lead } from "@/components/admin/types";
 import type { TechnicianAssignment } from "./bookingCapacity";
+import type { Role } from "./roles";
 import { resolveBookingStatus, type BookingStatus } from "./bookingStatus";
 
 export interface LeadBooking extends TechnicianAssignment {
@@ -55,11 +56,21 @@ export function leadBookings(lead: Lead): LeadBooking[] {
   })).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
+/** Cancelled records leave every role's lists; field queues also exclude cancelled visits. */
+export function visibleInRole(lead: Lead, role: Role): boolean {
+  if (lead.status === "Cancelled") return false;
+  const type = role === "technician" ? "job" : role === "inspection" || role === "field" ? "inspection" : undefined;
+  if (!type) return true;
+  const visits = leadBookings(lead).filter(booking => booking.type === type);
+  return !visits.length || visits.some(booking => booking.status !== "Cancelled");
+}
+
 /** A technician works one visit at a time; the shared customer record retains its ID. */
 export function jobBookingRows(lead: Lead): Lead[] {
+  if (lead.status === "Cancelled") return [];
   const visits = leadBookings(lead).filter(b => b.type === "job");
   if (!visits.length) return [lead];
-  return visits.map(booking => ({
+  return visits.filter(booking => booking.status !== "Cancelled").map(booking => ({
     ...bookingLead(lead, booking),
     assigned: isPrimaryBooking(lead, booking) ? lead.assigned : undefined,
     activeBooking: { type: "job" as const, start: `${booking.date}T${booking.time}`, bookingId: booking.bookingId },

@@ -151,7 +151,7 @@ export function ScheduleView({
         <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 flex-1 min-w-[180px]"><Search className="w-4 h-4 text-slate-400" /><input aria-label="Search upcoming bookings" placeholder="Search customer, address or reference" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full text-xs outline-none" /></label>
         <select aria-label="Filter booking type" value={type} onChange={(event) => setType(event.target.value as typeof type)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white"><option value="all">All bookings</option><option value="inspection">Inspections</option><option value="job">Jobs</option></select>
       </div>
-      <p className="text-[11px] text-slate-500">Visit order is shared with the calendar. Distances are suburb estimates from the assigned person’s previous customer that day, or Gowanbrae base for their first visit.</p>
+      <p className="text-[11px] text-slate-500">Visit order is shared with the calendar. Distances are suburb estimates from the assigned person’s previous customer that day, or Gowanbrae base for their first visit and for unassigned bookings.</p>
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{error} Use Refresh to try again.</p>}
 
       {loading ? (
