@@ -63,7 +63,7 @@ const fixOptions = [
 
 const processSteps = [
   { title: "Assess the Shower", text: "We inspect the grout, silicone and surrounding tiles before recommending any work." },
-  { title: "Remove and Prepare", text: "Damaged grout and old silicone are fully removed and the area is prepared. The amount of work depends on what we find." },
+  { title: "Remove and Prepare", text: "Damaged grout and old silicone are fully removed, including the wall junctions and floor joints where showers usually fail first, and the area is prepared. The amount of work depends on what we find." },
   { title: "Regrout and Finish", text: "New grout and sealant are applied and finished so the surface is sealed properly again." },
   { title: "Cure and Warranty", text: "Your shower is ready to use once the grout and silicone have cured." },
 ];
@@ -79,6 +79,7 @@ const included = [
   "On site inspection",
   "Full removal of old grout",
   "Waterproof epoxy application",
+  "Complete regrout of shower floors and walls",
   "Silicone resealing at corners and joints",
   "Written warranty",
   "No tile removal for a standard regrout",
@@ -109,9 +110,11 @@ const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [
   { q: "What is shower regrouting?", a: "Removing old, damaged grout and replacing it with new grout. Your tiles stay in place.", plain: "Removing old, damaged grout and replacing it with new grout. Your tiles stay in place." },
   { q: "How much does shower regrouting cost in Melbourne?", a: "Most standard single showers cost about $550 to $1,500. Shower size, tile type, condition and grout type change the price. We quote after we see it.", plain: "Most standard single showers cost about $550 to $1,500. Shower size, tile type, condition and grout type change the price. We quote after we see it." },
   { q: "How long does shower regrouting last?", a: "Done properly, it holds up for years of daily use. Epoxy generally outlasts cement in a wet area. That is why complete jobs carry a 10 year warranty.", plain: "Done properly, it holds up for years of daily use. Epoxy generally outlasts cement in a wet area. That is why complete jobs carry a 10 year warranty." },
+  { q: "How long does shower regrouting take?", a: "Most jobs are finished in a single visit. The exact timeframe depends on the condition of the grout and whether any repairs are needed, and we confirm it with your quote before any work starts.", plain: "Most jobs are finished in a single visit. The exact timeframe depends on the condition of the grout and whether any repairs are needed, and we confirm it with your quote before any work starts." },
   { q: "How often should I regrout my shower?", a: "There is no fixed date. Regrout when you see cracking, staining or returning mould.", plain: "There is no fixed date. Regrout when you see cracking, staining or returning mould." },
   { q: "What causes shower grout to fail?", a: "Age, movement and constant water. Melbourne’s changing weather adds strain, especially on cement grout.", plain: "Age, movement and constant water. Melbourne’s changing weather adds strain, especially on cement grout." },
   { q: "Do I need to remove my tiles to regrout a shower?", a: "No, in most cases. Only the old grout is removed. Tile work is needed only if tiles are cracked or loose.", plain: "No, in most cases. Only the old grout is removed. Tile work is needed only if tiles are cracked or loose." },
+  { q: "Can you regrout shower floors as well as walls?", a: "Yes. A complete shower regrout covers both the floor and the wall tiles. Floor joints take the most water and movement, so they are one of the most common failure points. Leaving them out only solves half the problem.", plain: "Yes. A complete shower regrout covers both the floor and the wall tiles. Floor joints take the most water and movement, so they are one of the most common failure points. Leaving them out only solves half the problem." },
   {
     q: "Will regrouting fix a leaking shower?",
     a: <>If the leak comes from failed grout or silicone, yes. If the membrane has failed, it needs more. See <Link className={inlineLink} href="/leaking-shower-repair">leaking shower repair</Link>.</>,
@@ -120,6 +123,7 @@ const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [
   { q: "Can regrouting work on an old bathroom?", a: "Yes, if the tiles and waterproof membrane are sound.", plain: "Yes, if the tiles and waterproof membrane are sound." },
   { q: "Is DIY regrouting worth it?", a: "It can work for small jobs. Most fail because old grout is not fully removed or the shower is used too early.", plain: "It can work for small jobs. Most fail because old grout is not fully removed or the shower is used too early." },
   { q: "How do I fix shower grout mould?", a: "Surface mould can often be cleaned. Mould that keeps returning usually means the grout has failed and needs replacing.", plain: "Surface mould can often be cleaned. Mould that keeps returning usually means the grout has failed and needs replacing." },
+  { q: "Why does my shower smell musty?", a: "A musty smell usually means moisture and mould are trapped in or behind failed grout and silicone. Cleaning lifts the surface smell for a while, but it keeps coming back while water is getting in. Removing the failed grout and resealing the joints fixes the cause.", plain: "A musty smell usually means moisture and mould are trapped in or behind failed grout and silicone. Cleaning lifts the surface smell for a while, but it keeps coming back while water is getting in. Removing the failed grout and resealing the joints fixes the cause." },
   { q: "Can you match my existing grout colour?", a: "Epoxy grout comes in many colours, so a close match is usually possible.", plain: "Epoxy grout comes in many colours, so a close match is usually possible." },
 ];
 
@@ -301,24 +305,39 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
         {/* 2. SIGNS */}
         <Section id="signs">
           <SectionHead k="Signs To Check" title="Does Your Shower Need Regrouting?">
-            <p className={lead}>Check your shower for these signs. If you spot two or more, get it looked at soon.</p>
+            <p className={lead}>Check your shower for these signs. Grout is your shower’s first line of defence, and once it fails, water starts getting in behind the tiles. If you spot two or more, get it looked at soon.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {warningSigns.map((c) => <SignPairCard key={c.title} c={c} />)}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl md:text-center`}>
-            One sign is worth a look. Several together can mean water has moved past the grout. If you notice damp walls or ceiling stains, see our{" "}
+            One sign is worth a look. Several together can mean water has moved past the grout and is quietly damaging what sits behind and beyond the bathroom: wall framing, floors and the ceiling below. A musty smell that never quite leaves is often the first hint. If you notice damp walls or ceiling stains, see our{" "}
             <Link className={inlineLink} href="/leaking-shower-repair">leaking shower repair</Link> page.
           </p>
+          <div className={`${box} mx-auto mt-8 flex max-w-[1000px] flex-col items-start justify-between gap-5 p-7 md:flex-row md:items-center`}>
+            <div>
+              <h3 className={cardTitle}>Spotted Two or More Signs?</h3>
+              <p className="mt-1 text-base text-slate-600">Book a free inspection. We check the grout, silicone and membrane, then tell you honestly what your shower needs.</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-3">
+              <a href="#quote-form" className={btnNavy}>Book a Free Inspection</a>
+              <a href={tel} className={btnGold}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+          </div>
         </Section>
 
         {/* 3. WHY GROUT FAILS */}
         <Section id="why-grout-fails" alt>
           <SectionHead k="Why Grout Fails" title="What Causes Shower Grout to Fail in Melbourne Homes?">
-            <p className={lead}>Grout is not decoration. It works with the waterproof membrane under your tiles to keep water where it belongs.</p>
+            <p className={lead}>Grout is not decoration. It works with the waterproof membrane under your tiles to keep water where it belongs. Once grout cracks or turns porous, water ingress begins: moisture travels behind walls and under floors, feeding mould and musty odours long before a stain ever shows.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {failCauses.map((c) => <PhotoCard key={c.title} c={c} />)}
+          </div>
+          <div className="mx-auto mt-8 max-w-[1000px]">
+            <Callout title="Why Surface Fixes Don’t Last">
+              Smearing fresh silicone over old grout, or painting on a grout sealer, only masks the failure underneath. The cracked, porous grout keeps letting water through, so the mould, odours and leaks return, usually within months. The lasting fix is to remove the failed grout completely and rebuild the joint so the shower is watertight again.
+            </Callout>
           </div>
         </Section>
 
@@ -351,7 +370,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             <div className="mt-8 space-y-3 md:text-center">
               <p className="text-[17px] leading-relaxed text-slate-600">Cement grout soaks up water, soap and dirt. Mould then grows in those pores, even when you clean often.</p>
               <p className="text-[17px] leading-relaxed text-slate-600">
-                Epoxy grout is a resin. It does not absorb water. It costs more to install and takes more skill to apply, but it is made for constant moisture.{" "}
+                Epoxy grout is a resin. It does not absorb water. It costs more to install and takes more skill to apply, but it is made for constant moisture. That is what restores your shower’s waterproof integrity, sealing the grout lines where leaks start.{" "}
                 <Link className={inlineLink} href="/epoxy-grout">Learn more on our epoxy grout page.</Link>
               </p>
             </div>
@@ -520,6 +539,19 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             {beforeAfterPairs.map((p) => <BeforeAfterPair key={p.title} before={p.before} after={p.after} title={p.title} label={p.label} />)}
           </div>
         </Section>
+
+        {/* 11b. WARRANTY */}
+        <section className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
+          <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-12`}>
+            <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={150} height={144} className="h-[120px] w-[125px] object-contain" />
+            <div>
+              <p className={`${eyebrow} text-[#FBBC04]`}>The Groutix Guarantee</p>
+              <h2 className={`${h2} text-white`}>Backed by a 10 Year Waterproof Warranty</h2>
+              <p className="mt-3.5 max-w-[720px] text-[17px] leading-relaxed text-[#D6DCF5]">Every complete shower regrout is backed by our 10 year waterproof warranty, provided in writing with the job. It reflects how the work is done: failed grout fully removed and rebuilt with waterproof epoxy, never covered up with a surface fix.</p>
+            </div>
+            <a href="#quote-form" className={`${btnGold} shrink-0`}>Get Your Free Quote</a>
+          </div>
+        </section>
 
         {/* 12. REVIEWS */}
         <Section id="reviews">
