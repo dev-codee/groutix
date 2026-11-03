@@ -30,13 +30,16 @@ const googleReviewsUrl = "https://www.google.com/maps/place/Groutix";
 // Image cards: the title and text are the live copy; image + link are added for the new layout.
 type ImgCard = { title: string; text: string; img: string; alt: string; href: string; link: string; half?: boolean };
 
-const warningSigns: ImgCard[] = [
-  { title: "Cracked or Crumbling Grout", text: "Grout that is cracked or crumbles when you touch it", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Close-up of cracked, crumbling grout between shower floor tiles", href: "/epoxy-grout", link: "Epoxy grout repair" },
-  { title: "Dark Grout After Cleaning", text: "Grout that stays dark even after cleaning", img: "/shower-regrouting-rust-stained-tiles.webp", alt: "Dark, stained grout lines on white shower tiles that stay dark after cleaning", href: "#epoxy-vs-cement", link: "Why cement grout stains" },
-  { title: "Returning Mould", text: "Mould that comes back weeks after you scrub it", img: "/shower-regrouting-signs-black-mould.webp", alt: "Black mould growing in the grout and silicone of a shower corner", href: "/cracked-grout-or-a-leaking-shower", link: "Grout and silicone check" },
-  { title: "Tired Silicone", text: "Silicone that has peeled, yellowed or turned soft", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Black mould in shower grout and silicone next to a glass screen", href: "/silicone-recaulking", link: "Silicone and recaulking" },
-  { title: "Damp Patch Nearby", text: "A damp patch on a wall or ceiling near the bathroom", img: "/water stains on the ceiling below.webp", alt: "Water stains on the ceiling below a leaking shower — a sign of damp nearby", href: "/leaking-shower-repair", link: "Leaking shower repair" },
-  { title: "Pooling Water", text: "Water that pools on the shower floor after you turn it off", img: "/grey-shower-base-regrouting-overhead-view before .webp", alt: "Mosaic shower base where water pools and sits after showering", href: "/shower-base-repair", link: "Shower base repair" },
+// Signs cards show a real before and after pair per sign (drag the slider).
+type SignCard = { title: string; text: string; before: string; after: string; beforeAlt: string; afterAlt: string; href: string; link: string };
+
+const warningSigns: SignCard[] = [
+  { title: "Cracked or Crumbling Grout", text: "Grout that is cracked or crumbles when you touch it", before: "/shower-cracked-grout-before.webp", after: "/shower-cracked-grout-after.webp", beforeAlt: "Shower floor with cracked and crumbling grout before regrouting", afterAlt: "Same shower floor after epoxy regrouting with fresh grout lines", href: "/epoxy-grout", link: "Epoxy grout repair" },
+  { title: "Dark Grout After Cleaning", text: "Grout that stays dark even after cleaning", before: "/shower-stained-grout-before.webp", after: "/shower-stained-grout-after.webp", beforeAlt: "White shower tiles with dark, stained grout lines before regrouting", afterAlt: "Same shower with bright, clean grout after epoxy regrouting", href: "#epoxy-vs-cement", link: "Why cement grout stains" },
+  { title: "Returning Mould", text: "Mould that comes back weeks after you scrub it", before: "/shower-mouldy-grout-before.webp", after: "/shower-mouldy-grout-after.webp", beforeAlt: "Mould growing along the grout lines of a white tiled shower corner", afterAlt: "The same corner shower after regrouting, with clean grout throughout", href: "/cracked-grout-or-a-leaking-shower", link: "Grout and silicone check" },
+  { title: "Tired Silicone", text: "Silicone that has peeled, yellowed or turned soft", before: "/shower-silicone-before.webp", after: "/shower-silicone-after.webp", beforeAlt: "Old silicone being peeled from a shower floor during recaulking", afterAlt: "Same shower floor after regrouting and resealing with fresh silicone edges", href: "/silicone-recaulking", link: "Silicone and recaulking" },
+  { title: "Damp Patch Nearby", text: "A damp patch on a wall or ceiling near the bathroom", before: "/damp-patch-leak-before.webp", after: "/damp-patch-leak-after.webp", beforeAlt: "Leaking shower with failed grout letting water through before repair", afterAlt: "Same shower after leak repair and epoxy regrouting", href: "/leaking-shower-repair", link: "Leaking shower repair" },
+  { title: "Pooling Water", text: "Water that pools on the shower floor after you turn it off", before: "/shower-base-pooling-before.webp", after: "/shower-base-pooling-after.webp", beforeAlt: "Shower base with worn grout where water pools after showering", afterAlt: "Same shower base after regrouting and resealing", href: "/shower-base-repair", link: "Shower base repair" },
 ];
 
 const failCauses: ImgCard[] = [
@@ -152,6 +155,50 @@ function PhotoCard({ c, sizes = "(min-width:1024px) 33vw, (min-width:640px) 50vw
   );
 }
 
+/* Signs slider: the frame ratio matches the photos (4:5), so each photo
+   shows in full and its watermark stays completely visible. */
+function SignSlider({ before, after, beforeAlt, afterAlt, title }: { before: string; after: string; beforeAlt: string; afterAlt: string; title: string }) {
+  const [pos, setPos] = useState(100);
+  const handle = Math.min(96, Math.max(4, pos));
+  const sizes = "(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw";
+  return (
+    <div className="relative aspect-[4/5] select-none overflow-hidden bg-slate-200">
+      <div className="absolute inset-0" role="img" aria-label={beforeAlt}>
+        <Image src={before} alt="" fill sizes={sizes} className="object-cover" />
+      </div>
+      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={afterAlt}>
+        <Image src={after} alt="" fill sizes={sizes} className="object-cover" />
+      </div>
+      <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+      <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
+      <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">↔</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={pos}
+        onChange={(e) => setPos(Number(e.target.value))}
+        aria-label={`Drag to compare before and after: ${title}`}
+        className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
+      />
+    </div>
+  );
+}
+
+function SignPairCard({ c }: { c: SignCard }) {
+  return (
+    <div className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+      <SignSlider before={c.before} after={c.after} beforeAlt={c.beforeAlt} afterAlt={c.afterAlt} title={c.title} />
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className={cardTitle}>{c.title}</h3>
+        <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{c.text}</p>
+        <Link href={c.href} className="mt-auto pt-3 text-sm font-bold text-[#2F63CC] hover:underline">{c.link} →</Link>
+      </div>
+    </div>
+  );
+}
+
 /* Drag-to-compare slider with separate before and after photos (same as the homepage). */
 function BeforeAfterPair({ before, after, title, label }: { before: string; after: string; title: string; label: string }) {
   const [pos, setPos] = useState(100);
@@ -217,7 +264,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
                 </div>
                 <div className="sm:border-l sm:border-white/25 sm:pl-6">
                   <b className="block text-[28px] font-black leading-none">8,000+</b>
-                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <b className="block text-base font-bold">Showers & Balconies Restored</b>
                   <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
                 </div>
               </div>
@@ -257,7 +304,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
             <p className={lead}>Check your shower for these signs. If you spot two or more, get it looked at soon.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {warningSigns.map((c) => <PhotoCard key={c.title} c={c} />)}
+            {warningSigns.map((c) => <SignPairCard key={c.title} c={c} />)}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl md:text-center`}>
             One sign is worth a look. Several together can mean water has moved past the grout. If you notice damp walls or ceiling stains, see our{" "}
