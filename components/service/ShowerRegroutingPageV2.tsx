@@ -37,15 +37,15 @@ type SignCard = { title: string; text: string; before: string; after: string; be
 type ResultBlock = { heading: string; text: string; before: string; after: string; beforeAlt: string; afterAlt: string };
 
 const resultBlocks: ResultBlock[] = [
-  { heading: "Cracked, Crumbling Grout \u2014 Rebuilt With Waterproof Epoxy", text: "This shower floor had done what cement grout always does in a wet area: cracked, crumbled and started letting water through to whatever sits below. We removed every line of the failed grout and rebuilt the floor with waterproof epoxy, so the joints are sealed and made to flex with the tiles instead of cracking again. The tiles never moved.", before: "/shower-cracked-grout-before.webp", after: "/shower-cracked-grout-after.webp", beforeAlt: "Shower floor with worn, dark and failing grout lines before regrouting", afterAlt: "Same shower floor after epoxy regrouting with fresh grey grout lines" },
-  { heading: "Mould That Kept Coming Back \u2014 Fixed at the Source", text: "Scrubbing this corner shower only ever bought a few clean weeks, because mould lives inside porous grout, not on the surface. The failed grout came out completely and the shower was regrouted and resealed, removing the damp trap the mould was feeding on. That is the difference between cleaning mould and actually fixing it.", before: "/shower-mouldy-grout-before.webp", after: "/shower-mouldy-grout-after.webp", beforeAlt: "Mould growing along the grout lines of a white tiled shower corner", afterAlt: "The same corner shower after regrouting, with clean grout throughout" },
-  { heading: "A Leaking Shower, Repaired Without Removing Tiles", text: "Water was escaping through failed grout and silicone \u2014 the kind of slow leak that quietly damages walls, floors and the ceiling below before anyone notices. We repaired the joints and resealed the shower with waterproof epoxy, stopping the leak at its source. No tiles removed, no renovation, no drama.", before: "/damp-patch-leak-before.webp", after: "/damp-patch-leak-after.webp", beforeAlt: "Heritage patterned-tile shower over a bath, with water staining and aged grout before regrouting", afterAlt: "Same heritage shower over a bath after regrouting, with clean grout and a bright, stain-free bath" },
+  { heading: "Cracked, Crumbling Grout, Rebuilt With Waterproof Epoxy", text: "This shower floor had done what cement grout always does in a wet area: cracked, crumbled and started letting water through to whatever sits below. We removed every line of the failed grout and rebuilt the floor with waterproof epoxy, so the joints are sealed and made to flex with the tiles instead of cracking again. The tiles never moved.", before: "/shower-cracked-grout-before.webp", after: "/shower-cracked-grout-after.webp", beforeAlt: "Shower floor with worn, dark and failing grout lines before regrouting", afterAlt: "Same shower floor after epoxy regrouting with fresh grey grout lines" },
+  { heading: "Mould That Kept Coming Back, Fixed at the Source", text: "Scrubbing this corner shower only ever bought a few clean weeks, because mould lives inside porous grout, not on the surface. The failed grout came out completely and the shower was regrouted and resealed, removing the damp trap the mould was feeding on. That is the difference between cleaning mould and actually fixing it.", before: "/shower-mouldy-grout-before.webp", after: "/shower-mouldy-grout-after.webp", beforeAlt: "Mould growing along the grout lines of a white tiled shower corner", afterAlt: "The same corner shower after regrouting, with clean grout throughout" },
+  { heading: "A Leaking Shower, Repaired Without Removing Tiles", text: "Water was escaping through failed grout and silicone, the kind of slow leak that quietly damages walls, floors and the ceiling below before anyone notices. We repaired the joints and resealed the shower with waterproof epoxy, stopping the leak at its source. No tiles removed, no renovation, no drama.", before: "/damp-patch-leak-before.webp", after: "/damp-patch-leak-after.webp", beforeAlt: "Heritage patterned tile shower over a bath, with water staining and aged grout before regrouting", afterAlt: "Same heritage shower over a bath after regrouting, with clean grout and a bright, stain free bath" },
 ];
 
 const failCauses: ImgCard[] = [
-  { title: "Melbourne’s Weather", text: "Warm days and cold nights make tiles move slightly. Cement grout cannot flex with that movement for long. It cracks, and water gets in.", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony exposed to Melbourne sun and rain — temperature movement cracks cement grout over time", href: "#epoxy-vs-cement", link: "Why epoxy handles movement" },
+  { title: "Melbourne’s Weather", text: "Warm days and cold nights make tiles move slightly. Cement grout cannot flex with that movement for long. It cracks, and water gets in.", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony exposed to Melbourne sun and rain, temperature movement cracks cement grout over time", href: "#epoxy-vs-cement", link: "Why epoxy handles movement" },
   { title: "Older Bathrooms", text: "Many homes in suburbs like Malvern, Toorak and Camberwell have bathrooms that are decades old.", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Shower over a bath with ageing tiles and grout in an older Melbourne bathroom", href: "#old-bathrooms", link: "Regrouting an older bathroom" },
-  { title: "Wet Area Standards", text: "Some were built before Australian Standard AS 3740 tightened the rules for wet area waterproofing. In those showers, the grout and silicone do more of the work than they should.", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Water damage where waterproofing has failed — older homes were built before AS 3740 tightened wet-area rules", href: "/leaking-shower-repair", link: "When the membrane has failed" },
+  { title: "Wet Area Standards", text: "Some were built before Australian Standard AS 3740 tightened the rules for wet area waterproofing. In those showers, the grout and silicone do more of the work than they should.", img: "/balcony-water-damage-regrouting-signs.webp", alt: "Water damage where waterproofing has failed, older homes were built before AS 3740 tightened wet area rules", href: "/leaking-shower-repair", link: "When the membrane has failed" },
 ];
 
 const comparisonRows: Array<[string, string, string]> = [
@@ -87,17 +87,14 @@ const diyMistakes = [
 ];
 
 /* Captions stay empty until real suburb + problem captions are supplied. */
-const beforeAfterPairs = [
-  { before: "/beige-shower-floor-regrouting-top-view before.webp", after: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout", label: "Beige shower floor in a Melbourne home, regrouted with waterproof epoxy" },
-  { before: "/tiled-shower-floor-regrouting-wide before.webp", after: "/tiled-shower-floor-regrouting-wide after .webp", title: "Floor tile regrout", label: "Tiled shower floor in a Melbourne home before and after regrouting" },
-  { before: "/grey-shower-base-regrouting-overhead-view before .webp", after: "/grey-shower-floor-regrouting-top-view after.webp", title: "Shower base regrout", label: "Grey shower base in a Melbourne home, regrouted and resealed" },
-];
 
 const relatedProblems = [
-  { label: "Leaking shower or damp walls", href: "/leaking-shower-repair", link: "Leaking Shower Repair", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a leaking shower in a Melbourne home" },
-  { label: "Peeling or mouldy silicone", href: "/silicone-recaulking", link: "Silicone and Recaulking", img: "/white-tile-shower-regrouting-overhead after.webp", alt: "White tiled shower freshly resealed with new silicone" },
-  { label: "Balcony leaks", href: "/balcony-leak-repairs", link: "Balcony Leak Repairs and Regrouting", img: "/balcony-regrouting-tiles.webp", alt: "Tiled balcony floor regrouted in Melbourne by Groutix" },
-  { label: "Bathrooms, kitchens, laundries", href: "/tile-regrouting", link: "Tile Regrouting", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Close-up of cracked grout between bathroom tiles before tile regrouting" },
+  { title: "Leaking Shower Repair", text: "Leaks found and sealed at the source, usually without removing tiles.", href: "/leaking-shower-repair", img: "/leaking-shower-after.webp", alt: "Leaking shower repaired and regrouted by Groutix in a Melbourne home" },
+  { title: "Balcony Leak Repairs", text: "Failed balcony grout and joints rebuilt and resealed to keep water out of the structure.", href: "/balcony-leak-repairs", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Tiled balcony after leak repairs and regrouting by Groutix" },
+  { title: "Tile Regrouting", text: "Regrouting for bathroom floors, kitchens and laundries beyond the shower.", href: "/tile-regrouting", img: "/tile-regrouting-dark-floor-tiles-close-up.webp", alt: "Close up of dark floor tiles after tile regrouting" },
+  { title: "Epoxy Grout", text: "Waterproof epoxy joints that resist mould, staining and cracking for years.", href: "/epoxy-grout", img: "/shower-regrouting-in-progress-close-up.webp", alt: "Epoxy grout being applied to a shower floor during regrouting" },
+  { title: "Silicone Recaulking", text: "Old, peeling silicone cut out and replaced with a clean, watertight seal.", href: "/silicone-recaulking", img: "/shower-regrouting-silicone-removal-in-progress.webp", alt: "Old silicone being removed from a shower before recaulking" },
+  { title: "Small Tiling Jobs", text: "Cracked, loose or missing tiles repaired and replaced on small jobs.", href: "/small-tiling-jobs", img: "/bath-shower-corner-grout-close-up.webp", alt: "Bath and shower corner tiles repaired on a small tiling job" },
 ];
 
 const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [
@@ -197,38 +194,6 @@ function SignPairCard({ c }: { c: SignCard }) {
   );
 }
 
-/* Drag-to-compare slider with separate before and after photos (same as the homepage). */
-function BeforeAfterPair({ before, after, title, label }: { before: string; after: string; title: string; label: string }) {
-  const [pos, setPos] = useState(100);
-  const handle = Math.min(96, Math.max(4, pos));
-  const layer = (src: string) => (
-    <div className="absolute inset-0">
-      <Image src={src} alt="" fill sizes="(min-width:768px) 33vw, 100vw" className="object-cover" />
-    </div>
-  );
-  return (
-    <figure className="m-0">
-      <div className="relative aspect-square select-none overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:aspect-[4/4.2]">
-        <div className="absolute inset-0 overflow-hidden" role="img" aria-label={`${label}, before regrouting`}>{layer(before)}</div>
-        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} role="img" aria-label={`${label}, after regrouting`}>{layer(after)}</div>
-        <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
-        <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
-        <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
-        <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">↔</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={pos}
-          onChange={(e) => setPos(Number(e.target.value))}
-          aria-label={`Drag to compare before and after: ${title}`}
-          className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
-        />
-      </div>
-      <figcaption className="mt-3 font-bold text-slate-900">{title}</figcaption>
-    </figure>
-  );
-}
 
 /* ───────────── Page ───────────── */
 export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] }) {
@@ -268,7 +233,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               </div>
             </div>
             <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/shower-regrouting-tiled-interior.webp" alt="Shower regrouting in Melbourne — a freshly regrouted tiled shower with waterproof epoxy grout" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/shower-regrouting-tiled-interior.webp" alt="Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
@@ -281,7 +246,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               <h2 className={h2}>Get Your Free Shower Regrouting Quote</h2>
               <p className={`${lead} mt-3.5`}>Tell us what your shower is doing and add photos of the problem. Photos are required, so we can see the grout, silicone and tiles before we quote.</p>
               <ul className="mt-6 space-y-2.5">
-                {["Free quote, no obligation", "10-year waterproof warranty on complete regrouts", "Most jobs finished in a single visit"].map((x) => (
+                {["Free quote, no obligation", "10 year waterproof warranty on complete regrouts", "Most jobs finished in a single visit"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
                     {x}
@@ -341,7 +306,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               ))}
             </div>
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/shower-regrouting-rust-stained-tiles.webp" alt="Dark, stained grout lines on white shower tiles — grout that has absorbed water, soap and dirt over years" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
+              <Image src="/failed-grout-drain-close-up.webp" alt="Close up of a shower drain with rust, grime and grout worn away around it after years of water damage" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
             </div>
           </div>
           <div className="mx-auto mt-8 max-w-[1000px]">
@@ -448,11 +413,11 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 border-l-[3px] border-[#FBBC04] pl-3 font-semibold text-slate-700">Eligible complete shower regrouting work is backed by a 10-year waterproof warranty.</p>
+              <p className="mt-6 border-l-[3px] border-[#FBBC04] pl-3 font-semibold text-slate-700">Eligible complete shower regrouting work is backed by a 10 year waterproof warranty.</p>
               <Link href="/contact" className={`${btnNavy} mt-6`}>Book Your Free Quote</Link>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/Shower regrouting Melbourne Process.webp" alt="Shower floor being prepared for regrouting — old grout cut out around the drain before new epoxy grout is applied" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/shower-regrouting-process.webp" alt="Shower floor being prepared for regrouting, old grout cut out around the drain before new epoxy grout is applied" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
@@ -460,19 +425,14 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
         {/* 9. INCLUDED */}
         <Section id="included" alt>
           <SectionHead k="Included" title="What’s Included in Every Groutix Regrout" />
-          <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {included.map((item) => (
               <li key={item} className={`${box} flex items-center gap-3 p-5`}>
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" /></span>
                 <span className="text-base font-bold leading-snug text-slate-900">{item}</span>
               </li>
             ))}
-            </ul>
-            <div className="relative min-h-[260px] overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/beige-shower-floor-regrouting-top-view after.webp" alt="Beige shower floor after regrouting and resealing with waterproof epoxy grout" fill sizes="(min-width:1024px) 25vw, 100vw" className="object-cover" />
-            </div>
-          </div>
+          </ul>
         </Section>
 
         {/* 10. DIY */}
@@ -494,15 +454,6 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
           </p>
         </Section>
 
-        {/* 11. BEFORE & AFTER */}
-        <Section id="before-after" alt>
-          <SectionHead k="Real Work" title="Before and After: Real Regrouting Results">
-            <p className={lead}>Real jobs completed across Melbourne homes, not stock photos.</p>
-          </SectionHead>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {beforeAfterPairs.map((p) => <BeforeAfterPair key={p.title} before={p.before} after={p.after} title={p.title} label={p.label} />)}
-          </div>
-        </Section>
 
         {/* 11b. WARRANTY */}
         <section className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
@@ -557,16 +508,17 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
 
         {/* 15. RELATED PROBLEMS */}
         <Section id="related" alt>
-          <SectionHead k="Related Services" title="Related Problems" />
-          <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
+          <SectionHead k="Related Services" title="Explore Our Other Services" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {relatedProblems.map((r) => (
               <Link key={r.href} href={r.href} className={`${box} group flex flex-col overflow-hidden text-slate-900 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
-                <div className="relative h-[263px] overflow-hidden bg-slate-200">
-                  <Image src={r.img} alt={r.alt} fill sizes="(min-width:1024px) 25vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                <div className="relative aspect-[4/3] overflow-hidden bg-slate-200">
+                  <Image src={r.img} alt={r.alt} fill sizes="(min-width:1024px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
                 </div>
                 <div className="flex flex-1 flex-col p-5">
-                  <h3 className={cardTitle}>{r.label}</h3>
-                  <span className="mt-auto pt-3 text-sm font-bold text-[#2F63CC] group-hover:underline">{r.link} →</span>
+                  <h3 className={cardTitle}>{r.title}</h3>
+                  <p className={`${cardText} mt-1.5`}>{r.text}</p>
+                  <span className="mt-auto pt-3 text-sm font-bold text-[#2F63CC] group-hover:underline">Learn more →</span>
                 </div>
               </Link>
             ))}
@@ -602,7 +554,7 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
               <div>
                 <h2 className={`${h2} text-white`}>Get Your Free Quote Today</h2>
                 <p className="mt-3 text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
-                <p className="mt-1 text-[#D6DCF5]">Free quote · Tiles stay in place · 10-year waterproof warranty</p>
+                <p className="mt-1 text-[#D6DCF5]">Free quote · Tiles stay in place · 10 year waterproof warranty</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <a href="#quote-form" className={`${btnGold} min-h-[54px] w-full sm:w-auto`}>Request A Quote</a>
