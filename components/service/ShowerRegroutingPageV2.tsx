@@ -305,8 +305,8 @@ export default function ShowerRegroutingPageV2({ reviews }: { reviews: Review[] 
                 </div>
               ))}
             </div>
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/failed-grout-drain-close-up.webp" alt="Close up of a shower drain with rust, grime and grout worn away around it after years of water damage" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
+              <Image src="/shower-regrouting-bright-bathroom.webp" alt="Bright Melbourne bathroom with a freshly regrouted and resealed shower over a clean white base" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
             </div>
           </div>
           <div className="mx-auto mt-8 max-w-[1000px]">
