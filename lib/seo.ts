@@ -47,6 +47,8 @@ export const BUSINESS = {
     "https://maps.google.com/?cid=11736395911597271820",
     "https://www.facebook.com/profile.php?id=61582570358855",
     "https://www.instagram.com/groutix.au/",
+    "https://www.tiktok.com/@groutix.au",
+    "https://www.youtube.com/@Groutix-au",
   ],
 } as const;
 
