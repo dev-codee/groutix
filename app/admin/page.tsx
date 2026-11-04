@@ -1,5 +1,7 @@
 "use client";
 
+import { invoiceDraftForLead } from "@/lib/invoiceDraft";
+import { uploadJobPhotos } from "@/lib/uploadJobPhotos";
 import { DEFAULT_INVOICE_ACCOUNT_NUMBER, invoiceAccountNumber as resolveInvoiceAccountNumber } from "@/lib/invoicePayment";
 
 import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
@@ -718,6 +720,9 @@ export default function CrmDashboardPage() {
   const [invoiceGst, setInvoiceGst] = useState<number>(10);
   const [invoiceStatus, setInvoiceStatus] = useState("Unpaid");
   const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const [invoiceSaveError, setInvoiceSaveError] = useState("");
+  const invoiceSaveInFlight = useRef(false);
   const [invoiceBankName, setInvoiceBankName] = useState("ANZ");
   const [invoiceAccountName, setInvoiceAccountName] = useState("Groutix Pty Ltd");
   const [invoiceAccountNumber, setInvoiceAccountNumber] = useState(DEFAULT_INVOICE_ACCOUNT_NUMBER);
@@ -1523,16 +1528,16 @@ export default function CrmDashboardPage() {
     // Booking an appointment here advances the lead the same way a customer
     // self-booking does (/api/book/[id]): a lead that skipped the inspection at
     // intake shouldn't stay on "New" once staff put a time in. Only a newly set
-    // or changed time counts, an explicit status edit in the same save wins,
-    // and statusAfterBooking never moves a lead backwards.
+    // time counts. Rescheduling preserves the current stage; an explicit
+    // status edit in the same save wins.
     const before = editingLead.id ? original : undefined;
     const payload: Partial<Lead> = { ...editingLead };
     const editedFields = leadEditChanges(payload, before || {});
     if (!before || payload.status === before.status) {
-      if (editedFields.inspectionAt) {
+      if (editedFields.inspectionAt && !before?.inspectionAt) {
         payload.status = statusAfterBooking("inspection", payload.status) ?? payload.status;
       }
-      if (editedFields.jobAt) {
+      if (editedFields.jobAt && !before?.jobAt) {
         payload.status = statusAfterBooking("job", payload.status) ?? payload.status;
       }
     }
@@ -2324,44 +2329,19 @@ export default function CrmDashboardPage() {
     }
   }
 
-  async function handleAddPhotos(files: FileList | null) {
-    if (!files || files.length === 0 || !activePhotoLead) return;
+  async function handleAddPhotos(files: File[]) {
+    if (!files.length || !activePhotoLead || uploadingPhotos) return;
+    const leadId = activePhotoLead.id;
     setUploadingPhotos(true);
-
     try {
-      const formData = new FormData();
-      for (let i = 0; i < files.length; i++) {
-        formData.append("photos", files[i]);
-      }
-
-      const res = await fetch(`/api/admin/submissions/${activePhotoLead.id}/photos`, {
-        method: "POST",
-        body: formData,
+      const failures = await uploadJobPhotos(leadId, files, (photos) => {
+        setActivePhotoLead(prev => prev?.id === leadId ? { ...prev, photos, photosCount: photos.length } : prev);
+        setLeads(prev => prev.map(l => l.id === leadId ? { ...l, photos, photosCount: photos.length } : l));
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.photos) {
-          setActivePhotoLead((prev) =>
-            prev ? { ...prev, photos: data.photos, photosCount: data.photos.length } : prev
-          );
-          setLeads((prev) =>
-            prev.map((l) =>
-              l.id === activePhotoLead.id
-                ? { ...l, photos: data.photos, photosCount: data.photos.length }
-                : l
-            )
-          );
-        }
-      } else {
-        const err = await res.json().catch(() => null);
-        alert(err?.error || "Failed to upload photos.");
-      }
-    } catch (err: any) {
-      alert("Error uploading photos: " + (err?.message || "Network error"));
+      if (failures.length) alert(`Some photos could not be uploaded:\n${failures.join("\n")}`);
+    } catch (err: unknown) {
+      alert("Error uploading photos: " + (err instanceof Error ? err.message : "Network error"));
     } finally {
-      if (photoInputRef.current) photoInputRef.current.value = "";
-      if (cameraInputRef.current) cameraInputRef.current.value = "";
       setUploadingPhotos(false);
     }
   }
@@ -3641,34 +3621,63 @@ export default function CrmDashboardPage() {
   // Invoice Logic
   function openInvoiceModal(lead: Lead) {
     setActiveInvoiceLead(lead);
-    setInvoiceService(lead.service || "Complete Shower Regrouting & Waterproof Resealing");
-    setInvoiceDescription(
-      lead.quoteScope ||
-      lead.notes ||
-      lead.message ||
-      "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints"
-    );
-    setInvoicePrice(lead.invoiceAmount ?? lead.quoteAmount ?? 850);
-    setInvoiceExtraWork(lead.technicianNotes || lead.scopeNotes || "");
-    setInvoiceExtraCharge(0);
-    setInvoiceGst(10);
-    // Default to Unpaid; only pre-mark Paid if payment was already recorded.
-    setInvoiceStatus(lead.status === "Payment Received" ? "Paid" : "Unpaid");
-    setInvoiceAccountNumber(DEFAULT_INVOICE_ACCOUNT_NUMBER);
-    try {
-      setInvoiceBankName(localStorage.getItem("groutix_inv_bank") || "ANZ");
-      setInvoiceAccountName(localStorage.getItem("groutix_inv_acc_name") || "Groutix Pty Ltd");
-      setInvoiceAccountNumber(resolveInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num")));
-      setInvoiceBsb(localStorage.getItem("groutix_inv_bsb") || "013442");
-      setInvoiceDueDate(localStorage.getItem("groutix_inv_due_date") || "Within 7 days of invoice date");
-    } catch { }
+    const draft = invoiceDraftForLead(lead);
+    setInvoiceService(draft.service);
+    setInvoiceDescription(draft.description);
+    setInvoicePrice(draft.basePrice);
+    setInvoiceExtraWork(draft.extraWork);
+    setInvoiceExtraCharge(draft.extraCharge);
+    setInvoiceGst(draft.gst);
+    setInvoiceStatus(lead.invoiceStatus || (lead.status === "Payment Received" ? "Paid" : "Unpaid"));
+    setInvoiceSaveError("");
+    setInvoiceBankName(draft.bankName);
+    setInvoiceAccountName(draft.accountName);
+    setInvoiceAccountNumber(draft.accountNumber);
+    setInvoiceBsb(draft.bsb);
+    setInvoiceDueDate(draft.dueDate);
+    if (!lead.invoiceDraft) {
+      try {
+        setInvoiceBankName(localStorage.getItem("groutix_inv_bank") || draft.bankName);
+        setInvoiceAccountName(localStorage.getItem("groutix_inv_acc_name") || draft.accountName);
+        setInvoiceAccountNumber(resolveInvoiceAccountNumber(localStorage.getItem("groutix_inv_acc_num")));
+        setInvoiceBsb(localStorage.getItem("groutix_inv_bsb") || draft.bsb);
+        setInvoiceDueDate(localStorage.getItem("groutix_inv_due_date") || draft.dueDate);
+      } catch { }
+    }
     setInvoiceModalOpen(true);
+  }
+
+  function currentInvoiceInput() {
+    return { id: activeInvoiceLead?.id, service: invoiceService, description: invoiceDescription,
+      extraWork: invoiceExtraWork, extraCharge: invoiceExtraCharge, price: invoicePrice + invoiceExtraCharge,
+      gst: invoiceGst, status: invoiceStatus, bankName: invoiceBankName, accountName: invoiceAccountName,
+      accountNumber: invoiceAccountNumber, bsb: invoiceBsb, dueDate: invoiceDueDate };
+  }
+
+  async function handleSaveInvoice() {
+    if (!activeInvoiceLead || invoiceSaveInFlight.current || sendingInvoice) return;
+    invoiceSaveInFlight.current = true;
+    setSavingInvoice(true);
+    setInvoiceSaveError("");
+    try {
+      const response = await fetch("/api/admin/invoice/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(currentInvoiceInput()) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Could not save the invoice. Please try again.");
+      setLeads(prev => prev.map(lead => lead.id === activeInvoiceLead.id ? { ...lead, ...result.item } : lead));
+      setActiveInvoiceLead(prev => prev ? { ...prev, ...result.item } : prev);
+      setInvoiceModalOpen(false);
+    } catch (error) {
+      setInvoiceSaveError(error instanceof Error ? error.message : "Could not save the invoice. Please try again.");
+    } finally {
+      invoiceSaveInFlight.current = false;
+      setSavingInvoice(false);
+    }
   }
 
   // Server-side send: emails a branded invoice (with PDF) to the customer, and
   // if marked Paid moves the lead to "Payment Received" automatically.
   async function handleSendInvoice() {
-    if (!activeInvoiceLead) return;
+    if (!activeInvoiceLead || invoiceSaveInFlight.current || sendingInvoice) return;
     if (!activeInvoiceLead.email) {
       alert("No email address saved for this customer.");
       return;
@@ -3678,21 +3687,7 @@ export default function CrmDashboardPage() {
       const res = await fetch("/api/admin/invoice/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: activeInvoiceLead.id,
-          service: invoiceService,
-          description: invoiceDescription,
-          extraWork: invoiceExtraWork,
-          extraCharge: invoiceExtraCharge,
-          price: invoicePrice + invoiceExtraCharge,
-          gst: invoiceGst,
-          status: invoiceStatus,
-          bankName: invoiceBankName,
-          accountName: invoiceAccountName,
-          accountNumber: invoiceAccountNumber,
-          bsb: invoiceBsb,
-          dueDate: invoiceDueDate,
-        }),
+        body: JSON.stringify(currentInvoiceInput()),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -8302,7 +8297,7 @@ export default function CrmDashboardPage() {
                   {/* 4. Table */}
                   {(() => {
                     const effectiveTotal = (invoicePrice || 0) + (invoiceExtraCharge || 0);
-                    const subtotal = effectiveTotal / 1.1;
+                    const subtotal = effectiveTotal / (1 + invoiceGst / 100);
                     const gst = effectiveTotal - subtotal;
                     return (
                       <>
@@ -8331,7 +8326,7 @@ export default function CrmDashboardPage() {
                             <div className="col-span-2 text-right">${(invoicePrice || 0).toFixed(2)}</div>
                             <div className="col-span-2 text-right font-bold">${(invoicePrice || 0).toFixed(2)}</div>
                           </div>
-                          {invoiceExtraWork && invoiceExtraCharge > 0 && (
+                          {(invoiceExtraWork || invoiceExtraCharge > 0) && (
                             <div className="grid grid-cols-12 text-[11px] text-slate-800 py-1.5 border-b border-slate-200 items-start">
                               <div className="col-span-6">
                                 <div className="font-semibold text-amber-700">Additional Work</div>
@@ -8347,7 +8342,7 @@ export default function CrmDashboardPage() {
                         {/* 5. Financial Summary */}
                         <div className="text-right text-[11px] space-y-1 text-slate-800">
                           <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">SUBTOTAL</span> <span className="w-20">${subtotal.toFixed(2)}</span></div>
-                          <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST (10%)</span> <span className="w-20">${gst.toFixed(2)}</span></div>
+                          <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">GST ({invoiceGst}%)</span> <span className="w-20">${gst.toFixed(2)}</span></div>
                           <div className="flex justify-end gap-6 font-bold"><span className="text-slate-900">TOTAL</span> <span className="w-20">${effectiveTotal.toFixed(2)}</span></div>
                           <div className="flex justify-end gap-6"><span className="text-slate-500 font-bold">AMOUNT PAID</span> <span className="w-20">${invoiceStatus === "Paid" ? effectiveTotal.toFixed(2) : "0.00"}</span></div>
                           <div className="flex justify-end gap-6 font-black text-sm text-slate-900"><span>BALANCE DUE</span> <span className="w-20">${invoiceStatus === "Paid" ? "0.00" : effectiveTotal.toFixed(2)}</span></div>
@@ -8390,6 +8385,7 @@ export default function CrmDashboardPage() {
                 </div>
               </div>
 
+              {invoiceSaveError && <p role="alert" className="text-sm font-semibold text-red-700">{invoiceSaveError}</p>}
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -8400,7 +8396,10 @@ export default function CrmDashboardPage() {
                       accountNumber: invoiceAccountNumber,
                       bsb: invoiceBsb,
                       dueDate: invoiceDueDate,
-                      price: String(invoicePrice),
+                      price: String(invoicePrice + invoiceExtraCharge),
+                      extraWork: invoiceExtraWork,
+                      extraCharge: String(invoiceExtraCharge),
+                      gst: String(invoiceGst),
                       status: invoiceStatus,
                       service: invoiceService,
                       description: invoiceDescription,
@@ -8415,21 +8414,16 @@ export default function CrmDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    updateLeadField(activeInvoiceLead.id, {
-                      invoiceAmount: invoicePrice,
-                      status: invoiceStatus === "Paid" ? "Payment Received" : activeInvoiceLead.status
-                    });
-                    setInvoiceModalOpen(false);
-                  }}
+                  onClick={handleSaveInvoice}
+                  disabled={savingInvoice || sendingInvoice}
                   className="px-5 py-2 bg-white border border-teal-700 text-teal-700 rounded-xl text-xs font-bold hover:bg-teal-50"
                 >
-                  Save Invoice
+                  {savingInvoice ? "Saving…" : "Save Invoice"}
                 </button>
                 <button
                   type="button"
                   onClick={handleSendInvoice}
-                  disabled={sendingInvoice || !activeInvoiceLead.email}
+                  disabled={savingInvoice || sendingInvoice || !activeInvoiceLead.email}
                   title={!activeInvoiceLead.email ? "No email address saved for this customer" : "Email this invoice to the customer"}
                   className="flex items-center gap-1.5 px-5 py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

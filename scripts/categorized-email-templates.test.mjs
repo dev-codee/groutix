@@ -26,9 +26,9 @@ test("customer greetings, separate arrival times, and document links render corr
   const booking = imported.find(t => t.id === "categorized_job_scheduled_general");
   const rendered = renderEmailTemplate(booking, ctx);
   assert.ok(rendered.body.startsWith("Dear Jun Yi Li,"));
-  assert.match(rendered.body, /Arrival Time: 9:00\s*am/i);
+  assert.match(rendered.body, /Arrival Time: 8:00\s*am – 9:00\s*am/i);
   const inspection = imported.find(t => t.id === "categorized_warranty_inspection_booking_confirmation");
-  assert.match(renderEmailTemplate(inspection, ctx).body, /Arrival Time: 1:00\s*pm/i);
+  assert.match(renderEmailTemplate(inspection, ctx).body, /Arrival Time: 12:00\s*pm – 1:00\s*pm/i);
   const quote = imported.find(t => t.id === "categorized_quote_ready_photo_assessment_general");
   assert.ok(renderEmailTemplate(quote, ctx).body.includes("{document}"));
   assert.ok(renderEmailTemplate(quote, { ...ctx, document: "https://example.com/quote" }).body.includes("https://example.com/quote"));
@@ -76,4 +76,18 @@ test("quote acceptance sits between quote sent and job booked in manual manager 
   assert.ok(i > 0);
   assert.equal(options[i - 1], "Quote Sent");
   assert.equal(options[i + 1], "Job Booked");
+});
+
+
+test("arrival windows end at the booking and begin exactly one hour earlier", () => {
+  const { formatArrivalWindow } = loadTs("lib/scheduling.ts");
+  for (const [booking, expected] of [
+    ["2026-11-04T09:00", "8:00 AM – 9:00 AM"],
+    ["2026-11-04T13:30", "12:30 PM – 1:30 PM"],
+    ["2026-11-04T00:30", "11:30 PM – 12:30 AM"],
+    ["2026-11-03T22:00:00Z", "8:00 AM – 9:00 AM"],
+    ["8:30 am", "7:30 AM – 8:30 AM"],
+    ["invalid", ""],
+  ]) assert.equal(formatArrivalWindow(booking), expected);
+  assert.equal(renderEmailTemplate({ body: "{booking_time}" }, { bookingTime: "8:30 am" }).body, "7:30 AM – 8:30 AM");
 });

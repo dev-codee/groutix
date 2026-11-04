@@ -123,3 +123,13 @@ test("a rejected booking keeps the form open and never claims confirmation was s
   assert.equal(state.closed, false);
   assert.equal(state.toast, null);
 });
+
+
+test("Edit Lead rescheduling does not generate an automatic status change", async () => {
+  for (const type of ["inspection", "job"]) {
+    const original = { id: "lead-1", name: "Sam", status: "Job In Progress", [`${type}At`]: "2026-10-20T09:00" };
+    const state = await save(original, { [`${type}At`]: "2026-10-21T10:00" });
+    assert.equal(Object.hasOwn(state.request, "status"), false);
+    assert.equal(state.leads[0].status, original.status);
+  }
+});

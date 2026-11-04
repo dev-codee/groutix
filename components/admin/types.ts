@@ -136,6 +136,7 @@ export interface Lead {
   followUpNext?: string;
   paymentReceipt?: import("@/lib/paymentReceipt").PaymentReceipt;
   receiptSentAt?: string;
+  invoiceDraft?: import("@/lib/invoiceDraft").InvoiceDraft;
   invoiceAmount?: number;
   invoiceNumber?: string;
   invoiceSentAt?: string;

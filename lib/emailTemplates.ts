@@ -1,5 +1,5 @@
 import { formatEmailPresentation } from "./emailPresentation";
-import { formatAppt } from "./scheduling";
+import { formatAppt, formatArrivalWindow } from "./scheduling";
 import { CATEGORIZED_EMAIL_TEMPLATES } from "./categorizedEmailTemplates";
 
 export interface EmailTemplate {
@@ -68,7 +68,7 @@ export const DYNAMIC_EMAIL_TAGS: DynamicTagInfo[] = [
   { tag: "{technician_name}", label: "Specialist / Tech", category: "Schedule", description: "Assigned technician or inspector name", example: "Marco Rossi" },
   { tag: "{inspection_date}", label: "Inspection Date/Time", category: "Schedule", description: "Formatted on-site inspection appointment", example: "Wed, 23 Sep, 10:00 AM" },
   { tag: "{booking_date}", label: "Booking Date/Time", category: "Schedule", description: "Formatted job execution date & time", example: "Fri, 25 Sep, 8:30 AM" },
-  { tag: "{booking_time}", label: "Arrival Time", category: "Schedule", description: "Arrival time for the job or inspection appointment", example: "8:30 am" },
+  { tag: "{booking_time}", label: "Arrival Time", category: "Schedule", description: "One-hour arrival window ending at the job or inspection booking time", example: "7:30 AM – 8:30 AM" },
 
   // Billing
   { tag: "{quote_number}", label: "Quote #", category: "Billing", description: "Official quotation reference", example: "GX-9402" },
@@ -406,9 +406,7 @@ export function renderEmailTemplate(
   const inspectionOnly = extractTemplateTags(templateText).includes("inspection_date")
     && !extractTemplateTags(templateText).includes("booking_date");
   const arrivalAt = inspectionOnly ? ctx.inspectionAt : ctx.jobAt;
-  const bookingTime = ctx.bookingTime?.trim() || formatAppt(arrivalAt, {
-    hour: "numeric", minute: "2-digit", hour12: true,
-  }) || "Arrival time TBC";
+  const bookingTime = formatArrivalWindow(ctx.bookingTime?.trim() || arrivalAt) || "Arrival time TBC";
   const quoteNum = ctx.quoteNumber?.trim() || "Quote";
   const quoteAmountStr =
     ctx.quoteAmount && ctx.quoteAmount > 0

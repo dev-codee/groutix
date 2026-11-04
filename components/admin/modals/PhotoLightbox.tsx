@@ -1,5 +1,6 @@
 "use client";
 
+import { photoPreviewUrl } from "@/lib/photoPreview";
 import { downloadAttachment } from "@/lib/downloadAttachment";
 import { useEffect, useCallback } from "react";
 import { X, Download, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
@@ -102,7 +103,7 @@ export function PhotoLightbox({ photos, index, onClose, onNavigate }: Props) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={photo.url}
-            src={photo.url}
+            src={photoPreviewUrl(photo)}
             alt={photo.name}
             className="max-h-[75vh] max-w-full object-contain rounded-lg"
           />

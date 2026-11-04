@@ -29,7 +29,7 @@ export const MANAGER_STATUS_FILTER_LIST: string[] = STATUS_LIST.filter(
 
 // Manual status changes include quote acceptance in its pipeline position.
 export const MANAGER_STATUS_OPTIONS_LIST: string[] = STATUS_LIST.filter(
-  (s) => s === "Won" || MANAGER_STATUS_FILTER_LIST.includes(s)
+  (s) => !isProgressStatus(s) && (s === "Won" || MANAGER_STATUS_FILTER_LIST.includes(s))
 );
 
 // The technician status dropdown only needs the stages a technician actually
@@ -355,6 +355,18 @@ export function getRoleStatusOptions(role: Role, currentStatus?: string): string
     return [currentStatus, ...base];
   }
   return base;
+}
+
+/** Progress is recorded by visit actions, rather than selected manually. */
+export function isProgressStatus(status: string): boolean {
+  return /\bin progress\b/i.test(status);
+}
+
+export function getManualStatusOptions(role: Role, currentStatus?: string): string[] {
+  const options = getRoleStatusOptions(role, currentStatus).filter(s => !isProgressStatus(s));
+  // Keep the existing value as a hidden, disabled option so editing another
+  // field never silently changes a record that is already in progress.
+  return currentStatus && isProgressStatus(currentStatus) ? [currentStatus, ...options] : options;
 }
 
 export function normalizeStatus(s?: string): string {

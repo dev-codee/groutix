@@ -1,5 +1,7 @@
 "use client";
 
+import { isProgressStatus } from "@/lib/adminHelpers";
+
 import { BookingTimingEditor } from "@/components/admin/BookingTimingEditor";
 import { staffBookingRules } from "@/lib/staffBookingRules";
 
@@ -8,7 +10,7 @@ import { appointmentDurationMinutes } from "@/lib/bookingDuration";
 import { useRef, useState } from "react";
 import { X, Phone, MapPin, CalendarDays, Link2, Ban, Check } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
-import { fmtDate, getRoleStatusOptions } from "@/lib/adminHelpers";
+import { fmtDate, getManualStatusOptions } from "@/lib/adminHelpers";
 import type { Role } from "@/lib/roles";
 import { explainOutsideRules } from "@/lib/bookingRules";
 import { useBookingRules } from "@/lib/useBookingRules";
@@ -203,8 +205,8 @@ export function LeadEditModal({
                 onChange={(e) => setEditingLead({ ...editingLead, status: e.target.value })}
                 className="mt-1 min-w-0 w-full bg-white p-2.5 border border-slate-200 rounded-xl"
               >
-                {getRoleStatusOptions(role, editingLead?.status).map((s) => (
-                  <option key={s} value={s}>
+                {getManualStatusOptions(role, editingLead?.status).map((s) => (
+                  <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>
                     {s}
                   </option>
                 ))}

@@ -1,7 +1,7 @@
-import { invoiceAccountNumber } from "@/lib/invoicePayment";
+import { invoiceChanges } from "@/lib/invoiceDraft";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
-import { verifySession, verifyRequestSession, SESSION_COOKIE } from "@/lib/adminAuth";
+import { verifyRequestSession } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 import { invoiceTrackingPixel } from "@/lib/automations";
@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await verifyRequestSession(req);
-  const actor = session?.username || "staff";
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const actor = session.username || "staff";
 
   let body: {
     id?: string;
@@ -58,27 +59,15 @@ export async function POST(req: NextRequest) {
 
   // The modal treats the entered price as the GST-inclusive total, matching the
   // on-screen preview, so the emailed invoice always agrees with what staff saw.
-  const gstRate = Number(body.gst ?? 10);
-  const total = Number(body.price);
-  if (body.price == null || !Number.isFinite(total) || total <= 0 || !Number.isFinite(gstRate) || gstRate < 0) {
-    return NextResponse.json({ error: "Enter a valid invoice amount greater than zero and a valid tax rate." }, { status: 400 });
-  }
+  let savedInvoice;
+  try { savedInvoice = invoiceChanges({ ...lead, id: body.id }, body); }
+  catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  const { invoiceDraft: draft, invoiceAmount: total, invoiceNumber, invoiceStatus: status } = savedInvoice;
+  const gstRate = draft.gst;
   const subtotal = total / (1 + gstRate / 100);
   const gst = total - subtotal;
-  const service = body.service || lead.service || "Regrouting & waterproof resealing";
-  const description = body.description || "";
-  const extraWork = body.extraWork || "";
-  const extraCharge = Number(body.extraCharge || 0);
-  const baseTotal = total - extraCharge;
-  const status = body.status === "Paid" ? "Paid" : "Unpaid";
-  const bankName = body.bankName || "ANZ";
-  const accountName = body.accountName || "Groutix Pty Ltd";
-  const accountNumber = invoiceAccountNumber(body.accountNumber);
-  const bsb = body.bsb || "013442";
-  const dueDate = body.dueDate || "Within 7 days of invoice date";
-
-  // Deterministic invoice number so the preview and the emailed copy match.
-  const invoiceNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "INV-") : (lead.invoiceNumber || `INV-${body.id.slice(-6).toUpperCase()}`);
+  const { service, description, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = draft;
+  const baseTotal = draft.basePrice;
 
   const statusBadge =
     status === "Paid"
@@ -106,7 +95,7 @@ export async function POST(req: NextRequest) {
             </td>
             <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;text-align:right;vertical-align:top;">$${baseTotal.toFixed(2)}</td>
           </tr>
-          ${extraWork && extraCharge > 0 ? `<tr>
+          ${extraWork || extraCharge > 0 ? `<tr>
             <td style="padding:12px;border-bottom:1px solid #f1f5f9;color:#334155;">
               <div style="font-weight:600;">Additional Work</div>
               <div style="color:#64748b;font-size:13px;margin-top:4px;white-space:pre-wrap;">${esc(extraWork)}</div>
@@ -168,7 +157,7 @@ export async function POST(req: NextRequest) {
       jobDescription: lead.issue || lead.message || service,
       items: [
         { service, description, price: baseTotal, qty: 1 },
-        ...(extraWork && extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : []),
+        ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : []),
       ],
       subtotal,
       gst,
@@ -206,7 +195,8 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  await updateSubmission(body.id, {
+  const saved = await updateSubmission(body.id, {
+    ...savedInvoice,
     invoiceNumber,
     invoiceSentAt: now,
     invoiceStatus: status,
@@ -215,6 +205,7 @@ export async function POST(req: NextRequest) {
     // otherwise → "Payment Pending" (we're now awaiting the customer's payment).
     status: status === "Paid" ? "Payment Received" : "Payment Pending",
   });
+  if (!saved) return NextResponse.json({ error: "The invoice email was sent, but the invoice could not be saved. Please use Save Invoice before sending again." }, { status: 500 });
   await appendActivity(body.id, {
     time: now,
     actor,
@@ -226,7 +217,7 @@ export async function POST(req: NextRequest) {
   if (isQboConfigured()) {
     const qboItems = [
       { description: description ? `${service} — ${description}` : service, amount: baseTotal },
-      ...(extraWork && extraCharge > 0 ? [{ description: `Additional Work — ${extraWork}`, amount: extraCharge }] : []),
+      ...(extraWork || extraCharge > 0 ? [{ description: `Additional Work — ${extraWork}`, amount: extraCharge }] : []),
     ];
     // Fire-and-forget so a QBO outage never blocks the emailed invoice - but the
     // outcome is recorded either way, otherwise a silent failure is invisible to

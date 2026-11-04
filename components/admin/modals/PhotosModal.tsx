@@ -1,19 +1,11 @@
 "use client";
 
+import { photoPreviewUrl } from "@/lib/photoPreview";
 import { downloadAttachment } from "@/lib/downloadAttachment";
 import { useRef } from "react";
 import { X, Camera, Upload, Loader2, ZoomIn, Download, ExternalLink, Trash2 } from "lucide-react";
 import { Image as ImageIcon } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
-
-interface Photo {
-  name: string;
-  url?: string;
-  secureUrl?: string;
-  dataUrl?: string;
-  publicId?: string;
-  uploadedBy?: string;
-}
 
 interface Props {
   lead: Lead;
@@ -21,7 +13,7 @@ interface Props {
   loadingPhotos: boolean;
   deletingPhotoIndex: number | null;
   onClose: () => void;
-  onAddPhotos: (files: FileList | null) => void;
+  onAddPhotos: (files: File[]) => void;
   onDeletePhoto: (index: number) => void;
   onPreviewPhoto: (photos: { name: string; url: string }[], index: number) => void;
 }
@@ -74,18 +66,18 @@ export function PhotosModal({
                 ref={cameraRef}
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 capture="environment"
                 className="hidden"
-                onChange={(e) => onAddPhotos(e.target.files)}
+                onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; onAddPhotos(files); }}
               />
               <input
                 ref={galleryRef}
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 className="hidden"
-                onChange={(e) => onAddPhotos(e.target.files)}
+                onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; onAddPhotos(files); }}
               />
             </div>
             {uploadingPhotos && (
@@ -106,6 +98,7 @@ export function PhotosModal({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[55vh] overflow-y-auto p-1">
             {(lead.photos || []).map((photo, i) => {
               const imgSrc = photo.secureUrl || photo.url || photo.dataUrl || "";
+              const previewSrc = photoPreviewUrl(photo);
               const isDeleting = deletingPhotoIndex === i;
               const allPhotoList = (lead.photos || [])
                 .map((p) => ({ name: p.name, url: p.secureUrl || p.url || p.dataUrl || "" }))
@@ -122,7 +115,7 @@ export function PhotosModal({
                     {imgSrc ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={imgSrc}
+                        src={previewSrc}
                         alt={photo.name}
                         className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                       />

@@ -66,6 +66,7 @@ export async function uploadBufferToCloudinary(
     folder?: string;
     filename?: string;
     tags?: string[];
+    format?: "jpg";
   } = {}
 ): Promise<CloudinaryUploadResult> {
   const cld = getCloudinary();
@@ -83,7 +84,7 @@ export async function uploadBufferToCloudinary(
         unique_filename: true,
         ...(isPdf
           ? { public_id: `${randomUUID()}.pdf` }
-          : { quality: "auto", fetch_format: "auto" }),
+          : { quality: "auto", ...(options.format ? { format: options.format } : { fetch_format: "auto" }) }),
       },
       (error, result) => {
         if (error || !result) {

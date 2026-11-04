@@ -1,7 +1,7 @@
-import { invoiceAccountNumber } from "@/lib/invoicePayment";
+import { invoiceChanges, invoiceDraftForLead } from "@/lib/invoiceDraft";
 import { NextRequest, NextResponse } from "next/server";
 import { getSubmission } from "@/lib/submissions";
-import { buildQuotePdfBase64, computeQuoteTotals } from "@/lib/quotePdf";
+import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 
 export const runtime = "nodejs";
 
@@ -14,34 +14,30 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (!lead) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const sp = req.nextUrl.searchParams;
-  const bankName = sp.get("bankName") || "ANZ";
-  const accountName = sp.get("accountName") || "Groutix Pty Ltd";
-  const accountNumber = invoiceAccountNumber(sp.get("accountNumber"));
-  const bsb = sp.get("bsb") || "013442";
-  const dueDate = sp.get("dueDate") || "within 7 days of invoice date";
-  const overridePrice = sp.get("price") ? parseFloat(sp.get("price")!) : undefined;
-  const overrideService = sp.get("service") || undefined;
-  const overrideDesc = sp.get("description") || undefined;
-  const overrideStatus = sp.get("status") || lead.invoiceStatus || "Unpaid";
-
-  const price = overridePrice !== undefined && !isNaN(overridePrice) ? overridePrice : (lead.invoiceAmount ?? lead.quoteAmount ?? 850);
-  const service = overrideService || lead.service || "Regrouting & waterproof resealing";
-  const description = overrideDesc !== undefined ? overrideDesc : (lead.quoteScope || lead.message || lead.issue || "");
-
-  const items = [{ service, description, price, qty: 1 }];
-  const { subtotal, gst, total } = computeQuoteTotals(
-    items,
-    lead.quoteTaxMode,
-    lead.quoteTaxRate ?? 10,
-    price
-  );
-
-  const invoiceNumber = lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "INV-") : (lead.invoiceNumber || lead.quoteNumber || "INV-DRAFT");
+  const stored = invoiceDraftForLead({ ...lead, id });
+  let invoice;
+  try {
+    invoice = invoiceChanges({ ...lead, id }, {
+      service: sp.get("service") ?? stored.service, description: sp.get("description") ?? stored.description,
+      extraWork: sp.get("extraWork") ?? stored.extraWork, extraCharge: Number(sp.get("extraCharge") ?? stored.extraCharge),
+      price: Number(sp.get("price") ?? lead.invoiceAmount ?? (stored.basePrice + stored.extraCharge)),
+      gst: Number(sp.get("gst") ?? stored.gst), status: sp.get("status") ?? lead.invoiceStatus,
+      bankName: sp.get("bankName") ?? stored.bankName, accountName: sp.get("accountName") ?? stored.accountName,
+      accountNumber: sp.get("accountNumber") ?? stored.accountNumber, bsb: sp.get("bsb") ?? stored.bsb, dueDate: sp.get("dueDate") ?? stored.dueDate,
+    });
+  } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  const { service, description, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = invoice.invoiceDraft;
+  const items = [{ service, description, price: invoice.invoiceDraft.basePrice, qty: 1 },
+    ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : [])];
+  const total = invoice.invoiceAmount;
+  const subtotal = total / (1 + invoice.invoiceDraft.gst / 100);
+  const gst = total - subtotal;
+  const invoiceNumber = invoice.invoiceNumber;
   const jobDescription = description || service;
 
   const base64 = await buildQuotePdfBase64({
     docType: "invoice",
-    statusLabel: overrideStatus,
+    statusLabel: invoice.invoiceStatus,
     quoteNumber: invoiceNumber,
     date: new Date().toLocaleDateString("en-AU", {
       timeZone: "Australia/Sydney",
@@ -58,7 +54,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     subtotal,
     gst,
     total,
-    taxName: lead.quoteTaxMode === "none" ? "No Tax" : "GST (10%)",
+    taxName: `GST (${invoice.invoiceDraft.gst}%)`,
     bankName,
     accountName,
     accountNumber,

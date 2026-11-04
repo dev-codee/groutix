@@ -104,6 +104,23 @@ export function formatSlotRange(t: string, durationMinutes: number = 60): string
   return `${formatHHmm(t)} – ${formatHHmm(fromMinutes((start + durationMinutes) % (24 * 60)))}`;
 }
 
+/** Customer arrival window: one hour before the booked local time, ending at it. */
+export function formatArrivalWindow(value: string | null | undefined): string {
+  if (!value?.trim()) return "";
+  const input = value.trim();
+  const clock = /^\d{4}-\d{2}-\d{2}[T ]/.test(input)
+    ? formatAppt(input, { hour: "2-digit", minute: "2-digit", hour12: false })
+    : input;
+  const match = /^(\d{1,2}):(\d{2})\s*(am|pm)?$/i.exec(clock);
+  if (!match) return "";
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (minute > 59 || (match[3] ? hour < 1 || hour > 12 : hour > 23)) return "";
+  if (match[3]) hour = hour % 12 + (match[3].toLowerCase() === "pm" ? 12 : 0);
+  const end = hour * 60 + minute;
+  return `${formatHHmm(fromMinutes((end - 60 + 1440) % 1440))} – ${formatHHmm(fromMinutes(end))}`;
+}
+
 /**
  * Returns today's date as "YYYY-MM-DD" in Australian Eastern Time (Melbourne/Sydney),
  * fully DST-aware. Use this everywhere instead of `new Date().toISOString().slice(0, 10)`

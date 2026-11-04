@@ -1,5 +1,7 @@
 "use client";
 
+import { isProgressStatus } from "@/lib/adminHelpers";
+
 import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 
@@ -12,7 +14,7 @@ import {
 } from "lucide-react";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getRoleStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
+import { getManualStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -35,7 +37,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   } = ctx;
 
   const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-  const statusOptions = getRoleStatusOptions(role, l.status);
+  const statusOptions = getManualStatusOptions(role, l.status);
   const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
   const waUrl = getWhatsAppLink(l.phone);
   const followupPrompt = getFollowupPrompt(l);
@@ -284,7 +286,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 className="w-full h-[34px] text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-2xs truncate"
               >
                 {statusOptions.map((s) => (
-                  <option key={s} value={s}>{s === "Completed" ? "Completed 🏆" : s}</option>
+                  <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>{s === "Completed" ? "Completed 🏆" : s}</option>
                 ))}
               </select>
             </div>

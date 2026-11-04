@@ -193,6 +193,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
+  // A stale editor must never reset an existing booking to the New queue,
+  // including saves that clear the appointment or only edit its end/assignee.
+  if (typeof body.status === "string" && /^(new|new lead)$/i.test(body.status.trim()) &&
+      (primary.inspectionAt || primary.jobAt || primary.bookings?.length) &&
+      !/^(new|new lead)$/i.test((primary.status || "").trim())) {
+    body.status = primary.status;
+  }
+
   if (typeof body.status === "string" && body.status !== before.status) {
     const isTerminal = /^(lost|cancelled|closed|no response)/i.test(body.status);
     const wasTerminal = /^(lost|cancelled|closed|no response)/i.test(before.status || "");

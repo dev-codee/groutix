@@ -316,3 +316,17 @@ test("editing one of two same-start visits targets its ID and preserves the prim
   assert.equal((await ambiguous.patch({ bookingOriginalStart: before.jobAt, jobAt: "2026-10-20T11:00" })).status, 409);
   assert.equal(ambiguous.calls.length, 0);
 });
+
+
+test("stale New status cannot reset bookings on end-time edits, removal or general edits", async () => {
+  for (const type of ["inspection", "job"]) {
+    for (const stale of ["New", "new", " NEW ", "New Lead"]) {
+      for (const updates of [{ [`${type}At`]: "" }, { [`${type}EndAt`]: "2026-10-28T11:00" }, { notes: "Call before arrival" }]) {
+        const status = type === "job" ? "Job In Progress" : "Inspection Completed";
+        const { patch, calls } = patchApi({ before: { status, [`${type}At`]: "2026-10-28T09:00" } });
+        assert.equal((await patch({ ...updates, status: stale })).status, 200);
+        assert.equal(calls.find(([action]) => action === "update")[2].status, status);
+      }
+    }
+  }
+});

@@ -1,5 +1,7 @@
 "use client";
 
+import { isProgressStatus } from "@/lib/adminHelpers";
+
 import { useRef, useState } from "react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { BOOKING_STATUSES } from "@/lib/bookingStatus";
@@ -34,7 +36,7 @@ export function BookingStatusControl({ leadId, booking, disabled = false, compac
           ? "block w-full min-w-0 max-w-full rounded-lg border border-blue-100 bg-blue-50/60 px-2 py-1.5 text-[11px] font-medium text-blue-800 focus:outline-2 focus:outline-blue-500 disabled:opacity-50"
           : "max-w-full rounded-lg border border-slate-300 bg-white px-2 py-1 disabled:opacity-50"}
         value={booking.status || BOOKING_STATUSES[booking.type][0]} onChange={event => void save(event.target.value)}>
-        {BOOKING_STATUSES[booking.type].map(status => <option key={status} value={status}>{status}</option>)}
+        {BOOKING_STATUSES[booking.type].filter(status => !isProgressStatus(status) || status === booking.status).map(status => <option key={status} value={status} hidden={isProgressStatus(status)} disabled={isProgressStatus(status)}>{status}</option>)}
       </select>
     </label>
     {busy && <p role="status" className="mt-1 text-[10px] text-slate-500">Saving…</p>}

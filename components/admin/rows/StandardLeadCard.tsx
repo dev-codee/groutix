@@ -1,5 +1,7 @@
 "use client";
 
+import { isProgressStatus } from "@/lib/adminHelpers";
+
 import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 
 import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
@@ -20,7 +22,7 @@ import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import {
   getLeadQuoteTotal, getFollowupPrompt, getWhatsAppLink,
-  getRoleStatusOptions, visitStepsFor, INSPECTION_STEPS,
+  getManualStatusOptions, visitStepsFor, INSPECTION_STEPS,
   JOB_STEPS, STATUS_LIST, MANAGER_STATUS_OPTIONS_LIST, fmtDate, getStepActive,
   INSPECTION_PHASE, isTerminalStatus, getEffectiveWorkflowStatus,
 } from "@/lib/adminHelpers";
@@ -164,12 +166,12 @@ export function StandardLeadCard({ l }: { l: Lead }) {
               title="Change status manually"
             >
               {(role === "intake"
-                ? getRoleStatusOptions(role, l.status)
+                ? getManualStatusOptions(role, l.status)
                 : role === "manager" || role === "super_admin"
                   ? Array.from(new Set([...MANAGER_STATUS_OPTIONS_LIST, l.status])).filter(Boolean)
-                  : Array.from(new Set([...STATUS_LIST, "Payment Request", l.status])).filter(Boolean)
+                  : Array.from(new Set([...getManualStatusOptions(role), "Payment Request", l.status])).filter(Boolean)
               ).map((s) => (
-                <option key={s} value={s}>
+                <option key={s} value={s} hidden={isProgressStatus(s)} disabled={isProgressStatus(s)}>
                   {s === "Completed" ? "Completed 🏆" : s === "Won" ? "Quote Accepted" : s === "Lost" ? "Lost / Closed" : s}
                 </option>
               ))}

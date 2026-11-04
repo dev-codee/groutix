@@ -199,6 +199,7 @@ export interface SubmissionDoc {
   quoteSignedIp?: string; // IP address of the signer
   paymentReceipt?: import("@/lib/paymentReceipt").PaymentReceipt;
   receiptSentAt?: string;
+  invoiceDraft?: import("@/lib/invoiceDraft").InvoiceDraft;
   invoiceAmount?: number;
   invoiceNumber?: string;
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
@@ -766,6 +767,17 @@ async function syncPrimaryBookingStatus(id: string, status?: string): Promise<vo
   const db = await getDb();
   await db.collection("bookings").updateOne({ leadId: id, type, date: start.slice(0, 10), time: start.slice(11, 16), ...(type === "job" ? lead.technicianId ? { technicianId: lead.technicianId } : lead.technician ? { technician: lead.technician } : {} : lead.inspectorId ? { inspectorId: lead.inspectorId } : lead.assigned ? { assigned: lead.assigned } : {}), status: { $ne: "Cancelled" } },
     { $set: { status } });
+}
+
+/** Append in one database operation so simultaneous staff uploads cannot overwrite each other. */
+export async function appendSubmissionPhotos(id: string, photos: SubmissionPhoto[]): Promise<SubmissionPhoto[] | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const col = await collection(false);
+  const updated = await col.findOneAndUpdate({ _id: new ObjectId(id) }, [
+    { $set: { photos: { $concatArrays: [{ $ifNull: ["$photos", []] }, { $literal: photos }] } } },
+    { $set: { photosCount: { $size: "$photos" } } },
+  ], { returnDocument: "after", projection: { photos: 1 } });
+  return updated?.photos || null;
 }
 
 export async function updateSubmission(
