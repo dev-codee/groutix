@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Loader2, Trash2, Plus, RotateCcw } from "lucide-react";
 import {
   DEFAULT_BOOKING_RULES,
+  bookingNoticeDays,
   WEEKDAY_NAMES,
   formatHHmm,
   consolidateBookingHours,
@@ -16,7 +17,7 @@ import {
 } from "@/lib/bookingRules";
 import { TechnicianAvailabilityPanel } from "@/components/admin/TechnicianAvailabilityEditor";
 import { publishBookingRules } from "@/lib/useBookingRules";
-import { todayAU } from "@/lib/scheduling";
+import { todayAU, addDaysYmd, formatApptDate } from "@/lib/scheduling";
 
 // Monday-first display order (rules are stored Sunday = 0).
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -125,6 +126,23 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
 
       <button type="button" onClick={() => setTab("technicians")} className="w-full py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold cursor-pointer">Edit Technician Availability & Job Capacity</button>
 
+      {tab === "inspection" && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-2 text-xs">
+          <label htmlFor="inspection-skip-days" className="block font-bold text-slate-700">Days to skip after today</label>
+          <div className="flex items-center gap-2">
+            <input id="inspection-skip-days" type="number" min={0} max={59} step={1}
+              value={rules.inspection.minNoticeDays === undefined ? "" : Math.max(rules.inspection.minNoticeDays - 1, 0)}
+              placeholder="Use minimum notice below"
+              onChange={e => update({ ...rules, inspection: { ...rules.inspection, minNoticeDays: e.target.value === "" ? undefined : Number(e.target.value) + 1 } })}
+              className="w-full p-2 border border-slate-200 rounded-lg bg-white" />
+            {rules.inspection.minNoticeDays !== undefined && <button type="button" onClick={() => update({ ...rules, inspection: { ...rules.inspection, minNoticeDays: undefined } })} className="font-semibold text-blue-700 whitespace-nowrap">Use default</button>}
+          </div>
+          <p className="text-slate-600">Skip 2 days on the 4th to offer inspections from the 7th. This moves forward automatically each day and applies to new customer inspection bookings.</p>
+          <p className="font-semibold text-blue-800">First possible date: {formatApptDate(`${[addDaysYmd(todayAU(), bookingNoticeDays(rules, "inspection")), rules.minDate].filter(Boolean).sort().at(-1)}T12:00`)}. Open days, closed dates and available slots still apply.</p>
+          {rules.inspection.minNoticeDays === undefined && <p className="text-slate-500">Using the minimum notice setting below. Enter a number to set a separate inspection delay.</p>}
+        </div>
+      )}
+
       {/* Slot length */}
       <div className="flex items-center justify-between gap-3 text-xs">
         <label htmlFor="slot-len" className="font-bold text-slate-700">{typeLabel}: slot length</label>
@@ -210,9 +228,9 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Minimum notice (days)</label>
+          <label className="font-bold text-slate-700 block mb-1">Default minimum notice (days)</label>
           <input type="number" min={0} max={60} value={rules.minNoticeDays} onChange={(e) => update({ ...rules, minNoticeDays: Number(e.target.value) })} className="w-full p-2 border border-slate-200 rounded-lg" />
-          <p className="text-[10px] text-slate-400 mt-0.5">0 = same day, 1 = from tomorrow</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">0 = same day, 1 = from tomorrow. Inspections use their separate delay when set.</p>
         </div>
         <div>
           <label className="font-bold text-slate-700 block mb-1">Book up to (days ahead)</label>

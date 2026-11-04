@@ -37,6 +37,8 @@ export interface TypeRules {
   slotMinutes: number;
   /** Customer booking limit per overlapping slot; unset preserves legacy capacity. */
   maxBookingsPerSlot?: number;
+  /** Optional customer notice override for this booking type (calendar days from today). */
+  minNoticeDays?: number;
   /** Future changeovers, sorted ascending by `from`; the latest match wins. */
   changeovers?: DayChangeover[];
 }
@@ -112,6 +114,12 @@ export function weekdayOf(date: string): number {
 }
 
 // ── Rule queries ─────────────────────────────────────────────────────────────
+
+/** Staff scheduling bypasses customer notice; unset type overrides keep existing rules. */
+export function bookingNoticeDays(rules: BookingRules, type: BookingType): number {
+  if ("staffScheduling" in rules && rules.staffScheduling === true) return 0;
+  return Math.max(rules[type].minNoticeDays ?? rules.minNoticeDays, 0);
+}
 
 /**
  * The open days/hours in force on a calendar date, honouring scheduled
@@ -257,7 +265,9 @@ function sanitizeType(input: unknown, fallback: TypeRules): TypeRules {
     }))
     .filter((c, i, arr) => arr.findIndex((x) => x.from === c.from) === i)
     .sort((a, b) => a.from.localeCompare(b.from));
-  return { slotMinutes, days, ...(maxBookingsPerSlot !== undefined ? { maxBookingsPerSlot } : {}),
+  const notice = src.minNoticeDays;
+  const minNoticeDays = typeof notice === "number" && Number.isInteger(notice) && notice >= 0 && notice <= 60 ? notice : undefined;
+  return { slotMinutes, days, ...(minNoticeDays !== undefined ? { minNoticeDays } : {}), ...(maxBookingsPerSlot !== undefined ? { maxBookingsPerSlot } : {}),
     ...(changeovers.length ? { changeovers } : {}) };
 }
 
@@ -296,6 +306,9 @@ export function validateBookingRules(rules: BookingRules): string[] {
   const errors: string[] = [];
   for (const type of ["inspection", "job"] as BookingType[]) {
     const label = type === "inspection" ? "Inspection" : "Job";
+    const notice = rules[type].minNoticeDays;
+    if (notice !== undefined && (!Number.isInteger(notice) || notice < 0 || notice > 60)) errors.push(`${label}: minimum notice must be a whole number from 0 to 60 days.`);
+    if (bookingNoticeDays(rules, type) > rules.horizonDays) errors.push(`${label}: minimum notice can't be longer than the booking window.`);
     const slotLen = rules[type].slotMinutes;
     const limit = rules[type].maxBookingsPerSlot;
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 5)) {

@@ -29,6 +29,7 @@
 
 import {
   DEFAULT_BOOKING_RULES,
+  bookingNoticeDays,
   formatHHmm,
   fromMinutes,
   nextChangeover,
@@ -928,7 +929,7 @@ export function getAvailableDaysSummary(
  */
 export function inspectionDaysText(rules: BookingRules = DEFAULT_BOOKING_RULES): string {
   const today = melbourneYmd();
-  const earliest = addDaysYmd(today, Math.max(rules.minNoticeDays, 0));
+  const earliest = addDaysYmd(today, bookingNoticeDays(rules, "inspection"));
   const from = rules.minDate && rules.minDate > earliest ? rules.minDate : earliest;
   const now = openDaysSummary(rules, "inspection", from);
   const next = nextChangeover(rules, "inspection", from);
@@ -993,7 +994,7 @@ export function computeAvailability(
   const [by, bm, bd] = melToday.split("-").map(Number);
   const baseNoonUtc = Date.UTC(by, bm - 1, bd, 12, 0, 0);
 
-  for (let i = Math.max(rules.minNoticeDays, 0); i <= rules.horizonDays; i++) {
+  for (let i = bookingNoticeDays(rules, type); i <= rules.horizonDays; i++) {
     const d = new Date(baseNoonUtc + i * 86400000);
     const dateStr = d.toISOString().slice(0, 10);
 
@@ -1103,7 +1104,7 @@ export function isSlotOffered(
   const [ty, tm, td] = melToday.split("-").map(Number);
   const todayNoon = Date.UTC(ty, tm - 1, td, 12, 0, 0);
   const diffDays = Math.round((d.getTime() - todayNoon) / 86400000);
-  if (diffDays < rules.minNoticeDays || diffDays > rules.horizonDays) return false;
+  if (diffDays < bookingNoticeDays(rules, type) || diffDays > rules.horizonDays) return false;
   if (diffDays === 0) {
     const nowHHmm = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Australia/Melbourne",
