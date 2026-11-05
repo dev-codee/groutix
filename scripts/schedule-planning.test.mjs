@@ -85,7 +85,7 @@ test("opening the calendar normally lists unassigned leads without selecting one
 
 // Drive the actual component's event handlers with deterministic hook state and
 // mocked network boundaries, including the confirmation/cancellation lifecycle.
-function interactiveCalendar() {
+function interactiveCalendar(appointmentsOverride) {
   const scopes = new Map();
   let scope = "calendar";
   let cursor = 0;
@@ -98,7 +98,7 @@ function interactiveCalendar() {
   };
   const hooks = { ...React, useState: cell, useRef: (value) => cell({ current: value })[0], useMemo: (fn) => fn(), useCallback: (fn) => fn, useEffect: () => {} };
   const requests = [];
-  const appointments = [
+  const appointments = appointmentsOverride || [
     { leadId: "a", type: "inspection", date: "2099-10-08", time: "09:00", name: "Booked A", address: "10 Main Street" },
     { leadId: "b", type: "inspection", date: "2099-10-08", time: "10:00", name: "Booked B", address: "20 Main Street" },
   ];
@@ -218,4 +218,27 @@ test("the three-dot button opens the shared booking popup without saving", async
   assert.equal(ui.requests.filter(request => request.method === "PATCH").length, 0);
   editor.props.onClose();
   assert.ok(!ui.find(ui.render(), el => el.type?.name === "EditBookingModal"));
+});
+
+
+test("calendar day cards and selected booking retain completion badges from slots", async () => {
+  const ui = interactiveCalendar([
+    { bookingId: "done-inspection", leadId: "a", type: "inspection", date: "2099-10-08", time: "09:00", name: "Inspected Customer", status: "Inspection Completed" },
+    { bookingId: "done-job", leadId: "b", type: "job", date: "2099-10-08", time: "10:00", name: "Repaired Customer", status: "Job Done" },
+    { bookingId: "pending-job", leadId: "b", type: "job", date: "2099-10-08", time: "12:00", name: "Return Visit", status: "Job Booked" },
+  ]);
+  let root = await ui.initialize();
+  const day = ui.find(root, el => el.type?.name === "JobListPanel");
+  assert.ok(day);
+  const html = renderToStaticMarkup(ui.render(day));
+  assert.match(html, /Inspection completed/);
+  assert.match(html, /Job completed/);
+  assert.equal((html.match(/Job completed/g) || []).length, 1);
+  const timeline = ui.find(root, el => el.type?.name === "RouteTimeline");
+  assert.match(renderToStaticMarkup(ui.render(timeline)), /Job completed/);
+  day.props.onSelect(day.props.entries[0].id);
+  root = ui.render();
+  const selected = ui.find(root, el => el.type?.name === "SelectedBookingSidebar");
+  assert.ok(selected);
+  assert.match(renderToStaticMarkup(ui.render(selected)), /Inspection completed/);
 });

@@ -15,10 +15,15 @@ import { BookingMapPlanner } from "@/components/admin/BookingMapPlanner";
 import { EditBookingModal } from "@/components/admin/modals/EditBookingModal";
 import { bookingLead, leadBookings } from "@/lib/leadBookings";
 import type { Lead } from "@/components/admin/types";
+import { ScheduleBookingBadge } from "@/components/admin/ScheduleBookingBadge";
+import { withScheduleVisitStatuses } from "@/lib/scheduleVisitStatus";
+import type { BookingStatus } from "@/lib/bookingStatus";
 
 type BookingEntry = TechnicianAssignment & {
   id: string;
   bookingId?: string;
+  bookingStart?: string;
+  status?: BookingStatus;
   leadId: string;
   type: "inspection" | "job";
   date: string;
@@ -66,7 +71,7 @@ export function ScheduleView({
 }) {
   const rules = useBookingRules();
   const { technicians } = useTechnicians();
-  const [bookings, setBookings] = useState<BookingEntry[]>([]);
+  const [savedBookings, setBookings] = useState<BookingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -99,6 +104,7 @@ export function ScheduleView({
     return () => { active = false; };
   }, [load]);
 
+  const bookings = useMemo(() => withScheduleVisitStatuses(savedBookings, leads), [savedBookings, leads]);
   const listDetails = useMemo(() => scheduleListDetails(bookings, technicians), [bookings, technicians]);
   const filteredBookings = useMemo(() => bookings.filter((booking) =>
     (type === "all" || booking.type === type) &&
@@ -200,15 +206,7 @@ export function ScheduleView({
                         <span className="text-[11px] font-bold text-blue-600 tabular-nums whitespace-nowrap">
                           {formatSlotRange(b.time, appointmentDurationMinutes(b, rules))}
                         </span>
-                        <span
-                          className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                            b.type === "inspection"
-                              ? "bg-blue-50 text-blue-700 border-blue-200/60"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
-                          }`}
-                        >
-                          {b.type === "inspection" ? "Inspection" : "Job"}
-                        </span>
+                        <ScheduleBookingBadge type={b.type} status={b.status} />
                       </div>
                       <div className="flex items-center gap-x-3 gap-y-0.5 mt-0.5 flex-wrap">
                         {b.customer?.address && (

@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
         return {
           id: appointmentKey(b),
           bookingId: b.bookingId,
+          bookingStart: b.bookingStart,
+          status: b.status,
           leadId: b.leadId,
           type: b.type,
           date: b.date,

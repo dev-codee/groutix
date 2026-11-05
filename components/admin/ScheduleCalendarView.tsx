@@ -60,6 +60,10 @@ import { scheduleListDetails, scheduleDistanceLabel } from "@/lib/scheduleList";
 import type { TechnicianAssignment, BookingTechnician } from "@/lib/bookingCapacity";
 import { CopyableAddress } from "@/components/admin/CopyableAddress";
 
+import { ScheduleBookingBadge } from "@/components/admin/ScheduleBookingBadge";
+import { withScheduleVisitStatuses } from "@/lib/scheduleVisitStatus";
+import { validBookingStatus, type BookingStatus } from "@/lib/bookingStatus";
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type JobType = "inspection" | "job";
@@ -67,6 +71,7 @@ type JobType = "inspection" | "job";
 interface ScheduleEntry extends TechnicianAssignment {
   bookingId?: string;
   bookingStart?: string;
+  status?: BookingStatus;
   endAt?: string;
   workSegments?: BookingSegment[];
   id: string;           // booking/submission _id
@@ -148,19 +153,6 @@ function inputDateToday(): string {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-function TypeBadge({ type }: { type: JobType }) {
-  return (
-    <span
-      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-        type === "inspection"
-          ? "bg-blue-50 text-blue-700 border-blue-200"
-          : "bg-emerald-50 text-emerald-700 border-emerald-200"
-      }`}
-    >
-      {type === "inspection" ? "Inspection" : "Job"}
-    </span>
-  );
-}
 
 function StopCircle({ n, size = "md", color }: { n: number; type: JobType; size?: "sm" | "md"; color?: string }) {
   const bg = STOP_COLORS[n % STOP_COLORS.length];
@@ -255,7 +247,7 @@ function RescheduleDialog({
                 <p className="text-sm font-semibold text-slate-900">{modal.entry.customer?.name || "Customer"}</p>
                 <p className="text-[11px] text-slate-500 truncate">{modal.entry.customer?.address}</p>
                 <div className="mt-1 flex items-center gap-2 flex-wrap">
-                  <TypeBadge type={modal.entry.type} />
+                  <ScheduleBookingBadge type={modal.entry.type} status={modal.entry.status} />
                   <span className="text-[10px] text-slate-400">
                     Currently: {fmtDate(modal.entry.date)} · {formatSlotRange(modal.entry.time, modal.entry.durationMinutes)}
                   </span>
@@ -359,7 +351,7 @@ function SelectedBookingSidebar({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-bold text-sm text-slate-900 truncate">{entry.customer?.name || "Customer"}</p>
-              <TypeBadge type={entry.type} />
+              <ScheduleBookingBadge type={entry.type} status={entry.status} />
             </div>
           </div>
         </div>
@@ -498,6 +490,7 @@ function RouteTimeline({
               <span className="text-[10px] text-slate-500 mt-1 self-start pl-0.5">
                 {formatSlotRange(e.time, e.durationMinutes)}
               </span>
+              <span className="mt-1 self-start"><ScheduleBookingBadge type={e.type} status={e.status} /></span>
             </div>
 
             {i < entries.length - 1 && (
@@ -730,7 +723,7 @@ function JobListPanel({
                   Drag to another day or reorder
                 </span>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <TypeBadge type={entry.type} />
+                  <ScheduleBookingBadge type={entry.type} status={entry.status} />
                 </div>
                 <div className="text-[10px] mt-0.5"><CopyableAddress address={entry.customer?.address} /></div>
                 <p className="text-[10px] font-semibold text-slate-700 mt-1">Assigned: {listDetails.get(entry.id)?.assignee}</p>
@@ -784,7 +777,8 @@ export function ScheduleCalendarView({
   const setCurrentDate = (date: string) => changeVisibleDates(shiftPlanningDates(visibleDates, date));
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [entries, setEntries] = useState<ScheduleEntry[]>([]);
+  const [savedEntries, setEntries] = useState<ScheduleEntry[]>([]);
+  const entries = useMemo(() => withScheduleVisitStatuses(savedEntries, leads), [savedEntries, leads]);
   const [originalEntries, setOriginalEntries] = useState<ScheduleEntry[]>([]);
   const hasChanges = entries.some((entry, index) => entry.id !== originalEntries[index]?.id) || entries.length !== originalEntries.length;
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -868,6 +862,7 @@ export function ScheduleCalendarView({
         id: appointmentKey(entry),
         bookingId: entry.bookingId,
         bookingStart: entry.bookingStart,
+        status: validBookingStatus(entry.type, entry.status) ? entry.status : undefined,
         endAt: entry.endAt,
         workSegments: entry.workSegments,
         leadId: entry.leadId,
@@ -1240,7 +1235,7 @@ export function ScheduleCalendarView({
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
             {visiblePlanningLeads.map(({ lead, type }) => <button key={`${lead.id}:${type}`} type="button" draggable={!loading && !routeSaving} onDragStart={(event) => startDrag(event, { kind: "unassigned", leadId: lead.id, type })} onDragEnd={endDrag} onClick={() => selectPlanningLead(lead.id)} aria-pressed={selectedPlanningLeadId === lead.id} className={`w-full text-left rounded-lg border p-2 space-y-0.5 cursor-pointer ${selectedPlanningLeadId === lead.id ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" : "border-slate-200 hover:bg-slate-50"}`}>
-              <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-900 truncate">{lead.name || "Customer"}</span><TypeBadge type={type} /></div>
+              <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-900 truncate">{lead.name || "Customer"}</span><ScheduleBookingBadge type={type} /></div>
               <p className="text-[10px] font-semibold text-slate-500">{lead.status}</p>
               <p className="text-[11px] text-slate-600">{lead.address || lead.city || "Address needed to show on map"}</p>
               <p className="flex items-center gap-1 text-[10px] text-slate-400"><GripVertical className="w-3 h-3" />Drag into a day to book</p>
