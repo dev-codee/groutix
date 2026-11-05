@@ -331,6 +331,10 @@ export default function QuoteFormV2({
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [activeSuggest, setActiveSuggest] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionRequest = useRef(0);
+  const [suggestionMessage, setSuggestionMessage] = useState("");
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const [suggestionAttribution, setSuggestionAttribution] = useState("");
 
   const flow: StepId[] = isPM ? ["job", "details", "tenants", "finish"] : ["job", "details", "finish"];
   const stepLabels: Record<StepId, string> = {
@@ -387,33 +391,42 @@ export default function QuoteFormV2({
 
   /* ---------- address autocomplete ---------- */
   const fetchSuggestions = useCallback(async (q: string) => {
-    if (q.trim().length < 3) {
-      setSuggestions([]);
-      setSuggestOpen(false);
-      return;
-    }
+    const request = ++suggestionRequest.current;
+    if (q.trim().length < 3) { setSuggestions([]); setSuggestOpen(false); setSuggestionLoading(false); return; }
+    setSuggestionLoading(true);
+    setSuggestionMessage("");
     try {
       const res = await fetch(`/api/address-autocomplete?input=${encodeURIComponent(q)}`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Address lookup unavailable");
       const json = await res.json();
+      if (request !== suggestionRequest.current) return;
       const preds: string[] = json.predictions || [];
       setSuggestions(preds.slice(0, 5));
       setSuggestOpen(preds.length > 0);
       setActiveSuggest(-1);
+      setSuggestionAttribution(json.attribution || "");
+      setSuggestionMessage(json.message || "");
     } catch {
-      /* ignore */
-    }
+      if (request !== suggestionRequest.current) return;
+      setSuggestions([]); setSuggestOpen(false);
+      setSuggestionMessage("Address suggestions are unavailable. Enter your full street address, suburb, state and postcode.");
+    } finally { if (request === suggestionRequest.current) setSuggestionLoading(false); }
   }, []);
 
   const onAddress = (v: string) => {
+    suggestionRequest.current++;
+    setSuggestions([]); setSuggestOpen(false); setSuggestionMessage(""); setSuggestionLoading(false);
     setData((p) => ({ ...p, address: v }));
     if (errors.address) setErrors((e) => ({ ...e, address: "" }));
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(v), 300);
   };
   const pickSuggestion = (s: string) => {
+    suggestionRequest.current++;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setData((p) => ({ ...p, address: s }));
-    setSuggestOpen(false);
+    setErrors((e) => ({ ...e, address: "" }));
+    setSuggestions([]); setSuggestOpen(false); setSuggestionMessage(""); setSuggestionLoading(false);
   };
 
   /* ---------- validation ---------- */
@@ -981,8 +994,11 @@ export default function QuoteFormV2({
                     ))}
                   </ul>
                 )}
+                {suggestionLoading && <p role="status" className="mt-1 text-[11px] text-neutral-500">Finding complete property addresses…</p>}
+                {suggestionMessage && <p role="status" className="mt-1 text-[11px] text-amber-800">{suggestionMessage}</p>}
+                {suggestOpen && suggestionAttribution && <p className="mt-1 text-[10px] text-neutral-500">Address suggestions: {suggestionAttribution}</p>}
                 <FieldError msg={errors.address} />
-                <p className="mt-1 text-[11px] text-neutral-500">Street number, street name and suburb, e.g. 12 Smith Street, Richmond VIC 3121.</p>
+                <p className="mt-1 text-[11px] text-neutral-500">Street number, street name, suburb, state and postcode, e.g. 12 Smith Street, Richmond VIC 3121.</p>
               </div>
               {nav(<button type="button" onClick={next} className={primaryBtn}>Continue</button>)}
             </div>

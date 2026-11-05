@@ -144,17 +144,24 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
   const addressInputRef = useRef<HTMLInputElement>(null);
   const [addressDropdownStyle, setAddressDropdownStyle] = useState<React.CSSProperties>({});
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressSuggestionRequest = useRef(0);
+  const [addressSuggestionMessage, setAddressSuggestionMessage] = useState("");
+  const [addressSuggestionLoading, setAddressSuggestionLoading] = useState(false);
 
   const fetchAddressSuggestions = useCallback(async (query: string) => {
+    const request = ++addressSuggestionRequest.current;
     if (!query || query.length < 3) {
       setAddressSuggestions([]);
       setAddressSuggestionsOpen(false);
       return;
     }
     try {
+      setAddressSuggestionLoading(true);
       const res = await fetch(`/api/address-autocomplete?input=${encodeURIComponent(query)}`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Address lookup unavailable");
       const json = await res.json();
+      if (request !== addressSuggestionRequest.current) return;
+      setAddressSuggestionMessage(json.message || "");
       const preds: string[] = json.predictions || [];
       setAddressSuggestions(preds);
       setAddressSuggestionsOpen(preds.length > 0);
@@ -169,8 +176,10 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
         });
       }
     } catch {
-      // ignore
-    }
+      if (request !== addressSuggestionRequest.current) return;
+      setAddressSuggestions([]); setAddressSuggestionsOpen(false);
+      setAddressSuggestionMessage("Address suggestions are unavailable. Enter your full street address, suburb, state and postcode.");
+    } finally { if (request === addressSuggestionRequest.current) setAddressSuggestionLoading(false); }
   }, []);
 
   const fetchInspectionAvailability = useCallback(async (address: string) => {
@@ -909,6 +918,8 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                     onChange={(e) => {
                       handleChange(e);
                       const next = e.target.value;
+                      addressSuggestionRequest.current++;
+                      setAddressSuggestions([]); setAddressSuggestionsOpen(false); setAddressSuggestionMessage(""); setAddressSuggestionLoading(false);
                       if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
                       addressDebounceRef.current = setTimeout(() => {
                         fetchAddressSuggestions(next);
@@ -934,6 +945,8 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                       : ""
                       }`}
                   />
+                  {addressSuggestionLoading && <p role="status" className="mt-1 text-[12px] text-neutral-500">Finding complete property addresses…</p>}
+                  {addressSuggestionMessage && <p role="status" className="mt-1 text-[12px] text-amber-800">{addressSuggestionMessage}</p>}
                   {addressSuggestionsOpen && addressSuggestions.length > 0 && typeof document !== "undefined" && createPortal(
                     <ul
                       style={addressDropdownStyle}
@@ -943,6 +956,9 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
                         <li
                           key={i}
                           onMouseDown={() => {
+                            addressSuggestionRequest.current++;
+                            if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+                            setAddressSuggestionMessage(""); setAddressSuggestionLoading(false);
                             setData((p) => ({ ...p, address: s }));
                             setErrors((prev) => ({ ...prev, address: "" }));
                             setAddressSuggestionsOpen(false);
