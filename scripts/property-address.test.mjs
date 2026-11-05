@@ -37,3 +37,24 @@ test("autocomplete omits suburb-only results and keeps complete Australian addre
   const response = await GET({ nextUrl: new URL("https://example.test/api/address-autocomplete?input=Melbourne") });
   assert.deepEqual((await response.json()).predictions, ["12 Smith Street, Richmond, Victoria, 3121"]);
 });
+
+
+test("Melbourne autocomplete preserves the property suburb supplied in the district field", async () => {
+  const feature = { properties: { housenumber: "8", street: "Raleigh Grove", district: "Essendon North", city: "Melbourne", state: "Victoria", postcode: "3041", countrycode: "AU" } };
+  for (const route of ["app/api/address-autocomplete/route.ts", "app/api/admin/address-autocomplete/route.ts"]) {
+    const { GET } = loadTs(route, {}, { process: { env: {} }, fetch: async () => Response.json({ features: [feature] }) });
+    const response = await GET({ nextUrl: new URL("https://example.test/autocomplete?input=8%20Raleigh") });
+    assert.deepEqual((await response.json()).predictions, ["8 Raleigh Grove, Essendon North, Victoria, 3041"]);
+  }
+});
+
+test("suburb/locality outranks the broad city, while municipal names and incomplete properties are omitted", () => {
+  const { formatPhotonPropertyAddress } = loadTs("lib/propertyAddress.ts");
+  const base = { housenumber: "8", street: "Raleigh Grove", state: "Victoria", postcode: "3041", city: "Melbourne" };
+  assert.equal(formatPhotonPropertyAddress({ ...base, locality: "Essendon North", district: "City of Moonee Valley" }), "8 Raleigh Grove, Essendon North, Victoria, 3041");
+  assert.equal(formatPhotonPropertyAddress({ ...base, suburb: "Essendon North", district: "Moonee Valley" }), "8 Raleigh Grove, Essendon North, Victoria, 3041");
+  assert.equal(formatPhotonPropertyAddress(base), "", "do not offer Melbourne as the suburb for postcode 3041");
+  assert.equal(formatPhotonPropertyAddress({ ...base, street: "Collins Street", postcode: "3000" }), "8 Collins Street, Melbourne, Victoria, 3000");
+  assert.equal(formatPhotonPropertyAddress({ ...base, housenumber: "" }), "");
+  assert.equal(formatPhotonPropertyAddress({ ...base, countrycode: "US" }), "");
+});

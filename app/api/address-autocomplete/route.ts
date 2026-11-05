@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isCompletePropertyAddress } from "@/lib/propertyAddress";
+import { isCompletePropertyAddress, formatPhotonPropertyAddress } from "@/lib/propertyAddress";
 
 export async function GET(req: NextRequest) {
   const input = req.nextUrl.searchParams.get("input")?.trim();
@@ -74,10 +74,7 @@ export async function GET(req: NextRequest) {
     if (res.ok) {
       const data = await res.json();
       const predictions = (data.features || []).map((feature: { properties?: Record<string, string> }) => {
-        const p = feature.properties || {};
-        if (!p.housenumber || !p.street) return "";
-        const street = [p.housenumber, p.street || p.name].filter(Boolean).join(" ");
-        return [street, p.suburb || p.city || p.locality, p.state, p.postcode].filter(Boolean).join(", ");
+        return formatPhotonPropertyAddress(feature.properties || {});
       }).filter((value: string) => isCompletePropertyAddress(value) && /victoria|vic|australia/i.test(value));
       if (predictions.length) return NextResponse.json({ predictions: [...new Set(predictions)].slice(0, 5), attribution: "OpenStreetMap contributors" });
     }

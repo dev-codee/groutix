@@ -17,3 +17,18 @@ export function isCompletePropertyAddress(value: string): boolean {
   const street = streetAndSuburb.match(/^.+?\b(?:street|st|road|rd|avenue|ave|av|drive|dr|court|ct|crescent|cres|cr|lane|ln|place|pl|terrace|tce|parade|pde|highway|hwy|way|boulevard|blvd|circuit|cct|close|cl|grove|gr|esplanade|esp|rise|walk|mews|square|sq|track|trk)\.?\s+(.+)$/i);
   return !!street && hasSuburb(street[1]);
 }
+
+/** Photon stores Melbourne suburbs in district/locality, separately from city. */
+export function formatPhotonPropertyAddress(properties: Record<string, string>): string {
+  const p = properties;
+  if (!p.housenumber?.trim() || !p.street?.trim()) return "";
+  if (p.countrycode && p.countrycode.toUpperCase() !== "AU") return "";
+  const suburb = [p.suburb, p.locality, p.district, p.city]
+    .map(value => value?.trim())
+    .find(value => value && !/^(?:city|shire|municipality|borough|council)\b|\bcouncil$/i.test(value));
+  if (!suburb) return "";
+  // Melbourne is a valid CBD suburb, but not a substitute for a missing outer suburb.
+  if (/^melbourne$/i.test(suburb) && !["3000", "3004"].includes(p.postcode || "")) return "";
+  const address = [`${p.housenumber.trim()} ${p.street.trim()}`, suburb, p.state, p.postcode].filter(Boolean).join(", ");
+  return isCompletePropertyAddress(address) ? address : "";
+}
