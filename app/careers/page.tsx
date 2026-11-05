@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AnimatedSection from "@/components/AnimatedSection";
-import Link from "next/link";
+import CareerApplicationForm from "@/components/CareerApplicationForm";
 import { Check } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Careers",
-  description: "Join the Groutix team. We're always looking for skilled technicians and dedicated professionals to help us restore wet areas across Victoria.",
+  description: "Apply for inspector / estimator and repair technician roles at Groutix. Help restore showers, tiles and wet areas across Victoria.",
   alternates: { canonical: "/careers" },
   openGraph: {
     title: "Careers | Groutix",
@@ -35,8 +35,9 @@ export default function CareersPage() {
               Careers at Groutix
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-white/80 leading-relaxed">
-              We're always looking for skilled technicians, customer service superstars, and dedicated professionals to help us provide top-tier shower repair and regrouting services across Victoria.
+              We’re accepting applications for inspectors and repair technicians to help customers restore showers, tiles and wet areas across Victoria.
             </p>
+            <a href="#apply" className="mt-8 inline-block rounded-xl bg-white px-7 py-3 font-bold text-[#001F97]">View roles &amp; apply</a>
           </div>
         </section>
 
@@ -52,12 +53,12 @@ export default function CareersPage() {
 
             <div className="grid gap-4 sm:grid-cols-2 pt-8 text-left">
               {[
-                "Competitive industry rates",
-                "Ongoing training and development",
-                "Supportive team environment",
-                "Stable, consistent work across Victoria",
-                "High-quality tools and materials provided",
-                "Opportunities for career advancement"
+                "Practical repair and restoration work",
+                "A focus on quality workmanship",
+                "Clear communication with customers",
+                "Opportunities across Victoria",
+                "Inspector and technician roles",
+                "Tell us your experience and availability"
               ].map((benefit, i) => (
                 <div key={i} className="flex items-center gap-3 bg-[#F3F4F6] px-5 py-4 rounded-sm">
                   <div className="w-6 h-6 flex items-center justify-center bg-[#001F97] text-white rounded-full flex-shrink-0">
@@ -71,6 +72,18 @@ export default function CareersPage() {
 
           </div>
         </AnimatedSection>
+        <section id="apply" className="scroll-mt-32 bg-slate-50 py-16">
+          <div className="mx-auto max-w-4xl px-6">
+            <h2 className="text-3xl font-bold">Find your place at Groutix</h2>
+            <p className="mt-3 text-slate-600">Apply for the role that fits your strengths. Working arrangements, rates and equipment will be discussed during recruitment.</p>
+            <div className="my-8 grid gap-5 sm:grid-cols-2">
+              <article className="rounded-2xl border border-slate-200 bg-white p-6"><p className="text-xs font-bold uppercase tracking-wider text-blue-700">Assess &amp; advise</p><h3 className="mt-2 text-xl font-bold">Inspector / Estimator</h3><p className="mt-3 text-sm leading-6 text-slate-600">Assess shower and wet-area issues, document findings with photos, measure repair areas, prepare scopes and quotes, and explain options clearly to customers.</p></article>
+              <article className="rounded-2xl border border-slate-200 bg-white p-6"><p className="text-xs font-bold uppercase tracking-wider text-blue-700">Repair &amp; restore</p><h3 className="mt-2 text-xl font-bold">Repair Technician</h3><p className="mt-3 text-sm leading-6 text-slate-600">Carry out regrouting, silicone replacement, tile and shower repairs within your skills and qualifications. Work safely, protect customers’ homes and record completed work.</p></article>
+            </div>
+            <h2 className="mb-5 text-2xl font-bold">Apply to join the team</h2>
+            <CareerApplicationForm />
+          </div>
+        </section>
       </main>
       <Footer />
     </>

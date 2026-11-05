@@ -92,8 +92,8 @@ export const ROLE_PAGES: Record<Role, string[]> = {
   field: [],
   technician: [],
   finance: [],
-  manager: ["content", "users"],
-  super_admin: ["content", "users"],
+  manager: ["content", "users", "applications"],
+  super_admin: ["content", "users", "applications"],
 };
 
 export function canOpenPage(role: Role, page: string): boolean {
@@ -107,6 +107,7 @@ export function canOpenPage(role: Role, page: string): boolean {
 const MANAGER_ONLY_API = [
   "/api/admin/manager-notes",
   "/api/admin/users",
+  "/api/admin/applications",
   "/api/admin/content",
   "/api/admin/stats",
   "/api/admin/recycle-bin",

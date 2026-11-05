@@ -58,6 +58,16 @@ export default function PrivacyPolicyPage() {
               </div>
 
               <div className="space-y-4">
+                <h3 className="text-lg font-bold text-[#001F97] uppercase tracking-wide">Career Applications</h3>
+                <p className="leading-relaxed text-neutral-700">
+                  When you apply for a role, we collect your contact details, suburb, relevant skills and experience, work eligibility, availability and the supporting information you choose to provide, including an optional résumé. We use this information to assess your application and contact you about recruitment. Application records and résumés are stored with our website data and hosting providers; access through the admin portal is restricted to authorised hiring managers. Career application details are not added to customer marketing lists by this form.
+                </p>
+                <p className="leading-relaxed text-neutral-700">
+                  Please do not submit identity documents, bank details, tax file numbers or other sensitive documents with your application. You can contact info@groutix.com to request access to or correction of your application, withdraw your application, or request deletion of your recruitment information. We will review requests and any applicable record-keeping obligations before responding.
+                </p>
+              </div>
+
+              <div className="space-y-4">
                 <h3 className="text-lg font-bold text-[#001F97] uppercase tracking-wide">Cookie Information</h3>
                 <p className="leading-relaxed text-neutral-700">
                   As you browse the Groutix website and other websites, cookies and similar technologies may be placed on your device by us or third-party service providers we work with. These technologies may be used to understand website activity, improve website performance, measure advertising effectiveness, understand user interests and provide more relevant advertising.

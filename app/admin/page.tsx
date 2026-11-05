@@ -4352,6 +4352,9 @@ export default function CrmDashboardPage() {
 
       {(role === "manager" || role === "super_admin") && (
         <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
+          <Link href={`${basePath}/applications`} onClick={() => onItemClick?.()} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors">
+            <UserCheck className="w-4 h-4" /> Career Applications
+          </Link>
           <Link
             href={`${basePath}/users`}
             onClick={() => onItemClick?.()}
