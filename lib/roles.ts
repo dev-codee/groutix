@@ -37,6 +37,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   manager: [
     "dashboard",
     "analytics",
+    "applications",
     "leads",
     "inbox",
     "quotes",
@@ -54,6 +55,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
   super_admin: [
     "dashboard",
     "analytics",
+    "applications",
     "leads",
     "inbox",
     "quotes",

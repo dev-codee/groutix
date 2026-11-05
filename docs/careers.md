@@ -1,6 +1,6 @@
 # Career applications
 
-The public form is at `/careers`. Hiring managers open **Career Applications** in the CRM sidebar, served at `${ADMIN_BASE_PATH}/applications` (default `/admin/applications`). Managers and super admins can view and update applications; operational roles cannot access applications or résumés.
+The public form is at `/careers`. Hiring managers open **Career Applications** in the CRM sidebar, displayed inside the existing CRM dashboard at `${ADMIN_BASE_PATH}?view=applications` (default `/admin?view=applications`). The original `/applications` subpage redirects to this view so saved links keep working. Managers and super admins can view and update applications; operational roles cannot access applications or résumés.
 
 The form accepts inspectors / estimators and repair technicians. Questions cover contact details, suburb/postcode, travel coverage, relevant experience and role-specific skills, work eligibility, preferred engagement, availability, transport, White Card status, qualifications and equipment. Résumé, work examples, pay expectations and recruitment support details are optional. Applicants can submit an experience summary without a résumé.
 

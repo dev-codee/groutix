@@ -104,6 +104,7 @@ import { useAdminBasePath, useAdminRole, useAdminUsername } from "@/components/a
 import { useSiteContent } from "@/components/SiteContentProvider";
 import { prepareCustomerSms, smsReplyNotice, smsSegmentCount, SMS_MAX_CHARS } from "@/lib/smsMessage";
 import { InboxView } from "@/components/admin/views/InboxView";
+import ApplicationsPanel from "@/components/admin/ApplicationsPanel";
 import { getLeadConversation as getConversation } from "@/lib/customerInbox";
 import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -186,6 +187,7 @@ const PAGE_SIZE = 20;
 type DashboardView =
   | "dashboard"
   | "analytics"
+  | "applications"
   | "leads"
   | "inbox"
   | "quotes"
@@ -4352,9 +4354,16 @@ export default function CrmDashboardPage() {
 
       {(role === "manager" || role === "super_admin") && (
         <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
-          <Link href={`${basePath}/applications`} onClick={() => onItemClick?.()} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors">
+          <button
+            type="button"
+            onClick={() => { navigateTo("applications"); onItemClick?.(); }}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold transition-colors cursor-pointer ${currentView === "applications"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+              }`}
+          >
             <UserCheck className="w-4 h-4" /> Career Applications
-          </Link>
+          </button>
           <Link
             href={`${basePath}/users`}
             onClick={() => onItemClick?.()}
@@ -4532,6 +4541,8 @@ export default function CrmDashboardPage() {
               <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
                 {currentView === "dashboard"
                   ? "Manager Dashboard"
+                  : currentView === "applications"
+                    ? "Career Applications"
                   : currentView === "inbox"
                     ? "Conversation Inbox"
                   : currentView === "analytics"
@@ -4736,6 +4747,7 @@ export default function CrmDashboardPage() {
               VIEW: CRM DASHBOARD
              ========================================================================= */}
             {currentView === "dashboard" && <ManagerDashboard />}
+            {currentView === "applications" && canSee("applications") && <ApplicationsPanel />}
 
             {/* =========================================================================
           {/* =========================================================================

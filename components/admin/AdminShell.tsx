@@ -20,7 +20,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const nav = [
     { href: basePath, label: "CRM Dashboard", icon: LayoutDashboard, roles: null },
-    { href: `${basePath}/applications`, label: "Career Applications", icon: UserCheck, roles: ["manager", "super_admin"] },
+    { href: `${basePath}?view=applications`, label: "Career Applications", icon: UserCheck, roles: ["manager", "super_admin"] },
     { href: `${basePath}/users`, label: "Staff Accounts", icon: UserCheck, roles: ["manager", "super_admin"] },
     { href: `${basePath}/content`, label: "Site Content", icon: FileText, roles: ["manager", "super_admin"] },
   ].filter((item) => !item.roles || item.roles.includes(role));
