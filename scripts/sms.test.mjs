@@ -45,7 +45,7 @@ test("customer SMS footer includes company contacts, survives repeated preparati
   assert.equal(formatting.prepareCustomerSms(prepared, contact), prepared);
   const changed = formatting.prepareCustomerSms(prepared, { phone: "03 9999 8888", email: "office@example.test" });
   assert.equal(changed.match(/This SMS is read-only/g).length, 1);
-  assert.ok(changed.endsWith("Email office@example.test or call 03 9999 8888."));
+  assert.ok(changed.endsWith("Email office@example.test or call (03) 9999 8888."));
   assert.equal(formatting.prepareCustomerSms("  "), "");
   assert.equal(formatting.prepareCustomerSms("😀"), "");
 });

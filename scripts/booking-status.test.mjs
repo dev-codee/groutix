@@ -111,3 +111,15 @@ test('day progress is validated and saved on the selected booking only', async (
   assert.equal(h.lead.bookings[1].jobDaysDone, 2);
   assert.equal(JSON.stringify(h.lead.bookings[0]), sibling);
 });
+
+
+test('direct status-only booking writes reject missing, null and invalid status before touching storage', async () => {
+  const { createBooking } = loadTs('lib/bookings.ts', {
+    '@/lib/mongodb': { isMongoConfigured: () => true, getDb: async () => { throw new Error('Invalid status reached the database'); } },
+  });
+  for (const status of [undefined, null, '', 'New', 'unknown']) {
+    const result = await createBooking({ leadId: 'lead', type: 'inspection', date: '2026-11-05', time: '09:00', status }, { statusOnly: true });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /valid booking status/);
+  }
+});

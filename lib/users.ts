@@ -238,7 +238,7 @@ export async function updateUser(
   if (!ObjectId.isValid(id)) return { ok: false, error: "Invalid id." };
   const set: Partial<UserDoc> = {};
   if (typeof updates.name === "string" && updates.name.trim()) set.name = updates.name.trim();
-  if (typeof updates.email === "string") set.email = updates.email.trim() || undefined;
+  if (typeof updates.email === "string") set.email = updates.email.trim();
   if (updates.role) {
     if (!isRole(updates.role)) return { ok: false, error: "Invalid role." };
     set.role = updates.role;

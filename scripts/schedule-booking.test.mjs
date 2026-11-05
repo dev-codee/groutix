@@ -354,3 +354,12 @@ test("booking and assignment-only edits never write an undefined status that Mon
     }
   }
 });
+
+
+test("stale New saves cannot reset established leads even before a booking exists", async () => {
+  for (const status of ["Contacted", "Quote Sent", "Won", "Payment Pending", "Completed"]) {
+    const { patch, calls } = patchApi({ before: { status } });
+    assert.equal((await patch({ status: "New", assigned: "Alex", notes: "Please call" })).status, 200);
+    assert.equal(calls.find(([action]) => action === "update")[2].status, status);
+  }
+});

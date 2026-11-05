@@ -13,7 +13,7 @@ import { getBookingRules } from "./bookingRulesServer";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
 import { validScheduleDate } from "./scheduleRoutes";
 import { randomUUID } from "node:crypto";
-import { resolveBookingStatus, type BookingStatus } from "./bookingStatus";
+import { resolveBookingStatus, validBookingStatus, type BookingStatus } from "./bookingStatus";
 
 export interface BookingDoc extends TechnicianAssignment {
   bookingId?: string;
@@ -97,6 +97,7 @@ type BookingInput = Omit<BookingDoc, "_id" | "createdAt" | "reservationId">;
 /** Capacity is checked and reserved under a shared per-day/pool database lock. */
 export async function createBooking(input: BookingInput, options: { retainPrevious?: boolean; staffOverride?: boolean; append?: boolean; replaceStart?: string; bookingId?: string; statusOnly?: boolean } = {}): Promise<CreateBookingResult> {
   if (!isMongoConfigured()) return { ok: false, error: "Database not configured." };
+  if (options.statusOnly && !validBookingStatus(input.type, input.status)) return { ok: false, error: "Choose a valid booking status." };
   const date = input.date.trim();
   const time = input.time.slice(0, 5);
   if (!validScheduleDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { ok: false, error: "Invalid appointment date or time." };
@@ -165,11 +166,11 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         if (!availability.available) return { ok: false as const, conflict: true, error: `${segment.date}: ${availability.reason!}` };
       }
       if (options.statusOnly && existing) {
-        await col.updateOne({ _id: existing._id }, { $set: { status: input.status, ...(input.jobTotalDays !== undefined ? { jobTotalDays: input.jobTotalDays } : {}), ...(input.jobDaysDone !== undefined ? { jobDaysDone: input.jobDaysDone } : {}) } });
+        await col.updateOne({ _id: existing._id }, { $set: { status, ...(input.jobTotalDays !== undefined ? { jobTotalDays: input.jobTotalDays } : {}), ...(input.jobDaysDone !== undefined ? { jobDaysDone: input.jobDaysDone } : {}) } });
         return { ok: true as const, reference: existing.reference };
       }
       const reservationId = randomUUID();
-      const document: BookingDoc = { jobDaysDone: replaced?.jobDaysDone ?? existing?.jobDaysDone, ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) : undefined,
+      const document: BookingDoc = { jobDaysDone: replaced?.jobDaysDone ?? existing?.jobDaysDone, ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) ?? "" : undefined,
         date, time, endAt: finish, jobTotalDays: input.type === "job" ? input.jobTotalDays ?? replaced?.jobTotalDays ?? existing?.jobTotalDays ?? segments.length : undefined, bookingId: editedId || randomUUID(), reservationId, createdAt: existing?.createdAt || new Date() };
       if (existing) await col.updateOne({ _id: existing._id }, { $set: document });
       else await col.insertOne(document);

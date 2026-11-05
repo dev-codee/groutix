@@ -20,12 +20,13 @@ const load = (relativePath, overrides = {}, globals = {}) => {
     ...globals,
     module: moduleRecord,
     exports: moduleRecord.exports,
-    require: (name) => overrides[name] || require(name),
+    require: (name) => overrides[name] || (name.startsWith("@/") ? loadTs(`${name.slice(2)}.${name.startsWith("@/lib/") ? "ts" : "tsx"}`) : require(name)),
   });
   return moduleRecord.exports;
 };
 const scheduling = load("../lib/unassignedLeads.ts");
 const calendarDependencies = {
+  "@/components/admin/BookingMapPlanner": { BookingMapPlanner: function BookingMapPlanner() { return null; } },
   "@/components/admin/AutoPlanRouteButton": loadTs("components/admin/AutoPlanRouteButton.tsx"),
   "@/components/admin/BookingTimingEditor": loadTs("components/admin/BookingTimingEditor.tsx"),
   "@/lib/bookingSpan": loadTs("lib/bookingSpan.ts"),

@@ -7,6 +7,7 @@ import { loadTs } from "./test-ts-loader.mjs";
 const { DEFAULT_BOOKING_RULES: rules } = loadTs("lib/bookingRules.ts");
 const { BookingTimingEditor } = loadTs("components/admin/BookingTimingEditor.tsx");
 const { LeadEditModal } = loadTs("components/admin/modals/LeadEditModal.tsx", {
+  "@/components/admin/BookingPlanner": { BookingPlanner: () => null },
   "@/lib/useBookingRules": { useBookingRules: () => rules },
   "@/components/admin/SlotBoard": { useSlotConflict: () => null, SlotBoard: () => null },
 });

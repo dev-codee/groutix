@@ -745,14 +745,8 @@ export async function updateStatus(
   id: string,
   status: SubmissionStatus
 ): Promise<boolean> {
-  if (!ObjectId.isValid(id)) return false;
-  const col = await collection();
-  const res = await col.updateOne({ _id: new ObjectId(id) }, { $set: {
-    status,
-    ...(!["Inspection En Route", "Job En Route"].includes(status) ? { customerTrackingEndedAt: new Date() } : {}),
-  } });
-  if (res.matchedCount) await syncPrimaryBookingStatus(id, status);
-  return res.matchedCount > 0;
+  if (typeof status !== "string" || !status.trim()) return false;
+  return updateSubmission(id, { status });
 }
 
 /** Existing lead workflow buttons address the primary visit, never siblings. */
@@ -794,6 +788,19 @@ export async function updateSubmission(
   // Status cannot be cleared by a partial edit (including older clients).
   if ("status" in safeUpdates && (typeof safeUpdates.status !== "string" || !safeUpdates.status.trim())) delete safeUpdates.status;
   const writeFilter: Filter<SubmissionDoc> = { _id: new ObjectId(id) };
+  // A stale full-form save must not reset an established lead to New through
+  // another API/automation. New belongs to intake, rather than rescheduling.
+  if (typeof safeUpdates.status === "string" && /^(new|new lead)$/i.test(safeUpdates.status.trim())) {
+    const current = await col.findOne({ _id: new ObjectId(id) }, { projection: { status: 1 } });
+    if (!current) return false;
+    if (typeof current.status === "string" && current.status.trim() && !/^(new|new lead)$/i.test(current.status.trim())) {
+      delete safeUpdates.status;
+    } else {
+      // Do not overwrite a workflow transition that races this stale save.
+      writeFilter.status = current.status === undefined ? { $exists: false } : current.status;
+      safeUpdates.status = "New";
+    }
+  }
   if (acceptedQuoteFields.some(field => field in safeUpdates)) {
     const current = await col.findOne({ _id: new ObjectId(id) });
     if (!current || changesAcceptedQuote(current as unknown as Record<string, unknown>, safeUpdates as Record<string, unknown>)) return false;

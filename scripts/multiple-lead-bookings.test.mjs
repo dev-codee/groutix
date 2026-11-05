@@ -190,3 +190,16 @@ test("same-start projections have distinct row keys and keep primary status on i
   assert.equal(rows[1].status, "Job Booked");
   assert.equal(selectedJobBooking(rows[1]).bookingId, "second");
 });
+
+
+test("clearing an assigned technician removes the old ID without resetting the visit status", async () => {
+  const { api, input, rows } = store();
+  assert.equal((await api.createBooking({ ...input, status: "Job In Progress" }, { staffOverride: true })).ok, true);
+  const booking = rows[0];
+  assert.equal((await api.createBooking({ ...input, technician: "", technicianId: "", technicianUsername: "" }, {
+    bookingId: booking.bookingId, replaceStart: `${input.date}T${input.time}`, staffOverride: true,
+  })).ok, true);
+  assert.equal(rows[0].technicianId, "");
+  assert.equal(rows[0].technician, "");
+  assert.equal(rows[0].status, "Job In Progress");
+});

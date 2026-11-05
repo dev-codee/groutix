@@ -207,6 +207,7 @@ function pageHarness({ storage = new Map(), failLoad = false, failSave = false, 
   const context = { scopedLeads, upsertLead: lead => updated.push(lead), openJobCard: () => {},
     assignableTechnicians: [{ id: "alex", name: "Alex", active: true }], inspectionStaff: [], loading: false, username: "manager" };
   const { DispatchPlannerView } = loadTs("components/admin/views/DispatchPlannerView.tsx", {
+    "../DispatchDayPlanner": { DispatchDayPlanner: function DispatchDayPlanner() {} },
     react, "../AdminPageContext": { useAdminPageCtx: () => context },
     "@/lib/useZoneRules": { useZoneRules: () => ({ flexRadiusKm: 15 }) },
     "../modals/EditBookingModal": { EditBookingModal: function EditBookingModal() {} },

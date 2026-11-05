@@ -193,10 +193,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  // A stale editor must never reset an existing booking to the New queue,
+  // A stale editor must never reset an established lead to the New queue,
   // including saves that clear the appointment or only edit its end/assignee.
   if (typeof body.status === "string" && /^(new|new lead)$/i.test(body.status.trim()) &&
-      (primary.inspectionAt || primary.jobAt || primary.bookings?.length) &&
       !/^(new|new lead)$/i.test((primary.status || "").trim())) {
     body.status = primary.status;
   }

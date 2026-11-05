@@ -15,7 +15,7 @@ function harness() {
     setStartJobPrompt: value => prompts.push(value), updateJobBooking: (...args) => updates.push(args),
   };
   const overrides = {
-    react: { useState: value => [value, () => {}] },
+    react: { useState: value => [value, () => {}], useRef: current => ({ current }) },
     "@/lib/useDistanceKm": { useDistanceKm: () => null },
     "@/components/admin/AdminPageContext": { useAdminPageCtx: () => ctx },
     "./AdminPageContext": { useAdminPageCtx: () => ctx },

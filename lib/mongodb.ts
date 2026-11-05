@@ -32,6 +32,9 @@ export async function getMongoClient(): Promise<MongoClient> {
   if (cache.client) return cache.client;
   if (!cache.promise) {
     cache.promise = new MongoClient(uri, {
+      // An omitted optional value must never clear a stored field, including
+      // writes that bypass the submissions helper (bookings, syncs, cron jobs).
+      ignoreUndefined: true,
       // Keep connections lean on serverless. The selection timeout is generous
       // enough to absorb a cold TLS handshake on networks that inspect traffic
       // (where the first connection can take a few seconds per node).
