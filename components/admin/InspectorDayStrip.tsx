@@ -1,5 +1,7 @@
 "use client";
 
+import { customerDrivingDirections } from "@/lib/customerNavigation";
+
 import { useMemo } from "react";
 import { Navigation, Phone, Clock, MapPin, CheckCircle2, CalendarDays, Route } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
@@ -118,6 +120,7 @@ export function InspectorDayStrip() {
       <ol className="divide-y divide-slate-100">
         {stops.map((s, i) => {
           const l = s.lead;
+          const navigationUrl = customerDrivingDirections(l);
           const done = isDone(l);
           const leg = legs[i];
           return (
@@ -158,23 +161,19 @@ export function InspectorDayStrip() {
 
               <span className="flex items-center gap-1.5 shrink-0">
                 <a
-                  href={
-                    l.address
-                      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${l.address}, VIC, Australia`)}`
-                      : undefined
-                  }
+                  href={navigationUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-disabled={!l.address}
+                  aria-disabled={!navigationUrl}
                   onClick={(e) => {
-                    if (!l.address) e.preventDefault();
+                    if (!navigationUrl) e.preventDefault();
                   }}
                   className={`p-1.5 rounded-lg border transition-colors ${
-                    l.address
+                    navigationUrl
                       ? "border-slate-200 hover:bg-emerald-50 text-emerald-700 cursor-pointer"
                       : "border-slate-200/60 text-slate-300 cursor-not-allowed"
                   }`}
-                  title={l.address ? "Directions" : "No address on this lead"}
+                  title={navigationUrl ? "Drive to the customer property" : "A full customer property address is required"}
                 >
                   <Navigation className="w-3.5 h-3.5" />
                 </a>

@@ -1,5 +1,7 @@
 "use client";
 
+import { customerDrivingDirections } from "@/lib/customerNavigation";
+
 import { useEffect, useState, useRef } from "react";
 import { X, ExternalLink, MapPin, Navigation, Radio, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import type { Lead, GpsCheckin } from "@/components/admin/types";
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
+  const navigationUrl = customerDrivingDirections(lead);
   const [livePos, setLivePos] = useState<{
     lat: number;
     lng: number;
@@ -179,9 +182,9 @@ export function GpsModal({ lead, statusMessage, onClose, onCapture }: Props) {
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-2">
-          {lead.address && (
+          {navigationUrl && (
             <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lead.address)}`}
+              href={navigationUrl}
               target="_blank"
               rel="noreferrer"
               className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 text-center flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"

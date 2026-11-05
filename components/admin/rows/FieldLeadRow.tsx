@@ -1,5 +1,7 @@
 "use client";
 
+import { customerDrivingDirections, customerPropertyAddress } from "@/lib/customerNavigation";
+
 import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
 import { useEffect, useState } from "react";
 import { preferredCustomerQuote } from "@/lib/customerQuoteSelection";
@@ -21,6 +23,8 @@ import { ExpandableServiceNotes } from "@/components/admin/ExpandableServiceNote
 
 export function FieldLeadRow({ l }: { l: Lead }) {
   const distanceKm = useDistanceKm(l.address);
+  const navigationUrl = customerDrivingDirections(l);
+  const propertyAddress = customerPropertyAddress(l);
   const ctx = useAdminPageCtx();
   const [quoteText, setQuoteText] = useState<Partial<Lead> | null>(null);
   const [scopeError, setScopeError] = useState("");
@@ -158,7 +162,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
 
           <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium truncate">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate" title={l.address}>{l.address || "No address provided"}</span>
+            <span className="truncate" title={propertyAddress || l.address}>{propertyAddress || l.address || "No address provided"}</span>
             {distanceKm !== null && (
               <span className="shrink-0 ml-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                 {distanceKm} km
@@ -179,20 +183,20 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             {/* Directions: an inspector drives to every one of these, so the map
                 link belongs on the row rather than two clicks deep in the GPS modal. */}
             <a
-              href={l.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${l.address}, VIC, Australia`)}` : undefined}
+              href={navigationUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-disabled={!l.address}
-              onClick={(e) => { if (!l.address) e.preventDefault(); }}
+              aria-disabled={!navigationUrl}
+              onClick={(e) => { if (!navigationUrl) e.preventDefault(); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 border rounded-lg text-[10px] xl:text-[11px] font-semibold transition-colors min-w-0 shadow-2xs ${
-                l.address
+                navigationUrl
                   ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80 cursor-pointer"
                   : "bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed"
               }`}
-              title={l.address ? "Open driving directions" : "No address on this lead"}
+              title={navigationUrl ? "Drive to the customer property" : "A full customer property address is required"}
             >
               <Navigation className="w-3 h-3 text-emerald-600 shrink-0" />
-              <span className="truncate">Navigate</span>
+              <span className="truncate">{navigationUrl ? "Navigate" : "Property address required"}</span>
             </a>
             <button
               type="button"
