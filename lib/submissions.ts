@@ -787,6 +787,12 @@ export async function updateSubmission(
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
   const { _id, ...safeUpdates } = updates;
+  // Optional fields with undefined values mean "leave unchanged", not null.
+  for (const key of Object.keys(safeUpdates) as (keyof typeof safeUpdates)[]) {
+    if (safeUpdates[key] === undefined) delete safeUpdates[key];
+  }
+  // Status cannot be cleared by a partial edit (including older clients).
+  if ("status" in safeUpdates && (typeof safeUpdates.status !== "string" || !safeUpdates.status.trim())) delete safeUpdates.status;
   const writeFilter: Filter<SubmissionDoc> = { _id: new ObjectId(id) };
   if (acceptedQuoteFields.some(field => field in safeUpdates)) {
     const current = await col.findOne({ _id: new ObjectId(id) });

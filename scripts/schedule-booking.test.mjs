@@ -330,3 +330,27 @@ test("stale New status cannot reset bookings on end-time edits, removal or gener
     }
   }
 });
+
+test("booking and assignment-only edits never write an undefined status that MongoDB stores as null", async () => {
+  const { BSON } = await import("mongodb");
+  for (const status of ["Inspection Booked", "Inspection In Progress", "Inspection Completed", "Quote Sent", "Job In Progress", "Payment Pending"]) {
+    for (const updates of [
+      { inspectionAt: "2026-10-29T09:00" },
+      { assigned: "New Inspector" },
+      { inspectionEndAt: "2026-10-28T12:00" },
+      { jobAt: "2026-10-29T09:00" },
+      { technician: "New Technician" },
+      { technicianId: "new-tech" },
+    ]) {
+      if (updates.jobAt || updates.technician || updates.technicianId) {
+        if (!["Job In Progress", "Payment Pending"].includes(status)) continue;
+      }
+      const { patch, calls } = patchApi({ before: { status, inspectionAt: "2026-10-28T09:00", jobAt: "2026-10-28T09:00" } });
+      assert.equal((await patch(updates)).status, 200);
+      const saved = calls.find(([action]) => action === "update")[2];
+      const persisted = BSON.deserialize(BSON.serialize({ $set: saved }, { ignoreUndefined: false })).$set;
+      assert.equal(Object.hasOwn(persisted, "status"), false, `${status} / ${JSON.stringify(updates)} must omit status entirely`);
+      assert.equal(({ status, ...persisted }).status, status, "the stored lead must retain its status after a reload");
+    }
+  }
+});

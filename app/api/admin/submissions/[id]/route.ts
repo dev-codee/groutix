@@ -306,7 +306,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       if (intakeStatuses.has(body.status)) {
         body.status = statusAfterBooking(type, primary.status) || primary.status;
       } else if (!body.status || body.status === primary.status) {
-        body.status = statusAfterBooking(type, body.status || primary.status) || body.status;
+        const nextStatus = statusAfterBooking(type, body.status || primary.status);
+        // No transition means omit status. Setting it to undefined is still a
+        // $set write: MongoDB serializes it as null and the CRM displays New.
+        if (nextStatus) body.status = nextStatus;
       }
     }
     const persisted = { ...body };
