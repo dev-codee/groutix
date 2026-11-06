@@ -13,6 +13,8 @@ export const siliconeFaqs = [
   { q: "How long before I can use my shower?", a: "It depends on the silicone. We tell you before we start." },
   { q: "How much does it cost to replace shower silicone in Melbourne?", a: "It depends on the length, location, condition and access. We quote after we see it." },
   { q: "Can you replace silicone around a bath or vanity?", a: "Yes. We replace silicone anywhere two wet area surfaces meet." },
+  { q: "How long does new silicone last?", a: "It varies with the product, the joint and how the area is used and cleaned. A joint that was fully stripped and resealed lasts far longer than a bead laid over old silicone." },
+  { q: "Why does silicone go black?", a: "Mould grows into the bead where moisture and soap scum sit. Once mould is through the bead rather than on the surface, cleaning will not shift it and the bead needs replacing." },
 ];
 
 export const siliconePhotoSlots = ["Shower corner", "Bath edge", "Screen base", "Vanity"];
