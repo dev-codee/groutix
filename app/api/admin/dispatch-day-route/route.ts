@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const session = await verifyRequestSession(req);
-  if (!session || !canView(session.role, "dispatch-planner")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || !canView(session.role, "dispatch")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json().catch(() => null);
   if (!Array.isArray(body?.ids) || body.ids.length < 2 || body.ids.length > 16 || new Set(body.ids).size !== body.ids.length
     || body.ids.some((id: unknown) => typeof id !== "string" || !ObjectId.isValid(id))) return NextResponse.json({ error: "Select between 2 and 16 unique leads." }, { status: 400 });

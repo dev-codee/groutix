@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
+import { TeamAccessManager } from "../TeamAccessManager";
 import {
   ExternalLink,
   MessageSquare,
@@ -20,7 +20,7 @@ import type { Role } from "@/lib/roles";
 
 interface Props {
   isManager: boolean;
-  basePath: string;
+  onUsersChanged: (users: StaffMember[]) => void;
   openAsRole: (s: StaffMember) => void;
   openChat: (s: StaffMember) => void;
   handleDeleteStaff: (s: { id: string; name: string }) => void;
@@ -93,7 +93,7 @@ const ROLE_GROUPS = [
 
 export function TeamView({
   isManager,
-  basePath,
+  onUsersChanged,
   openAsRole,
   openChat,
   handleDeleteStaff,
@@ -102,6 +102,9 @@ export function TeamView({
 }: Props) {
   const { staff, leads, username, isTechnicianName } = useAdminPageCtx();
 
+  const [managingAccess, setManagingAccess] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("manageAccess") === "1"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -204,6 +207,10 @@ export function TeamView({
     ])
   );
 
+  if (isManager && managingAccess) {
+    return <TeamAccessManager onBack={() => setManagingAccess(false)} onUsersChanged={onUsersChanged} />;
+  }
+
   return (
     <div className="space-y-3.5">
       {/* Header bar */}
@@ -239,13 +246,13 @@ export function TeamView({
             </div>
           </div>
           {isManager && (
-            <Link
-              href={`${basePath}/users`}
+            <button type="button"
+              onClick={() => setManagingAccess(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add Staff
-            </Link>
+              Add Staff / Manage Access
+            </button>
           )}
         </div>
       </div>
@@ -302,9 +309,9 @@ export function TeamView({
         <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-xs text-slate-400">
           No staff accounts yet.{" "}
           {isManager && (
-            <Link href={`${basePath}/users`} className="text-blue-600 font-semibold hover:underline">
-              Add them under Staff Accounts →
-            </Link>
+            <button type="button" onClick={() => setManagingAccess(true)} className="text-blue-600 font-semibold hover:underline">
+              Add your first team member →
+            </button>
           )}
         </div>
       ) : (
@@ -332,13 +339,13 @@ export function TeamView({
                         </span>
                       </div>
                       {isManager && (
-                        <Link
-                          href={`${basePath}/users`}
+                        <button type="button"
+                          onClick={() => setManagingAccess(true)}
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white border ${group.border} text-[11px] font-semibold ${group.color} hover:bg-white/90 shadow-2xs transition-colors`}
                         >
                           <Plus className="w-3 h-3" />
                           {group.addLabel}
-                        </Link>
+                        </button>
                       )}
                     </div>
 

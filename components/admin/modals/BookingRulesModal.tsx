@@ -23,7 +23,7 @@ import { todayAU, addDaysYmd, formatApptDate } from "@/lib/scheduling";
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const SLOT_OPTIONS = [30, 45, 60, 90, 120, 180, 240];
 
-export function BookingRulesModal({ onClose }: { onClose: () => void }) {
+export function BookingRulesModal({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const [rules, setRules] = useState<BookingRules | null>(null);
   const [tab, setTab] = useState<BookingType | "technicians">("inspection");
   const [saving, setSaving] = useState(false);
@@ -39,7 +39,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   if (tab === "technicians") return (
-    <Shell onClose={onClose}>
+    <Shell onClose={onClose} embedded={embedded}>
       <div className="flex flex-wrap gap-2 mb-4">
         <button type="button" onClick={() => setTab("inspection")} className="px-3 py-2 rounded-lg border text-xs font-bold">Inspection Hours</button>
         <button type="button" onClick={() => setTab("job")} className="px-3 py-2 rounded-lg border text-xs font-bold">Job Hours</button>
@@ -51,7 +51,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
 
   if (!rules) {
     return (
-      <Shell onClose={onClose}>
+      <Shell onClose={onClose} embedded={embedded}>
         <div className="flex items-center gap-2 text-xs text-slate-500 py-8 justify-center">
           {error ?? (<><Loader2 className="w-4 h-4 animate-spin" /> Loading booking rules…</>)}
         </div>
@@ -105,7 +105,7 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
   const typeLabel = tab === "inspection" ? "Inspections" : "Jobs";
 
   return (
-    <Shell onClose={onClose}>
+    <Shell onClose={onClose} embedded={embedded}>
       <p className="text-xs text-slate-500 leading-relaxed">
         Controls booking hours and working days across the dashboard and customer booking links. Multi-day jobs skip nights and closed days. Customer bookings follow these rules. Staff can confirm dashboard bookings outside hours, on closed days, or despite capacity and assigned-person conflicts. Existing appointments are not moved.
       </p>
@@ -305,9 +305,9 @@ export function BookingRulesModal({ onClose }: { onClose: () => void }) {
         >
           <RotateCcw className="w-3.5 h-3.5" /> Defaults
         </button>
-        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 cursor-pointer">
+        {!embedded && (<button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 cursor-pointer">
           Close
-        </button>
+        </button>)}
         <button
           type="button"
           onClick={save}
@@ -335,7 +335,8 @@ function SlotPreview({ rules, type }: { rules: BookingRules; type: BookingType }
   );
 }
 
-function Shell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+function Shell({ onClose, children, embedded }: { onClose?: () => void; children: React.ReactNode; embedded?: boolean }) {
+  if (embedded) return <section className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">{children}</section>;
   return (
     <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 overflow-y-auto p-3 sm:p-6">
       <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-2xl my-4 space-y-4">

@@ -26,7 +26,7 @@ const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 const SUBURB_NAMES = SUBURBS.map((s) => s.name).sort();
 
-export function ZoneRulesModal({ onClose }: { onClose: () => void }) {
+export function ZoneRulesModal({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const [rules, setRules] = useState<ZoneRules | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function ZoneRulesModal({ onClose }: { onClose: () => void }) {
 
   if (!rules) {
     return (
-      <Shell onClose={onClose}>
+      <Shell onClose={onClose} embedded={embedded}>
         <div className="flex items-center gap-2 text-xs text-slate-500 py-8 justify-center">
           {error ?? (
             <>
@@ -90,7 +90,7 @@ export function ZoneRulesModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Shell onClose={onClose}>
+    <Shell onClose={onClose} embedded={embedded}>
       {/* Day-wise master switch */}
       <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/60 cursor-pointer">
         <input
@@ -383,13 +383,13 @@ export function ZoneRulesModal({ onClose }: { onClose: () => void }) {
         >
           <RotateCcw className="w-3.5 h-3.5" /> Defaults
         </button>
-        <button
+        {!embedded && (<button
           type="button"
           onClick={onClose}
           className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 cursor-pointer"
         >
           Close
-        </button>
+        </button>)}
         <button
           type="button"
           onClick={save}
@@ -427,7 +427,8 @@ function RadiusPreview({ rules }: { rules: ZoneRules }) {
   );
 }
 
-function Shell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+function Shell({ onClose, children, embedded }: { onClose?: () => void; children: React.ReactNode; embedded?: boolean }) {
+  if (embedded) return <section className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">{children}</section>;
   return (
     <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 overflow-y-auto p-3 sm:p-6">
       <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-2xl my-4 space-y-4">

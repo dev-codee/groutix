@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, UserCheck, FileText, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, UserCheck, FileText, Settings, LogOut, Menu, X } from "lucide-react";
 import { useAdminBasePath, useAdminRole } from "@/components/admin/AdminProvider";
 import { ROLE_LABELS } from "@/lib/roles";
 
@@ -21,8 +21,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: basePath, label: "CRM Dashboard", icon: LayoutDashboard, roles: null },
     { href: `${basePath}?view=applications`, label: "Career Applications", icon: UserCheck, roles: ["manager", "super_admin"] },
-    { href: `${basePath}/users`, label: "Staff Accounts", icon: UserCheck, roles: ["manager", "super_admin"] },
-    { href: `${basePath}/content`, label: "Site Content", icon: FileText, roles: ["manager", "super_admin"] },
+    { href: `${basePath}?view=team`, label: "Team", icon: UserCheck, roles: ["manager", "super_admin"] },
+    { href: `${basePath}?view=settings`, label: "Settings", icon: Settings, roles: ["manager", "super_admin"] },
+    { href: `${basePath}?view=content`, label: "Site Content", icon: FileText, roles: ["manager", "super_admin"] },
   ].filter((item) => !item.roles || item.roles.includes(role));
 
   async function logout() {

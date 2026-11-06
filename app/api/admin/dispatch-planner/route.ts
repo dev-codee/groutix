@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 interface PlanDoc extends DispatchPlan { _id: string; updatedAt: Date; updatedBy: string }
 async function authorized(req: NextRequest) {
   const session = await verifyRequestSession(req);
-  return session && canView(session.role, "dispatch-planner") ? session : null;
+  return session && canView(session.role, "dispatch") ? session : null;
 }
 export async function GET(req: NextRequest) {
   if (!await authorized(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

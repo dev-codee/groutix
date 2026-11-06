@@ -161,7 +161,6 @@ import { getUnassignedSchedulingType } from "@/lib/unassignedLeads";
 import { ScheduleCalendarView } from "@/components/admin/ScheduleCalendarView";
 import { ZonesView } from "@/components/admin/views/ZonesView";
 import { DispatchView } from "@/components/admin/views/DispatchView";
-import { DispatchPlannerView } from "@/components/admin/views/DispatchPlannerView";
 import { AnalyticsView } from "@/components/admin/views/AnalyticsView";
 import { LeadsView } from "@/components/admin/views/LeadsView";
 import { QuotesView } from "@/components/admin/views/QuotesView";
@@ -179,8 +178,8 @@ import { TeamChatModal } from "@/components/admin/modals/TeamChatModal";
 import { JobCardModal } from "@/components/admin/modals/JobCardModal";
 import { LeadEditModal } from "@/components/admin/modals/LeadEditModal";
 import { useTechnicians, publishTechnicianChanges } from "@/lib/useTechnicians";
-import { BookingRulesModal } from "@/components/admin/modals/BookingRulesModal";
-import { ZoneRulesModal } from "@/components/admin/modals/ZoneRulesModal";
+import { SiteContentView } from "@/components/admin/views/SiteContentView";
+import { SettingsView, settingsSection, type SettingsSection } from "@/components/admin/views/SettingsView";
 
 // How many rows/cards to show per page in the long list views.
 const PAGE_SIZE = 20;
@@ -196,9 +195,10 @@ type DashboardView =
   | "jobs"
   | "completed"
   | "dispatch"
-  | "dispatch-planner"
   | "schedule"
   | "zones"
+  | "settings"
+  | "content"
   | "customers"
   | "team"
   | "technicians"
@@ -240,6 +240,10 @@ export default function CrmDashboardPage() {
     () => ROLE_DEFAULT_VIEW[role] as DashboardView
   );
 
+  const [settingsTab, setSettingsTab] = useState<SettingsSection>(() =>
+    typeof window === "undefined" ? "booking-hours" : settingsSection(new URLSearchParams(window.location.search).get("section"))
+  );
+
   // Safety net: a role must never sit on a view it isn't allowed to open. If
   // the current view ever falls outside this role's permitted tabs (stale state,
   // a programmatic jump, a role change), snap back to the role's home tab. This
@@ -256,16 +260,18 @@ export default function CrmDashboardPage() {
     setCurrentView(view);
     if (typeof window !== "undefined") {
       const defaultView = ROLE_DEFAULT_VIEW[role] as DashboardView;
-      const url = view === defaultView ? basePath : `${basePath}?view=${view}`;
+      const url = view === defaultView ? basePath : `${basePath}?view=${view}${view === "settings" ? `&section=${settingsTab}` : ""}`;
       window.history.pushState({ view }, "", url);
     }
-  }, [role, basePath]);
+  }, [role, basePath, settingsTab]);
 
   // Sync view from URL when the user presses the browser back/forward buttons.
   useEffect(() => {
     const handler = () => {
       const params = new URLSearchParams(window.location.search);
-      const v = params.get("view");
+      const requested = params.get("view");
+      const v = requested === "zones" && roleCanView(role, "settings") ? "settings" : requested;
+      if (v === "settings") setSettingsTab(requested === "zones" ? "service-zones" : settingsSection(params.get("section")));
       const target = (v && roleCanView(role, v)) ? v as DashboardView : ROLE_DEFAULT_VIEW[role] as DashboardView;
       setCurrentView(target);
     };
@@ -273,13 +279,15 @@ export default function CrmDashboardPage() {
     return () => window.removeEventListener("popstate", handler);
   }, [role]);
 
-  // Deep linking: support ?viewAsRole=field&viewAsName=John or ?view=team from Staff Accounts
+  // Deep linking: support ?viewAsRole=field&viewAsName=John or ?view=team from Team
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const vRole = params.get("viewAsRole");
     const vName = params.get("viewAsName");
-    const vView = params.get("view");
+    const requestedView = params.get("view");
+    const vView = requestedView === "zones" && roleCanView(realRole, "settings") ? "settings" : requestedView;
+    if (vView === "settings") setSettingsTab(requestedView === "zones" ? "service-zones" : settingsSection(params.get("section")));
     if (vRole && isRole(vRole)) {
       if (vRole === "manager" || vRole === "super_admin") {
         setViewAs(null);
@@ -658,11 +666,7 @@ export default function CrmDashboardPage() {
   const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [siteLogoUrl, setSiteLogoUrl] = useState("/new_logo.jpeg");
-  const [logoSettingsOpen, setLogoSettingsOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
-  const [qboSettingsOpen, setQboSettingsOpen] = useState(false);
-  const [bookingRulesOpen, setBookingRulesOpen] = useState(false);
-  const [zoneRulesOpen, setZoneRulesOpen] = useState(false);
   const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string; environment?: "sandbox" | "production" } | null>(null);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
   const [recycleBinCount, setRecycleBinCount] = useState(0);
@@ -690,17 +694,20 @@ export default function CrmDashboardPage() {
       .catch(() => { });
   }, []);
 
-  // Show a toast if the QBO OAuth callback added a result param.
+  // Return OAuth results to QuickBooks inside the consolidated Settings view.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const qbo = params.get("qbo");
     if (!qbo) return;
     if (qbo === "connected") {
       setQboStatus((s) => (s ? { ...s, connected: true } : s));
-      setQboSettingsOpen(true);
     }
     // Strip the param from the URL without a reload.
     const url = new URL(window.location.href);
+    url.searchParams.set("view", "settings");
+    url.searchParams.set("section", "quickbooks");
+    setSettingsTab("quickbooks");
+    setCurrentView("settings");
     url.searchParams.delete("qbo");
     url.searchParams.delete("msg");
     window.history.replaceState({}, "", url.toString());
@@ -4192,13 +4199,6 @@ export default function CrmDashboardPage() {
         </button>
       )}
 
-      {canSee("dispatch-planner") && (
-        <button type="button" onClick={() => { navigateTo("dispatch-planner"); onItemClick?.(); }}
-          className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${currentView === "dispatch-planner" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"}`}>
-          <span className="flex items-center gap-2.5"><ClipboardList className="h-4 w-4 text-blue-500" />Dispatch Planner</span>
-        </button>
-      )}
-
       {canSee("schedule") && (
         <button
           type="button"
@@ -4218,7 +4218,7 @@ export default function CrmDashboardPage() {
         </button>
       )}
 
-      {canSee("zones") && (
+      {canSee("zones") && !canSee("settings") && (
         <button
           type="button"
           onClick={() => { navigateTo("zones"); onItemClick?.(); }}
@@ -4299,62 +4299,18 @@ export default function CrmDashboardPage() {
           >
             <UserCheck className="w-4 h-4" /> Career Applications
           </button>
-          <Link
-            href={`${basePath}/users`}
-            onClick={() => onItemClick?.()}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-          >
-            <UserCheck className="w-4 h-4" />
-            Staff Accounts
-          </Link>
-          <Link
-            href={`${basePath}/content`}
-            onClick={() => onItemClick?.()}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            Site Content Editor
-          </Link>
+          <button type="button" onClick={() => { navigateTo("content"); onItemClick?.(); }}
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors ${currentView === "content" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"}`}>
+            <FileText className="h-4 w-4" /> Site Content Editor
+          </button>
         </div>
       )}
 
       {(role === "manager" || role === "super_admin") && (
         <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-1">
-          <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settings</p>
-          <button
-            type="button"
-            onClick={() => { setLogoSettingsOpen(true); onItemClick?.(); }}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
-          >
-            <Settings className="w-4 h-4" />
-            Logo Settings
-          </button>
-          <button
-            type="button"
-            onClick={() => { setBookingRulesOpen(true); onItemClick?.(); }}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
-          >
-            <CalendarClock className="w-4 h-4" />
-            Booking Hours
-          </button>
-          <button
-            type="button"
-            onClick={() => { setZoneRulesOpen(true); onItemClick?.(); }}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
-          >
-            <MapIcon className="w-4 h-4" />
-            Service Zones
-          </button>
-          <button
-            type="button"
-            onClick={() => { setQboSettingsOpen(true); onItemClick?.(); }}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 text-left transition-colors cursor-pointer"
-          >
-            <Settings className="w-4 h-4" />
-            QuickBooks
-            {qboStatus?.connected && (
-              <span className="ml-auto w-2 h-2 rounded-full bg-green-500 shrink-0" />
-            )}
+          <button type="button" onClick={() => { navigateTo("settings"); onItemClick?.(); }}
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors ${currentView === "settings" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"}`}>
+            <Settings className="h-4 w-4" /> Settings
           </button>
           <button
             type="button"
@@ -4492,14 +4448,16 @@ export default function CrmDashboardPage() {
                             ? "Completed Records Archive"
                             : currentView === "dispatch"
                               ? "Schedule & Dispatch"
-                              : currentView === "dispatch-planner"
-                                ? "Dispatch Planner"
                               : currentView === "customers"
                                 ? "Customer Directory"
                                 : currentView === "schedule"
                                   ? "Schedule & Calendar"
                                   : currentView === "zones"
                                     ? "Service Zones"
+                                    : currentView === "settings"
+                                      ? "Settings"
+                                      : currentView === "content"
+                                        ? "Site Content Editor"
                                     : currentView === "technicians"
                                       ? "Field Technicians"
                                       : currentView === "recyclebin"
@@ -4699,7 +4657,7 @@ export default function CrmDashboardPage() {
             {/* =========================================================================
               VIEW: JOBS / BOOKINGS
              ========================================================================= */}
-            {currentView === "jobs" && <JobsView />}
+            {currentView === "jobs" && canSee("jobs") && <JobsView />}
 
             {/* =========================================================================
               VIEW: COMPLETED RECORDS ARCHIVE
@@ -4714,7 +4672,6 @@ export default function CrmDashboardPage() {
             {/* =========================================================================
               VIEW: DISPATCH
              ========================================================================= */}
-            {currentView === "dispatch-planner" && <DispatchPlannerView key={username} />}
             {currentView === "dispatch" && (
               <DispatchView
                 initialTab={dispatchInitialTab}
@@ -4788,8 +4745,124 @@ export default function CrmDashboardPage() {
             {/* =========================================================================
               VIEW: SERVICE ZONES
              ========================================================================= */}
+            {currentView === "content" && canSee("content") && <SiteContentView />}
+
+            {currentView === "settings" && canSee("settings") && (
+              <SettingsView section={settingsTab} onSectionChange={section => {
+                setSettingsTab(section);
+                const url = new URL(window.location.href);
+                url.searchParams.set("section", section);
+                window.history.replaceState(window.history.state, "", url);
+              }} logo={<>
+                <h2 className="text-base font-bold text-slate-900">Logo Settings</h2>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center min-h-[80px]">
+                <img src={siteLogoUrl} alt="Current logo" className="h-14 w-auto max-w-full object-contain" />
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">Upload a new JPEG or PNG to replace the logo across the website, emails, and PDFs. Changes take effect immediately.</p>
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload New Logo</label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                  className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer shadow-xs"
+                  disabled={logoUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setLogoUploading(true);
+                    const fd = new FormData();
+                    fd.append("logo", file);
+                    fetch("/api/admin/settings/logo", { method: "POST", body: fd })
+                      .then((r) => r.json())
+                      .then((d) => {
+                        if (d.ok) setSiteLogoUrl(`/${d.logoFile}?v=${d.logoVersion}`);
+                      })
+                      .catch(console.error)
+                      .finally(() => setLogoUploading(false));
+                  }}
+                />
+                {logoUploading && (
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Uploading logo…
+                  </div>
+                )}
+              </div>
+              </>} quickbooks={<>
+                <h2 className="text-base font-bold text-slate-900">QuickBooks Integration</h2>
+              {!qboStatus?.configured ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-1">
+                  <p className="font-bold">Environment variables not set</p>
+                  <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
+                  <pre className="mt-2 bg-amber-100 rounded p-2 text-[10px] leading-5 overflow-x-auto">{`QBO_CLIENT_ID=your_client_id\nQBO_CLIENT_SECRET=your_client_secret`}</pre>
+                  <p className="pt-1">Get these from <span className="font-semibold">developer.intuit.com</span> → My Apps → your app → Keys &amp; OAuth.</p>
+                </div>
+              ) : qboStatus.connected ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2.5 text-xs text-green-800">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+                    <div>
+                      <p className="font-bold">Connected to QuickBooks</p>
+                      {qboStatus.connectedAt && (
+                        <p className="text-green-700 mt-0.5">
+                          Since {new Date(qboStatus.connectedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                      {qboStatus.realmId && (
+                        <p className="text-green-700 mt-0.5">Company ID: {qboStatus.realmId}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">Invoices sent from Groutix are automatically pushed to your QuickBooks company. Customers are created in QBO if they don&apos;t already exist.</p>
+                  <button
+                    type="button"
+                    disabled={qboDisconnecting}
+                    onClick={() => {
+                      setQboDisconnecting(true);
+                      fetch("/api/admin/qbo/disconnect", { method: "POST" })
+                        .then(() => {
+                          setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined } : s);
+                        })
+                        .catch(console.error)
+                        .finally(() => setQboDisconnecting(false));
+                    }}
+                    className="w-full py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {qboDisconnecting ? "Disconnecting…" : "Disconnect QuickBooks"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
+                    <p className="font-semibold text-slate-700">Setup checklist</p>
+                    {qboStatus?.environment === "sandbox" && (
+                      <p className="text-amber-700">Using <span className="font-semibold">sandbox</span> keys — you&apos;ll be asked to connect a sandbox company, not your real one. Create one under Sandboxes at developer.intuit.com, or switch to Production keys and remove QBO_ENVIRONMENT.</p>
+                    )}
+                    <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
+                    <p>2. Set Redirect URI to:</p>
+                    <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>
+                    {qboStatus?.redirectUri && typeof window !== "undefined" && !qboStatus.redirectUri.startsWith(window.location.origin) && (
+                      <p className="pt-1 text-amber-700">Heads up: this differs from the page you&apos;re on ({window.location.origin}), so Intuit will send you back to the address above. Connect from that host, or register this URI at Intuit.</p>
+                    )}
+                    <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- an API route that redirects to Intuit's OAuth consent screen, not a page; <Link> would client-side navigate and break the handshake */}
+                  <a
+                    href="/api/admin/qbo/connect"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"
+                  >
+                    Connect QuickBooks
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+
+              </>} />
+            )}
+
             {currentView === "zones" && (
-              <ZonesView onOpenSettings={role === "manager" ? () => setZoneRulesOpen(true) : undefined} />
+              <ZonesView />
             )}
 
             {/* =========================================================================
@@ -4799,7 +4872,7 @@ export default function CrmDashboardPage() {
             {currentView === "team" && (
               <TeamView
                 isManager={isManager}
-                basePath={basePath}
+                onUsersChanged={setStaff}
                 openAsRole={openAsRole}
                 openChat={openChat}
                 handleDeleteStaff={handleDeleteStaff}
@@ -8541,154 +8614,6 @@ export default function CrmDashboardPage() {
                   Skip
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Booking Hours (inspection/job days, times, closures) */}
-        {bookingRulesOpen && <BookingRulesModal onClose={() => setBookingRulesOpen(false)} />}
-
-        {/* Service Zones (radii, day-wise zones, coastal skips, suburb overrides) */}
-        {zoneRulesOpen && <ZoneRulesModal onClose={() => setZoneRulesOpen(false)} />}
-
-        {/* Logo Settings Modal */}
-        {logoSettingsOpen && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-slate-900">Logo Settings</h3>
-                <button onClick={() => setLogoSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                  <X className="w-4 h-4 text-slate-500" />
-                </button>
-              </div>
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center min-h-[80px]">
-                <img src={siteLogoUrl} alt="Current logo" className="h-14 w-auto max-w-full object-contain" />
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed">Upload a new JPEG or PNG to replace the logo across the website, emails, and PDFs. Changes take effect immediately.</p>
-              <div className="space-y-3">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload New Logo</label>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                  className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer shadow-xs"
-                  disabled={logoUploading}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setLogoUploading(true);
-                    const fd = new FormData();
-                    fd.append("logo", file);
-                    fetch("/api/admin/settings/logo", { method: "POST", body: fd })
-                      .then((r) => r.json())
-                      .then((d) => {
-                        if (d.ok) setSiteLogoUrl(`/${d.logoFile}?v=${d.logoVersion}`);
-                      })
-                      .catch(console.error)
-                      .finally(() => setLogoUploading(false));
-                  }}
-                />
-                {logoUploading && (
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Uploading logo…
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setLogoSettingsOpen(false)}
-                className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* QuickBooks Settings Modal */}
-        {qboSettingsOpen && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-slate-900">QuickBooks Integration</h3>
-                <button onClick={() => setQboSettingsOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                  <X className="w-4 h-4 text-slate-500" />
-                </button>
-              </div>
-
-              {!qboStatus?.configured ? (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-1">
-                  <p className="font-bold">Environment variables not set</p>
-                  <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
-                  <pre className="mt-2 bg-amber-100 rounded p-2 text-[10px] leading-5 overflow-x-auto">{`QBO_CLIENT_ID=your_client_id\nQBO_CLIENT_SECRET=your_client_secret`}</pre>
-                  <p className="pt-1">Get these from <span className="font-semibold">developer.intuit.com</span> → My Apps → your app → Keys &amp; OAuth.</p>
-                </div>
-              ) : qboStatus.connected ? (
-                <div className="space-y-3">
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2.5 text-xs text-green-800">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
-                    <div>
-                      <p className="font-bold">Connected to QuickBooks</p>
-                      {qboStatus.connectedAt && (
-                        <p className="text-green-700 mt-0.5">
-                          Since {new Date(qboStatus.connectedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                      )}
-                      {qboStatus.realmId && (
-                        <p className="text-green-700 mt-0.5">Company ID: {qboStatus.realmId}</p>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">Invoices sent from Groutix are automatically pushed to your QuickBooks company. Customers are created in QBO if they don&apos;t already exist.</p>
-                  <button
-                    type="button"
-                    disabled={qboDisconnecting}
-                    onClick={() => {
-                      setQboDisconnecting(true);
-                      fetch("/api/admin/qbo/disconnect", { method: "POST" })
-                        .then(() => {
-                          setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined } : s);
-                        })
-                        .catch(console.error)
-                        .finally(() => setQboDisconnecting(false));
-                    }}
-                    className="w-full py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    {qboDisconnecting ? "Disconnecting…" : "Disconnect QuickBooks"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
-                    <p className="font-semibold text-slate-700">Setup checklist</p>
-                    {qboStatus?.environment === "sandbox" && (
-                      <p className="text-amber-700">Using <span className="font-semibold">sandbox</span> keys — you&apos;ll be asked to connect a sandbox company, not your real one. Create one under Sandboxes at developer.intuit.com, or switch to Production keys and remove QBO_ENVIRONMENT.</p>
-                    )}
-                    <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
-                    <p>2. Set Redirect URI to:</p>
-                    <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>
-                    {qboStatus?.redirectUri && typeof window !== "undefined" && !qboStatus.redirectUri.startsWith(window.location.origin) && (
-                      <p className="pt-1 text-amber-700">Heads up: this differs from the page you&apos;re on ({window.location.origin}), so Intuit will send you back to the address above. Connect from that host, or register this URI at Intuit.</p>
-                    )}
-                    <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- an API route that redirects to Intuit's OAuth consent screen, not a page; <Link> would client-side navigate and break the handshake */}
-                  <a
-                    href="/api/admin/qbo/connect"
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"
-                  >
-                    Connect QuickBooks
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              )}
-
-              <button
-                onClick={() => setQboSettingsOpen(false)}
-                className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors"
-              >
-                Close
-              </button>
             </div>
           </div>
         )}

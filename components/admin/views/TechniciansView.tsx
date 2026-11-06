@@ -44,7 +44,7 @@ export function TechniciansView({
         </div>
         <p className="text-xs text-slate-400 font-medium mb-3">
           Technicians are dispatched to jobs. To allow a technician to log into the portal, create
-          their account in Staff Accounts with the <b>Technician</b> role.
+          their account in Team with the <b>Technician</b> role.
         </p>
         <form onSubmit={handleAddTechnician} className="flex flex-col sm:flex-row gap-2.5">
           <input
@@ -83,7 +83,7 @@ export function TechniciansView({
         </h2>
         {assignableTechnicians.length === 0 ? (
           <div className="text-xs text-slate-400 py-8 text-center">
-            No technicians yet. Add your first one above or in Staff Accounts.
+            No technicians yet. Add your first one above or in Team.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -137,10 +137,10 @@ export function TechniciansView({
                   <div className="flex flex-wrap gap-2 pt-3 mt-auto">
                     {(t as any).hasLogin ? (
                       <Link
-                        href={`${basePath}/users`}
+                        href={`${basePath}?view=team&manageAccess=1`}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200/80 bg-white text-blue-700 text-xs font-semibold hover:bg-blue-50 transition-all shadow-2xs"
                       >
-                        Edit in Staff Accounts
+                        Manage in Team
                       </Link>
                     ) : (
                       <button
