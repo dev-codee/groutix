@@ -110,7 +110,6 @@ const strataCards: IconCard[] = [
 ];
 
 const workPhotos = [
-  { src: "/balcony-regrouting-herringbone-tiles.webp", alt: "Herringbone balcony tiles regrouted and resealed with waterproof epoxy grout in Melbourne", caption: "Herringbone balcony, regrouted and resealed" },
   { src: "/balcony-centre-watermark.webp", alt: "Balcony after a balcony leak repair in Melbourne, regrouted and resealed by Groutix", caption: "Balcony regrouted and resealed" },
   { src: "/balcony-regrouting-tiles.webp", alt: "Balcony tiles regrouted and resealed during a balcony leak repair in Melbourne", caption: "Balcony tiles, regrouted" },
 ];
@@ -215,11 +214,11 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
           <SectionHead k="Real Work" title="Balcony Leak Repairs: Real Melbourne Work">
             <p className={lead}>Finished Groutix balcony work, photographed on site. Every balcony is inspected first, because the right repair depends on whether the membrane underneath still holds.</p>
           </SectionHead>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {workPhotos.map((p) => (
               <figure key={p.src} className={`${box} overflow-hidden`}>
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-200">
-                  <Image src={p.src} alt={p.alt} fill sizes="(min-width:1024px) 33vw, 100vw" className="object-cover" />
+                  <Image src={p.src} alt={p.alt} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
                 </div>
                 <figcaption className="p-4 text-[15px] font-bold text-slate-900">{p.caption}</figcaption>
               </figure>
