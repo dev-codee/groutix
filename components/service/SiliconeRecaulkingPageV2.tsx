@@ -10,10 +10,11 @@
 // the Service + FAQPage schema for this slug, so adding one here would
 // duplicate it (caught and corrected 2026-11-06, before deploy).
 // IMAGES CORRECTED (2026-11-06, visually verified against the job
-// library): slider 1 = Job 8 shower base pair, slider 2 = Job 21 shower
-// base pair (the earlier bath edge pair was actually the Job 1 floor
-// during and after photos, removed), process = Job 3 silicone removal
-// in progress (the earlier process file was a cracked seal close up).
+// library and Edeel's own uploads): slider 1 = Job 8 shower base pair
+// (Edeel's originals), slider 2 = Job 16 shower corner pair, process =
+// Job 16 corner with the failed sealant cut out. Earlier picks (Job 21
+// base pair, Job 13 bath pair, Job 3 and Job 2 process shots) were
+// replaced at Edeel's direction on 2026-11-06.
 
 import Image from "next/image";
 import Link from "next/link";
@@ -100,12 +101,12 @@ const resultBlocks: ResultBlock[] = [
     afterAlt: "The same shower base in Melbourne after silicone recaulking, a clean new bead and regrouted wall tiles",
   },
   {
-    heading: "Yellowed Shower Base Silicone, Stripped Back and Resealed",
-    text: "The silicone around this shower base had yellowed and lifted until the bond failed, and the strips pulled out of the joint show how little was still holding. We stripped the joint back to clean surfaces and resealed the base and wall junctions with fresh mould resistant silicone.",
-    before: "/silicone-shower-seal-before.webp",
-    after: "/silicone-shower-seal-after.webp",
-    beforeAlt: "Shower base in Melbourne with yellowed, lifted silicone and the old strips removed before silicone recaulking",
-    afterAlt: "The same shower base in Melbourne after silicone recaulking, fresh white seals along the base and wall junctions",
+    heading: "Blackened Corner Joints, Stripped Out and Resealed",
+    text: "The silicone in this shower corner had gone black along the wall and floor junctions and split away from the tiles, so every shower pushed water straight into the corner. We cut the failed sealant out completely, cleaned the joints and resealed the corner and the floor junctions with fresh mould resistant silicone.",
+    before: "/silicone-corner-before.webp",
+    after: "/silicone-corner-after.webp",
+    beforeAlt: "Shower corner in Melbourne with blackened, split silicone along the wall and floor junctions before silicone recaulking",
+    afterAlt: "The same shower corner in Melbourne after silicone recaulking, fresh white seals along the corner and floor junctions",
   },
 ];
 
@@ -356,7 +357,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
               <a href="#quote-form" className={`${btnNavy} mt-6`}>Book Your Free Quote →</a>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/silicone-recaulking-process.webp" alt="Old silicone being cut out of a shower floor joint in Melbourne during silicone recaulking, removed strips and a utility knife on the tiles" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/silicone-recaulking-process.webp" alt="Shower corner in Melbourne with the failed black silicone cut out during silicone recaulking, removed strips lying on the floor" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
