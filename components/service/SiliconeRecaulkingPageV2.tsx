@@ -1,40 +1,121 @@
 "use client";
 
-// Redesigned /silicone-recaulking page. Copy, links and FAQs are the same as
-// components/SiliconeRecaulkingPage.tsx (kept for a one-line rollback); only the
-// layout follows the new homepage.
-// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
-// under the hero); every photo live-verified with SEO alt text.
+// Redesigned /silicone-recaulking page (2026-11-04): shower page pattern.
+// Results with real before and after sliders, text sign cards, where we
+// reseal, silicone or grout table, why silicone fails, process, related
+// services. Visible copy carries no hyphens in compound words. FAQs and
+// steps stay in lib/siliconeRecaulkingContent (route adds the schema).
+// FINAL (2026-11-06): real alt text on the slider images (SEO) only.
+// NO Service schema in this component: app/[slug]/page.tsx already emits
+// the Service + FAQPage schema for this slug, so adding one here would
+// duplicate it (caught and corrected 2026-11-06, before deploy).
+// IMAGES CORRECTED (2026-11-06, visually verified against the job
+// library): slider 1 = Job 8 shower base pair, slider 2 = Job 21 shower
+// base pair (the earlier bath edge pair was actually the Job 1 floor
+// during and after photos, removed), process = Job 3 silicone removal
+// in progress (the earlier process file was a cracked seal close up).
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ComponentType, ReactNode } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import { Bath, Check, Clock, Droplets, Layers, House, Phone, Ruler, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact } from "@/components/SiteContentProvider";
+import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { siliconeFaqs, siliconeSteps } from "@/lib/siliconeRecaulkingContent";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
+  FaqList, MobileCallBar, ReviewsMarquee, Section, SectionHead,
+  box, btnGhost, btnGold, btnNavy, cardText, cardTitle, h2, heroWrap, inlineLink, lead, wrap, eyebrow,
 } from "@/components/v2/ui";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
+type ResultBlock = { heading: string; text: string; before: string; after: string; beforeAlt: string; afterAlt: string };
 type IconCard = { title: string; body: ReactNode; Icon: ComponentType<{ className?: string }> };
 
-/* ───────────── Content (unchanged from the live page) ───────────── */
-// Card title and text are the live copy; the photo and link are new for the card layout.
-const signs: PhotoCardData[] = [
-  { title: "Black or Pink Mould", text: "Mould in the silicone bead.", img: "/shower-regrouting-signs-black-mould.webp", alt: "Mould and staining along a shower corner joint", href: "#why-silicone-fails", link: "Why silicone fails" },
-  { title: "Peeling or Lifting Edges", text: "The seal pulls away from the surface.", img: "/shower-regrouting-mouldy-grout-corner.webp", alt: "Silicone lifting along the edge of a shower base", href: "#process", link: "How we reseal" },
-  { title: "Cracked or Split Silicone", text: "Cracks and splits through the bead.", img: "/shower-regrouting-old-silicone-strips.webp", alt: "Old, cracked silicone stripped from a shower base — split beads let water behind the tiles", href: "/leaking-shower-repair/", link: "Leaking shower repair" },
-  { title: "Yellow or Hardened Silicone", text: "Silicone that has gone yellow or hard.", img: "/bath-shower-corner-grout-close-up.webp", alt: "Old, discoloured silicone along a shower screen base", href: "#cost", link: "What it costs", half: true },
-  { title: "Gaps at the Tile", text: "Gaps between the bead and the tile.", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Failed silicone and mould at a shower wall junction letting water through the joint", href: "#silicone-or-grout", link: "Silicone or grout?", half: true },
-  { title: "Shrinking at Corners", text: "A bead that has shrunk or pulled away at corners.", img: "/shower-over-bath-regrouting-patterned-tiles.webp", alt: "Shower over a bath where the silicone bead has shrunk and pulled away at the corners", href: "/shower-regrouting/", link: "Shower regrouting", half: true },
+const card = `${box} p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`;
+
+function Callout({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className={`${box} border-l-4 border-l-[#FBBC04] p-6`}>
+      <h3 className={cardTitle}>{title}</h3>
+      <p className={cardText}>{children}</p>
+    </div>
+  );
+}
+
+/* Image card styled like the homepage "shower grout problems" cards. */
+
+function SignSlider({ before, after, beforeAlt, afterAlt, title }: { before: string; after: string; beforeAlt: string; afterAlt: string; title: string }) {
+  const [pos, setPos] = useState(100);
+  const handle = Math.min(96, Math.max(4, pos));
+  const sizes = "(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw";
+  return (
+    <div className="relative aspect-[4/5] select-none overflow-hidden bg-slate-200">
+      <div className="absolute inset-0">
+        <Image src={before} alt={beforeAlt} fill sizes={sizes} className="object-cover" />
+      </div>
+      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 0 0 ${pos}%)` }}>
+        <Image src={after} alt={afterAlt} fill sizes={sizes} className="object-cover" />
+      </div>
+      <span className="pointer-events-none absolute left-3 top-3 rounded bg-black/75 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Before</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded bg-[#001F97]/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">After</span>
+      <span className="pointer-events-none absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_6px_rgba(0,0,0,0.35)]" style={{ left: `${handle}%` }} aria-hidden="true" />
+      <span className="pointer-events-none absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-lg font-black text-[#001F97] shadow-[0_2px_10px_rgba(0,0,0,0.3)]" style={{ left: `${handle}%` }} aria-hidden="true">↔</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={pos}
+        onChange={(e) => setPos(Number(e.target.value))}
+        aria-label={`Drag to compare before and after: ${title}`}
+        className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
+      />
+    </div>
+  );
+}
+
+
+function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: string }) {
+  const { Icon } = c;
+  return (
+    <div className={`${box} border-t-4 ${accent} p-6`}>
+      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
+      <h3 className={`${cardTitle} mt-4`}>{c.title}</h3>
+      <p className={cardText}>{c.body}</p>
+    </div>
+  );
+}
+
+const resultBlocks: ResultBlock[] = [
+  {
+    heading: "Split Silicone Around a Shower Base, Stripped and Resealed",
+    text: "The bead around this shower base had split along the edges and gone black at the corners, the classic path for water to escape behind the tiles. We cut the old silicone out completely, cleaned the joint and resealed it with fresh mould resistant silicone.",
+    before: "/silicone-shower-base-before.webp",
+    after: "/silicone-shower-base-after.webp",
+    beforeAlt: "Shower base in Melbourne with split, peeling silicone around the edges before silicone recaulking",
+    afterAlt: "The same shower base in Melbourne after silicone recaulking, a clean new bead and regrouted wall tiles",
+  },
+  {
+    heading: "Yellowed Shower Base Silicone, Stripped Back and Resealed",
+    text: "The silicone around this shower base had yellowed and lifted until the bond failed, and the strips pulled out of the joint show how little was still holding. We stripped the joint back to clean surfaces and resealed the base and wall junctions with fresh mould resistant silicone.",
+    before: "/silicone-shower-seal-before.webp",
+    after: "/silicone-shower-seal-after.webp",
+    beforeAlt: "Shower base in Melbourne with yellowed, lifted silicone and the old strips removed before silicone recaulking",
+    afterAlt: "The same shower base in Melbourne after silicone recaulking, fresh white seals along the base and wall junctions",
+  },
+];
+
+const signCards = [
+  { title: "Black or Pink Mould", text: "Mould in the silicone bead that cleaning never shifts.", href: "#why-silicone-fails", link: "Why silicone fails" },
+  { title: "Peeling or Lifting Edges", text: "The seal pulls away from the surface and lets water in behind it.", href: "#process", link: "How we reseal" },
+  { title: "Cracked or Split Silicone", text: "Cracks and splits through the bead, often along the base and corners.", href: "/leaking-shower-repair", link: "Leaking shower repair" },
+  { title: "Yellow or Hardened Silicone", text: "Silicone that has gone yellow or hard has lost its flex and its seal.", href: "#cost", link: "What it costs" },
+  { title: "Gaps at the Tile", text: "Gaps between the bead and the tile where the bond has failed.", href: "#silicone-or-grout", link: "Silicone or grout?" },
+  { title: "Shrinking at Corners", text: "A bead that has shrunk or pulled away at the corners.", href: "/shower-regrouting", link: "Shower regrouting" },
 ];
 
 const whereCards: IconCard[] = [
@@ -73,42 +154,23 @@ const whyGroutix: IconCard[] = [
   { title: "Clear Warranty Scope", body: "The applicable workmanship warranty is confirmed in your quote.", Icon: ShieldCheck },
 ];
 
-// Real Groutix jobs (the live page still shows "photos coming soon" boxes here).
-const beforeAfter = [
-  { src: "/shower-base-regrouting-corner-close-up.webp", alt: "Shower base corner after resealing — a clean new silicone bead along the base" },
-  { src: "/shower-over-bath-regrouting-heritage-tiles.webp", alt: "Shower over a bath after resealing with fresh mould resistant silicone" },
-  { src: "/shower-regrouting-white-tiles-acrylic-base.webp", alt: "Bathroom shower after silicone replacement and grout repairs by Groutix" },
-  { src: "/shower-base-regrouting-beige-tiles.webp", alt: "Shower base after resealing — a clean new silicone bead around the acrylic base" },
-];
-
-const related: PhotoCardData[] = [
-  { title: "Shower Regrouting", text: "Grout joints throughout the shower.", href: "/shower-regrouting/", img: "/shower-regrouting-in-progress.webp", alt: "Shower regrouting in progress with old grout removed", link: "View service" },
-  { title: "Leaking Shower Repair", text: "Find and repair where water is getting out.", href: "/leaking-shower-repair/", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a leaking shower", link: "View service" },
-  { title: "Tile Regrouting", text: "Floors, kitchens and laundries.", href: "/tile-regrouting/", img: "/shower-floor-regrouting-dark-tiles.webp", alt: "Dark floor tiles with fresh grout lines — tile regrouting across Melbourne", link: "View service" },
-  { title: "Epoxy Grout", text: "Stain resistant grout for wet areas.", href: "/epoxy-grout/", img: "/grey-shower-floor-envelope-cut-regrouting after.webp", alt: "Floor tiles with epoxy grout", link: "View service" },
+const relatedServices = [
+  { title: "Shower Regrouting", text: "Full shower regrouting with waterproof epoxy grout and fresh seals.", img: "/shower-regrouting-tiled-interior.webp", alt: "Freshly regrouted tiled shower with waterproof epoxy grout", href: "/shower-regrouting" },
+  { title: "Leaking Shower Repair", text: "We find where the water is getting out and seal it at the source.", img: "/leaking-shower-after.webp", alt: "Shower floor after a leaking shower repair, regrouted and resealed", href: "/leaking-shower-repair" },
+  { title: "Balcony Leak Repairs", text: "Balcony regrouting and resealing that stops water before it spreads.", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Regrouted balcony with herringbone tiles and fresh epoxy grout joints", href: "/balcony-leak-repairs" },
+  { title: "Tile Regrouting", text: "Floor and wall tile regrouting that brings tired tiles back to life.", img: "/tile-regrouting-dark-floor-tiles-close-up.webp", alt: "Dark floor tiles regrouted with fresh, clean grout lines", href: "/tile-regrouting" },
+  { title: "Epoxy Grout", text: "Waterproof, stain resistant epoxy grout for showers and wet areas.", img: "/shower-regrouting-in-progress-close-up.webp", alt: "Epoxy grout being applied to shower floor tiles during regrouting", href: "/epoxy-grout" },
+  { title: "Small Tiling Jobs", text: "Loose, cracked or drummy tiles repaired and retiled to match.", img: "/bath-shower-corner-grout-close-up.webp", alt: "Regrouted corner of a shower over a bath with fresh grout lines", href: "/small-tiling-jobs" },
 ];
 
 // FAQ answers 5 and 6 carry the same in-text links as the live page.
 function faqAnswer(index: number, answer: string): ReactNode {
-  const serviceLink = index === 4 ? { phrase: "shower regrouting", href: "/shower-regrouting/" } : index === 5 ? { phrase: "leaking shower repair", href: "/leaking-shower-repair/" } : null;
+  const serviceLink = index === 4 ? { phrase: "shower regrouting", href: "/shower-regrouting" } : index === 5 ? { phrase: "leaking shower repair", href: "/leaking-shower-repair" } : null;
   if (!serviceLink) return answer;
   const [before, after] = answer.split(serviceLink.phrase);
   return <>{before}<Link href={serviceLink.href} className={inlineLink}>{serviceLink.phrase}</Link>{after}</>;
 }
 
-/* ───────────── Small pieces ───────────── */
-function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: string }) {
-  const { Icon } = c;
-  return (
-    <div className={`${box} border-t-4 ${accent} p-6`}>
-      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
-      <h3 className={`${cardTitle} mt-4`}>{c.title}</h3>
-      <p className={cardText}>{c.body}</p>
-    </div>
-  );
-}
-
-/* ───────────── Page ───────────── */
 export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
   const { phone, tel } = useContact();
 
@@ -116,42 +178,42 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        {/* 1. HERO */}
         <section className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/dark-grey-shower-floor-regrouting.webp" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
           <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div className="text-center lg:text-left">
-              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">SILICONE REPLACEMENT · MELBOURNE</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Silicone Replacement Melbourne</h1>
-              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-[#D6DCF5] lg:mx-0 sm:text-base">
                 <p>Groutix removes old, mouldy or peeling silicone and reseals the joint with fresh mould resistant silicone. We take the old bead out completely, so the new one bonds and holds.</p>
               </div>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges />
               </div>
-              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:justify-items-start">
                 <div className="flex items-center gap-3.5 text-left">
                   <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
                   <div>
-                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <b className="block text-lg font-black leading-tight">10 Year Waterproof Warranty</b>
                     <span className="text-sm text-[#D6DCF5]">On eligible completed work</span>
                   </div>
                 </div>
                 <div className="sm:border-l sm:border-white/25 sm:pl-6">
                   <b className="block text-[28px] font-black leading-none">8,000+</b>
-                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <b className="block text-base font-bold">Showers &amp; Balconies Restored</b>
                   <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
                 </div>
               </div>
             </div>
             <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/shower-regrouting-silicone-removal-in-progress.webp" alt="Silicone recaulking in Melbourne — old, failed silicone being removed from a shower base before resealing" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/shower-regrouting-silicone-removal-in-progress.webp" alt="Silicone recaulking in Melbourne, old failed silicone being removed from a shower base before resealing" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
 
-        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        {/* 1b. QUOTE FORM */}
         <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
           <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div>
@@ -159,7 +221,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
               <h2 className={h2}>Get Your Free Silicone Replacement Quote</h2>
               <p className={`${lead} mt-3.5`}>Tell us where the silicone is peeling or mouldy and add photos of the joints. Photos are required, so we can see the bead and the surfaces before we quote.</p>
               <ul className="mt-6 space-y-2.5">
-                {["Free quote, no obligation", "Old silicone fully removed — never laid over", "Mould resistant silicone finish"].map((x) => (
+                {["Free quote, no obligation", "Old silicone fully removed, never laid over", "Mould resistant silicone finish"].map((x) => (
                   <li key={x} className="flex items-center gap-3 text-base font-semibold text-slate-800">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FBBC04] text-[#0F172A]"><Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" /></span>
                     {x}
@@ -174,20 +236,53 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           </div>
         </section>
 
-        {/* 2. SIGNS */}
+        {/* 2. RESULTS */}
+        <Section id="silicone-results">
+          <SectionHead k="Real Results" title="Silicone Replacement Before and After: Real Melbourne Jobs">
+            <p className={lead}>Every photo below is a real Groutix job. Drag the slider to compare the joint before we started and after the new bead went in. No stock photos, no filters.</p>
+          </SectionHead>
+          <div className="space-y-14">
+            {resultBlocks.map((r, i) => (
+              <div key={r.heading} className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12">
+                <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+                  <SignSlider before={r.before} after={r.after} beforeAlt={r.beforeAlt} afterAlt={r.afterAlt} title={r.heading} />
+                </div>
+                <div className={i % 2 === 1 ? "lg:order-1" : ""}>
+                  <h3 className="text-[clamp(22px,2.4vw,30px)] font-bold leading-snug text-slate-900">{r.heading}</h3>
+                  <p className="mt-3 text-[17px] leading-relaxed text-slate-600">{r.text}</p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link href="#quote-form" className={btnNavy}>Book a Free Inspection</Link>
+                    <a href={tel} className={btnGold}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className={`${lead} mx-auto mt-12 max-w-3xl text-center`}>
+            Silicone is the flexible seal at every joint that moves, corners, base edges and around the bath. Once it splits or lifts, every shower pushes water behind the tiles, and a new bead smeared over the old one never bonds. If the water has already been getting out, see our <Link href="/leaking-shower-repair" className={inlineLink}>leaking shower repair</Link> page.
+          </p>
+        </Section>
+
+        {/* 3. SIGNS */}
         <Section id="signs" alt>
-          <SectionHead k="Signs to check" title="Signs Your Silicone Needs Replacing">
+          <SectionHead k="Signs to Check" title="Signs Your Silicone Needs Replacing">
             <p className={lead}>Silicone wears out before almost anything else in a bathroom. Look for these signs.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
+            {signCards.map((c) => (
+              <div key={c.title} className={card}>
+                <h3 className={cardTitle}>{c.title}</h3>
+                <p className={cardText}>{c.text}</p>
+                <Link href={c.href} className="mt-3 inline-block text-sm font-bold text-[#2F63CC] hover:underline">{c.link} →</Link>
+              </div>
+            ))}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>Mould only on the surface may clean off. Mould through the bead, or a bead that has lifted, means it needs replacing.</p>
         </Section>
 
-        {/* 3. WHERE */}
+        {/* 4. WHERE */}
         <Section id="where">
-          <SectionHead k="Around your home" title="Where We Replace Silicone">
+          <SectionHead k="Around Your Home" title="Where We Replace Silicone">
             <p className={lead}>Anywhere two surfaces meet and need a flexible, waterproof seal.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -195,9 +290,9 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           </div>
         </Section>
 
-        {/* 4. SILICONE OR GROUT */}
+        {/* 5. SILICONE OR GROUT */}
         <Section id="silicone-or-grout" alt>
-          <SectionHead k="The right material" title="Silicone or Grout? Which Joint Gets Which">
+          <SectionHead k="The Right Material" title="Silicone or Grout? Which Joint Gets Which">
             <p className={lead}>Both seal your bathroom, but they do different jobs.</p>
           </SectionHead>
           <div className="mx-auto max-w-[1100px]">
@@ -213,7 +308,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
                   <tr>
                     <th scope="row" className="px-5 py-4 align-top font-bold text-slate-900">Flat tile to tile joints</th>
                     <td className="px-5 py-4 align-top text-slate-600">The joint does not move much</td>
-                    <td className="px-5 py-4 align-top text-slate-700">Grout. See <Link href="/shower-regrouting/" className={inlineLink}>shower regrouting</Link> or <Link href="/tile-regrouting/" className={inlineLink}>tile regrouting</Link>.</td>
+                    <td className="px-5 py-4 align-top text-slate-700">Grout. See <Link href="/shower-regrouting" className={inlineLink}>shower regrouting</Link> or <Link href="/tile-regrouting" className={inlineLink}>tile regrouting</Link>.</td>
                   </tr>
                   {siliconeRows.map(([joint, why]) => (
                     <tr key={joint} className="border-t border-slate-200 bg-[#EEF3FF]/60">
@@ -229,9 +324,9 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           </div>
         </Section>
 
-        {/* 5. WHY SILICONE FAILS */}
+        {/* 6. WHY SILICONE FAILS */}
         <Section id="why-silicone-fails">
-          <SectionHead k="The cause" title="Why Silicone Fails" />
+          <SectionHead k="The Cause" title="Why Silicone Fails" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {failCauses.map((c) => <IconBox key={c.title} c={c} />)}
           </div>
@@ -241,11 +336,11 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           </aside>
         </Section>
 
-        {/* 6. PROCESS */}
+        {/* 7. PROCESS */}
         <section id="process" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
           <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-14`}>
             <div>
-              <p className={eyebrow}>Our process</p>
+              <p className={eyebrow}>Our Process</p>
               <h2 className={h2}>Our Silicone Replacement Process</h2>
               <p className={lead}>Clean, neat and made to last. Here is how it works.</p>
               <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -261,14 +356,14 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
               <a href="#quote-form" className={`${btnNavy} mt-6`}>Book Your Free Quote →</a>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/white-tile-shower-regrouting-overhead after.webp" alt="White tiled shower freshly resealed with new mould resistant silicone by Groutix Melbourne" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/silicone-recaulking-process.webp" alt="Old silicone being cut out of a shower floor joint in Melbourne during silicone recaulking, removed strips and a utility knife on the tiles" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
 
-        {/* 7. CURE TIME */}
+        {/* 8. CURE TIME */}
         <Section id="cure-time">
-          <SectionHead k="After the job" title="How Soon Can I Use My Shower?" />
+          <SectionHead k="After the Job" title="How Soon Can I Use My Shower?" />
           <div className="mx-auto max-w-[900px]">
             <aside className={`${box} border-l-4 border-l-[#FBBC04] p-6 sm:p-8`}>
               <Clock className="mb-4 h-7 w-7 text-[#2F63CC]" aria-hidden="true" />
@@ -289,7 +384,7 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           </div>
         </Section>
 
-        {/* 8. COST */}
+        {/* 9. COST */}
         <Section id="cost" alt>
           <SectionHead k="Pricing" title="What Does Silicone Replacement Cost?">
             <p className={lead}>The price depends on how much silicone needs replacing, so we quote after we see it.</p>
@@ -300,23 +395,11 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           <div className="mt-7 flex flex-col items-start gap-6 rounded-xl bg-[linear-gradient(120deg,#06124F_0%,#001F97_100%)] p-7 text-white sm:flex-row sm:items-center sm:justify-between sm:p-9">
             <div>
               <h3 className="text-2xl font-bold">A Clear Quote First</h3>
-              <p className="mt-2 max-w-[760px] text-[#D6DCF5]">We quote by the job so you know the price before work starts. Often combined with a regrout. For shower prices see <Link href="/shower-regrouting/" className="font-bold text-white underline">shower regrouting</Link>.</p>
+              <p className="mt-2 max-w-[760px] text-[#D6DCF5]">We quote by the job so you know the price before work starts. Often combined with a regrout. For shower prices see <Link href="/shower-regrouting" className="font-bold text-white underline">shower regrouting</Link>.</p>
             </div>
             <a href="#quote-form" className={`${btnGold} shrink-0`}>Get a Free Quote →</a>
           </div>
         </Section>
-
-        {/* 9. PROPERTY */}
-        <section id="property" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
-          <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12`}>
-            <div>
-              <p className={`${eyebrow} text-[#FBBC04]`}>For property professionals</p>
-              <h2 className={`${h2} text-white`}>Landlords, Agents and Strata</h2>
-              <p className="mt-3.5 max-w-[760px] text-[17px] text-[#D6DCF5]">Fresh silicone is a quick, visible fix before an inspection, a sale or a new tenant. Scheduled around tenants. Most jobs are completed in a single visit. We confirm the visit schedule and cure time before work begins.</p>
-            </div>
-            <Link href="/real-estate-property-services/" className={`${btnGold} shrink-0`}>Discuss a Property Job →</Link>
-          </div>
-        </section>
 
         {/* 10. WHY GROUTIX */}
         <Section id="why-groutix">
@@ -334,42 +417,59 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
           </div>
         </Section>
 
-        {/* 11. BEFORE & AFTER */}
-        <Section id="before-after" alt>
-          <SectionHead k="Our work" title="Before and After" />
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {beforeAfter.map((p) => <BeforeAfter key={p.src} src={p.src} title="" alt={p.alt} />)}
-          </div>
-        </Section>
-
-        {/* 12. REVIEWS */}
-        <Section id="reviews">
-          <SectionHead k="Customer feedback" title="What Our Customers Say" />
+        {/* 11. REVIEWS */}
+        <Section id="reviews" alt>
+          <SectionHead k="Customer Feedback" title="What Our Customers Say" />
           <ReviewsMarquee reviews={reviews} rating={rating} />
           <div className="mt-6 text-center">
             <a href={BUSINESS.sameAs[0]} target="_blank" rel="noopener noreferrer" className="font-bold text-[#2F63CC] hover:underline">Read More Reviews on Google →</a>
           </div>
         </Section>
 
-        {/* 13. RELATED */}
+        {/* 12. PROPERTY */}
+        <section id="property" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
+          <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12`}>
+            <div>
+              <p className={`${eyebrow} text-[#FBBC04]`}>For Property Professionals</p>
+              <h2 className={`${h2} text-white`}>Landlords, Agents and Strata</h2>
+              <p className="mt-3.5 max-w-[760px] text-[17px] text-[#D6DCF5]">Fresh silicone is a quick, visible fix before an inspection, a sale or a new tenant. Scheduled around tenants. Most jobs are completed in a single visit. We confirm the visit schedule and cure time before work begins.</p>
+            </div>
+            <Link href="/real-estate-property-services" className={`${btnGold} shrink-0`}>Discuss a Property Job →</Link>
+          </div>
+        </section>
+
+        {/* 13. RELATED SERVICES */}
         <Section id="related-services" alt>
-          <SectionHead k="More ways we can help" title="Related Services" />
-          <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
-            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
+          <SectionHead k="Related Services" title="Explore Our Other Services" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {relatedServices.map((s) => (
+              <Link key={s.href} href={s.href} className={`${box} group block overflow-hidden transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-200">
+                  <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                </div>
+                <div className="p-5">
+                  <h3 className={cardTitle}>{s.title}</h3>
+                  <p className={cardText}>{s.text}</p>
+                  <span className="mt-3 inline-block text-sm font-bold text-[#2F63CC] group-hover:underline">Learn more →</span>
+                </div>
+              </Link>
+            ))}
           </div>
         </Section>
 
-        {/* 14. SERVICE AREAS (homepage layout: map + live suburb check) */}
+        {/* 14. SERVICE AREAS */}
         <Section id="service-areas">
-          <p className={eyebrow}>Service areas</p>
-          <h2 className={`${h2} mb-3`}>Which Melbourne Suburbs Do We Replace Silicone In?</h2>
-          <p className="mb-8 text-[17px] leading-relaxed text-slate-600">Looking for silicone replacement near you? Check your suburb below.</p>
+          <p className={eyebrow}>Service Areas</p>
+          <h2 className={`${h2} mb-3`}>Silicone Replacement Across Melbourne</h2>
+          <p className="mb-8 max-w-3xl text-[17px] leading-relaxed text-slate-600">
+            We replace silicone across Melbourne, including <b>Brunswick</b>, <b>Essendon</b>, <b>Preston</b>, <b>Coburg</b>, <b>Reservoir</b>, <b>Thomastown</b>, <b>Epping</b>, <b>Heidelberg</b>, <b>Ivanhoe</b>, <b>Northcote</b>, <b>Fairfield</b>, <b>Box Hill</b>, <b>Doncaster</b>, <b>Templestowe</b>, <b>Balwyn</b>, <b>Kew</b>, <b>Hawthorn</b>, <b>Richmond</b>, <b>Fitzroy</b>, <b>Carlton</b>, <b>Footscray</b>, <b>Sunshine</b>, <b>Williamstown</b>, <b>Altona</b>, <b>Werribee</b>, <b>Point Cook</b>, <b>Hoppers Crossing</b>, <b>Frankston</b>, <b>Mornington</b>, <b>Cranbourne</b>, <b>Dandenong</b>, <b>Noble Park</b>, <b>Springvale</b>, <b>Clayton</b>, <b>Oakleigh</b>, <b>Bentleigh</b>, <b>Moorabbin</b>, <b>Cheltenham</b>, <b>Mentone</b>, <b>Ringwood</b>, <b>Croydon</b>, <b>Lilydale</b>, <b>Glen Waverley</b>, <b>Mount Waverley</b>, <b>Burwood</b>, <b>Ashwood</b> and surrounding suburbs.
+          </p>
           <HomeAreasV2 />
         </Section>
 
-        {/* 15. FAQ (FAQPage schema is added by the route, as before) */}
+        {/* 15. FAQ (schema is added by the route from lib/siliconeRecaulkingContent) */}
         <Section id="faqs" alt>
-          <SectionHead k="Your questions, answered" title="Silicone Replacement FAQs" />
+          <SectionHead k="Your Questions, Answered" title="Silicone Replacement FAQs" />
           <FaqList items={siliconeFaqs.map((f, i) => ({ q: f.q, a: faqAnswer(i, f.a) }))} />
           <div className="mt-8 flex flex-wrap items-center justify-center gap-5">
             <a href="#quote-form" className={btnNavy}>Still Have Questions? Get a Free Quote →</a>
@@ -378,10 +478,17 @@ export default function SiliconeRecaulkingPageV2({ rating, reviews }: { rating: 
         </Section>
 
         {/* 16. FINAL CTA */}
-        <FinalCta
-          title="Get Your Free Quote Today"
-          lines={["Honest advice and workmanship you can rely on.", "Full removal of old silicone · Clear quote first · Mould resistant finish"]}
-        />
+        <section className="relative overflow-hidden bg-[#06124F] py-16 text-white md:py-20">
+          <div className={`${wrap} relative text-center`}>
+            <h2 className="mx-auto max-w-[720px] text-[clamp(28px,3.4vw,44px)] font-black leading-[1.12] [text-wrap:balance]">Get Your Free Quote Today</h2>
+            <p className="mx-auto mt-4 max-w-[640px] text-[17px] leading-relaxed text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
+            <p className="mt-2 text-[15px] font-semibold text-[#FBBC04]">Full removal of old silicone · Clear quote first · Mould resistant finish</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3.5">
+              <Link href="#quote-form" className={btnGold}>Get a Free Quote →</Link>
+              <a href={tel} className={btnGhost}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+          </div>
+        </section>
       </main>
       <Footer />
       <MobileCallBar />
