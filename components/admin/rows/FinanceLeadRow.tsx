@@ -1,5 +1,7 @@
 "use client";
 
+import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
+
 import { isProgressStatus } from "@/lib/adminHelpers";
 
 import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
@@ -269,6 +271,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
         {/* COLUMN 2: FINANCE ACTIONS */}
         <div className="col-span-12 lg:col-span-5 min-w-0 space-y-2 pt-4 lg:pt-0">
+          <SendInvoiceToQuickBooksButton lead={l} />
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>

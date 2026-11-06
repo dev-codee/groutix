@@ -205,8 +205,8 @@ export interface SubmissionDoc {
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
   invoiceOpenedAt?: string; // ISO time the customer first opened the invoice email
   invoiceStatus?: string; // "Paid" | "Unpaid"
-  // QuickBooks Online sync outcome for the emailed invoice. The push is
-  // fire-and-forget, so these are the only record of whether it landed.
+  // QuickBooks Online sync outcome for the emailed invoice. Sync failures
+  // are recorded separately so they do not undo a successful invoice email.
   qboInvoiceId?: string; // QBO Invoice Id once the push succeeded
   qboSyncedAt?: string; // ISO time the invoice reached QBO
   qboError?: string; // Last push failure message ("" once a retry succeeds)

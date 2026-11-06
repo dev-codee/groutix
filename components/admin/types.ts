@@ -142,6 +142,10 @@ export interface Lead {
   invoiceSentAt?: string;
   invoiceStatus?: string;
   invoiceOpenedAt?: string;
+  qboInvoiceId?: string;
+  qboSyncedAt?: string;
+  qboError?: string;
+  qboErrorAt?: string;
   inspectionWorkSegments?: { date: string; time: string; scheduledMinutes: number }[];
   jobWorkSegments?: { date: string; time: string; scheduledMinutes: number }[];
   inspectionEndAt?: string;

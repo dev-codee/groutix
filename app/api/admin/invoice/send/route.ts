@@ -5,7 +5,8 @@ import { verifyRequestSession } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 import { invoiceTrackingPixel } from "@/lib/automations";
-import { isQboConfigured, pushInvoiceToQbo } from "@/lib/quickbooks";
+import { isQboConfigured } from "@/lib/quickbooks";
+import { syncInvoiceToQuickbooks } from "@/lib/quickbooksInvoiceSync";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -213,49 +214,10 @@ export async function POST(req: NextRequest) {
     detail: `${invoiceNumber} to ${lead.email} (${status})`,
   });
 
-  // Fire-and-forget QBO push — does not block or alter the email response.
-  if (isQboConfigured()) {
-    const qboItems = [
-      { description: description ? `${service} — ${description}` : service, amount: baseTotal },
-      ...(extraWork || extraCharge > 0 ? [{ description: `Additional Work — ${extraWork}`, amount: extraCharge }] : []),
-    ];
-    // Fire-and-forget so a QBO outage never blocks the emailed invoice - but the
-    // outcome is recorded either way, otherwise a silent failure is invisible to
-    // staff, who have already been told the invoice went out.
-    pushInvoiceToQbo({
-      invoiceNumber,
-      customerName: lead.name || "Customer",
-      customerEmail: lead.email,
-      customerPhone: lead.phone,
-      items: qboItems,
-    })
-      .then(async (qboId) => {
-        await updateSubmission(body.id!, {
-          qboInvoiceId: qboId,
-          qboSyncedAt: new Date().toISOString(),
-          qboError: "",
-        }).catch(() => {});
-        await appendActivity(body.id!, {
-          time: new Date().toISOString(),
-          actor: "system",
-          action: "QuickBooks invoice created",
-          detail: `QBO invoice ${qboId}`,
-        });
-      })
-      .catch(async (err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("QBO invoice push failed:", err);
-        await updateSubmission(body.id!, {
-          qboError: msg.slice(0, 500),
-          qboErrorAt: new Date().toISOString(),
-        }).catch(() => {});
-        await appendActivity(body.id!, {
-          time: new Date().toISOString(),
-          actor: "system",
-          action: "QuickBooks sync failed",
-          detail: msg.slice(0, 500),
-        });
-      });
+  // Finish bookkeeping before the request ends; QBO failure never undoes email.
+  if (isQboConfigured() && !lead.qboInvoiceId) {
+    await syncInvoiceToQuickbooks({ ...lead, ...savedInvoice, id: body.id }, actor)
+      .catch(error => { console.error("QBO invoice push failed:", error); });
   }
 
   return NextResponse.json({ ok: true, invoiceNumber, total });

@@ -1,5 +1,7 @@
 "use client";
 
+import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
+
 import { isProgressStatus } from "@/lib/adminHelpers";
 
 import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
@@ -803,6 +805,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           {/* Finance quick actions */}
           <div className="grid grid-cols-1 gap-2">
+            <SendInvoiceToQuickBooksButton lead={l} />
             {/* Invoice Sent Button */}
             {(() => {
               const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);

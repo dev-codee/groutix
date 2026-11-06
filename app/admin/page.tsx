@@ -123,6 +123,7 @@ import {
 } from "@/lib/serviceMatching";
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { isQuoteScopeHeading } from "@/lib/quoteScope";
+import type { QboStatus } from "@/lib/quickbooks";
 import { drawWarrantyCertificate, WARRANTY_CERTIFICATE_WIDTH, WARRANTY_CERTIFICATE_HEIGHT, WARRANTY_CERTIFICATE_TEMPLATE } from "@/lib/warrantyCertificate";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
@@ -680,7 +681,8 @@ export default function CrmDashboardPage() {
   }, [warrantyModalOpen, warrantyTemplate]);
   const [siteLogoUrl, setSiteLogoUrl] = useState("/new_logo.jpeg");
   const [logoUploading, setLogoUploading] = useState(false);
-  const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string; environment?: "sandbox" | "production" } | null>(null);
+  const [qboStatus, setQboStatus] = useState<QboStatus | null>(null);
+  const [qboStatusError, setQboStatusError] = useState("");
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
   const [recycleBinCount, setRecycleBinCount] = useState(0);
 
@@ -691,12 +693,25 @@ export default function CrmDashboardPage() {
       .catch(() => { });
   }, []);
 
-  useEffect(() => {
-    fetch("/api/admin/qbo/status")
-      .then((r) => r.json())
-      .then((d) => setQboStatus(d))
-      .catch(() => { });
+  const loadQboStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/qbo/status", { cache: "no-store" });
+      if (!response.ok) throw new Error("QuickBooks status could not be loaded.");
+      setQboStatus(await response.json());
+      setQboStatusError("");
+    } catch {
+      setQboStatus(null);
+      setQboStatusError("QuickBooks status could not be loaded. Please try again.");
+    }
   }, []);
+
+  useEffect(() => { void loadQboStatus(); }, [loadQboStatus]);
+  useEffect(() => {
+    if (currentView !== "settings" || settingsTab !== "quickbooks") return;
+    void loadQboStatus();
+    const timer = window.setInterval(() => { void loadQboStatus(); }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [currentView, settingsTab, loadQboStatus]);
 
   useEffect(() => {
     fetch("/api/admin/recycle-bin?page=1&pageSize=1", { cache: "no-store" })
@@ -713,7 +728,9 @@ export default function CrmDashboardPage() {
     const qbo = params.get("qbo");
     if (!qbo) return;
     if (qbo === "connected") {
-      setQboStatus((s) => (s ? { ...s, connected: true } : s));
+      void loadQboStatus();
+    } else {
+      setQboStatusError("QuickBooks connection was not completed. Please try connecting again.");
     }
     // Strip the param from the URL without a reload.
     const url = new URL(window.location.href);
@@ -724,7 +741,7 @@ export default function CrmDashboardPage() {
     url.searchParams.delete("qbo");
     url.searchParams.delete("msg");
     window.history.replaceState({}, "", url.toString());
-  }, []);
+  }, [loadQboStatus]);
 
   // Preload the Groutix logo image so the warranty card renders the brand mark.
   useEffect(() => {
@@ -4574,7 +4591,9 @@ export default function CrmDashboardPage() {
               </div>
               </>} quickbooks={<>
                 <h2 className="text-base font-bold text-slate-900">QuickBooks Integration</h2>
-              {!qboStatus?.configured ? (
+              <button type="button" onClick={() => { void loadQboStatus(); }} className="text-xs font-semibold text-blue-600 hover:underline">Refresh connection status</button>
+              {qboStatusError ? <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{qboStatusError}</p> : null}
+              {!qboStatus ? <p className="text-xs text-slate-500">{qboStatusError ? "Connection status unavailable." : "Checking QuickBooks connection…"}</p> : !qboStatus.configured ? (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-1">
                   <p className="font-bold">Environment variables not set</p>
                   <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
@@ -4604,10 +4623,11 @@ export default function CrmDashboardPage() {
                     onClick={() => {
                       setQboDisconnecting(true);
                       fetch("/api/admin/qbo/disconnect", { method: "POST" })
-                        .then(() => {
-                          setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined } : s);
+                        .then(response => {
+                          if (!response.ok) throw new Error("Disconnect failed.");
+                          setQboStatus((s) => s ? { ...s, connected: false, connectedAt: undefined, realmId: undefined, connectionError: undefined, reconnectRequired: false } : s);
                         })
-                        .catch(console.error)
+                        .catch(() => setQboStatusError("Could not disconnect QuickBooks. Please try again."))
                         .finally(() => setQboDisconnecting(false));
                     }}
                     className="w-full py-2 rounded-xl border border-red-200 text-red-600 font-semibold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -4617,6 +4637,7 @@ export default function CrmDashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {qboStatus.connectionError && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">{qboStatus.connectionError}</p>}
                   <p className="text-xs text-slate-500 leading-relaxed">Connect your QuickBooks Online account so every invoice you send is automatically created in QBO — customers, line items, and all.</p>
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
                     <p className="font-semibold text-slate-700">Setup checklist</p>
@@ -4636,7 +4657,7 @@ export default function CrmDashboardPage() {
                     href="/api/admin/qbo/connect"
                     className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#2CA01C] text-white font-bold text-sm hover:bg-[#239015] transition-colors"
                   >
-                    Connect QuickBooks
+                    {qboStatus.reconnectRequired ? "Reconnect QuickBooks" : "Connect QuickBooks"}
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
