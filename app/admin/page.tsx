@@ -123,7 +123,7 @@ import {
 } from "@/lib/serviceMatching";
 import { TemplatePicker } from "@/components/admin/TemplatePicker";
 import { isQuoteScopeHeading } from "@/lib/quoteScope";
-import { layoutWarrantyAddress } from "@/lib/warrantyAddressLayout";
+import { drawWarrantyCertificate, WARRANTY_CERTIFICATE_WIDTH, WARRANTY_CERTIFICATE_HEIGHT, WARRANTY_CERTIFICATE_TEMPLATE } from "@/lib/warrantyCertificate";
 import { InspectionModal } from "@/components/admin/InspectionModal";
 import type { InspectionReportDoc } from "@/lib/inspection";
 import { stripQuotedReply } from "@/lib/emailClean";
@@ -665,6 +665,19 @@ export default function CrmDashboardPage() {
   const [warrantyProvided, setWarrantyProvided] = useState(true);
   const [warrantyLogo, setWarrantyLogo] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [warrantyTemplate, setWarrantyTemplate] = useState<HTMLImageElement | null>(null);
+  const [warrantyTemplateError, setWarrantyTemplateError] = useState(false);
+
+  useEffect(() => {
+    if (!warrantyModalOpen || warrantyTemplate) return;
+    let cancelled = false;
+    const image = new Image();
+    setWarrantyTemplateError(false);
+    image.onload = () => { if (!cancelled) setWarrantyTemplate(image); };
+    image.onerror = () => { if (!cancelled) setWarrantyTemplateError(true); };
+    image.src = WARRANTY_CERTIFICATE_TEMPLATE;
+    return () => { cancelled = true; };
+  }, [warrantyModalOpen, warrantyTemplate]);
   const [siteLogoUrl, setSiteLogoUrl] = useState("/new_logo.jpeg");
   const [logoUploading, setLogoUploading] = useState(false);
   const [qboStatus, setQboStatus] = useState<{ configured: boolean; connected: boolean; connectedAt?: string; realmId?: string; redirectUri?: string; environment?: "sandbox" | "production" } | null>(null);
@@ -3015,7 +3028,7 @@ export default function CrmDashboardPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Landscape card: 1000 x 630
+    // Certificate uses the approved 1536 x 1024 artwork; terms retain their size.
     const W = canvas.width;
     const H = canvas.height;
 
@@ -3138,246 +3151,16 @@ export default function CrmDashboardPage() {
     };
 
     if (warrantyTab === "page1") {
-      // ==========================================
-      // PAGE 1: LANDSCAPE WARRANTY CARD (1000 × 630)
-      // Exact match to the reference design:
-      // Left ~420px: logo · ribbon · body text · shield/bullets · ACL box
-      // Right ~530px: title stack · field rows with label + underline
-      // Divider: thin navy vertical line at x=440
-      // Footer: full-width navy bar
-      // ==========================================
-
-      const DIVX = 440; // vertical divider x-position
-      const PAD = 36;  // outer horizontal padding
-      const FOOTER_H = 58;
-      const FOOTER_Y = H - FOOTER_H;
-
-      // ── White background ──────────────────────────────────────────────────
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, W, H);
-
-      // ── Top-right corner swoosh (cyan arc + navy filled arc) ──────────────
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(W + 60, -60, 200, 0, Math.PI * 2);
-      ctx.strokeStyle = "#00a8cc";
-      ctx.lineWidth = 14;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(W + 60, -60, 175, 0, Math.PI * 2);
-      ctx.fillStyle = "#071c4d";
-      ctx.fill();
-      ctx.restore();
-
-      // ── Bottom-left corner swoosh ─────────────────────────────────────────
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(-40, H + 30, 210, 0, Math.PI * 2);
-      ctx.strokeStyle = "#00a8cc";
-      ctx.lineWidth = 16;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(-40, H + 30, 185, 0, Math.PI * 2);
-      ctx.fillStyle = "#071c4d";
-      ctx.fill();
-      ctx.restore();
-
-      // ──────────────────────────────────────────────────────────────────────
-      // LEFT PANEL
-      // ──────────────────────────────────────────────────────────────────────
-
-      // Logo (top-left)
-      drawLogo(PAD, 22, 62);
-
-      // Navy ribbon banner
-      const ribbonY = 96;
-      const ribbonH = 34;
-      ctx.fillStyle = "#071c4d";
-      ctx.fillRect(0, ribbonY, DIVX - 10, ribbonH);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 13px Arial, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("YOUR PEACE OF MIND. ENGINEERED TO LAST.", (DIVX - 10) / 2, ribbonY + 22);
-      ctx.textAlign = "left";
-
-      // Warranting body text
-      ctx.fillStyle = "#0f172a";
-      ctx.font = "500 11.5px Arial, sans-serif";
-      let bodyY = ribbonY + ribbonH + 16;
-      bodyY = wrapText(
-        "Groutix Pty Ltd trading as Groutix warrants that a qualifying full shower re-grout performed by Groutix will remain waterproof for a period of 10 years from the date of the Services are completed, subject to the terms, conditions and exclusions set out in this Warranty Document.",
-        PAD, bodyY, DIVX - PAD - 16, 17
-      );
-
-      // Shield badge
-      const sx = PAD + 46;
-      const sy = bodyY + 14;
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(sx + 40, sy + 18);
-      ctx.lineTo(sx + 40, sy + 78);
-      ctx.quadraticCurveTo(sx + 40, sy + 130, sx, sy + 152);
-      ctx.quadraticCurveTo(sx - 40, sy + 130, sx - 40, sy + 78);
-      ctx.lineTo(sx - 40, sy + 18);
-      ctx.closePath();
-      ctx.fillStyle = "#dbeafe";
-      ctx.fill();
-      ctx.lineWidth = 3.5;
-      ctx.strokeStyle = "#071c4d";
-      ctx.stroke();
-      // Water-drop icon inside shield
-      ctx.beginPath();
-      ctx.moveTo(sx, sy + 46);
-      ctx.quadraticCurveTo(sx + 20, sy + 78, sx + 20, sy + 98);
-      ctx.arc(sx, sy + 98, 20, 0, Math.PI, false);
-      ctx.quadraticCurveTo(sx - 20, sy + 78, sx, sy + 46);
-      ctx.fillStyle = "#071c4d";
-      ctx.fill();
-      ctx.restore();
-
-      // 4 bullet points to the right of shield
-      const bx = PAD + 104;
-      const bulletTitles = [
-        "10 YEARS WORKMANSHIP WARRANTY",
-        "WATERPROOF PROTECTION",
-        "QUALITY MATERIALS",
-        "EXPERT INSTALLATION",
-      ];
-      bulletTitles.forEach((title, i) => {
-        const itemY = sy + 26 + i * 34;
-        // Cyan filled circle
-        ctx.beginPath();
-        ctx.arc(bx + 10, itemY - 4, 11, 0, Math.PI * 2);
-        ctx.fillStyle = "#00a8cc";
-        ctx.fill();
-        // White checkmark
-        ctx.beginPath();
-        ctx.moveTo(bx + 5, itemY - 4);
-        ctx.lineTo(bx + 9, itemY);
-        ctx.lineTo(bx + 16, itemY - 9);
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-        // Label
-        ctx.fillStyle = "#071c4d";
-        ctx.font = "bold 12.5px Arial, sans-serif";
-        ctx.fillText(title, bx + 28, itemY);
+      if (!warrantyTemplate) return;
+      drawWarrantyCertificate(ctx, warrantyTemplate, {
+        jobNo: warrantyJobNo,
+        completionDate: fmtDateOnly(warrantyCompletion),
+        expiryDate: fmtDateOnly(warrantyExpiry),
+        customerName: warrantyCustomer,
+        address: warrantyAddress,
+        authorisedBy: warrantyAuthorised,
+        dateIssued: fmtDateOnly(warrantyIssued),
       });
-
-      // Australian Consumer Law callout box
-      const aclY = FOOTER_Y - 68;
-      const aclW = DIVX - PAD - 16;
-      ctx.save();
-      ctx.fillStyle = "#e8f4fc";
-      ctx.strokeStyle = "#bce1f8";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.roundRect(PAD, aclY, aclW, 56, 8);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#071c4d";
-      ctx.font = "10.5px Arial, sans-serif";
-      wrapText(
-        "This warranty is in addition to any rights and remedies available under the Australian Consumer Law.",
-        PAD + 12, aclY + 18, aclW - 24, 16
-      );
-      ctx.restore();
-
-      // ── Vertical divider ─────────────────────────────────────────────────
-      ctx.strokeStyle = "#cbd5e1";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(DIVX, 16);
-      ctx.lineTo(DIVX, FOOTER_Y - 8);
-      ctx.stroke();
-
-      // ──────────────────────────────────────────────────────────────────────
-      // RIGHT PANEL
-      // ──────────────────────────────────────────────────────────────────────
-      const RP = DIVX + 28; // right panel left edge
-      const RW = W - RP - PAD; // right panel usable width
-
-      // Stacked title (navy, bold, centered in right panel)
-      const titleCenterX = Math.round((RP + (W - PAD)) / 2);
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#071c4d";
-      ctx.font = "bold 26px Arial, sans-serif";
-      ctx.fillText("10-YEAR", titleCenterX, 52);
-      ctx.fillText("FULL SHOWER", titleCenterX, 82);
-      ctx.fillText("RE-GROUT WARRANTY", titleCenterX, 112);
-      ctx.textAlign = "left";
-
-      // Field rows — two-sub-column: label left, underline + value right
-      // Layout: label at RP, value area starts at RP+labelColW
-      const labelColW = 172;
-      const valueX = RP + labelColW + 8;
-      const valueW = W - PAD - valueX;
-
-      let fY = 152;
-      const rowGap = 54;
-
-      const drawRow = (label: string, value: string, extraGap = 0) => {
-        ctx.fillStyle = "#071c4d";
-        ctx.font = "bold 11.5px Arial, sans-serif";
-        ctx.fillText(label, RP, fY);
-        // Underline
-        ctx.strokeStyle = "#1e3a8a";
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(valueX, fY + 5);
-        ctx.lineTo(W - PAD, fY + 5);
-        ctx.stroke();
-        // Value text
-        if (value) {
-          ctx.fillStyle = "#0f172a";
-          ctx.font = "bold 13px Arial, sans-serif";
-          ctx.fillText(value, valueX + 4, fY);
-        }
-        fY += rowGap + extraGap;
-      };
-
-      drawRow("JOB / INVOICE NO.:", warrantyJobNo);
-      drawRow("COMPLETION DATE:", fmtDateOnly(warrantyCompletion));
-      drawRow("WARRANTY EXPIRY DATE:", fmtDateOnly(warrantyExpiry));
-      drawRow("CUSTOMER NAME:", warrantyCustomer);
-      // Property address gets a bit more vertical space (two-line underline)
-      fY -= 6;
-      ctx.fillStyle = "#071c4d";
-      ctx.font = "bold 11.5px Arial, sans-serif";
-      ctx.fillText("PROPERTY ADDRESS:", RP, fY);
-      ctx.strokeStyle = "#1e3a8a";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(valueX, fY + 5);
-      ctx.lineTo(W - PAD, fY + 5);
-      ctx.stroke();
-      // Second underline
-      ctx.beginPath();
-      ctx.moveTo(RP, fY + 26);
-      ctx.lineTo(W - PAD, fY + 26);
-      ctx.stroke();
-      if (warrantyAddress) {
-        ctx.fillStyle = "#0f172a";
-        const addressLayout = layoutWarrantyAddress(
-          warrantyAddress, [valueW - 8, RW - 8],
-          (text, size) => {
-            ctx.font = `bold ${size}px Arial, sans-serif`;
-            return ctx.measureText(text).width;
-          }, 13
-        );
-        ctx.font = `bold ${addressLayout.fontSize}px Arial, sans-serif`;
-        addressLayout.lines.forEach((line, index) => {
-          ctx.fillText(line, (index === 0 ? valueX : RP) + 4, fY + index * 21);
-        });
-      }
-      fY += rowGap + 24;
-
-      drawRow("AUTHORISED BY GROUTIX:", warrantyAuthorised);
-      drawRow("DATE ISSUED:", fmtDateOnly(warrantyIssued));
-
-      // ── Footer ───────────────────────────────────────────────────────────
-      drawWarrantyFooter();
 
     } else {
       // ==========================================
@@ -3515,11 +3298,12 @@ export default function CrmDashboardPage() {
     warrantyExpiry,
     warrantyAuthorised,
     warrantyIssued,
-    warrantyLogo
+    warrantyLogo,
+    warrantyTemplate
   ]);
 
   function downloadWarrantyCard() {
-    if (!canvasRef.current || !activeWarrantyLead) return;
+    if (!canvasRef.current || !activeWarrantyLead || (warrantyTab === "page1" && !warrantyTemplate)) return;
     const link = document.createElement("a");
     const suffix = warrantyTab === "page1" ? "Certificate" : "Terms";
     link.download = `Groutix_Warranty_${(activeWarrantyLead.name || "Customer").replace(/[^a-zA-Z0-9]/g, "_")}_${suffix}.png`;
@@ -3530,7 +3314,7 @@ export default function CrmDashboardPage() {
   // Server-side send: emails the warranty card, mints a warranty number, and
   // sets status to Warranty Sent automatically.
   async function handleSendWarranty() {
-    if (!activeWarrantyLead) return;
+    if (!activeWarrantyLead || (warrantyTab === "page1" && !warrantyTemplate)) return;
     if (!activeWarrantyLead.email) return alert("No email address saved for this customer.");
     const imageDataUrl = canvasRef.current?.toDataURL("image/png");
     try {
@@ -8010,12 +7794,18 @@ export default function CrmDashboardPage() {
                     </span>
                   </div>
 
+                  {warrantyTab === "page1" && !warrantyTemplate && (
+                    <p role="status" className={`text-xs font-medium ${warrantyTemplateError ? "text-red-600" : "text-slate-500"}`}>
+                      {warrantyTemplateError ? "Could not load the certificate artwork. Close and reopen the warranty to retry." : "Loading certificate artwork…"}
+                    </p>
+                  )}
+
                   {/* Canvas Preview */}
                   <div className="border border-slate-300 rounded-xl overflow-hidden bg-slate-200 max-h-[60vh] overflow-y-auto flex justify-center p-3">
                     <canvas
                       ref={canvasRef}
-                      width={1000}
-                      height={630}
+                      width={warrantyTab === "page1" ? WARRANTY_CERTIFICATE_WIDTH : 1000}
+                      height={warrantyTab === "page1" ? WARRANTY_CERTIFICATE_HEIGHT : 630}
                       className="w-full max-w-[780px] h-auto shadow-md rounded bg-white block"
                     />
                   </div>
@@ -8041,6 +7831,7 @@ export default function CrmDashboardPage() {
                       <button
                         type="button"
                         onClick={downloadWarrantyCard}
+                        disabled={warrantyTab === "page1" && !warrantyTemplate}
                         className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-100"
                       >
                         <Download className="w-4 h-4" />
@@ -8049,6 +7840,7 @@ export default function CrmDashboardPage() {
                       <button
                         type="button"
                         onClick={handleSendWarranty}
+                        disabled={warrantyTab === "page1" && !warrantyTemplate}
                         className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700"
                         title="Email the warranty PNG certificate to the customer and mark it sent"
                       >
