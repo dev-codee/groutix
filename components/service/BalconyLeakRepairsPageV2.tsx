@@ -339,15 +339,11 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
 
         {/* 8. PROCESS */}
         <section id="process" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
-          <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:gap-14`}>
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Melbourne, balcony tiles regrouted and resealed by Groutix" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
-            </div>
-            <div>
-              <p className={eyebrow}>Our Process</p>
-              <h2 className={h2}>Our Balcony Leak Repair Process</h2>
-              <p className={lead}>Simple, clean and clearly explained. Here is how it works.</p>
-              <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={wrap}>
+            <p className={eyebrow}>Our Process</p>
+            <h2 className={h2}>Our Balcony Leak Repair Process</h2>
+            <p className={lead}>Simple, clean and clearly explained. Here is how it works.</p>
+            <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {processSteps.map(([title, body], i) => (
                   <li key={title} className={`${box} p-5`}>
                     <div className="text-[32px] font-black leading-none text-[#2F63CC]">{String(i + 1).padStart(2, "0")}</div>
@@ -356,8 +352,7 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 rounded-lg bg-white p-5 text-sm leading-relaxed text-slate-600">The repair timeframe and cure time depend on the scope, materials and weather. We confirm the schedule and when you can use your balcony before we start.</p>
-            </div>
+            <p className="mt-6 rounded-lg bg-white p-5 text-sm leading-relaxed text-slate-600">The repair timeframe and cure time depend on the scope, materials and weather. We confirm the schedule and when you can use your balcony before we start.</p>
           </div>
           <div className={wrap}>{inspectionCta()}</div>
         </section>
