@@ -1,6 +1,7 @@
 // Keep visible answers and FAQ structured data together.
 export const tileRegroutingFaqs = [
   { q: "What is tile regrouting?", a: "Removing worn grout from between tiles and filling the joints with new grout. Your tiles stay in place." },
+  { q: "Why does floor grout wear out faster in hallways and kitchens?", a: "Foot traffic grinds dirt into the joints, and kitchen spills and grease work into the surface. Laundry and bathroom floors stay damp, which breaks cement grout down faster. Worn joints then crack, sink and let water through." },
   { q: "Can you regrout kitchen and laundry floors?", a: "Yes. We regrout kitchen floors, splashbacks, laundries, bathroom floors and hallways." },
   { q: "Should I regrout or replace my tiles?", a: "Regrout when the tiles are solid and only the grout has failed. Replace tiles that are cracked, loose or hollow." },
   { q: "Is a spot repair enough?", a: "For a small area with sound grout around it, yes. Many failed joints or widespread staining need a full regrout." },
@@ -9,7 +10,8 @@ export const tileRegroutingFaqs = [
   { q: "Can dirty grout just be cleaned?", a: "If it is solid and only stained, a proper clean may be enough. Cracked, crumbling or mouldy grout needs replacing." },
   { q: "How long does tile regrouting take, and when can I walk on it?", a: "The time depends on the room, grout type and condition. Cure time comes after the work. We tell you the exact wait before we start." },
   { q: "Do you regrout natural stone tiles?", a: "We check the tile type first. Some natural stone and polished tiles need gentler products. We confirm whether regrouting is suitable before we start." },
-  { q: "How much does tile regrouting cost in Melbourne?", a: "It depends on the area, tile size, grout type and condition. We quote after we see it." },
+    { q: "Do movement joints get regrouted too?", a: "Movement joints are the flexible joints that let tiled areas expand and contract. They are sealed with flexible sealant rather than hard grout, and we reseal them as part of the job where they have failed." },
+{ q: "How much does tile regrouting cost in Melbourne?", a: "It depends on the area, tile size, grout type and condition. We quote after we see it." },
 ];
 
 // Awaiting approved room-specific photography and customer reviews.
