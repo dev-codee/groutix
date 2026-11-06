@@ -6,6 +6,13 @@
 // carries no hyphens in compound words. FAQs and FAQ schema stay in
 // lib/tileRegroutingContent (route adds the schema).
 // FINAL (2026-11-06): real alt text on the slider images (SEO) only.
+// IMAGES ALIGNED (2026-11-06, Edeel selected the photos himself): wall
+// slider = Job 4 bath wall pair, floor slider = Job 20 corner pair,
+// hero panel + process photo = Job 20 finished shower photo (hero
+// version carries no watermark). Result block headings, text and alts
+// rewritten to describe these exact photos. Schema: none in this
+// component on purpose, app/[slug]/page.tsx emits Service + FAQPage
+// for this slug (live check 2026-11-06: exactly 1 Service block).
 // CORRECTED 2026-11-06: the Service schema block first added here was
 // removed again, because app/[slug]/page.tsx already emits the Service +
 // FAQPage schema for this slug. Adding it in the component would have
@@ -90,20 +97,20 @@ function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: s
 
 const resultBlocks: ResultBlock[] = [
   {
-    heading: "Bathroom Floor and Wall Tiles, Regrouted and Resealed",
-    text: "Years of daily use had left this bathroom with worn, patchy grout and failed silicone around the bath. We removed every failed joint, regrouted the floor and walls and resealed the edges, all with the original tiles left in place.",
+    heading: "White Wall Tiles and a Dark Tiled Floor, Regrouted and Resealed",
+    text: "Grime had built up in the corner joints of this shower, and the grout lines across the white wall tiles and the dark floor tiles had worn thin. We removed the failed grout, regrouted the walls and floor and resealed the corner and floor edges, all with the original tiles left in place.",
     before: "/tile-regrouting-floor-before.webp",
     after: "/tile-regrouting-floor-after.webp",
-    beforeAlt: "Bathroom floor tiles with worn, stained grout before tile regrouting in Melbourne",
-    afterAlt: "Bathroom floor and wall tiles after tile regrouting in Melbourne, fresh grout lines and resealed edges",
+    beforeAlt: "White wall tiles and dark floor tiles with worn grout and grime in the corner joints before tile regrouting in Melbourne",
+    afterAlt: "The same tiled shower corner after tile regrouting in Melbourne, fresh grout lines on the walls and floor and resealed edges",
   },
   {
     heading: "Tired Subway Wall Tiles, Brought Back With Fresh Grout",
     text: "The tiles in this shower over a bath were sound, but the grout between them had worn and discoloured. A full regrout with fresh, even joints made the whole wall look new again, at a fraction of the cost of retiling.",
     before: "/tile-regrouting-wall-before.webp",
     after: "/tile-regrouting-wall-after.webp",
-    beforeAlt: "White subway wall tiles with worn, discoloured grout before tile regrouting in Melbourne",
-    afterAlt: "White subway tiles after tile regrouting in Melbourne, fresh even grout lines",
+    beforeAlt: "White subway wall tiles over a bath with worn, discoloured grout before tile regrouting in Melbourne",
+    afterAlt: "White subway wall tiles over a bath after tile regrouting in Melbourne, fresh even grout lines",
   },
 ];
 
@@ -204,7 +211,7 @@ export default function TileRegroutingPageV2({ rating, reviews }: { rating: Busi
               </div>
             </div>
             <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/tile-regrouting-dark-floor-tiles-close-up.webp" alt="Tile regrouting in Melbourne, dark floor tiles finished with fresh, clean grout lines" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/tile-regrouting-hero.webp" alt="Tile regrouting in Melbourne, glossy white shower tiles and a tiled niche finished with fresh grout lines" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
@@ -374,7 +381,7 @@ export default function TileRegroutingPageV2({ rating, reviews }: { rating: Busi
               <p className="mt-6 text-[15px] leading-relaxed text-slate-600">Eligible waterproof work is backed by our 10 year waterproof warranty. We confirm the applicable scope in your quote.</p>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/tile-regrouting-process.webp" alt="Old grout being removed from between floor tiles during tile regrouting in Melbourne" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/tile-regrouting-finished-shower.webp" alt="Finished tile regrouting in Melbourne, white shower tiles with fresh grout lines and a tiled niche" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
