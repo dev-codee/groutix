@@ -105,6 +105,8 @@ import { useSiteContent } from "@/components/SiteContentProvider";
 import { prepareCustomerSms, smsReplyNotice, smsSegmentCount, SMS_MAX_CHARS } from "@/lib/smsMessage";
 import { InboxView } from "@/components/admin/views/InboxView";
 import ApplicationsPanel from "@/components/admin/ApplicationsPanel";
+import { VisitNotificationDialog } from "@/components/admin/VisitNotificationDialog";
+import type { VisitNotificationReport } from "@/lib/visitNotification";
 import { getLeadConversation as getConversation } from "@/lib/customerInbox";
 import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
@@ -329,6 +331,7 @@ export default function CrmDashboardPage() {
   // On-The-Way / GPS notification state
   const [onTheWayLoading, setOnTheWayLoading] = useState<string | null>(null);
   const [etaToast, setEtaToast] = useState<{ leadId: string; msg: string } | null>(null);
+  const [notificationAttempt, setNotificationAttempt] = useState<{ lead: Lead; eventType: "en_route" | "arrived"; requestId: string } | null>(null);
   const [notifyPrompt, setNotifyPrompt] = useState<{ lead: Lead; eventType: "en_route" | "arrived" } | null>(null);
   const [startJobPrompt, setStartJobPrompt] = useState<{ lead: Lead } | null>(null);
   const [startJobDays, setStartJobDays] = useState(1);
@@ -1109,95 +1112,27 @@ export default function CrmDashboardPage() {
     setNotifyPrompt({ lead: booking ? { ...lead, activeBooking: { type: "job", start: `${booking.date}T${booking.time}`, bookingId: booking.bookingId } } : lead, eventType });
   }
 
-  async function executeOnTheWayNotification(lead: Lead, eventType: "en_route" | "arrived") {
+  function executeOnTheWayNotification(lead: Lead, eventType: "en_route" | "arrived") {
     setNotifyPrompt(null);
-
-    const applyNotificationResult = (data: any) => {
-      if (data?.trackingUrl) setCustomerTrackingActive(true);
-      if (eventType === "arrived") setCustomerTrackingActive(false);
-      const newMsgs = Array.isArray(data?.messages) ? data.messages : data?.message ? [data.message] : [];
-      if (newMsgs.length > 0) {
-        setLeads((prev) =>
-          prev.map((l) =>
-            l.id === lead.id ? { ...l, messages: [...(l.messages || []), ...newMsgs] } : l
-          )
-        );
-        setActiveMessageLead((prev) =>
-          prev && prev.id === lead.id
-            ? { ...prev, messages: [...(prev.messages || []), ...newMsgs] }
-            : prev
-        );
-      }
-    };
-
-    // Get GPS location and send notification
-    if (!navigator.geolocation) {
-      setEtaToast({ leadId: lead.id, msg: "Location not available — notification sent without ETA." });
-      fetch("/api/admin/on-the-way", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: lead.id, booking: lead.activeBooking, lat: null, lng: null, eventType }),
-      })
-        .then((r) => r.json())
-        .then(applyNotificationResult)
-        .catch(() => { });
-      setTimeout(() => setEtaToast(null), 5000);
-      return;
-    }
-
-    const sendOnTheWayWithCoords = async (lat: number | null, lng: number | null) => {
-      try {
-        const res = await fetch("/api/admin/on-the-way", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId: lead.id, booking: lead.activeBooking, lat, lng, eventType }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Could not send notification");
-        applyNotificationResult(data);
-        setEtaToast({
-          leadId: lead.id,
-          msg:
-            eventType === "en_route"
-              ? data.eta
-                ? `Customer notified! ETA: ~${data.eta}`
-                : `Customer notified! (ETA unavailable)`
-              : `Customer notified of your arrival!`,
-        });
-        if (lat != null && lng != null) {
-          fetch("/api/admin/staff/location", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat, lng, leadId: lead.id }),
-          }).catch(() => { });
-        }
-      } catch {
-        setEtaToast({ leadId: lead.id, msg: "Could not send the customer notification. Please try again." });
-      } finally {
-        setOnTheWayLoading(null);
-        setTimeout(() => setEtaToast(null), 6000);
-      }
-    };
-
-    // If real-time continuous GPS already has a lock, dispatch immediately without delay
-    if (liveGpsCoords && Date.now() - new Date(liveGpsCoords.time).getTime() < 30000) {
-      setOnTheWayLoading(leadRowKey(lead));
-      sendOnTheWayWithCoords(liveGpsCoords.lat, liveGpsCoords.lng);
-      return;
-    }
-
-    setOnTheWayLoading(leadRowKey(lead));
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        sendOnTheWayWithCoords(lat, lng);
-      },
-      () => {
-        sendOnTheWayWithCoords(null, null);
-      },
-      { timeout: 10000, maximumAge: 30000 }
-    );
+    const key = `gx-visit-notification:${lead.id}:${eventType}:${lead.activeBooking?.bookingId || lead.activeBooking?.start || `${lead.inspectionAt || ""}|${lead.jobAt || ""}`}`;
+    let requestId: string = crypto.randomUUID();
+    try { requestId = sessionStorage.getItem(key) || requestId; sessionStorage.setItem(key, requestId); } catch { /* The server still guards retries within the open dialog. */ }
+    setNotificationAttempt({ lead, eventType, requestId });
   }
+
+  const applyVisitNotificationResult = useCallback((report: VisitNotificationReport) => {
+    if (notificationAttempt?.eventType === "arrived") setCustomerTrackingActive(false);
+    else if (report.trackingUrl) setCustomerTrackingActive(true);
+    const messages = report.messages;
+    if (!messages.length) return;
+    setLeads(previous => previous.map(lead => lead.id === notificationAttempt?.lead.id
+      ? { ...lead, messages: [...(lead.messages || []), ...messages.filter(message => !lead.messages?.some(existing => existing.id === message.id))] } : lead));
+    setActiveMessageLead(previous => previous && previous.id === notificationAttempt?.lead.id
+      ? { ...previous, messages: [...(previous.messages || []), ...messages.filter(message => !previous.messages?.some(existing => existing.id === message.id))] } : previous);
+  }, [notificationAttempt]);
+  const visitNotificationBusy = useCallback((busy: boolean) => {
+    setOnTheWayLoading(busy && notificationAttempt ? leadRowKey(notificationAttempt.lead) : null);
+  }, [notificationAttempt]);
 
   // Auto-share location in real-time for inspector / field / technician roles while dashboard is open
   useEffect(() => {
@@ -8586,8 +8521,8 @@ export default function CrmDashboardPage() {
               </h3>
               <p className="text-xs text-slate-500 mb-5">
                 {notifyPrompt.eventType === "en_route"
-                  ? `An email and SMS with your ETA and live tracking link will be sent to ${notifyPrompt.lead.name || "the customer"}. Keep this dashboard open and allow location access to share updates.`
-                  : `An SMS will be sent letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
+                  ? `We will attempt SMS and email, with an approximate ETA and tracking link when available, to ${notifyPrompt.lead.name || "the customer"}. Keep this dashboard open and allow location access to share updates.`
+                  : `We will attempt SMS and email letting ${notifyPrompt.lead.name || "the customer"} know you've arrived.`}
               </p>
               {notifyPrompt.lead.activeBooking && <p className="mb-3 text-xs font-semibold text-blue-700">Booking: {formatApptDate(notifyPrompt.lead.activeBooking.start)} · {formatApptTime(notifyPrompt.lead.activeBooking.start)}</p>}
               <div className="flex gap-3">
@@ -8757,6 +8692,11 @@ export default function CrmDashboardPage() {
             </div>
           </div>
         )}
+
+        {notificationAttempt && <VisitNotificationDialog
+          lead={notificationAttempt.lead} eventType={notificationAttempt.eventType} requestId={notificationAttempt.requestId}
+          currentGps={liveGpsCoords} onResult={applyVisitNotificationResult} onBusy={visitNotificationBusy}
+          onClose={() => setNotificationAttempt(null)} />}
 
         {/* ETA / notification toast */}
         {etaToast && (

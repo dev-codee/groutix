@@ -32,7 +32,7 @@ function sender({ business = contact, failContent = false } = {}) {
   }, {
     fetch: async (url, options) => {
       requests.push({ url, payload: JSON.parse(options.body) });
-      return { ok: true, json: async () => ({ message_id: "sent-1" }) };
+      return { ok: true, json: async () => ({ message_id: "sent-1", response_code: "SUCCESS", data: { messages: [{ message_id: "sent-1", status: "SUCCESS" }] }, messages: [{ message_id: "sent-1", status: "queued" }] }) };
     },
   });
   return { ...api, requests };
@@ -137,3 +137,12 @@ test("CRM conversation records the complete SMS including its contact footer", a
   assert.equal(result.body.message.text, sentBody);
   assert.equal(update.$push.messages.text, sentBody);
 });
+
+test("ClickSend HTTP 200 with a rejected message is a failure, not successful delivery", () => withProvider("clicksend", async () => {
+  const {sendSms}=loadTs("lib/sms.ts",{"@/lib/siteContentServer":{getSiteContent:async()=>null}},{fetch:async()=>({ok:true,json:async()=>({response_code:"SUCCESS",data:{messages:[{status:"INVALID_RECIPIENT"}]}})})});
+  const result=await sendSms({to:"0412345678",body:"On the way"});assert.equal(result.ok,false);assert.equal(result.error,"INVALID_RECIPIENT");
+}));
+test("missing provider confirmation remains unconfirmed instead of reporting SMS success", () => withProvider("texto", async () => {
+  const {sendSms}=loadTs("lib/sms.ts",{"@/lib/siteContentServer":{getSiteContent:async()=>null}},{fetch:async()=>({ok:true,json:async()=>({})})});
+  const result=await sendSms({to:"0412345678",body:"On the way"});assert.equal(result.ok,false);assert.equal(result.uncertain,true);
+}));

@@ -1,3 +1,5 @@
+import type { CustomerMessage } from "./submissions";
+
 export type NotificationChannel = "sms" | "email";
 export type ChannelOutcome = {
   status: "accepted" | "failed" | "unknown" | "sending";
@@ -9,7 +11,7 @@ export type VisitEta = { text: string | null; minutes: number | null; source: "o
 export type VisitNotificationReport = {
   requestId: string; channels: Record<NotificationChannel, ChannelOutcome>;
   eta: VisitEta; trackingUrl: string | null; warnings: string[];
-  messages: { id: string; from: "groutix" | "customer"; channel: "sms" | "email"; subject?: string; text: string; time: string }[];
+  messages: CustomerMessage[];
   processing?: boolean;
 };
 export function notificationFailure(channel: NotificationChannel, error: unknown, skipped = false): ChannelOutcome {

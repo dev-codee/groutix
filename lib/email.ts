@@ -21,6 +21,8 @@ export type SendEmailArgs = {
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
+  attempts?: 1 | 2;
+  requireAcceptance?: boolean;
 };
 
 let cachedTransporter: nodemailer.Transporter | null = null;
@@ -54,6 +56,9 @@ function getTransporter(): nodemailer.Transporter {
     // Pool connections to speed up multiple sends in the same request
     pool: true,
     maxConnections: 3,
+    connectionTimeout: 12000,
+    greetingTimeout: 12000,
+    socketTimeout: 20000,
   });
 
   return cachedTransporter;
@@ -152,14 +157,18 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
 
   // Attempt send with retry
   let lastErr: unknown;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= (args.attempts || 2); attempt++) {
     try {
-      await transporter.sendMail(mailOptions);
+      const info = await transporter.sendMail(mailOptions);
+      if (args.requireAcceptance && !info.accepted?.some((recipient: string | { address: string }) =>
+        (typeof recipient === "string" ? recipient : recipient.address).toLowerCase() === args.toEmail.toLowerCase())) {
+        throw Object.assign(new Error("Recipient was not accepted by the email server."), { code: "EENVELOPE", responseCode: 550 });
+      }
       return;
     } catch (err) {
       lastErr = err;
       console.error(`Email send attempt ${attempt} failed:`, err);
-      if (attempt < 2) {
+      if (attempt < (args.attempts || 2)) {
         await new Promise((r) => setTimeout(r, 1000));
       }
     }

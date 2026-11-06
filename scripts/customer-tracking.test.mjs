@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { randomUUID } from "node:crypto";
 import { loadTs } from "./test-ts-loader.mjs";
 
 const leadId = "507f1f77bcf86cd799439011";
@@ -165,20 +166,29 @@ function notificationFixture(f, { emailGate = Promise.resolve() } = {}) {
   const emails = [];
   let session = { username: "inspector" };
   const formatting = loadTs("lib/smsMessage.ts");
+  const attempts = new Map();
   const route = loadTs("app/api/admin/on-the-way/route.ts", {
     "next/server": { NextResponse: { json } },
     "@/lib/adminAuth": { verifyRequestSession: async () => session },
     "@/lib/submissions": { getSubmission: async () => f.leads[0], appendActivity: async () => {} },
     "@/lib/mongodb": { getDb: async () => f.db },
     "@/lib/customerTrackingServer": f.tracking,
-    "@/lib/geocode": { geocodeAddress: async () => null },
+    "@/lib/visitEta": { calculateVisitEta: async () => ({ text: null, minutes: null, source: "unavailable", reason: "GPS unavailable", nextStep: "Allow GPS" }) },
+    "@/lib/notificationAttempts": {
+      claimNotificationAttempt: async (id, identity) => {
+        const attempt = attempts.get(id) || { identity, processing: false };
+        const claimed = !attempt.processing; attempt.processing = true; attempts.set(id, attempt);
+        return { claimed, attempt };
+      },
+      saveNotificationAttempt: async (id, report, processing) => { attempts.set(id, { ...attempts.get(id), report, processing }); },
+    },
     "@/lib/sms": { sendSms: async (args) => { sms.push(args); return { ok: true, body: formatting.prepareCustomerSms(args.body) }; } },
-    "@/lib/email": { getEmailLogoUrl: async () => "", wrapEmailHtml: (html) => html, sendEmail: async (args) => { emails.push(args); await emailGate; } },
+    "@/lib/email": { isEmailConfigured: () => true, getEmailLogoUrl: async () => "", wrapEmailHtml: (html) => html, sendEmail: async (args) => { emails.push(args); await emailGate; } },
   });
   return {
     sms, emails,
     setSession: (value) => { session = value; },
-    post: (body = {}) => route.POST({ json: async () => ({ leadId, lat: null, lng: null, eventType: "en_route", ...body }) }),
+    post: (body = {}) => route.POST({ json: async () => ({ leadId, requestId: randomUUID(), lat: null, lng: null, eventType: "en_route", ...body }) }),
   };
 }
 

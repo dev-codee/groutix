@@ -46,6 +46,7 @@ export function normaliseAuNumber(raw: string): string {
 export type SmsResult = {
   ok: boolean;
   skipped?: boolean;
+  uncertain?: boolean;
   error?: string;
   messageId?: string;
   creditsRemaining?: number;
@@ -91,7 +92,7 @@ export async function sendSms(args: {
     return { ...result, body };
   } catch (err) {
     console.error("sendSms failed (non-fatal):", err);
-    return { ok: false, error: "send_failed" };
+    return { ok: false, error: "send_failed", uncertain: true };
   }
 }
 
@@ -117,6 +118,7 @@ async function sendViaTexto(args: {
 
   const res = await fetch("https://api.texto.com.au/send", {
     method: "POST",
+    signal: AbortSignal.timeout(12000),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
@@ -131,6 +133,8 @@ async function sendViaTexto(args: {
     return { ok: false, error: data?.error || data?.message || `texto_${res.status}` };
   }
 
+  if (data.error || data.success === false) return { ok: false, error: String(data.error || data.message || "provider_rejected") };
+  if (!data.message_id) return { ok: false, error: "provider_confirmation_missing", uncertain: true };
   return {
     ok: true,
     messageId: data.message_id,
@@ -144,6 +148,7 @@ async function sendViaClickSend(args: { to: string; from: string; body: string }
   const auth = Buffer.from(`${user}:${key}`).toString("base64");
   const res = await fetch("https://rest.clicksend.com/v3/sms/send", {
     method: "POST",
+    signal: AbortSignal.timeout(12000),
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/json",
@@ -157,7 +162,12 @@ async function sendViaClickSend(args: { to: string; from: string; body: string }
     console.error("ClickSend error:", res.status, text);
     return { ok: false, error: `clicksend_${res.status}` };
   }
-  return { ok: true };
+  const data = await res.json().catch(() => null);
+  const message = data?.data?.messages?.[0];
+  if (message?.status && message.status !== "SUCCESS") return { ok: false, error: String(message.status) };
+  if (data?.response_code && data.response_code !== "SUCCESS") return { ok: false, error: String(data.response_code) };
+  if (!message?.message_id || message.status !== "SUCCESS") return { ok: false, error: "provider_confirmation_missing", uncertain: true };
+  return { ok: true, messageId: message.message_id };
 }
 
 async function sendViaMessageMedia(args: { to: string; from: string; body: string }): Promise<SmsResult> {
@@ -167,6 +177,7 @@ async function sendViaMessageMedia(args: { to: string; from: string; body: strin
   const auth = Buffer.from(`${key}:${secret}`).toString("base64");
   const res = await fetch("https://api.messagemedia.com/v1/messages", {
     method: "POST",
+    signal: AbortSignal.timeout(12000),
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/json",
@@ -181,5 +192,9 @@ async function sendViaMessageMedia(args: { to: string; from: string; body: strin
     console.error("MessageMedia error:", res.status, text);
     return { ok: false, error: `messagemedia_${res.status}` };
   }
-  return { ok: true };
+  const data = await res.json().catch(() => null);
+  const message = data?.messages?.[0];
+  if (["rejected", "failed"].includes(message?.status)) return { ok: false, error: "provider_rejected" };
+  if (!message?.message_id) return { ok: false, error: "provider_confirmation_missing", uncertain: true };
+  return { ok: true, messageId: message.message_id };
 }
