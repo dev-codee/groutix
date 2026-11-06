@@ -174,7 +174,7 @@ export default function LeakingShowerPageV2({ reviews }: { reviews: Review[] }) 
               <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">LEAKING SHOWERS · MELBOURNE</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Leaking Shower Repairs Melbourne</h1>
               <div className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-[#D6DCF5] lg:mx-0 sm:text-base">
-                <p>Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. From post war brick homes in the outer suburbs to Edwardian bathrooms in the inner north, the pattern is the same: failed grout and seals let water track behind the tiles. If the cause is a pipe or the waterproofing membrane, we tell you before any work starts.</p>
+                <p>Groutix finds where your shower is leaking and repairs failed grout and silicone, often without removing tiles. From post war brick homes in the outer suburbs to Edwardian bathrooms in the inner north, the pattern is the same.</p>
               </div>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges />
