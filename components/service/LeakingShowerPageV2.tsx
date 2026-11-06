@@ -11,7 +11,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Building2, Check, ClipboardCheck, Droplets, House, Layers, Phone, Search, ShieldCheck, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
