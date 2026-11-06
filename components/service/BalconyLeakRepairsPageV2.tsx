@@ -109,11 +109,6 @@ const strataCards: IconCard[] = [
   { title: "A Clear Contact", body: "Repair scope and scheduling explained from the first call to the final check.", Icon: Phone },
 ];
 
-const workPhotos = [
-  { src: "/balcony-centre-watermark.webp", alt: "Balcony after a balcony leak repair in Melbourne, regrouted and resealed by Groutix", caption: "Balcony regrouted and resealed" },
-  { src: "/balcony-regrouting-tiles.webp", alt: "Balcony tiles regrouted and resealed during a balcony leak repair in Melbourne", caption: "Balcony tiles, regrouted" },
-];
-
 const relatedServices = [
   { title: "Shower Regrouting", text: "Full shower regrouting with waterproof epoxy grout and fresh seals.", img: "/shower-regrouting-tiled-interior.webp", alt: "Freshly regrouted tiled shower with waterproof epoxy grout", href: "/shower-regrouting" },
   { title: "Leaking Shower Repair", text: "We find where the water is getting out and seal it at the source.", img: "/leaking-shower-after.webp", alt: "Shower floor after a leaking shower repair, regrouted and resealed", href: "/leaking-shower-repair" },
@@ -211,18 +206,18 @@ export default function BalconyLeakRepairsPageV2({ rating, reviews }: { rating: 
 
         {/* 2. OUR WORK (real finished balcony work; no before and after pair exists) */}
         <Section id="balcony-work">
-          <SectionHead k="Real Work" title="Balcony Leak Repairs: Real Melbourne Work">
-            <p className={lead}>Finished Groutix balcony work, photographed on site. Every balcony is inspected first, because the right repair depends on whether the membrane underneath still holds.</p>
-          </SectionHead>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {workPhotos.map((p) => (
-              <figure key={p.src} className={`${box} overflow-hidden`}>
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-200">
-                  <Image src={p.src} alt={p.alt} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
-                </div>
-                <figcaption className="p-4 text-[15px] font-bold text-slate-900">{p.caption}</figcaption>
-              </figure>
-            ))}
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <figure className={`${box} overflow-hidden`}>
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-200">
+                <Image src="/balcony-centre-watermark.webp" alt="Balcony after a balcony leak repair in Melbourne, regrouted and resealed by Groutix" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
+              </div>
+              <figcaption className="p-4 text-[15px] font-bold text-slate-900">Balcony regrouted and resealed</figcaption>
+            </figure>
+            <div>
+              <p className={eyebrow}>Real Work</p>
+              <h2 className={h2}>Balcony Leak Repairs: Real Melbourne Work</h2>
+              <p className={lead}>Finished Groutix balcony work, photographed on site. Every balcony is inspected first, because the right repair depends on whether the membrane underneath still holds.</p>
+            </div>
           </div>
           {inspectionCta()}
         </Section>
