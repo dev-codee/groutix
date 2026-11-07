@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Boxes,
+  Wallet,
   BarChart3,
   FileText,
   LogOut,
@@ -169,6 +170,7 @@ import { QuotesView } from "@/components/admin/views/QuotesView";
 import { JobsView } from "@/components/admin/views/JobsView";
 import { CustomersView } from "@/components/admin/views/CustomersView";
 import { TeamView } from "@/components/admin/views/TeamView";
+import { TeamEarningsView } from "@/components/admin/views/TeamEarningsView";
 import { MaterialsView } from "@/components/admin/views/MaterialsView";
 import { TechniciansView } from "@/components/admin/views/TechniciansView";
 import { CompletedView } from "@/components/admin/views/CompletedView";
@@ -204,6 +206,7 @@ type DashboardView =
   | "content"
   | "customers"
   | "team"
+  | "earnings"
   | "materials"
   | "technicians"
   | "recyclebin";
@@ -4054,6 +4057,13 @@ export default function CrmDashboardPage() {
         </button>
       )}
 
+      {canSee("earnings") && (
+        <button type="button" onClick={() => { navigateTo("earnings"); onItemClick?.(); }}
+          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "earnings" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"}`}>
+          <Wallet className="w-4 h-4" />Team Earnings
+        </button>
+      )}
+
       {canSee("materials") && (
         <button
           type="button"
@@ -4245,7 +4255,9 @@ export default function CrmDashboardPage() {
                 </button>
               )}
               <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight capitalize truncate">
-                {currentView === "materials"
+                {currentView === "earnings"
+                  ? "Team Earnings"
+                  : currentView === "materials"
                   ? "Materials"
                   : currentView === "dashboard"
                   ? "Manager Dashboard"
@@ -4701,6 +4713,8 @@ export default function CrmDashboardPage() {
                 unread={unread}
               />
             )}
+
+            {currentView === "earnings" && canSee("earnings") && <TeamEarningsView query={globalSearch} onQueryChange={setGlobalSearch} />}
 
             {currentView === "materials" && canSee("materials") && <MaterialsView query={globalSearch} onQueryChange={setGlobalSearch} />}
 
