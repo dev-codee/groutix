@@ -27,12 +27,12 @@ const PRICES: { label: string; from: string; note: string }[] = [
 ];
 
 const CORE = [
-  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/walk-in-shower-regrouting-glass-screen-view.webp",
-    alt: "Walk in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking Shower repair.webp",
-    alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
-  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-centre-watermark.webp",
-    alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
+  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/shower-regrouting-tiled-interior.webp",
+    alt: "Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/corner-shower-regrouting-worn-grout.webp",
+    alt: "Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
+  { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-regrouting-herringbone-tiles.webp",
+    alt: "Balcony leak repairs in Melbourne, herringbone balcony tiles regrouted and resealed with waterproof epoxy grout", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
   { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
