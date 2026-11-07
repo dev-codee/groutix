@@ -13,6 +13,8 @@ export const smallTilingFaqs = [
   { q: "How long before I can walk on the new tile?", a: "It depends on the adhesive. We tell you the exact wait before we start." },
   { q: "How much does it cost to replace a tile in Melbourne?", a: "It depends on the number of tiles, the tile type and the access. We quote after we see it." },
   { q: "Do you take small jobs?", a: "Yes. Small jobs are what this service is for." },
+  { q: "Do I need to supply the replacement tile?", a: "If you have spare tiles from the original job, they match best. If not, we confirm availability and the closest options before booking." },
+  { q: "Can you patch tiles after other trades have been in?", a: "Yes. We patch tiles after tap and fitting changes where the surrounding tiles are sound." },
 ];
 export const smallTilingSteps = [
   { title: "Inspect and Test", body: "We tap test the nearby tiles and check why the tile failed." },
