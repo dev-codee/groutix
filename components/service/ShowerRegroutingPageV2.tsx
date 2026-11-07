@@ -89,12 +89,12 @@ const diyMistakes = [
 /* Captions stay empty until real suburb + problem captions are supplied. */
 
 const relatedProblems = [
-  { title: "Leaking Shower Repair", text: "Leaks found and sealed at the source, usually without removing tiles.", href: "/leaking-shower-repair", img: "/leaking-shower-after.webp", alt: "Leaking shower repaired and regrouted by Groutix in a Melbourne home" },
-  { title: "Balcony Leak Repairs", text: "Failed balcony grout and joints rebuilt and resealed to keep water out of the structure.", href: "/balcony-leak-repairs", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Tiled balcony after leak repairs and regrouting by Groutix" },
-  { title: "Tile Regrouting", text: "Regrouting for bathroom floors, kitchens and laundries beyond the shower.", href: "/tile-regrouting", img: "/tile-regrouting-dark-floor-tiles-close-up.webp", alt: "Close up of dark floor tiles after tile regrouting" },
-  { title: "Epoxy Grout", text: "Waterproof epoxy joints that resist mould, staining and cracking for years.", href: "/epoxy-grout", img: "/shower-regrouting-in-progress-close-up.webp", alt: "Epoxy grout being applied to a shower floor during regrouting" },
-  { title: "Silicone Recaulking", text: "Old, peeling silicone cut out and replaced with a clean, watertight seal.", href: "/silicone-recaulking", img: "/shower-regrouting-silicone-removal-in-progress.webp", alt: "Old silicone being removed from a shower before recaulking" },
-  { title: "Small Tiling Jobs", text: "Cracked, loose or missing tiles repaired and replaced on small jobs.", href: "/small-tiling-jobs", img: "/bath-shower-corner-grout-close-up.webp", alt: "Bath and shower corner tiles repaired on a small tiling job" },
+  { title: "Leaking Shower Repair", text: "Leaks found and sealed at the source, usually without removing tiles.", href: "/leaking-shower-repair", img: "/corner-shower-regrouting-worn-grout.webp", alt: "Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles" },
+  { title: "Balcony Leak Repairs", text: "Failed balcony grout and joints rebuilt and resealed to keep water out of the structure.", href: "/balcony-leak-repairs", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony leak repairs in Melbourne, herringbone balcony tiles regrouted and resealed with waterproof epoxy grout" },
+  { title: "Tile Regrouting", text: "Regrouting for bathroom floors, kitchens and laundries beyond the shower.", href: "/tile-regrouting", img: "/tile-regrouting-hero.webp", alt: "Tile regrouting in Melbourne, glossy white shower tiles and a tiled niche finished with fresh grout lines" },
+  { title: "Epoxy Grout", text: "Waterproof epoxy joints that resist mould, staining and cracking for years.", href: "/epoxy-grout", img: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Epoxy grout in Melbourne — a hexagonal mosaic shower floor finished with waterproof epoxy grout" },
+  { title: "Silicone Recaulking", text: "Old, peeling silicone cut out and replaced with a clean, watertight seal.", href: "/silicone-recaulking", img: "/shower-regrouting-silicone-removal-in-progress.webp", alt: "Silicone recaulking in Melbourne, old failed silicone being removed from a shower base before resealing" },
+  { title: "Small Tiling Jobs", text: "Cracked, loose or missing tiles repaired and replaced on small jobs.", href: "/small-tiling-jobs", img: "/shower-regrouting-mosaic-feature-wall.webp", alt: "Small tiling jobs in Melbourne — a mosaic feature strip and tiled shower niche finished by Groutix" },
 ];
 
 const faqs: Array<{ q: string; a: ReactNode; plain: string }> = [

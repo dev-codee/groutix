@@ -156,12 +156,12 @@ const whyGroutix: IconCard[] = [
 ];
 
 const relatedServices = [
-  { title: "Shower Regrouting", text: "Full shower regrouting with waterproof epoxy grout and fresh seals.", img: "/shower-regrouting-tiled-interior.webp", alt: "Freshly regrouted tiled shower with waterproof epoxy grout", href: "/shower-regrouting" },
-  { title: "Leaking Shower Repair", text: "We find where the water is getting out and seal it at the source.", img: "/leaking-shower-after.webp", alt: "Shower floor after a leaking shower repair, regrouted and resealed", href: "/leaking-shower-repair" },
-  { title: "Balcony Leak Repairs", text: "Balcony regrouting and resealing that stops water before it spreads.", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Regrouted balcony with herringbone tiles and fresh epoxy grout joints", href: "/balcony-leak-repairs" },
-  { title: "Tile Regrouting", text: "Floor and wall tile regrouting that brings tired tiles back to life.", img: "/tile-regrouting-dark-floor-tiles-close-up.webp", alt: "Dark floor tiles regrouted with fresh, clean grout lines", href: "/tile-regrouting" },
-  { title: "Epoxy Grout", text: "Waterproof, stain resistant epoxy grout for showers and wet areas.", img: "/shower-regrouting-in-progress-close-up.webp", alt: "Epoxy grout being applied to shower floor tiles during regrouting", href: "/epoxy-grout" },
-  { title: "Small Tiling Jobs", text: "Loose, cracked or drummy tiles repaired and retiled to match.", img: "/bath-shower-corner-grout-close-up.webp", alt: "Regrouted corner of a shower over a bath with fresh grout lines", href: "/small-tiling-jobs" },
+  { title: "Shower Regrouting", text: "Full shower regrouting with waterproof epoxy grout and fresh seals.", img: "/shower-regrouting-tiled-interior.webp", alt: "Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout", href: "/shower-regrouting" },
+  { title: "Leaking Shower Repair", text: "We find where the water is getting out and seal it at the source.", img: "/corner-shower-regrouting-worn-grout.webp", alt: "Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles", href: "/leaking-shower-repair" },
+  { title: "Balcony Leak Repairs", text: "Balcony regrouting and resealing that stops water before it spreads.", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Balcony leak repairs in Melbourne, herringbone balcony tiles regrouted and resealed with waterproof epoxy grout", href: "/balcony-leak-repairs" },
+  { title: "Tile Regrouting", text: "Floor and wall tile regrouting that brings tired tiles back to life.", img: "/tile-regrouting-hero.webp", alt: "Tile regrouting in Melbourne, glossy white shower tiles and a tiled niche finished with fresh grout lines", href: "/tile-regrouting" },
+  { title: "Epoxy Grout", text: "Waterproof, stain resistant epoxy grout for showers and wet areas.", img: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Epoxy grout in Melbourne — a hexagonal mosaic shower floor finished with waterproof epoxy grout", href: "/epoxy-grout" },
+  { title: "Small Tiling Jobs", text: "Loose, cracked or drummy tiles repaired and retiled to match.", img: "/shower-regrouting-mosaic-feature-wall.webp", alt: "Small tiling jobs in Melbourne — a mosaic feature strip and tiled shower niche finished by Groutix", href: "/small-tiling-jobs" },
 ];
 
 // FAQ answers 5 and 6 carry the same in-text links as the live page.
