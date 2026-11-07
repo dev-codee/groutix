@@ -7,7 +7,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ClipboardCheck, Grid2x2, Hammer, Home as HomeIcon, Layers, Phone, Users, Wrench } from "lucide-react";
+import { ClipboardCheck, Home as HomeIcon, Phone, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TrustedMarquee from "@/components/TrustedMarquee";
@@ -27,23 +27,23 @@ const PRICES: { label: string; from: string; note: string }[] = [
 ];
 
 const CORE = [
-  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/walk-in-shower-regrouting-glass-screen-view.webp",
-    alt: "Walk in shower with a brown tiled feature wall, glass screen and fresh grout lines", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
-  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/Leaking Shower repair.webp",
-    alt: "Dark tiled shower with clean white grout lines and chrome taps after a leak repair", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
+  { slug: "shower-regrouting", title: "Shower Regrouting", tag: "Most booked", hot: true, img: "/shower-regrouting-tiled-interior.webp",
+    alt: "Shower regrouting in Melbourne, a freshly regrouted tiled shower with waterproof epoxy grout", desc: "Cracked or crumbling grout removed and rebuilt with waterproof epoxy, so your shower seals properly again." },
+  { slug: "leaking-shower-repair", title: "Leaking Shower Repair", tag: "Leak repair", img: "/corner-shower-regrouting-worn-grout.webp",
+    alt: "Leaking shower repair in Melbourne, a corner shower with worn, failing grout that lets water escape behind the tiles", desc: "We remove the failed grout and silicone and regrout your shower with waterproof epoxy, usually without removing tiles." },
   { slug: "balcony-leak-repairs", title: "Balcony Leak Repairs", tag: "Outdoor", img: "/balcony-centre-watermark.webp",
     alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
-  { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
-  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould resistant reseal", Icon: Wrench },
-  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain resistant upgrade", Icon: Layers },
-  { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
+  { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", img: "/tile-regrouting-hero.webp", alt: "Tile regrouting in Melbourne, glossy white shower tiles and a tiled niche finished with fresh grout lines" },
+  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould resistant reseal", img: "/shower-regrouting-silicone-removal-in-progress.webp", alt: "Silicone recaulking in Melbourne, old failed silicone being removed from a shower base before resealing" },
+  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain resistant upgrade", img: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Epoxy grout in Melbourne — a hexagonal mosaic shower floor finished with waterproof epoxy grout" },
+  { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", img: "/shower-regrouting-mosaic-feature-wall.webp", alt: "Small tiling jobs in Melbourne — a mosaic feature strip and tiled shower niche finished by Groutix" },
 ];
 const JOBS = [
-  { before: "/beige-shower-floor-regrouting-top-view before.webp", after: "/beige-shower-floor-regrouting-top-view after.webp", title: "Shower floor regrout" },
-  { before: "/tiled-shower-floor-regrouting-wide before.webp", after: "/tiled-shower-floor-regrouting-wide after .webp", title: "Floor tile regrout" },
-  { before: "/grey-shower-base-regrouting-overhead-view before .webp", after: "/grey-shower-floor-regrouting-top-view after.webp", title: "Shower base regrout" },
+  { before: "/epoxy-grout-shower-before.webp", after: "/epoxy-grout-shower-after.webp", title: "Shower regrout" },
+  { before: "/epoxy-grout-floor-before.webp", after: "/epoxy-grout-floor-after.webp", title: "Shower floor regrout" },
+  { before: "/leaking-shower-failed-grout-before.webp", after: "/leaking-shower-repaired-after.webp", title: "Leaking shower repair" },
 ];
 const STEPS = [
   { no: "01", k: "CALL", title: "Send Photos or Call", desc: "Tell us what's happening. You get honest advice, even if a full regrout isn't needed." },
@@ -276,9 +276,9 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               ))}
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {MORE.map(({ slug, title, desc, Icon }) => (
+              {MORE.map(({ slug, title, desc, img, alt }) => (
                 <Link key={slug} href={`/${slug}`} className={`${box} group flex items-start gap-4 p-5 text-slate-900 transition hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+                  <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-200"><Image src={img} alt={alt} fill sizes="48px" className="object-cover" /></span>
                   <span>
                     <b className="block text-[17px]">{title}</b>
                     <span className="block text-sm text-slate-600">{desc}</span>
