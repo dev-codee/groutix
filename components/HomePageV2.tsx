@@ -7,7 +7,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ClipboardCheck, Grid2x2, Hammer, Home as HomeIcon, Layers, Phone, Users, Wrench } from "lucide-react";
+import { ClipboardCheck, Home as HomeIcon, Phone, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TrustedMarquee from "@/components/TrustedMarquee";
@@ -35,10 +35,10 @@ const CORE = [
     alt: "Long balcony with herringbone tiles and a black metal railing after leak repairs", desc: "Failed grout and sealant rebuilt with weatherproof epoxy to stop water reaching the areas below." },
 ];
 const MORE = [
-  { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", Icon: Grid2x2 },
-  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould resistant reseal", Icon: Wrench },
-  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain resistant upgrade", Icon: Layers },
-  { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", Icon: Hammer },
+  { slug: "tile-regrouting", title: "Tile Regrouting", desc: "Kitchens, laundries & floors", img: "/tile-regrouting-hero.webp", alt: "Tile regrouting in Melbourne, glossy white shower tiles and a tiled niche finished with fresh grout lines" },
+  { slug: "silicone-recaulking", title: "Silicone & Recaulking", desc: "Mould resistant reseal", img: "/shower-regrouting-silicone-removal-in-progress.webp", alt: "Silicone recaulking in Melbourne, old failed silicone being removed from a shower base before resealing" },
+  { slug: "epoxy-grout", title: "Epoxy Grout", desc: "Stain resistant upgrade", img: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Epoxy grout in Melbourne — a hexagonal mosaic shower floor finished with waterproof epoxy grout" },
+  { slug: "small-tiling-jobs", title: "Small Tiling Jobs", desc: "Cracked or loose tiles", img: "/shower-regrouting-mosaic-feature-wall.webp", alt: "Small tiling jobs in Melbourne — a mosaic feature strip and tiled shower niche finished by Groutix" },
 ];
 const JOBS = [
   { before: "/epoxy-grout-shower-before.webp", after: "/epoxy-grout-shower-after.webp", title: "Shower regrout" },
@@ -276,9 +276,9 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
               ))}
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {MORE.map(({ slug, title, desc, Icon }) => (
+              {MORE.map(({ slug, title, desc, img, alt }) => (
                 <Link key={slug} href={`/${slug}`} className={`${box} group flex items-start gap-4 p-5 text-slate-900 transition hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+                  <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-200"><Image src={img} alt={alt} fill sizes="48px" className="object-cover" /></span>
                   <span>
                     <b className="block text-[17px]">{title}</b>
                     <span className="block text-sm text-slate-600">{desc}</span>
