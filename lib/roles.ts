@@ -49,6 +49,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "customers",
     "team",
     "technicians",
+    "materials",
     "recyclebin",
   ],
   super_admin: [
@@ -66,6 +67,7 @@ export const ROLE_VIEWS: Record<Role, string[]> = {
     "customers",
     "team",
     "technicians",
+    "materials",
     "recyclebin",
   ],
 };
@@ -106,6 +108,7 @@ export function canOpenPage(role: Role, page: string): boolean {
 // tightens per-field write access later.
 const MANAGER_ONLY_API = [
   "/api/admin/manager-notes",
+  "/api/admin/materials",
   "/api/admin/users",
   "/api/admin/applications",
   "/api/admin/content",
