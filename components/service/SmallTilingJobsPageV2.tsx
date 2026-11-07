@@ -1,40 +1,63 @@
 "use client";
 
-// Redesigned /small-tiling-jobs page. Copy, links and FAQs are the same as
-// components/SmallTilingJobsPage.tsx (kept for a one-line rollback); only the
-// layout follows the new homepage.
-// 2026-10-26 upgrade: shower-style photo hero (quote form moved to its own band
-// under the hero); every photo live-verified with SEO alt text.
+// Redesigned /small-tiling-jobs page (2026-11-04): shower page pattern.
+// Results as a real work photo strip (no slider on this page),
+// text sign cards, what we do, matching, process, related services.
+// Visible copy carries no hyphens in compound words. FAQs and steps
+// stay in lib/smallTilingContent (route adds the schema).
+// FINAL (2026-11-06): real alt text on the slider images (SEO) only.
+// NO Service schema in this component (checked again for FINAL): the
+// app/[slug]/page.tsx route already emits the Service + FAQPage schema
+// for this slug, so adding one here would duplicate it (same standard
+// as the Tile, Balcony and Silicone FINAL packs, 2026-11-06).
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ComponentType, ReactNode } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import { Check, Clock, Grid2x2, Hammer, House, Layers, Paintbrush, Phone, Ruler, Search, ShieldCheck, Wrench } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { useContact } from "@/components/SiteContentProvider";
+import HomeAreasV2 from "@/components/home/HomeAreasV2";
 import { BUSINESS } from "@/lib/seo";
 import type { BusinessRating, Review } from "@/lib/reviews";
 import { smallTilingFaqs, smallTilingSteps } from "@/lib/smallTilingContent";
 import {
-  BeforeAfter, FaqList, FinalCta, MobileCallBar, PhotoCard, ReviewsMarquee, Section, SectionHead,
-  box, btnGold, btnNavy, cardText, cardTitle, eyebrow, h2, heroWrap, inlineLink, lead, wrap, type PhotoCardData,
+  FaqList, MobileCallBar, ReviewsMarquee, Section, SectionHead,
+  box, btnGhost, btnGold, btnNavy, cardText, cardTitle, h2, heroWrap, inlineLink, lead, wrap, eyebrow,
 } from "@/components/v2/ui";
 import HeroContactBadges from "@/components/HeroContactBadges";
 import QuoteFormV2 from "@/components/home/QuoteFormV2";
 
 type IconCard = { title: string; body: ReactNode; Icon: ComponentType<{ className?: string }> };
 
-/* ───────────── Content (unchanged from the live page) ───────────── */
-// Card title and text are the live copy; the photo and link are new for the card layout.
-const signs: PhotoCardData[] = [
-  { title: "Cracked Tile", text: "A visible crack across the tile.", img: "/tile-regrouting-cracked-grout-closeup.webp", alt: "Cracked floor tile with broken grout", href: "#what-we-do", link: "Tile replacement" },
-  { title: "Chipped Tile", text: "A chipped corner or edge.", img: "/shower-regrouting-rust-stained-tiles.webp", alt: "Floor tiles with chipped edges and damaged grout", href: "#matching", link: "Matching your tile", half: true },
-  { title: "Loose Tile", text: "A tile that rocks or moves underfoot.", img: "/shower-regrouting-over-bath-tiles.webp", alt: "Loose tile edge and cracked grout beside a bath", href: "#what-it-means", link: "Loose, cracked or hollow?" },
-  { title: "Hollow Sound", text: "A tile that sounds hollow when tapped.", img: "/grey-shower-floor-regrouting-top-view after.webp", alt: "Tiled floor being checked for hollow tiles", href: "#process", link: "How we test and refix" },
-  { title: "Raised Edges", text: "An edge or corner that sits higher than the rest.", img: "/tiled-shower-floor-regrouting-wide before.webp", alt: "Floor tiles with uneven, lifted edges", href: "#cost", link: "What it costs", half: true },
-  { title: "Missing Tile", text: "A tile that is missing or has fallen off the wall.", img: "/shower-regrouting-stained-grout-corner.webp", alt: "Shower corner with failed grout where tiles have lifted and fallen away", href: "#honest-scope", link: "When it is more than a small job" },
+const card = `${box} p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`;
+
+function Callout({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className={`${box} border-l-4 border-l-[#FBBC04] p-6`}>
+      <h3 className={cardTitle}>{title}</h3>
+      <p className={cardText}>{children}</p>
+    </div>
+  );
+}
+
+/* Image card styled like the homepage "shower grout problems" cards. */
+
+
+const recentWork = [
+  { src: "/shower-niche-regrouting-close-up.webp", alt: "Tiled shower niche up close after repair and regrouting", caption: "Shower niches and shelves" },
+  { src: "/shower-regrouting-mosaic-strip-linear-drain.webp", alt: "Mosaic strip tiling with a linear drain after repair", caption: "Mosaic strips and drains" },
+  { src: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Hexagonal mosaic floor tiles after repair and regrouting", caption: "Mosaic floor tiles" },
+];
+
+const signCards = [
+  { title: "Cracked Tile", text: "A visible crack across the tile.", href: "#what-we-do", link: "Tile replacement" },
+  { title: "Chipped Tile", text: "A chipped corner or edge.", href: "#matching", link: "Matching your tile" },
+  { title: "Loose Tile", text: "A tile that rocks or moves underfoot.", href: "#what-it-means", link: "Loose, cracked or hollow?" },
+  { title: "Hollow Sound", text: "A tile that sounds hollow when tapped.", href: "#process", link: "How we test and refix" },
+  { title: "Raised Edges", text: "An edge or corner that sits higher than the rest.", href: "#cost", link: "What it costs" },
+  { title: "Missing Tile", text: "A tile that is missing or has fallen off the wall.", href: "#honest-scope", link: "When it is more than a small job" },
 ];
 
 const jobs: IconCard[] = [
@@ -51,7 +74,7 @@ const meaningRows: Array<[string, string, ReactNode]> = [
   ["Tile moves or rocks", "The adhesive has let go", "Refix or replace."],
   ["Cracked tile", "Impact or movement", "Replace the tile."],
   ["Raised or lifted edge", "Movement or bond failure", "Refix, and check the surrounding tiles."],
-  ["Tiles keep coming loose in one area", "Moisture or movement under the tiles", <>We tell you if it needs a leak assessment. See <Link key="l" href="/leaking-shower-repair/" className={inlineLink}>leaking shower repair</Link>.</>],
+  ["Tiles keep coming loose in one area", "Moisture or movement under the tiles", <>We tell you if it needs a leak assessment. See <Link key="l" href="/leaking-shower-repair" className={inlineLink}>leaking shower repair</Link>.</>],
 ];
 
 const matchCards: IconCard[] = [
@@ -74,41 +97,22 @@ const whyGroutix: IconCard[] = [
   { title: "Clear Warranty Scope", body: "The applicable workmanship warranty is confirmed in your quote.", Icon: ShieldCheck },
 ];
 
-// Real Groutix tile and grout jobs (the live page still shows "photos coming soon" boxes here).
-const beforeAfter = [
-  { src: "/shower-regrouting-corner-white-wall-tiles.webp", alt: "White corner wall tiles after a small tiling repair in a Melbourne bathroom" },
-  { src: "/shower-regrouting-stone-look-wall-tiles.webp", alt: "Dark stone-look wall tiles after tile repair and regrouting" },
-  { src: "/shower-floor-regrouting-hex-mosaic-tiles.webp", alt: "Hexagonal mosaic floor tiles after repair and regrouting" },
-  { src: "/beige-shower-floor-regrouting-top-view after.webp", alt: "Tiled shower floor after a small tiling repair and full regrout" },
-];
-
-const related: PhotoCardData[] = [
-  { title: "Tile Regrouting", text: "Worn grout on floors, kitchens and laundries.", href: "/tile-regrouting/", img: "/shower-regrouting-beige-wall-tiles.webp", alt: "Beige wall tiles with fresh grout — tile regrouting in Melbourne", link: "View service" },
-  { title: "Shower Regrouting", text: "Worn grout throughout the shower.", href: "/shower-regrouting/", img: "/shower-regrouting-tiled-niche.webp", alt: "Tiled shower niche with fresh grout — shower regrouting in Melbourne by Groutix", link: "View service" },
-  { title: "Leaking Shower Repair", text: "When water is already getting out.", href: "/leaking-shower-repair/", img: "/leaking-shower-water-damage-wall.webp", alt: "Water damage on a wall next to a leaking shower", link: "View service" },
-  { title: "Silicone and Recaulking", text: "Flexible seals at corners and edges.", href: "/silicone-recaulking/", img: "/white-tile-shower-regrouting-overhead after.webp", alt: "Shower screen freshly sealed with new silicone", link: "View service" },
+const relatedServices = [
+  { title: "Shower Regrouting", text: "Full shower regrouting with waterproof epoxy grout and fresh seals.", img: "/shower-regrouting-tiled-interior.webp", alt: "Freshly regrouted tiled shower with waterproof epoxy grout", href: "/shower-regrouting" },
+  { title: "Leaking Shower Repair", text: "We find where the water is getting out and seal it at the source.", img: "/leaking-shower-after.webp", alt: "Shower floor after a leaking shower repair, regrouted and resealed", href: "/leaking-shower-repair" },
+  { title: "Balcony Leak Repairs", text: "Balcony regrouting and resealing that stops water before it spreads.", img: "/balcony-regrouting-herringbone-tiles.webp", alt: "Regrouted balcony with herringbone tiles and fresh epoxy grout joints", href: "/balcony-leak-repairs" },
+  { title: "Tile Regrouting", text: "Floor and wall tile regrouting that brings tired tiles back to life.", img: "/tile-regrouting-dark-floor-tiles-close-up.webp", alt: "Dark floor tiles regrouted with fresh, clean grout lines", href: "/tile-regrouting" },
+  { title: "Epoxy Grout", text: "Waterproof, stain resistant epoxy grout for showers and wet areas.", img: "/shower-regrouting-in-progress-close-up.webp", alt: "Epoxy grout being applied to shower floor tiles during regrouting", href: "/epoxy-grout" },
+  { title: "Silicone Recaulking", text: "Old, mouldy silicone removed and replaced with a clean, watertight seal.", img: "/shower-regrouting-silicone-removal-in-progress.webp", alt: "Old silicone being removed from a shower joint before recaulking", href: "/silicone-recaulking" },
 ];
 
 // FAQ 7 carries the same in-text link as the live page.
 function faqAnswer(index: number, answer: string): ReactNode {
   if (index !== 6) return answer;
   const [before, after] = answer.split("leaking shower repair");
-  return <>{before}<Link href="/leaking-shower-repair/" className={inlineLink}>leaking shower repair</Link>{after}</>;
+  return <>{before}<Link href="/leaking-shower-repair" className={inlineLink}>leaking shower repair</Link>{after}</>;
 }
 
-/* ───────────── Small pieces ───────────── */
-function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: string }) {
-  const { Icon } = c;
-  return (
-    <div className={`${box} border-t-4 ${accent} p-6`}>
-      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
-      <h3 className={`${cardTitle} mt-4`}>{c.title}</h3>
-      <p className={cardText}>{c.body}</p>
-    </div>
-  );
-}
-
-/* ───────────── Page ───────────── */
 export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
   const { phone, tel } = useContact();
 
@@ -116,42 +120,42 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
     <>
       <Navbar />
       <main className="public-page v2-page overflow-x-clip">
-        {/* 1. HERO (homepage style: photo background; photo panel instead of the form) */}
+        {/* 1. HERO */}
         <section className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/dark-grey-shower-floor-regrouting.webp" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
           <div className={`${heroWrap} relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div className="text-center lg:text-left">
-              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">GROUTIX</p>
+              <p className="mb-4 text-[15px] font-bold tracking-[3px] text-[#FBBC04]">SMALL TILING JOBS · MELBOURNE</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">Small Tiling Jobs Melbourne</h1>
-              <div className="mx-auto mb-6 max-w-[560px] text-[15px] lg:mx-0 leading-relaxed text-[#D6DCF5] sm:text-base">
+              <div className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-[#D6DCF5] lg:mx-0 sm:text-base">
                 <p>Groutix repairs and replaces broken, cracked and loose tiles, then matches the grout so the repair blends in. No full retile needed for a small problem.</p>
               </div>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges />
               </div>
-              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 lg:justify-items-start sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 items-center justify-items-center gap-5 border-t border-white/20 pt-6 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:justify-items-start">
                 <div className="flex items-center gap-3.5 text-left">
                   <Image src="/groutix-official-warranty-seal.webp" alt="Groutix 10 Year Waterproof Warranty Guaranteed" width={96} height={92} priority className="h-[84px] w-[88px] shrink-0 object-contain" />
                   <div>
-                    <b className="block text-lg font-black leading-tight">10-Year Waterproof Warranty</b>
+                    <b className="block text-lg font-black leading-tight">10 Year Waterproof Warranty</b>
                     <span className="text-sm text-[#D6DCF5]">On eligible completed work</span>
                   </div>
                 </div>
                 <div className="sm:border-l sm:border-white/25 sm:pl-6">
                   <b className="block text-[28px] font-black leading-none">8,000+</b>
-                  <b className="block text-base font-bold">Bathrooms Restored</b>
+                  <b className="block text-base font-bold">Showers &amp; Balconies Restored</b>
                   <span className="text-sm text-[#D6DCF5]">Across Melbourne &amp; regional Victoria</span>
                 </div>
               </div>
             </div>
             <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden rounded-xl border border-white/25 bg-slate-200 shadow-2xl lg:aspect-[7/5] lg:max-w-none">
-              <Image src="/shower-regrouting-mosaic-feature-wall.webp" alt="Small tiling jobs in Melbourne — a mosaic feature strip and tiled shower niche finished by Groutix" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/shower-regrouting-mosaic-feature-wall.webp" alt="Small tiling jobs in Melbourne, a mosaic feature strip and tiled shower niche finished by Groutix" fill priority sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
 
-        {/* 1b. QUOTE FORM (moved out of the hero; keeps the #quote-form anchor) */}
+        {/* 1b. QUOTE FORM */}
         <section id="quote-form" className="scroll-mt-28 bg-slate-100 py-14 md:py-[72px]">
           <div className={`${heroWrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_540px]`}>
             <div>
@@ -174,18 +178,48 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </section>
 
-        {/* 2. SIGNS */}
+        {/* 2. RESULTS */}
+        <Section id="tiling-results">
+          <SectionHead k="Real Work" title="Small Tiling Repairs: Real Melbourne Work">
+            <p className={lead}>Real Groutix repairs, photographed on the job across Melbourne. One tile, one corner or one patch, most small tiling work is a single problem area fixed properly so the tiles around it stay sound. No stock photos, no filters.</p>
+          </SectionHead>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            {recentWork.map((p) => (
+              <figure key={p.src} className={`${box} overflow-hidden`}>
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-200">
+                  <Image src={p.src} alt={p.alt} fill sizes="(min-width:1024px) 33vw, 100vw" className="object-cover" />
+                </div>
+                <figcaption className="p-4 text-[15px] font-bold text-slate-900">{p.caption}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <p className={`${lead} mx-auto mt-10 max-w-3xl text-center`}>
+            Most small tiling jobs are one tile, one corner or one patch. Fixing them early stops water getting under the surrounding tiles, which is what turns a small repair into a <Link href="/leaking-shower-repair" className={inlineLink}>leaking shower repair</Link>.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link href="#quote-form" className={btnNavy}>Book a Free Inspection</Link>
+            <a href={tel} className={btnGold}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+          </div>
+        </Section>
+
+        {/* 3. SIGNS */}
         <Section id="signs" alt>
-          <SectionHead k="Signs to check" title="Signs a Tile Needs Repair or Replacing" />
+          <SectionHead k="Signs to Check" title="Signs a Tile Needs Repair or Replacing" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {signs.map((c) => <PhotoCard key={c.title} c={c} imgH="h-[263px] lg:h-[375px]" />)}
+            {signCards.map((c) => (
+              <div key={c.title} className={card}>
+                <h3 className={cardTitle}>{c.title}</h3>
+                <p className={cardText}>{c.text}</p>
+                <Link href={c.href} className="mt-3 inline-block text-sm font-bold text-[#2F63CC] hover:underline">{c.link} →</Link>
+              </div>
+            ))}
           </div>
           <p className={`${lead} mx-auto mt-8 max-w-3xl text-center`}>One tile is a small job. A lot of loose tiles in one area needs a closer look.</p>
         </Section>
 
-        {/* 3. WHAT WE DO */}
+        {/* 4. WHAT WE DO */}
         <Section id="what-we-do">
-          <SectionHead k="What we do" title="Small Tiling Jobs We Do">
+          <SectionHead k="What We Do" title="Small Tiling Jobs We Do">
             <p className={lead}>Small fixes done properly, so you do not need a full retile.</p>
           </SectionHead>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -194,9 +228,9 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           <p className="mt-6 text-center text-sm leading-relaxed text-slate-500">We inspect the area and confirm the repair scope before work starts.</p>
         </Section>
 
-        {/* 4. WHAT IT MEANS */}
+        {/* 5. WHAT IT MEANS */}
         <Section id="what-it-means" alt>
-          <SectionHead k="Reading the problem" title="Loose, Cracked or Hollow: What It Means">
+          <SectionHead k="Reading the Problem" title="Loose, Cracked or Hollow: What It Means">
             <p className={lead}>A tile can fail for different reasons. Here is how we read it.</p>
           </SectionHead>
           <div className="mx-auto max-w-[1100px]">
@@ -223,9 +257,9 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </Section>
 
-        {/* 5. MATCHING */}
+        {/* 6. MATCHING */}
         <Section id="matching">
-          <SectionHead k="Getting a match" title="Matching Your Tile" />
+          <SectionHead k="Getting a Match" title="Matching Your Tile" />
           <aside className={`${box} mb-6 border-l-4 border-l-[#FBBC04] p-6 sm:p-8`}>
             <h3 className="text-xl font-bold text-slate-900">Spare Tiles Match Best</h3>
             <p className="mt-3 leading-relaxed text-slate-600">Spare tiles from the original job are the best match. If you have a few, keep them. If the tile is discontinued, we tell you what the closest options are before we start.</p>
@@ -236,11 +270,11 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </Section>
 
-        {/* 6. PROCESS */}
+        {/* 7. PROCESS */}
         <section id="process" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
           <div className={`${wrap} grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-14`}>
             <div>
-              <p className={eyebrow}>Our process</p>
+              <p className={eyebrow}>Our Process</p>
               <h2 className={h2}>Our Small Tiling Process</h2>
               <p className={lead}>Careful removal, a solid bed and a neat finish. Here is how it works.</p>
               <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -256,14 +290,14 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
               <a href="#quote-form" className={`${btnNavy} mt-6`}>Book Your Free Quote →</a>
             </div>
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-              <Image src="/shower-regrouting-in-progress.webp" alt="Shower floor during a small tiling repair — old grout removed and tiles being refixed" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
+              <Image src="/shower-regrouting-in-progress.webp" alt="Shower floor during a small tiling repair in Melbourne, old grout removed and tiles being refixed" fill sizes="(min-width:1024px) 40vw, 100vw" className="object-cover" />
             </div>
           </div>
         </section>
 
-        {/* 7. WAIT TIME */}
+        {/* 8. WAIT TIME */}
         <Section id="wait-time">
-          <SectionHead k="After the job" title="How Long Until I Can Use It?" />
+          <SectionHead k="After the Job" title="How Long Until I Can Use It?" />
           <aside className={`${box} mx-auto max-w-[900px] border-l-4 border-l-[#FBBC04] p-6 sm:p-8`}>
             <Clock className="mb-4 h-7 w-7 text-[#2F63CC]" aria-hidden="true" />
             <h3 className="text-xl font-bold text-slate-900">Adhesive and Grout Need Time to Set</h3>
@@ -271,7 +305,7 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </aside>
         </Section>
 
-        {/* 8. COST */}
+        {/* 9. COST */}
         <Section id="cost" alt>
           <SectionHead k="Pricing" title="What Does a Small Tiling Job Cost?">
             <p className={lead}>The price depends on the job, so we quote after we see it.</p>
@@ -288,32 +322,20 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </Section>
 
-        {/* 9. HONEST SCOPE */}
+        {/* 10. HONEST SCOPE */}
         <Section id="honest-scope">
-          <SectionHead k="Honest scope" title="When It Is More Than a Small Job" />
+          <SectionHead k="Honest Scope" title="When It Is More Than a Small Job" />
           <aside className={`${box} mx-auto max-w-[1000px] border-l-4 border-l-[#FBBC04] p-6 sm:p-8`}>
             <Search className="mb-4 h-7 w-7 text-[#2F63CC]" aria-hidden="true" />
             <h3 className="text-xl font-bold text-slate-900">We Tell You Before We Start</h3>
             <p className="mt-3 text-[17px] leading-relaxed text-slate-600">
-              If many tiles are loose, or there are signs of moisture, it may need more than a repair. A damp wall or a stain below are warning signs. We tell you before any work starts. See <Link href="/leaking-shower-repair/" className={inlineLink}>leaking shower repair</Link> and <Link href="/tile-regrouting/" className={inlineLink}>tile regrouting</Link>.
+              If many tiles are loose, or there are signs of moisture, it may need more than a repair. A damp wall or a stain below are warning signs. We tell you before any work starts. See <Link href="/leaking-shower-repair" className={inlineLink}>leaking shower repair</Link> and <Link href="/tile-regrouting" className={inlineLink}>tile regrouting</Link>.
             </p>
           </aside>
         </Section>
 
-        {/* 10. PROPERTY */}
-        <section id="property" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
-          <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12`}>
-            <div>
-              <p className={`${eyebrow} text-[#FBBC04]`}>For property professionals</p>
-              <h2 className={`${h2} text-white`}>Landlords, Agents and Property Managers</h2>
-              <p className="mt-3.5 max-w-[760px] text-[17px] text-[#D6DCF5]">A quick, visible fix before an inspection, a sale or a new tenant. Scheduled around tenants.</p>
-            </div>
-            <Link href="/real-estate-property-services/" className={`${btnGold} shrink-0`}>Discuss a Property Job →</Link>
-          </div>
-        </section>
-
         {/* 11. WHY GROUTIX */}
-        <Section id="why-groutix">
+        <Section id="why-groutix" alt>
           <SectionHead k="Why Groutix" title="Why Choose Groutix" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {whyGroutix.map((c) => (
@@ -328,18 +350,10 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </Section>
 
-        {/* 12. BEFORE & AFTER */}
-        <Section id="before-after" alt>
-          <SectionHead k="Our work" title="Before and After" />
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {beforeAfter.map((p) => <BeforeAfter key={p.src} src={p.src} title="" alt={p.alt} />)}
-          </div>
-        </Section>
-
-        {/* 13. REVIEWS */}
+        {/* 12. REVIEWS */}
         <Section id="reviews">
-          <SectionHead k="Customer feedback" title="What Our Customers Say">
-            <p className={lead}>Real feedback from homeowners we’ve helped across Melbourne and Victoria.</p>
+          <SectionHead k="Customer Feedback" title="What Our Customers Say">
+            <p className={lead}>Real feedback from homeowners we have helped across Melbourne and Victoria.</p>
           </SectionHead>
           <ReviewsMarquee reviews={reviews} rating={rating} />
           <div className="mt-6 text-center">
@@ -347,25 +361,50 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </Section>
 
-        {/* 14. RELATED */}
+        {/* 13. PROPERTY */}
+        <section id="property" className="scroll-mt-28 bg-[#001F97] py-14 text-white md:py-[72px]">
+          <div className={`${wrap} grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12`}>
+            <div>
+              <p className={`${eyebrow} text-[#FBBC04]`}>For Property Professionals</p>
+              <h2 className={`${h2} text-white`}>Landlords, Agents and Property Managers</h2>
+              <p className="mt-3.5 max-w-[760px] text-[17px] text-[#D6DCF5]">A quick, visible fix before an inspection, a sale or a new tenant. Scheduled around tenants.</p>
+            </div>
+            <Link href="/real-estate-property-services" className={`${btnGold} shrink-0`}>Discuss a Property Job →</Link>
+          </div>
+        </section>
+
+        {/* 14. RELATED SERVICES */}
         <Section id="related-services" alt>
-          <SectionHead k="More ways we can help" title="Related Services" />
-          <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-4">
-            {related.map((c) => <PhotoCard key={c.href} c={c} imgH="h-[263px]" sizes="(min-width:1024px) 25vw, 50vw" />)}
+          <SectionHead k="Related Services" title="Explore Our Other Services" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {relatedServices.map((s) => (
+              <Link key={s.href} href={s.href} className={`${box} group block overflow-hidden transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-200">
+                  <Image src={s.img} alt={s.alt} fill sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                </div>
+                <div className="p-5">
+                  <h3 className={cardTitle}>{s.title}</h3>
+                  <p className={cardText}>{s.text}</p>
+                  <span className="mt-3 inline-block text-sm font-bold text-[#2F63CC] group-hover:underline">Learn more →</span>
+                </div>
+              </Link>
+            ))}
           </div>
         </Section>
 
-        {/* 15. SERVICE AREAS (homepage layout: map + live suburb check) */}
+        {/* 15. SERVICE AREAS */}
         <Section id="service-areas">
-          <p className={eyebrow}>Service areas</p>
-          <h2 className={`${h2} mb-3`}>Which Melbourne Suburbs Do We Repair Tiles In?</h2>
-          <p className="mb-8 text-[17px] leading-relaxed text-slate-600">Looking for small tiling jobs near you? Check your suburb below.</p>
+          <p className={eyebrow}>Service Areas</p>
+          <h2 className={`${h2} mb-3`}>Small Tiling Jobs Across Melbourne</h2>
+          <p className="mb-8 max-w-3xl text-[17px] leading-relaxed text-slate-600">
+            We repair tiles across Melbourne, including <b>Brunswick</b>, <b>Essendon</b>, <b>Preston</b>, <b>Coburg</b>, <b>Reservoir</b>, <b>Thomastown</b>, <b>Epping</b>, <b>Heidelberg</b>, <b>Ivanhoe</b>, <b>Northcote</b>, <b>Fairfield</b>, <b>Box Hill</b>, <b>Doncaster</b>, <b>Templestowe</b>, <b>Balwyn</b>, <b>Kew</b>, <b>Hawthorn</b>, <b>Richmond</b>, <b>Fitzroy</b>, <b>Carlton</b>, <b>Footscray</b>, <b>Sunshine</b>, <b>Williamstown</b>, <b>Altona</b>, <b>Werribee</b>, <b>Point Cook</b>, <b>Hoppers Crossing</b>, <b>Frankston</b>, <b>Mornington</b>, <b>Cranbourne</b>, <b>Dandenong</b>, <b>Noble Park</b>, <b>Springvale</b>, <b>Clayton</b>, <b>Oakleigh</b>, <b>Bentleigh</b>, <b>Moorabbin</b>, <b>Cheltenham</b>, <b>Mentone</b>, <b>Ringwood</b>, <b>Croydon</b>, <b>Lilydale</b>, <b>Glen Waverley</b>, <b>Mount Waverley</b>, <b>Burwood</b>, <b>Ashwood</b> and surrounding suburbs.
+          </p>
           <HomeAreasV2 />
         </Section>
 
-        {/* 16. FAQ (FAQPage schema is added by the route, as before) */}
+        {/* 16. FAQ (schema is added by the route from lib/smallTilingContent) */}
         <Section id="faqs" alt>
-          <SectionHead k="Your questions, answered" title="Small Tiling Jobs FAQs" />
+          <SectionHead k="Your Questions, Answered" title="Small Tiling Jobs FAQs" />
           <FaqList items={smallTilingFaqs.map((f, i) => ({ q: f.q, a: faqAnswer(i, f.a) }))} />
           <div className="mt-8 flex flex-wrap items-center justify-center gap-5">
             <a href="#quote-form" className={btnNavy}>Still Have Questions? Get a Free Quote →</a>
@@ -374,10 +413,17 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
         </Section>
 
         {/* 17. FINAL CTA */}
-        <FinalCta
-          title="Get Your Free Quote Today"
-          lines={["Honest advice and workmanship you can rely on.", "Single tile repairs · Clear quote first · Matched grout finish"]}
-        />
+        <section className="relative overflow-hidden bg-[#06124F] py-16 text-white md:py-20">
+          <div className={`${wrap} relative text-center`}>
+            <h2 className="mx-auto max-w-[720px] text-[clamp(28px,3.4vw,44px)] font-black leading-[1.12] [text-wrap:balance]">Get Your Free Quote Today</h2>
+            <p className="mx-auto mt-4 max-w-[640px] text-[17px] leading-relaxed text-[#D6DCF5]">Honest advice and workmanship you can rely on.</p>
+            <p className="mt-2 text-[15px] font-semibold text-[#FBBC04]">Single tile repairs · Clear quote first · Matched grout finish</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3.5">
+              <Link href="#quote-form" className={btnGold}>Get a Free Quote →</Link>
+              <a href={tel} className={btnGhost}><Phone className="h-4 w-4" aria-hidden="true" />{phone}</a>
+            </div>
+          </div>
+        </section>
       </main>
       <Footer />
       <MobileCallBar />
