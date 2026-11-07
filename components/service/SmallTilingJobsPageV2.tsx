@@ -113,6 +113,17 @@ function faqAnswer(index: number, answer: string): ReactNode {
   return <>{before}<Link href="/leaking-shower-repair" className={inlineLink}>leaking shower repair</Link>{after}</>;
 }
 
+function IconBox({ c, accent = "border-t-[#001F97]" }: { c: IconCard; accent?: string }) {
+  const { Icon } = c;
+  return (
+    <div className={`${box} border-t-4 ${accent} p-6`}>
+      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#EEF3FF] text-[#2F63CC]"><Icon className="h-6 w-6" aria-hidden="true" /></span>
+      <h3 className={`${cardTitle} mt-4`}>{c.title}</h3>
+      <p className={cardText}>{c.body}</p>
+    </div>
+  );
+}
+
 export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: BusinessRating; reviews: Review[] }) {
   const { phone, tel } = useContact();
 
