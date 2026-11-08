@@ -133,6 +133,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const before = current ? { ...current } : null;
   if (!before) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
+  if (before.customerInvoiceCount && (body.paymentType || (body.status === "Payment Received" && Number(before.customerInvoiceOutstanding || 0) > 0))) {
+    return NextResponse.json({ error: "Open Manage invoices and record payment against the specific invoice. Other invoices must keep their own payment status." }, { status: 409 });
+  }
+
   // Receipt fields are server-owned snapshots of the saved invoice.
   delete body.paymentReceipt;
   delete body.receiptSentAt;

@@ -1,6 +1,7 @@
 import { invoiceDraftForLead } from "./invoiceDraft";
 import { isQboConfigured, pushInvoiceToQbo } from "./quickbooks";
-import { appendActivity, updateSubmission, type SubmissionJSON } from "./submissions";
+import type { SubmissionJSON } from "./submissions";
+import { saveInvoiceCustomerId, appendInvoiceActivity as appendActivity, updateInvoiceSubmission as updateSubmission } from "./customerInvoices";
 
 /** Sync a saved invoice only; never send email or change its payment/workflow status. */
 export async function syncInvoiceToQuickbooks(lead: SubmissionJSON, actor: string) {
@@ -16,8 +17,10 @@ export async function syncInvoiceToQuickbooks(lead: SubmissionJSON, actor: strin
   try {
     const qboInvoiceId = await pushInvoiceToQbo({
       invoiceNumber: lead.invoiceNumber, gstRate: draft.gst,
+      customerId: lead.qboCustomerId,
+      onCustomerResolved: id => saveInvoiceCustomerId(lead.id, id),
       customerName: lead.name || "Customer", customerEmail: lead.email, customerPhone: lead.phone,
-      items: [
+      items: draft.lines || [
         { description: draft.description ? `${draft.service} — ${draft.description}` : draft.service, amount: draft.basePrice },
         ...(draft.extraWork || draft.extraCharge > 0 ? [{ description: `Additional Work — ${draft.extraWork}`, amount: draft.extraCharge }] : []),
       ],

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRequestSession } from "@/lib/adminAuth";
-import { getSubmission } from "@/lib/submissions";
+import { getInvoiceSubmission as getSubmission } from "@/lib/customerInvoices";
 import { syncInvoiceToQuickbooks } from "@/lib/quickbooksInvoiceSync";
 
 export const runtime = "nodejs";

@@ -197,16 +197,25 @@ export interface SubmissionDoc {
   quoteSignedName?: string; // Name entered/confirmed on signature
   quoteSignedAt?: string; // ISO time the signature was captured
   quoteSignedIp?: string; // IP address of the signer
+  paymentType?: "full" | "half" | "partial";
+  amountPaid?: number;
   paymentReceipt?: import("@/lib/paymentReceipt").PaymentReceipt;
   receiptSentAt?: string;
   invoiceDraft?: import("@/lib/invoiceDraft").InvoiceDraft;
   invoiceAmount?: number;
   invoiceNumber?: string;
+  customerInvoiceCount?: number;
+  customerInvoiceTotal?: number;
+  customerInvoiceOutstanding?: number;
+  invoiceParentId?: string;
+  sourceQuoteId?: string;
+  sourceQuoteNumber?: string;
   invoiceSentAt?: string; // ISO time the invoice was emailed to the customer
   invoiceOpenedAt?: string; // ISO time the customer first opened the invoice email
   invoiceStatus?: string; // "Paid" | "Unpaid"
   // QuickBooks Online sync outcome for the emailed invoice. Sync failures
   // are recorded separately so they do not undo a successful invoice email.
+  qboCustomerId?: string;
   qboInvoiceId?: string; // QBO Invoice Id once the push succeeded
   qboSyncedAt?: string; // ISO time the invoice reached QBO
   qboError?: string; // Last push failure message ("" once a retry succeeds)

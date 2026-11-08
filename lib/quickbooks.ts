@@ -251,6 +251,8 @@ async function findOrCreateCustomer(
 }
 
 export interface QboInvoiceInput {
+  customerId?: string;
+  onCustomerResolved?: (id: string) => Promise<void>;
   invoiceNumber: string;
   customerName: string;
   customerEmail?: string;
@@ -310,7 +312,8 @@ export async function pushInvoiceToQbo(input: QboInvoiceInput): Promise<string> 
 
   // Validate the tax setup before creating a customer or invoice.
   const taxCodeId = await salesTaxCode(input.gstRate);
-  const customerId = await findOrCreateCustomer(input.customerName, input.customerEmail, input.customerPhone);
+  const customerId = input.customerId || await findOrCreateCustomer(input.customerName, input.customerEmail, input.customerPhone);
+  await input.onCustomerResolved?.(customerId);
   const serviceItemId = process.env.QBO_SERVICE_ITEM_ID || "1";
   const grossCents = input.items.map(item => Math.round(item.amount * 100));
   const grossTotal = grossCents.reduce((sum, amount) => sum + amount, 0);

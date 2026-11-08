@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
+import { invoiceLeadId, getInvoiceSubmission as getSubmission, updateInvoiceSubmission as updateSubmission, appendInvoiceActivity as appendActivity } from "@/lib/customerInvoices";
 import { sendInternalAlert } from "@/lib/email";
 
 // Invoice open-tracking pixel. The invoice email embeds a 1x1 image pointing
@@ -51,9 +51,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         accent: "#0ea5e9",
         lines: [
           `${lead.name || "The customer"} just opened invoice ${lead.invoiceNumber || ""}.`.trim(),
-          lead.quoteAmount ? `Amount: AUD $${lead.quoteAmount.toFixed(2)} — awaiting payment.` : "",
+          lead.invoiceAmount ? `Amount: AUD $${lead.invoiceAmount.toFixed(2)} — awaiting payment.` : "",
         ].filter(Boolean),
-        leadId: id,
+        leadId: invoiceLeadId(id),
       });
     }
   } catch (err) {

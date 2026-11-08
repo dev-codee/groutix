@@ -139,9 +139,16 @@ export interface Lead {
   invoiceDraft?: import("@/lib/invoiceDraft").InvoiceDraft;
   invoiceAmount?: number;
   invoiceNumber?: string;
+  customerInvoiceCount?: number;
+  customerInvoiceTotal?: number;
+  customerInvoiceOutstanding?: number;
+  invoiceParentId?: string;
+  sourceQuoteId?: string;
+  sourceQuoteNumber?: string;
   invoiceSentAt?: string;
   invoiceStatus?: string;
   invoiceOpenedAt?: string;
+  qboCustomerId?: string;
   qboInvoiceId?: string;
   qboSyncedAt?: string;
   qboError?: string;

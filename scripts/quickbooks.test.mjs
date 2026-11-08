@@ -124,7 +124,7 @@ test('manual sync uses saved invoice data and records its result without email o
   const writes = [], activities = [], pushes = [];
   const sync = loadTs('lib/quickbooksInvoiceSync.ts', {
     './quickbooks': { isQboConfigured: () => true, pushInvoiceToQbo: async input => { pushes.push(input); return 'qbo-123'; } },
-    './submissions': { updateSubmission: async (_id, updates) => { writes.push(updates); return true; }, appendActivity: async (_id, entry) => activities.push(entry) },
+    './customerInvoices': { updateInvoiceSubmission: async (_id, updates) => { writes.push(updates); return true; }, appendInvoiceActivity: async (_id, entry) => activities.push(entry) },
   }, { Error });
   const lead = savedLead();
   const result = await sync.syncInvoiceToQuickbooks(lead, 'finance');
@@ -146,7 +146,7 @@ test('sync failure is persisted and is available for a manual retry', async () =
   let fail = true;
   const sync = loadTs('lib/quickbooksInvoiceSync.ts', {
     './quickbooks': { isQboConfigured: () => true, pushInvoiceToQbo: async () => { if (fail) throw new Error('Reconnect QuickBooks'); return 'recovered'; } },
-    './submissions': { updateSubmission: async (_id, update) => { writes.push(update); return true; }, appendActivity: async () => {} },
+    './customerInvoices': { updateInvoiceSubmission: async (_id, update) => { writes.push(update); return true; }, appendInvoiceActivity: async () => {} },
   }, { Error });
   await assert.rejects(sync.syncInvoiceToQuickbooks(savedLead(), 'finance'), /Reconnect/);
   assert.equal(writes[0].qboError, 'Reconnect QuickBooks');
@@ -160,7 +160,7 @@ test('manual endpoint enforces finance access and rejects unsaved invoices befor
   let role = null, lead = savedLead(), synced = 0;
   const { POST } = loadTs('app/api/admin/invoice/quickbooks/route.ts', {
     '@/lib/adminAuth': { verifyRequestSession: async () => role ? { role, username: 'staff' } : null },
-    '@/lib/submissions': { getSubmission: async () => lead },
+    '@/lib/customerInvoices': { getInvoiceSubmission: async () => lead },
     '@/lib/quickbooksInvoiceSync': { syncInvoiceToQuickbooks: async item => { synced++; return { item: { ...item, qboInvoiceId: '123' } }; } },
   });
   const request = () => ({ json: async () => ({ id: 'customer123', price: 99999 }) });
@@ -202,7 +202,7 @@ test('email send awaits shared sync bookkeeping and resending a linked invoice s
   const lead = { ...savedLead(), email: 'sam@example.com' };
   let syncCalls = 0, release, completed = false;
   const { POST } = loadTs('app/api/admin/invoice/send/route.ts', {
-    '@/lib/submissions': { getSubmission: async () => lead, updateSubmission: async () => true, appendActivity: async () => {} },
+    '@/lib/customerInvoices': { getInvoiceSubmission: async () => lead, updateInvoiceSubmission: async () => true, appendInvoiceActivity: async () => {} },
     '@/lib/adminAuth': { verifyRequestSession: async () => ({ username: 'finance', role: 'finance' }) },
     '@/lib/email': { isEmailConfigured: () => true, sendEmail: async () => {}, getEmailLogoUrl: async () => '', wrapEmailHtml: html => html },
     '@/lib/quotePdf': { buildQuotePdfBase64: async () => 'cGRm' },

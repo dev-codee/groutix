@@ -27,7 +27,7 @@ test('Save Invoice persists the complete draft and reports database failures wit
   let stored, fail = false;
   const { POST } = loadTs('app/api/admin/invoice/save/route.ts', {
     '@/lib/adminAuth': { verifyRequestSession: async req => req.authorized ? { username: 'manager' } : null },
-    '@/lib/submissions': { getSubmission: async () => lead, updateSubmission: async (_id, updates) => { stored = updates; return !fail; } },
+    '@/lib/customerInvoices': { getInvoiceSubmission: async () => ({ ...lead, ...stored }), updateInvoiceSubmission: async (_id, updates) => { stored = updates; return !fail; } },
   });
   const req = authorized => ({ authorized, json: async () => input });
   assert.equal((await POST(req(false))).status, 401);
@@ -45,7 +45,7 @@ test('PDF and email use the saved extra work and matching inclusive total', asyn
   const saved = { ...lead, ...invoiceChanges(lead, input) };
   const pdfs = [], emails = [], writes = [];
   const overrides = {
-    '@/lib/submissions': { getSubmission: async () => saved, updateSubmission: async (_id, values) => { writes.push(values); return true; }, appendActivity: async () => {} },
+    '@/lib/customerInvoices': { getInvoiceSubmission: async () => saved, updateInvoiceSubmission: async (_id, values) => { writes.push(values); return true; }, appendInvoiceActivity: async () => {} },
     '@/lib/adminAuth': { verifyRequestSession: async () => ({ username: 'manager' }) },
     '@/lib/quotePdf': { buildQuotePdfBase64: async values => { pdfs.push(values); return Buffer.from('pdf').toString('base64'); } },
     '@/lib/email': { isEmailConfigured: () => true, sendEmail: async values => emails.push(values), getEmailLogoUrl: async () => '', wrapEmailHtml: html => html },
@@ -69,7 +69,7 @@ test('PDF and email use the saved extra work and matching inclusive total', asyn
   assert.match(emails[0].html, /Extra Work Done During Job/);
 });
 
-test('the invoice editor closes only after a confirmed save and retains errors in the form', async () => {
+test('the invoice editor retains its selected record and errors after saving', async () => {
   const source = readFileSync('app/admin/page.tsx', 'utf8');
   const tree = ts.createSourceFile('page.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let handler;
@@ -81,11 +81,11 @@ test('the invoice editor closes only after a confirmed save and retains errors i
     vm.runInNewContext(compiled, { module, activeInvoiceLead: lead, invoiceSaveInFlight: { current: false }, sendingInvoice: false,
       currentInvoiceInput: () => input, setSavingInvoice() {},
       setInvoiceSaveError: error => { state.error = error; }, setInvoiceModalOpen: open => { state.closed = !open; },
-      setLeads: update => { state.leads = update(state.leads); }, setActiveInvoiceLead() {},
+      setCustomerInvoices() {}, setLeads: update => { state.leads = update(state.leads); }, setActiveInvoiceLead() {},
       fetch: async () => { assert.equal(state.closed, false); return { ok, json: async () => ok ? { item: { ...lead, ...invoiceChanges(lead, input) } } : { error: 'Database unavailable' } }; },
     });
     await module.exports();
-    assert.equal(state.closed, ok);
+    assert.equal(state.closed, false);
     assert.equal(state.error, ok ? '' : 'Database unavailable');
     if (ok) assert.equal(state.leads[0].invoiceAmount, 3565);
   }

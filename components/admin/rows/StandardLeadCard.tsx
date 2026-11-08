@@ -122,6 +122,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   }
 
   async function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
+    if (l.customerInvoiceCount) { openInvoiceModal(l); return; }
     const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
     const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
@@ -805,7 +806,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
           {/* Finance quick actions */}
           <div className="grid grid-cols-1 gap-2">
-            <SendInvoiceToQuickBooksButton lead={l} />
+            {Boolean(l.customerInvoiceCount) && <button type="button" onClick={() => openInvoiceModal(l)} className="w-full rounded-lg border border-teal-200 bg-teal-50 p-2 text-left text-xs text-teal-900">
+              {l.customerInvoiceCount} invoices · Total ${Number(l.customerInvoiceTotal || 0).toFixed(2)} · Outstanding ${Number(l.customerInvoiceOutstanding || 0).toFixed(2)} — Manage invoices
+            </button>}
+            {!l.customerInvoiceCount && <SendInvoiceToQuickBooksButton lead={l} />}
             {/* Invoice Sent Button */}
             {(() => {
               const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);

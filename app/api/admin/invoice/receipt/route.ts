@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRequestSession } from "@/lib/adminAuth";
-import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
+import { getInvoiceSubmission as getSubmission, updateInvoiceSubmission as updateSubmission, appendInvoiceActivity as appendActivity } from "@/lib/customerInvoices";
 import { buildPaymentReceiptPdf } from "@/lib/paymentReceiptPdf";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 

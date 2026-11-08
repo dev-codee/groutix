@@ -1,6 +1,6 @@
 import { invoiceChanges } from "@/lib/invoiceDraft";
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission, updateSubmission, appendActivity } from "@/lib/submissions";
+import { getInvoiceSubmission as getSubmission, updateInvoiceSubmission as updateSubmission, appendInvoiceActivity as appendActivity } from "@/lib/customerInvoices";
 import { verifyRequestSession } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
 
   const lead = await getSubmission(body.id);
   if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+  if (lead.hasCustomerQuotes && !lead.invoiceNumber && !lead.sourceQuoteId) return NextResponse.json({ error: "Select an accepted quote to create its invoice first." }, { status: 409 });
   if (!lead.email) return NextResponse.json({ error: "This lead has no email address." }, { status: 400 });
 
   // The modal treats the entered price as the GST-inclusive total, matching the
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
       phone: lead.phone,
       email: lead.email,
       jobDescription: lead.issue || lead.message || service,
-      items: [
+      items: draft.lines?.map(line => ({ service: "Quoted work", description: line.description, price: line.amount, qty: 1 })) || [
         { service, description, price: baseTotal, qty: 1 },
         ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : []),
       ],

@@ -5,7 +5,7 @@ import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { useAdminPageCtx } from "./AdminPageContext";
 import type { Lead } from "./types";
 
-export function SendInvoiceToQuickBooksButton({ lead }: { lead: Lead }) {
+export function SendInvoiceToQuickBooksButton({ lead, onSynced }: { lead: Lead; onSynced?: (item: Lead) => void }) {
   const { role, upsertLead } = useAdminPageCtx();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +26,8 @@ export function SendInvoiceToQuickBooksButton({ lead }: { lead: Lead }) {
       });
       const data = await response.json();
       if (!response.ok || !data.ok || !data.item?.qboInvoiceId) throw new Error(data.error || "QuickBooks sync was not confirmed. Please retry.");
-      upsertLead(data.item);
+      if (!lead.invoiceParentId) upsertLead(data.item);
+      onSynced?.(data.item);
       setSynced(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reach QuickBooks. Please retry.");

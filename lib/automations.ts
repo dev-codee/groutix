@@ -42,6 +42,12 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
   try {
     const lead = await getSubmission(leadId);
     if (!lead) return;
+    // Multi-quote customers are invoiced explicitly from each accepted quote.
+    // Never create a second, unlinked job invoice from the parent quote total.
+    if (lead.hasCustomerQuotes || lead.customerInvoiceCount) {
+      await appendActivity(leadId, { time: new Date().toISOString(), actor: "system", action: "Invoice requires quote selection", detail: "Open customer invoices and select the accepted quote to invoice." });
+      return;
+    }
     if (lead.invoiceSentAt) return; // already invoiced
     if (!lead.email) {
       await appendActivity(leadId, {

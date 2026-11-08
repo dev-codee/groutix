@@ -1,11 +1,12 @@
 "use client";
 
+import { SendInvoiceToQuickBooksButton } from "@/components/admin/SendInvoiceToQuickBooksButton";
 import { invoiceDraftForLead } from "@/lib/invoiceDraft";
 import { uploadJobPhotos } from "@/lib/uploadJobPhotos";
 import { DEFAULT_INVOICE_ACCOUNT_NUMBER, invoiceAccountNumber as resolveInvoiceAccountNumber } from "@/lib/invoicePayment";
 
 import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
-import { PaymentReceiptModal } from "@/components/admin/PaymentReceiptModal";
+import { PaymentReceiptModal, openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 import { downloadAttachment } from "@/lib/downloadAttachment";
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
 import { dashboardLeadsFirst } from "@/lib/leadOrder";
@@ -758,6 +759,11 @@ export default function CrmDashboardPage() {
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [activeInvoiceLead, setActiveInvoiceLead] = useState<Lead | null>(null);
+  const [invoiceCustomer, setInvoiceCustomer] = useState<Lead | null>(null);
+  const [customerInvoices, setCustomerInvoices] = useState<Lead[]>([]);
+  const [invoiceQuotes, setInvoiceQuotes] = useState<{ id: string; number?: string; title: string }[]>([]);
+  const [invoiceListBusy, setInvoiceListBusy] = useState(false);
+  const invoiceLoadVersion = useRef(0);
   // Manager "Client Job Card" workflow modal (full pipeline timeline + advance).
   const [jobCardLead, setJobCardLead] = useState<Lead | null>(null);
   const [invoiceService, setInvoiceService] = useState("");
@@ -3370,7 +3376,44 @@ export default function CrmDashboardPage() {
   }
 
   // Invoice Logic
+  async function refreshCustomerInvoices(lead: Lead, version: number) {
+    setInvoiceListBusy(true);
+    try {
+      const response = await fetch(`/api/admin/invoice/customer/${encodeURIComponent(lead.id)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load customer invoices.");
+      if (version !== invoiceLoadVersion.current) return;
+      setCustomerInvoices(data.invoices);
+      setInvoiceQuotes(data.quotes);
+      if (!lead.invoiceNumber && data.invoices.length) selectInvoice(data.invoices[0]);
+    } catch (error) {
+      if (version === invoiceLoadVersion.current) setInvoiceSaveError(error instanceof Error ? error.message : "Could not load invoices.");
+    } finally { if (version === invoiceLoadVersion.current) setInvoiceListBusy(false); }
+  }
   function openInvoiceModal(lead: Lead) {
+    setInvoiceCustomer(lead);
+    setCustomerInvoices(lead.invoiceNumber ? [lead] : []);
+    setInvoiceQuotes([]);
+    selectInvoice(lead);
+    void refreshCustomerInvoices(lead, ++invoiceLoadVersion.current);
+  }
+  async function createInvoiceForQuote(quoteId: string) {
+    if (!invoiceCustomer || invoiceListBusy || savingInvoice || sendingInvoice) return;
+    setInvoiceListBusy(true);
+    setInvoiceSaveError("");
+    try {
+      const response = await fetch(`/api/admin/invoice/customer/${encodeURIComponent(invoiceCustomer.id)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not create invoice.");
+      setCustomerInvoices(current => [...current.filter(item => item.id !== data.item.id), data.item]);
+      selectInvoice(data.item);
+      void loadData();
+    } catch (error) { setInvoiceSaveError(error instanceof Error ? error.message : "Could not create invoice."); }
+    finally { setInvoiceListBusy(false); }
+  }
+  function selectInvoice(lead: Lead) {
     setActiveInvoiceLead(lead);
     const draft = invoiceDraftForLead(lead);
     setInvoiceService(draft.service);
@@ -3414,9 +3457,10 @@ export default function CrmDashboardPage() {
       const response = await fetch("/api/admin/invoice/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(currentInvoiceInput()) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Could not save the invoice. Please try again.");
-      setLeads(prev => prev.map(lead => lead.id === activeInvoiceLead.id ? { ...lead, ...result.item } : lead));
+      if (!activeInvoiceLead.invoiceParentId) setLeads(prev => prev.map(lead => lead.id === activeInvoiceLead.id ? { ...lead, ...result.item } : lead));
+      setCustomerInvoices(current => [...current.filter(item => item.id !== result.item.id), result.item]);
       setActiveInvoiceLead(prev => prev ? { ...prev, ...result.item } : prev);
-      setInvoiceModalOpen(false);
+      if (activeInvoiceLead.invoiceParentId) void loadData();
     } catch (error) {
       setInvoiceSaveError(error instanceof Error ? error.message : "Could not save the invoice. Please try again.");
     } finally {
@@ -7942,6 +7986,30 @@ export default function CrmDashboardPage() {
                 </button>
               </div>
 
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <p className="font-bold">Customer invoices</p>
+                <div className="flex flex-wrap gap-2">
+                  {customerInvoices.map(item => <button key={item.id} type="button" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
+                    onClick={() => { if (item.id === activeInvoiceLead.id || window.confirm("Switch invoice? Unsaved edits will be discarded.")) selectInvoice(item); }}
+                    className={`rounded-lg border px-3 py-2 text-left ${item.id === activeInvoiceLead.id ? "border-teal-600 bg-teal-50" : "bg-white"}`}>
+                    <span className="block font-bold">{item.invoiceNumber} · ${Number(item.invoiceAmount || 0).toFixed(2)} · {item.invoiceStatus || "Unpaid"}</span>
+                    <span>{item.sourceQuoteNumber ? `Quote ${item.sourceQuoteNumber}` : "Existing job invoice"} · {item.qboInvoiceId ? "QuickBooks synced" : "Not synced"}</span>
+                  </button>)}
+                </div>
+                <p>Total invoiced: ${customerInvoices.reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)} · Outstanding: ${customerInvoices.filter(item => item.invoiceStatus !== "Paid").reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)}</p>
+                {["finance", "manager", "super_admin"].includes(role) && <select aria-label="Create invoice from accepted quote" value="" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
+                  className="w-full rounded-lg border p-2" onChange={event => { if (event.target.value && window.confirm("Open the invoice for this accepted quote? Unsaved edits will be discarded.")) void createInvoiceForQuote(event.target.value); }}>
+                  <option value="">{invoiceListBusy ? "Loading invoices…" : "Create / open invoice from an accepted quote…"}</option>
+                  {invoiceQuotes.map(quote => <option key={quote.id} value={quote.id}>{quote.number || quote.title} — {quote.title}</option>)}
+                </select>}
+                {!invoiceListBusy && !invoiceQuotes.length && <p>No accepted quotes available. Accept the agreed quote before creating its invoice.</p>}
+                {activeInvoiceLead.sourceQuoteId && <p>Source: {activeInvoiceLead.sourceQuoteNumber || activeInvoiceLead.sourceQuoteId}. Agreed items and GST are preserved. Payment status applies only to this invoice.</p>}
+                {activeInvoiceLead.paymentReceipt && <button type="button" onClick={() => openPaymentReceipt(activeInvoiceLead.id)} className="font-semibold text-teal-700 underline">View / email payment receipt</button>}
+                {activeInvoiceLead.invoiceNumber && <SendInvoiceToQuickBooksButton key={activeInvoiceLead.id} lead={activeInvoiceLead} onSynced={item => {
+                  setActiveInvoiceLead(item);
+                  setCustomerInvoices(current => current.map(invoice => invoice.id === item.id ? item : invoice));
+                }} />}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                 <div className="space-y-3">
                   <div>
@@ -7957,6 +8025,7 @@ export default function CrmDashboardPage() {
                     <label className="font-bold text-slate-700 block mb-1">Service</label>
                     <input
                       type="text"
+                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
                       value={invoiceService}
                       onChange={(e) => setInvoiceService(e.target.value)}
                       className="w-full p-2 border border-slate-200 rounded-lg"
@@ -7966,6 +8035,7 @@ export default function CrmDashboardPage() {
                     <label className="font-bold text-slate-700 block mb-1">Description</label>
                     <textarea
                       rows={4}
+                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
                       value={invoiceDescription}
                       onChange={(e) => setInvoiceDescription(e.target.value)}
                       className="w-full p-2 border border-slate-200 rounded-lg"
@@ -7983,6 +8053,7 @@ export default function CrmDashboardPage() {
                     <textarea
                       rows={2}
                       placeholder="e.g. Additional silicone replacement in second bathroom"
+                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
                       value={invoiceExtraWork}
                       onChange={(e) => setInvoiceExtraWork(e.target.value)}
                       className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
@@ -7994,6 +8065,7 @@ export default function CrmDashboardPage() {
                         min={0}
                         step={1}
                         placeholder="0"
+                        disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
                         value={invoiceExtraCharge || ""}
                         onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
                         className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
@@ -8010,6 +8082,7 @@ export default function CrmDashboardPage() {
                       <label className="font-bold text-slate-700 block mb-1">Total (incl GST)</label>
                       <input
                         type="number"
+                        disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
                         value={invoicePrice || ""}
                         placeholder="0.00"
                         onChange={(e) => setInvoicePrice(parseFloat(e.target.value) || 0)}
@@ -8286,7 +8359,7 @@ export default function CrmDashboardPage() {
                 <button
                   type="button"
                   onClick={handleSaveInvoice}
-                  disabled={savingInvoice || sendingInvoice}
+                  disabled={invoiceListBusy || savingInvoice || sendingInvoice || Boolean(invoiceCustomer?.hasCustomerQuotes && !activeInvoiceLead.invoiceNumber)}
                   className="px-5 py-2 bg-white border border-teal-700 text-teal-700 rounded-xl text-xs font-bold hover:bg-teal-50"
                 >
                   {savingInvoice ? "Saving…" : "Save Invoice"}
@@ -8294,7 +8367,7 @@ export default function CrmDashboardPage() {
                 <button
                   type="button"
                   onClick={handleSendInvoice}
-                  disabled={savingInvoice || sendingInvoice || !activeInvoiceLead.email}
+                  disabled={invoiceListBusy || savingInvoice || sendingInvoice || !activeInvoiceLead.email || Boolean(invoiceCustomer?.hasCustomerQuotes && !activeInvoiceLead.invoiceNumber)}
                   title={!activeInvoiceLead.email ? "No email address saved for this customer" : "Email this invoice to the customer"}
                   className="flex items-center gap-1.5 px-5 py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

@@ -1,6 +1,7 @@
 import { invoiceAccountNumber } from "./invoicePayment";
 
 export interface InvoiceDraft {
+  lines?: { description: string; amount: number }[];
   service: string;
   description: string;
   extraWork: string;
@@ -14,7 +15,7 @@ export interface InvoiceDraft {
   dueDate: string;
 }
 
-type InvoiceLead = { id: string; jobNo?: string; invoiceNumber?: string; invoiceAmount?: number; invoiceStatus?: string; invoiceDraft?: InvoiceDraft; quoteAmount?: number; service?: string; quoteScope?: string; notes?: string; message?: string; technicianNotes?: string; scopeNotes?: string; status?: string };
+type InvoiceLead = { paymentReceipt?: unknown; sourceQuoteId?: string; invoiceSentAt?: string; qboInvoiceId?: string; id: string; jobNo?: string; invoiceNumber?: string; invoiceAmount?: number; invoiceStatus?: string; invoiceDraft?: InvoiceDraft; quoteAmount?: number; service?: string; quoteScope?: string; notes?: string; message?: string; technicianNotes?: string; scopeNotes?: string; status?: string };
 export function invoiceDraftForLead(lead: InvoiceLead): InvoiceDraft {
   return lead.invoiceDraft ?? {
     service: lead.service || "Complete Shower Regrouting & Waterproof Resealing",
@@ -33,6 +34,7 @@ export interface InvoiceInput {
 
 /** The entered invoice total includes GST and any additional work. */
 export function invoiceChanges(lead: InvoiceLead, input: InvoiceInput) {
+  if (lead.paymentReceipt && input.status === "Unpaid") throw new Error("This invoice has a payment receipt. Record a refund or credit before reopening it.");
   const total = Number(input.price), extraCharge = Number(input.extraCharge ?? 0), gstRate = Number(input.gst ?? 10);
   if (input.price == null || !Number.isFinite(total) || total <= 0 || !Number.isFinite(extraCharge) || extraCharge < 0 || extraCharge > total || !Number.isFinite(gstRate) || gstRate < 0) {
     throw new Error("Enter a valid invoice total greater than zero, a non-negative extra charge, and a valid GST rate.");
@@ -45,6 +47,11 @@ export function invoiceChanges(lead: InvoiceLead, input: InvoiceInput) {
     bankName: input.bankName ?? defaults.bankName, accountName: input.accountName ?? defaults.accountName,
     accountNumber: invoiceAccountNumber(input.accountNumber ?? defaults.accountNumber), bsb: input.bsb ?? defaults.bsb, dueDate: input.dueDate ?? defaults.dueDate,
   };
+  if (lead.sourceQuoteId || lead.invoiceSentAt || lead.qboInvoiceId) {
+    const fields = ["service", "description", "extraWork", "extraCharge", "basePrice", "gst"] as const;
+    if (fields.some(field => invoiceDraft[field] !== defaults[field])) throw new Error("This invoice’s commercial details are locked. Create a new accepted quote for additional work.");
+    invoiceDraft.lines = defaults.lines;
+  }
   return { invoiceDraft, invoiceAmount: Math.round(total * 100) / 100,
     invoiceNumber: lead.invoiceNumber || (lead.jobNo ? lead.jobNo.replace(/^(?:JOBNO|Job No)-/i, "INV-") : `INV-${lead.id.slice(-6).toUpperCase()}`),
     invoiceStatus: input.status === "Paid" ? "Paid" : "Unpaid" };

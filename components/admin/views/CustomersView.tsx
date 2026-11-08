@@ -8,7 +8,7 @@ import { fmtDate } from "@/lib/adminHelpers";
 const PAGE_SIZE = 20;
 
 export function CustomersView() {
-  const { filteredLeads, page, setPage, globalSearch, setGlobalSearch } = useAdminPageCtx();
+  const { filteredLeads, page, setPage, globalSearch, setGlobalSearch, openInvoiceModal } = useAdminPageCtx();
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
@@ -39,6 +39,7 @@ export function CustomersView() {
               <th className="py-2.5 px-3">Email</th>
               <th className="py-2.5 px-3">Property Address</th>
               <th className="py-2.5 px-3">Total Work Value</th>
+              <th className="py-2.5 px-3">Invoices</th>
               <th className="py-2.5 px-3">Last Activity</th>
             </tr>
           </thead>
@@ -56,6 +57,10 @@ export function CustomersView() {
                 <td className="py-3 px-3 text-slate-600 text-xs">{l.address || "Melbourne, VIC"}</td>
                 <td className="py-3 px-3 font-semibold text-emerald-700 text-xs tabular-nums">
                   {l.quoteAmount ? `AUD $${l.quoteAmount.toFixed(2)}` : "—"}
+                </td>
+                <td className="py-3 px-3 text-xs">
+                  <button type="button" onClick={() => openInvoiceModal(l)} className="font-semibold text-teal-700 underline">Manage invoices{l.customerInvoiceCount ? ` (${l.customerInvoiceCount})` : ""}</button>
+                  {l.customerInvoiceOutstanding !== undefined && <div className="mt-1 text-slate-600">Outstanding: AUD ${l.customerInvoiceOutstanding.toFixed(2)}</div>}
                 </td>
                 <td className="py-3 px-3 text-slate-500 text-xs tabular-nums">{fmtDate(l.received || l.createdAt)}</td>
               </tr>

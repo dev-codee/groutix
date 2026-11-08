@@ -1,6 +1,6 @@
 import { invoiceChanges, invoiceDraftForLead } from "@/lib/invoiceDraft";
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmission } from "@/lib/submissions";
+import { getInvoiceSubmission as getSubmission } from "@/lib/customerInvoices";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
 
 export const runtime = "nodejs";
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     });
   } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
   const { service, description, extraWork, extraCharge, bankName, accountName, accountNumber, bsb, dueDate } = invoice.invoiceDraft;
-  const items = [{ service, description, price: invoice.invoiceDraft.basePrice, qty: 1 },
+  const items = invoice.invoiceDraft.lines?.map(line => ({ service: "Quoted work", description: line.description, price: line.amount, qty: 1 })) || [{ service, description, price: invoice.invoiceDraft.basePrice, qty: 1 },
     ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : [])];
   const total = invoice.invoiceAmount;
   const subtotal = total / (1 + invoice.invoiceDraft.gst / 100);

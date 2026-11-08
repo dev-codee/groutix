@@ -48,7 +48,7 @@ test('sending an invoice saves its own amount and never overwrites the accepted 
   const writes=[], emails=[], pdfInputs=[];
   const lead={id:'lead',jobNo:'JOBNO-1',email:'customer@example.com',quoteAmount:3130,quoteSignedAt:'signed',quoteSignature:'signature'};
   const {POST}=loadTs('app/api/admin/invoice/send/route.ts',{
-    '@/lib/submissions':{getSubmission:async()=>lead,updateSubmission:async(_id,patch)=>{writes.push(patch);return true;},appendActivity:async()=>{}},
+    '@/lib/customerInvoices':{getInvoiceSubmission:async()=>lead,updateInvoiceSubmission:async(_id,patch)=>{writes.push(patch);return true;},appendInvoiceActivity:async()=>{}},
     '@/lib/adminAuth':{verifyRequestSession:async()=>({username:'manager'})},
     '@/lib/email':{isEmailConfigured:()=>true,wrapEmailHtml:x=>x,getEmailLogoUrl:async()=>'',sendEmail:async x=>emails.push(x)},
     '@/lib/quotePdf':{buildQuotePdfBase64:async input=>{pdfInputs.push(input);return '';}},

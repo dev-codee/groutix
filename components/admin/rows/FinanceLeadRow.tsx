@@ -89,6 +89,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   }
 
   async function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
+    if (l.customerInvoiceCount) { openInvoiceModal(l); return; }
     const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
     const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
@@ -271,7 +272,10 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
         {/* COLUMN 2: FINANCE ACTIONS */}
         <div className="col-span-12 lg:col-span-5 min-w-0 space-y-2 pt-4 lg:pt-0">
-          <SendInvoiceToQuickBooksButton lead={l} />
+          {Boolean(l.customerInvoiceCount) && <button type="button" onClick={() => openInvoiceModal(l)} className="w-full rounded-lg border border-teal-200 bg-teal-50 p-2 text-left text-xs text-teal-900">
+              {l.customerInvoiceCount} invoices · Total ${Number(l.customerInvoiceTotal || 0).toFixed(2)} · Outstanding ${Number(l.customerInvoiceOutstanding || 0).toFixed(2)} — Manage invoices
+            </button>}
+            {!l.customerInvoiceCount && <SendInvoiceToQuickBooksButton lead={l} />}
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
