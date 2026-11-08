@@ -4626,7 +4626,7 @@ export default function CrmDashboardPage() {
                   <p className="font-bold">Environment variables not set</p>
                   <p>Add the following to your <code className="bg-amber-100 px-1 rounded">.env.local</code>:</p>
                   <pre className="mt-2 bg-amber-100 rounded p-2 text-[10px] leading-5 overflow-x-auto">{`QBO_CLIENT_ID=your_client_id\nQBO_CLIENT_SECRET=your_client_secret`}</pre>
-                  <p className="pt-1">Get these from <span className="font-semibold">developer.intuit.com</span> → My Apps → your app → Keys &amp; OAuth.</p>
+                  <p className="pt-1">Open the <a href="https://developer.intuit.com/" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 underline">Intuit Developer portal</a> → My Hub → App dashboard → Groutix → Keys and credentials. Select Production for your real company, or Development for a sandbox company.</p>
                 </div>
               ) : qboStatus.connected ? (
                 <div className="space-y-3">
@@ -4670,15 +4670,18 @@ export default function CrmDashboardPage() {
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
                     <p className="font-semibold text-slate-700">Setup checklist</p>
                     {qboStatus?.environment === "sandbox" && (
-                      <p className="text-amber-700">Using <span className="font-semibold">sandbox</span> keys — you&apos;ll be asked to connect a sandbox company, not your real one. Create one under Sandboxes at developer.intuit.com, or switch to Production keys and remove QBO_ENVIRONMENT.</p>
+                      <p className="text-amber-700">Groutix is configured for <span className="font-semibold">sandbox</span>. Use Development credentials and create a sandbox company in the Intuit Developer portal before connecting.</p>
                     )}
-                    <p>1. Create an app at <span className="font-medium">developer.intuit.com</span></p>
+                    <p>1. Open the <a href="https://developer.intuit.com/" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline">Intuit Developer portal</a> → My Hub → App dashboard → Groutix → Keys and credentials.</p>
+                    <p>{qboStatus.environment === "sandbox" ? "Choose Development for your test company." : "Choose Production for your real QuickBooks company. Complete Intuit’s production questionnaire if the credentials are locked."}</p>
                     <p>2. Set Redirect URI to:</p>
                     <code className="block mt-1 bg-slate-100 rounded p-1.5 text-[10px] break-all">{qboStatus?.redirectUri || "/api/admin/qbo/callback"}</code>
                     {qboStatus?.redirectUri && typeof window !== "undefined" && !qboStatus.redirectUri.startsWith(window.location.origin) && (
                       <p className="pt-1 text-amber-700">Heads up: this differs from the page you&apos;re on ({window.location.origin}), so Intuit will send you back to the address above. Connect from that host, or register this URI at Intuit.</p>
                     )}
-                    <p className="pt-1">3. Copy Client ID &amp; Secret → <code className="bg-slate-100 px-1 rounded">.env.local</code></p>
+                    <p className="pt-1">3. Set QBO_CLIENT_ID and QBO_CLIENT_SECRET from that same tab in your server environment, and set QBO_ENVIRONMENT={qboStatus.environment}. Restart or redeploy Groutix, then connect below.</p>
+                    <p className="pt-1 text-amber-700">If Intuit says “There is no sandbox companies found for the user”, the connection is using Development credentials. For a real company, replace both with Production credentials; changing QBO_ENVIRONMENT alone cannot fix this.</p>
+                    <a href="https://developer.intuit.com/app/developer/qbo/docs/get-started/get-client-id-and-client-secret" target="_blank" rel="noopener noreferrer" className="inline-block pt-1 font-medium text-blue-600 underline">Intuit credential setup guide</a>
                   </div>
                   {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- an API route that redirects to Intuit's OAuth consent screen, not a page; <Link> would client-side navigate and break the handshake */}
                   <a
