@@ -24,8 +24,10 @@ const invoiceFields = ["invoiceDraft", "invoiceAmount", "invoiceNumber", "invoic
 function invoiceView(lead: SubmissionJSON, doc: CustomerInvoice): SubmissionJSON {
   const base = { ...lead };
   for (const field of invoiceFields) delete base[field];
-  return { ...base, ...doc.values, id: doc._id, sourceQuoteId: doc.sourceQuoteId, sourceQuoteNumber: doc.sourceQuoteNumber,
+  const invoice = { ...base, ...doc.values, id: doc._id, sourceQuoteId: doc.sourceQuoteId, sourceQuoteNumber: doc.sourceQuoteNumber,
     invoiceParentId: doc.leadId, createdAt: lead.createdAt, status: doc.values.invoiceStatus === "Paid" ? "Payment Received" : "Payment Pending" };
+  if (invoice.invoiceDraft) invoice.invoiceDraft = invoiceDraftForLead(invoice);
+  return invoice;
 }
 export async function getInvoiceSubmission(id: string): Promise<SubmissionJSON | null> {
   if (!isCustomerInvoice(id)) return getSubmission(id);
@@ -72,7 +74,7 @@ export async function createQuoteInvoice(leadId: string, quoteId: string): Promi
     allocated = target;
     return { description: [item.service || item.code, item.description || item.scope, `Quantity: ${item.qty || 1}`].filter(Boolean).join(" — "), amount: cents / 100 };
   }) : [{ description: source.quoteScope || source.service || "Quoted work", amount: total }];
-  draft.description = [source.quoteNumber ? `Source quote: ${source.quoteNumber}` : "", source.quoteScope, ...draft.lines.map(line => `${line.description} — $${line.amount.toFixed(2)}`)].filter(Boolean).join("\n");
+  draft.description = "";
   const doc: CustomerInvoice = { _id: id, leadId, sourceQuoteId: quoteId, sourceQuoteNumber: source.quoteNumber,
     sourceQuoteSnapshot: { ...source }, createdAt: new Date().toISOString(), values: {
       invoiceDraft: draft, invoiceAmount: total, invoiceStatus: "Unpaid", invoiceNumber: formatDocNumber("GX-I", await getNextSequence("invoice")),

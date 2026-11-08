@@ -5,7 +5,9 @@ Choose an accepted quote in **Create / open invoice from an accepted quote**.
 Each accepted quote has one invoice; selecting it again opens that invoice.
 Drafts, declined quotes, and quotes owned by another customer cannot be invoiced.
 
-The invoice preserves the accepted quote's scope, allocated line amounts and GST.
+The accepted quote's scope and allocated line amounts are retained internally.
+The invoice preview, PDF, email and new QuickBooks sync use one service summary
+with the invoice total and GST. Quote references stay in the internal manager.
 Its own number, PDF, email-open tracking, payment receipt and QuickBooks sync are
 stored separately from every other invoice. Payment status is changed on the
 selected invoice and saved with **Save Invoice**. A paid invoice with a receipt

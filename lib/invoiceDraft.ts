@@ -15,8 +15,13 @@ export interface InvoiceDraft {
   dueDate: string;
 }
 
-type InvoiceLead = { paymentReceipt?: unknown; sourceQuoteId?: string; invoiceSentAt?: string; qboInvoiceId?: string; id: string; jobNo?: string; invoiceNumber?: string; invoiceAmount?: number; invoiceStatus?: string; invoiceDraft?: InvoiceDraft; quoteAmount?: number; service?: string; quoteScope?: string; notes?: string; message?: string; technicianNotes?: string; scopeNotes?: string; status?: string };
+type InvoiceLead = { sourceQuoteNumber?: string; paymentReceipt?: unknown; sourceQuoteId?: string; invoiceSentAt?: string; qboInvoiceId?: string; id: string; jobNo?: string; invoiceNumber?: string; invoiceAmount?: number; invoiceStatus?: string; invoiceDraft?: InvoiceDraft; quoteAmount?: number; service?: string; quoteScope?: string; notes?: string; message?: string; technicianNotes?: string; scopeNotes?: string; status?: string };
 export function invoiceDraftForLead(lead: InvoiceLead): InvoiceDraft {
+  // Older quote invoices stored the entire scope here. Present a short summary
+  // for those too; the source snapshot and allocated lines stay available internally.
+  if (lead.invoiceDraft && lead.sourceQuoteId) return {
+    ...lead.invoiceDraft, description: "",
+  };
   return lead.invoiceDraft ?? {
     service: lead.service || "Complete Shower Regrouting & Waterproof Resealing",
     description: lead.quoteScope || lead.notes || lead.message || "• Full removal of failed grout\n• Chemical cleaning and substrate prep\n• Regrouting with commercial epoxy grout\n• Sanitary mould-resistant silicone joints",

@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
       address: lead.address,
       phone: lead.phone,
       email: lead.email,
-      jobDescription: lead.issue || lead.message || service,
-      items: draft.lines?.map(line => ({ service: "Quoted work", description: line.description, price: line.amount, qty: 1 })) || [
+      jobDescription: lead.sourceQuoteId ? description || service : lead.issue || lead.message || service,
+      items: [
         { service, description, price: baseTotal, qty: 1 },
         ...(extraWork || extraCharge > 0 ? [{ service: "Additional Work", description: extraWork, price: extraCharge, qty: 1 }] : []),
       ],

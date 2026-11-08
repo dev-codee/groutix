@@ -20,7 +20,7 @@ export async function syncInvoiceToQuickbooks(lead: SubmissionJSON, actor: strin
       customerId: lead.qboCustomerId,
       onCustomerResolved: id => saveInvoiceCustomerId(lead.id, id),
       customerName: lead.name || "Customer", customerEmail: lead.email, customerPhone: lead.phone,
-      items: draft.lines || [
+      items: [
         { description: draft.description ? `${draft.service} — ${draft.description}` : draft.service, amount: draft.basePrice },
         ...(draft.extraWork || draft.extraCharge > 0 ? [{ description: `Additional Work — ${draft.extraWork}`, amount: draft.extraCharge }] : []),
       ],

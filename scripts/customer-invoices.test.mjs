@@ -135,7 +135,10 @@ test('PDF, email, QuickBooks and receipt endpoints operate on the selected invoi
   assert.equal(pdfs[0].quoteNumber, a.invoiceNumber);
   assert.equal(pdfs[2].quoteNumber, b.invoiceNumber);
   assert.equal(pdfs[0].total, 275); assert.equal(pdfs[2].total, 250);
-  assert.equal(pdfs[0].items.length, 2);
+  assert.equal(pdfs[0].items.length, 1);
+  assert.equal(pdfs[0].items[0].description, '');
+  assert.equal(pdfs[0].items[0].price, 275);
+  assert.doesNotMatch(emails[0].html, /Scope a|Quantity:|Source quote:|quote Q-a/);
   assert.match(emails[0].html, new RegExp(`tracking:${a.id}`));
   assert.match(emails[1].html, new RegExp(`tracking:${b.id}`));
   const sync = loadTs('lib/quickbooksInvoiceSync.ts', {
@@ -145,6 +148,9 @@ test('PDF, email, QuickBooks and receipt endpoints operate on the selected invoi
   await sync.syncInvoiceToQuickbooks(await api.getInvoiceSubmission(a.id), 'manager');
   await sync.syncInvoiceToQuickbooks(await api.getInvoiceSubmission(b.id), 'manager');
   assert.equal(pushes[1].customerId, 'shared-customer');
+  assert.equal(pushes[0].items.length, 1);
+  assert.equal(pushes[0].items[0].amount, 275);
+  assert.doesNotMatch(pushes[0].items[0].description, /Scope a|Quantity:/);
   assert.notEqual((await api.getInvoiceSubmission(a.id)).qboInvoiceId, (await api.getInvoiceSubmission(b.id)).qboInvoiceId);
   const saveRoute = loadTs('app/api/admin/invoice/save/route.ts', overrides);
   assert.equal((await saveRoute.POST({ json: async () => ({ id: a.id, price: 275, gst: 10, status: 'Paid' }) })).status, 200);
@@ -183,4 +189,19 @@ test('legacy job automation does not send an extra unlinked invoice for multiple
   await autoSendInvoice('customer');
   assert.equal(sends, 0); assert.equal(writes, 0);
   assert.equal(activities[0].action, 'Invoice requires quote selection');
+});
+
+
+test('existing verbose invoice descriptions are displayed minimally without changing source details or money', async () => {
+  const api = setup();
+  const invoice = await api.createQuoteInvoice('customer', 'customer~a');
+  const stored = api.docs.get(invoice.id);
+  stored.values.invoiceDraft.description = 'Source quote: Q-a\nFull bathroom scope\nQuantity: 2 — $220.00';
+  const reopened = await api.getInvoiceSubmission(invoice.id);
+  assert.equal(reopened.invoiceDraft.description, '');
+  assert.equal(reopened.invoiceAmount, 275);
+  assert.equal(reopened.invoiceNumber, invoice.invoiceNumber);
+  assert.equal(stored.sourceQuoteSnapshot.quoteItems.length, 2);
+  assert.equal(reopened.invoiceDraft.lines.length, 2);
+  assert.match(stored.values.invoiceDraft.description, /Full bathroom scope/);
 });
