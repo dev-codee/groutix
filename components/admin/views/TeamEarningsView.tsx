@@ -1,18 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, History, Loader2, Plus, RefreshCcw, Search, Wallet, X } from "lucide-react";
+import { CheckCircle2, Download, History, Loader2, Plus, RefreshCcw, Search, Wallet, X } from "lucide-react";
 import { calculateEarnings, type EarningsBasis, type EarningsData, type EarningsEvent, type EarningsJob, type EarningsLedger, type EarningsMember, type EarningsPayment } from "@/lib/teamEarnings";
+
+import { earningsJobsCsv, earningsMembersCsv, earningsStatus as label, estimatedEarningsShares as estimatedShares } from "@/lib/teamEarningsCsv";
 
 const input = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-60";
 const button = "inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
 const primary = "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed";
 const money = (cents: number) => (cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD" });
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-const label = (job: EarningsJob) => job.changed ? "Needs review" : job.ledger?.status === "approved" ? job.ledger.shares.every(s => s.paidCents === s.earnedCents) ? "Settled" : "Approved" : job.ledger ? "Draft" : "Not configured";
-function estimatedShares(job: EarningsJob) {
-  return job.ledger?.status === "approved" ? job.ledger.shares : calculateEarnings(job.ledger?.shares || [], job.invoice?.baseCents || 0);
-}
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...options, cache: "no-store", headers: { "Content-Type": "application/json", ...options?.headers } });
   const data = await response.json().catch(() => ({}));
@@ -155,8 +153,19 @@ export function TeamEarningsView({ query, onQueryChange }: { query: string; onQu
     }
     return { ...member, assigned: assigned.length, visits: jobs.reduce((sum, job) => sum + (job.memberWork.find(w => w.memberId === member.id)?.completedVisits || 0), 0), days: jobs.reduce((sum, job) => sum + (job.memberWork.find(w => w.memberId === member.id)?.daysDone || 0), 0), earned, paid, estimated };
   });
+  function exportCsv() {
+    const contents = tab === "jobs" ? earningsJobsCsv(filtered) : earningsMembersCsv(memberRows);
+    const url = URL.createObjectURL(new Blob(["\uFEFF", contents], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `groutix-team-earnings-${tab}-${today()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-slate-900">Team earnings & payment logs</h2><p className="mt-1 text-sm text-slate-500">Review assigned work, agree invoice shares and track what each team member is owed.</p></div><button className={button} disabled={loading} onClick={() => { setNotice(""); void load(); }}><RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</button></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-slate-900">Team earnings & payment logs</h2><p className="mt-1 text-sm text-slate-500">Review assigned work, agree invoice shares and track what each team member is owed.</p></div><div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={loading || Boolean(error) || !(tab === "jobs" ? filtered.length : memberRows.length)} title="Export all filtered rows from the current tab" onClick={exportCsv}><Download className="h-4 w-4" />Export CSV</button><button className={button} disabled={loading} onClick={() => { setNotice(""); void load(); }}><RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</button></div></div>
     <ErrorBox error={error} />{notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[{ title: "Draft estimates", value: sums.estimated, hint: "Saved shares against current invoices" }, { title: "Approved earnings", value: sums.earned, hint: "Preserved at manager approval" }, { title: "Payments recorded", value: sums.paid, hint: "Excludes reversed payment records" }, { title: "Outstanding", value: sums.earned - sums.paid, hint: "Approved earnings less recorded payments" }].map(card => <div key={card.title} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"><p className="text-xs font-semibold text-slate-500">{card.title}</p><p className="mt-2 text-2xl font-bold text-slate-900">{loading || error ? "—" : money(card.value)}</p><p className="mt-1 text-xs text-slate-400">{card.hint}</p></div>)}</div>
     <p className="text-xs text-slate-500">Amounts are AUD. No earnings are assumed until shares are saved. Summary amounts follow the member filter. Visit and day counts follow each member’s own assignments; recorded days are not verified hours.</p>
