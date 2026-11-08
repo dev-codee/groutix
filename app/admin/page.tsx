@@ -1,5 +1,6 @@
 "use client";
 
+import { useInvoiceDeliveries, notifyInvoiceDeliveryChanged } from "@/components/admin/InvoiceDeliveryHistory";
 import { SendInvoiceToQuickBooksButton } from "@/components/admin/SendInvoiceToQuickBooksButton";
 import { invoiceDraftForLead } from "@/lib/invoiceDraft";
 import { uploadJobPhotos } from "@/lib/uploadJobPhotos";
@@ -764,6 +765,7 @@ export default function CrmDashboardPage() {
   const [invoiceQuotes, setInvoiceQuotes] = useState<{ id: string; number?: string; title: string }[]>([]);
   const [invoiceListBusy, setInvoiceListBusy] = useState(false);
   const invoiceLoadVersion = useRef(0);
+  const invoiceDelivery = useInvoiceDeliveries(invoiceModalOpen ? invoiceCustomer?.id : undefined);
   // Manager "Client Job Card" workflow modal (full pipeline timeline + advance).
   const [jobCardLead, setJobCardLead] = useState<Lead | null>(null);
   const [invoiceService, setInvoiceService] = useState("");
@@ -3489,6 +3491,7 @@ export default function CrmDashboardPage() {
         alert(data.error || "Could not send the invoice.");
         return;
       }
+      notifyInvoiceDeliveryChanged(activeInvoiceLead.invoiceParentId || activeInvoiceLead.id);
       alert(`Invoice ${data.invoiceNumber} emailed to ${activeInvoiceLead.email}.`);
       setInvoiceModalOpen(false);
       loadData();
@@ -7971,12 +7974,9 @@ export default function CrmDashboardPage() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h2 className="text-lg font-black text-slate-900">Tax Invoice Generator</h2>
-                  {activeInvoiceLead.invoiceOpenedAt && (
-                    <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 mt-0.5">
-                      <Eye className="w-3 h-3 text-emerald-600" />
-                      Customer opened invoice email
-                    </div>
-                  )}
+                  <DocumentDeliveryStatus label="Invoice"
+                    sentAt={invoiceDelivery?.invoices.find(invoice => invoice.id === activeInvoiceLead.id)?.invoiceSentAt || activeInvoiceLead.invoiceSentAt}
+                    openedAt={invoiceDelivery?.invoices.find(invoice => invoice.id === activeInvoiceLead.id)?.invoiceOpenedAt || activeInvoiceLead.invoiceOpenedAt} />
                 </div>
                 <button
                   onClick={() => setInvoiceModalOpen(false)}
@@ -7989,12 +7989,20 @@ export default function CrmDashboardPage() {
               <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <p className="font-bold">Customer invoices</p>
                 <div className="flex flex-wrap gap-2">
-                  {customerInvoices.map(item => <button key={item.id} type="button" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
-                    onClick={() => { if (item.id === activeInvoiceLead.id || window.confirm("Switch invoice? Unsaved edits will be discarded.")) selectInvoice(item); }}
-                    className={`rounded-lg border px-3 py-2 text-left ${item.id === activeInvoiceLead.id ? "border-teal-600 bg-teal-50" : "bg-white"}`}>
-                    <span className="block font-bold">{item.invoiceNumber} · ${Number(item.invoiceAmount || 0).toFixed(2)} · {item.invoiceStatus || "Unpaid"}</span>
-                    <span>{item.sourceQuoteNumber ? `Quote ${item.sourceQuoteNumber}` : "Existing job invoice"} · {item.qboInvoiceId ? "QuickBooks synced" : "Not synced"}</span>
-                  </button>)}
+                  {customerInvoices.map(item => {
+                    const delivery = invoiceDelivery?.invoices.find(invoice => invoice.id === item.id) || item;
+                    return <div key={item.id} className={`space-y-2 rounded-lg border p-3 ${item.id === activeInvoiceLead.id ? "border-teal-600 bg-teal-50" : "bg-white"}`}>
+                      <button type="button" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
+                        onClick={() => { if (item.id === activeInvoiceLead.id || window.confirm("Switch invoice? Unsaved edits will be discarded.")) selectInvoice(item); }}
+                        className="w-full text-left">
+                        <span className="block font-bold">{item.invoiceNumber} · ${Number(item.invoiceAmount || 0).toFixed(2)} · {item.invoiceStatus || "Unpaid"}</span>
+                        <span>{item.sourceQuoteNumber ? `Quote ${item.sourceQuoteNumber}` : "Existing job invoice"} · {item.qboInvoiceId ? "QuickBooks synced" : "Not synced"}</span>
+                      </button>
+                      {delivery.invoiceSentAt || delivery.invoiceOpenedAt
+                        ? <DocumentDeliveryStatus label="Invoice" sentAt={delivery.invoiceSentAt} openedAt={delivery.invoiceOpenedAt} />
+                        : <p className="text-[10px] text-slate-500">Invoice not sent yet</p>}
+                    </div>;
+                  })}
                 </div>
                 <p>Total invoiced: ${customerInvoices.reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)} · Outstanding: ${customerInvoices.filter(item => item.invoiceStatus !== "Paid").reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)}</p>
                 {["finance", "manager", "super_admin"].includes(role) && <select aria-label="Create invoice from accepted quote" value="" disabled={invoiceListBusy || savingInvoice || sendingInvoice}

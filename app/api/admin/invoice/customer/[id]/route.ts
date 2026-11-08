@@ -8,6 +8,11 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(req: NextRequest, { params }: Context) {
   if (!await verifyRequestSession(req)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { id } = await params;
+  if (req.nextUrl.searchParams.get("delivery") === "1") {
+    const invoices = await listCustomerInvoices(id);
+    if (!invoices) return NextResponse.json({ error: "Customer not found." }, { status: 404 });
+    return NextResponse.json({ invoices: invoices.map(({ id, invoiceNumber, invoiceSentAt, invoiceOpenedAt }) => ({ id, invoiceNumber, invoiceSentAt, invoiceOpenedAt })) }, { headers: { "Cache-Control": "no-store" } });
+  }
   const [invoices, quotes] = await Promise.all([listCustomerInvoices(id), listCustomerQuotes(id)]);
   if (!invoices) return NextResponse.json({ error: "Customer not found." }, { status: 404 });
   return NextResponse.json({ invoices, quotes: (quotes || []).filter(quote => quote.state === "accepted").map(quote => ({ id: quote._id, number: quote.values.quoteNumber, title: quote.title })) });

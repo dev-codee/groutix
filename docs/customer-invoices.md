@@ -37,3 +37,8 @@ node scripts/quickbooks.test.mjs
 node scripts/quote-integrity.test.mjs
 npx tsc --noEmit --incremental false
 ```
+
+Each invoice shows its own **Invoice Sent**, **Invoice Opened** or **Not opened yet**
+status on job/finance cards and in the invoice selector. Delivery indicators refresh
+when an invoice is sent, when the browser regains focus, and every 30 seconds while
+visible. The original single-invoice indicators continue to work for older records.

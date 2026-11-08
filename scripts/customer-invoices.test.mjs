@@ -205,3 +205,43 @@ test('existing verbose invoice descriptions are displayed minimally without chan
   assert.equal(reopened.invoiceDraft.lines.length, 2);
   assert.match(stored.values.invoiceDraft.description, /Full bathroom scope/);
 });
+
+test('delivery endpoint returns per-invoice timestamps without loading quotes or leaking commercial data', async () => {
+  const api = setup();
+  const a = await api.createQuoteInvoice('customer', 'customer~a');
+  const b = await api.createQuoteInvoice('customer', 'customer~b');
+  await api.updateInvoiceSubmission(a.id, { invoiceSentAt: 'sent-a', invoiceOpenedAt: 'opened-a' });
+  await api.updateInvoiceSubmission(b.id, { invoiceSentAt: 'sent-b' });
+  const route = loadTs('app/api/admin/invoice/customer/[id]/route.ts', {
+    '@/lib/customerInvoices': api,
+    '@/lib/customerQuotes': { listCustomerQuotes: async () => { throw new Error('Delivery status must not load or create quotes'); } },
+    '@/lib/adminAuth': { verifyRequestSession: async () => ({ role: 'finance' }) },
+  });
+  const response = await route.GET({ nextUrl: new URL('https://example.com/customer?delivery=1') }, { params: Promise.resolve({ id: 'customer' }) });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.invoices.find(invoice => invoice.id === a.id).invoiceOpenedAt, 'opened-a');
+  assert.equal(body.invoices.find(invoice => invoice.id === b.id).invoiceOpenedAt, undefined);
+  assert.equal(body.invoices.find(invoice => invoice.id === b.id).invoiceSentAt, 'sent-b');
+  assert.equal(body.invoices[0].invoiceAmount, undefined);
+  assert.equal(body.quotes, undefined);
+});
+
+test('email-open tracking writes the selected invoice, leaving other invoices unopened', async () => {
+  const api = setup();
+  const a = await api.createQuoteInvoice('customer', 'customer~a');
+  const b = await api.createQuoteInvoice('customer', 'customer~b');
+  await api.updateInvoiceSubmission(a.id, { invoiceSentAt: 'original-send' });
+  const alerts = [];
+  const route = loadTs('app/api/track/invoice/[id]/route.ts', {
+    '@/lib/customerInvoices': api,
+    '@/lib/email': { sendInternalAlert: async input => alerts.push(input) },
+  });
+  assert.equal((await route.GET({}, { params: Promise.resolve({ id: a.id }) })).status, 200);
+  assert.equal((await api.getInvoiceSubmission(a.id)).invoiceSentAt, 'original-send');
+  assert.ok((await api.getInvoiceSubmission(a.id)).invoiceOpenedAt);
+  assert.equal((await api.getInvoiceSubmission(b.id)).invoiceOpenedAt, undefined);
+  assert.equal(api.leads.get('customer').invoiceOpenedAt, 'old-open');
+  await route.GET({}, { params: Promise.resolve({ id: a.id }) });
+  assert.equal(alerts.length, 1); assert.equal(alerts[0].leadId, 'customer');
+});

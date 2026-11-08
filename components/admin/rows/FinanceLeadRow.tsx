@@ -1,5 +1,6 @@
 "use client";
 
+import { InvoiceDeliveryHistory } from "../InvoiceDeliveryHistory";
 import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
 
 import { isProgressStatus } from "@/lib/adminHelpers";
@@ -338,29 +339,11 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                   : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
             >
-              {isInvoiceSent ? "Invoice Sent" : "Send Invoice"}
+              {l.customerInvoiceCount ? "Manage invoices" : isInvoiceSent ? "Invoice Sent" : "Send Invoice"}
             </button>
           </div>
 
-          {l.invoiceSentAt && (
-            l.invoiceOpenedAt ? (
-              <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-[10px] font-bold text-emerald-800">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-3 h-3 text-emerald-600 shrink-0" />
-                  Customer Opened Invoice
-                </span>
-                <span className="text-[9.5px] font-black text-emerald-700">{fmtDate(l.invoiceOpenedAt)}</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] font-medium text-slate-500">
-                <span className="flex items-center gap-1">
-                  <Eye className="w-3 h-3 text-slate-400 shrink-0 opacity-50" />
-                  Invoice Not Opened Yet
-                </span>
-                <span className="text-[9px] text-amber-600 font-semibold">Pending</span>
-              </div>
-            )
-          )}
+          <InvoiceDeliveryHistory lead={l} />
 
           <div className="grid grid-cols-3 gap-1.5">
             <div className="space-y-1">

@@ -9,7 +9,7 @@ import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
-import { DocumentDeliveryStatus } from "@/components/admin/DocumentDeliveryStatus";
+import { InvoiceDeliveryHistory } from "@/components/admin/InvoiceDeliveryHistory";
 import { QuoteDeliveryHistory } from "@/components/admin/QuoteDeliveryHistory";
 
 import { useRef, useState } from "react";
@@ -764,7 +764,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
         {/* COLUMN 3: FINANCE SUMMARY */}
         <div className="space-y-2.5 min-w-0 pt-5 lg:pt-0">
           <div className="p-2 space-y-1.5">
-            <DocumentDeliveryStatus label="Invoice" sentAt={l.invoiceSentAt} openedAt={l.invoiceOpenedAt} />
+            <InvoiceDeliveryHistory lead={l} />
             <QuoteDeliveryHistory lead={l} />
             {l.quoteAcceptedAt && (
               <div className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
@@ -822,9 +822,9 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       ? "bg-blue-600 text-white hover:bg-blue-700"
                       : "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:border-blue-500"
                   }`}
-                  title="Invoice Sent"
+                  title={l.customerInvoiceCount ? "Manage invoices" : "Invoice Sent"}
                 >
-                  Invoice Sent
+                  {l.customerInvoiceCount ? "Manage invoices" : "Invoice Sent"}
                 </button>
               );
             })()}
