@@ -58,6 +58,7 @@ export type CityPageProps = {
   googleMapsApiKey?: string;
   parentSlug?: string;
   locationExplanation?: string;
+  faqs?: Array<{ question: string; answer: string }>;
 };
 
 /* ─── ImgBox ─── */
@@ -299,6 +300,7 @@ export default function CityPageClient({
   googleMapsApiKey,
   parentSlug,
   locationExplanation,
+  faqs,
 }: CityPageProps) {
   const gr = useGoogleRating();
   const { phone, tel } = useContact();
@@ -814,7 +816,7 @@ export default function CityPageClient({
       </AnimatedSection>
 
       {/* FAQ Section */}
-      <FaqSection />
+      <FaqSection faqs={faqs} />
 
       {/* ── CTA Banner ── */}
       <AnimatedSection className="bg-[#3D68D8] py-14 px-4 sm:px-6 lg:px-10">
