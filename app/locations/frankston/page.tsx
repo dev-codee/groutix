@@ -3,7 +3,7 @@ import FrankstonHubPage from "@/components/FrankstonHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Frankston | Shower, Tile & Balcony | Groutix",
+  title: "Regrouting Frankston | Shower, Tile & Balcony",
   description:
     "Shower, bathroom and balcony regrouting in Frankston, Seaford and Langwarrin. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/frankston" },
