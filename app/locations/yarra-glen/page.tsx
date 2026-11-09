@@ -6,7 +6,7 @@ import type { SuburbGroup } from "@/app/locations/CityPageClient";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Shower Regrouting Yarra Glen | Groutix",
+  title: "Shower Regrouting Yarra Glen",
   description:
     "Professional shower regrouting, grout repair and leaking shower solutions across Yarra Glen. Groutix services homes and apartments throughout Yarra Glen with a 10-year waterproof warranty.",
   alternates: { canonical: "/locations/yarra-glen" },
