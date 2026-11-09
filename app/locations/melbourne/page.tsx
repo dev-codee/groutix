@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import CityPageClient from "@/app/locations/CityPageClient";
-import type { SuburbGroup } from "@/app/locations/CityPageClient";
+import MelbourneHubClient from "@/app/locations/MelbourneHubClient";
+import type { SuburbGroup } from "@/app/locations/MelbourneHubClient";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
@@ -195,7 +195,7 @@ export default async function MelbournePage() {
   return (
     <>
       <Navbar />
-      <CityPageClient
+      <MelbourneHubClient
         cityName="Melbourne"
         heroHeading="Shower Regrouting Melbourne"
         heroSubtitle="Groutix restores leaking, mouldy and cracked grout in showers and balconies across Melbourne. Waterproof epoxy grout, no tiles removed, most jobs finished in a single visit, and every full regrout backed by a 10 year waterproof warranty."
