@@ -3,7 +3,7 @@ import GeelongHubPage from "@/components/GeelongHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Geelong | Shower, Tile & Balcony | Groutix",
+  title: "Regrouting Geelong | Shower, Tile & Balcony",
   description:
     "Shower, bathroom and balcony regrouting in Geelong, Belmont, Highton and Torquay. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/geelong" },

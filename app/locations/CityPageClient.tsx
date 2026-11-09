@@ -58,6 +58,7 @@ export type CityPageProps = {
   googleMapsApiKey?: string;
   parentSlug?: string;
   locationExplanation?: string;
+  faqs?: Array<{ question: string; answer: string }>;
 };
 
 /* ─── ImgBox ─── */
@@ -98,7 +99,7 @@ function ImgBox({
 /* ─── PhotoSlider ─── */
 function PhotoSlider({ cityName }: { cityName: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
+  const sliderImages = ["/epoxy-grout-shower-after.webp", "/silicone-shower-base-after.webp", "/leaking-shower-repaired-after.webp", "/balcony-centre-watermark.webp", "/shower-regrouting-tiled-interior.webp", "/tile-regrouting-hero.webp"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
@@ -299,6 +300,7 @@ export default function CityPageClient({
   googleMapsApiKey,
   parentSlug,
   locationExplanation,
+  faqs,
 }: CityPageProps) {
   const gr = useGoogleRating();
   const { phone, tel } = useContact();
@@ -814,7 +816,7 @@ export default function CityPageClient({
       </AnimatedSection>
 
       {/* FAQ Section */}
-      <FaqSection />
+      <FaqSection faqs={faqs} />
 
       {/* ── CTA Banner ── */}
       <AnimatedSection className="bg-[#3D68D8] py-14 px-4 sm:px-6 lg:px-10">

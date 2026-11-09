@@ -3,7 +3,7 @@ import CaseyHubPage from "@/components/CaseyHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Casey | Shower, Tile & Balcony | Groutix",
+  title: "Regrouting Casey | Shower, Tile & Balcony",
   description:
     "Shower, bathroom and balcony regrouting across Casey — Berwick, Cranbourne, Narre Warren and Pakenham. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/casey" },

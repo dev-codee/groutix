@@ -1,14 +1,15 @@
-/* FrankstonHubPage — Pattern v2 hub build (2026-10-31).
+/* FrankstonHubPage, Pattern v2 hub build (2026-10-31).
    Page 39 of the location rebuild, Batch 4 (regionals) hub:
-   /locations/frankston, covering Frankston South, Carrum Downs,
-   Seaford, Mount Eliza and Langwarrin (client-confirmed
+   /locations/frankston, covering Frankston South, Karingal,
+   Seaford and Langwarrin (client-confirmed
    service-area doc #41). HUB adaptation: the canonical URL is
    the region hub itself (no /melbourne/ level), the breadcrumb
    is Home > Locations > Frankston, and chips link to the
    region's own suburb pages under /locations/frankston/.
    "frankston-south", "seaford" and "langwarrin" are in the
-   FRANKSTON gate list; Carrum Downs and Mount Eliza are covered
-   as sections here, never linked.
+   FRANKSTON gate list. Corrected 2026-11-09: Carrum Downs is a
+   MELBOURNE gate suburb and Mount Eliza has no page, so both
+   were removed from this hub's schema and copy.
    GSC 29 Jul–30 Oct 2026: frankston hub page 146 impressions
    (pos 29.7). The old /locations/melbourne/frankston spoke
    (94 impr) and /locations/melbourne/seaford (86 impr) redirect
@@ -21,15 +22,15 @@
      seal row, QuoteFormV2 with defaultService="Shower
      Regrouting", HeroContactBadges CTAs.
    - Photo bands after the shower and balcony sections, a
-     services strip before the FAQs and a mid-page CTA.
+     services strip before the FAQs and a mid page CTA.
    - Copy: direct-answer / service-first, unique bayside angle
-     (gateway to the Mornington Peninsula — established brick
-     homes, Seaford's beachside streets, Mount Eliza's prestige
-     homes, Langwarrin's family estates, and coastal moisture
+     (gateway to the Mornington Peninsula, established brick
+     homes, Seaford's beachside streets, Karingal's family
+     homes, Langwarrin's leafy estates, and coastal moisture
      and mould working grout harder than inland).
    - No invented stats, jobs, reviews or prices. Rating badges use
      the live useGoogleRating() hook.
-   Drop-in: add components/FrankstonHubPage.tsx on the main
+   Drop in: add components/FrankstonHubPage.tsx on the main
    branch; hub route wiring is in the Batch 4 pack (see notes). */
 
 "use client";
@@ -63,28 +64,44 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 const FAQS = [
   {
-    q: "Mould keeps coming back in our shower no matter how much we scrub. Why?",
-    a: "Down here the sea air keeps grout damp, and mould doesn't sit on grout — it lives in it. Old cement grout is porous, so scrubbing cleans the surface while the mould stays in the joint. Regrouting removes the grout it lives in. For bayside showers we usually recommend epoxy grout: it doesn't absorb water, so mould has nowhere to take hold.",
+    q: "How much does shower regrouting cost in Frankston?",
+    a: "Most standard single showers cost about $550 to $1,500 to regrout. The price depends on the size of the shower, the tile type and the condition of the grout. Groutix quotes the exact price for free before any work starts, and complete regrouting is backed by a 10 year waterproof warranty.",
   },
   {
-    q: "Our home is single-storey. How would we even know the shower is leaking?",
-    a: "Look beside the bathroom, not below: carpet that stays damp in the next room, skirting boards swelling, a musty smell that won't shift. Most Frankston homes are single-storey, so that's where the water shows. We trace it to the failed joint or seal and fix that — and if it's plumbing or a failed membrane, we'll tell you straight.",
+    q: "Will regrouting stop my shower leaking?",
+    a: "If the leak is coming through cracked grout or perished silicone, yes, a regrout and reseal stops it. If the waterproofing membrane under the tiles has failed, regrouting alone will not hold, and we will tell you straight before any work starts rather than sell you a repair that cannot work.",
   },
   {
-    q: "Can you regrout more than one bathroom in a Mount Eliza home in one visit?",
-    a: "Yes — ensuite, main bathroom and powder room done together, in matching grout, with one call-out. Bigger homes are exactly where a single visit pays off: one day of mess instead of three.",
+    q: "Can a leaking shower be stopped without removing tiles?",
+    a: "In most cases, yes. The old grout is removed mechanically, the joints are rebuilt, and the corners and base junctions are resealed with silicone, all with your tiles left in place. Tiles are only disturbed if one is already loose or damaged.",
   },
   {
-    q: "Do you cover Seaford, Carrum Downs, Mount Eliza and Langwarrin as well?",
-    a: "Yes — the whole area: Frankston, Frankston South, Carrum Downs, Seaford, Mount Eliza and Langwarrin.",
+    q: "Water is weeping onto the carpet next to our bathroom. What is happening?",
+    a: "That usually means water is getting through failed grout or silicone at the shower base and tracking under the tiles into the next room. Around Langwarrin and Frankston, hidden moisture also rots timber subfloors over time, so it is worth fixing early. A regrout and reseal stops the water at the source once the joints are rebuilt.",
   },
   {
-    q: "Salt air seems to eat the grout on our balcony. Can that be fixed?",
-    a: "Usually, yes. Coastal weather works balcony joints hard — sun, salt and movement crack the grout and silicone at the sill and edges first. We cut the failed joints out, reseal and regrout with outdoor-grade grout. If the membrane underneath has failed, we'll say so before quoting anything.",
+    q: "Epoxy grout or cement grout in sea air?",
+    a: "Epoxy grout suits Frankston homes well. It is non porous, so coastal humidity cannot soak in, mould has nowhere to live, and it never needs sealing. Cement grout with a penetrating sealer is the standard option and costs less. We will tell you which suits your bathroom.",
   },
   {
-    q: "Should we choose epoxy or cement grout for a bayside home?",
-    a: "Epoxy grout resists water and staining far better than cement grout and never needs sealing, which suits damp coastal bathrooms and busy family showers. Cement grout with a penetrating sealer is the standard option and costs less. We'll tell you which suits each room when we quote.",
+    q: "Is sealing alone enough, or does the old grout have to come out?",
+    a: "The old grout has to come out. Sealing over cracked, porous grout only covers the problem for a while, and sealing over an active leak does not solve it at all. We remove the failed grout mechanically and rebuild the joints, which is why our regrouting lasts.",
+  },
+  {
+    q: "How long before I can use the shower again?",
+    a: "Most Frankston showers are regrouted in a single visit. Before we start, we tell you exactly when the shower can be used again, so a one bathroom home can plan around it.",
+  },
+  {
+    q: "Which suburbs around Frankston do you cover?",
+    a: "Groutix regrouts across Frankston Central, Frankston North and Frankston South, plus Karingal, Seaford and Langwarrin, and the growth suburbs of Beaconsfield, Clyde, Harkaway and Officer. If your suburb has a page on our site, it is in our service area and gets the same crew and the same standard.",
+  },
+  {
+    q: "How long will a regrout last?",
+    a: "A proper regrout, with the old grout fully removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Silicone is the wear item and may need refreshing sooner, which is normal maintenance rather than a failed job.",
+  },
+  {
+    q: "Is a regrout worth it compared with a full bathroom renovation?",
+    a: "Usually, yes. A regrout keeps your tiles, is finished in about a day, and costs a fraction of a renovation that runs into the tens of thousands and takes weeks. If the membrane has failed or the tiles are beyond saving, we will tell you honestly when renovating is the better spend.",
   },
 ];
 
@@ -100,9 +117,9 @@ const faqJsonLd = {
       areaServed: [
         { "@type": "Place", name: "Frankston VIC 3199" },
         { "@type": "Place", name: "Frankston South VIC 3199" },
-        { "@type": "Place", name: "Carrum Downs VIC 3201" },
+        { "@type": "Place", name: "Karingal VIC 3199" },
         { "@type": "Place", name: "Seaford VIC 3198" },
-        { "@type": "Place", name: "Mount Eliza VIC 3930" },
+        { "@type": "Place", name: "Beaconsfield VIC 3807" },
         { "@type": "Place", name: "Langwarrin VIC 3910" },
       ],
       url: "https://groutix.com/locations/frankston",
@@ -142,7 +159,7 @@ export default function FrankstonHubPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <main className="public-page">
-        {/* ═════════ 1. HERO — Pattern v2: homepage photo bg + warranty seal ═════════ */}
+        {/* ═════════ 1. HERO, Pattern v2: homepage photo bg + warranty seal ═════════ */}
         <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/dark-grey-shower-floor-regrouting.webp" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
@@ -150,10 +167,10 @@ export default function FrankstonHubPage({
             <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Frankston 3199</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
-                Regrouting in Frankston: Showers, Bathrooms &amp; Balconies
+                Shower Regrouting Frankston
               </h1>
               <p className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-white/85 sm:text-base lg:mx-0">
-                Shower mould that keeps coming back in the sea air? Grout gone in a Langwarrin family bathroom? We regrout showers, bathrooms and balconies across Frankston, Seaford, Carrum Downs, Mount Eliza and Langwarrin — tiles stay in place. That&apos;s regrouting in Frankston, backed by a 10-year waterproof warranty on showers. Free quote.
+                Sea air, sandy soil and ageing cement grout wear Frankston showers out early. We regrout leaking and mouldy showers across Frankston, Seaford, Langwarrin and Karingal, with tiles left in place and a 10 year waterproof warranty on eligible shower regrouting.
               </p>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges rating={rating} />
@@ -203,7 +220,7 @@ export default function FrankstonHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 3. LOCAL INTRO — direct answer ═════════ */}
+        {/* ═════════ 3. LOCAL INTRO, direct answer ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
@@ -211,21 +228,21 @@ export default function FrankstonHubPage({
                 Regrouting for the Bayside Gateway
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Frankston is where the city hands over to the Peninsula, and its bathrooms show it: established brick homes in Frankston and Frankston South, beachside streets in Seaford, big prestige homes in Mount Eliza, and family estates through Langwarrin and Carrum Downs. Add sea air and coastal moisture — grout that stays damp, mould that takes hold, joints that fail earlier than they would inland — and this coast keeps us busy.
+                Frankston is where the city hands over to the Peninsula, and its bathrooms show it: established brick homes in Frankston and Frankston South, beachside streets in Seaford, big prestige homes in Mount Eliza, and family estates through Langwarrin and Carrum Downs. Add sea air and coastal moisture, grout that stays damp, mould that takes hold, joints that fail earlier than they would inland, and this coast keeps us busy.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-4">
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Our grouting repairs in Frankston start with the joints, not the tiles: we cut out the failed grout and rebuild it to proper depth, so the bathroom comes back watertight without a renovation — and you can see exactly how a job runs in{" "}
+                Our grouting repairs in Frankston start with the joints, not the tiles: we cut out the failed grout and rebuild it to proper depth, so the bathroom comes back watertight without a renovation, and you can see exactly how a job runs in{" "}
                 <Link href="/our-process" className="font-bold text-accent hover:underline">our process</Link>{" "}
                 before you book.
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
               {[
-                { value: "3198–3930", label: "Postcodes Covered", sub: "Seaford to Mount Eliza" },
+                { value: "3198 to 3930", label: "Postcodes Covered", sub: "Seaford to Mount Eliza" },
                 { value: "Coastal", label: "Conditions Covered", sub: "Salt air and moisture that work grout hard" },
-                { value: "1 Visit", label: "Ensuite, Bathroom & Laundry", sub: "Matching finish, no second call-out" },
+                { value: "1 Visit", label: "Ensuite, Bathroom & Laundry", sub: "Matching finish, no second call out" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
                   <p className="text-2xl font-black text-neutral-900">{s.value}</p>
@@ -245,7 +262,7 @@ export default function FrankstonHubPage({
                 Shower Regrouting in Frankston
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Cracked, stained or mouldy shower grout? A shower regrout replaces it — and the old silicone — in one visit, tiles left in place. Along the bayside strip the corner joints go first: damp air feeds mould deep into porous old grout, and no amount of scrubbing gets it back. Fresh grout to full depth does.
+                Cracked, stained or mouldy shower grout? A shower regrout replaces it, and the old silicone, in one visit, tiles left in place. Along the bayside strip the corner joints go first: damp air feeds mould deep into porous old grout, and no amount of scrubbing gets it back. Fresh grout to full depth does.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-6">
@@ -253,7 +270,7 @@ export default function FrankstonHubPage({
                 <h3 className="mb-4 text-xl font-bold text-neutral-900">What a Groutix Shower Regrout Includes</h3>
                 <ol className="space-y-3">
                   {[
-                    "Old grout cut out to depth, not painted over — including the mouldy corners scrubbing can't save.",
+                    "Old grout cut out to depth, not painted over, including the mouldy corners scrubbing can't save.",
                     "Shower, floor and wall grout done together if you want a matching finish.",
                     "Old silicone stripped and replaced, not layered over.",
                     <>Your choice of cement grout with sealer, or <Link href="/epoxy-grout" className="font-bold text-accent hover:underline">epoxy grout</Link>.</>,
@@ -277,21 +294,21 @@ export default function FrankstonHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 5. IMAGE BAND A — Pattern v2 ═════════ */}
+        {/* ═════════ 5. IMAGE BAND A, Pattern v2 ═════════ */}
         <section className="bg-white py-14">
           <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
             <div className="grid gap-6 sm:grid-cols-2">
               <figure>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-regrouting-white-walls-dark-floor.webp" alt="Shower regrouting in Frankston — white wall tiles over a dark tiled shower floor" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
+                  <Image src="/shower-regrouting-white-walls-dark-floor.webp" alt="Shower regrouting in Frankston, white wall tiles over a dark tiled shower floor" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
                 </div>
-                <figcaption className="mt-2 text-sm text-neutral-500">A shower stripped back to sound joints and rebuilt — the finish we aim for in every Frankston home.</figcaption>
+                <figcaption className="mt-2 text-sm text-neutral-500">A shower stripped back to sound joints and rebuilt, the finish we aim for in every Frankston home.</figcaption>
               </figure>
               <figure>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
                   <Image src="/shower-floor-regrouting-hex-mosaic-tiles.webp" alt="Shower floor regrouting in Frankston with hex mosaic tiles" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
                 </div>
-                <figcaption className="mt-2 text-sm text-neutral-500">Mosaic floors carry more joints than any other surface — every one cut out and rebuilt to depth.</figcaption>
+                <figcaption className="mt-2 text-sm text-neutral-500">Mosaic floors carry more joints than any other surface, every one cut out and rebuilt to depth.</figcaption>
               </figure>
             </div>
             <p className="mx-auto mt-8 max-w-3xl text-center text-base text-neutral-600">
@@ -311,7 +328,7 @@ export default function FrankstonHubPage({
                 Tile Regrouting for Floors, Laundries and Kitchens
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Floor grout wears fastest in the rooms you use most — and bayside floors track in sand that grinds joints down faster still. Tile regrouting in Frankston covers bathroom floors, laundries and kitchen splashbacks right through the house — cut out and replaced, without retiling.
+                Floor grout wears fastest in the rooms you use most, and bayside floors track in sand that grinds joints down faster still. Tile regrouting in Frankston covers bathroom floors, laundries and kitchen splashbacks right through the house, cut out and replaced, without retiling.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -359,7 +376,7 @@ export default function FrankstonHubPage({
                 Leaking Shower Repair in Frankston
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Most homes in this area are single-storey, so a leaking shower shows up beside the bathroom, not below: swollen skirting in the hallway, damp carpet in the bedroom next door, a musty smell that won&apos;t shift. We find where the water is escaping, fix the grout and seals — and tell you straight if it&apos;s a membrane or plumbing problem instead.
+                Most homes in this area are single storey, so a leaking shower shows up beside the bathroom, not below: swollen skirting in the hallway, damp carpet in the bedroom next door, a musty smell that won&apos;t shift. We find where the water is escaping, fix the grout and seals, and tell you straight if it&apos;s a membrane or plumbing problem instead.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -385,7 +402,7 @@ export default function FrankstonHubPage({
             <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-white p-6">
               <h3 className="mb-2 text-lg font-bold text-neutral-900">How We Tell Grout From Membrane</h3>
               <p className="text-base leading-relaxed text-neutral-600">
-                We check the grout, silicone and tiles for cracks, gaps and movement before we quote. If the waterproofing under the tiles has failed, regrouting alone won&apos;t fix it — and we&apos;ll say so. Under NCC 2022, shower walls must be waterproofed to at least 1,800 mm. More on{" "}
+                We check the grout, silicone and tiles for cracks, gaps and movement before we quote. If the waterproofing under the tiles has failed, regrouting alone won&apos;t fix it, and we&apos;ll say so. Under NCC 2022, shower walls must be waterproofed to at least 1,800 mm. More on{" "}
                 <Link href="/leaking-shower-repair" className="font-bold text-accent hover:underline">leaking shower repair</Link>.
               </p>
             </div>
@@ -400,14 +417,14 @@ export default function FrankstonHubPage({
                 Balconies, Alfrescos and Outdoor Tiles
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                On the coast, outdoor joints get the hardest life on the house — sun, salt air and sea breezes work the grout and silicone at the door sill and balcony edges until they crack. Balcony regrouting in Frankston fixes failed joints before tiles loosen and water gets underneath — and from a balcony, that water usually ends up in the room below.
+                On the coast, outdoor joints get the hardest life on the house, sun, salt air and sea breezes work the grout and silicone at the door sill and balcony edges until they crack. Balcony regrouting in Frankston fixes failed joints before tiles loosen and water gets underneath, and from a balcony, that water usually ends up in the room below.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
-                { title: "Balconies", text: "Failed grout and silicone at the door sill and edges cut out, resealed and regrouted with outdoor-grade grout." },
-                { title: "Alfresco Areas", text: "Washed-out or cracked joints regrouted so outdoor tiles stop rocking and water stays out." },
-                { title: "Porches and Entries", text: "The odd loose tile re-fixed and joints regrouted where suitable — we tell you if it needs relaying." },
+                { title: "Balconies", text: "Failed grout and silicone at the door sill and edges cut out, resealed and regrouted with outdoor grade grout." },
+                { title: "Alfresco Areas", text: "Washed out or cracked joints regrouted so outdoor tiles stop rocking and water stays out." },
+                { title: "Porches and Entries", text: "The odd loose tile re fixed and joints regrouted where suitable, we tell you if it needs relaying." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -423,7 +440,7 @@ export default function FrankstonHubPage({
               ))}
             </div>
             <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
-              Relaying a whole balcony or alfresco is a bigger job — we&apos;ll tell you if yours needs it. More on{" "}
+              Relaying a whole balcony or alfresco is a bigger job, we&apos;ll tell you if yours needs it. More on{" "}
               <Link href="/balcony-leak-repairs" className="font-bold text-accent hover:underline">balcony leak repairs</Link>.
             </p>
             <div className="text-center">
@@ -437,14 +454,14 @@ export default function FrankstonHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 9. IMAGE BAND B — Pattern v2 ═════════ */}
+        {/* ═════════ 9. IMAGE BAND B, Pattern v2 ═════════ */}
         <section className="bg-white py-14">
           <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
             <figure>
               <div className="relative aspect-[21/9] overflow-hidden rounded-sm">
                 <Image src="/balcony-water-damage-regrouting-signs.webp" alt="Balcony regrouting in Frankston showing early water damage signs" fill sizes="100vw" className="object-cover" />
               </div>
-              <figcaption className="mt-2 text-sm text-neutral-500">Staining and lifting at the edges are the early warnings — catch the joints before the tiles go drummy.</figcaption>
+              <figcaption className="mt-2 text-sm text-neutral-500">Staining and lifting at the edges are the early warnings, catch the joints before the tiles go drummy.</figcaption>
             </figure>
           </div>
         </section>
@@ -457,7 +474,7 @@ export default function FrankstonHubPage({
                 Areas We Cover Around Frankston
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Frankston 3199 plus Frankston South, Carrum Downs, Seaford, Mount Eliza and Langwarrin. One page, one crew, same week.
+                Frankston 3199 plus Seaford, Langwarrin and Karingal, and the growth suburbs of Clyde, Officer, Beaconsfield and Harkaway.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -465,35 +482,35 @@ export default function FrankstonHubPage({
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Frankston South 3199</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Frankston South</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Established leafy streets running toward Mount Eliza — bigger homes whose ensuites and main bathrooms are at regrout age together. We do the set in one visit so the finish matches across the house.
+                  Established leafy streets running toward Mount Eliza, bigger homes whose ensuites and main bathrooms are at regrout age together. We do the set in one visit so the finish matches across the house.
                 </p>
               </div>
               <div id="carrum-downs" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Carrum Downs 3201</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Carrum Downs</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Family estates of 90s and 2000s homes — bathrooms hitting first-regrout age all at once. Shower, floor and laundry regrouted together, tiles left in place, one call-out.
+                  Family estates of 90s and 2000s homes, bathrooms hitting first regrout age all at once. Shower, floor and laundry regrouted together, tiles left in place, one call out.
                 </p>
               </div>
               <div id="seaford" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Seaford 3198</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Seaford</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Beachside streets where the sea air keeps grout damp and mould busy. We regrout Seaford showers to full depth — epoxy grout is the usual pick here, because mould has nowhere to live in it.
+                  Beachside streets where the sea air keeps grout damp and mould busy. We regrout Seaford showers to full depth, epoxy grout is the usual pick here, because mould has nowhere to live in it.
                 </p>
               </div>
               <div id="mount-eliza" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Mount Eliza 3930</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Mount Eliza</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Prestige homes on big blocks, often with three or more bathrooms. Ensuite, main bathroom and powder room regrouted in a single visit — matching grout, careful colour choices, tiles untouched.
+                  Prestige homes on big blocks, often with three or more bathrooms. Ensuite, main bathroom and powder room regrouted in a single visit, matching grout, careful colour choices, tiles untouched.
                 </p>
               </div>
               <div id="langwarrin" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Langwarrin 3910</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Langwarrin</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Family estates backing onto the flora reserve — homes whose bathrooms work hard every day. Shower regrouting, resealing and floor grout done together so there&apos;s only one visit to organise.
+                  Family estates backing onto the flora reserve, homes whose bathrooms work hard every day. Shower regrouting, resealing and floor grout done together so there&apos;s only one visit to organise.
                 </p>
               </div>
             </div>
@@ -503,6 +520,13 @@ export default function FrankstonHubPage({
                 { name: "Frankston South", href: "/locations/frankston/frankston-south" },
                 { name: "Seaford", href: "/locations/frankston/seaford" },
                 { name: "Langwarrin", href: "/locations/frankston/langwarrin" },
+                { name: "Frankston Central", href: "/locations/frankston/frankston-central" },
+                { name: "Frankston North", href: "/locations/frankston/frankston-north" },
+                { name: "Karingal", href: "/locations/frankston/karingal" },
+                { name: "Beaconsfield", href: "/locations/frankston/beaconsfield" },
+                { name: "Clyde", href: "/locations/frankston/clyde" },
+                { name: "Harkaway", href: "/locations/frankston/harkaway" },
+                { name: "Officer", href: "/locations/frankston/officer" },
                 { name: "Casey", href: "/locations/casey" },
                 { name: "Chelsea", href: "/locations/melbourne/chelsea" },
               ].map((l) => (
@@ -518,14 +542,14 @@ export default function FrankstonHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 11. MID CTA — Pattern v2 ═════════ */}
+        {/* ═════════ 11. MID CTA, Pattern v2 ═════════ */}
         <section className="bg-[#0d1030] py-12">
           <div className="mx-auto max-w-3xl space-y-5 px-4 text-center text-white sm:px-6">
             <h2 className="text-3xl font-black leading-tight lg:text-[36px]">
               Get a Free Quote in Frankston
             </h2>
             <p className="text-base leading-relaxed text-white/85">
-              Send us a photo of the grout and we&apos;ll price the job properly — no obligation, no pressure.
+              Send us a photo of the grout and we&apos;ll price the job properly, no obligation, no pressure.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-1">
               <Link
@@ -552,15 +576,15 @@ export default function FrankstonHubPage({
                 Why Frankston Owners Choose Groutix
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Groutix is a Melbourne regrouting specialist — showers, floors, balconies, epoxy and silicone. The crew on your Frankston job does this work every day, in homes like yours.
+                Groutix is a Melbourne regrouting specialist, showers, floors, balconies, epoxy and silicone. The crew on your Frankston job does this work every day, in homes like yours.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs — good tiles stay." },
+                { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs, good tiles stay." },
                 { title: "10 Year Waterproof Warranty", text: "On eligible completed shower regrouting.", link: { href: "/terms-conditions", label: "Warranty terms" } },
                 { title: `${gr.ratingLabel} From ${gr.countLabel} Reviews`, text: "Rated by Melbourne customers on Google." },
-                { title: "Coastal Mould Know-How", text: "Damp joints and mould-prone corners are the first thing we look for on the coast." },
+                { title: "Coastal Mould Know How", text: "Damp joints and mould prone corners are the first thing we look for on the coast." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -593,7 +617,7 @@ export default function FrankstonHubPage({
                 What Does Regrouting Cost in Frankston?
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Short answer: we give you a fixed quote once we&apos;ve seen the job — every home is different. These four things decide the number:
+                Most standard single showers cost about $550 to $1,500 to regrout. The exact price is quoted free once we have seen the job, and these four things decide the number:
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -633,7 +657,7 @@ export default function FrankstonHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 14. SERVICES STRIP — Pattern v2 ═════════ */}
+        {/* ═════════ 14. SERVICES STRIP, Pattern v2 ═════════ */}
         <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
@@ -651,7 +675,7 @@ export default function FrankstonHubPage({
                 { href: "/tile-regrouting", title: "Tile Regrouting", text: "Floors, walls, laundries and splashbacks regrouted throughout." },
                 { href: "/balcony-leak-repairs", title: "Balcony Leak Repairs", text: "Sill and edge joints resealed before water gets underneath." },
                 { href: "/epoxy-grout", title: "Epoxy Grout", text: "Waterproof, stain-proof grout that never needs sealing." },
-                { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced — never layered over." },
+                { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced, never layered over." },
                 { href: "/small-tiling-jobs", title: "Small Tiling Jobs", text: "A few cracked or loose tiles replaced and regrouted." },
                 { href: "/our-process", title: "Our Process", text: "How a Groutix job runs, from first photo to final wipe-down." },
               ].map((s) => (
@@ -691,7 +715,7 @@ export default function FrankstonHubPage({
               Tired Grout Anywhere in Frankston or Seaford?
             </h2>
             <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting the bayside gateway is what we do — we cover Frankston, Frankston South, Seaford, Carrum Downs, Mount Eliza and Langwarrin, most jobs done in a single visit.
+              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting the bayside gateway is what we do, we cover Frankston, Frankston South, Seaford, Carrum Downs, Mount Eliza and Langwarrin, most jobs done in a single visit.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link

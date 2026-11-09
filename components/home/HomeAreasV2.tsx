@@ -17,11 +17,11 @@ const REGIONS: [string, string][] = [
   ["Geelong", "/locations/geelong"],
   ["Ballarat", "/locations/ballarat"],
   ["Frankston", "/locations/frankston"],
+  ["Casey", "/locations/casey"],
   ["Lilydale", "/locations/lilydale"],
   ["Yarra Glen", "/locations/yarra-glen"],
   ["Kilmore", "/locations/kilmore"],
 ];
-// Caulfield has no suburb page yet, so it points to the Melbourne hub until it does.
 const POPULAR: [string, string][] = [
   ["St Kilda", "/locations/melbourne/st-kilda"],
   ["Brighton", "/locations/melbourne/brighton"],
@@ -29,12 +29,19 @@ const POPULAR: [string, string][] = [
   ["Albert Park", "/locations/melbourne/albert-park"],
   ["Malvern", "/locations/melbourne/malvern"],
   ["Toorak", "/locations/melbourne/toorak"],
-  ["Caulfield", "/locations/melbourne"],
+  ["Caulfield", "/locations/melbourne/caulfield"],
   ["South Melbourne", "/locations/melbourne/south-melbourne"],
   ["Hawthorn", "/locations/melbourne/hawthorn"],
   ["Bentleigh", "/locations/melbourne/bentleigh"],
   ["Essendon", "/locations/melbourne/essendon"],
   ["Brunswick", "/locations/melbourne/brunswick"],
+  ["Windsor", "/locations/melbourne/windsor"],
+  ["Middle Park", "/locations/melbourne/middle-park"],
+  ["Balaclava", "/locations/melbourne/balaclava"],
+  ["Bentleigh East", "/locations/melbourne/bentleigh-east"],
+  ["Sunbury", "/locations/melbourne/sunbury"],
+  ["Elwood", "/locations/melbourne/elwood"],
+  ["Point Cook", "/locations/melbourne/point-cook"],
 ];
 
 type Result = { available: boolean; suburb: string } | { error: true };
@@ -150,6 +157,7 @@ export default function HomeAreasV2() {
           <h3 className="mb-3 text-lg font-bold text-slate-900">Popular suburbs</h3>
           <div className="flex flex-wrap gap-2.5">{POPULAR.map(([n, h]) => <Link key={n} href={h} className={pill}>{n}</Link>)}</div>
         </div>
+        <Link href="/locations/melbourne" className="text-lg font-bold text-[#001F97] underline">Shower Regrouting Melbourne →</Link>
         <Link href="/locations" className="text-lg font-bold text-[#001F97] underline">All service areas →</Link>
       </div>
     </div>

@@ -1,6 +1,6 @@
-/* BallaratHubPage — Pattern v2 hub build (2026-10-31).
+/* BallaratHubPage, Pattern v2 hub build (2026-10-31).
    Location rebuild, Batch 4 (regionals): REGIONAL HUB page
-   for /locations/ballarat (canonical hub URL — no /melbourne/
+   for /locations/ballarat (canonical hub URL, no /melbourne/
    level), covering Wendouree and Sebastopol
    (client-confirmed service-area doc #44). Both sub-slugs
    are already in the BALLARAT gate list, so both sub-areas
@@ -9,25 +9,25 @@
    9 clicks (most clicks of any regional hub), pos 20.9;
    queries "tile regrouting ballarat" 68 impr, "leaking
    shower repairs ballarat" 64 (pos 8.9), "bathroom
-   regrouting ballarat" 60 — the leaking-shower section and
+   regrouting ballarat" 60, the leaking-shower section and
    FAQ carry real weight here.
    Pattern v2 (per Edeel, 2026-10-31): hero on the homepage
    photo (dark-grey-shower-floor-regrouting.webp) with black
    gradient overlay + warranty-seal row; photo band after the
    shower section, wide photo after balconies (site photos,
    captions never claim a photo is from this city); gallery +
-   our-process links; mid-page navy CTA after Areas; 8-card
+   our-process links; mid page navy CTA after Areas; 8-card
    services strip before FAQs. Copy: direct-answer /
-   service-first, unique Ballarat angle (gold-rush heritage
+   service-first, unique Ballarat angle (gold rush heritage
    cottages and period bathrooms, famously cold winters —
-   condensation, mould, movement cracks — and Wendouree and
-   Sebastopol's post-war family homes).
+   condensation, mould, movement cracks, and Wendouree and
+   Sebastopol's post war family homes).
    Hub adaptation: BreadcrumbList = Home > Locations >
    Ballarat; Service @id/url = the hub URL.
    No invented stats, jobs, reviews or prices. Rating badges
    use the live useGoogleRating() hook.
    Route title: "Regrouting Ballarat | Shower, Tile &
-   Balcony | Groutix". Drop-in: components/BallaratHubPage.tsx
+   Balcony | Groutix". Drop in: components/BallaratHubPage.tsx
    wired into the ballarat hub route (see parent notes). */
 
 "use client";
@@ -61,28 +61,44 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 const FAQS = [
   {
-    q: "Our shower is leaking but we can't see where. Can you find it?",
-    a: "Yes — that's most leaking-shower work. We check the grout, silicone and tiles for the cracks, gaps and movement that let water through: the base joints where the floor meets the walls are the usual culprit, followed by perished silicone. If the cause is failed grout or seals, a regrout and reseal fixes it. If it's the waterproofing membrane or plumbing, we'll tell you straight before quoting anything.",
+    q: "How much does shower regrouting cost in Ballarat?",
+    a: "Most standard single showers cost about $550 to $1,500 to regrout. The price depends on the size of the shower, the tile type and the condition of the grout. Groutix quotes the exact price for free before any work starts, and complete regrouting is backed by a 10 year waterproof warranty.",
   },
   {
-    q: "Can you regrout around the original tiles in our heritage Ballarat cottage?",
-    a: "Yes — that's the point of regrouting in Ballarat's older homes. We work joint by joint with hand care around period tiles, cut the failed grout out and rebuild it, so the original tiling survives and looks like itself again. Tiles are only disturbed if one is already loose.",
+    q: "Will regrouting fix our leaking shower, or has the waterproofing membrane failed?",
+    a: "Regrouting fixes leaks caused by cracked grout and perished silicone, which is most leaking showers we see in Ballarat. If the waterproofing membrane under the tiles has failed, regrouting alone will not stop the leak, and we will tell you straight before any work starts rather than sell you a repair that cannot hold.",
+  },
+  {
+    q: "Can you regrout around the original tiles in a heritage Ballarat cottage?",
+    a: "Yes. That is the point of regrouting in Ballarat's older homes. We work joint by joint with care around period tiles, cut the failed grout out and rebuild it, so the original tiling survives and looks like itself again. Tiles are only disturbed if one is already loose or drummy.",
   },
   {
     q: "Why does the mould in our bathroom keep coming back every winter?",
-    a: "Ballarat winters are cold, bathrooms stay damp, and old cement grout is porous — mould moves in and cleaning only takes the surface off. Regrouting removes the mouldy grout entirely. Epoxy grout is worth considering here: it's non-porous, so mould has nowhere to live, and it never needs sealing.",
-  },
-  {
-    q: "Do you cover Wendouree and Sebastopol as well?",
-    a: "Yes — Ballarat plus Wendouree and Sebastopol are all one service area for us. The suburbs around the lake and the south side get the same crew and the same standard.",
-  },
-  {
-    q: "Can you do the ensuite, main bathroom and laundry in one visit?",
-    a: "Yes — most homes here have the full set, and doing them together gives a matching finish and saves a second call-out.",
+    a: "Ballarat winters are cold, bathrooms stay damp, and old cement grout is porous, so mould moves in and cleaning only takes the surface off. Regrouting removes the mouldy grout entirely. Epoxy grout is worth considering here because it is non porous, so mould has nowhere to live, and it never needs sealing.",
   },
   {
     q: "Should I choose epoxy or cement grout in a cold, damp bathroom?",
-    a: "Epoxy grout resists water and staining far better than cement grout and never needs sealing — in Ballarat's damp winters it's the low-maintenance choice for showers. Cement grout with a penetrating sealer is the standard option and costs less. We'll tell you which suits each room.",
+    a: "Epoxy grout resists water and staining far better than cement grout and never needs sealing, so in Ballarat's damp winters it is the low maintenance choice for showers. Cement grout with a penetrating sealer is the standard option and costs less. We will tell you honestly which suits each room.",
+  },
+  {
+    q: "How long does a shower regrout take?",
+    a: "Most showers are finished in a single visit, including heritage bathrooms where the ensuite, main bathroom and laundry are done together for a matching finish. Before we start, we tell you exactly when the shower can be used again, so there are no surprises.",
+  },
+  {
+    q: "Which Ballarat suburbs do you cover?",
+    a: "All of them. Groutix regrouts across Ballarat, Wendouree, Sebastopol, Alfredton, Delacombe, Buninyong, Mount Helen, Mount Clear, Redan, Black Hill, Eureka and Ballarat Central, East and North, plus Daylesford, Creswick, Newlyn, Clarendon and Elaine. Every suburb in our service area gets the same crew and the same standard.",
+  },
+  {
+    q: "Do you travel out to Daylesford and Creswick?",
+    a: "Yes. Daylesford and Creswick are part of our Ballarat service area, along with Newlyn, Clarendon and Elaine on the way. Send us photos of the shower for a free quote, and the price is confirmed before any work starts.",
+  },
+  {
+    q: "How long will a regrout last?",
+    a: "A proper regrout, where the old grout is fully removed and the joints are rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Cheap surface jobs that smear new grout over old grout are the ones that crack and fail early, which is why we never do them.",
+  },
+  {
+    q: "Is regrouting worth it compared with renovating the bathroom?",
+    a: "For most Ballarat homes, yes. A regrout keeps your existing tiles, is usually finished in a single visit, and costs a fraction of a full renovation that can take weeks. If the tiles themselves are damaged or the membrane has failed, we will tell you honestly when a renovation is the better spend.",
   },
 ];
 
@@ -137,7 +153,7 @@ export default function BallaratHubPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <main className="public-page">
-        {/* ═════════ 1. HERO — Pattern v2: homepage photo bg + warranty seal ═════════ */}
+        {/* ═════════ 1. HERO, Pattern v2: homepage photo bg + warranty seal ═════════ */}
         <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/dark-grey-shower-floor-regrouting.webp" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
@@ -145,10 +161,10 @@ export default function BallaratHubPage({
             <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Ballarat 3350</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
-                Regrouting in Ballarat: Showers, Bathrooms &amp; Balconies
+                Shower Regrouting Ballarat
               </h1>
               <p className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-white/85 sm:text-base lg:mx-0">
-                Shower leaking in Ballarat? Mould back again after another cold winter? We regrout showers, bathrooms and balconies across Ballarat, Wendouree and Sebastopol — tiles stay in place. That&apos;s regrouting in Ballarat, backed by a 10-year waterproof warranty on showers. Free quote.
+                Cold mornings, hot showers and old cement grout are a rough mix in Ballarat. We regrout leaking and mouldy showers across Ballarat, Wendouree, Sebastopol, Alfredton and Buninyong, with tiles left in place, epoxy grout options, and a 10 year waterproof warranty on eligible shower regrouting.
               </p>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges rating={rating} />
@@ -198,29 +214,29 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 3. LOCAL INTRO — direct answer ═════════ */}
+        {/* ═════════ 3. LOCAL INTRO, direct answer ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-3xl font-bold leading-tight text-neutral-900 lg:text-[42px]">
-                Regrouting That Suits Ballarat&apos;s Old Homes — and Its Winters
+                Regrouting That Suits Ballarat&apos;s Old Homes, and Its Winters
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Ballarat&apos;s gold-rush streets carry bathrooms a century deep — Victorian cottages and period homes whose original tiling is part of the house. Then there&apos;s the climate: Ballarat winters are properly cold, bathrooms stay damp for months, and temperature movement works joints open season after season. The result is the same everywhere from the heritage centre to Wendouree and Sebastopol: sound tiles, failed grout.
+                Ballarat&apos;s gold rush streets carry bathrooms a century deep, Victorian cottages and period homes whose original tiling is part of the house. Then there&apos;s the climate: Ballarat winters are properly cold, bathrooms stay damp for months, and temperature movement works joints open season after season. The result is the same everywhere from the heritage centre to Wendouree and Sebastopol: sound tiles, failed grout.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-4">
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Our grouting repairs in Ballarat start with the joints, not the tiles —{" "}
+                Our grouting repairs in Ballarat start with the joints, not the tiles,{" "}
                 <Link href="/our-process" className="font-bold text-accent hover:underline">our process</Link>{" "}
                 cuts out the failed grout joint by joint and rebuilds it to proper depth, so the bathroom comes back watertight without a renovation, whatever its age.
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
               {[
-                { value: "3350–3356", label: "Postcodes Covered", sub: "Ballarat to Sebastopol" },
+                { value: "3350 to 3356", label: "Postcodes Covered", sub: "Ballarat to Sebastopol" },
                 { value: "Heritage", label: "Tiles Kept", sub: "Period tiling regrouted in place" },
-                { value: "1 Visit", label: "Ensuite, Bathroom & Laundry", sub: "Matching finish, no second call-out" },
+                { value: "1 Visit", label: "Ensuite, Bathroom & Laundry", sub: "Matching finish, no second call out" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
                   <p className="text-2xl font-black text-neutral-900">{s.value}</p>
@@ -240,7 +256,7 @@ export default function BallaratHubPage({
                 Shower Regrouting in Ballarat
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Cracked, stained or mouldy shower grout? A shower regrout replaces it — and the old silicone — in one visit, tiles left in place. In heritage homes we take the extra care original tiles deserve: joints cut by hand where the tiling is delicate, colours chosen to sit right against older glazes.
+                Cracked, stained or mouldy shower grout? A shower regrout replaces it, and the old silicone, in one visit, tiles left in place. In heritage homes we take the extra care original tiles deserve: joints cut by hand where the tiling is delicate, colours chosen to sit right against older glazes.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-6">
@@ -248,10 +264,10 @@ export default function BallaratHubPage({
                 <h3 className="mb-4 text-xl font-bold text-neutral-900">What a Groutix Shower Regrout Includes</h3>
                 <ol className="space-y-3">
                   {[
-                    "Old grout cut out to depth, not painted over — hand care around period tiles.",
+                    "Old grout cut out to depth, not painted over, hand care around period tiles.",
                     "Shower, floor and wall grout done together if you want a matching finish.",
                     "Old silicone stripped and replaced, not layered over.",
-                    <>Your choice of cement grout with sealer, or <Link href="/epoxy-grout" className="font-bold text-accent hover:underline">epoxy grout</Link> — the low-maintenance pick for damp winters.</>,
+                    <>Your choice of cement grout with sealer, or <Link href="/epoxy-grout" className="font-bold text-accent hover:underline">epoxy grout</Link>, the low maintenance pick for damp winters.</>,
                   ].map((item, i) => (
                     <li key={i} className="flex gap-3 text-base text-neutral-700">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-white">{i + 1}</span>
@@ -272,19 +288,19 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 5. IMAGE BAND A — Pattern v2 ═════════ */}
+        {/* ═════════ 5. IMAGE BAND A, Pattern v2 ═════════ */}
         <section className="bg-white py-14">
           <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
             <div className="grid gap-6 sm:grid-cols-2">
               <figure>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-regrouting-beige-wall-tiles.webp" alt="Shower regrouting in Ballarat — a shower with beige wall tiles freshly regrouted" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
+                  <Image src="/shower-regrouting-beige-wall-tiles.webp" alt="Shower regrouting in Ballarat, a shower with beige wall tiles freshly regrouted" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
                 </div>
-                <figcaption className="mt-2 text-sm text-neutral-500">Warm-toned tiles like these fill Ballarat&apos;s older bathrooms — fresh grout brings the whole room back.</figcaption>
+                <figcaption className="mt-2 text-sm text-neutral-500">Warm-toned tiles like these fill Ballarat&apos;s older bathrooms, fresh grout brings the whole room back.</figcaption>
               </figure>
               <figure>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-floor-regrouting-dark-tiles-top-view.webp" alt="Shower floor regrouting in Ballarat — dark floor tiles regrouted, seen from above" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
+                  <Image src="/shower-floor-regrouting-dark-tiles-top-view.webp" alt="Shower floor regrouting in Ballarat, dark floor tiles regrouted, seen from above" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
                 </div>
                 <figcaption className="mt-2 text-sm text-neutral-500">The finish we aim for in every Ballarat home: clean joints, sealed edges, tiles untouched.</figcaption>
               </figure>
@@ -306,15 +322,15 @@ export default function BallaratHubPage({
                 Tile Regrouting for Floors, Laundries and Kitchens
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Floor grout wears fastest in the rooms you use most. Tile regrouting in Ballarat covers bathroom floors, laundries and kitchen splashbacks right through the house — cut out and replaced, without retiling.
+                Floor grout wears fastest in the rooms you use most. Tile regrouting in Ballarat covers bathroom floors, laundries and kitchen splashbacks right through the house, cut out and replaced, without retiling.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { title: "Bathroom Floors", text: "Tired, stained floor grout cut out and replaced so the whole room matches." },
-                { title: "Laundries", text: "Floors and splashbacks that take water every day — and cold, damp air all winter — regrouted to last." },
+                { title: "Laundries", text: "Floors and splashbacks that take water every day, and cold, damp air all winter, regrouted to last." },
                 { title: "Kitchen Splashbacks", text: "Stained or cracked grout behind the sink and cooktop refreshed." },
-                { title: "A Few Cracked Tiles", text: "Cold and movement crack the odd tile over the years — two or three can be replaced and regrouted, matched as closely as we can." },
+                { title: "A Few Cracked Tiles", text: "Cold and movement crack the odd tile over the years, two or three can be replaced and regrouted, matched as closely as we can." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -354,15 +370,15 @@ export default function BallaratHubPage({
                 Leaking Shower Repair in Ballarat
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Most Ballarat homes are single-storey, so a leaking shower shows up beside the bathroom, not below: swollen skirting in the hallway, damp carpet in the room next door, floorboards going soft, a musty smell that won&apos;t shift. We find where the water is escaping, fix the grout and seals — and tell you straight if it&apos;s a membrane or plumbing problem instead.
+                Most Ballarat homes are single storey, so a leaking shower shows up beside the bathroom, not below: swollen skirting in the hallway, damp carpet in the room next door, floorboards going soft, a musty smell that won&apos;t shift. We find where the water is escaping, fix the grout and seals, and tell you straight if it&apos;s a membrane or plumbing problem instead.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { title: "Swollen Skirting", text: "Skirting or door frames swelling on the other side of the shower wall." },
                 { title: "Damp Carpet Next Door", text: "Carpet or underlay staying damp in the room beside the bathroom." },
-                { title: "Musty Smell", text: "A damp smell in the bedroom or hallway that cleaning won't shift — worse through winter." },
-                { title: "Cracked Base Grout", text: "Gaps where the shower floor meets the walls — the first place water gets through." },
+                { title: "Musty Smell", text: "A damp smell in the bedroom or hallway that cleaning won't shift, worse through winter." },
+                { title: "Cracked Base Grout", text: "Gaps where the shower floor meets the walls, the first place water gets through." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -380,7 +396,7 @@ export default function BallaratHubPage({
             <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-white p-6">
               <h3 className="mb-2 text-lg font-bold text-neutral-900">How We Tell Grout From Membrane</h3>
               <p className="text-base leading-relaxed text-neutral-600">
-                We check the grout, silicone and tiles for cracks, gaps and movement before we quote. If the waterproofing under the tiles has failed, regrouting alone won&apos;t fix it — and we&apos;ll say so. Under NCC 2022, shower walls must be waterproofed to at least 1,800 mm. More on{" "}
+                We check the grout, silicone and tiles for cracks, gaps and movement before we quote. If the waterproofing under the tiles has failed, regrouting alone won&apos;t fix it, and we&apos;ll say so. Under NCC 2022, shower walls must be waterproofed to at least 1,800 mm. More on{" "}
                 <Link href="/leaking-shower-repair" className="font-bold text-accent hover:underline">leaking shower repair</Link>.
               </p>
             </div>
@@ -400,9 +416,9 @@ export default function BallaratHubPage({
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
-                { title: "Balconies", text: "Failed grout and silicone at the door sill and edges cut out, resealed and regrouted with outdoor-grade grout." },
-                { title: "Verandahs", text: "Heritage verandah tiles kept — cracked joints regrouted joint by joint so the original pattern survives." },
-                { title: "Alfresco Areas", text: "Washed-out or cracked joints regrouted so outdoor tiles stop rocking and water stays out." },
+                { title: "Balconies", text: "Failed grout and silicone at the door sill and edges cut out, resealed and regrouted with outdoor grade grout." },
+                { title: "Verandahs", text: "Heritage verandah tiles kept, cracked joints regrouted joint by joint so the original pattern survives." },
+                { title: "Alfresco Areas", text: "Washed out or cracked joints regrouted so outdoor tiles stop rocking and water stays out." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -418,7 +434,7 @@ export default function BallaratHubPage({
               ))}
             </div>
             <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
-              Relaying a whole balcony is a bigger job — we&apos;ll tell you if yours needs it. More on{" "}
+              Relaying a whole balcony is a bigger job, we&apos;ll tell you if yours needs it. More on{" "}
               <Link href="/balcony-leak-repairs" className="font-bold text-accent hover:underline">balcony leak repairs</Link>.
             </p>
             <div className="text-center">
@@ -432,14 +448,14 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 9. IMAGE BAND B — Pattern v2 ═════════ */}
+        {/* ═════════ 9. IMAGE BAND B, Pattern v2 ═════════ */}
         <section className="bg-white py-14">
           <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
             <figure>
               <div className="relative aspect-[21/9] overflow-hidden rounded-sm">
-                <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Ballarat — outdoor tiles freshly regrouted" fill sizes="100vw" className="object-cover" />
+                <Image src="/balcony-regrouting-tiles.webp" alt="Balcony regrouting in Ballarat, outdoor tiles freshly regrouted" fill sizes="100vw" className="object-cover" />
               </div>
-              <figcaption className="mt-2 text-sm text-neutral-500">Frost and sun crack outdoor joints first — fresh grout and silicone keep the water out for another decade.</figcaption>
+              <figcaption className="mt-2 text-sm text-neutral-500">Frost and sun crack outdoor joints first, fresh grout and silicone keep the water out for another decade.</figcaption>
             </figure>
           </div>
         </section>
@@ -452,7 +468,7 @@ export default function BallaratHubPage({
                 Areas We Cover Around Ballarat
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Ballarat 3350 plus Wendouree and Sebastopol. One page, one crew, same week.
+                Ballarat 3350 plus every town and suburb in our Ballarat service area, from Daylesford and Creswick to Buninyong and Alfredton.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -460,21 +476,21 @@ export default function BallaratHubPage({
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Ballarat 3350</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Ballarat&apos;s Heritage Streets</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Gold-rush cottages and period homes with original bathrooms — grout and silicone replaced around tiles worth keeping, which is what makes a heritage bathroom come up like new without a renovation attached.
+                  Gold rush cottages and period homes with original bathrooms, grout and silicone replaced around tiles worth keeping, which is what makes a heritage bathroom come up like new without a renovation attached.
                 </p>
               </div>
               <div id="wendouree" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Wendouree 3355</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Wendouree</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Post-war and family homes around the lake — bathrooms that have done decades of family service, regrouted and resealed in one visit so the ensuite and main bathroom match.
+                  Post war and family homes around the lake, bathrooms that have done decades of family service, regrouted and resealed in one visit so the ensuite and main bathroom match.
                 </p>
               </div>
               <div id="sebastopol" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Sebastopol 3356</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Sebastopol</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Ballarat&apos;s south side mixes older cottages with family homes — the same story everywhere: cold, damp winters, tired joints, sound tiles. Shower, floor and laundry done together.
+                  Ballarat&apos;s south side mixes older cottages with family homes, the same story everywhere: cold, damp winters, tired joints, sound tiles. Shower, floor and laundry done together.
                 </p>
               </div>
             </div>
@@ -483,6 +499,22 @@ export default function BallaratHubPage({
               {[
                 { name: "Wendouree", href: "/locations/ballarat/wendouree" },
                 { name: "Sebastopol", href: "/locations/ballarat/sebastopol" },
+                { name: "Alfredton", href: "/locations/ballarat/alfredton" },
+                { name: "Ballarat Central", href: "/locations/ballarat/ballarat-central" },
+                { name: "Ballarat East", href: "/locations/ballarat/ballarat-east" },
+                { name: "Ballarat North", href: "/locations/ballarat/ballarat-north" },
+                { name: "Black Hill", href: "/locations/ballarat/black-hill" },
+                { name: "Buninyong", href: "/locations/ballarat/buninyong" },
+                { name: "Delacombe", href: "/locations/ballarat/delacombe" },
+                { name: "Eureka", href: "/locations/ballarat/eureka" },
+                { name: "Mount Clear", href: "/locations/ballarat/mount-clear" },
+                { name: "Mount Helen", href: "/locations/ballarat/mount-helen" },
+                { name: "Redan", href: "/locations/ballarat/redan" },
+                { name: "Creswick", href: "/locations/ballarat/creswick" },
+                { name: "Daylesford", href: "/locations/ballarat/daylesford" },
+                { name: "Newlyn", href: "/locations/ballarat/newlyn" },
+                { name: "Clarendon", href: "/locations/ballarat/clarendon" },
+                { name: "Elaine", href: "/locations/ballarat/elaine" },
                 { name: "Geelong", href: "/locations/geelong" },
               ].map((l) => (
                 <Link
@@ -497,14 +529,14 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 11. MID CTA — Pattern v2 ═════════ */}
+        {/* ═════════ 11. MID CTA, Pattern v2 ═════════ */}
         <section className="bg-[#0d1030] py-12">
           <div className="mx-auto max-w-3xl space-y-5 px-4 text-center text-white sm:px-6">
             <h2 className="text-3xl font-black leading-tight lg:text-[36px]">
               Get a Free Quote in Ballarat
             </h2>
             <p className="text-base leading-relaxed text-white/85">
-              Send us a photo of the grout and we&apos;ll price the job properly — no obligation, no pressure.
+              Send us a photo of the grout and we&apos;ll price the job properly, no obligation, no pressure.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-1">
               <Link
@@ -531,12 +563,12 @@ export default function BallaratHubPage({
                 Why Ballarat Owners Choose Groutix
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Groutix is a regrouting specialist — showers, floors, balconies, epoxy and silicone. The crew on your Ballarat job does this work every day, in homes like yours.
+                Groutix is a regrouting specialist, showers, floors, balconies, epoxy and silicone. The crew on your Ballarat job does this work every day, in homes like yours.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs — heritage tiles stay." },
+                { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs, heritage tiles stay." },
                 { title: "10 Year Waterproof Warranty", text: "On eligible completed shower regrouting.", link: { href: "/terms-conditions", label: "Warranty terms" } },
                 { title: `${gr.ratingLabel} From ${gr.countLabel} Reviews`, text: "Rated by Melbourne and regional customers on Google." },
                 { title: "Built for Cold Winters", text: "Grout choices that stand up to damp, frost and seasonal movement." },
@@ -572,7 +604,7 @@ export default function BallaratHubPage({
                 What Does Regrouting Cost in Ballarat?
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Short answer: we give you a fixed quote once we&apos;ve seen the job — every home is different. These four things decide the number:
+                Most standard single showers cost about $550 to $1,500 to regrout. The exact price is quoted free once we have seen the job, and these four things decide the number:
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -612,7 +644,7 @@ export default function BallaratHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 14. SERVICES STRIP — Pattern v2 ═════════ */}
+        {/* ═════════ 14. SERVICES STRIP, Pattern v2 ═════════ */}
         <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
@@ -630,7 +662,7 @@ export default function BallaratHubPage({
                 { href: "/tile-regrouting", title: "Tile Regrouting", text: "Floors, walls, laundries and splashbacks regrouted throughout." },
                 { href: "/balcony-leak-repairs", title: "Balcony Leak Repairs", text: "Sill and edge joints resealed before water gets underneath." },
                 { href: "/epoxy-grout", title: "Epoxy Grout", text: "Waterproof, stain-proof grout that never needs sealing." },
-                { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced — never layered over." },
+                { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced, never layered over." },
                 { href: "/small-tiling-jobs", title: "Small Tiling Jobs", text: "A few cracked or loose tiles replaced and regrouted." },
                 { href: "/our-process", title: "Our Process", text: "How a Groutix job runs, from first photo to final wipe-down." },
               ].map((s) => (
@@ -670,7 +702,7 @@ export default function BallaratHubPage({
               Tired Grout Anywhere in Ballarat?
             </h2>
             <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting Ballarat is what we do — we cover Ballarat, Wendouree and Sebastopol, most jobs done in a single visit.
+              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting Ballarat is what we do, we cover Ballarat, Wendouree and Sebastopol, most jobs done in a single visit.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link

@@ -3,7 +3,7 @@ import LilydaleHubPage from "@/components/LilydaleHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Lilydale | Shower, Tile & Balcony | Groutix",
+  title: "Regrouting Lilydale | Shower, Tile & Balcony",
   description:
     "Shower, bathroom and balcony regrouting in Lilydale, Mooroolbark and Chirnside Park. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/lilydale" },

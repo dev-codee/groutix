@@ -24,11 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!(GEELONG_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const name = formatSuburbName(suburb);
   return {
-    title: `Shower Regrouting ${name} | Geelong | GROUTIX`,
+    title: `Shower Regrouting ${name} | Geelong`,
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Geelong. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/geelong/${suburb}` },
     openGraph: {
-      title: `Shower Regrouting ${name} | Geelong | GROUTIX`,
+      title: `Shower Regrouting ${name} | Geelong | Groutix`,
       description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Geelong. Free quotes and specialist workmanship.`,
       url: `/locations/geelong/${suburb}`,
       type: "website",
