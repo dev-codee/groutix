@@ -3,7 +3,7 @@ import BallaratHubPage from "@/components/BallaratHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Ballarat | Shower, Tile & Balcony | Groutix",
+  title: "Regrouting Ballarat | Shower, Tile & Balcony",
   description:
     "Shower, bathroom and balcony regrouting in Ballarat, Wendouree and Sebastopol. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/ballarat" },
