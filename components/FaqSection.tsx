@@ -42,8 +42,12 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-export default function FaqSection() {
-  const faqs = [
+export default function FaqSection({
+  faqs: customFaqs,
+}: {
+  faqs?: Array<{ question: string; answer: string }>;
+} = {}) {
+  const defaultFaqs = [
     {
       question: "How Do I Know If I Need Regrouting or Recaulking?",
       answer: "Cracked, crumbling grout usually means regrouting. Peeling or soft silicone around corners usually means recaulking. Many Melbourne bathrooms need both, catching it early saves money.",
@@ -81,6 +85,9 @@ export default function FaqSection() {
       answer: "Most shower regrouting jobs are competitively priced. See our full pricing guide for details, or request a free, no-obligation quote.",
     },
   ];
+
+  const faqs =
+    customFaqs && customFaqs.length > 0 ? customFaqs : defaultFaqs;
 
   return (
     <AnimatedSection className="bg-white py-16 lg:py-24" id="faq">
