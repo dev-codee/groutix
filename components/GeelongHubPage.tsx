@@ -1,6 +1,6 @@
-/* GeelongHubPage — Pattern v2 hub build (2026-10-31).
+/* GeelongHubPage, Pattern v2 hub build (2026-10-31).
    Location rebuild, Batch 4 (regionals): REGIONAL HUB page for
-   /locations/geelong (canonical hub URL — no /melbourne/ level),
+   /locations/geelong (canonical hub URL, no /melbourne/ level),
    covering Geelong West, Belmont, Highton, Lara, Torquay and
    Ocean Grove (client-confirmed service-area doc #43). All six
    sub-slugs are already in the GEELONG gate list, so every
@@ -15,7 +15,7 @@
    gradient overlay + warranty-seal row; photo band after the
    shower section, wide photo after balconies (site photos,
    captions never claim a photo is from this city); gallery +
-   our-process links; mid-page navy CTA after Areas; 8-card
+   our-process links; mid page navy CTA after Areas; 8-card
    services strip before FAQs. Copy: direct-answer /
    service-first, unique Geelong angle (period homes in
    Geelong West and the inner suburbs, Belmont and Highton's
@@ -25,7 +25,7 @@
    No invented stats, jobs, reviews or prices. Rating badges
    use the live useGoogleRating() hook.
    Route title: "Regrouting Geelong | Shower, Tile & Balcony |
-   Groutix". Drop-in: components/GeelongHubPage.tsx wired into
+   Groutix". Drop in: components/GeelongHubPage.tsx wired into
    the geelong hub route (see parent notes). */
 
 "use client";
@@ -59,28 +59,44 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 const FAQS = [
   {
-    q: "Can you regrout around the original tiles in our Geelong West period home?",
-    a: "Yes — period bathrooms are where regrouting earns its keep. We work joint by joint with hand care around older tiles, cut the failed grout out and rebuild it, so the original tiling survives and looks like itself again. Tiles are only disturbed if one is already loose.",
+    q: "How much does shower regrouting cost in Geelong?",
+    a: "Most standard single showers cost about $550 to $1,500 to regrout. The price depends on the size of the shower, the tile type and the condition of the grout. Groutix quotes the exact price for free before any work starts, and complete regrouting is backed by a 10 year waterproof warranty.",
   },
   {
-    q: "Does salt air really wear grout out faster in Torquay and Ocean Grove?",
-    a: "It does — coastal moisture and salt sit in the joints and break down grout and silicone faster than they fail inland, and mould takes hold sooner. We regrout Surf Coast bathrooms with that in mind: grout and sealers chosen for damp, salty conditions, and silicone replaced at every opening.",
+    q: "Can you regrout a shower without removing the tiles?",
+    a: "Yes. On most Geelong jobs the tiles stay exactly where they are. The old grout is removed mechanically, the joints are rebuilt with fresh grout, and the corners are resealed with silicone. Tiles only come up if one is already loose, cracked or drummy underneath.",
   },
   {
-    q: "There's a stain on the ceiling below our bathroom. Is it the shower?",
-    a: "Very often, yes — in two-storey homes the upstairs shower is the first suspect when a downstairs ceiling stains. Failed grout and silicone let water through slowly for months before the stain shows. We find where it's escaping and fix the grout and seals; if it's plumbing or a failed membrane, we'll tell you straight.",
+    q: "Will regrouting fix my leaking shower, or is it the waterproofing membrane?",
+    a: "Regrouting fixes leaks caused by failed grout and silicone, which is the cause in most leaking showers. If the waterproofing membrane under the tiles has failed, regrouting alone will not stop the leak, and we will tell you straight before quoting rather than sell you a repair that cannot hold.",
   },
   {
-    q: "Do you cover Lara and the Surf Coast, or just central Geelong?",
-    a: "All of it — Geelong West, Belmont, Highton and Lara, plus Torquay and Ocean Grove on the coast. The whole doc area is one service run for us.",
+    q: "Epoxy grout or cement grout for a coastal home?",
+    a: "Epoxy grout is the stronger choice near the coast. It is non porous, so bayside humidity and salt air cannot soak in, mould has nowhere to live, and it never needs sealing. Cement grout with a penetrating sealer costs less and suits drier bathrooms. We will recommend honestly for each room.",
   },
   {
-    q: "Our Lara home is nearly new and the shower grout is already cracking. Why?",
-    a: "It's the most common call we get from growth estates: builder grout goes in fast and thin, and a new slab keeps moving slightly as it settles, so joints crack and silicone lets go within a few years. Regrouting to proper depth with the right grout fixes it for the long term — you're not doing anything wrong.",
+    q: "Do you cover Torquay, Ocean Grove and the Bellarine?",
+    a: "Yes. Groutix regrouts across Geelong, Geelong West, Newtown, Belmont, Highton, Grovedale, Waurn Ponds, Lara and Corio, and down the Surf Coast and Bellarine through Torquay, Anglesea, Barwon Heads, Ocean Grove, Drysdale, Leopold, Portarlington, Queenscliff and St Leonards.",
   },
   {
-    q: "Should I choose epoxy or cement grout?",
-    a: "Epoxy grout resists water and staining far better than cement grout and never needs sealing — ideal for busy family showers and coastal homes where mould is relentless. Cement grout with a penetrating sealer is the standard option and costs less. We'll tell you which suits each room.",
+    q: "Our holiday home sits empty for weeks. Can a shower leak go unnoticed?",
+    a: "It can, and it happens a lot on the Surf Coast and the Bellarine. A slow leak through failed grout or silicone runs unseen in an empty house and can damage the subfloor long before anyone notices a stain. If the grout is cracked or the silicone has gone black or loose, a regrout and reseal is cheap insurance.",
+  },
+  {
+    q: "The silicone in our shower has gone black and perished. Is that a regrout or just a reseal?",
+    a: "Silicone is a wear item and perishes faster in sea air. If the grout itself is still sound, a reseal on its own can be enough. If the grout is also cracked or porous, a full regrout includes fresh silicone at every corner and junction, so both problems are fixed in one visit.",
+  },
+  {
+    q: "Can a leaking balcony be fixed without removing the tiles?",
+    a: "Often, yes. Many leaking balconies in Geelong are leaking through failed grout and silicone rather than the tiles, and a balcony regrout and reseal fixes that without lifting a tile. If the waterproofing membrane has failed, we will tell you honestly before starting, because regrouting cannot repair a failed membrane.",
+  },
+  {
+    q: "How long does a shower regrout take?",
+    a: "Most showers are finished in a single visit. Before we start, we tell you exactly when the shower can be used again, so there are no surprises for family bathrooms or holiday changeover days.",
+  },
+  {
+    q: "How long will a regrout last?",
+    a: "A proper regrout, where the old grout is fully removed and the joints rebuilt, is made to last for years, and eligible complete shower regrouting is backed by our 10 year waterproof warranty. Surface jobs that smear new grout over old grout are the ones that fail early, which is why we never do them.",
   },
 ];
 
@@ -139,7 +155,7 @@ export default function GeelongHubPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <main className="public-page">
-        {/* ═════════ 1. HERO — Pattern v2: homepage photo bg + warranty seal ═════════ */}
+        {/* ═════════ 1. HERO, Pattern v2: homepage photo bg + warranty seal ═════════ */}
         <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
           <Image src="/dark-grey-shower-floor-regrouting.webp" alt="" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.58)_55%,rgba(0,0,0,0.68)_100%)]" />
@@ -147,10 +163,10 @@ export default function GeelongHubPage({
             <div className="text-center lg:text-left">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[1px] text-[#FBBC04] sm:text-[13px] sm:tracking-[1.5px]">Groutix · Geelong 3220</p>
               <h1 className="mb-4 text-[clamp(28px,3.4vw,42px)] font-black leading-[1.15] tracking-[-0.01em] [text-wrap:balance]">
-                Regrouting in Geelong: Showers, Bathrooms &amp; Balconies
+                Shower Regrouting Geelong
               </h1>
               <p className="mx-auto mb-6 max-w-[560px] text-[15px] leading-relaxed text-white/85 sm:text-base lg:mx-0">
-                Shower grout gone dark in Geelong? Silicone perished in the sea air at Torquay? We regrout showers, bathrooms and balconies across Geelong, Belmont, Highton, Lara and the Surf Coast — tiles stay in place. That&apos;s regrouting in Geelong, backed by a 10-year waterproof warranty on showers. Free quote.
+                From period cottages in Newtown to new estates in Grovedale and holiday homes in Torquay, we regrout leaking and mouldy showers across Geelong, the Surf Coast and the Bellarine. Tiles stay in place, and eligible shower regrouting is backed by a 10 year waterproof warranty.
               </p>
               <div className="mb-7 flex flex-wrap justify-center gap-3 lg:justify-start [&>a[href^='tel:']]:hidden md:[&>a[href^='tel:']]:inline-flex">
                 <HeroContactBadges rating={rating} />
@@ -200,7 +216,7 @@ export default function GeelongHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 3. LOCAL INTRO — direct answer ═════════ */}
+        {/* ═════════ 3. LOCAL INTRO, direct answer ═════════ */}
         <AnimatedSection className="bg-white py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
@@ -208,21 +224,21 @@ export default function GeelongHubPage({
                 Regrouting for Geelong Homes, Period to Brand New
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Geelong is really several bathroom stories at once. Geelong West and the inner suburbs carry period homes whose original tiling deserves to survive; Belmont and Highton&apos;s family homes are at first-regrout age; Lara&apos;s estates are brand new and already cracking; and down on the Surf Coast, salt air eats grout and silicone faster than anywhere inland.
+                Geelong is really several bathroom stories at once. Geelong West and the inner suburbs carry period homes whose original tiling deserves to survive; Belmont and Highton&apos;s family homes are at first regrout age; Lara&apos;s estates are brand new and already cracking; and down on the Surf Coast, salt air eats grout and silicone faster than anywhere inland.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-4">
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Our grouting repairs in Geelong start with the joints, not the tiles —{" "}
+                Our grouting repairs in Geelong start with the joints, not the tiles,{" "}
                 <Link href="/our-process" className="font-bold text-accent hover:underline">our process</Link>{" "}
-                cuts out the failed grout joint by joint and rebuilds it to proper depth, so a century-old West bathroom or a five-year-old Lara one comes back watertight without a renovation.
+                cuts out the failed grout joint by joint and rebuilds it to proper depth, so a century old West bathroom or a five year old Lara one comes back watertight without a renovation.
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
               {[
-                { value: "3212–3228", label: "Postcodes Covered", sub: "Lara to Torquay, the whole run" },
+                { value: "3212 to 3228", label: "Postcodes Covered", sub: "Lara to Torquay, the whole run" },
                 { value: "Period", label: "Tiles Kept", sub: "Original tiling regrouted in place" },
-                { value: "1 Visit", label: "Ensuite, Bathroom & Laundry", sub: "Matching finish, no second call-out" },
+                { value: "1 Visit", label: "Ensuite, Bathroom & Laundry", sub: "Matching finish, no second call out" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border border-neutral-200 bg-neutral-50 px-6 py-8 text-center">
                   <p className="text-2xl font-black text-neutral-900">{s.value}</p>
@@ -242,7 +258,7 @@ export default function GeelongHubPage({
                 Shower Regrouting in Geelong
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Cracked, stained or mouldy shower grout? A shower regrout replaces it — and the old silicone — in one visit, tiles left in place. In older homes we take the extra care original tiles deserve: joints cut by hand where the tiling is delicate, colours chosen to sit right against older glazes.
+                Cracked, stained or mouldy shower grout? A shower regrout replaces it, and the old silicone, in one visit, tiles left in place. In older homes we take the extra care original tiles deserve: joints cut by hand where the tiling is delicate, colours chosen to sit right against older glazes.
               </p>
             </div>
             <div className="mx-auto max-w-3xl space-y-6">
@@ -250,7 +266,7 @@ export default function GeelongHubPage({
                 <h3 className="mb-4 text-xl font-bold text-neutral-900">What a Groutix Shower Regrout Includes</h3>
                 <ol className="space-y-3">
                   {[
-                    "Old grout cut out to depth, not painted over — hand care around period tiles.",
+                    "Old grout cut out to depth, not painted over, hand care around period tiles.",
                     "Shower, floor and wall grout done together if you want a matching finish.",
                     "Old silicone stripped and replaced, not layered over.",
                     <>Your choice of cement grout with sealer, or <Link href="/epoxy-grout" className="font-bold text-accent hover:underline">epoxy grout</Link>.</>,
@@ -274,19 +290,19 @@ export default function GeelongHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 5. IMAGE BAND A — Pattern v2 ═════════ */}
+        {/* ═════════ 5. IMAGE BAND A, Pattern v2 ═════════ */}
         <section className="bg-white py-14">
           <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
             <div className="grid gap-6 sm:grid-cols-2">
               <figure>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-over-bath-regrouting-heritage-tiles.webp" alt="Shower regrouting in Geelong — a shower over bath with heritage tiles" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
+                  <Image src="/shower-over-bath-regrouting-heritage-tiles.webp" alt="Shower regrouting in Geelong, a shower over bath with heritage tiles" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
                 </div>
-                <figcaption className="mt-2 text-sm text-neutral-500">Heritage tiles like these are worth keeping — it&apos;s the joints between them that give up first.</figcaption>
+                <figcaption className="mt-2 text-sm text-neutral-500">Heritage tiles like these are worth keeping, it&apos;s the joints between them that give up first.</figcaption>
               </figure>
               <figure>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                  <Image src="/shower-regrouting-tiled-interior.webp" alt="Shower regrouting in Geelong — a freshly regrouted tiled shower interior" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
+                  <Image src="/shower-regrouting-tiled-interior.webp" alt="Shower regrouting in Geelong, a freshly regrouted tiled shower interior" fill sizes="(min-width:640px) 50vw, 100vw" className="object-cover" />
                 </div>
                 <figcaption className="mt-2 text-sm text-neutral-500">The finish we aim for in every Geelong home: clean joints, sealed edges, tiles untouched.</figcaption>
               </figure>
@@ -308,7 +324,7 @@ export default function GeelongHubPage({
                 Tile Regrouting for Floors, Laundries and Kitchens
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Floor grout wears fastest in the rooms you use most. Tile regrouting in Geelong covers bathroom floors, laundries and kitchen splashbacks right through the house — cut out and replaced, without retiling.
+                Floor grout wears fastest in the rooms you use most. Tile regrouting in Geelong covers bathroom floors, laundries and kitchen splashbacks right through the house, cut out and replaced, without retiling.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -356,7 +372,7 @@ export default function GeelongHubPage({
                 Leaking Shower Repair in Geelong
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                In two-storey homes, a leaking upstairs shower usually announces itself downstairs first: a stain spreading on the ceiling, paint bubbling, plaster going soft. In single-storey homes it shows up beside the bathroom instead — swollen skirting, damp carpet next door. We find where the water is escaping, fix the grout and seals — and tell you straight if it&apos;s a membrane or plumbing problem instead.
+                In two storey homes, a leaking upstairs shower usually announces itself downstairs first: a stain spreading on the ceiling, paint bubbling, plaster going soft. In single storey homes it shows up beside the bathroom instead, swollen skirting, damp carpet next door. We find where the water is escaping, fix the grout and seals, and tell you straight if it&apos;s a membrane or plumbing problem instead.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -382,7 +398,7 @@ export default function GeelongHubPage({
             <div className="mx-auto max-w-3xl rounded-sm border-l-4 border-accent bg-white p-6">
               <h3 className="mb-2 text-lg font-bold text-neutral-900">How We Tell Grout From Membrane</h3>
               <p className="text-base leading-relaxed text-neutral-600">
-                We check the grout, silicone and tiles for cracks, gaps and movement before we quote. If the waterproofing under the tiles has failed, regrouting alone won&apos;t fix it — and we&apos;ll say so. Under NCC 2022, shower walls must be waterproofed to at least 1,800 mm. More on{" "}
+                We check the grout, silicone and tiles for cracks, gaps and movement before we quote. If the waterproofing under the tiles has failed, regrouting alone won&apos;t fix it, and we&apos;ll say so. Under NCC 2022, shower walls must be waterproofed to at least 1,800 mm. More on{" "}
                 <Link href="/leaking-shower-repair" className="font-bold text-accent hover:underline">leaking shower repair</Link>.
               </p>
             </div>
@@ -397,14 +413,14 @@ export default function GeelongHubPage({
                 Balconies, Alfrescos and Outdoor Tiles
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Sun, wind and coastal weather work outdoor joints hard, and the grout and silicone at the door sill and balcony edges are usually the first to fail. Balcony regrouting in Geelong fixes failed joints before tiles loosen and water gets underneath — and from a balcony, that water usually ends up in the room below.
+                Sun, wind and coastal weather work outdoor joints hard, and the grout and silicone at the door sill and balcony edges are usually the first to fail. Balcony regrouting in Geelong fixes failed joints before tiles loosen and water gets underneath, and from a balcony, that water usually ends up in the room below.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
-                { title: "Balconies", text: "Failed grout and silicone at the door sill and edges cut out, resealed and regrouted with outdoor-grade grout." },
-                { title: "Alfresco Areas", text: "Washed-out or cracked joints regrouted so outdoor tiles stop rocking and water stays out." },
-                { title: "Porches and Entries", text: "Period porch and entry tiles kept — joints regrouted, the odd loose tile re-fixed where suitable." },
+                { title: "Balconies", text: "Failed grout and silicone at the door sill and edges cut out, resealed and regrouted with outdoor grade grout." },
+                { title: "Alfresco Areas", text: "Washed out or cracked joints regrouted so outdoor tiles stop rocking and water stays out." },
+                { title: "Porches and Entries", text: "Period porch and entry tiles kept, joints regrouted, the odd loose tile re fixed where suitable." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -420,7 +436,7 @@ export default function GeelongHubPage({
               ))}
             </div>
             <p className="mx-auto max-w-3xl text-center text-base text-neutral-600">
-              Relaying a whole balcony or alfresco is a bigger job — we&apos;ll tell you if yours needs it. More on{" "}
+              Relaying a whole balcony or alfresco is a bigger job, we&apos;ll tell you if yours needs it. More on{" "}
               <Link href="/balcony-leak-repairs" className="font-bold text-accent hover:underline">balcony leak repairs</Link>.
             </p>
             <div className="text-center">
@@ -434,14 +450,14 @@ export default function GeelongHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 9. IMAGE BAND B — Pattern v2 ═════════ */}
+        {/* ═════════ 9. IMAGE BAND B, Pattern v2 ═════════ */}
         <section className="bg-white py-14">
           <div className="mx-auto max-w-[1460px] px-4 sm:px-6 lg:px-10">
             <figure>
               <div className="relative aspect-[21/9] overflow-hidden rounded-sm">
-                <Image src="/balcony-regrouting-herringbone-tiles.webp" alt="Balcony regrouting in Geelong — herringbone balcony tiles freshly regrouted" fill sizes="100vw" className="object-cover" />
+                <Image src="/balcony-regrouting-herringbone-tiles.webp" alt="Balcony regrouting in Geelong, herringbone balcony tiles freshly regrouted" fill sizes="100vw" className="object-cover" />
               </div>
-              <figcaption className="mt-2 text-sm text-neutral-500">Outdoor joints take the weather head-on — fresh grout and silicone at the sill and edges keep the water out.</figcaption>
+              <figcaption className="mt-2 text-sm text-neutral-500">Outdoor joints take the weather head-on, fresh grout and silicone at the sill and edges keep the water out.</figcaption>
             </figure>
           </div>
         </section>
@@ -454,7 +470,7 @@ export default function GeelongHubPage({
                 Areas We Cover Around Geelong
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Geelong 3220 plus Geelong West, Belmont, Highton, Lara, Torquay and Ocean Grove. One page, one crew, same week.
+                Geelong plus the Surf Coast and the Bellarine, from Lara and Corio to Torquay, Ocean Grove and Queenscliff.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -462,42 +478,42 @@ export default function GeelongHubPage({
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Geelong West 3218</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Geelong West</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  The period heart of Geelong — Victorian and Edwardian homes around Pakington Street with original bathrooms where the tiles are the feature and the grout is the failure. We regrout joint by joint so the original work survives.
+                  The period heart of Geelong, Victorian and Edwardian homes around Pakington Street with original bathrooms where the tiles are the feature and the grout is the failure. We regrout joint by joint so the original work survives.
                 </p>
               </div>
               <div id="belmont" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Belmont 3216</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Belmont</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Established family homes south of the Barwon — ensuites and main bathrooms hitting first-regrout age together. We regrout the full set in one visit so the colours match across the house.
+                  Established family homes south of the Barwon, ensuites and main bathrooms hitting first regrout age together. We regrout the full set in one visit so the colours match across the house.
                 </p>
               </div>
               <div id="highton" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Highton 3216</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Highton</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Bigger family homes on the hill, many with two or three bathrooms — grout and silicone replaced throughout, leaking showers traced to the joint that failed.
+                  Bigger family homes on the hill, many with two or three bathrooms, grout and silicone replaced throughout, leaking showers traced to the joint that failed.
                 </p>
               </div>
               <div id="lara" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Lara 3212</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Lara</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  The growth edge of Geelong — new estates where builder grout went in thin and cracks early as slabs settle. We regrout Lara showers to proper depth so the fix outlasts the home&apos;s first decade.
+                  The growth edge of Geelong, new estates where builder grout went in thin and cracks early as slabs settle. We regrout Lara showers to proper depth so the fix outlasts the home&apos;s first decade.
                 </p>
               </div>
               <div id="torquay" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Torquay 3228</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Torquay</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  Salt air and coastal moisture work Torquay bathrooms hard — grout goes mouldy sooner and silicone perishes faster than inland. We regrout and reseal with products chosen for the coast, in family homes and holiday houses alike.
+                  Salt air and coastal moisture work Torquay bathrooms hard, grout goes mouldy sooner and silicone perishes faster than inland. We regrout and reseal with products chosen for the coast, in family homes and holiday houses alike.
                 </p>
               </div>
               <div id="ocean-grove" className="scroll-mt-28 space-y-3 rounded-sm border border-neutral-200 bg-white p-6">
                 <p className="text-sm font-black uppercase tracking-[0.15em] text-accent">Ocean Grove 3226</p>
                 <h3 className="text-xl font-bold text-neutral-900">Regrouting in Ocean Grove</h3>
                 <p className="text-base leading-relaxed text-neutral-600">
-                  The same coastal story across the bridge: beach-house bathrooms and family homes where damp joints never quite dry out. Epoxy grout suits Ocean Grove showers — it resists mould and never needs sealing.
+                  The same coastal story across the bridge: beach house bathrooms and family homes where damp joints never quite dry out. Epoxy grout suits Ocean Grove showers, it resists mould and never needs sealing.
                 </p>
               </div>
             </div>
@@ -510,6 +526,46 @@ export default function GeelongHubPage({
                 { name: "Lara", href: "/locations/geelong/lara" },
                 { name: "Torquay", href: "/locations/geelong/torquay" },
                 { name: "Ocean Grove", href: "/locations/geelong/ocean-grove" },
+                { name: "South Geelong", href: "/locations/geelong/south-geelong" },
+                { name: "Newtown", href: "/locations/geelong/newtown" },
+                { name: "Drumcondra", href: "/locations/geelong/drumcondra" },
+                { name: "Manifold Heights", href: "/locations/geelong/manifold-heights" },
+                { name: "Herne Hill", href: "/locations/geelong/herne-hill" },
+                { name: "East Geelong", href: "/locations/geelong/east-geelong" },
+                { name: "Grovedale", href: "/locations/geelong/grovedale" },
+                { name: "Marshall", href: "/locations/geelong/marshall" },
+                { name: "Wandana Heights", href: "/locations/geelong/wandana-heights" },
+                { name: "Waurn Ponds", href: "/locations/geelong/waurn-ponds" },
+                { name: "Fyansford", href: "/locations/geelong/fyansford" },
+                { name: "Bell Park", href: "/locations/geelong/bell-park" },
+                { name: "Bell Post Hill", href: "/locations/geelong/bell-post-hill" },
+                { name: "Corio", href: "/locations/geelong/corio" },
+                { name: "Norlane", href: "/locations/geelong/norlane" },
+                { name: "North Geelong", href: "/locations/geelong/north-geelong" },
+                { name: "North Shore", href: "/locations/geelong/north-shore" },
+                { name: "Anakie", href: "/locations/geelong/anakie" },
+                { name: "Lovely Banks", href: "/locations/geelong/lovely-banks" },
+                { name: "Wallington", href: "/locations/geelong/wallington" },
+                { name: "Breakwater", href: "/locations/geelong/breakwater" },
+                { name: "Hamlyn Heights", href: "/locations/geelong/hamlyn-heights" },
+                { name: "Newcomb", href: "/locations/geelong/newcomb" },
+                { name: "St Albans Park", href: "/locations/geelong/st-albans-park" },
+                { name: "Thomson", href: "/locations/geelong/thomson" },
+                { name: "Whittington", href: "/locations/geelong/whittington" },
+                { name: "Aireys Inlet", href: "/locations/geelong/aireys-inlet" },
+                { name: "Anglesea", href: "/locations/geelong/anglesea" },
+                { name: "Fairhaven", href: "/locations/geelong/fairhaven" },
+                { name: "Jan Juc", href: "/locations/geelong/jan-juc" },
+                { name: "Lorne", href: "/locations/geelong/lorne" },
+                { name: "Barwon Heads", href: "/locations/geelong/barwon-heads" },
+                { name: "Clifton Springs", href: "/locations/geelong/clifton-springs" },
+                { name: "Drysdale", href: "/locations/geelong/drysdale" },
+                { name: "Indented Head", href: "/locations/geelong/indented-head" },
+                { name: "Leopold", href: "/locations/geelong/leopold" },
+                { name: "Point Lonsdale", href: "/locations/geelong/point-lonsdale" },
+                { name: "Portarlington", href: "/locations/geelong/portarlington" },
+                { name: "Queenscliff", href: "/locations/geelong/queenscliff" },
+                { name: "St Leonards", href: "/locations/geelong/st-leonards" },
                 { name: "Ballarat", href: "/locations/ballarat" },
               ].map((l) => (
                 <Link
@@ -524,14 +580,14 @@ export default function GeelongHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 11. MID CTA — Pattern v2 ═════════ */}
+        {/* ═════════ 11. MID CTA, Pattern v2 ═════════ */}
         <section className="bg-[#0d1030] py-12">
           <div className="mx-auto max-w-3xl space-y-5 px-4 text-center text-white sm:px-6">
             <h2 className="text-3xl font-black leading-tight lg:text-[36px]">
               Get a Free Quote in Geelong
             </h2>
             <p className="text-base leading-relaxed text-white/85">
-              Send us a photo of the grout and we&apos;ll price the job properly — no obligation, no pressure.
+              Send us a photo of the grout and we&apos;ll price the job properly, no obligation, no pressure.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-1">
               <Link
@@ -558,15 +614,15 @@ export default function GeelongHubPage({
                 Why Geelong Owners Choose Groutix
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Groutix is a regrouting specialist — showers, floors, balconies, epoxy and silicone. The crew on your Geelong job does this work every day, in homes like yours.
+                Groutix is a regrouting specialist, showers, floors, balconies, epoxy and silicone. The crew on your Geelong job does this work every day, in homes like yours.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs — period tiles stay." },
+                { title: "Keep Your Tiles", text: "No tile removal on most regrouting jobs, period tiles stay." },
                 { title: "10 Year Waterproof Warranty", text: "On eligible completed shower regrouting.", link: { href: "/terms-conditions", label: "Warranty terms" } },
                 { title: `${gr.ratingLabel} From ${gr.countLabel} Reviews`, text: "Rated by Melbourne and regional customers on Google." },
-                { title: "City to Surf Coast", text: "One crew for Geelong's suburbs and the coast — same standard everywhere." },
+                { title: "City to Surf Coast", text: "One crew for Geelong's suburbs and the coast, same standard everywhere." },
               ].map((c, i) => (
                 <motion.div
                   key={c.title}
@@ -599,7 +655,7 @@ export default function GeelongHubPage({
                 What Does Regrouting Cost in Geelong?
               </h2>
               <p className="text-base leading-relaxed text-neutral-600 sm:text-lg">
-                Short answer: we give you a fixed quote once we&apos;ve seen the job — every home is different. These four things decide the number:
+                Most standard single showers cost about $550 to $1,500 to regrout. The exact price is quoted free once we have seen the job, and these four things decide the number:
               </p>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -639,7 +695,7 @@ export default function GeelongHubPage({
           </div>
         </AnimatedSection>
 
-        {/* ═════════ 14. SERVICES STRIP — Pattern v2 ═════════ */}
+        {/* ═════════ 14. SERVICES STRIP, Pattern v2 ═════════ */}
         <AnimatedSection className="bg-[#eef1f8] py-16 lg:py-24">
           <div className="mx-auto max-w-[1460px] space-y-10 px-4 sm:px-6 lg:px-10">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
@@ -657,7 +713,7 @@ export default function GeelongHubPage({
                 { href: "/tile-regrouting", title: "Tile Regrouting", text: "Floors, walls, laundries and splashbacks regrouted throughout." },
                 { href: "/balcony-leak-repairs", title: "Balcony Leak Repairs", text: "Sill and edge joints resealed before water gets underneath." },
                 { href: "/epoxy-grout", title: "Epoxy Grout", text: "Waterproof, stain-proof grout that never needs sealing." },
-                { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced — never layered over." },
+                { href: "/silicone-recaulking", title: "Silicone Recaulking", text: "Old silicone stripped and replaced, never layered over." },
                 { href: "/small-tiling-jobs", title: "Small Tiling Jobs", text: "A few cracked or loose tiles replaced and regrouted." },
                 { href: "/our-process", title: "Our Process", text: "How a Groutix job runs, from first photo to final wipe-down." },
               ].map((s) => (
@@ -697,7 +753,7 @@ export default function GeelongHubPage({
               Tired Grout Anywhere in Geelong or on the Surf Coast?
             </h2>
             <p className="text-base leading-relaxed text-white/85 sm:text-lg">
-              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting Geelong is what we do — we cover Geelong West, Belmont, Highton, Lara, Torquay and Ocean Grove, most jobs done in a single visit.
+              Send us a photo or call (03) 7023 8094 for a free quote. Regrouting Geelong is what we do, we cover Geelong West, Belmont, Highton, Lara, Torquay and Ocean Grove, most jobs done in a single visit.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
