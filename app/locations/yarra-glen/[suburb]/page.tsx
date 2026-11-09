@@ -21,11 +21,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { suburb } = await params;
   const name = formatSuburbName(suburb);
   return {
-    title: `Shower Regrouting ${name} | Yarra Glen | GROUTIX`,
+    title: `Shower Regrouting ${name} | Yarra Glen`,
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Yarra Glen. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/yarra-glen/${suburb}` },
     openGraph: {
-      title: `Shower Regrouting ${name} | Yarra Glen | GROUTIX`,
+      title: `Shower Regrouting ${name} | Yarra Glen | Groutix`,
       description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Yarra Glen. Free quotes and specialist workmanship.`,
       url: `/locations/yarra-glen/${suburb}`,
       type: "website",
