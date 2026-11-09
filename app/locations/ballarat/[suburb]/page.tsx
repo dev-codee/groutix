@@ -24,11 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!(BALLARAT_SUBURB_SLUGS as readonly string[]).includes(suburb)) notFound();
   const name = formatSuburbName(suburb);
   return {
-    title: `Shower Regrouting ${name} | Ballarat | GROUTIX`,
+    title: `Shower Regrouting ${name} | Ballarat`,
     description: `Specialist shower regrouting, grout repair and leaking shower services in ${name}, Ballarat. Professional wet-area repairs backed by a 10-year waterproof warranty.`,
     alternates: { canonical: `/locations/ballarat/${suburb}` },
     openGraph: {
-      title: `Shower Regrouting ${name} | Ballarat | GROUTIX`,
+      title: `Shower Regrouting ${name} | Ballarat | Groutix`,
       description: `Local shower regrouting, grout repair and leaking shower solutions in ${name}, Ballarat. Free quotes and specialist workmanship.`,
       url: `/locations/ballarat/${suburb}`,
       type: "website",
