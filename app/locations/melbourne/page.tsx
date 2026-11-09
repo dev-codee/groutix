@@ -200,8 +200,8 @@ export default async function MelbournePage() {
         heroHeading="Shower Regrouting Melbourne"
         heroSubtitle="Groutix restores leaking, mouldy and cracked grout in showers and balconies across Melbourne. Waterproof epoxy grout, no tiles removed, most jobs finished in a single visit, and every full regrout backed by a 10 year waterproof warranty."
         serviceAreaText={serviceAreaText}
-        serviceAreaMapImage="/img21.jpeg"
-        heroImage="/img20.jpeg"
+        serviceAreaMapImage="/balcony-centre-watermark.webp"
+        heroImage="/shower-regrouting-tiled-interior.webp"
         faqs={melbourneFaqs}
         suburbGroups={melbourneSuburbs}
         parentSlug="melbourne"
