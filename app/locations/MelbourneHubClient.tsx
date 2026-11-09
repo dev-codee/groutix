@@ -100,7 +100,7 @@ function ImgBox({
 /* ─── PhotoSlider ─── */
 function PhotoSlider({ cityName }: { cityName: string }) {
   const [idx, setIdx] = useState(0);
-  const sliderImages = ["/img12.jpeg", "/img13.jpeg", "/img14.jpeg", "/img15.jpeg", "/img58.jpeg", "/img59.jpeg"];
+  const sliderImages = ["/epoxy-grout-shower-after.webp", "/silicone-shower-base-after.webp", "/leaking-shower-repaired-after.webp", "/balcony-centre-watermark.webp", "/shower-regrouting-tiled-interior.webp", "/tile-regrouting-hero.webp"];
   const total = sliderImages.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
