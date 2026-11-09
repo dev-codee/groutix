@@ -74,7 +74,7 @@ export function jobBookingRows(lead: Lead): Lead[] {
     ...bookingLead(lead, booking),
     assigned: isPrimaryBooking(lead, booking) ? lead.assigned : undefined,
     activeBooking: { type: "job" as const, start: `${booking.date}T${booking.time}`, bookingId: booking.bookingId },
-    status: ["Lost", "Cancelled"].includes(lead.status) ? lead.status : booking.status!,
+    status: ["Lost", "Cancelled", "Completed"].includes(lead.status) ? lead.status : booking.status!,
     jobTotalDays: booking.jobTotalDays,
     jobDaysDone: booking.jobDaysDone,
   }));

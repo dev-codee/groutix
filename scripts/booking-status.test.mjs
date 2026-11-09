@@ -123,3 +123,42 @@ test('direct status-only booking writes reject missing, null and invalid status 
     assert.match(result.error, /valid booking status/);
   }
 });
+
+test('whole-job completion persists done on active job visits only', async () => {
+  const id = '1234567890abcdef12345678';
+  const writes = [];
+  const { updateSubmission } = loadTs('lib/submissions.ts', {
+    '@/lib/mongodb': { getDb: async () => ({ collection: name => name === 'submissions' ? {
+      updateOne: async () => ({ matchedCount: 1 }),
+    } : { updateMany: async (...args) => writes.push(args) } }) },
+    '@/lib/users': {},
+  });
+  assert.equal(await updateSubmission(id, { status: 'Completed' }), true);
+  assert.equal(writes.length, 1);
+  const [filter, update] = writes[0];
+  assert.equal(filter.leadId, id);
+  assert.equal(filter.type, 'job');
+  assert.equal(filter.status.$ne, 'Cancelled');
+  assert.equal(update.$set.status, 'Job Done');
+});
+
+test('previously completed customers show Completed for every technician and preserve cancelled visits', () => {
+  const { jobBookingRows, leadBookings } = loadTs('lib/leadBookings.ts');
+  const { resolveBookingStatus } = loadTs('lib/bookingStatus.ts');
+  const { isFlowCompleted } = loadTs('lib/pipeline.ts');
+  const lead = { id: 'lead', status: 'Completed', jobAt: '2026-10-20T09:00', bookings: [
+    { type: 'job', date: '2026-10-20', time: '09:00', technician: 'Alex', status: 'Job Booked' },
+    { type: 'job', date: '2026-10-21', time: '09:00', technician: 'Sam', status: 'Job In Progress' },
+    { type: 'job', date: '2026-10-22', time: '09:00', status: 'Cancelled' },
+  ] };
+  const rows = jobBookingRows(lead);
+  assert.equal(rows.length, 2);
+  for (const row of rows) {
+    assert.equal(row.status, 'Completed');
+    assert.equal(isFlowCompleted('technician', row.status, row), true);
+  }
+  assert.equal(leadBookings(lead)[2].status, 'Cancelled');
+  assert.equal(resolveBookingStatus('job', 'Job Booked', 'Completed'), 'Job Done');
+  assert.equal(resolveBookingStatus('job', 'Job Booked', 'Invoice Sent'), 'Job Booked');
+  assert.equal(resolveBookingStatus('inspection', 'Inspection Booked', 'Completed'), 'Inspection Booked');
+});

@@ -356,7 +356,7 @@ export async function listAppointmentsBetween(from: string, to: string, options:
         jobNo: i?.jobNo || b.reference,
         address: i?.address,
         suburb: i?.suburb || b.suburb,
-        status: resolveBookingStatus(b.type, b.status),
+        status: resolveBookingStatus(b.type, b.status, i?.status),
         inspectorId: b.inspectorId ?? i?.inspectorId, assigned: b.assigned ?? i?.assigned, inspectorUsername: b.inspectorUsername ?? i?.inspectorUsername,
         technicianId: b.technicianId || i?.technicianId,
         technician: b.technician || i?.technician,

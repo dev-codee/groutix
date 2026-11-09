@@ -11,6 +11,9 @@ export function validBookingStatus(type: "inspection" | "job", value: unknown): 
 
 /** Legacy primary visits inherit their phase; additional visits start booked. */
 export function resolveBookingStatus(type: "inspection" | "job", saved?: string, leadStatus?: string, primary = false): BookingStatus {
+  // Whole-job completion is authoritative, including older records whose
+  // saved visit status was never advanced. Cancelled visits stay cancelled.
+  if (type === "job" && leadStatus === "Completed" && saved !== "Cancelled") return "Job Done";
   if (validBookingStatus(type, saved)) return saved;
   if (primary && validBookingStatus(type, leadStatus)) return leadStatus;
   if (primary && type === "job") {

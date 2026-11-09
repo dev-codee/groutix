@@ -761,6 +761,14 @@ export async function updateStatus(
 /** Existing lead workflow buttons address the primary visit, never siblings. */
 async function syncPrimaryBookingStatus(id: string, status?: string): Promise<void> {
   if (!status || status === "Cancelled") return;
+  if (status === "Completed") {
+    const db = await getDb();
+    await db.collection("bookings").updateMany(
+      { leadId: id, type: "job", status: { $ne: "Cancelled" } },
+      { $set: { status: "Job Done" } },
+    );
+    return;
+  }
   const type = validBookingStatus("job", status) ? "job" : validBookingStatus("inspection", status) ? "inspection" : undefined;
   if (!type) return;
   const col = await collection(false);
