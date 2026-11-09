@@ -3,7 +3,7 @@ import KilmoreHubPage from "@/components/KilmoreHubPage";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Regrouting Kilmore | Shower, Tile & Balcony | Groutix",
+  title: "Regrouting Kilmore | Shower, Tile & Balcony",
   description:
     "Shower, bathroom and balcony regrouting in Kilmore, Wallan and Broadford. No tile removal, 10-year waterproof warranty. Free quote.",
   alternates: { canonical: "/locations/kilmore" },
