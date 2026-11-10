@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL, STATIC_ROUTES, SERVICE_SLUGS } from "@/lib/seo";
 import { LOCATION_ROUTES } from "@/lib/locationRoutes";
+import { GUIDES } from "@/lib/guidesContent";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -26,5 +27,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-  return [...staticPages, ...servicePages, ...locationPages];
+  const guidePages: MetadataRoute.Sitemap = [
+    { url: `${SITE_URL}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    ...GUIDES.map((guide) => ({
+      url: `${SITE_URL}/guides/${guide.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+  ];
+
+  return [...staticPages, ...servicePages, ...locationPages, ...guidePages];
 }
