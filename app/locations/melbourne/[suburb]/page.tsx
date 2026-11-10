@@ -8,6 +8,7 @@ import type { SuburbGroup } from "@/app/locations/CityPageClient";
 import { getReviews, getBusinessRating } from "@/lib/reviews";
 import { formatRating, formatReviewCount } from "@/lib/googleRating";
 import StKildaPage from "@/components/StKildaPage";
+import ElwoodPage from "@/components/ElwoodPage";
 import BrightonPage from "@/components/BrightonPage";
 import HamptonPage from "@/components/HamptonPage";
 import SouthYarraPage from "@/components/SouthYarraPage";
@@ -64,6 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const liveRating = await getBusinessRating();
   const reviewsText = `${formatRating(liveRating.value)} from ${formatReviewCount(liveRating.count)} reviews`;
   if (suburb === "st-kilda") {  return {    title: "Shower & Balcony Regrouting St Kilda | 10-Yr Warranty",    description: `Shower and balcony regrouting in St Kilda, Elwood and St Kilda East. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/st-kilda" },    openGraph: {      title: "Shower & Balcony Regrouting in St Kilda | Groutix",      description: `Shower and balcony regrouting in St Kilda, Elwood and St Kilda East. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/st-kilda",      type: "website",    },    robots: "index, follow",  };}
+  if (suburb === "elwood") {  return {    title: "Shower & Balcony Regrouting Elwood | Free Quote",    description: `Shower, tile and balcony regrouting and leaking shower repairs in Elwood. Flats, art deco apartments and homes, no tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/elwood" },    openGraph: {      title: "Shower & Balcony Regrouting in Elwood | Groutix",      description: `Shower, tile and balcony regrouting and leaking shower repairs in Elwood. Flats, art deco apartments and homes, no tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/elwood",      type: "website",    },    robots: "index, follow",  };}
 if (suburb === "brighton") {  return {    title: "Shower & Balcony Regrouting Brighton | 10-Yr Warranty",    description: `Shower, tile and balcony regrouting in Brighton, Hampton and Sandringham. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/brighton" },    openGraph: {      title: "Shower & Balcony Regrouting in Brighton | Groutix",      description: `Shower, tile and balcony regrouting in Brighton, Hampton and Sandringham. No tile removal, 10-year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/brighton",      type: "website",    },    robots: "index, follow",  };}
   const name = formatSuburbName(suburb);
   if (suburb === "hampton") {  return {    title: "Shower & Balcony Regrouting Hampton | Free Quote",    description: `Shower, tile and balcony regrouting and leaking shower repairs in Hampton and Hampton East. No tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,    alternates: { canonical: "/locations/melbourne/hampton" },    openGraph: {      title: "Shower & Balcony Regrouting in Hampton | Groutix",      description: `Shower, tile and balcony regrouting and leaking shower repairs in Hampton and Hampton East. No tile removal, 10 year waterproof warranty, ${reviewsText}. Free quote.`,      url: "/locations/melbourne/hampton",      type: "website",    },    robots: "index, follow",  };}
@@ -242,6 +244,7 @@ export default async function SuburbPage({ params }: Props) {
   const suburbName = formatSuburbName(suburb);
   const [reviews, rating] = await Promise.all([getReviews(4), getBusinessRating()]);
   if (suburb === "st-kilda") {  return <StKildaPage reviews={reviews} rating={rating} />;}
+  if (suburb === "elwood") {  return <ElwoodPage reviews={reviews} rating={rating} />;}
   if (suburb === "brighton") {  return <BrightonPage reviews={reviews} rating={rating} />;}
   if (suburb === "hampton") { return <HamptonPage reviews={reviews} rating={rating} />; }
   if (suburb === "south-yarra") {  return <SouthYarraPage reviews={reviews} rating={rating} />;}
