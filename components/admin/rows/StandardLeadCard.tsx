@@ -8,7 +8,7 @@ import { isProgressStatus } from "@/lib/adminHelpers";
 
 import { openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 
-import { selectedJobBooking, leadBookings } from "@/lib/leadBookings";
+import { selectedJobBooking, activeJobBookings } from "@/lib/leadBookings";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import { InvoiceDeliveryHistory } from "@/components/admin/InvoiceDeliveryHistory";
@@ -62,9 +62,10 @@ export function StandardLeadCard({ l }: { l: Lead }) {
     onTheWayLoading,
   } = useAdminPageCtx();
 
-  const multipleJobs = leadBookings(l).filter(booking => booking.type === "job").length > 1;
+  const multipleJobs = activeJobBookings(l).length > 1;
   const jobBooking = selectedJobBooking(l);
   const jobStatus = jobBooking?.status || l.status;
+  const jobActionsBlocked = isTerminalStatus(l.status) || jobStatus === "Cancelled";
   const jobTotalDays = jobBooking?.jobTotalDays ?? l.jobTotalDays;
   const jobDaysDone = jobBooking?.jobDaysDone ?? l.jobDaysDone;
   const jobKey = `${l.id}:job:${jobBooking?.bookingId || l.jobAt?.slice(0, 16)}`;
@@ -648,7 +649,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           <button
                             key={step.status}
                             type="button"
-                            disabled={done || jobSaving || isTerminalStatus(l.status)}
+                            disabled={done || jobSaving || jobActionsBlocked}
                             onClick={() => {
                               if (done) return;
                               setStartJobDays(jobTotalDays || jobBooking?.workSegments?.length || 1);
@@ -666,7 +667,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                           <button
                             key="job-done-inline"
                             type="button"
-                            disabled={currentIdx >= 3 || jobSaving || isTerminalStatus(l.status)}
+                            disabled={currentIdx >= 3 || jobSaving || jobActionsBlocked}
                             onClick={() => {
                               if (currentIdx >= 3) return;
                               updateJobBooking(l, { status: "Job Done" });
@@ -691,7 +692,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                       <button
                         key={step.status}
                         type="button"
-                        disabled={done || jobSaving || isTerminalStatus(l.status) || (isYellowStep && (onTheWayLoading === jobKey || onTheWayLoading === l.id))}
+                        disabled={done || jobSaving || jobActionsBlocked || (isYellowStep && (onTheWayLoading === jobKey || onTheWayLoading === l.id))}
                         onClick={() => {
                           if (done) return;
                           if (isYellowStep) {
@@ -750,7 +751,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   <div key={i} className={`flex-1 h-1.5 rounded-full ${i < (jobDaysDone || 1) ? "bg-blue-600" : "bg-blue-100"}`} />
                 ))}
               </div>
-              <button type="button" disabled={jobSaving || isTerminalStatus(l.status)}
+              <button type="button" disabled={jobSaving || jobActionsBlocked}
                 onClick={() => void updateJobBooking(l, (jobDaysDone || 1) >= jobTotalDays
                   ? { status: "Job Done", jobDaysDone: jobTotalDays }
                   : { jobDaysDone: (jobDaysDone || 1) + 1 })}

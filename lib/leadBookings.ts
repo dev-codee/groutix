@@ -89,6 +89,11 @@ export function visibleInRole(lead: Lead, role: Role): boolean {
   return !visits.length || visits.some(booking => booking.status !== "Cancelled");
 }
 
+/** Cancelled visit history must not hide the remaining job's controls. */
+export function activeJobBookings(lead: Lead): LeadBooking[] {
+  return leadBookings(lead).filter(booking => booking.type === "job" && booking.status !== "Cancelled");
+}
+
 /** A technician works one visit at a time; the shared customer record retains its ID. */
 export function jobBookingRows(lead: Lead): Lead[] {
   if (lead.status === "Cancelled") return [];
@@ -110,5 +115,13 @@ export function leadRowKey(lead: Lead): string {
 
 export function selectedJobBooking(lead: Lead): LeadBooking | undefined {
   const start = lead.activeBooking?.start || lead.jobAt?.slice(0, 16);
-  return leadBookings(lead).find(b => b.type === "job" && (lead.activeBooking?.bookingId ? b.bookingId === lead.activeBooking.bookingId : lead.activeBooking ? `${b.date}T${b.time}` === start : isPrimaryBooking(lead, b)));
+  const jobs = leadBookings(lead).filter(booking => booking.type === "job");
+  if (lead.activeBooking) return jobs.find(booking => lead.activeBooking!.bookingId
+    ? booking.bookingId === lead.activeBooking!.bookingId : `${booking.date}T${booking.time}` === start);
+  const active = activeJobBookings(lead);
+  // A cancelled primary can remain in the history after its replacement is
+  // booked. The main card must act on the remaining live visit, not reopen it.
+  if (active.length === 1) return active[0];
+  return active.find(booking => isPrimaryBooking(lead, booking))
+    || (active.length === 0 ? jobs.find(booking => isPrimaryBooking(lead, booking)) || jobs[0] : undefined);
 }

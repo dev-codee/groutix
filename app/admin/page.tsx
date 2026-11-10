@@ -1106,7 +1106,10 @@ export default function CrmDashboardPage() {
       ++leadReadVersion.current;
       setLeads(current => current.map(item => item.id === lead.id ? data.item : item));
       publishCrmChange(data.item);
-      setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === lead.id)?.status, data.item.status));
+      const savedBooking = selectedJobBooking({ ...data.item, activeBooking: { type: "job", bookingId: booking.bookingId, start: `${booking.date}T${booking.time}` } });
+      setStatusFilter(filter => statusFilterAfterChange(filter,
+        role === "technician" ? booking.status : leads.find(item => item.id === lead.id)?.status,
+        role === "technician" ? savedBooking?.status : data.item.status));
       return true;
     } catch (error) {
       alert(error instanceof Error ? error.message : "Could not update this booking. Please try again.");
