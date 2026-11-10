@@ -65,7 +65,7 @@ function Block({ block }: { block: GuideBlock }) {
   if (block.type === "table") {
     return (
       <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200">
-        <table className="w-full min-w-[520px] border-collapse text-left text-[16px]">
+        <table className="w-full min-w-[520px] border-collapse text-center text-[16px]">
           <thead>
             <tr className="bg-[#001F97] text-white">
               <th className="px-4 py-3 font-bold">{block.head[0]}</th>
@@ -111,8 +111,8 @@ function MidCta({ guide }: { guide: Guide }) {
         <h2 className="text-[clamp(22px,2.6vw,28px)] font-black leading-tight text-white [text-wrap:balance]">{guide.ctaHeading}</h2>
         <p className="mt-3 text-[16px] leading-relaxed text-white/85">{guide.ctaText}</p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
-          <a href={PHONE_HREF} className={btnGold}>Call {PHONE_DISPLAY}</a>
-          <Link href="/#quote-form" className={btnGhost}>Get a Free Quote</Link>
+          <a href={PHONE_HREF} className={`${btnGold} w-full justify-center sm:w-auto`}>Call {PHONE_DISPLAY}</a>
+          <Link href="/#quote-form" className={`${btnGhost} w-full justify-center sm:w-auto`}>Get a Free Quote</Link>
         </div>
         <p className="mt-4 text-[16px]">
           <Link href={guide.serviceHref} className="font-bold text-white underline underline-offset-4">{guide.serviceLabel}</Link>
@@ -166,17 +166,17 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
       {/* HERO */}
       <section className="relative overflow-hidden bg-[#001F97]">
         <Image src={guide.heroImage} alt={guide.heroAlt} fill priority sizes="100vw" className="object-cover opacity-25" />
-        <div className="relative mx-auto w-full max-w-[1248px] px-5 py-16 text-center sm:py-20">
+        <div className="relative mx-auto w-full max-w-[1248px] px-5 pb-16 pt-[140px] text-center sm:pb-20 lg:pt-[160px]">
           <p className="mb-3 text-[13px] font-bold uppercase tracking-[2px] text-[#FBBC04]">
             <Link href="/guides" className="hover:underline">Groutix Guides</Link>
           </p>
-          <h1 className="mx-auto max-w-3xl text-[clamp(30px,4vw,46px)] font-black leading-[1.12] text-white [text-wrap:balance]">{guide.h1}</h1>
+          <h1 className="w-full text-[clamp(27px,7vw,46px)] font-black leading-[1.12] text-white [text-wrap:balance]">{guide.h1}</h1>
           <p className="mx-auto mt-5 max-w-3xl text-[17px] leading-relaxed text-white/85">
             <Rich text={guide.intro} />
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a href={PHONE_HREF} className={btnGold}>Call {PHONE_DISPLAY}</a>
-            <Link href="/#quote-form" className={btnGhost}>Get a Free Quote</Link>
+            <a href={PHONE_HREF} className={`${btnGold} w-full justify-center sm:w-auto`}>Call {PHONE_DISPLAY}</a>
+            <Link href="/#quote-form" className={`${btnGhost} w-full justify-center sm:w-auto`}>Get a Free Quote</Link>
           </div>
         </div>
       </section>
@@ -214,7 +214,7 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
             {guide.faqs.map((faq, i) => (
               <div key={faq.question}>
                 <button type="button" onClick={() => setOpen(open === i ? -1 : i)} aria-expanded={open === i} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
-                  <span className="text-[17px] font-bold text-slate-900">{faq.question}</span>
+                  <span className="flex-1 text-center text-[17px] font-bold text-slate-900">{faq.question}</span>
                   <span aria-hidden className="text-xl font-black text-[#001F97]">{open === i ? "−" : "+"}</span>
                 </button>
                 <div className={open === i ? "block" : "hidden"}>
@@ -236,8 +236,8 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
             Send us photos of the shower and the damage. We will tell you honestly what the likely cause is and what the right repair looks like, before you spend anything.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <a href={PHONE_HREF} className={btnGold}>Call {PHONE_DISPLAY}</a>
-            <Link href="/#quote-form" className={btnGhost}>Get a Free Quote</Link>
+            <a href={PHONE_HREF} className={`${btnGold} w-full justify-center sm:w-auto`}>Call {PHONE_DISPLAY}</a>
+            <Link href="/#quote-form" className={`${btnGhost} w-full justify-center sm:w-auto`}>Get a Free Quote</Link>
           </div>
         </div>
       </section>
