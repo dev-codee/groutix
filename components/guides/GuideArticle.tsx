@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Section, SectionHead, btnGold, btnGhost, inlineLink } from "@/components/v2/ui";
+import { MobileCallBar, Section, SectionHead, btnGold, btnGhost, inlineLink } from "@/components/v2/ui";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import type { Guide, GuideBlock } from "@/lib/guidesContent";
 
 const SITE = "https://groutix.com";
@@ -50,9 +52,9 @@ function Block({ block }: { block: GuideBlock }) {
     return (
       <ul className="mt-5 space-y-4">
         {block.items.map((item) => (
-          <li key={item.lead} className="flex gap-3">
+          <li key={item.lead} className="flex justify-center gap-3">
             <span aria-hidden className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#001F97] text-[13px] font-black text-white">✓</span>
-            <p className="text-[17px] leading-relaxed text-slate-600">
+            <p className="max-w-2xl text-center text-[17px] leading-relaxed text-slate-600">
               <strong className="font-bold text-slate-900">{item.lead}</strong> <Rich text={item.text} />
             </p>
           </li>
@@ -93,7 +95,7 @@ function Block({ block }: { block: GuideBlock }) {
     );
   }
   return (
-    <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
+    <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5 text-center">
       <p className="font-bold text-slate-900">{block.title}</p>
       <p className="mt-2 text-[16px] leading-relaxed text-slate-700">
         <Rich text={block.text} />
@@ -105,13 +107,16 @@ function Block({ block }: { block: GuideBlock }) {
 function MidCta({ guide }: { guide: Guide }) {
   return (
     <section className="mx-auto w-full max-w-[1248px] px-5">
-      <div className="max-w-3xl rounded-lg bg-[#001F97] p-6 sm:p-8">
+      <div className="mx-auto max-w-3xl rounded-lg bg-[#001F97] p-6 text-center sm:p-8">
         <h2 className="text-[clamp(22px,2.6vw,28px)] font-black leading-tight text-white [text-wrap:balance]">{guide.ctaHeading}</h2>
         <p className="mt-3 text-[16px] leading-relaxed text-white/85">{guide.ctaText}</p>
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
           <a href={PHONE_HREF} className={btnGold}>Call {PHONE_DISPLAY}</a>
-          <Link href={guide.serviceHref} className={btnGhost}>{guide.serviceLabel}</Link>
+          <Link href="/#quote-form" className={btnGhost}>Get a Free Quote</Link>
         </div>
+        <p className="mt-4 text-[16px]">
+          <Link href={guide.serviceHref} className="font-bold text-white underline underline-offset-4">{guide.serviceLabel}</Link>
+        </p>
       </div>
     </section>
   );
@@ -153,30 +158,32 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
   };
 
   return (
+    <>
+      <Navbar />
     <main className="public-page min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* HERO */}
       <section className="relative overflow-hidden bg-[#001F97]">
         <Image src={guide.heroImage} alt={guide.heroAlt} fill priority sizes="100vw" className="object-cover opacity-25" />
-        <div className="relative mx-auto w-full max-w-[1248px] px-5 py-16 sm:py-20">
+        <div className="relative mx-auto w-full max-w-[1248px] px-5 py-16 text-center sm:py-20">
           <p className="mb-3 text-[13px] font-bold uppercase tracking-[2px] text-[#FBBC04]">
             <Link href="/guides" className="hover:underline">Groutix Guides</Link>
           </p>
-          <h1 className="max-w-3xl text-[clamp(30px,4vw,46px)] font-black leading-[1.12] text-white [text-wrap:balance]">{guide.h1}</h1>
-          <p className="mt-5 max-w-3xl text-[17px] leading-relaxed text-white/85">
+          <h1 className="mx-auto max-w-3xl text-[clamp(30px,4vw,46px)] font-black leading-[1.12] text-white [text-wrap:balance]">{guide.h1}</h1>
+          <p className="mx-auto mt-5 max-w-3xl text-[17px] leading-relaxed text-white/85">
             <Rich text={guide.intro} />
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a href={PHONE_HREF} className={btnGold}>Call {PHONE_DISPLAY}</a>
-            <Link href={guide.serviceHref} className={btnGhost}>{guide.serviceLabel}</Link>
+            <Link href="/#quote-form" className={btnGhost}>Get a Free Quote</Link>
           </div>
         </div>
       </section>
 
       {/* QUICK ANSWER */}
       <section className="mx-auto w-full max-w-[1248px] px-5 pt-10">
-        <div className="rounded-lg border-l-4 border-[#001F97] bg-slate-50 p-6">
+        <div className="rounded-lg border-l-4 border-[#001F97] bg-slate-50 p-6 text-center">
           <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#2F63CC]">The short answer</p>
           <p className="mt-2 text-[17px] leading-relaxed text-slate-800">
             <Rich text={guide.quickAnswer} />
@@ -188,8 +195,8 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
       {guide.sections.map((section, i) => (
         <div key={section.id}>
           <Section id={section.id} alt={i % 2 === 1}>
-            <div className="max-w-3xl">
-              <SectionHead title={section.heading} left />
+            <div className="mx-auto max-w-3xl text-center">
+              <SectionHead title={section.heading} />
               {section.blocks.map((block, j) => (
                 <Block key={j} block={block} />
               ))}
@@ -201,8 +208,8 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
 
       {/* FAQ */}
       <Section id="faqs" alt>
-        <div className="max-w-3xl">
-          <SectionHead title="Questions People Ask" left />
+        <div className="mx-auto max-w-3xl">
+          <SectionHead title="Questions People Ask" />
           <div className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
             {guide.faqs.map((faq, i) => (
               <div key={faq.question}>
@@ -211,7 +218,7 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
                   <span aria-hidden className="text-xl font-black text-[#001F97]">{open === i ? "−" : "+"}</span>
                 </button>
                 <div className={open === i ? "block" : "hidden"}>
-                  <p className="px-5 pb-5 text-[16px] leading-relaxed text-slate-600">
+                  <p className="px-5 pb-5 text-center text-[16px] leading-relaxed text-slate-600">
                     <Rich text={faq.answer} />
                   </p>
                 </div>
@@ -230,15 +237,15 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a href={PHONE_HREF} className={btnGold}>Call {PHONE_DISPLAY}</a>
-            <Link href="/contact" className={btnGhost}>Send Photos for a Free Quote</Link>
+            <Link href="/#quote-form" className={btnGhost}>Get a Free Quote</Link>
           </div>
         </div>
       </section>
 
       {/* NEXT GUIDE */}
-      <section className="mx-auto w-full max-w-[1248px] px-5 py-12">
+      <section className="mx-auto w-full max-w-[1248px] px-5 py-12 text-center">
         <p className="text-[13px] font-bold uppercase tracking-[2px] text-[#2F63CC]">Read next</p>
-        <Link href={`/guides/${other.slug}`} className="group mt-3 block max-w-3xl rounded-lg border border-slate-200 bg-white p-5 transition hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]">
+        <Link href={`/guides/${other.slug}`} className="group mx-auto mt-3 block max-w-3xl rounded-lg border border-slate-200 bg-white p-5 transition hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]">
           <span className="text-lg font-bold text-slate-900 group-hover:text-[#001F97]">{other.h1}</span>
           <span className="mt-2 block text-[16px] leading-relaxed text-slate-600">{other.cardText}</span>
           <span className={inlineLink}>Read this guide</span>
@@ -250,5 +257,8 @@ export default function GuideArticle({ guide, other }: { guide: Guide; other: Gu
         </p>
       </section>
     </main>
+      <Footer />
+      <MobileCallBar />
+    </>
   );
 }
