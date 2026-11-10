@@ -114,7 +114,6 @@ function Dropdown({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const startedRef = useRef(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -324,6 +323,7 @@ export default function QuoteFormV2({
   const photoMenuBtnRef = useRef<HTMLButtonElement>(null);
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const startedRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState<null | { booked: string | null; mode: Mode }>(null);
