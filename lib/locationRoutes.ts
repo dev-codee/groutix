@@ -64,6 +64,9 @@ export const CASEY_SUBURB_SLUGS = [
   "berwick", "cranbourne", "hallam", "hampton-park", "narre-warren", "pakenham",
 ] as const;
 
+export const YARRA_GLEN_SUBURB_SLUGS = [
+  "christmas-hills", "dixons-creek", "steels-creek", "tarrawarra", "yarra-glen-central",
+] as const;
 export const KILMORE_SUBURB_SLUGS = [
   "bylands", "hidden-valley", "kilmore-central", "kilmore-east", "wandong", "willowmavin",
   "eden-park", "wallan", "whittlesea", "yan-yean", "hesket", "lancefield",
@@ -91,5 +94,7 @@ export const LOCATION_ROUTES: string[] = [
   "/locations/kilmore",
   ...KILMORE_SUBURB_SLUGS.map((s) => `/locations/kilmore/${s}`),
   "/locations/lilydale",
+  "/locations/yarra-glen",
+  ...YARRA_GLEN_SUBURB_SLUGS.map((s) => `/locations/yarra-glen/${s}`),
   ...LILYDALE_SUBURB_SLUGS.map((s) => `/locations/lilydale/${s}`),
 ];

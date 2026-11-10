@@ -345,6 +345,12 @@ We provide clear quotes, practical recommendations and workmanship focused on lo
               Frankston Area
             </Link>
             <Link
+              href="/locations/casey"
+              className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
+            >
+              Casey Area
+            </Link>
+            <Link
               href="/locations/lilydale"
               className="w-full sm:w-auto min-w-[200px] bg-[#001F97] text-white hover:bg-accent hover:text-primary font-black py-4 px-8 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-base text-center border-2 border-transparent hover:border-[#001F97]"
             >

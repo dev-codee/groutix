@@ -8,7 +8,7 @@ import { getReviews, getBusinessRating } from "@/lib/reviews";
 export const metadata: Metadata = {
   title: "Shower Regrouting Yarra Glen",
   description:
-    "Shower regrouting in Yarra Glen by Groutix. Leaking shower repairs, epoxy grout and silicone replacement across Yarra Glen, Christmas Hills, Dixons Creek, Steels Creek and Tarrawarra. Rated 5.0 from 296 Google reviews, with a 10 year waterproof warranty on eligible work.",
+    "Shower regrouting in Yarra Glen by Groutix. Leaking shower repairs, epoxy grout and silicone replacement. Rated 5.0 from 296 Google reviews.",
   alternates: { canonical: "/locations/yarra-glen" },
   openGraph: {
     title: "Shower Regrouting Yarra Glen | Groutix",
