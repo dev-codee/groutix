@@ -1,4 +1,5 @@
 "use client";
+import { subscribeCrmChanges } from "@/lib/crmChanges";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { RefreshCcw, Loader2, CalendarDays, ExternalLink, MapPin, Edit3, Search } from "lucide-react";
@@ -97,6 +98,12 @@ export function ScheduleView({
       if (request === loadRequest.current) setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const unsubscribe = subscribeCrmChanges(() => { clearTimeout(timer); timer = setTimeout(() => { void load(); }, 150); });
+    return () => { unsubscribe(); clearTimeout(timer); };
+  }, [load]);
 
   useEffect(() => {
     let active = true;

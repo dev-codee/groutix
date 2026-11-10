@@ -1,5 +1,8 @@
 "use client";
 
+import { publishCrmChange, subscribeCrmChanges } from "@/lib/crmChanges";
+import { statusFilterAfterChange } from "@/lib/statusFilterTransition";
+
 import { useInvoiceDeliveries, notifyInvoiceDeliveryChanged } from "@/components/admin/InvoiceDeliveryHistory";
 import { SendInvoiceToQuickBooksButton } from "@/components/admin/SendInvoiceToQuickBooksButton";
 import { invoiceDraftForLead } from "@/lib/invoiceDraft";
@@ -7,6 +10,7 @@ import { uploadJobPhotos } from "@/lib/uploadJobPhotos";
 import { DEFAULT_INVOICE_ACCOUNT_NUMBER, invoiceAccountNumber as resolveInvoiceAccountNumber } from "@/lib/invoicePayment";
 
 import { QuoteCuringNotice } from "@/components/QuoteCuringNotice";
+import { InvoicePaymentModal, openInvoicePayment } from "@/components/admin/InvoicePaymentModal";
 import { PaymentReceiptModal, openPaymentReceipt } from "@/components/admin/PaymentReceiptModal";
 import { downloadAttachment } from "@/lib/downloadAttachment";
 import { preferredCustomerQuote, customerQuoteLead } from "@/lib/customerQuoteSelection";
@@ -814,7 +818,9 @@ export default function CrmDashboardPage() {
 
   // Load leads and tasks from database. Pass { silent: true } for background
   // polling so the refresh spinner doesn't flicker on every auto-refresh.
+  const leadReadVersion = useRef(0);
   const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    const readVersion = ++leadReadVersion.current;
     if (!opts?.silent) setLoading(true);
     setError("");
     const cutoffMs = getNewLeadsCutoffMs();
@@ -847,7 +853,7 @@ export default function CrmDashboardPage() {
             )
           ).catch(() => { });
         }
-        setLeads(withJobNos);
+        if (readVersion === leadReadVersion.current) setLeads(withJobNos);
       } else {
         const err = await leadsRes.json().catch(() => ({}));
         setError(err.error || "Could not load leads from database.");
@@ -939,6 +945,17 @@ export default function CrmDashboardPage() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
+  }, [loadData]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const unsubscribe = subscribeCrmChanges(item => {
+      ++leadReadVersion.current;
+      if (item && !item.activeBooking && !item.invoiceParentId) setLeads(current => [item, ...current.filter(lead => lead.id !== item.id)]);
+      clearTimeout(timer);
+      timer = setTimeout(() => { void loadData({ silent: true }); }, 150);
+    });
+    return () => { unsubscribe(); clearTimeout(timer); };
   }, [loadData]);
 
   // Auto-refresh leads/tasks in the background so customer replies synced by the
@@ -1086,7 +1103,10 @@ export default function CrmDashboardPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not update this booking.");
+      ++leadReadVersion.current;
       setLeads(current => current.map(item => item.id === lead.id ? data.item : item));
+      publishCrmChange(data.item);
+      setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === lead.id)?.status, data.item.status));
       return true;
     } catch (error) {
       alert(error instanceof Error ? error.message : "Could not update this booking. Please try again.");
@@ -1550,6 +1570,9 @@ export default function CrmDashboardPage() {
           setLeads((prev) =>
             prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes, ...result.item } as Lead) : l))
           );
+          ++leadReadVersion.current;
+          if (changes.status) setStatusFilter(filter => statusFilterAfterChange(filter, before?.status, result.item?.status || changes.status));
+          publishCrmChange(result.item);
           setLeadModalOpen(false);
           if (confirmJobBooking) {
             setEtaToast({
@@ -1648,8 +1671,10 @@ export default function CrmDashboardPage() {
         return true;
       }
       if (result.ok) {
+        ++leadReadVersion.current;
+        if (updates.status) setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(lead => lead.id === id)?.status, result.item?.status || updates.status));
         setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates, ...result.item } : l)));
-        // Saving a record must not change the user's current page or filters.
+        // Follow an edited status so the confirmed save stays visible in this queue.
         return true;
       }
     } catch {
@@ -3491,6 +3516,7 @@ export default function CrmDashboardPage() {
         alert(data.error || "Could not send the invoice.");
         return;
       }
+      if (data.item && !data.item.invoiceParentId) { setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === data.item.id)?.status, data.item.status)); publishCrmChange(data.item); }
       notifyInvoiceDeliveryChanged(activeInvoiceLead.invoiceParentId || activeInvoiceLead.id);
       alert(`Invoice ${data.invoiceNumber} emailed to ${activeInvoiceLead.email}.`);
       setInvoiceModalOpen(false);
@@ -3879,7 +3905,7 @@ export default function CrmDashboardPage() {
     onTheWayLoading, openDetails, setOpenDetails, unreadReplyCount,
     locationTrackingActive, liveGpsCoords,
     // Lead CRUD
-    upsertLead: (lead: Lead) => setLeads(prev => [lead, ...prev.filter(item => item.id !== lead.id)]),
+    upsertLead: (lead: Lead) => { ++leadReadVersion.current; setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === lead.id)?.status, lead.status)); setLeads(prev => [lead, ...prev.filter(item => item.id !== lead.id)]); publishCrmChange(lead); },
     updateLeadField, updateJobBooking, jobBookingsSaving, handleDeleteLead, setEditingLead, setLeadModalOpen,
     setStartJobPrompt, setStartJobDays,
     statusFilter, setStatusFilter, setPage,
@@ -8004,7 +8030,7 @@ export default function CrmDashboardPage() {
                     </div>;
                   })}
                 </div>
-                <p>Total invoiced: ${customerInvoices.reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)} · Outstanding: ${customerInvoices.filter(item => item.invoiceStatus !== "Paid").reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)}</p>
+                <p>Total invoiced: ${customerInvoices.reduce((sum, item) => sum + Number(item.invoiceAmount || 0), 0).toFixed(2)} · Outstanding: ${customerInvoices.filter(item => item.invoiceStatus !== "Paid").reduce((sum, item) => sum + Math.max(0, Number(item.invoiceAmount || 0) - Number(item.amountPaid || 0)), 0).toFixed(2)}</p>
                 {["finance", "manager", "super_admin"].includes(role) && <select aria-label="Create invoice from accepted quote" value="" disabled={invoiceListBusy || savingInvoice || sendingInvoice}
                   className="w-full rounded-lg border p-2" onChange={event => { if (event.target.value && window.confirm("Open the invoice for this accepted quote? Unsaved edits will be discarded.")) void createInvoiceForQuote(event.target.value); }}>
                   <option value="">{invoiceListBusy ? "Loading invoices…" : "Create / open invoice from an accepted quote…"}</option>
@@ -8012,6 +8038,7 @@ export default function CrmDashboardPage() {
                 </select>}
                 {!invoiceListBusy && !invoiceQuotes.length && <p>No accepted quotes available. Accept the agreed quote before creating its invoice.</p>}
                 {activeInvoiceLead.sourceQuoteId && <p>Source: {activeInvoiceLead.sourceQuoteNumber || activeInvoiceLead.sourceQuoteId}. Agreed items and GST are preserved. Payment status applies only to this invoice.</p>}
+                {activeInvoiceLead.invoiceNumber && ["finance", "manager", "super_admin"].includes(role) && <button type="button" onClick={() => openInvoicePayment(activeInvoiceLead.invoiceParentId || activeInvoiceLead.id, "full", activeInvoiceLead.id)} className="font-semibold text-teal-700 underline">Receive payment</button>}
                 {activeInvoiceLead.paymentReceipt && <button type="button" onClick={() => openPaymentReceipt(activeInvoiceLead.id)} className="font-semibold text-teal-700 underline">View / email payment receipt</button>}
                 {activeInvoiceLead.invoiceNumber && <SendInvoiceToQuickBooksButton key={activeInvoiceLead.id} lead={activeInvoiceLead} onSynced={item => {
                   setActiveInvoiceLead(item);
@@ -8033,7 +8060,7 @@ export default function CrmDashboardPage() {
                     <label className="font-bold text-slate-700 block mb-1">Service</label>
                     <input
                       type="text"
-                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
+                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                       value={invoiceService}
                       onChange={(e) => setInvoiceService(e.target.value)}
                       className="w-full p-2 border border-slate-200 rounded-lg"
@@ -8043,7 +8070,7 @@ export default function CrmDashboardPage() {
                     <label className="font-bold text-slate-700 block mb-1">Description</label>
                     <textarea
                       rows={4}
-                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
+                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                       value={invoiceDescription}
                       onChange={(e) => setInvoiceDescription(e.target.value)}
                       className="w-full p-2 border border-slate-200 rounded-lg"
@@ -8061,7 +8088,7 @@ export default function CrmDashboardPage() {
                     <textarea
                       rows={2}
                       placeholder="e.g. Additional silicone replacement in second bathroom"
-                      disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
+                      disabled={Boolean(activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                       value={invoiceExtraWork}
                       onChange={(e) => setInvoiceExtraWork(e.target.value)}
                       className="w-full p-2 border border-amber-200 rounded-lg text-xs bg-white"
@@ -8073,7 +8100,7 @@ export default function CrmDashboardPage() {
                         min={0}
                         step={1}
                         placeholder="0"
-                        disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
+                        disabled={Boolean(activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                         value={invoiceExtraCharge || ""}
                         onChange={(e) => setInvoiceExtraCharge(parseFloat(e.target.value) || 0)}
                         className="w-24 p-2 border border-amber-200 rounded-lg text-xs font-bold bg-white"
@@ -8090,7 +8117,7 @@ export default function CrmDashboardPage() {
                       <label className="font-bold text-slate-700 block mb-1">Total (incl GST)</label>
                       <input
                         type="number"
-                        disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId)}
+                        disabled={Boolean(activeInvoiceLead.sourceQuoteId || activeInvoiceLead.invoiceSentAt || activeInvoiceLead.qboInvoiceId || activeInvoiceLead.amountPaid || activeInvoiceLead.paymentReceipt || activeInvoiceLead.invoiceStatus === "Paid")}
                         value={invoicePrice || ""}
                         placeholder="0.00"
                         onChange={(e) => setInvoicePrice(parseFloat(e.target.value) || 0)}
@@ -8105,6 +8132,7 @@ export default function CrmDashboardPage() {
                         className="w-full p-2 border border-slate-200 rounded-lg"
                       >
                         <option value="Unpaid">Unpaid</option>
+                        {activeInvoiceLead.invoiceStatus === "Partially Paid" && <option value="Partially Paid">Partially Paid</option>}
                         <option value="Paid">Paid</option>
                       </select>
                     </div>
@@ -8565,6 +8593,7 @@ export default function CrmDashboardPage() {
           </div>
         )}
       </div>
+      <InvoicePaymentModal onChanged={parent => { if (parent) { setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(lead => lead.id === parent.id)?.status, parent.status)); publishCrmChange(parent); } void loadData(); if (invoiceModalOpen && invoiceCustomer && (!parent || parent.id === invoiceCustomer.id)) void refreshCustomerInvoices(invoiceCustomer, ++invoiceLoadVersion.current); }} />
       <PaymentReceiptModal />
     </AdminPageProvider>
   );

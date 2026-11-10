@@ -1,5 +1,7 @@
 "use client";
+import { InspectionBookingDates } from "../InspectionBookingDates";
 
+import { openInvoicePayment } from "../InvoicePaymentModal";
 import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
 
 import { isProgressStatus } from "@/lib/adminHelpers";
@@ -96,18 +98,20 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const paymentSaving = useRef(false);
 
   const totalQuote = getLeadQuoteTotal(l);
-  const invoiceTotal = l.invoiceAmount ?? (totalQuote && totalQuote > 0 ? totalQuote : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
+  const invoiceTotal = l.customerInvoiceCount ? (l.customerInvoiceTotal || 0) : l.invoiceAmount ?? (totalQuote && totalQuote > 0 ? totalQuote : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
   const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
-  const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
+  const amountPaid = l.customerInvoiceCount ? Math.max(0, (l.customerInvoiceTotal || 0) - (l.customerInvoiceOutstanding || 0)) : l.amountPaid ? Number(l.amountPaid) : null;
   const remainingAmt = invoiceTotal && amountPaid !== null ? Math.max(0, invoiceTotal - amountPaid) : null;
   const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
   const isPaymentPending = workflowStatus === "Payment Pending";
 
+  const paymentType = l.customerInvoiceCount ? (l.customerInvoiceOutstanding || 0) <= 0 ? "full" : amountPaid ? "partial" : undefined : l.paymentType;
+
   const hasRemainingDues = (() => {
-    if (l.paymentType === "full") return false;
+    if (paymentType === "full") return false;
     if (remainingAmt !== null && remainingAmt <= 0) return false;
-    if (l.paymentType === "partial") return true;
+    if (paymentType === "partial") return true;
     if (remainingAmt !== null && remainingAmt > 0) return true;
     if (!isPaymentReceived) return true;
     return false;
@@ -122,7 +126,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   }
 
   async function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
-    if (l.customerInvoiceCount) { openInvoiceModal(l); return; }
+    if (l.customerInvoiceCount) { openInvoicePayment(l.id, type); setPayStep("idle"); return; }
     const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
     const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
@@ -141,7 +145,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
 
   return (
     <div className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl">
-      {(l.paymentType === "full" || l.paymentReceipt) && <button type="button" onClick={() => openPaymentReceipt(l.id)} className="mb-3 text-sm font-semibold text-teal-800 underline">View / email payment receipt</button>}
+      {(paymentType === "full" || l.paymentReceipt) && <button type="button" onClick={() => openPaymentReceipt(l.id)} className="mb-3 text-sm font-semibold text-teal-800 underline">View / email payment receipt</button>}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start divide-y divide-slate-100 lg:divide-y-0">
 
         {/* COLUMN 0: CLIENT */}
@@ -402,11 +406,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                   </button>
                 );
               })()}
-              {l.inspectionAt && (
-                <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-[10px] font-semibold text-slate-700 text-center">
-                  📅 {formatApptDate(l.inspectionAt)} &nbsp;•&nbsp; {formatLeadBookingTime(l, "inspection")}
-                </div>
-              )}
+              <InspectionBookingDates lead={l} />
             </div>
             <select
               value={
@@ -870,22 +870,22 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 <div>
                   <button
                     type="button"
-                    onClick={() => setPayStep("ask_type")}
+                    onClick={() => { if (l.customerInvoiceCount) openInvoicePayment(l.id); else setPayStep("ask_type"); }}
                     className={`w-full px-2 py-2 rounded-lg text-xs font-semibold text-center transition-colors cursor-pointer ${
-                      l.paymentType === "partial"
+                      paymentType === "partial"
                         ? "bg-amber-500 text-white shadow-2xs hover:bg-amber-600"
-                        : l.paymentType === "full" || isPaymentReceived
+                        : paymentType === "full" || isPaymentReceived
                         ? "bg-blue-600 text-white shadow-2xs hover:bg-blue-700"
                         : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    {l.paymentType === "partial"
+                    {paymentType === "partial"
                       ? `Part Paid${amountPaid ? ` — AUD $${amountPaid.toFixed(2)}` : ""}`
-                      : l.paymentType === "full" || isPaymentReceived
+                      : paymentType === "full" || isPaymentReceived
                       ? "Received (Full)"
                       : "Received"}
                   </button>
-                  {l.paymentType === "partial" && remainingAmt !== null && (
+                  {paymentType === "partial" && remainingAmt !== null && (
                     <div
                       className="mt-1 px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-center text-[10px] font-bold text-rose-700 shadow-2xs flex items-center justify-center gap-1 min-w-0"
                       title={`Invoice: ${invoiceTotalFmt || ""} | Paid: AUD $${(amountPaid || 0).toFixed(2)} | Remaining: AUD $${remainingAmt.toFixed(2)}`}
@@ -949,7 +949,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                     <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">
                       {amountPaid && amountPaid > 0 ? "Add Amount (AUD)" : "Amount (AUD)"}
                     </span>
-                    <button type="button" onClick={() => setPayStep("ask_type")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <button type="button" onClick={() => { if (l.customerInvoiceCount) openInvoicePayment(l.id); else setPayStep("ask_type"); }} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>

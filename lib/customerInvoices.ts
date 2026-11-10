@@ -1,7 +1,7 @@
 import { getDb } from "./mongodb";
 import { getSubmission, updateSubmission, appendActivity, getNextSequence, formatDocNumber, type SubmissionJSON, type SubmissionDoc, type ActivityEntry } from "./submissions";
 import { listCustomerQuotes } from "./customerQuotes";
-import { invoiceDraftForLead } from "./invoiceDraft";
+import { invoiceDraftForLead, invoiceChanges } from "./invoiceDraft";
 import { computeQuoteTotals } from "./quotePdf";
 import { receiptFromInvoice } from "./paymentReceipt";
 
@@ -19,7 +19,7 @@ interface CustomerInvoice {
   createdAt: string;
 }
 async function collection() { return (await getDb()).collection<CustomerInvoice>("customer_invoices"); }
-const invoiceFields = ["invoiceDraft", "invoiceAmount", "invoiceNumber", "invoiceSentAt", "invoiceOpenedAt", "invoiceStatus", "qboInvoiceId", "qboSyncedAt", "qboError", "qboErrorAt", "paymentReceipt", "receiptSentAt", "amountPaid", "paymentType"] as const;
+const invoiceFields = ["invoiceDraft", "invoiceAmount", "invoiceNumber", "invoiceSentAt", "invoiceOpenedAt", "invoiceStatus", "qboInvoiceId", "qboSyncedAt", "qboError", "qboErrorAt", "paymentReceipt", "receiptSentAt", "amountPaid", "paymentType", "invoicePayments", "invoicePaymentVersion"] as const;
 
 function invoiceView(lead: SubmissionJSON, doc: CustomerInvoice): SubmissionJSON {
   const base = { ...lead };
@@ -95,6 +95,11 @@ export async function updateInvoiceSubmission(id: string, updates: Partial<Submi
   const col = await collection();
   const doc = await col.findOne({ _id: id, leadId: invoiceLeadId(id) });
   if (!doc) return false;
+  if (updates.invoiceDraft && updates.invoiceAmount !== undefined) {
+    const current = await getInvoiceSubmission(id);
+    if (!current) return false;
+    invoiceChanges(current, { ...updates.invoiceDraft, price: updates.invoiceAmount, status: updates.invoiceStatus });
+  }
   const set: Record<string, unknown> = {};
   for (const field of invoiceFields) if (updates[field] !== undefined) set[`values.${field}`] = updates[field];
   if (updates.invoiceStatus === "Paid" && !doc.values.paymentReceipt) {
@@ -103,10 +108,15 @@ export async function updateInvoiceSubmission(id: string, updates: Partial<Submi
     set["values.paymentReceipt"] = receiptFromInvoice({ ...lead, ...updates });
   }
   // A recorded receipt is an immutable payment snapshot; reopening needs a credit workflow.
-  if (updates.invoiceStatus === "Unpaid" && doc.values.paymentReceipt) throw new Error("This invoice has a payment receipt. Record a refund or credit before reopening it.");
+  if (updates.invoiceStatus && updates.invoiceStatus !== "Paid" && doc.values.paymentReceipt) throw new Error("This invoice has a payment receipt. Record a refund or credit before reopening it.");
   if (!Object.keys(set).length) return true;
   const result = await col.updateOne({ _id: id, leadId: doc.leadId,
-    ...(updates.invoiceStatus === "Unpaid" ? { "values.paymentReceipt": { $exists: false } } : {}),
+    ...(updates.invoiceStatus && updates.invoiceStatus !== "Paid" ? { "values.paymentReceipt": { $exists: false } } : {}),
+    ...(updates.invoiceDraft ? {
+      "values.invoicePaymentVersion": doc.values.invoicePaymentVersion === undefined ? { $exists: false } : doc.values.invoicePaymentVersion,
+      "values.invoiceSentAt": doc.values.invoiceSentAt === undefined ? { $exists: false } : doc.values.invoiceSentAt,
+      "values.qboInvoiceId": doc.values.qboInvoiceId === undefined ? { $exists: false } : doc.values.qboInvoiceId,
+    } : {}),
   }, { $set: set });
   if (result.matchedCount > 0) await refreshInvoiceSummary(doc.leadId);
   return result.matchedCount > 0;
@@ -119,13 +129,17 @@ export async function saveInvoiceCustomerId(id: string, qboCustomerId: string) {
   if (!await updateSubmission(invoiceLeadId(id), { qboCustomerId })) throw new Error("Could not save the QuickBooks customer link. Retry invoice sync.");
 }
 
-async function refreshInvoiceSummary(leadId: string) {
+export async function refreshInvoiceSummary(leadId: string, updatePaymentStage = false) {
   const invoices = await listCustomerInvoices(leadId);
   if (!invoices) return;
   const cents = (amount?: number) => Math.round(Number(amount || 0) * 100);
+  const paid = (item: SubmissionJSON) => item.invoiceStatus === "Paid" || item.paymentReceipt ? cents(item.invoiceAmount) : cents(item.amountPaid);
+  const outstanding = invoices.reduce((sum, item) => sum + Math.max(0, cents(item.invoiceAmount) - paid(item)), 0) / 100;
+  const lead = updatePaymentStage ? await getSubmission(leadId) : null;
   await updateSubmission(leadId, {
+    ...(lead && !["Completed", "Warranty Sent", "Cancelled", "Lost"].includes(lead.status) ? { status: outstanding > 0 ? "Payment Pending" : "Payment Received" } : {}),
     customerInvoiceCount: invoices.length,
     customerInvoiceTotal: invoices.reduce((sum, item) => sum + cents(item.invoiceAmount), 0) / 100,
-    customerInvoiceOutstanding: invoices.filter(item => item.invoiceStatus !== "Paid").reduce((sum, item) => sum + cents(item.invoiceAmount), 0) / 100,
+    customerInvoiceOutstanding: outstanding,
   });
 }

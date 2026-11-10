@@ -18,11 +18,35 @@ export interface LeadBooking extends TechnicianAssignment {
 
 /** The lead's summary belongs to the visit matching both time and assignee. */
 export function isPrimaryBooking(lead: Lead, booking: LeadBooking): boolean {
+  const identity = booking.type === "job" ? lead.primaryJobBookingId : lead.primaryInspectionBookingId;
+  if (identity && booking.bookingId) return identity === booking.bookingId;
   const start = booking.type === "job" ? lead.jobAt : lead.inspectionAt;
   if (start?.slice(0, 16) !== `${booking.date}T${booking.time}`) return false;
   const fields = booking.type === "job" ? ["technicianId", "technicianUsername", "technician"] as const : ["inspectorId", "inspectorUsername", "assigned"] as const;
   const comparable = fields.find(field => booking[field] && lead[field]);
-  return !comparable || booking[comparable]?.trim().toLowerCase() === lead[comparable]?.trim().toLowerCase();
+  if (!comparable || booking[comparable]?.trim().toLowerCase() === lead[comparable]?.trim().toLowerCase()) return true;
+  // A unique reservation at the summary time is still the primary visit when
+  // the summary's staff fields are stale. Same-time siblings remain distinct.
+  const sameStart = (lead.bookings || []).filter(item => item.type === booking.type && `${item.date}T${item.time}` === start?.slice(0, 16));
+  return sameStart.length === 1 && (booking.bookingId ? sameStart[0].bookingId === booking.bookingId : sameStart[0].date === booking.date && sameStart[0].time === booking.time);
+
+}
+
+/** Read the summary from its stable primary booking identity in every lead view. */
+export function canonicalLeadBookings<T extends Lead>(lead: T): T {
+  let result = { ...lead };
+  for (const type of ["inspection", "job"] as const) {
+    const booking = lead.bookings?.find(item => item.type === type && isPrimaryBooking(lead, item));
+    if (!booking) continue;
+    result = { ...result, ...(type === "inspection" ? {
+      inspectionAt: `${booking.date}T${booking.time}`, inspectionEndAt: booking.endAt ?? lead.inspectionEndAt, inspectionWorkSegments: booking.workSegments ?? lead.inspectionWorkSegments,
+      assigned: booking.assigned ?? lead.assigned, inspectorId: booking.inspectorId ?? lead.inspectorId, inspectorUsername: booking.inspectorUsername ?? lead.inspectorUsername,
+    } : {
+      jobAt: `${booking.date}T${booking.time}`, jobEndAt: booking.endAt ?? lead.jobEndAt, jobWorkSegments: booking.workSegments ?? lead.jobWorkSegments,
+      technician: booking.technician ?? lead.technician, technicianId: booking.technicianId ?? lead.technicianId, technicianUsername: booking.technicianUsername ?? lead.technicianUsername,
+    }) };
+  }
+  return result;
 }
 
 /** Each calendar visit keeps the same lead identity and business records. */

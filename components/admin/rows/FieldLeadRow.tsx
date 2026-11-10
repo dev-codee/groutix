@@ -1,4 +1,5 @@
 "use client";
+import { InspectionBookingDates } from "../InspectionBookingDates";
 
 import { customerDrivingDirections, customerPropertyAddress } from "@/lib/customerNavigation";
 
@@ -136,7 +137,7 @@ export function FieldLeadRow({ l }: { l: Lead }) {
               </button>
             )}
             <span className="text-slate-300 font-normal">|</span>
-            <span className="text-slate-500 whitespace-nowrap font-medium shrink-0">{dateTimeDisplay}</span>
+            <div className="text-right">{l.inspectionAt || l.bookings?.some(booking => booking.type === "inspection") ? <InspectionBookingDates lead={l} /> : <span className="text-slate-500 font-medium">{dateTimeDisplay}</span>}</div>
             {l.status === "Completed" && (
               <>
                 <span className="text-slate-300 font-normal">|</span>

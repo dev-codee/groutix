@@ -296,6 +296,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         await rollback();
         return NextResponse.json({ error: result.error }, { status: result.conflict ? 409 : 503 });
       }
+      if (result.bookingId && (type !== bookingType || !secondaryVisit) && (!appendBooking || !primary[field])) body[type === "inspection" ? "primaryInspectionBookingId" : "primaryJobBookingId"] = result.bookingId;
       if (result.acquired || result.previousBooking) reserved.push({ type, date, time, reservationId: result.reservationId, previousBooking: result.previousBooking });
     }
     // An active appointment cannot move back into the pre-booking queues.
@@ -322,6 +323,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         : ["inspectionAt", "inspectionEndAt", "inspectionWorkSegments", "assigned", "inspectorId", "inspectorUsername"];
       for (const key of keys) delete persisted[key];
     }
+    if (bookingType && selectedBookingId && !appendBooking && !secondaryVisit) persisted[bookingType === "inspection" ? "primaryInspectionBookingId" : "primaryJobBookingId"] = selectedBookingId;
     const ok = await updateSubmission(id, persisted);
     if (!ok) {
       await rollback();

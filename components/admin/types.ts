@@ -142,6 +142,8 @@ export interface Lead {
   customerInvoiceCount?: number;
   customerInvoiceTotal?: number;
   customerInvoiceOutstanding?: number;
+  invoicePayments?: import("@/lib/invoicePayments").InvoicePaymentRecord[];
+  invoicePaymentVersion?: number;
   invoiceParentId?: string;
   sourceQuoteId?: string;
   sourceQuoteNumber?: string;
@@ -157,6 +159,8 @@ export interface Lead {
   jobWorkSegments?: { date: string; time: string; scheduledMinutes: number }[];
   inspectionEndAt?: string;
   jobEndAt?: string;
+  primaryInspectionBookingId?: string;
+  primaryJobBookingId?: string;
   inspectionAt?: string;
   /** UI-only identity for a selected visit. Never persisted on the customer. */
   activeBooking?: { type: "job" | "inspection"; start: string; bookingId?: string };

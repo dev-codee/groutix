@@ -23,8 +23,8 @@ creation uses a deterministic Mongo `_id` per customer/quote, so concurrent
 requests cannot create multiple local invoices for one quote. Number sequences
 can have gaps after concurrent requests or failed writes.
 
-Finance cards show total invoiced and outstanding amounts. Quote invoice payments
-do not change the parent job's operational status. The older job-level automatic
+Finance cards show total invoiced and outstanding amounts. Partial payments reduce the selected invoice's remaining balance. A customer's
+payment stage becomes Payment Received only when all saved invoices are settled. The older job-level automatic
 invoice sender skips customers using multiple quotes; staff select the agreed
 quote explicitly to avoid issuing an additional unlinked invoice.
 
@@ -42,3 +42,11 @@ Each invoice shows its own **Invoice Sent**, **Invoice Opened** or **Not opened 
 status on job/finance cards and in the invoice selector. Delivery indicators refresh
 when an invoice is sent, when the browser regains focus, and every 30 seconds while
 visible. The original single-invoice indicators continue to work for older records.
+
+Use **Receive payment** on the job card or selected invoice to record payment.
+For multiple outstanding invoices, choose the invoice explicitly. Partial payments
+are the additional amount received now; Full records the remaining balance.
+Retries reuse the payment request ID, and concurrent writes check the saved
+balance before changing it. A fully paid invoice opens its payment receipt.
+Additional work can be saved before an invoice is sent, synced, or paid; the
+accepted quote base remains unchanged. Issued invoice amounts stay locked.

@@ -1,3 +1,4 @@
+import { publishCrmChange } from "./crmChanges";
 import type { Lead } from "@/components/admin/types";
 
 export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promise<{ ok: true; recycled?: boolean; item?: Lead } | { ok: false; error: string }> {
@@ -9,6 +10,7 @@ export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promi
     });
     if (response.ok) {
       const data = await response.json().catch(() => ({}));
+      publishCrmChange(data.item);
       return data.recycled === true ? { ok: true, recycled: true } : { ok: true, ...(data.item ? { item: data.item } : {}) };
     }
     const data = await response.json().catch(() => ({}));

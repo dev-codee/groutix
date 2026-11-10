@@ -363,3 +363,14 @@ test("stale New saves cannot reset established leads even before a booking exist
     assert.equal(calls.find(([action]) => action === "update")[2].status, status);
   }
 });
+
+test("moving the primary inspection after reassignment saves a stable identity and updates the lead summary", async () => {
+  const before = { status: "Inspection Booked", inspectionAt: "2026-11-11T09:00", inspectorId: "alex", assigned: "Alex", bookings: [
+    { bookingId: "primary-inspection", type: "inspection", date: "2026-11-11", time: "09:00", inspectorId: "sam", assigned: "Sam" },
+  ] };
+  const { patch, calls } = patchApi({ before });
+  assert.equal((await patch({ bookingId: "primary-inspection", bookingOriginalStart: before.inspectionAt, inspectionAt: "2026-11-15T10:00", assigned: "Sam", inspectorId: "sam" })).status, 200);
+  const saved = calls.find(call => call[0] === "update")[2];
+  assert.equal(saved.inspectionAt, "2026-11-15T10:00");
+  assert.equal(saved.primaryInspectionBookingId, "primary-inspection");
+});

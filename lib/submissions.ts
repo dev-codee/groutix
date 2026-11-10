@@ -1,5 +1,5 @@
 import { savedWorkSegments } from "./bookingSpan";
-import { isPrimaryBooking } from "./leadBookings";
+import { isPrimaryBooking, canonicalLeadBookings } from "./leadBookings";
 import { withBookingCalendarLock } from "./bookingCalendarLock";
 import { acceptedQuoteFields, changesAcceptedQuote } from "./quoteIntegrity";
 import { bookingReminderCandidates } from "./bookingReminders";
@@ -207,6 +207,8 @@ export interface SubmissionDoc {
   customerInvoiceCount?: number;
   customerInvoiceTotal?: number;
   customerInvoiceOutstanding?: number;
+  invoicePayments?: import("@/lib/invoicePayments").InvoicePaymentRecord[];
+  invoicePaymentVersion?: number;
   invoiceParentId?: string;
   sourceQuoteId?: string;
   sourceQuoteNumber?: string;
@@ -231,6 +233,8 @@ export interface SubmissionDoc {
   inspectorUsername?: string;
   inspectionEndAt?: string;
   jobEndAt?: string;
+  primaryInspectionBookingId?: string;
+  primaryJobBookingId?: string;
   inspectionAt?: string; // ISO datetime of the booked inspection
   bookings?: import("@/lib/leadBookings").LeadBooking[];
   jobAt?: string; // ISO datetime of the booked job
@@ -656,13 +660,13 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
   return items.map(item => {
     const visits = bookings.filter(b => b.leadId === item.id);
     const repairedLead = rules && item.jobAt && needsRepair(item.jobWorkSegments) ? { ...item, jobWorkSegments: savedWorkSegments("job", item.jobAt, item.jobEndAt, item.jobWorkSegments, rules) } : item;
-    return { ...repairedLead, acceptedCustomerQuoteCount: acceptedCounts.get(item.id) || 0, bookings: visits.map(b => ({
+    return canonicalLeadBookings({ ...repairedLead, acceptedCustomerQuoteCount: acceptedCounts.get(item.id) || 0, bookings: visits.map(b => ({
     bookingId: b.bookingId || b._id?.toString(), type: b.type, date: b.date, time: b.time, endAt: b.endAt, workSegments: rules && needsRepair(b.workSegments) ? savedWorkSegments(b.type, `${b.date}T${b.time}`, b.endAt, b.workSegments, rules) : b.workSegments, status: b.status,
     jobTotalDays: b.jobTotalDays, jobDaysDone: b.jobDaysDone,
     scheduledMinutes: b.scheduledMinutes, technicianId: b.technicianId, technician: b.technician,
     technicianUsername: b.technicianUsername, inspectorId: b.inspectorId, assigned: b.assigned,
     inspectorUsername: b.inspectorUsername,
-  })) };
+  })) });
   });
 }
 

@@ -11,7 +11,10 @@ function setup() {
     quoteItems: [{ service: 'Bathroom', description: `Scope ${key}`, price: 100, qty: 2 }, { service: 'Kitchen', price: 50, qty: 1 }],
   } }));
   const docs = new Map(), activity = []; let seq = 0;
-  const matches = (doc, filter) => Object.entries(filter).every(([key, value]) => key === 'values.paymentReceipt' ? !doc.values.paymentReceipt : doc[key] === value);
+  const matches = (doc, filter) => Object.entries(filter).every(([key, value]) => {
+    const current = key.split('.').reduce((obj, part) => obj?.[part], doc);
+    return value && typeof value === 'object' && '$exists' in value ? (current !== undefined) === value.$exists : current === value;
+  });
   const col = {
     findOne: async filter => [...docs.values()].find(doc => matches(doc, filter)) || null,
     find: filter => ({ sort: () => ({ toArray: async () => [...docs.values()].filter(doc => matches(doc, filter)) }) }),
@@ -20,6 +23,7 @@ function setup() {
       if (!doc && options?.upsert) { doc = structuredClone(update.$setOnInsert); docs.set(doc._id, doc); }
       if (!doc) return { matchedCount: 0 };
       for (const [key, value] of Object.entries(update.$set || {})) { const field = key.slice('values.'.length); doc.values[field] = structuredClone(value); }
+      for (const [key, value] of Object.entries(update.$push || {})) { const field = key.slice('values.'.length); (doc.values[field] ||= []).push(structuredClone(value)); }
       return { matchedCount: 1 };
     },
   };
@@ -29,7 +33,7 @@ function setup() {
       appendActivity: async (id, entry) => activity.push({ id, ...entry }), getNextSequence: async () => ++seq, formatDocNumber: (prefix, n) => `${prefix}-${n}` },
     './customerQuotes': { listCustomerQuotes: async id => quotes.filter(quote => quote.leadId === id) },
   }, { Error });
-  return { ...api, docs, quotes, leads, activity };
+  return { ...api, docs, quotes, leads, activity, db: { collection: () => col } };
 }
 
 test('multiple accepted quotes get distinct invoices and isolate legacy invoice/payment/QBO state', async () => {
@@ -244,4 +248,74 @@ test('email-open tracking writes the selected invoice, leaving other invoices un
   assert.equal(api.leads.get('customer').invoiceOpenedAt, 'old-open');
   await route.GET({}, { params: Promise.resolve({ id: a.id }) });
   assert.equal(alerts.length, 1); assert.equal(alerts[0].leadId, 'customer');
+});
+
+test('full and partial invoice payments accumulate once, preserve other invoices, and settle the customer only when all are paid', async () => {
+  const api = setup();
+  const a = await api.createQuoteInvoice('customer', 'customer~a'), b = await api.createQuoteInvoice('customer', 'customer~b');
+  const { recordInvoicePayment } = loadTs('lib/invoicePayments.ts', { './customerInvoices': api, './mongodb': { getDb: async () => api.db } }, { Error });
+  const partial = { type: 'partial', amount: 100, expectedPaidCents: 0, requestId: 'partial-request-00001' };
+  await recordInvoicePayment(a.id, partial, 'finance');
+  assert.equal((await api.getInvoiceSubmission(a.id)).amountPaid, 100);
+  assert.equal((await api.getInvoiceSubmission(a.id)).invoiceStatus, 'Partially Paid');
+  assert.equal(api.leads.get('customer').customerInvoiceOutstanding, 425);
+  await recordInvoicePayment(a.id, partial, 'finance');
+  assert.equal((await api.getInvoiceSubmission(a.id)).amountPaid, 100, 'retry cannot receive the payment twice');
+  assert.equal((await api.getInvoiceSubmission(a.id)).invoicePayments.length, 1);
+  await assert.rejects(recordInvoicePayment(a.id, { ...partial, amount: 50 }, 'finance'), /different details/);
+  await assert.rejects(recordInvoicePayment(a.id, { ...partial, requestId: 'partial-request-00002', expectedPaidCents: 10000, amount: 200 }, 'finance'), /outstanding balance/);
+  await assert.rejects(recordInvoicePayment(a.id, { ...partial, requestId: 'partial-request-00002', expectedPaidCents: 10000, amount: 1.234 }, 'finance'), /two decimal/);
+  await recordInvoicePayment(a.id, { type: 'full', expectedPaidCents: 10000, requestId: 'full-request-0000001' }, 'finance');
+  const paid = await api.getInvoiceSubmission(a.id);
+  assert.equal(paid.amountPaid, 275); assert.equal(paid.paymentReceipt.total, 275);
+  assert.equal(paid.invoicePayments[1].amountCents, 17500, 'full records only the unpaid remainder');
+  assert.equal((await api.getInvoiceSubmission(b.id)).amountPaid, undefined);
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
+  await recordInvoicePayment(b.id, { type: 'partial', amount: 250, expectedPaidCents: 0, requestId: 'partial-settle-000001' }, 'finance');
+  assert.equal(api.leads.get('customer').customerInvoiceOutstanding, 0);
+  assert.equal(api.leads.get('customer').status, 'Payment Received');
+});
+
+test('concurrent invoice payment submissions cannot overpay or overwrite one another', async () => {
+  const api = setup(); const a = await api.createQuoteInvoice('customer', 'customer~a');
+  const { recordInvoicePayment } = loadTs('lib/invoicePayments.ts', { './customerInvoices': api, './mongodb': { getDb: async () => api.db } }, { Error });
+  const results = await Promise.allSettled([1, 2].map(i => recordInvoicePayment(a.id, { type: 'partial', amount: 200, expectedPaidCents: 0, requestId: `concurrent-request-00${i}` }, 'finance')));
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  assert.equal((await api.getInvoiceSubmission(a.id)).amountPaid, 200);
+  assert.equal((await api.getInvoiceSubmission(a.id)).invoicePayments.length, 1);
+});
+
+test('multiple-invoice extra work saves, reopens and emails once without altering the source quote or another invoice', async () => {
+  const api = setup(); const a = await api.createQuoteInvoice('customer', 'customer~a'), b = await api.createQuoteInvoice('customer', 'customer~b');
+  const pdfs = [], emails = [];
+  const overrides = {
+    '@/lib/customerInvoices': api,
+    '@/lib/adminAuth': { verifyRequestSession: async () => ({ role: 'finance', username: 'finance' }) },
+    '@/lib/quotePdf': { buildQuotePdfBase64: async input => { pdfs.push(input); return Buffer.from('pdf').toString('base64'); } },
+    '@/lib/email': { isEmailConfigured: () => true, sendEmail: async input => emails.push(input), getEmailLogoUrl: async () => '', wrapEmailHtml: html => html },
+    '@/lib/automations': { invoiceTrackingPixel: id => `tracking:${id}` }, '@/lib/quickbooks': { isQboConfigured: () => false },
+  };
+  const input = { id: a.id, price: 375, extraCharge: 100, extraWork: 'Additional silicone work', gst: 10, status: 'Unpaid' };
+  const save = loadTs('app/api/admin/invoice/save/route.ts', overrides);
+  assert.equal((await save.POST({ json: async () => input })).status, 200);
+  const reopened = await api.getInvoiceSubmission(a.id);
+  assert.equal(reopened.invoiceDraft.basePrice, 275); assert.equal(reopened.invoiceDraft.extraCharge, 100); assert.equal(reopened.invoiceAmount, 375);
+  assert.equal((await api.createQuoteInvoice('customer', 'customer~a')).invoiceNumber, a.invoiceNumber);
+  const send = loadTs('app/api/admin/invoice/send/route.ts', overrides);
+  assert.equal((await send.POST({ json: async () => input })).status, 200);
+  assert.equal(pdfs[0].total, 375); assert.equal(pdfs[0].items[0].price, 275); assert.equal(pdfs[0].items[1].price, 100);
+  assert.match(emails[0].html, /Additional silicone work/);
+  assert.equal((await api.getInvoiceSubmission(b.id)).invoiceAmount, 250);
+  assert.equal(api.docs.get(a.id).sourceQuoteSnapshot.quoteItems[0].price, 100);
+  assert.equal((await api.getInvoiceSubmission(a.id)).invoiceAmount, 375);
+  assert.equal((await save.POST({ json: async () => ({ ...input, price: 475, extraCharge: 200 }) })).status, 400, 'issued invoices cannot silently change');
+});
+
+test('receiving an outstanding invoice payment does not reopen a cancelled customer', async () => {
+  const api = setup(); const invoice = await api.createQuoteInvoice('customer', 'customer~a');
+  api.leads.get('customer').status = 'Cancelled';
+  const { recordInvoicePayment } = loadTs('lib/invoicePayments.ts', { './customerInvoices': api, './mongodb': { getDb: async () => api.db } }, { Error });
+  await recordInvoicePayment(invoice.id, { type: 'full', expectedPaidCents: 0, requestId: 'cancelled-pay-00000001' }, 'finance');
+  assert.equal((await api.getInvoiceSubmission(invoice.id)).invoiceStatus, 'Paid');
+  assert.equal(api.leads.get('customer').status, 'Cancelled');
 });

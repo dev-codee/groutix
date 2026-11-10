@@ -1,4 +1,5 @@
 "use client";
+import { subscribeCrmChanges } from "@/lib/crmChanges";
 
 import { BookingTimingEditor } from "@/components/admin/BookingTimingEditor";
 import { DispatchBookingModal } from "@/components/admin/modals/DispatchBookingModal";
@@ -896,6 +897,12 @@ export function ScheduleCalendarView({
       if (request === loadRequest.current) setLoading(false);
     }
   }, [visibleDates, rules]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const unsubscribe = subscribeCrmChanges(() => { clearTimeout(timer); timer = setTimeout(() => { void load(); }, 150); });
+    return () => { unsubscribe(); clearTimeout(timer); };
+  }, [load]);
 
   useEffect(() => {
     let active = true;

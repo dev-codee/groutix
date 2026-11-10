@@ -221,5 +221,5 @@ export async function POST(req: NextRequest) {
       .catch(error => { console.error("QBO invoice push failed:", error); });
   }
 
-  return NextResponse.json({ ok: true, invoiceNumber, total });
+  return NextResponse.json({ ok: true, invoiceNumber, total, item: await getSubmission(body.id) });
 }

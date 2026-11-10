@@ -1,6 +1,7 @@
 "use client";
 
 import { InvoiceDeliveryHistory } from "../InvoiceDeliveryHistory";
+import { openInvoicePayment } from "../InvoicePaymentModal";
 import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
 
 import { isProgressStatus } from "@/lib/adminHelpers";
@@ -66,16 +67,18 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   const paymentSaving = useRef(false);
 
   const quoteTotal = getLeadQuoteTotal(l);
-  const invoiceTotal = l.invoiceAmount ?? (quoteTotal && quoteTotal > 0 ? quoteTotal : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
+  const invoiceTotal = l.customerInvoiceCount ? (l.customerInvoiceTotal || 0) : l.invoiceAmount ?? (quoteTotal && quoteTotal > 0 ? quoteTotal : (l.quoteAmount && l.quoteAmount > 0 ? l.quoteAmount : null));
   const invoiceTotalFmt = invoiceTotal ? `AUD $${invoiceTotal.toFixed(2)}` : null;
   const halfAmt = invoiceTotal ? invoiceTotal / 2 : null;
-  const amountPaid = l.amountPaid ? Number(l.amountPaid) : null;
+  const amountPaid = l.customerInvoiceCount ? Math.max(0, (l.customerInvoiceTotal || 0) - (l.customerInvoiceOutstanding || 0)) : l.amountPaid ? Number(l.amountPaid) : null;
   const remainingAmt = invoiceTotal && amountPaid !== null ? Math.max(0, invoiceTotal - amountPaid) : null;
 
+  const paymentType = l.customerInvoiceCount ? (l.customerInvoiceOutstanding || 0) <= 0 ? "full" : amountPaid ? "partial" : undefined : l.paymentType;
+
   const hasRemainingDues = (() => {
-    if (l.paymentType === "full") return false;
+    if (paymentType === "full") return false;
     if (remainingAmt !== null && remainingAmt <= 0) return false;
-    if (l.paymentType === "partial") return true;
+    if (paymentType === "partial") return true;
     if (remainingAmt !== null && remainingAmt > 0) return true;
     if (!isPaymentReceived) return true;
     return false;
@@ -90,7 +93,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
   }
 
   async function handlePaymentReceived(type: "full" | "partial", customAmt?: number) {
-    if (l.customerInvoiceCount) { openInvoiceModal(l); return; }
+    if (l.customerInvoiceCount) { openInvoicePayment(l.id, type); setPayStep("idle"); return; }
     const isFull = type === "full" || (invoiceTotal !== null && customAmt !== undefined && customAmt >= invoiceTotal);
     const finalAmt = isFull ? (invoiceTotal ?? customAmt) : customAmt;
     const updates: Partial<Lead> = {
@@ -123,7 +126,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
       key={l.id}
       className="py-5 px-3 hover:bg-slate-50/60 transition-colors rounded-xl"
     >
-      {(l.paymentType === "full" || l.paymentReceipt) && <button type="button" onClick={() => openPaymentReceipt(l.id)} className="mb-3 text-sm font-semibold text-teal-800 underline">View / email payment receipt</button>}
+      {(paymentType === "full" || l.paymentReceipt) && <button type="button" onClick={() => openPaymentReceipt(l.id)} className="mb-3 text-sm font-semibold text-teal-800 underline">View / email payment receipt</button>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-6 items-start w-full divide-y divide-slate-100 lg:divide-y-0">
         {/* COLUMN 1: CLIENT */}
         <div className="col-span-12 lg:col-span-4 min-w-0 space-y-2.5">
@@ -378,21 +381,21 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 <div className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => setPayStep("ask_type")}
-                    className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full cursor-pointer ${l.paymentType === "partial"
+                    onClick={() => { if (l.customerInvoiceCount) openInvoicePayment(l.id); else setPayStep("ask_type"); }}
+                    className={`py-1.5 px-2 text-center text-xs font-semibold rounded-lg transition-colors truncate min-w-0 h-[34px] flex items-center justify-center w-full cursor-pointer ${paymentType === "partial"
                         ? "bg-amber-500 hover:bg-amber-600 text-white shadow-2xs"
-                        : l.paymentType === "full" || isPaymentReceived
+                        : paymentType === "full" || isPaymentReceived
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                           : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                       }`}
                   >
-                    {l.paymentType === "partial"
+                    {paymentType === "partial"
                       ? `Part Paid${amountPaid ? ` — AUD $${amountPaid.toFixed(2)}` : ""}`
-                      : l.paymentType === "full" || isPaymentReceived
+                      : paymentType === "full" || isPaymentReceived
                         ? "Payment Received (Full)"
                         : "Payment Received"}
                   </button>
-                  {l.paymentType === "partial" && remainingAmt !== null && (
+                  {paymentType === "partial" && remainingAmt !== null && (
                     <div
                       className="px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-center text-[10px] font-bold text-rose-700 shadow-2xs flex items-center justify-center gap-1 min-w-0"
                       title={`Invoice: ${invoiceTotalFmt || ""} | Paid: AUD $${(amountPaid || 0).toFixed(2)} | Remaining: AUD $${remainingAmt.toFixed(2)}`}
@@ -456,7 +459,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                     <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">
                       {amountPaid && amountPaid > 0 ? "Add Payment Amount (AUD)" : "Amount Received (AUD)"}
                     </span>
-                    <button type="button" onClick={() => setPayStep("ask_type")} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <button type="button" onClick={() => { if (l.customerInvoiceCount) openInvoicePayment(l.id); else setPayStep("ask_type"); }} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -611,23 +614,23 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
               <div
                 className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isPaymentReceived
                     ? "bg-[#dcfce7] border-emerald-300 text-slate-900"
-                    : l.paymentType === "partial"
+                    : paymentType === "partial"
                       ? "bg-amber-50 border-amber-300 text-amber-950"
                       : "bg-slate-50 border-slate-200 text-slate-600"
                   }`}
               >
                 <span className="truncate">
-                  {l.paymentType === "partial"
+                  {paymentType === "partial"
                     ? `Part Paid${l.amountPaid ? ` — $${Number(l.amountPaid).toFixed(2)}` : ""}`
                     : "Payment Received"}
                 </span>
                 {isPaymentReceived ? (
                   <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />
-                ) : l.paymentType === "partial" ? (
+                ) : paymentType === "partial" ? (
                   <span className="text-[10px] font-bold text-amber-700 shrink-0 ml-0.5">⚡</span>
                 ) : null}
               </div>
-              {l.paymentType === "partial" && remainingAmt !== null && (
+              {paymentType === "partial" && remainingAmt !== null && (
                 <div className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[10px] font-bold text-rose-700 flex items-center justify-between min-w-0">
                   <span className="text-slate-600 font-semibold text-[9.5px]">Remaining:</span>
                   <span className="font-black text-rose-700">AUD ${remainingAmt.toFixed(2)}</span>

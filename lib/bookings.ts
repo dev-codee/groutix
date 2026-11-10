@@ -89,7 +89,7 @@ export async function isSlotTaken(date: string, time: string, excludeLeadId?: st
 }
 
 export type CreateBookingResult =
-  | { ok: true; reference: string; acquired?: boolean; reservationId?: string; previousBooking?: BookingDoc }
+  | { ok: true; reference: string; bookingId?: string; acquired?: boolean; reservationId?: string; previousBooking?: BookingDoc }
   | { ok: false; conflict?: boolean; error: string };
 
 type BookingInput = Omit<BookingDoc, "_id" | "createdAt" | "reservationId">;
@@ -167,7 +167,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
       }
       if (options.statusOnly && existing) {
         await col.updateOne({ _id: existing._id }, { $set: { status, ...(input.jobTotalDays !== undefined ? { jobTotalDays: input.jobTotalDays } : {}), ...(input.jobDaysDone !== undefined ? { jobDaysDone: input.jobDaysDone } : {}) } });
-        return { ok: true as const, reference: existing.reference };
+        return { ok: true as const, reference: existing.reference, bookingId: existing.bookingId };
       }
       const reservationId = randomUUID();
       const document: BookingDoc = { jobDaysDone: replaced?.jobDaysDone ?? existing?.jobDaysDone, ...input, ...assignment, status, workSegments: segments, scheduledMinutes: segments[0].scheduledMinutes, durationMinutes, technicianId: input.type === "job" ? assignedTechnicianId(assignment, technicians) ?? "" : undefined,
@@ -178,7 +178,7 @@ export async function createBooking(input: BookingInput, options: { retainPrevio
         leadId: input.leadId, type: input.type, date: replacedStart.slice(0, 10), time: replacedStart.slice(11, 16),
         ...(replaced?._id ? { _id: replaced._id } : {}),
       });
-      return { ok: true as const, reference: existing?.reference || input.reference, acquired: !existing, reservationId, previousBooking: existing || undefined };
+      return { ok: true as const, reference: existing?.reference || input.reference, bookingId: document.bookingId, acquired: !existing, reservationId, previousBooking: existing || undefined };
     });
   } catch (err) {
     console.error("createBooking failed:", err);
