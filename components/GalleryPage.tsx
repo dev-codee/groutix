@@ -99,7 +99,6 @@ export default function GalleryPage({ reviews, rating }: { reviews: Review[]; ra
   const { phone, tel } = useContact();
   const [cat, setCat] = useState<"all" | Cat>("all");
   const [lightbox, setLightbox] = useState<number | null>(null);
-  const [hover, setHover] = useState<number | null>(null);
 
   const visible = cat === "all" ? photos : photos.filter((p) => p.cat === cat);
   const counts: Record<string, number> = {
@@ -172,37 +171,16 @@ export default function GalleryPage({ reviews, rating }: { reviews: Review[]; ra
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(galleryJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
 
-        {/* HERO — dark immersive band */}
-        <section className="relative overflow-hidden bg-[#06124F] pb-12 pt-[140px] md:pb-16 lg:pt-[160px]">
-          <div className="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full bg-[#2F63CC]/30 blur-3xl" aria-hidden="true" />
-          <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-[#FBBC04]/15 blur-3xl" aria-hidden="true" />
-          <div className={`${wrap} relative text-center`}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#FBBC04] backdrop-blur">
-              Groutix Gallery · Melbourne
-            </span>
-            <h1 className="mx-auto mt-5 max-w-4xl text-[clamp(30px,6vw,52px)] font-black leading-[1.08] tracking-tight text-white">
-              Real Shower Regrouting Results in Melbourne
-            </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#D6DCF5] sm:text-lg">
-              Every photo below is a finished Groutix job in a real Melbourne home, photographed after regrouting and resealing. No stock photos, no renders. Tap any photo to see it full screen.
-            </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-2.5">
-              <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur">{photos.length} finished job photos</span>
-              <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur">Showers, bathrooms and bases</span>
-              <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur">10 year warranty on eligible work</span>
-            </div>
-          </div>
-        </section>
-
         {/* PHOTO GALLERY */}
-        <section id="gallery" className="scroll-mt-28 bg-[#F6F8FC] pb-14 pt-10 md:pb-20 md:pt-12">
+        <section id="gallery" className="scroll-mt-28 bg-white pb-14 pt-[140px] md:pb-20 lg:pt-[160px]">
           <div className={wrap}>
+            <h1 className={`${h2} mb-8 text-center`}>Real Shower Regrouting Results in Melbourne</h1>
             <div className="mb-9 flex flex-wrap justify-center gap-2.5" role="group" aria-label="Filter gallery photos">
               {chips.map((c) => (
                 <button
                   key={c.key}
                   type="button"
-                  onClick={() => { setCat(c.key); setLightbox(null); setHover(null); }}
+                  onClick={() => { setCat(c.key); setLightbox(null); }}
                   aria-pressed={cat === c.key}
                   className={`rounded-full px-4 py-2 text-sm font-bold transition ${
                     cat === c.key
@@ -220,13 +198,11 @@ export default function GalleryPage({ reviews, rating }: { reviews: Review[]; ra
                 <button
                   key={p.src}
                   type="button"
-                  onClick={() => { setHover(null); setLightbox(i); }}
-                  onMouseEnter={() => { if (typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches) setHover(i); }}
-                  onMouseLeave={() => setHover(null)}
+                  onClick={() => setLightbox(i)}
                   className="group relative mb-5 block w-full break-inside-avoid overflow-hidden rounded-[22px] bg-slate-200 text-left shadow-[0_2px_10px_rgba(6,18,79,0.06)] ring-1 ring-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(6,18,79,0.20)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2F63CC]/40"
                   aria-label={`View photo: ${p.title}`}
                 >
-                  <Image src={p.src} alt={p.alt} width={p.w} height={p.h} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" className="h-auto w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                  <Image src={p.src} alt={p.alt} width={p.w} height={p.h} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" className="h-auto w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.08]" />
                   <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
                     {catLabel[p.cat]}
                   </span>
@@ -292,23 +268,6 @@ export default function GalleryPage({ reviews, rating }: { reviews: Review[]; ra
       </main>
       <Footer />
       <MobileCallBar quoteHref="/#quote-form" />
-
-      {/* HOVER QUICK VIEW — desktop only: full size preview while hovering a card (click or tap still opens the lightbox) */}
-      {hover !== null && visible[hover] ? (
-        <div className="pointer-events-none fixed inset-0 z-[70] hidden items-center justify-center bg-[#04060F]/80 p-8 backdrop-blur-[2px] [@media(hover:hover)]:flex" aria-hidden="true">
-          <figure className="m-0 text-center">
-            <Image
-              src={visible[hover].src}
-              alt=""
-              width={visible[hover].w}
-              height={visible[hover].h}
-              sizes="92vw"
-              className="mx-auto max-h-[82vh] w-auto max-w-[92vw] rounded-2xl object-contain shadow-[0_30px_80px_rgba(0,0,0,0.65)] ring-1 ring-white/20"
-            />
-            <figcaption className="mt-3 text-sm font-bold text-white">{visible[hover].title}</figcaption>
-          </figure>
-        </div>
-      ) : null}
 
       {/* LIGHTBOX */}
       {lightbox !== null && visible[lightbox] ? (
