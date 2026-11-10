@@ -4,6 +4,7 @@ import { CheckCircle2, Paperclip, X, AlertCircle, Plus, Trash2, Users, ChevronDo
 import { motion, AnimatePresence } from "framer-motion";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { formatBytes, MAX_TOTAL_BYTES, MAX_FILE_SIZE_BYTES, MAX_PHOTO_COUNT } from "@/lib/imageCompression";
+import { trackEvent } from "@/lib/analytics";
 import { formatSlotRange } from "@/lib/scheduling";
 import PhotoUploadTips from "@/components/PhotoUploadTips";
 import { isCompletePropertyAddress, PROPERTY_ADDRESS_ERROR } from "@/lib/propertyAddress";
@@ -676,6 +677,7 @@ export default function HeroQuoteForm({ defaultService = "" }: { defaultService?
         throw new Error(body.error || "Something went wrong. Please try again.");
       }
       setSubmitted(true);
+      trackEvent("quote_submit", { form: "hero_quote_form" });
       containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       setSubmitError(
