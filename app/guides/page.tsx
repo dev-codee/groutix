@@ -26,9 +26,9 @@ export default function GuidesIndexPage() {
       <Navbar />
     <main className="public-page min-h-screen">
       <section className="bg-[#001F97]">
-        <div className="mx-auto w-full max-w-[1248px] px-5 py-16 sm:py-20">
+        <div className="mx-auto w-full max-w-[1248px] px-5 pb-16 pt-[140px] sm:pb-20 lg:pt-[160px]">
           <p className="mb-3 text-[13px] font-bold uppercase tracking-[2px] text-[#FBBC04]">Groutix Guides</p>
-          <h1 className="max-w-3xl text-[clamp(30px,4vw,46px)] font-black leading-[1.12] text-white [text-wrap:balance]">
+          <h1 className="text-[clamp(30px,4vw,46px)] font-black leading-[1.12] text-white [text-wrap:balance]">
             Leaking Shower and Regrouting Guides
           </h1>
           <p className="mt-5 max-w-3xl text-[17px] leading-relaxed text-white/85">

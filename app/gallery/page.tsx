@@ -4,17 +4,17 @@ import GalleryPage from "@/components/GalleryPage";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Regrouting Gallery — Before & After Photos Melbourne",
+    title: "Regrouting Gallery, Real Melbourne Job Photos",
     description:
-      "Real Groutix regrouting results from Melbourne homes: shower regrouting, balcony regrouting and leak repairs — before and after photos from real jobs, backed by a 10-year waterproof warranty.",
+      "See real Groutix results from Melbourne homes: finished showers, bathrooms and shower bases after regrouting and resealing, every photo from an actual job.",
     alternates: { canonical: "/gallery" },
     openGraph: {
-      title: "Regrouting Gallery — Before & After Photos Melbourne",
+      title: "Regrouting Gallery, Real Melbourne Job Photos",
       description:
-        "Real Groutix regrouting results from Melbourne homes: shower regrouting, balcony regrouting and leak repairs — before and after photos from real jobs, backed by a 10-year waterproof warranty.",
+        "See real Groutix results from Melbourne homes: finished showers, bathrooms and shower bases after regrouting and resealing, every photo from an actual job.",
       url: "/gallery",
       type: "website",
-      images: ["/Shower regrouting cover .webp"],
+      images: ["/white-wall-beige-envelope-shower-regrouting-after.webp"],
     },
     robots: "index, follow",
   };
