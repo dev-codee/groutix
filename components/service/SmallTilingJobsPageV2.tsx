@@ -384,6 +384,23 @@ export default function SmallTilingJobsPageV2({ rating, reviews }: { rating: Bus
           </div>
         </section>
 
+        {/* GUIDES */}
+        <Section id="guides">
+          <SectionHead k="Helpful Guides" title="Guides From the Repair Team" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Link href="/guides/shower-still-leaking-after-regrouting" className={`${box} group block p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+              <h3 className={cardTitle}>Shower Still Leaking After Regrouting?</h3>
+              <p className={cardText}>The six causes, from silicone that was never replaced to a failed waterproofing membrane, with simple checks and who fixes what.</p>
+              <span className={inlineLink}>Read this guide</span>
+            </Link>
+            <Link href="/guides/shower-leaking-into-ceiling-below" className={`${box} group block p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+              <h3 className={cardTitle}>Shower Leaking Into the Ceiling Below?</h3>
+              <p className={cardText}>What to do first, how to find the source, and who is responsible in a house, a rental property or a unit.</p>
+              <span className={inlineLink}>Read this guide</span>
+            </Link>
+          </div>
+        </Section>
+
         {/* 14. RELATED SERVICES */}
         <Section id="related-services" alt>
           <SectionHead k="Related Services" title="Explore Our Other Services" />
