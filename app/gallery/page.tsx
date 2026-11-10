@@ -4,12 +4,12 @@ import GalleryPage from "@/components/GalleryPage";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Regrouting Gallery — Before & After Photos Melbourne | Groutix",
+    title: "Regrouting Gallery — Before & After Photos Melbourne",
     description:
       "Real Groutix regrouting results from Melbourne homes: shower regrouting, balcony regrouting and leak repairs — before and after photos from real jobs, backed by a 10-year waterproof warranty.",
     alternates: { canonical: "/gallery" },
     openGraph: {
-      title: "Regrouting Gallery — Before & After Photos Melbourne | Groutix",
+      title: "Regrouting Gallery — Before & After Photos Melbourne",
       description:
         "Real Groutix regrouting results from Melbourne homes: shower regrouting, balcony regrouting and leak repairs — before and after photos from real jobs, backed by a 10-year waterproof warranty.",
       url: "/gallery",
