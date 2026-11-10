@@ -101,6 +101,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/balcony-regrouting',
+        destination: '/balcony-leak-repairs',
+        permanent: true,
+      },
+      {
         source: '/leak-detection/balcony',
         destination: '/balcony-leak-repairs',
         permanent: true,
