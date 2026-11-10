@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { GUIDES } from "@/lib/guidesContent";
+import { MobileCallBar } from "@/components/v2/ui";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Leak and Regrouting Guides",
@@ -19,6 +22,8 @@ export const metadata: Metadata = {
 
 export default function GuidesIndexPage() {
   return (
+    <>
+      <Navbar />
     <main className="public-page min-h-screen">
       <section className="bg-[#001F97]">
         <div className="mx-auto w-full max-w-[1248px] px-5 py-16 sm:py-20">
@@ -35,7 +40,7 @@ export default function GuidesIndexPage() {
       <section className="mx-auto w-full max-w-[1248px] px-5 py-14">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {GUIDES.map((guide) => (
-            <Link key={guide.slug} href={`/guides/${guide.slug}`} className="group block overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]">
+            <Link key={guide.slug} href={`/guides/${guide.slug}`} className="group block text-center overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]">
               <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-200">
                 <Image src={guide.heroImage} alt={guide.heroAlt} fill sizes="(min-width:768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
               </div>
@@ -55,5 +60,8 @@ export default function GuidesIndexPage() {
         </div>
       </section>
     </main>
+      <Footer />
+      <MobileCallBar />
+    </>
   );
 }
