@@ -6,11 +6,6 @@ const nextConfig: NextConfig = {
       // -------------------------------------------------------------
       // 1. Specific Page Aliases & Common Alternate Names
       // -------------------------------------------------------------
-      {
-      source: '/locations/melbourne/elwood',
-      destination: '/locations/melbourne/st-kilda',
-      permanent: true,
-    },
     {
       source: '/locations/melbourne/st-kilda-east',
       destination: '/locations/melbourne/st-kilda',
@@ -22,8 +17,7 @@ const nextConfig: NextConfig = {
       permanent: true,
     },
       { source: '/locations/melbourne/brighton-east', destination: '/locations/melbourne/brighton', permanent: true },
-{ source: '/locations/melbourne/hampton', destination: '/locations/melbourne/brighton', permanent: true },
-{ source: '/locations/melbourne/hampton-east', destination: '/locations/melbourne/brighton', permanent: true },
+{ source: '/locations/melbourne/hampton-east', destination: '/locations/melbourne/hampton', permanent: true },
 { source: '/locations/melbourne/sandringham', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/black-rock', destination: '/locations/melbourne/brighton', permanent: true },
 { source: '/locations/melbourne/beaumaris', destination: '/locations/melbourne/brighton', permanent: true },
@@ -98,6 +92,16 @@ const nextConfig: NextConfig = {
       {
         source: '/leak-detection/balconies',
         destination: '/balcony-leak-repairs',
+        permanent: true,
+      },
+      {
+        source: '/balcony-regrouting',
+        destination: '/balcony-leak-repairs',
+        permanent: true,
+      },
+      {
+        source: '/cracked-grout-or-a-leaking-shower',
+        destination: '/leaking-shower-repair',
         permanent: true,
       },
       {

@@ -454,6 +454,25 @@ export default function HomePageV2({ reviews, rating }: { reviews: Review[]; rat
           </section>
         )}
 
+        {/* ── GUIDES ── */}
+        <section id="guides" className="scroll-mt-28 bg-slate-100 py-14 md:py-20">
+          <div className={wrap}>
+            <SectionHead k="Helpful Guides" title="Guides From the Repair Team" sub="Straight answers on leaking showers, written by the team that repairs them." />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Link href="/guides/shower-still-leaking-after-regrouting" className={`${box} group block p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                <h3 className="text-xl font-bold text-slate-900">Shower Still Leaking After Regrouting?</h3>
+                <p className="mt-2 leading-relaxed text-slate-600">The six causes, from silicone that was never replaced to a failed waterproofing membrane, with simple checks and who fixes what.</p>
+                <span className="mt-3 inline-block font-bold text-[#001F97] underline decoration-[#FBBC04] decoration-2 underline-offset-4">Read this guide</span>
+              </Link>
+              <Link href="/guides/shower-leaking-into-ceiling-below" className={`${box} group block p-6 transition hover:-translate-y-0.5 hover:border-[#2F63CC] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]`}>
+                <h3 className="text-xl font-bold text-slate-900">Shower Leaking Into the Ceiling Below?</h3>
+                <p className="mt-2 leading-relaxed text-slate-600">What to do first, how to find the source, and who is responsible in a house, a rental property or a unit.</p>
+                <span className="mt-3 inline-block font-bold text-[#001F97] underline decoration-[#FBBC04] decoration-2 underline-offset-4">Read this guide</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* ── SERVICE AREAS (live suburb check) ── */}
         <section id="service-areas" className="scroll-mt-28 bg-white py-14 md:py-20">
           <div className={wrap}>

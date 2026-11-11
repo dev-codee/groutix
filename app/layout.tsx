@@ -8,6 +8,7 @@ import { formatRating, formatReviewCount } from "@/lib/googleRating";
 import { getSiteContent } from "@/lib/siteContentServer";
 import { SiteContentProvider } from "@/components/SiteContentProvider";
 import SupportChatWidget from "@/components/SupportChatWidget";
+import AnalyticsEvents from "@/components/AnalyticsEvents";
 import QuoteModal from "@/components/QuoteModal";
 
 const roboto = Roboto({
@@ -147,6 +148,7 @@ export default async function RootLayout({
         <SiteContentProvider content={{ ...content, business: { ...content.business, rating } }}>
           {children}
           <SupportChatWidget />
+          <AnalyticsEvents />
           <QuoteModal />
         </SiteContentProvider>
       </body>

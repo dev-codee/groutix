@@ -370,6 +370,30 @@ function HubCoreSlider({ before, after, title, flip }: { before: string; after: 
 }
 
 /* ─── Main Component ─── */
+
+const melbourneJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Service",
+      "@id": "https://groutix.com/locations/melbourne#service",
+      name: "Shower, tile and balcony regrouting in Melbourne",
+      serviceType: ["Shower regrouting", "Tile regrouting", "Balcony regrouting", "Leaking shower repair"],
+      provider: { "@id": "https://groutix.com/#business" },
+      areaServed: [{ "@type": "City", name: "Melbourne" }],
+      url: "https://groutix.com/locations/melbourne",
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://groutix.com/" },
+        { "@type": "ListItem", position: 2, name: "Locations", item: "https://groutix.com/locations" },
+        { "@type": "ListItem", position: 3, name: "Melbourne", item: "https://groutix.com/locations/melbourne" },
+      ],
+    },
+  ],
+};
+
 export default function MelbourneHubClient({
   cityName,
   heroHeading,
@@ -391,6 +415,7 @@ export default function MelbourneHubClient({
   const parent = parentSlug || getRegionSlug(cityName, heroSubtitle, suburbGroups);
   return (
     <main className="public-page min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(melbourneJsonLd) }} />
       {/* ── Hero + Quote Form (homepage pattern) ── */}
       <section id="quote-form" className="relative scroll-mt-28 overflow-hidden bg-black pb-12 pt-[140px] text-white lg:pb-[72px] lg:pt-[160px]">
         <Image src={heroImage} alt="" fill priority sizes="100vw" className="object-cover" />

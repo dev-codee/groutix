@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { CalendarDays, Camera, Check, ChevronDown, ImagePlus, Info, MapPin, X } from "lucide-react";
 import { formatBytes, MAX_FILE_SIZE_BYTES, MAX_TOTAL_BYTES } from "@/lib/imageCompression";
+import { trackEvent } from "@/lib/analytics";
 import { formatSlotRange } from "@/lib/scheduling";
 import { useContact } from "@/components/SiteContentProvider";
 import PhotoUploadTips from "@/components/PhotoUploadTips";
@@ -322,6 +323,7 @@ export default function QuoteFormV2({
   const photoMenuBtnRef = useRef<HTMLButtonElement>(null);
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const startedRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState<null | { booked: string | null; mode: Mode }>(null);
@@ -517,7 +519,7 @@ export default function QuoteFormV2({
       }
       all = [...photos, ...picked];
     }
-    if (picked.length) setPhotos(all);
+    if (picked.length) { setPhotos(all); trackEvent("photo_upload", { form: "quote_form_v2", photo_count: all.length }); }
     setPhotoError(notes.join(" "));
   };
   const removePhoto = (i: number) => {
@@ -662,6 +664,7 @@ export default function QuoteFormV2({
         mode,
         booked: canBook && date && time && avail.status === "ok" ? `${dayLabel(date)}, ${formatSlotRange(time, avail.durationMinutes)}` : null,
       });
+      trackEvent("quote_submit", { form: "quote_form_v2", mode });
       requestAnimationFrame(scrollTop);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -868,7 +871,7 @@ export default function QuoteFormV2({
                 key={m}
                 type="button"
                 aria-pressed={mode === m}
-                onClick={() => { setMode(m); setInspError(""); setCalendarOpen(false); ensureAvailability(step, m); }}
+                onClick={() => { setMode(m); setInspError(""); setCalendarOpen(false); ensureAvailability(step, m); if (!startedRef.current) { startedRef.current = true; trackEvent("form_start", { form: "quote_form_v2", mode: m }); } }}
                 className={`relative rounded-xl border-[1.5px] px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#2F63CC]/40 ${
                   mode === m ? "border-[#001F97] bg-[#EEF3FF] shadow-[0_0_0_3px_rgba(47,99,204,0.15)]" : "border-[#DBE3F0] bg-white hover:border-[#2F63CC]"
                 }`}

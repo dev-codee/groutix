@@ -9,7 +9,7 @@ export const SITE_URL = (
 ).replace(/\/$/, "");
 
 // Default social-share image (swap for a branded 1200×630 image when you have one).
-export const OG_IMAGE = "/img11.jpeg";
+export const OG_IMAGE = "/new_logo.jpeg";
 
 // Shared marketing review count; keep every badge and metadata label consistent.
 export const GOOGLE_REVIEW_COUNT = 296;
@@ -35,6 +35,7 @@ export const BUSINESS = {
     "Geelong",
     "Ballarat",
     "Frankston",
+    "Casey",
     "Lilydale",
     "Yarra Glen",
     "Kilmore",
@@ -84,15 +85,21 @@ export function localBusinessJsonLd(
     email?: string;
     address?: { street: string; locality: string; region: string; postalCode: string };
     areasServed?: string[];
-    social?: { facebook?: string; instagram?: string; google?: string };
+    social?: { facebook?: string; instagram?: string; google?: string; tiktok?: string; youtube?: string };
   }
 ) {
   const address = business?.address ?? BUSINESS.address;
   const areasServed = business?.areasServed ?? BUSINESS.areasServed;
   const sameAs = business?.social
-    ? [business.social.google, business.social.facebook, business.social.instagram].filter(
-        (v): v is string => Boolean(v)
-      )
+    ? [
+        business.social.google,
+        business.social.facebook,
+        business.social.instagram,
+        business.social.tiktok ??
+          BUSINESS.sameAs.find((u) => u.includes("tiktok.com")),
+        business.social.youtube ??
+          BUSINESS.sameAs.find((u) => u.includes("youtube.com")),
+      ].filter((v): v is string => Boolean(v))
     : BUSINESS.sameAs;
   return {
     "@context": "https://schema.org",

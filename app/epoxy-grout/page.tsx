@@ -4,14 +4,14 @@ import EpoxyGroutPage from "@/components/service/EpoxyGroutPageV2";
 import { getBusinessRating, getReviews } from "@/lib/reviews";
 
 export const metadata: Metadata = {
-  title: "Epoxy Grout Installation Victoria | Durable, Mould-Resistant | Groutix",
+  title: "Epoxy Grout Melbourne | Showers & Balconies",
   description:
-    "Upgrade to epoxy grout for a stronger, stain- and mould-resistant finish. Groutix installs premium epoxy grout across Victoria.",
+    "Epoxy versus cement grout explained for Melbourne bathrooms and balconies: lifespan, stain resistance, cost drivers. Free quote.",
   alternates: { canonical: "/epoxy-grout" },
   openGraph: {
-    title: "Epoxy Grout Installation Victoria | Durable, Mould-Resistant | Groutix",
+    title: "Epoxy Grout Melbourne | Showers & Balconies",
     description:
-      "Upgrade to epoxy grout for a stronger, stain- and mould-resistant finish. Groutix installs premium epoxy grout across Victoria.",
+      "Epoxy versus cement grout explained for Melbourne bathrooms and balconies: lifespan, stain resistance, cost drivers. Free quote.",
     url: "/epoxy-grout",
     type: "website",
   },
