@@ -197,17 +197,19 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  const saved = await updateSubmission(body.id, {
-    ...savedInvoice,
-    invoiceNumber,
-    invoiceSentAt: now,
-    invoiceStatus: status,
-    invoiceAmount: total,
-    // Sending the invoice advances the finance stage: Paid → "Payment Received",
-    // otherwise → "Payment Pending" (we're now awaiting the customer's payment).
-    status: status === "Paid" ? "Payment Received" : "Payment Pending",
-  });
-  if (!saved) return NextResponse.json({ error: "The invoice email was sent, but the invoice could not be saved. Please use Save Invoice before sending again." }, { status: 500 });
+  try {
+    const saved = await updateSubmission(body.id, {
+      ...savedInvoice,
+      invoiceNumber,
+      invoiceSentAt: now,
+      invoiceStatus: status,
+      invoiceAmount: total,
+    });
+    if (!saved) throw new Error("Invoice save failed.");
+  } catch (error) {
+    console.error("Invoice delivery status save failed:", error);
+    return NextResponse.json({ error: "The invoice email was sent, but the invoice status could not be saved. Please refresh and use Save Invoice before sending again." }, { status: 500 });
+  }
   await appendActivity(body.id, {
     time: now,
     actor,
@@ -221,5 +223,7 @@ export async function POST(req: NextRequest) {
       .catch(error => { console.error("QBO invoice push failed:", error); });
   }
 
-  return NextResponse.json({ ok: true, invoiceNumber, total, item: await getSubmission(body.id) });
+  const item = await getSubmission(body.id);
+  const customer = item?.invoiceParentId ? await getSubmission(item.invoiceParentId) : item;
+  return NextResponse.json({ ok: true, invoiceNumber, total, item, customer });
 }

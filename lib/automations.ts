@@ -14,6 +14,7 @@ import {
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { buildQuotePdfBase64 } from "@/lib/quotePdf";
+import { statusAfterDocumentSend } from "@/lib/pipeline";
 
 const FROM_EMAIL = process.env.SMTP_FROM || process.env.SMTP_USER || "info@groutix.com";
 const FROM_NAME = "Groutix";
@@ -48,7 +49,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
       await appendActivity(leadId, { time: new Date().toISOString(), actor: "system", action: "Invoice requires quote selection", detail: "Open customer invoices and select the accepted quote to invoice." });
       return;
     }
-    if (lead.invoiceSentAt) return; // already invoiced
+    if (lead.invoiceSentAt || !isEmailConfigured()) return;
     if (!lead.email) {
       await appendActivity(leadId, {
         time: new Date().toISOString(),
@@ -140,14 +141,16 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
     }
 
     const now = new Date().toISOString();
-    await updateSubmission(leadId, {
+    const current = await getSubmission(leadId);
+    const saved = await updateSubmission(leadId, {
       invoiceNumber,
       invoiceSentAt: now,
       invoiceStatus: "Unpaid",
       quoteAmount: total,
-      // Invoice emailed → awaiting the customer's payment.
-      status: "Payment Pending",
+      invoiceAmount: total,
+      status: statusAfterDocumentSend(current?.status, "Invoice Sent"),
     });
+    if (!saved) throw new Error("Invoice email was sent, but its status could not be saved.");
     await appendActivity(leadId, {
       time: now,
       actor: "system",
@@ -170,13 +173,13 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
 /**
  * Auto-generate and email the 10-year warranty when payment is received. Mints a
  * sequential GX-W number and computes a 10-year expiry. Advances the lead to
- * "Completed" (the achieved end state). Idempotent on an already-sent warranty.
+ * "Warranty Sent". Completion remains a separate staff action.
  */
 export async function autoSendWarranty(leadId: string): Promise<void> {
   try {
     const lead = await getSubmission(leadId);
     if (!lead) return;
-    if (lead.warranty?.sentAt) return; // already issued
+    if (lead.warranty?.sentAt || !isEmailConfigured()) return;
     if (!lead.email) {
       await appendActivity(leadId, {
         time: new Date().toISOString(),
@@ -233,18 +236,14 @@ export async function autoSendWarranty(leadId: string): Promise<void> {
     }
 
     const nowIso = now.toISOString();
-    // Warranty sent = the job is fully done; advance to the achieved end state.
-    await updateSubmission(leadId, { warranty, status: "Completed" });
+    const current = await getSubmission(leadId);
+    const saved = await updateSubmission(leadId, { warranty, status: statusAfterDocumentSend(current?.status, "Warranty Sent") });
+    if (!saved) throw new Error("Warranty email was sent, but its status could not be saved.");
     await appendActivity(leadId, {
       time: nowIso,
       actor: "system",
       action: "Warranty auto-generated & emailed",
       detail: `${warrantyNo} → ${lead.email}`,
-    });
-    await appendActivity(leadId, {
-      time: nowIso,
-      actor: "system",
-      action: "Job 100% completed 🏆",
     });
 
     // Warranty is sent via email only (no SMS).

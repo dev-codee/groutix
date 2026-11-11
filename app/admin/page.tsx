@@ -2248,6 +2248,11 @@ export default function CrmDashboardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return alert(data.error || "Could not send the quote.");
+      if (data.item) {
+        ++leadReadVersion.current;
+        setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === data.item.id)?.status, data.item.status));
+        publishCrmChange(data.item);
+      }
       const destMsg = activeQuoteLead.phone
         ? `emailed to ${activeQuoteLead.email} & sent via SMS to ${activeQuoteLead.phone}`
         : `emailed to ${activeQuoteLead.email}`;
@@ -3397,6 +3402,11 @@ export default function CrmDashboardPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return alert(data.error || "Could not send the warranty.");
+      if (data.item) {
+        ++leadReadVersion.current;
+        setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === data.item.id)?.status, data.item.status));
+        publishCrmChange(data.item);
+      }
       alert(`Warranty ${data.warrantyNo} emailed to ${activeWarrantyLead.email}.`);
       setWarrantyModalOpen(false);
       loadData();
@@ -3487,7 +3497,13 @@ export default function CrmDashboardPage() {
       const response = await fetch("/api/admin/invoice/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(currentInvoiceInput()) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Could not save the invoice. Please try again.");
-      if (!activeInvoiceLead.invoiceParentId) setLeads(prev => prev.map(lead => lead.id === activeInvoiceLead.id ? { ...lead, ...result.item } : lead));
+      const customer = result.customer || (!result.item.invoiceParentId ? result.item : undefined);
+      if (customer) {
+        ++leadReadVersion.current;
+        setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(lead => lead.id === customer.id)?.status, customer.status));
+        setLeads(prev => prev.map(lead => lead.id === customer.id ? { ...lead, ...customer } : lead));
+        publishCrmChange(customer);
+      }
       setCustomerInvoices(current => [...current.filter(item => item.id !== result.item.id), result.item]);
       setActiveInvoiceLead(prev => prev ? { ...prev, ...result.item } : prev);
       if (activeInvoiceLead.invoiceParentId) void loadData();
@@ -3519,7 +3535,13 @@ export default function CrmDashboardPage() {
         alert(data.error || "Could not send the invoice.");
         return;
       }
-      if (data.item && !data.item.invoiceParentId) { setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === data.item.id)?.status, data.item.status)); publishCrmChange(data.item); }
+      const customer = data.customer || (data.item && !data.item.invoiceParentId ? data.item : undefined);
+      if (customer) {
+        ++leadReadVersion.current;
+        setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === customer.id)?.status, customer.status));
+        setLeads(prev => prev.map(lead => lead.id === customer.id ? { ...lead, ...customer } : lead));
+        publishCrmChange(customer);
+      }
       notifyInvoiceDeliveryChanged(activeInvoiceLead.invoiceParentId || activeInvoiceLead.id);
       alert(`Invoice ${data.invoiceNumber} emailed to ${activeInvoiceLead.email}.`);
       setInvoiceModalOpen(false);

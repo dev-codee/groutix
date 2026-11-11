@@ -25,7 +25,8 @@ function invoiceView(lead: SubmissionJSON, doc: CustomerInvoice): SubmissionJSON
   const base = { ...lead };
   for (const field of invoiceFields) delete base[field];
   const invoice = { ...base, ...doc.values, id: doc._id, sourceQuoteId: doc.sourceQuoteId, sourceQuoteNumber: doc.sourceQuoteNumber,
-    invoiceParentId: doc.leadId, createdAt: lead.createdAt, status: doc.values.invoiceStatus === "Paid" ? "Payment Received" : "Payment Pending" };
+    invoiceParentId: doc.leadId, createdAt: lead.createdAt, status: doc.values.invoiceStatus === "Paid" || doc.values.paymentReceipt ? "Payment Received"
+      : Number(doc.values.amountPaid) > 0 ? "Payment Pending" : doc.values.invoiceSentAt ? "Invoice Sent" : "Job Done" };
   if (invoice.invoiceDraft) invoice.invoiceDraft = invoiceDraftForLead(invoice);
   return invoice;
 }
@@ -87,9 +88,12 @@ export async function createQuoteInvoice(leadId: string, quoteId: string): Promi
   return invoiceView(lead, saved);
 }
 export async function updateInvoiceSubmission(id: string, updates: Partial<SubmissionDoc>): Promise<boolean> {
+  // Delivery and payment update the customer pipeline from all saved invoices.
+  // Draft edits, open tracking and accounting sync must not advance it.
+  const stage = updates.invoiceStatus === "Paid" || updates.invoiceStatus === "Partially Paid" ? true : updates.invoiceSentAt ? "sent" as const : false;
   if (!isCustomerInvoice(id)) {
     const saved = await updateSubmission(id, updates);
-    if (saved && (await getSubmission(id))?.customerInvoiceCount) await refreshInvoiceSummary(id);
+    if (saved && (stage || (await getSubmission(id))?.customerInvoiceCount)) await refreshInvoiceSummary(id, stage);
     return saved;
   }
   const col = await collection();
@@ -118,7 +122,7 @@ export async function updateInvoiceSubmission(id: string, updates: Partial<Submi
       "values.qboInvoiceId": doc.values.qboInvoiceId === undefined ? { $exists: false } : doc.values.qboInvoiceId,
     } : {}),
   }, { $set: set });
-  if (result.matchedCount > 0) await refreshInvoiceSummary(doc.leadId);
+  if (result.matchedCount > 0) await refreshInvoiceSummary(doc.leadId, stage);
   return result.matchedCount > 0;
 }
 export async function appendInvoiceActivity(id: string, entry: ActivityEntry) {
@@ -129,17 +133,21 @@ export async function saveInvoiceCustomerId(id: string, qboCustomerId: string) {
   if (!await updateSubmission(invoiceLeadId(id), { qboCustomerId })) throw new Error("Could not save the QuickBooks customer link. Retry invoice sync.");
 }
 
-export async function refreshInvoiceSummary(leadId: string, updatePaymentStage = false) {
+export async function refreshInvoiceSummary(leadId: string, updatePaymentStage: boolean | "sent" = false) {
   const invoices = await listCustomerInvoices(leadId);
   if (!invoices) return;
   const cents = (amount?: number) => Math.round(Number(amount || 0) * 100);
   const paid = (item: SubmissionJSON) => item.invoiceStatus === "Paid" || item.paymentReceipt ? cents(item.invoiceAmount) : cents(item.amountPaid);
   const outstanding = invoices.reduce((sum, item) => sum + Math.max(0, cents(item.invoiceAmount) - paid(item)), 0) / 100;
   const lead = updatePaymentStage ? await getSubmission(leadId) : null;
-  await updateSubmission(leadId, {
-    ...(lead && !["Completed", "Warranty Sent", "Cancelled", "Lost"].includes(lead.status) ? { status: outstanding > 0 ? "Payment Pending" : "Payment Received" } : {}),
+  const pending = updatePaymentStage === true || ["Payment Pending", "Payment Request", "Partial Payment"].includes(lead?.status || "")
+    || invoices.some(item => paid(item) > 0 && paid(item) < cents(item.invoiceAmount));
+  const saved = await updateSubmission(leadId, {
+    ...(lead && invoices.length && !["Completed", "Warranty Sent", "Cancelled", "Lost"].includes(lead.status)
+      ? { status: outstanding > 0 ? pending ? "Payment Pending" : "Invoice Sent" : "Payment Received" } : {}),
     customerInvoiceCount: invoices.length,
     customerInvoiceTotal: invoices.reduce((sum, item) => sum + cents(item.invoiceAmount), 0) / 100,
     customerInvoiceOutstanding: outstanding,
   });
+  if (!saved) throw new Error("Could not save the customer's invoice status. Refresh and retry saving the invoice.");
 }

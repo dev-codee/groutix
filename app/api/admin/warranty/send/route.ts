@@ -8,6 +8,7 @@ import {
   type WarrantyDoc,
 } from "@/lib/submissions";
 import { verifyRequestSession } from "@/lib/adminAuth";
+import { statusAfterDocumentSend } from "@/lib/pipeline";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await verifyRequestSession(req);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const actor = session?.username || "staff";
 
   let body: { id?: string; warranty?: WarrantyDoc; imageDataUrl?: string };
@@ -114,7 +116,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not send the warranty email." }, { status: 502 });
   }
 
-  await updateSubmission(body.id, { warranty, warrantyProvided: true, status: "Warranty Sent" });
+  const current = await getSubmission(body.id);
+  const saved = await updateSubmission(body.id, { warranty, warrantyProvided: true, status: statusAfterDocumentSend(current?.status, "Warranty Sent") });
+  if (!saved) return NextResponse.json({ error: "The warranty email was sent, but its status could not be saved. Refresh the customer before sending again." }, { status: 500 });
   await appendActivity(body.id, {
     time: now.toISOString(),
     actor,
@@ -122,5 +126,5 @@ export async function POST(req: NextRequest) {
     detail: `${warrantyNo} to ${lead.email}`,
   });
 
-  return NextResponse.json({ ok: true, warrantyNo });
+  return NextResponse.json({ ok: true, warrantyNo, item: await getSubmission(body.id) });
 }

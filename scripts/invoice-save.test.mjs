@@ -80,6 +80,7 @@ test('the invoice editor retains its selected record and errors after saving', a
     const state = { closed: false, error: '', leads: [lead] }, module = { exports: {} };
     vm.runInNewContext(compiled, { module, activeInvoiceLead: lead, invoiceSaveInFlight: { current: false }, sendingInvoice: false,
       currentInvoiceInput: () => input, setSavingInvoice() {},
+      leads: [lead], leadReadVersion: { current: 0 }, setStatusFilter() {}, publishCrmChange() {},
       setInvoiceSaveError: error => { state.error = error; }, setInvoiceModalOpen: open => { state.closed = !open; },
       setCustomerInvoices() {}, setLeads: update => { state.leads = update(state.leads); }, setActiveInvoiceLead() {},
       fetch: async () => { assert.equal(state.closed, false); return { ok, json: async () => ok ? { item: { ...lead, ...invoiceChanges(lead, input) } } : { error: 'Database unavailable' } }; },

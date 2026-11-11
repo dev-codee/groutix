@@ -135,6 +135,10 @@ test('PDF, email, QuickBooks and receipt endpoints operate on the selected invoi
     assert.equal((await pdfRoute.GET({ nextUrl: new URL('https://example.com/pdf') }, { params: Promise.resolve({ id: invoice.id }) })).status, 200);
     const response = await sendRoute.POST({ json: async () => ({ id: invoice.id, price: invoice.invoiceAmount, gst: invoice.invoiceDraft.gst, status: 'Unpaid' }) });
     assert.equal(response.status, 200);
+    const sent = await response.json();
+    assert.equal(sent.item.status, 'Invoice Sent');
+    assert.equal(sent.customer.id, 'customer');
+    assert.equal(sent.customer.status, 'Invoice Sent');
   }
   assert.equal(pdfs[0].quoteNumber, a.invoiceNumber);
   assert.equal(pdfs[2].quoteNumber, b.invoiceNumber);
@@ -157,7 +161,9 @@ test('PDF, email, QuickBooks and receipt endpoints operate on the selected invoi
   assert.doesNotMatch(pushes[0].items[0].description, /Scope a|Quantity:/);
   assert.notEqual((await api.getInvoiceSubmission(a.id)).qboInvoiceId, (await api.getInvoiceSubmission(b.id)).qboInvoiceId);
   const saveRoute = loadTs('app/api/admin/invoice/save/route.ts', overrides);
-  assert.equal((await saveRoute.POST({ json: async () => ({ id: a.id, price: 275, gst: 10, status: 'Paid' }) })).status, 200);
+  const paid = await saveRoute.POST({ json: async () => ({ id: a.id, price: 275, gst: 10, status: 'Paid' }) });
+  assert.equal(paid.status, 200);
+  assert.equal((await paid.json()).customer.status, 'Payment Pending', 'other invoices remain unpaid');
   const receiptRoute = loadTs('app/api/admin/invoice/receipt/route.ts', overrides);
   const response = await receiptRoute.GET({ nextUrl: new URL(`https://example.com/receipt?id=${encodeURIComponent(a.id)}`) });
   assert.equal(response.status, 200);

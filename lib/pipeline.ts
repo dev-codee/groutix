@@ -59,6 +59,13 @@ export const STAGES: Stage[] = [
 
 export const STATUS_KEYS: string[] = STAGES.map((s) => s.key);
 
+/** Document delivery must never rewind work that has already advanced. */
+export function statusAfterDocumentSend(current: string | undefined, target: "Quote Sent" | "Won" | "Invoice Sent" | "Warranty Sent"): string {
+  if (current === "Lost" || current === "Cancelled") return current;
+  const canonical = current === "Paid" ? "Payment Received" : current === "Quote Accepted" ? "Won" : current;
+  return STATUS_KEYS.indexOf(canonical || "") > STATUS_KEYS.indexOf(target) ? current! : target;
+}
+
 const STAGE_BY_KEY = new Map(STAGES.map((s) => [s.key, s] as const));
 
 export function stageOf(status: string): Stage | undefined {

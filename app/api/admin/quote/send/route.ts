@@ -2,7 +2,7 @@ import { quoteUnitPriceExGst } from "@/lib/quotePricing";
 import { getQuoteSubmission as getSubmission, updateQuoteSubmission as updateSubmission, appendQuoteActivity as appendActivity, quoteLeadId, listCustomerQuotes, reserveCustomerQuoteSend, releaseCustomerQuoteSend } from "@/lib/customerQuotes";
 import { quoteTrackingPixel } from "@/lib/quoteOpenTracking";
 import { NextRequest, NextResponse } from "next/server";
-import { getNextSequence, formatDocNumber } from "@/lib/submissions";
+import { getNextSequence, formatDocNumber, getSubmission as getCustomer } from "@/lib/submissions";
 import { verifySession, SESSION_COOKIE } from "@/lib/adminAuth";
 import { sendEmail, isEmailConfigured, wrapEmailHtml, getEmailLogoUrl, type EmailAttachment } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ ok: true, quoteNumber, total });
+  return NextResponse.json({ ok: true, quoteNumber, total, item: await getCustomer(body.id) });
   } finally {
     await releaseCustomerQuoteSend(reference);
   }

@@ -17,9 +17,11 @@ export async function POST(req: NextRequest) {
     let updates;
     try { updates = invoiceChanges({ ...lead, id: body.id }, body); }
     catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
-    const saved = await updateSubmission(body.id, { ...updates, ...(updates.invoiceStatus === "Paid" ? { status: "Payment Received" } : {}) });
+    const saved = await updateSubmission(body.id, updates);
     if (!saved) return NextResponse.json({ error: "Could not save the invoice. Please try again." }, { status: 500 });
-    return NextResponse.json({ ok: true, item: await getSubmission(body.id) || { ...lead, ...updates, id: body.id } });
+    const item = await getSubmission(body.id) || { ...lead, ...updates, id: body.id };
+    const customer = item.invoiceParentId ? await getSubmission(item.invoiceParentId) : item;
+    return NextResponse.json({ ok: true, item, customer });
   } catch (error) {
     console.error("Invoice save failed:", error);
     return NextResponse.json({ error: "Could not save the invoice. Your edits are still in the form." }, { status: 500 });

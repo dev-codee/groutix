@@ -2,6 +2,7 @@ import { changesAcceptedQuote } from "./quoteIntegrity";
 import { randomUUID } from "node:crypto";
 import { getDb } from "./mongodb";
 import { getSubmission, updateSubmission, appendActivity, getNextSequence, formatDocNumber, type SubmissionDoc, type SubmissionJSON } from "./submissions";
+import { statusAfterDocumentSend } from "./pipeline";
 import { quoteDeliveryTimes } from "./quoteDelivery";
 
 const valueFields = ["quoteScope", "quoteItems", "quoteTaxMode", "quoteTaxRate", "quoteTerms", "quoteAmount", "quoteUpdated",
@@ -135,7 +136,9 @@ export async function updateQuoteSubmission(reference: string, updates: Partial<
     // Sending/accepting another option cannot silently replace the agreed job quote.
     if (workingLead?.quoteAcceptedAt || workingLead?.quoteSignedAt) return true;
     return updateSubmission(leadId, { quoteOpenedAt: "", quoteAcceptedAt: "", quoteDeclinedAt: "", quoteSignedAt: "", quoteSignature: "", quoteSignedName: "", quoteSignedIp: "",
-      ...quote.values, ...updates, quoteReference: quote._id });
+      ...quote.values, ...updates,
+      ...(updates.status === "Quote Sent" || updates.status === "Won" ? { status: statusAfterDocumentSend(workingLead?.status, updates.status) } : {}),
+      quoteReference: quote._id });
   }
   if (updates.quoteDeclinedAt) {
     // Declining one option does not close the customer's other quotes or job.
