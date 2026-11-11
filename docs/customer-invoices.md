@@ -28,6 +28,13 @@ payment stage becomes Payment Received only when all saved invoices are settled.
 invoice sender skips customers using multiple quotes; staff select the agreed
 quote explicitly to avoid issuing an additional unlinked invoice.
 
+Sending an unpaid invoice advances the customer from Job Done to Invoice Sent,
+including invoices created from accepted quotes. Recording a payment moves the
+customer to Payment Pending while any saved invoice is outstanding, then Payment
+Received when all are paid. Draft saves do not advance delivery. Resending retains
+payment progress and completed, warranty, cancelled or lost stages. The dashboard
+updates the parent customer's status and active filter after a successful save or send.
+
 Validation:
 
 ```sh

@@ -325,3 +325,39 @@ test('receiving an outstanding invoice payment does not reopen a cancelled custo
   assert.equal((await api.getInvoiceSubmission(invoice.id)).invoiceStatus, 'Paid');
   assert.equal(api.leads.get('customer').status, 'Cancelled');
 });
+
+test('invoice delivery advances the customer, resends preserve payment progress, and all settled invoices advance to received', async () => {
+  const api = setup();
+  const a = await api.createQuoteInvoice('customer', 'customer~a');
+  const b = await api.createQuoteInvoice('customer', 'customer~b');
+  assert.equal((await api.getInvoiceSubmission(a.id)).status, 'Job Done', 'unsent invoices are drafts');
+  await api.updateInvoiceSubmission(a.id, { invoiceSentAt: 'sent' });
+  assert.equal(api.leads.get('customer').status, 'Invoice Sent');
+  await api.updateInvoiceSubmission(a.id, { invoiceStatus: 'Paid' });
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
+  await api.updateInvoiceSubmission(b.id, { invoiceSentAt: 'sent-b' });
+  assert.equal(api.leads.get('customer').status, 'Payment Pending');
+  await api.updateInvoiceSubmission(b.id, { invoiceStatus: 'Paid' });
+  assert.equal(api.leads.get('customer').status, 'Payment Received');
+  await api.updateInvoiceSubmission(a.id, { invoiceSentAt: 'resent' });
+  assert.equal(api.leads.get('customer').status, 'Payment Received');
+  for (const status of ['Warranty Sent', 'Completed', 'Cancelled', 'Lost']) {
+    api.leads.get('customer').status = status;
+    await api.updateInvoiceSubmission(a.id, { invoiceSentAt: 'resent-again' });
+    assert.equal(api.leads.get('customer').status, status);
+  }
+});
+
+test('legacy invoice delivery advances the same customer pipeline without changing paid or closed stages', async () => {
+  const api = setup();
+  const lead = api.leads.get('customer');
+  delete lead.paymentReceipt; delete lead.paymentType; delete lead.amountPaid;
+  lead.invoiceStatus = 'Unpaid';
+  await api.updateInvoiceSubmission('customer', { invoiceSentAt: 'sent' });
+  assert.equal(lead.status, 'Invoice Sent');
+  await api.updateInvoiceSubmission('customer', { invoiceStatus: 'Paid' });
+  assert.equal(lead.status, 'Payment Received');
+  lead.status = 'Completed';
+  await api.updateInvoiceSubmission('customer', { invoiceSentAt: 'resent' });
+  assert.equal(lead.status, 'Completed');
+});

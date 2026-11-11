@@ -90,7 +90,8 @@ export async function createQuoteInvoice(leadId: string, quoteId: string): Promi
 export async function updateInvoiceSubmission(id: string, updates: Partial<SubmissionDoc>): Promise<boolean> {
   // Delivery and payment update the customer pipeline from all saved invoices.
   // Draft edits, open tracking and accounting sync must not advance it.
-  const stage = updates.invoiceStatus === "Paid" || updates.invoiceStatus === "Partially Paid" ? true : updates.invoiceSentAt ? "sent" as const : false;
+  const sent = updates.invoiceSentAt || (updates.invoiceDraft && (await getInvoiceSubmission(id))?.invoiceSentAt);
+  const stage = updates.invoiceStatus === "Paid" || updates.invoiceStatus === "Partially Paid" ? true : sent ? "sent" as const : false;
   if (!isCustomerInvoice(id)) {
     const saved = await updateSubmission(id, updates);
     if (saved && (stage || (await getSubmission(id))?.customerInvoiceCount)) await refreshInvoiceSummary(id, stage);

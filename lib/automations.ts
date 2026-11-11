@@ -49,7 +49,7 @@ export async function autoSendInvoice(leadId: string): Promise<void> {
       await appendActivity(leadId, { time: new Date().toISOString(), actor: "system", action: "Invoice requires quote selection", detail: "Open customer invoices and select the accepted quote to invoice." });
       return;
     }
-    if (lead.invoiceSentAt || !isEmailConfigured()) return;
+    if (lead.invoiceSentAt || lead.invoiceStatus === "Paid" || lead.paymentReceipt || !isEmailConfigured()) return;
     if (!lead.email) {
       await appendActivity(leadId, {
         time: new Date().toISOString(),

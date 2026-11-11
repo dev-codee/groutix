@@ -177,6 +177,7 @@ test('actual travel handler saves the selected visit and offers notification onl
     const moduleRecord = { exports: {} };
     vm.runInNewContext(compiled, {
       module: moduleRecord, selectedJobBooking, jobUpdatesInFlight: { current: new Set() },
+      leadReadVersion: { current: 0 }, publishCrmChange() {}, setStatusFilter() {}, role: 'technician',
       setJobBookingsSaving: () => {},
       updateLeadField: () => assert.fail('Travel must target the visit API'),
       setLeads: update => { lead = update([lead])[0]; },
