@@ -506,6 +506,19 @@ export async function buildQuotePdfBase64(input: QuotePdfInput): Promise<string>
     ensureQuoteRoom(height + 12);
     y -= 6;
     page1.drawImage(notice, { x: MARGIN, y: y - height, width, height });
+    // Match the preview: cover the stacked artwork logo and use our original wordmark.
+    const noticeLogo = await doc.embedJpg(fs.readFileSync(path.join(process.cwd(), "public/new_logo.jpeg")));
+    const scale = width / notice.width;
+    page1.drawRectangle({
+      x: MARGIN + 14 * scale, y: y - 397 * scale,
+      width: 280 * scale, height: 252 * scale, color: rgb(1, 1, 1),
+    });
+    const logoWidth = 280 * scale;
+    const logoHeight = logoWidth * noticeLogo.height / noticeLogo.width;
+    page1.drawImage(noticeLogo, {
+      x: MARGIN + 14 * scale, y: y - 271 * scale - logoHeight / 2,
+      width: logoWidth, height: logoHeight,
+    });
     y -= height + 6;
   }
 

@@ -2250,7 +2250,8 @@ export default function CrmDashboardPage() {
       if (!res.ok) return alert(data.error || "Could not send the quote.");
       if (data.item) {
         ++leadReadVersion.current;
-        setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(item => item.id === data.item.id)?.status, data.item.status));
+        // Keep the originating queue selected when the customer moves to Quote Sent.
+        setLeads(current => current.map(item => item.id === data.item.id ? { ...item, ...data.item } : item));
         publishCrmChange(data.item);
       }
       const destMsg = activeQuoteLead.phone
@@ -2258,7 +2259,7 @@ export default function CrmDashboardPage() {
         : `emailed to ${activeQuoteLead.email}`;
       alert(`Quote ${data.quoteNumber} ${destMsg}.`);
       setQuoteModalOpen(false);
-      loadData();
+      void loadData({ silent: true });
     } catch {
       alert("Network error while sending the quote.");
     }

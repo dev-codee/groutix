@@ -10,7 +10,7 @@ import { bookingSegments, bookingEndForDuration } from "@/lib/bookingSpan";
 import { appointmentDurationMinutes, savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { useState, useMemo, useCallback, useEffect, type DragEvent, type PointerEvent } from "react";
-import { dispatchDates, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } from "@/lib/dispatchTimeline";
+import { dispatchDates, dispatchTimelineBounds, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } from "@/lib/dispatchTimeline";
 import {
   Truck, Calendar, Clock, MapPin, Search, ChevronLeft, ChevronRight,
   Navigation, Phone, Mail, MessageSquare, Camera, Zap, UserPlus,
@@ -197,17 +197,8 @@ export function DispatchView({
   // ── 2. Visible Dates in Timeline ────────────────────────────────────────────
   const visibleDates = useMemo(() => dispatchDates(selectedDate, "Week"), [selectedDate]);
 
-  // The visible day stays fixed; staff booking permissions are independent.
-  const TIMELINE_START_MINS = 9 * 60;
-  const TIMELINE_END_MINS = 17 * 60;
-  const TOTAL_TIMELINE_MINS = Math.max(60, TIMELINE_END_MINS - TIMELINE_START_MINS);
-  const HOUR_SLOTS = Array.from({ length: TOTAL_TIMELINE_MINS / 60 + 1 }, (_, index) => {
-    const hour = TIMELINE_START_MINS / 60 + index;
-    return { hour, label: `${hour % 12 || 12} ${hour >= 12 ? "PM" : "AM"}` };
-  });
-
   // ── 3. Parse and layout appointments for each date ─────────────────────────
-  const appointmentsByDate = useMemo(() => {
+  const rawAppointmentsByDate = useMemo(() => {
     const map = new Map<string, Array<{
       lead: Lead;
       type: "inspection" | "job";
@@ -223,9 +214,6 @@ export function DispatchView({
       title: string;
       serviceLabel: string;
       bookingStatus: string;
-      // Exact timeline coordinates (% of 9 AM - 5 PM track)
-      leftPct: number;
-      widthPct: number;
     }>>();
 
     for (const date of visibleDates) {
@@ -269,15 +257,12 @@ export function DispatchView({
         for (const segment of segments) {
           if (!map.has(segment.date)) continue;
           const startMins = parseMinutes(segment.time), durationMins = segment.scheduledMinutes, endMins = startMins + durationMins;
-          const clampedStart = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, startMins));
-          const clampedEnd = Math.max(TIMELINE_START_MINS, Math.min(TIMELINE_END_MINS, endMins));
           const travel = calculateTravel("Tullamarine", suburb);
           map.get(segment.date)!.push({ lead, type, startTime: segment.time, startMins, durationMins, endMins,
             endTime: fmtMinutesTo12h(endMins), tech: type === "job" ? lead.technician || "Unassigned" : lead.assigned || "Unassigned",
             suburb, travelToMins: travel.durationMinutes, travelToKm: travel.distanceKm,
             title: `${type === "job" ? "Job" : "Inspection"} (${durationMins / 60} hrs)${segments.length > 1 ? " · multi-day" : ""}`,
-            serviceLabel: lead.service || "Tile & Grout Service", bookingStatus: visit.status, leftPct: (clampedStart - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100,
-            widthPct: Math.max(1, (clampedEnd - clampedStart) / TOTAL_TIMELINE_MINS * 100) });
+            serviceLabel: lead.service || "Tile & Grout Service", bookingStatus: visit.status });
         }
       }
     }
@@ -288,6 +273,18 @@ export function DispatchView({
 
     return map;
   }, [scopedLeads, visibleDates, techFilter, searchQuery, bookingRules]);
+
+  const { start: TIMELINE_START_MINS, end: TIMELINE_END_MINS } = dispatchTimelineBounds(rawAppointmentsByDate.get(selectedDate) || []);
+  const TOTAL_TIMELINE_MINS = TIMELINE_END_MINS - TIMELINE_START_MINS;
+  const HOUR_SLOTS = Array.from({ length: TOTAL_TIMELINE_MINS / 60 + 1 }, (_, index) => {
+    const hour = TIMELINE_START_MINS / 60 + index;
+    return { hour, label: `${hour % 12 || 12} ${hour % 24 >= 12 ? "PM" : "AM"}` };
+  });
+  const appointmentsByDate = useMemo(() => new Map(Array.from(rawAppointmentsByDate, ([date, items]) => [date, items.map(item => ({
+    ...item,
+    leftPct: (item.startMins - TIMELINE_START_MINS) / TOTAL_TIMELINE_MINS * 100,
+    widthPct: (item.endMins - item.startMins) / TOTAL_TIMELINE_MINS * 100,
+  }))])), [rawAppointmentsByDate, TIMELINE_START_MINS, TOTAL_TIMELINE_MINS]);
 
   // ── Currently Selected Lead ────────────────────────────────────────────────
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
@@ -383,7 +380,7 @@ export function DispatchView({
     }
 
     return suggestions;
-  }, [activeLead, selectedDate, appointmentsByDate, changeBookingType, changeBookingTech, capacityAppointments, assignableTechnicians, bookingRules]);
+  }, [activeLead, selectedDate, appointmentsByDate, changeBookingType, changeBookingTech, capacityAppointments, assignableTechnicians, bookingRules, TIMELINE_START_MINS, TIMELINE_END_MINS]);
 
   const bookingDuration = (type: "inspection" | "job") => appointmentDurationMinutes({ type }, bookingRules);
 
@@ -730,7 +727,7 @@ export function DispatchView({
           {/* ── TIMELINE SCHEDULE GRID ─────────────────────────────────────────── */}
           <div className="flex flex-col bg-slate-50/40 flex-1 min-h-0">
             <div className="flex-1 overflow-x-auto overflow-y-auto min-w-0">
-              <div className="w-full min-w-[580px] flex flex-col bg-white">
+              <div className="w-full min-w-[580px] flex flex-col bg-white" style={{ minWidth: Math.max(580, 128 + TOTAL_TIMELINE_MINS / 60 * 90) }}>
 
                 {/* Grid Header Row: Hourly Columns */}
                 <div className="flex border-b border-slate-200 sticky top-0 bg-white z-20 shadow-2xs">
@@ -738,7 +735,7 @@ export function DispatchView({
                   <div className="w-32 shrink-0 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 border-r border-slate-200 flex items-center bg-white sticky left-0 z-30">
                     Team member
                   </div>
-                  {/* Hourly headers across 9 AM to 5 PM */}
+                  {/* Hourly headers across the full booking range */}
                   <div className="flex-1 relative h-8 mx-1 sm:mx-1.5">
                     {HOUR_SLOTS.map((slot) => (
                       <div

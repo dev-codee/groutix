@@ -3,7 +3,7 @@ import Image from "next/image";
 /** Compact notice shared by the staff preview and customer quotation. */
 export function QuoteCuringNotice() {
   return (
-    <div className="my-2 w-full max-w-[480px] break-inside-avoid">
+    <div className="relative my-2 w-full max-w-[480px] break-inside-avoid">
       <Image
         src="/groutix-curing-time.jpeg"
         width={1600}
@@ -12,6 +12,17 @@ export function QuoteCuringNotice() {
         className="block h-auto w-full"
         alt="Curing time: use the work area after 24 hours for silicone, 48 hours for polymer grout, and 4 days for epoxy grout or injection resin. Avoid water and foot traffic on repaired tiles for 4 days."
       />
+      {/* Replace the artwork's stacked logo with the original Groutix wordmark. */}
+      <div className="absolute left-[0.875%] top-[27.2%] flex h-[47.3%] w-[17.5%] items-center justify-center bg-white">
+        <Image
+          src="/new_logo.jpeg"
+          width={1600}
+          height={613}
+          sizes="84px"
+          className="block h-auto w-full"
+          alt="Groutix"
+        />
+      </div>
     </div>
   );
 }

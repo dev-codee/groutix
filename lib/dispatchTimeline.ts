@@ -7,6 +7,17 @@ export function dispatchDates(date: string, mode: "Day" | "Week"): string[] {
   return Array.from({ length: mode === "Week" ? 7 : 1 }, (_, index) => addDaysYmd(date, index));
 }
 
+/** Keep the usual workday visible and extend to whole hours around saved bookings. */
+export function dispatchTimelineBounds(bookings: ReadonlyArray<{ startMins: number; endMins: number }>) {
+  let start = 9 * 60, end = 17 * 60;
+  for (const booking of bookings) {
+    if (!Number.isFinite(booking.startMins) || !Number.isFinite(booking.endMins) || booking.endMins <= booking.startMins) continue;
+    start = Math.min(start, Math.floor(booking.startMins / 60) * 60);
+    end = Math.max(end, Math.ceil(booking.endMins / 60) * 60);
+  }
+  return { start: Math.max(0, start), end: Math.min(24 * 60, end) };
+}
+
 /** Snap the grabbed point to the track while keeping the complete booking visible. */
 export function dispatchDropMinutes(ratio: number, start: number, end: number, duration: number, grabOffset = 0): number {
   const proposed = Math.round((start + ratio * (end - start) - grabOffset) / 15) * 15;

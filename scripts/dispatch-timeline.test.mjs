@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
-const { dispatchDates, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } = loadTs("lib/dispatchTimeline.ts");
+const { dispatchDates, dispatchTimelineBounds, dispatchDropMinutes, dispatchResizeEndMinutes, dispatchBookingIssue } = loadTs("lib/dispatchTimeline.ts");
 const { DEFAULT_BOOKING_RULES } = loadTs("lib/bookingRules.ts");
 const rules = structuredClone(DEFAULT_BOOKING_RULES);
 const technicians = [{ id: "tech-1", name: "Alex", active: true, workDays: [0,1,2,3,4,5,6] }];
 const candidate = { leadId: "lead-1", type: "job", date: "2026-10-12", time: "10:00", durationMinutes: 180, technician: "Alex" };
+test("timeline includes early, late and midnight bookings while retaining the normal workday", () => {
+  const bounds = bookings => JSON.parse(JSON.stringify(dispatchTimelineBounds(bookings)));
+  assert.deepEqual(bounds([]), { start: 540, end: 1020 });
+  assert.deepEqual(bounds([{ startMins: 495, endMins: 525 }, { startMins: 1380, endMins: 1440 }]), { start: 480, end: 1440 });
+  assert.deepEqual(bounds([{ startMins: 900, endMins: 1050 }]), { start: 540, end: 1080 });
+  assert.deepEqual(bounds([{ startMins: 0, endMins: 30 }]), { start: 0, end: 1020 });
+});
 test("week view includes seven consecutive local dates across month and year boundaries", () => {
   assert.equal(dispatchDates("2026-12-29", "Week").join(","), "2026-12-29,2026-12-30,2026-12-31,2027-01-01,2027-01-02,2027-01-03,2027-01-04");
   assert.equal(dispatchDates("2026-10-10", "Day").join(","), "2026-10-10");
@@ -156,4 +163,25 @@ test("the real board stages a drag, cancellation writes nothing, and confirmatio
   editor = nodes(render()).find(node => node.type?.name === "EditBookingModal");
   assert.equal(editor.props.type, "inspection");
   assert.equal(editor.props.lead.inspectionEndAt, "2026-10-12T09:30");
+  editor.props.onClose();
+  lead.inspectionAt = "2026-10-12T08:15";
+  lead.inspectionEndAt = "2026-10-12T08:45";
+  lead.jobAt = "2026-10-12T23:00";
+  lead.jobEndAt = "2026-10-13T00:00";
+  tree = nodes(render());
+  assert.ok(label(tree).includes("8 AM"));
+  assert.ok(label(tree).includes("11 PM"));
+  for (const time of ["8:15 AM", "11:00 PM"]) {
+    const card = tree.find(node => node.props?.title?.includes(time));
+    assert.ok(card, `${time} booking remains visible`);
+    assert.ok(parseFloat(card.props.style.left) >= 0);
+    assert.ok(parseFloat(card.props.style.width) > 1, "booking has its actual duration width");
+    assert.ok(parseFloat(card.props.style.left) + parseFloat(card.props.style.width) <= 100);
+  }
+  lead.inspectionAt = "2026-10-12T09:00";
+  lead.inspectionEndAt = "2026-10-12T09:30";
+  lead.jobAt = "2026-10-12T10:00";
+  lead.jobEndAt = "2026-10-12T11:00";
+  tree = nodes(render());
+  assert.ok(!label(tree).includes("11 PM"), "range returns to normal when late bookings are removed");
 });
