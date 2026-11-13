@@ -2,6 +2,7 @@
 import { InspectionBookingDates } from "../InspectionBookingDates";
 
 import { openInvoicePayment } from "../InvoicePaymentModal";
+import { QuickBooksWorkflowStatus } from "../QuickBooksWorkflowStatus";
 import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
 
 import { isProgressStatus } from "@/lib/adminHelpers";
@@ -1117,6 +1118,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
                 </div>
               );
             })}
+            <QuickBooksWorkflowStatus lead={l} />
           </div>
 
           {l.status === "Completed" ? (

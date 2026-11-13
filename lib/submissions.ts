@@ -205,6 +205,7 @@ export interface SubmissionDoc {
   invoiceAmount?: number;
   invoiceNumber?: string;
   customerInvoiceCount?: number;
+  customerInvoiceSyncedCount?: number;
   customerInvoiceTotal?: number;
   customerInvoiceOutstanding?: number;
   invoicePayments?: import("@/lib/invoicePayments").InvoicePaymentRecord[];
@@ -655,6 +656,7 @@ type DashboardBatch = {
   items: SubmissionDoc[];
   bookings: import("./bookings").BookingDoc[];
   acceptedQuotes: { leadId: string }[];
+  invoiceSyncs?: { _id: string; count: number; synced: number }[];
 };
 
 async function withBookings(items: SubmissionJSON[], prefetched?: Pick<DashboardBatch, "bookings" | "acceptedQuotes">): Promise<SubmissionJSON[]> {
@@ -699,7 +701,7 @@ const dashboardFields = [
   "quoteUpdated", "quoteAmount", "photosCount", "gps", "warranty", "warrantyProvided",
   "quoteReference", "quoteNumber", "hasCustomerQuotes", "acceptedCustomerQuoteCount", "quoteSentAt", "quoteOpenedAt",
   "quoteAcceptedAt", "quoteDeclinedAt", "quoteSignedName", "quoteSignedAt", "followUpStage", "followUpNext",
-  "paymentReceipt", "receiptSentAt", "invoiceDraft", "invoiceAmount", "invoiceNumber", "customerInvoiceCount",
+  "paymentReceipt", "receiptSentAt", "invoiceDraft", "invoiceAmount", "invoiceNumber", "customerInvoiceCount", "customerInvoiceSyncedCount",
   "customerInvoiceTotal", "customerInvoiceOutstanding", "invoicePayments", "invoicePaymentVersion", "invoiceParentId", "sourceQuoteId",
   "sourceQuoteNumber", "invoiceSentAt", "invoiceStatus", "invoiceOpenedAt", "qboCustomerId", "qboInvoiceId",
   "qboSyncedAt", "qboError", "qboErrorAt", "inspectionWorkSegments", "jobWorkSegments", "inspectionEndAt",
@@ -769,7 +771,10 @@ export async function listSubmissions(
         { $group: { _id: null, items: { $push: "$$ROOT" }, leadIds: { $push: { $toString: "$_id" } } } },
         { $lookup: { from: "bookings", localField: "leadIds", foreignField: "leadId", pipeline: [{ $project: bookingProjection }], as: "bookings" } },
         { $lookup: { from: "customer_quotes", localField: "leadIds", foreignField: "leadId", pipeline: [{ $match: { state: "accepted" } }, { $project: { leadId: 1, _id: 0 } }], as: "acceptedQuotes" } },
-        { $project: { _id: 0, items: 1, bookings: 1, acceptedQuotes: 1 } },
+        { $lookup: { from: "customer_invoices", localField: "leadIds", foreignField: "leadId", pipeline: [
+          { $group: { _id: "$leadId", count: { $sum: 1 }, synced: { $sum: { $cond: [{ $ne: [{ $ifNull: ["$values.qboInvoiceId", ""] }, ""] }, 1, 0] } } } },
+        ], as: "invoiceSyncs" } },
+        { $project: { _id: 0, items: 1, bookings: 1, acceptedQuotes: 1, invoiceSyncs: 1 } },
       ] : []),
     ], { maxTimeMS: 10_000 }).toArray() : col
       .find(filter, { projection: { "photos.dataUrl": 0 } })
@@ -784,7 +789,16 @@ export async function listSubmissions(
   params.onTiming?.("lead_query", queried - connected);
   const batch = params.dashboard ? (docsOrBatch as DashboardBatch[])[0] : undefined;
   const docs = params.dashboard ? batch?.items || [] : docsOrBatch as SubmissionDoc[];
-  const items = params.inbox ? docs.map(toJSON) : await withBookings(docs.map(toJSON), batch);
+  const summaries = docs.map(toJSON);
+  if (batch?.invoiceSyncs) {
+    const byId = new Map(batch.invoiceSyncs.map(item => [item._id, item]));
+    for (const item of summaries) {
+      const child = byId.get(item.id);
+      item.customerInvoiceSyncedCount = (child?.synced || 0) + Number(Boolean(item.invoiceNumber && item.qboInvoiceId));
+      if (child) item.customerInvoiceCount = child.count + Number(Boolean(item.invoiceNumber));
+    }
+  }
+  const items = params.inbox ? summaries : await withBookings(summaries, batch);
   params.onTiming?.("booking_join", Date.now() - queried);
   return { items, total };
 }

@@ -2,6 +2,7 @@
 
 import { InvoiceDeliveryHistory } from "../InvoiceDeliveryHistory";
 import { openInvoicePayment } from "../InvoicePaymentModal";
+import { QuickBooksWorkflowStatus } from "../QuickBooksWorkflowStatus";
 import { SendInvoiceToQuickBooksButton } from "../SendInvoiceToQuickBooksButton";
 
 import { isProgressStatus } from "@/lib/adminHelpers";
@@ -610,6 +611,8 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
                 <span className="truncate">Invoice Sent</span>
                 {isInvoiceSent && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3] shrink-0 ml-0.5" />}
               </div>
+
+              <QuickBooksWorkflowStatus lead={l} />
 
               <div
                 className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-between cursor-default select-none border min-w-0 ${isPaymentReceived

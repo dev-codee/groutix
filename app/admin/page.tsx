@@ -1,6 +1,7 @@
 "use client";
 
 import { publishCrmChange, subscribeCrmChanges } from "@/lib/crmChanges";
+import { financeFilterStatus, financeWorkVisible, releaseFinanceCompletions, type FinanceCompletionHolds } from "@/lib/financeCompletion";
 import { statusFilterAfterChange } from "@/lib/statusFilterTransition";
 
 import { useInvoiceDeliveries, notifyInvoiceDeliveryChanged } from "@/components/admin/InvoiceDeliveryHistory";
@@ -432,6 +433,9 @@ export default function CrmDashboardPage() {
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const financeCompletionHoldsRef = useRef<FinanceCompletionHolds>({});
+  const financeRefreshHolds = useRef<FinanceCompletionHolds | null>(null);
+  const [financeCompletionHolds, setFinanceCompletionHolds] = useState<FinanceCompletionHolds>({});
   const hasFullLeadSnapshot = useRef(false);
   const [error, setError] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
@@ -834,7 +838,8 @@ export default function CrmDashboardPage() {
   const leadLoadInFlight = useRef<Promise<void> | null>(null);
   const activeLeadReadVersion = useRef(0);
   const leadReloadQueued = useRef(false);
-  const loadData = useCallback((opts?: { silent?: boolean }): Promise<void> => {
+  const loadData = useCallback((opts?: { silent?: boolean; refresh?: boolean }): Promise<void> => {
+    if (opts?.refresh) financeRefreshHolds.current = financeCompletionHoldsRef.current;
     if (leadLoadInFlight.current) {
       // A save invalidated this read: run one fresh snapshot when it finishes.
       if (activeLeadReadVersion.current !== leadReadVersion.current) leadReloadQueued.current = true;
@@ -881,6 +886,12 @@ export default function CrmDashboardPage() {
             body: JSON.stringify({ jobNo: change.jobNo ?? null }),
             signal: AbortSignal.timeout(20_000),
           }).catch(() => {}))).catch(() => {});
+        }
+        if (financeRefreshHolds.current) {
+          const next = releaseFinanceCompletions(financeCompletionHoldsRef.current, financeRefreshHolds.current);
+          financeCompletionHoldsRef.current = next;
+          setFinanceCompletionHolds(next);
+          financeRefreshHolds.current = null;
         }
         hasFullLeadSnapshot.current = true;
         setInitialLoading(false);
@@ -1613,6 +1624,8 @@ export default function CrmDashboardPage() {
         if (res.ok) {
           const result = await res.json().catch(() => ({}));
           if (result.recycled) {
+            ++leadReadVersion.current;
+            publishCrmChange();
             setLeads(prev => prev.filter(lead => lead.id !== payload.id));
             setRecycleBinCount(count => count + 1);
             setLeadModalOpen(false);
@@ -1622,7 +1635,11 @@ export default function CrmDashboardPage() {
             prev.map((l) => (l.id === payload.id ? ({ ...l, ...changes, ...result.item } as Lead) : l))
           );
           ++leadReadVersion.current;
-          if (changes.status) setStatusFilter(filter => statusFilterAfterChange(filter, before?.status, result.item?.status || changes.status));
+          if (changes.status === "Completed" && (result.item?.status || changes.status) === "Completed" && role === "finance") {
+            const next = { ...financeCompletionHoldsRef.current, [payload.id]: { previousStatus: before?.status || "Job Done" } };
+            financeCompletionHoldsRef.current = next;
+            setFinanceCompletionHolds(next);
+          } else if (changes.status) setStatusFilter(filter => statusFilterAfterChange(filter, before?.status, result.item?.status || changes.status));
           publishCrmChange(result.item);
           setLeadModalOpen(false);
           if (confirmJobBooking) {
@@ -1717,13 +1734,20 @@ export default function CrmDashboardPage() {
       const result = await saveLeadChanges(id, updates);
       if (!result.ok) { onError?.(result.error); return false; }
       if (result.recycled) {
+        ++leadReadVersion.current;
+        publishCrmChange();
         setLeads(prev => prev.filter(lead => lead.id !== id));
         setRecycleBinCount(count => count + 1);
         return true;
       }
       if (result.ok) {
         ++leadReadVersion.current;
-        if (updates.status) setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(lead => lead.id === id)?.status, result.item?.status || updates.status));
+        const completedInFinance = updates.status === "Completed" && (result.item?.status || updates.status) === "Completed" && role === "finance";
+        if (completedInFinance) {
+          const next = { ...financeCompletionHoldsRef.current, [id]: { previousStatus: targetLead?.status || "Job Done" } };
+          financeCompletionHoldsRef.current = next;
+          setFinanceCompletionHolds(next);
+        } else if (updates.status) setStatusFilter(filter => statusFilterAfterChange(filter, leads.find(lead => lead.id === id)?.status, result.item?.status || updates.status));
         setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates, ...result.item } : l)));
         // Follow an edited status so the confirmed save stays visible in this queue.
         return true;
@@ -3484,6 +3508,9 @@ export default function CrmDashboardPage() {
       if (!response.ok) throw new Error(data.error || "Could not load customer invoices.");
       if (version !== invoiceLoadVersion.current) return;
       setCustomerInvoices(data.invoices);
+      setLeads(current => current.map(item => item.id === lead.id ? {
+        ...item, customerInvoiceSyncedCount: data.invoices.filter((invoice: Lead) => Boolean(invoice.qboInvoiceId)).length,
+      } : item));
       setInvoiceQuotes(data.quotes);
       if (!lead.invoiceNumber && data.invoices.length) selectInvoice(data.invoices[0]);
     } catch (error) {
@@ -3785,7 +3812,7 @@ export default function CrmDashboardPage() {
         if (wanted.includes("Inspection Completed") && (role === "inspection" || role === "field")) {
           return isFlowCompleted(role, l.status, l);
         }
-        return matchesQuoteStatusFilter(l, statusFilter);
+        return matchesQuoteStatusFilter(role === "finance" ? { ...l, status: financeFilterStatus(l, financeCompletionHolds, statusFilter) } : l, statusFilter);
       });
     }
     if (priorityFilter) {
@@ -3798,7 +3825,7 @@ export default function CrmDashboardPage() {
     }
 
     return dashboardLeadsFirst(list, role);
-  }, [jobWorkflowLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role]);
+  }, [jobWorkflowLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role, financeCompletionHolds]);
 
   // Leads with at least one unread customer reply — drives the header bell badge.
   const unreadReplyCount = useMemo(
@@ -3878,12 +3905,12 @@ export default function CrmDashboardPage() {
         }
         if (role === "finance") {
           if (statusFilter) return FINANCE_STATUSES.includes(l.status);
-          return isFlowInProgress(role, l.status, l);
+          return financeWorkVisible(l, financeCompletionHolds);
         }
         if (role === "intake") return INTAKE_STATUSES.includes(l.status);
         return JOB_STATUSES.includes(l.status);
       }),
-    [filteredLeads, role, statusFilter]
+    [filteredLeads, role, statusFilter, financeCompletionHolds]
   );
 
   const completedLeads = useMemo(
@@ -4520,7 +4547,7 @@ export default function CrmDashboardPage() {
 
               {/* Refresh Button */}
               <button
-                onClick={() => loadData()}
+                onClick={() => loadData({ refresh: true })}
                 title="Refresh database records"
                 className="p-2 rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
               >
@@ -4612,7 +4639,7 @@ export default function CrmDashboardPage() {
                   <b>Notice:</b> {error}
                 </div>
                 <button
-                  onClick={() => loadData()}
+                  onClick={() => loadData({ refresh: true })}
                   className="text-xs bg-amber-200/60 px-3 py-1 rounded-lg font-semibold hover:bg-amber-200"
                 >
                   Retry
@@ -8142,6 +8169,7 @@ export default function CrmDashboardPage() {
                 {activeInvoiceLead.invoiceNumber && <SendInvoiceToQuickBooksButton key={activeInvoiceLead.id} lead={activeInvoiceLead} onSynced={item => {
                   setActiveInvoiceLead(item);
                   setCustomerInvoices(current => current.map(invoice => invoice.id === item.id ? item : invoice));
+                  if (invoiceCustomer) void refreshCustomerInvoices(invoiceCustomer, invoiceLoadVersion.current);
                 }} />}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">

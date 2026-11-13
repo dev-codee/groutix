@@ -2,7 +2,8 @@
 
 import { staffBookingRules } from "@/lib/staffBookingRules";
 import { isAcceptedQuoteAwaitingBooking, isJobBooked, isQuoteWaiting, QUOTE_ACCEPTED_FILTER, QUOTE_WAITING_FILTER } from "@/lib/quoteAcceptance";
-import { leadBookings, bookingLead } from "@/lib/leadBookings";
+import { dashboardVisits, dashboardVisitDone } from "@/lib/dashboardVisits";
+import { leadBookings, bookingLead, leadRowKey } from "@/lib/leadBookings";
 import { savedLeadBookingMinutes } from "@/lib/bookingDuration";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
@@ -140,8 +141,9 @@ export function ManagerDashboard() {
 
   // 1. TODAY & TOMORROW SCHEDULE — only jobs/inspections with a scheduled date.
   // Completed/done leads stay visible with a "Completed" badge; only Lost/Cancelled are hidden.
+  const scheduledVisits = useMemo(() => dashboardVisits(scopedLeads), [scopedLeads]);
   const todayLeadsList = useMemo(() => {
-    return scopedLeads
+    return scheduledVisits
       .filter((l) => {
         if (l.status === "Lost" || l.status === "Cancelled") return false;
         const d = l.inspectionAt || l.jobAt;
@@ -150,7 +152,7 @@ export function ManagerDashboard() {
         return dk === _todayStr || dk === _tomStr;
       })
       .sort((a, b) => _apptMs(a) - _apptMs(b));
-  }, [scopedLeads, _todayStr, _tomStr]);
+  }, [scheduledVisits, _todayStr, _tomStr]);
 
   // Hourly slots for Today, spanning the configured booking hours (Settings → Booking Hours)
   const todayHourlySlots = useMemo(() => {
@@ -163,7 +165,7 @@ export function ManagerDashboard() {
       return { hour, label: formatHHmm(`${String(hour).padStart(2, "0")}:00`) };
     });
 
-    const leadsPool = scopedLeads.filter((l) => {
+    const leadsPool = scheduledVisits.filter((l) => {
       if (l.status === "Lost" || l.status === "Cancelled") return false;
       const d = l.inspectionAt || l.jobAt;
       return d && _dayKey(d) === _todayStr;
@@ -181,7 +183,7 @@ export function ManagerDashboard() {
       });
       return { ...h, leads: matched };
     });
-  }, [scopedLeads, _todayStr, todayLeadsList, bookingRules]);
+  }, [scheduledVisits, _todayStr, todayLeadsList, bookingRules]);
 
   // 2. DYNAMIC QUICK STATS CALCULATED STRICTLY FROM REAL LEADS & PERIOD
   const stats = useMemo(() => {
@@ -1127,15 +1129,11 @@ export function ManagerDashboard() {
                   const typeColor = isInsp ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
 
                   // Determine if this inspection/job has been completed
-                  const isDone =
-                    l.status === "Inspection Completed" ||
-                    l.status === "Job Done" ||
-                    l.status === "Completed" ||
-                    l.inspectionReport?.status === "completed";
+                  const isDone = dashboardVisitDone(l);
 
                   return (
                     <div
-                      key={l.id}
+                      key={leadRowKey(l)}
                       onClick={() => openJobCard(l)}
                       className={`p-2 rounded-xl border transition-colors cursor-pointer shadow-2xs space-y-1 text-left ${
                         isDone

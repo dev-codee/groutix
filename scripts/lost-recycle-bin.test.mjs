@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTs } from "./test-ts-loader.mjs";
 
-for (const status of ["New", "Inspection Completed", "Job In Progress", "Quote Sent"]) {
-  test(`marking ${status} lost archives its saved workflow without updating status`, async () => {
+for (const action of ["Lost", "Cancelled"]) for (const status of ["New", "Inspection Completed", "Job In Progress", "Quote Sent"]) {
+  test(`marking ${status} ${action} archives its saved workflow without updating status`, async () => {
     const lead = { id: "lead-1", status, previousStatus: "New", bookings: [{ type: "job", status: "Job Started" }] };
     const snapshot = structuredClone(lead);
     let archived, released = false;
@@ -19,7 +19,7 @@ for (const status of ["New", "Inspection Completed", "Job In Progress", "Quote S
       "@/lib/bookings": { deleteBooking: async id => { assert.equal(id, lead.id); released = true; } },
       "@/lib/bookingRulesServer": { getBookingRules: async () => assert.fail("Archiving must not reschedule bookings") },
     });
-    const response = await PATCH({ json: async () => ({ status: "Lost", previousStatus: "Completed" }), cookies: { get: () => ({ value: "token" }) } }, { params: Promise.resolve({ id: lead.id }) });
+    const response = await PATCH({ json: async () => ({ status: action, previousStatus: "Completed" }), cookies: { get: () => ({ value: "token" }) } }, { params: Promise.resolve({ id: lead.id }) });
     assert.equal(response.status, 200);
     assert.equal((await response.json()).recycled, true);
     assert.deepEqual(archived.lead, snapshot);

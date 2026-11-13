@@ -147,6 +147,7 @@ export async function refreshInvoiceSummary(leadId: string, updatePaymentStage: 
     ...(lead && invoices.length && !["Completed", "Warranty Sent", "Cancelled", "Lost"].includes(lead.status)
       ? { status: outstanding > 0 ? pending ? "Payment Pending" : "Invoice Sent" : "Payment Received" } : {}),
     customerInvoiceCount: invoices.length,
+    customerInvoiceSyncedCount: invoices.filter(item => Boolean(item.qboInvoiceId)).length,
     customerInvoiceTotal: invoices.reduce((sum, item) => sum + cents(item.invoiceAmount), 0) / 100,
     customerInvoiceOutstanding: outstanding,
   });

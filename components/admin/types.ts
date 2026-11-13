@@ -145,6 +145,7 @@ export interface Lead {
   invoiceAmount?: number;
   invoiceNumber?: string;
   customerInvoiceCount?: number;
+  customerInvoiceSyncedCount?: number;
   customerInvoiceTotal?: number;
   customerInvoiceOutstanding?: number;
   invoicePayments?: import("@/lib/invoicePayments").InvoicePaymentRecord[];

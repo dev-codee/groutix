@@ -20,6 +20,7 @@ export function LeadsView({ preview = false }: { preview?: boolean }) {
     role,
     leads,
     filteredLeads,
+    jobLeads,
     counts,
     page,
     setPage,
@@ -38,9 +39,10 @@ export function LeadsView({ preview = false }: { preview?: boolean }) {
     return STATUS_LIST.reduce((acc, s) => acc + (counts[s] || 0), 0);
   }, [counts]);
 
+  const displayedLeads = preview && role === "finance" ? jobLeads : filteredLeads;
   return (
     <div className="space-y-6">
-      {preview && <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">{!loading ? "Dashboard totals could not be loaded. Available leads are shown below; use Retry above." : filteredLeads.length ? "Recent leads are ready. Loading the complete dashboard, totals and filters…" : "Loading leads…"}</div>}
+      {preview && <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">{!loading ? "Dashboard totals could not be loaded. Available leads are shown below; use Retry above." : displayedLeads.length ? "Recent leads are ready. Loading the complete dashboard, totals and filters…" : "Loading leads…"}</div>}
       {/* Leads list */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
         {/* Filter toolbar */}
@@ -155,7 +157,7 @@ export function LeadsView({ preview = false }: { preview?: boolean }) {
           )}
 
           <div className="divide-y divide-slate-200/80 w-full">
-            {filteredLeads.slice(preview ? 0 : (page - 1) * PAGE_SIZE, preview ? PAGE_SIZE : page * PAGE_SIZE).map((l) => {
+            {displayedLeads.slice(preview ? 0 : (page - 1) * PAGE_SIZE, preview ? PAGE_SIZE : page * PAGE_SIZE).map((l) => {
               const row = role === "intake" ? <IntakeLeadRow l={l} />
                 : role === "inspection" || role === "field" ? <FieldLeadRow l={l} />
                 : role === "technician" ? <TechnicianLeadRow l={l} />

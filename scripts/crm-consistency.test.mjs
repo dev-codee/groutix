@@ -51,6 +51,7 @@ test('an older background response cannot overwrite a newer saved booking', asyn
   vm.runInNewContext(ts.transpileModule(`const ${declaration}; module.exports = loadData;`, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText, {
     module, useCallback: fn => fn, leadReadVersion: ref,
     hasFullLeadSnapshot: { current: false }, setInitialLoading() {},
+    financeRefreshHolds: { current: null }, financeCompletionHoldsRef: { current: {} }, setFinanceCompletionHolds() {},
     leadLoadInFlight: { current: null }, activeLeadReadVersion: { current: 0 }, leadReloadQueued: { current: false },
     AbortController, AbortSignal, setTimeout, clearTimeout,
     loadCrmLeads: async (_signal, _view, preview) => {

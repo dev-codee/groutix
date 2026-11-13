@@ -79,6 +79,10 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     await db.collection('submissions').insertMany(docs);
     await db.collection('bookings').insertOne({ leadId: docs[39]._id.toString(), type: 'job', date: '2026-11-15', time: '09:00', status: 'Job Booked' });
     await db.collection('customer_quotes').insertOne({ leadId: docs[39]._id.toString(), state: 'accepted' });
+    await db.collection('customer_invoices').insertMany([
+      { leadId: docs[39]._id.toString(), values: { qboInvoiceId: 'confirmed' } },
+      { leadId: docs[39]._id.toString(), values: {} },
+    ]);
     const { listSubmissions, getSubmission } = loadTs('lib/submissions.ts', { '@/lib/mongodb': { getDb: async () => db }, '@/lib/users': {} });
     const result = await listSubmissions({ dashboard: true, pageSize: 25 });
     assert.equal(result.total, 40);
@@ -115,6 +119,8 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     assert.equal(inbox.items[0].quoteSignature, undefined);
     assert.equal(inbox.items[0].photos, undefined);
     assert.equal(item.acceptedCustomerQuoteCount, 1);
+    assert.equal(item.customerInvoiceCount, 2);
+    assert.equal(item.customerInvoiceSyncedCount, 1);
     const full = await getSubmission(item.id);
     assert.equal(full.quoteItems[0].scope, docs[0].quoteItems[0].scope);
     assert.ok(full.quoteSignature);
@@ -215,4 +221,6 @@ test('preview mode displays leads without publishing partial totals, filters or 
   assert.doesNotMatch(preview, /999|All statuses|Showing/);
   context.loading = false;
   assert.match(renderToStaticMarkup(React.createElement(LeadsView, { preview: true })), /could not be loaded/);
+  context.role = 'finance'; context.jobLeads = [];
+  assert.doesNotMatch(renderToStaticMarkup(React.createElement(LeadsView, { preview: true })), /Available customer/);
 });

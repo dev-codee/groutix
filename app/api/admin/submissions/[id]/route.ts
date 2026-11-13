@@ -150,9 +150,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  // Lost is an archive action, not a workflow transition. Move the saved
-  // snapshot without changing its status, visit progress, or completion flags.
-  if (body.status === "Lost") {
+  // Closing/cancelling a whole lead archives its saved snapshot. It must not
+  // manufacture completion or leave the customer in an active schedule.
+  if (body.status === "Lost" || body.status === "Cancelled") {
     const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
     const moved = await deleteSubmission(id, session?.username || "staff");
     if (!moved) return NextResponse.json({ error: "Not found." }, { status: 404 });
