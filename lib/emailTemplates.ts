@@ -68,7 +68,7 @@ export const DYNAMIC_EMAIL_TAGS: DynamicTagInfo[] = [
   { tag: "{technician_name}", label: "Specialist / Tech", category: "Schedule", description: "Assigned technician or inspector name", example: "Marco Rossi" },
   { tag: "{inspection_date}", label: "Inspection Date/Time", category: "Schedule", description: "Formatted on-site inspection appointment", example: "Wed, 23 Sep, 10:00 AM" },
   { tag: "{booking_date}", label: "Booking Date/Time", category: "Schedule", description: "Formatted job execution date & time", example: "Fri, 25 Sep, 8:30 AM" },
-  { tag: "{booking_time}", label: "Arrival Time", category: "Schedule", description: "One-hour arrival window ending at the job or inspection booking time", example: "7:30 AM – 8:30 AM" },
+  { tag: "{booking_time}", label: "Arrival Time", category: "Schedule", description: "One-hour arrival window starting at the job or inspection booking time", example: "8:30 AM – 9:30 AM" },
 
   // Billing
   { tag: "{quote_number}", label: "Quote #", category: "Billing", description: "Official quotation reference", example: "GX-9402" },

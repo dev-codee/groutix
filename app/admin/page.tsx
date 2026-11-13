@@ -429,7 +429,8 @@ export default function CrmDashboardPage() {
   }, []);
 
   // Core Data
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadRecords, setLeads] = useState<Lead[]>([]);
+  const leads = useMemo(() => leadRecords.map(lead => ({ ...lead, status: normalizeStatus(lead.status) })), [leadRecords]);
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -1022,9 +1023,11 @@ export default function CrmDashboardPage() {
       if (document.visibilityState === "visible") loadData({ silent: true });
     };
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", tick);
     return () => {
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", tick);
     };
   }, [loadData]);
 
@@ -1619,7 +1622,7 @@ export default function CrmDashboardPage() {
         const res = await fetch(`/api/admin/submissions/${payload.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...changes, ...(confirmJobBooking ? { bookingNotifications: true } : {}) })
+          body: JSON.stringify({ ...changes, ...(changes.status ? { expectedStatus: before?.status } : {}), ...(confirmJobBooking ? { bookingNotifications: true } : {}) })
         });
         if (res.ok) {
           const result = await res.json().catch(() => ({}));
@@ -1731,8 +1734,8 @@ export default function CrmDashboardPage() {
       }
     }
     try {
-      const result = await saveLeadChanges(id, updates);
-      if (!result.ok) { onError?.(result.error); return false; }
+      const result = await saveLeadChanges(id, updates, targetLead?.status);
+      if (!result.ok) { if (onError) onError(result.error); else setError(result.error); return false; }
       if (result.recycled) {
         ++leadReadVersion.current;
         publishCrmChange();

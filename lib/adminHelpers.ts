@@ -372,6 +372,8 @@ export function getManualStatusOptions(role: Role, currentStatus?: string): stri
 export function normalizeStatus(s?: string): string {
   if (!s) return "New";
   const lower = s.toLowerCase().trim();
+  const aliases: Record<string, string> = { "new lead": "New", "paid": "Payment Received", "payment request": "Payment Pending", "quote accepted": "Won", "in progress": "Job In Progress" };
+  if (aliases[lower]) return aliases[lower];
   if (lower === "new") return "New";
   if (lower === "read") return "Contacted";
   if (lower === "archived") return "Lost";
@@ -450,9 +452,9 @@ export function isTerminalStatus(s?: string): boolean {
 
 export function getEffectiveWorkflowStatus(lead: Lead): string {
   if (isTerminalStatus(lead.status)) {
-    return lead.previousStatus || "New";
+    return normalizeStatus(lead.previousStatus);
   }
-  return lead.status || "New";
+  return normalizeStatus(lead.status);
 }
 
 export function getStepActive(lead: Lead, step: string): boolean {

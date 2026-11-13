@@ -909,7 +909,8 @@ export async function appendSubmissionPhotos(id: string, photos: SubmissionPhoto
 
 export async function updateSubmission(
   id: string,
-  updates: Partial<SubmissionDoc>
+  updates: Partial<SubmissionDoc>,
+  options?: { expectedStatus?: string }
 ): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const col = await collection(false);
@@ -971,6 +972,7 @@ export async function updateSubmission(
   if (safeUpdates.status && !["Inspection En Route", "Job En Route"].includes(safeUpdates.status)) {
     safeUpdates.customerTrackingEndedAt = new Date();
   }
+  if (options?.expectedStatus !== undefined) writeFilter.status = options.expectedStatus;
   const res = await col.updateOne(writeFilter, { $set: safeUpdates });
   if (res.matchedCount) await syncPrimaryBookingStatus(id, safeUpdates.status);
   return res.matchedCount > 0;

@@ -1,3 +1,4 @@
+import { normalizeStatus } from "@/lib/adminHelpers";
 import { receiptFromInvoice } from "@/lib/paymentReceipt";
 import { isPrimaryBooking } from "@/lib/leadBookings";
 import { statusAfterBooking } from "@/lib/pipeline";
@@ -95,6 +96,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  const expectedStatus = typeof body.expectedStatus === "string" ? body.expectedStatus : undefined;
+  delete body.expectedStatus;
   const appendBooking = body.appendBooking === true;
   const bookingOriginalStart = typeof body.bookingOriginalStart === "string" ? body.bookingOriginalStart : undefined;
   const bookingId = typeof body.bookingId === "string" ? body.bookingId : undefined;
@@ -132,6 +135,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const current = await getSubmission(id);
   const before = current ? { ...current } : null;
   if (!before) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  if (typeof body.status === "string" && expectedStatus !== undefined && normalizeStatus(expectedStatus) !== normalizeStatus(before.status)) {
+    return NextResponse.json({ error: "This lead's status changed in another account. Refresh to review its current status before saving." }, { status: 409 });
+  }
 
   if (before.customerInvoiceCount && (body.paymentType || (body.status === "Payment Received" && Number(before.customerInvoiceOutstanding || 0) > 0))) {
     return NextResponse.json({ error: "Open Manage invoices and record payment against the specific invoice. Other invoices must keep their own payment status." }, { status: 409 });
@@ -324,10 +330,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       for (const key of keys) delete persisted[key];
     }
     if (bookingType && selectedBookingId && !appendBooking && !secondaryVisit) persisted[bookingType === "inspection" ? "primaryInspectionBookingId" : "primaryJobBookingId"] = selectedBookingId;
-    const ok = await updateSubmission(id, persisted);
+    const ok = await updateSubmission(id, persisted, typeof persisted.status === "string" ? { expectedStatus: before.status } : undefined);
     if (!ok) {
       await rollback();
-      return NextResponse.json({ error: "Update failed." }, { status: 400 });
+      return NextResponse.json({ error: "This lead changed while saving. Refresh and try again." }, { status: 409 });
     }
   } catch (err) {
     await rollback();

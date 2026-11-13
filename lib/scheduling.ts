@@ -105,7 +105,7 @@ export function formatSlotRange(t: string, durationMinutes: number = 60): string
   return `${formatHHmm(t)} – ${formatHHmm(fromMinutes((start + durationMinutes) % (24 * 60)))}`;
 }
 
-/** Customer arrival window: one hour before the booked local time, ending at it. */
+/** Customer arrival window: starts at the booked local time and lasts one hour. */
 export function formatArrivalWindow(value: string | null | undefined): string {
   if (!value?.trim()) return "";
   const input = value.trim();
@@ -118,8 +118,8 @@ export function formatArrivalWindow(value: string | null | undefined): string {
   const minute = Number(match[2]);
   if (minute > 59 || (match[3] ? hour < 1 || hour > 12 : hour > 23)) return "";
   if (match[3]) hour = hour % 12 + (match[3].toLowerCase() === "pm" ? 12 : 0);
-  const end = hour * 60 + minute;
-  return `${formatHHmm(fromMinutes((end - 60 + 1440) % 1440))} – ${formatHHmm(fromMinutes(end))}`;
+  const start = hour * 60 + minute;
+  return `${formatHHmm(fromMinutes(start))} – ${formatHHmm(fromMinutes((start + 60) % 1440))}`;
 }
 
 /**

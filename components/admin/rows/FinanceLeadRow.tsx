@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { ScopeOfWorkPanel } from "@/components/admin/ScopeOfWorkPanel";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
-import { getManualStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal, isTerminalStatus, getEffectiveWorkflowStatus } from "@/lib/adminHelpers";
+import { getManualStatusOptions, getFollowupPrompt, getWhatsAppLink, fmtDate, getLeadQuoteTotal, isTerminalStatus, getEffectiveWorkflowStatus, getStepActive } from "@/lib/adminHelpers";
 import { formatApptDate, formatApptTime } from "@/lib/scheduling";
 import type { Lead } from "@/components/admin/types";
 import { useDistanceKm } from "@/lib/useDistanceKm";
@@ -49,13 +49,13 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
 
   const workflowStatus = getEffectiveWorkflowStatus(l);
 
-  const isJobDone = workflowStatus === "Job Done" || ["Invoice Sent", "Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
-  const isInvoiceSent = workflowStatus === "Invoice Sent" || (Boolean(l.invoiceSentAt) && workflowStatus !== "Job Done") || ["Payment Request", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
+  const isJobDone = getStepActive(l, "Job Done");
+  const isInvoiceSent = getStepActive(l, "Invoice Sent");
   const isPaymentPending = workflowStatus === "Payment Pending";
-  const isPaymentPendingDone = ["Payment Pending", "Payment Request", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
-  const isPaymentReceived = ["Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);
-  const isWarrantySent = workflowStatus === "Warranty Sent" || Boolean(l.warranty?.sentAt) || workflowStatus === "Completed";
-  const isCompleted = workflowStatus === "Completed";
+  const isPaymentPendingDone = getStepActive(l, "Payment Pending");
+  const isPaymentReceived = getStepActive(l, "Payment Received");
+  const isWarrantySent = getStepActive(l, "Warranty Sent");
+  const isCompleted = getStepActive(l, "Completed");
 
   const jobNoDisplay = l.jobNo
     ? (l.jobNo.startsWith("JobNo-") ? l.jobNo : `JobNo-${l.jobNo.replace(/^JOB-?/i, "")}`)

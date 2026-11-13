@@ -1,12 +1,12 @@
 import { publishCrmChange } from "./crmChanges";
 import type { Lead } from "@/components/admin/types";
 
-export async function saveLeadChanges(id: string, updates: Partial<Lead>): Promise<{ ok: true; recycled?: boolean; item?: Lead } | { ok: false; error: string }> {
+export async function saveLeadChanges(id: string, updates: Partial<Lead>, expectedStatus?: string): Promise<{ ok: true; recycled?: boolean; item?: Lead } | { ok: false; error: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
     const response = await fetch(`/api/admin/submissions/${encodeURIComponent(id)}`, {
-      signal: controller.signal, method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates),
+      signal: controller.signal, method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...updates, ...(typeof updates.status === "string" && expectedStatus ? { expectedStatus } : {}) }),
     });
     if (response.ok) {
       const data = await response.json().catch(() => ({}));
