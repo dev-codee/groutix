@@ -431,6 +431,8 @@ export default function CrmDashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const hasFullLeadSnapshot = useRef(false);
   const [error, setError] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
   const [syncingEmails, setSyncingEmails] = useState(false);
@@ -840,7 +842,8 @@ export default function CrmDashboardPage() {
     }
     const readVersion = ++leadReadVersion.current;
     activeLeadReadVersion.current = readVersion;
-    if (!opts?.silent) setLoading(true);
+    const showLoading = !opts?.silent || !hasFullLeadSnapshot.current;
+    if (showLoading) setLoading(true);
     setError("");
     const cutoffMs = getNewLeadsCutoffMs();
     setNewLeadsCutoffMs(cutoffMs);
@@ -855,7 +858,14 @@ export default function CrmDashboardPage() {
       }).catch(() => {});
     const run = async () => {
       try {
-        const rawItems = await loadCrmLeads(controller.signal);
+        const rawItems = await loadCrmLeads(controller.signal, "dashboard", preview => {
+          if (hasFullLeadSnapshot.current || readVersion !== leadReadVersion.current) return;
+          setLeads(preview.map(lead => ({
+            ...lead, status: normalizeStatus(lead.status),
+            service: lead.service || lead.enquiry || lead.message || "General Quote Request",
+            address: lead.address || [lead.city, lead.state].filter(Boolean).join(", ") || "",
+          })));
+        });
         if (readVersion !== leadReadVersion.current) return;
         const normalized = rawItems.map(l => ({
           ...l,
@@ -872,6 +882,8 @@ export default function CrmDashboardPage() {
             signal: AbortSignal.timeout(20_000),
           }).catch(() => {}))).catch(() => {});
         }
+        hasFullLeadSnapshot.current = true;
+        setInitialLoading(false);
         setLeads(withJobNos);
       } catch (error) {
         controller.abort(); // Cancel sibling page requests on any failure.
@@ -881,7 +893,7 @@ export default function CrmDashboardPage() {
         );
       } finally {
         clearTimeout(timeout);
-        if (!opts?.silent) setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
     const pending = run().finally(() => {
@@ -3801,6 +3813,7 @@ export default function CrmDashboardPage() {
   // (if permitted) plus a count in the browser tab title so it's noticeable
   // even from another tab. Only fires on an increase, never on first load.
   useEffect(() => {
+    if (initialLoading) return;
     if (typeof document !== "undefined") {
       document.title =
         unreadReplyCount > 0 ? `(${unreadReplyCount}) Groutix CRM` : "Groutix CRM";
@@ -3827,7 +3840,7 @@ export default function CrmDashboardPage() {
         /* ignore */
       }
     }
-  }, [unreadReplyCount]);
+  }, [unreadReplyCount, initialLoading]);
 
   // Counts for KPIs (scoped to the role's queue)
   const counts = useMemo(() => {
@@ -4032,7 +4045,7 @@ export default function CrmDashboardPage() {
       {canSee("inbox") && (
         <button type="button" onClick={() => { openInbox(); onItemClick?.(); }} className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${currentView === "inbox" ? "bg-blue-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"}`}>
           <span className="flex items-center gap-2.5"><Mail className="w-4 h-4" />Conversation Inbox</span>
-          {unreadReplyCount > 0 && <span className={`min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${currentView === "inbox" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>{unreadReplyCount}</span>}
+          {unreadReplyCount > 0 && <span className={`min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${currentView === "inbox" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>{initialLoading ? "…" : (unreadReplyCount)}</span>}
         </button>
       )}
 
@@ -4053,7 +4066,7 @@ export default function CrmDashboardPage() {
             className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "leads" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
               }`}
           >
-            {scopedLeads.length}
+            {initialLoading ? "…" : (scopedLeads.length)}
           </span>
         </button>
       )}
@@ -4075,7 +4088,7 @@ export default function CrmDashboardPage() {
             className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "quotes" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
               }`}
           >
-            {scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length}
+            {initialLoading ? "…" : (scopedLeads.filter((l) => l.status === "Quote Sent" || l.quoteItems?.length).length)}
           </span>
         </button>
       )}
@@ -4105,7 +4118,7 @@ export default function CrmDashboardPage() {
             className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "jobs" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
               }`}
           >
-            {role === "finance"
+            {initialLoading ? "…" : (role === "finance"
               ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
               : role === "intake"
                 ? scopedLeads.filter((l) => INTAKE_STATUSES.includes(l.status)).length
@@ -4113,7 +4126,7 @@ export default function CrmDashboardPage() {
                   ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
                   : role === "inspection" || role === "field"
                     ? scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length
-                    : scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length}
+                    : scopedLeads.filter((l) => isFlowInProgress(role, l.status, l)).length)}
           </span>
         </button>
       )}
@@ -4135,7 +4148,7 @@ export default function CrmDashboardPage() {
             className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${currentView === "completed" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
               }`}
           >
-            {scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length}
+            {initialLoading ? "…" : (scopedLeads.filter((l) => isFlowCompleted(role, l.status, l)).length)}
           </span>
         </button>
       )}
@@ -4499,7 +4512,7 @@ export default function CrmDashboardPage() {
                   <Bell className={`w-3.5 h-3.5 ${unreadReplyCount > 0 ? "text-blue-600" : ""}`} />
                   {unreadReplyCount > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                      {unreadReplyCount}
+                      {initialLoading ? "…" : (unreadReplyCount)}
                     </span>
                   )}
                 </button>
@@ -4607,6 +4620,8 @@ export default function CrmDashboardPage() {
               </div>
             )}
 
+            {initialLoading && ["dashboard", "leads", "inbox", "quotes", "jobs", "completed", "customers", "dispatch", "schedule", "technicians", "zones"].includes(currentView)
+              ? <LeadsView preview /> : <>
             {/* =========================================================================
           {/* =========================================================================
               VIEW: ANALYTICS OVERVIEW
@@ -4899,6 +4914,7 @@ export default function CrmDashboardPage() {
               VIEW: RECYCLE BIN
              ========================================================================= */}
             {currentView === "recyclebin" && <RecycleBinView onCountChange={setRecycleBinCount} />}
+            </>}
           </div>
         </main>
 

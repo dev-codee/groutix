@@ -50,9 +50,14 @@ test('an older background response cannot overwrite a newer saved booking', asyn
   const old = new Promise(resolve => { resolveOld = resolve; });
   vm.runInNewContext(ts.transpileModule(`const ${declaration}; module.exports = loadData;`, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText, {
     module, useCallback: fn => fn, leadReadVersion: ref,
+    hasFullLeadSnapshot: { current: false }, setInitialLoading() {},
     leadLoadInFlight: { current: null }, activeLeadReadVersion: { current: 0 }, leadReloadQueued: { current: false },
     AbortController, AbortSignal, setTimeout, clearTimeout,
-    loadCrmLeads: async () => ++calls === 1 ? await old : [{ id: 'lead', inspectionAt: 'new-date' }],
+    loadCrmLeads: async (_signal, _view, preview) => {
+      const items = ++calls === 1 ? await old : [{ id: 'lead', inspectionAt: 'new-date' }];
+      preview?.(items);
+      return items;
+    },
     setLoading() {}, setError() {}, getNewLeadsCutoffMs: () => 0, setNewLeadsCutoffMs() {},
     normalizeStatus: status => status, generateJobNos: items => items, jobNumberChanges: () => [], setLeads: items => writes.push(items), setTasks() {},
     fetch: async url => url.includes('submissions') ? (++calls === 1 ? await old : { ok: true, json: async () => ({ items: [{ id: 'lead', inspectionAt: 'new-date' }] }) }) : { ok: true, json: async () => ({ items: [] }) },
@@ -64,7 +69,7 @@ test('an older background response cannot overwrite a newer saved booking', asyn
   resolveOld([{ id: 'lead', inspectionAt: 'old-date' }]);
   await Promise.all([first, second]);
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(writes.length, 1); assert.equal(writes[0][0].inspectionAt, 'new-date');
+  assert.ok(writes.length > 0); assert.ok(writes.every(items => items[0].inspectionAt === 'new-date'), 'neither old previews nor old complete reads overwrite the saved booking');
 });
 
 test('lead cards show the saved dates for additional inspections as well as the primary inspection', async () => {

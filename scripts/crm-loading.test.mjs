@@ -138,16 +138,28 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
   }
 });
 
- test('a normal-sized dashboard uses a single compact request', async () => {
-  let calls = 0;
+test('the first page is usable before the complete dashboard snapshot finishes', async () => {
+  let release, calls = 0;
+  const gate = new Promise(resolve => { release = resolve; });
   const items = Array.from({ length: 195 }, (_, i) => ({ id: String(i) }));
+  const previews = [];
   const api = loader(async url => {
     ++calls;
-    assert.equal(new URL(url, 'https://example.com').searchParams.get('pageSize'), '500');
-    return { ok: true, json: async () => ({ items, total: items.length }) };
+    const query = new URL(url, 'https://example.com').searchParams;
+    const page = Number(query.get('page')), pageSize = Number(query.get('pageSize'));
+    assert.equal(pageSize, 25);
+    if (page > 1) await gate;
+    return { ok: true, json: async () => ({ items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length }) };
   });
-  assert.equal((await api.loadCrmLeads(new AbortController().signal)).length, 195);
-  assert.equal(calls, 1);
+  let finished = false;
+  const complete = api.loadCrmLeads(new AbortController().signal, 'dashboard', items => previews.push(items.length)).then(items => { finished = true; return items; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(previews[0], 25);
+  assert.equal(finished, false, 'recent leads can render while totals are still pending');
+  assert.equal(calls, 4, 'only three subsequent page requests can run concurrently');
+  release();
+  assert.equal((await complete).length, 195);
+  assert.equal(previews.at(-1), 195);
 });
 
 test('background summaries preserve full conversations and current status together', () => {
@@ -181,4 +193,26 @@ test('scope panels load complete document text on demand and use the selected ac
   assert.equal(accepted.quoteScope, 'Accepted instructions');
   assert.equal(accepted.quoteItems[0].scope, 'Accepted full scope');
   assert.equal(calls, 3);
+});
+
+test('preview mode displays leads without publishing partial totals, filters or empty states', async () => {
+  const { default: React } = await import('react');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const context = { role: 'manager', leads: [], filteredLeads: [], counts: { New: 999 }, page: 1, loading: true };
+  const { LeadsView } = loadTs('components/admin/views/LeadsView.tsx', {
+    '@/components/admin/AdminPageContext': { useAdminPageCtx: () => context },
+    '@/components/admin/rows/StandardLeadCard': { StandardLeadCard: ({ l }) => React.createElement('p', null, l.name) },
+    '../LeadBookings': { LeadBookings: () => null },
+  });
+  const render = () => renderToStaticMarkup(React.createElement(LeadsView, { preview: true }));
+  const empty = render();
+  assert.match(empty, /Loading leads/);
+  assert.doesNotMatch(empty, /999|All statuses|Showing|No leads matching/);
+  context.filteredLeads = [{ id: 'customer', name: 'Available customer', status: 'New' }];
+  const preview = render();
+  assert.match(preview, /Available customer/);
+  assert.match(preview, /Loading the complete dashboard/);
+  assert.doesNotMatch(preview, /999|All statuses|Showing/);
+  context.loading = false;
+  assert.match(renderToStaticMarkup(React.createElement(LeadsView, { preview: true })), /could not be loaded/);
 });

@@ -2,15 +2,16 @@ import type { Lead } from "@/components/admin/types";
 import { preferredCustomerQuote } from "./customerQuoteSelection";
 import type { CustomerQuote } from "./customerQuotes";
 
-const PAGE_SIZE = 500;
+const PAGE_SIZE = 25;
 const CONCURRENCY = 3;
 
 /** Load a complete dashboard snapshot without one oversized request or partial totals. */
-export async function loadCrmLeads(signal: AbortSignal, view: "dashboard" | "inbox" = "dashboard"): Promise<Lead[]> {
+export async function loadCrmLeads(signal: AbortSignal, view: "dashboard" | "inbox" = "dashboard", onPreview?: (items: Lead[]) => void): Promise<Lead[]> {
+  const pageSize = view === "inbox" ? 500 : PAGE_SIZE;
   // Validate the complete result below: concurrent insertions/deletions must
   // never silently turn a partial page set into dashboard totals.
   const readPage = async (page: number) => {
-    const params = new URLSearchParams({ view, page: String(page), pageSize: String(PAGE_SIZE) });
+    const params = new URLSearchParams({ view, page: String(page), pageSize: String(pageSize) });
     const response = await fetch(`/api/admin/submissions?${params}`, { cache: "no-store", signal });
     if (response.status === 401) throw new Error("Your session has expired. Sign in again to load the CRM.");
     if (!response.ok) throw new Error("Could not load leads. Please retry.");
@@ -21,13 +22,19 @@ export async function loadCrmLeads(signal: AbortSignal, view: "dashboard" | "inb
     return data as { items: Lead[]; total: number };
   };
   const first = await readPage(1);
-  const pageCount = Math.ceil(first.total / PAGE_SIZE);
+  signal.throwIfAborted();
+  if (first.items.length !== Math.min(pageSize, first.total) || new Set(first.items.map(item => item.id)).size !== first.items.length) {
+    throw new Error("Leads changed while loading. Please retry to refresh the complete dashboard.");
+  }
+  const pageCount = Math.ceil(first.total / pageSize);
   const pages: Lead[][] = [first.items];
+  onPreview?.(first.items);
   let nextPage = 2;
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(0, pageCount - 1)) }, async () => {
     while (!signal.aborted && nextPage <= pageCount) {
       const page = nextPage++;
       pages[page - 1] = (await readPage(page)).items;
+      if (!signal.aborted) onPreview?.(pages.flat());
     }
   }));
   signal.throwIfAborted();
