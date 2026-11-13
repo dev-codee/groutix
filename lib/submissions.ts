@@ -646,16 +646,29 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> {
+const bookingProjection = {
+  _id: 1, bookingId: 1, leadId: 1, type: 1, date: 1, time: 1, endAt: 1, workSegments: 1, status: 1,
+  jobTotalDays: 1, jobDaysDone: 1, scheduledMinutes: 1, technicianId: 1, technician: 1,
+  technicianUsername: 1, inspectorId: 1, assigned: 1, inspectorUsername: 1,
+};
+type DashboardBatch = {
+  items: SubmissionDoc[];
+  bookings: import("./bookings").BookingDoc[];
+  acceptedQuotes: { leadId: string }[];
+};
+
+async function withBookings(items: SubmissionJSON[], prefetched?: Pick<DashboardBatch, "bookings" | "acceptedQuotes">): Promise<SubmissionJSON[]> {
   if (!items.length) return items;
-  const db = await getDb();
   const leadIds = items.map(item => item.id);
-  const [bookings, acceptedQuotes] = await Promise.all([
-    db.collection<import("./bookings").BookingDoc>("bookings")
-      .find({ leadId: { $in: leadIds } }).toArray(),
-    db.collection<import("./customerQuotes").CustomerQuote>("customer_quotes")
-      .find({ leadId: { $in: leadIds }, state: "accepted" }, { projection: { leadId: 1 } }).toArray(),
-  ]);
+  const [bookings, acceptedQuotes] = prefetched ? [prefetched.bookings, prefetched.acceptedQuotes] : await (async () => {
+    const db = await getDb();
+    return Promise.all([
+      db.collection<import("./bookings").BookingDoc>("bookings")
+        .find({ leadId: { $in: leadIds } }, { projection: bookingProjection }).toArray(),
+      db.collection<import("./customerQuotes").CustomerQuote>("customer_quotes")
+        .find({ leadId: { $in: leadIds }, state: "accepted" }, { projection: { leadId: 1, _id: 0 } }).toArray(),
+    ]);
+  })();
   const acceptedCounts = new Map<string, number>();
   for (const quote of acceptedQuotes) acceptedCounts.set(quote.leadId, (acceptedCounts.get(quote.leadId) || 0) + 1);
   const needsRepair = (segments?: { time: string; scheduledMinutes: number }[]) => !!segments && segments.length > 1 && segments.some(s => s.time === "00:00" || Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3, 5)) + s.scheduledMinutes >= 1440);
@@ -673,6 +686,33 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
   });
 }
 
+// Explicit read model: new stored documents/history must not silently enlarge
+// every dashboard refresh. Editors always load the complete lead separately.
+const dashboardFields = [
+  "dashboardSummary", "hasQuoteSignature", "hasCustomerUnread", "hasCustomerReplied", "type", "status",
+  "previousStatus", "createdAt", "jobNo", "name", "phone", "email",
+  "service", "enquiry", "message", "address", "city", "state",
+  "assigned", "inspectorId", "inspectorUsername", "technician", "technicianId", "technicianUsername",
+  "priority", "received", "contacted", "follow", "source", "notes",
+  "technicianNotes", "inspectionNotes", "scopeNotes", "customerType", "agency", "tenants",
+  "areas", "leaking", "damagedTiles", "quoteItemCode", "quoteTaxMode", "quoteTaxRate",
+  "quoteUpdated", "quoteAmount", "photosCount", "gps", "warranty", "warrantyProvided",
+  "quoteReference", "quoteNumber", "hasCustomerQuotes", "acceptedCustomerQuoteCount", "quoteSentAt", "quoteOpenedAt",
+  "quoteAcceptedAt", "quoteDeclinedAt", "quoteSignedName", "quoteSignedAt", "followUpStage", "followUpNext",
+  "paymentReceipt", "receiptSentAt", "invoiceDraft", "invoiceAmount", "invoiceNumber", "customerInvoiceCount",
+  "customerInvoiceTotal", "customerInvoiceOutstanding", "invoicePayments", "invoicePaymentVersion", "invoiceParentId", "sourceQuoteId",
+  "sourceQuoteNumber", "invoiceSentAt", "invoiceStatus", "invoiceOpenedAt", "qboCustomerId", "qboInvoiceId",
+  "qboSyncedAt", "qboError", "qboErrorAt", "inspectionWorkSegments", "jobWorkSegments", "inspectionEndAt",
+  "jobEndAt", "primaryInspectionBookingId", "primaryJobBookingId", "inspectionAt", "jobAt", "inspectionReminderSent",
+  "inspectionRescheduled", "jobReminderSent", "inspectionReport", "jobTotalDays", "jobDaysDone", "paymentType",
+  "amountPaid",
+] as const;
+const dashboardProjection = {
+  _id: 1,
+  ...Object.fromEntries(dashboardFields.map(field => [field, 1])),
+  quoteItems: { $map: { input: { $ifNull: ["$quoteItems", []] }, as: "item", in: { price: "$$item.price", qty: "$$item.qty" } } },
+};
+
 export async function listSubmissions(
   params: ListParams
 ): Promise<{ items: SubmissionJSON[]; total: number }> {
@@ -685,8 +725,8 @@ export async function listSubmissions(
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(500, Math.max(1, params.pageSize ?? 25));
 
-  const [docs, total] = await Promise.all([
-    (params.dashboard || params.inbox) ? col.aggregate<SubmissionDoc>([
+  const [docsOrBatch, total] = await Promise.all([
+    (params.dashboard || params.inbox) ? col.aggregate<SubmissionDoc | DashboardBatch>([
       { $match: filter },
       { $sort: { createdAt: -1, _id: -1 } },
       { $skip: (page - 1) * pageSize },
@@ -694,6 +734,15 @@ export async function listSubmissions(
       { $set: {
         dashboardSummary: true,
         hasQuoteSignature: { $ne: [{ $ifNull: ["$quoteSignature", ""] }, ""] },
+        hasCustomerQuotes: { $ifNull: ["$hasCustomerQuotes", { $or: [
+          { $gt: [{ $size: { $ifNull: ["$quoteItems", []] } }, 0] },
+          { $eq: ["$status", "Quote Sent"] },
+          { $ne: [{ $ifNull: ["$quoteTerms", ""] }, ""] },
+        ] }] },
+        quoteSentAt: { $cond: [
+          { $ne: [{ $ifNull: ["$quoteSentAt", ""] }, ""] }, "$quoteSentAt",
+          { $let: { vars: { sends: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: { $eq: ["$$entry.action", "Quote emailed"] } } } }, in: { $arrayElemAt: ["$$sends.time", -1] } } },
+        ] },
         photosCount: { $size: { $ifNull: ["$photos", []] } },
         hasCustomerUnread: { $anyElementTrue: [{ $map: { input: { $ifNull: ["$messages", []] }, as: "message", in: {
           $and: [{ $eq: ["$$message.from", "customer"] }, { $eq: ["$$message.read", false] }],
@@ -705,7 +754,23 @@ export async function listSubmissions(
         } } },
       } },
       ...(params.inbox ? [{ $project: { _id: 1, createdAt: 1, dashboardSummary: 1, name: 1, email: 1, phone: 1, jobNo: 1, messages: 1, activity: 1 } }]
-        : [{ $unset: ["quoteSignature", "photos", "messages", "activity", "userAgent", "quoteItems.scope", "quoteItems.description"] }]),
+        : [
+          { $project: dashboardProjection },
+          // Omitted optional empty values have the same UI defaults. Keep false
+          // and zero: payment, warranty and read flags depend on those values.
+          { $replaceWith: { $arrayToObject: { $filter: {
+            input: { $objectToArray: "$$ROOT" }, as: "field",
+            cond: { $not: [{ $in: ["$$field.v", ["", null, []]] }] },
+          } } } },
+        ]),
+      ...(params.dashboard ? [
+        // One database result carries the selected compact leads and their
+        // related records, avoiding cursor and follow-up network round trips.
+        { $group: { _id: null, items: { $push: "$$ROOT" }, leadIds: { $push: { $toString: "$_id" } } } },
+        { $lookup: { from: "bookings", localField: "leadIds", foreignField: "leadId", pipeline: [{ $project: bookingProjection }], as: "bookings" } },
+        { $lookup: { from: "customer_quotes", localField: "leadIds", foreignField: "leadId", pipeline: [{ $match: { state: "accepted" } }, { $project: { leadId: 1, _id: 0 } }], as: "acceptedQuotes" } },
+        { $project: { _id: 0, items: 1, bookings: 1, acceptedQuotes: 1 } },
+      ] : []),
     ], { maxTimeMS: 10_000 }).toArray() : col
       .find(filter, { projection: { "photos.dataUrl": 0 } })
       .sort({ createdAt: -1, _id: -1 })
@@ -717,7 +782,9 @@ export async function listSubmissions(
 
   const queried = Date.now();
   params.onTiming?.("lead_query", queried - connected);
-  const items = params.inbox ? docs.map(toJSON) : await withBookings(docs.map(toJSON));
+  const batch = params.dashboard ? (docsOrBatch as DashboardBatch[])[0] : undefined;
+  const docs = params.dashboard ? batch?.items || [] : docsOrBatch as SubmissionDoc[];
+  const items = params.inbox ? docs.map(toJSON) : await withBookings(docs.map(toJSON), batch);
   params.onTiming?.("booking_join", Date.now() - queried);
   return { items, total };
 }

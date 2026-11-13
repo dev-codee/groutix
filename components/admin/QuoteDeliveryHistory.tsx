@@ -5,6 +5,7 @@ import { ChevronDown, FileText } from "lucide-react";
 import type { CustomerQuote } from "@/lib/customerQuotes";
 import { fmtDate } from "@/lib/adminHelpers";
 import { quoteDeliveryTimes, quoteSendHistory } from "@/lib/quoteDelivery";
+import { loadLeadDetails } from "@/lib/loadCrmLeads";
 import { DocumentDeliveryStatus } from "./DocumentDeliveryStatus";
 import type { Lead } from "./types";
 
@@ -40,7 +41,7 @@ export function SentQuoteHistory({ lead, quotes }: { lead: Lead; quotes: Custome
 
 export function QuoteDeliveryHistory({ lead }: { lead: Lead }) {
   const [expanded, setExpanded] = useState(false);
-  const [result, setResult] = useState<{ key: string; quotes: CustomerQuote[]; error: string } | null>(null);
+  const [result, setResult] = useState<{ key: string; quotes: CustomerQuote[]; error: string; detail?: Lead } | null>(null);
   const [retry, setRetry] = useState(0);
   const times = quoteDeliveryTimes(lead);
   const key = JSON.stringify([lead.id, lead.quoteSentAt, lead.quoteOpenedAt, retry, expanded]);
@@ -50,16 +51,16 @@ export function QuoteDeliveryHistory({ lead }: { lead: Lead }) {
   useEffect(() => {
     if (!expanded) return;
     const controller = new AbortController();
-    fetch(`/api/admin/customer-quotes/${lead.id}`, { cache: "no-store", signal: controller.signal })
+    Promise.all([loadLeadDetails(lead), fetch(`/api/admin/customer-quotes/${lead.id}`, { cache: "no-store", signal: controller.signal })
       .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error("Could not load saved quotes.");
         return data.quotes as CustomerQuote[];
-      })
-      .then(items => { if (!controller.signal.aborted) setResult({ key, quotes: items, error: "" }); })
+      })])
+      .then(([detail, items]) => { if (!controller.signal.aborted) setResult({ key, quotes: items, error: "", detail }); })
       .catch(() => { if (!controller.signal.aborted) setResult({ key, quotes: [], error: "Could not load saved quotes." }); });
     return () => controller.abort();
-  }, [expanded, lead.id, key]);
+  }, [expanded, lead, key]);
 
   if (!times.sentAt && !times.openedAt && !lead.hasCustomerQuotes) return null;
   return <div className="space-y-1.5">
@@ -72,7 +73,7 @@ export function QuoteDeliveryHistory({ lead }: { lead: Lead }) {
     {expanded && <div className="max-h-96 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
       {loading && <p role="status" className="text-xs text-slate-500">Loading saved quotes…</p>}
       {error && <div role="alert" className="text-xs text-red-700">{error} <button type="button" onClick={() => setRetry(value => value + 1)} className="font-semibold underline">Retry</button></div>}
-      {(!loading || quoteSendHistory(lead).length > 0) && <SentQuoteHistory lead={lead} quotes={quotes} />}
+      {(!loading || quoteSendHistory(lead).length > 0) && <SentQuoteHistory lead={result?.key === key && result.detail ? result.detail : lead} quotes={quotes} />}
     </div>}
   </div>;
 }

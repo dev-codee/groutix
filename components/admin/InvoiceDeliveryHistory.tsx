@@ -57,10 +57,14 @@ export function InvoiceDeliveryList({ invoices }: { invoices: InvoiceDelivery[] 
 }
 
 export function InvoiceDeliveryHistory({ lead }: { lead: Lead }) {
-  const result = useInvoiceDeliveries(lead.customerInvoiceCount ? lead.id : undefined);
+  const [expanded, setExpanded] = useState(false);
+  const result = useInvoiceDeliveries(expanded && lead.customerInvoiceCount ? lead.id : undefined);
   if (!lead.customerInvoiceCount) return <DocumentDeliveryStatus label="Invoice" sentAt={lead.invoiceSentAt} openedAt={lead.invoiceOpenedAt} />;
   return <div className="space-y-1.5">
+    <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)} className="text-[11px] font-semibold text-blue-700 hover:underline">{expanded ? "Hide" : "View"} {lead.customerInvoiceCount} invoices</button>
+    {expanded && <>
     {result ? <InvoiceDeliveryList invoices={result.invoices} /> : <p role="status" className="text-[10px] text-slate-500">Loading invoice delivery status…</p>}
     {result?.error && <p role="alert" className="text-[10px] text-amber-700">{result.error} Retrying automatically.</p>}
+    </>}
   </div>;
 }

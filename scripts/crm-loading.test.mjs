@@ -70,11 +70,14 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     const docs = Array.from({ length: 40 }, (_, i) => ({ _id: new ObjectId(), type: 'lead', status: 'Quote Sent', createdAt: new Date(Date.UTC(2026, 10, 1, 0, i)),
       quoteSignature: 'data:image/png;base64,' + 'x'.repeat(10000),
       photos: [{ name: 'photo.jpg', url: 'https://example.com/photo.jpg', dataUrl: 'x'.repeat(20000) }],
-      quoteItems: [{ service: 'Regrouting', price: 100, qty: 2, scope: 'scope '.repeat(1000), description: 'description '.repeat(1000) }],
+      quoteTerms: 'Saved terms', quoteScope: 'Saved work instructions', warrantyProvided: false, amountPaid: 0, notes: '', quoteItems: [{ service: 'Regrouting', price: 100, qty: 2, scope: 'scope '.repeat(1000), description: 'description '.repeat(1000) }],
       messages: [{ id: 'message', from: 'customer', text: 'Full searchable message body', read: false, time: '2026-11-01' }],
-      activity: [{ action: 'Lead edited', detail: 'private history '.repeat(1000) }, { action: 'Arrived notification sent', time: '2026-11-01', detail: 'Specialist arrived' }],
+      activity: [{ action: 'Lead edited', detail: 'private history '.repeat(1000) }, { action: 'Arrived notification sent', time: '2026-11-01', detail: 'Specialist arrived' }, { action: 'Quote emailed', time: '2026-11-02', detail: 'Sent quote' }],
     }));
+    docs[38].messages[0].read = true;
+    docs[37].messages = [];
     await db.collection('submissions').insertMany(docs);
+    await db.collection('bookings').insertOne({ leadId: docs[39]._id.toString(), type: 'job', date: '2026-11-15', time: '09:00', status: 'Job Booked' });
     await db.collection('customer_quotes').insertOne({ leadId: docs[39]._id.toString(), state: 'accepted' });
     const { listSubmissions, getSubmission } = loadTs('lib/submissions.ts', { '@/lib/mongodb': { getDb: async () => db }, '@/lib/users': {} });
     const result = await listSubmissions({ dashboard: true, pageSize: 25 });
@@ -85,6 +88,11 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     assert.equal(item.hasQuoteSignature, true);
     assert.equal(item.quoteSignature, undefined);
     assert.equal(item.quoteItems[0].scope, undefined);
+    assert.equal(item.quoteScope, undefined);
+    assert.equal(item.quoteTerms, undefined);
+    assert.equal(item.notes, undefined);
+    assert.equal(item.warrantyProvided, false);
+    assert.equal(item.amountPaid, 0);
     assert.equal(item.quoteItems[0].price * item.quoteItems[0].qty, 200);
     assert.equal(item.photos, undefined);
     assert.equal(item.photosCount, 1);
@@ -92,6 +100,12 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     assert.equal(item.activity, undefined);
     assert.equal(item.hasCustomerUnread, true);
     assert.equal(item.hasCustomerReplied, true);
+    assert.equal(result.items[1].hasCustomerUnread, false);
+    assert.equal(result.items[1].hasCustomerReplied, true);
+    assert.equal(result.items[2].hasCustomerUnread, false);
+    assert.equal(result.items[2].hasCustomerReplied, false);
+    assert.equal(item.bookings.length, 1);
+    assert.equal(item.bookings[0].date, '2026-11-15');
     const inbox = await listSubmissions({ inbox: true, pageSize: 500 });
     assert.equal(inbox.items.length, 40);
     assert.equal(inbox.items[0].messages[0].text, 'Full searchable message body');
@@ -104,9 +118,16 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     const full = await getSubmission(item.id);
     assert.equal(full.quoteItems[0].scope, docs[0].quoteItems[0].scope);
     assert.ok(full.quoteSignature);
-    assert.equal(full.activity.length, 2);
+    assert.equal(full.activity.length, 3);
+    assert.equal(item.quoteSentAt, '2026-11-02');
     const { hasAcceptedQuote } = loadTs('lib/quoteAcceptance.ts');
     assert.equal(hasAcceptedQuote(item), true);
+    const { getLeadQuoteTotal } = loadTs('lib/adminHelpers.ts');
+    assert.equal(getLeadQuoteTotal(item), getLeadQuoteTotal(full));
+    const { default: React } = await import('react');
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { QuoteResponseBadge } = loadTs('components/admin/QuoteResponseBadge.tsx');
+    assert.match(renderToStaticMarkup(React.createElement(QuoteResponseBadge, { lead: item })), /Signed.*Accepted/);
     assert.ok(JSON.stringify(result.items).length < JSON.stringify(docs.slice(0, 25)).length / 10);
   } finally {
     await client.close();
@@ -140,4 +161,24 @@ test('background summaries preserve full conversations and current status togeth
   assert.equal(result.activity, current.activity);
   const full = { ...current, messages: [{ id: 'new-reply' }] };
   assert.equal(mergeConversationLead(current, full), full);
+});
+
+test('scope panels load complete document text on demand and use the selected accepted quote', async () => {
+  let calls = 0;
+  const full = { id: 'lead', quoteScope: 'Legacy scope', quoteTerms: 'Legacy terms', quoteItems: [{ service: 'Repair', scope: 'Full room instructions' }] };
+  const api = loader(async path => {
+    ++calls;
+    return { ok: true, json: async () => path.includes('customer-quotes')
+      ? { quotes: [{ _id: 'accepted', state: 'accepted', values: { quoteScope: 'Accepted instructions', quoteTerms: 'Accepted terms', quoteItems: [{ service: 'Regrouting', scope: 'Accepted full scope' }] } }] }
+      : { item: full } };
+  });
+  const summary = { id: 'lead', dashboardSummary: true, hasCustomerQuotes: true, quoteReference: 'accepted' };
+  const legacy = await api.loadLeadScope(summary);
+  assert.equal(legacy.quoteItems[0].scope, 'Full room instructions');
+  assert.equal(legacy.quoteTerms, 'Legacy terms');
+  assert.equal(calls, 1);
+  const accepted = await api.loadLeadScope(summary, true);
+  assert.equal(accepted.quoteScope, 'Accepted instructions');
+  assert.equal(accepted.quoteItems[0].scope, 'Accepted full scope');
+  assert.equal(calls, 3);
 });

@@ -1,4 +1,6 @@
 import type { Lead } from "@/components/admin/types";
+import { preferredCustomerQuote } from "./customerQuoteSelection";
+import type { CustomerQuote } from "./customerQuotes";
 
 const PAGE_SIZE = 500;
 const CONCURRENCY = 3;
@@ -46,4 +48,17 @@ export async function loadLeadDetails(lead: Lead): Promise<Lead> {
   const data = await response.json();
   if (!data.item || data.item.id !== lead.id) throw new Error("Could not load the lead details. Please retry.");
   return { ...data.item, ...(lead.activeBooking ? { activeBooking: lead.activeBooking } : {}) };
+}
+
+/** Fetch document text only after its panel is opened. */
+export async function loadLeadScope(lead: Lead, preferCustomerQuote = false): Promise<Pick<Lead, "quoteItems" | "quoteScope" | "quoteTerms">> {
+  const full = await loadLeadDetails(lead);
+  if (preferCustomerQuote && lead.hasCustomerQuotes) {
+    const response = await fetch(`/api/admin/customer-quotes/${encodeURIComponent(lead.id)}`, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) throw new Error("Could not load the saved scope. Please retry.");
+    const data = await response.json();
+    const quote = preferredCustomerQuote(data.quotes as CustomerQuote[], lead.quoteReference);
+    if (quote) return { quoteItems: quote.values.quoteItems, quoteScope: quote.values.quoteScope, quoteTerms: quote.values.quoteTerms };
+  }
+  return { quoteItems: full.quoteItems, quoteScope: full.quoteScope, quoteTerms: full.quoteTerms };
 }

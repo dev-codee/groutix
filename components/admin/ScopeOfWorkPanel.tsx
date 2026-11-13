@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { loadLeadScope } from "@/lib/loadCrmLeads";
 import { ChevronDown, ChevronUp, Pencil, Save, X, StickyNote, Plus, Loader2 } from "lucide-react";
 import type { Lead } from "@/components/admin/types";
 
@@ -11,6 +12,7 @@ interface Props {
   readOnly?: boolean;
   notesField?: "technicianNotes" | "inspectionNotes";
   defaultOpen?: boolean;
+  preferCustomerQuote?: boolean;
 }
 
 interface ScopeSection {
@@ -92,8 +94,33 @@ function getInitialDraft(l: Lead): string {
   return l.service || l.notes || l.message || "";
 }
 
-export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true, notesField = "technicianNotes", defaultOpen = false }: Props) {
+export function ScopeOfWorkPanel({ lead, onSave, onSaveNotes, readOnly = true, notesField = "technicianNotes", defaultOpen = false, preferCustomerQuote = false }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+  const source = `${lead.id}:${lead.quoteUpdated || ""}:${lead.quoteReference || ""}:${lead.hasCustomerQuotes || false}`;
+  const needsDetails = Boolean(lead.dashboardSummary || preferCustomerQuote);
+  const [scopeRecord, setScopeRecord] = useState<{ source: string; values: Partial<Lead> } | null>(null);
+  const [scopeError, setScopeError] = useState<{ source: string; message: string } | null>(null);
+  const [retry, setRetry] = useState(0);
+  const pendingScope = useRef<{ source: string; promise: ReturnType<typeof loadLeadScope> } | null>(null);
+  const loaded = scopeRecord?.source === source;
+  const detailError = scopeError?.source === source ? scopeError.message : "";
+  const loadingScope = needsDetails && !loaded && !detailError;
+  const l = loaded && needsDetails ? { ...lead, ...scopeRecord.values } : lead;
+  useEffect(() => {
+    if (!open || !needsDetails || loaded) return;
+    let disposed = false;
+    const promise = pendingScope.current?.source === source ? pendingScope.current.promise : loadLeadScope(lead, preferCustomerQuote);
+    pendingScope.current = { source, promise };
+    void promise.then(values => {
+      if (pendingScope.current?.promise === promise) pendingScope.current = null;
+      if (!disposed) { setScopeRecord({ source, values }); setScopeError(null); }
+    }).catch(error => {
+      if (pendingScope.current?.promise === promise) pendingScope.current = null;
+      if (!disposed) setScopeError({ source, message: error instanceof Error ? error.message : "Could not load the scope. Please retry." });
+    });
+    return () => { disposed = true; };
+  }, [open, needsDetails, loaded, lead, preferCustomerQuote, source, retry]);
+
   const [editingScope, setEditingScope] = useState(false);
   const [scopeDraft, setScopeDraft] = useState("");
   const [savingScope, setSavingScope] = useState(false);
@@ -222,6 +249,9 @@ export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true
       {/* Expanded Content */}
       {open && (
         <div className="px-2.5 pb-2.5 pt-2 border-t border-blue-200/40 bg-white/80 space-y-3">
+          {loadingScope && <p role="status" className="text-xs text-slate-500">Loading scope of work…</p>}
+          {detailError && <div role="alert" className="text-xs text-rose-700">{detailError} <button type="button" className="underline" onClick={() => { setScopeError(null); setRetry(value => value + 1); }}>Retry</button></div>}
+          <div hidden={loadingScope || Boolean(detailError)} className="space-y-3">
           {/* SECTION 1: ACTUAL SCOPE OF WORK (READ ONLY) */}
           {editingScope && !readOnly ? (
             <div className="space-y-2">
@@ -371,6 +401,7 @@ export function ScopeOfWorkPanel({ lead: l, onSave, onSaveNotes, readOnly = true
                 </button>
               </div>
             )}
+          </div>
           </div>
         </div>
       )}

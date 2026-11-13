@@ -4,9 +4,6 @@ import { InspectionBookingDates } from "../InspectionBookingDates";
 import { customerDrivingDirections, customerPropertyAddress } from "@/lib/customerNavigation";
 
 import { LeadServiceAreas } from "@/components/admin/LeadServiceAreas";
-import { useEffect, useState } from "react";
-import { preferredCustomerQuote } from "@/lib/customerQuoteSelection";
-import type { CustomerQuote } from "@/lib/customerQuotes";
 import { formatLeadBookingTime } from "@/lib/bookingPresentation";
 
 import {
@@ -27,30 +24,6 @@ export function FieldLeadRow({ l }: { l: Lead }) {
   const navigationUrl = customerDrivingDirections(l);
   const propertyAddress = customerPropertyAddress(l);
   const ctx = useAdminPageCtx();
-  const [quoteText, setQuoteText] = useState<Partial<Lead> | null>(null);
-  const [scopeError, setScopeError] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    if (!l.hasCustomerQuotes) return;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/admin/customer-quotes/${l.id}`, { cache: "no-store" });
-        if (!response.ok) throw new Error("Could not load the saved quote. Please refresh to try again.");
-        const data = await response.json();
-        const quote = preferredCustomerQuote(data.quotes as CustomerQuote[], l.quoteReference);
-        if (cancelled) return;
-        setScopeError("");
-        setQuoteText(quote ? {
-          quoteScope: quote.values.quoteScope || "",
-          quoteItems: quote.values.quoteItems || [],
-          quoteTerms: quote.values.quoteTerms || "",
-        } : null);
-      } catch {
-        if (!cancelled) setScopeError("Could not load the saved quote. Please refresh to try again.");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [l.id, l.hasCustomerQuotes, l.quoteReference, l.quoteUpdated]);
   const {
     role,
     onTheWayLoading,
@@ -260,11 +233,10 @@ export function FieldLeadRow({ l }: { l: Lead }) {
             </button>
           </div>
 
-          {scopeError && <p role="alert" className="text-xs text-rose-700">{scopeError}</p>}
           <ScopeOfWorkPanel
-            lead={{ ...l, ...(l.hasCustomerQuotes ? quoteText : null) }}
+            lead={l}
             readOnly
-            defaultOpen
+            preferCustomerQuote
             notesField="inspectionNotes"
             onSaveNotes={(id, notes) => updateLeadField(id, { inspectionNotes: notes })}
           />

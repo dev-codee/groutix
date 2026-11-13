@@ -726,7 +726,6 @@ export default function CrmDashboardPage() {
     }
   }, []);
 
-  useEffect(() => { void loadQboStatus(); }, [loadQboStatus]);
   useEffect(() => {
     if (currentView !== "settings" || settingsTab !== "quickbooks") return;
     void loadQboStatus();
@@ -946,6 +945,7 @@ export default function CrmDashboardPage() {
   // Import incoming email as well as refreshing saved CRM data. A running
   // request is never overlapped within this tab, and hidden tabs stop polling.
   useEffect(() => {
+    if (loading) return; // Finish the initial lead read before mailbox writes compete for the database.
     let running = false;
     let disposed = false;
     const controller = new AbortController();
@@ -971,7 +971,7 @@ export default function CrmDashboardPage() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadData]);
+  }, [loadData, loading]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -3478,12 +3478,22 @@ export default function CrmDashboardPage() {
       if (version === invoiceLoadVersion.current) setInvoiceSaveError(error instanceof Error ? error.message : "Could not load invoices.");
     } finally { if (version === invoiceLoadVersion.current) setInvoiceListBusy(false); }
   }
-  function openInvoiceModal(lead: Lead) {
+  async function openInvoiceModal(lead: Lead) {
+    const version = ++invoiceLoadVersion.current;
+    if (lead.dashboardSummary) {
+      try {
+        lead = await loadLeadDetails(lead);
+        if (version !== invoiceLoadVersion.current) return;
+      } catch (error) {
+        if (version === invoiceLoadVersion.current) setError(error instanceof Error ? error.message : "Could not load invoice details.");
+        return;
+      }
+    }
     setInvoiceCustomer(lead);
     setCustomerInvoices(lead.invoiceNumber ? [lead] : []);
     setInvoiceQuotes([]);
     selectInvoice(lead);
-    void refreshCustomerInvoices(lead, ++invoiceLoadVersion.current);
+    void refreshCustomerInvoices(lead, version);
   }
   async function createInvoiceForQuote(quoteId: string) {
     if (!invoiceCustomer || invoiceListBusy || savingInvoice || sendingInvoice) return;
