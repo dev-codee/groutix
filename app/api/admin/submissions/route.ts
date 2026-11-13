@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   }
   const sp = req.nextUrl.searchParams;
   const params = parseListParams(sp);
+  params.dashboard = sp.get("view") === "dashboard";
   const isAll = sp.get("all") === "true";
   params.page = Math.max(1, Number(sp.get("page")) || 1);
   params.pageSize = isAll ? 500 : Math.min(500, Math.max(1, Number(sp.get("pageSize")) || 25));

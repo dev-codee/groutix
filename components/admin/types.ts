@@ -58,6 +58,9 @@ export interface ActivityEntry {
 }
 
 export interface Lead {
+  /** Lightweight read model; fetch full details before editing quote content. */
+  dashboardSummary?: boolean;
+  hasQuoteSignature?: boolean;
   id: string;
   type?: "quote" | "support_ticket" | "lead";
   status: string;

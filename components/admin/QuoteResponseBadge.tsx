@@ -5,7 +5,7 @@ import { fmtDate } from "@/lib/adminHelpers";
 import type { Lead } from "./types";
 
 export function QuoteResponseBadge({ lead }: { lead: Lead }) {
-  if (lead.quoteSignature || lead.quoteSignedAt) {
+  if (lead.quoteSignature || lead.hasQuoteSignature || lead.quoteSignedAt) {
     return (
       <a
         href={`/api/admin/quote/pdf/${lead.id}`}

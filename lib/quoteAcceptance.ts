@@ -7,6 +7,7 @@ type QuoteLead = {
   quoteAcceptedAt?: string;
   quoteSignedAt?: string;
   quoteSignature?: string;
+  hasQuoteSignature?: boolean;
   acceptedCustomerQuoteCount?: number;
   jobAt?: string | null;
   inspectionReport?: { status?: string; completedAt?: string };
@@ -14,7 +15,7 @@ type QuoteLead = {
 };
 
 export function hasAcceptedQuote(lead: QuoteLead): boolean {
-  return Boolean(lead.quoteAcceptedAt || lead.quoteSignedAt || lead.quoteSignature
+  return Boolean(lead.quoteAcceptedAt || lead.quoteSignedAt || lead.quoteSignature || lead.hasQuoteSignature
     || (lead.acceptedCustomerQuoteCount || 0) > 0
     || ["won", "quote accepted"].includes(lead.status?.trim().toLowerCase() || ""));
 }

@@ -1,0 +1,49 @@
+import type { Lead } from "@/components/admin/types";
+
+const PAGE_SIZE = 25;
+const CONCURRENCY = 3;
+
+/** Load a complete dashboard snapshot without one oversized request or partial totals. */
+export async function loadCrmLeads(signal: AbortSignal): Promise<Lead[]> {
+  // New arrivals cannot shift offset pagination between requests.
+  const to = new Date().toISOString();
+  const readPage = async (page: number) => {
+    const params = new URLSearchParams({ view: "dashboard", page: String(page), pageSize: String(PAGE_SIZE), to });
+    const response = await fetch(`/api/admin/submissions?${params}`, { cache: "no-store", signal });
+    if (response.status === 401) throw new Error("Your session has expired. Sign in again to load the CRM.");
+    if (!response.ok) throw new Error("Could not load leads. Please retry.");
+    const data = await response.json();
+    if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || data.total < 0) {
+      throw new Error("The CRM returned an incomplete response. Please retry.");
+    }
+    return data as { items: Lead[]; total: number };
+  };
+  const first = await readPage(1);
+  const pageCount = Math.ceil(first.total / PAGE_SIZE);
+  const pages: Lead[][] = [first.items];
+  let nextPage = 2;
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(0, pageCount - 1)) }, async () => {
+    while (!signal.aborted && nextPage <= pageCount) {
+      const page = nextPage++;
+      pages[page - 1] = (await readPage(page)).items;
+    }
+  }));
+  signal.throwIfAborted();
+  const items = pages.flat();
+  if (items.length !== first.total || new Set(items.map(item => item.id)).size !== first.total) {
+    throw new Error("Leads changed while loading. Please retry to refresh the complete dashboard.");
+  }
+  return items;
+}
+
+/** Used before opening an editor; dashboard summaries must never become saved documents. */
+export async function loadLeadDetails(lead: Lead): Promise<Lead> {
+  if (!lead.dashboardSummary) return lead;
+  const response = await fetch(`/api/admin/submissions/${encodeURIComponent(lead.id)}`, {
+    cache: "no-store", signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(response.status === 401 ? "Your session has expired. Sign in again." : "Could not load the lead details. Please retry.");
+  const data = await response.json();
+  if (!data.item || data.item.id !== lead.id) throw new Error("Could not load the lead details. Please retry.");
+  return { ...data.item, ...(lead.activeBooking ? { activeBooking: lead.activeBooking } : {}) };
+}

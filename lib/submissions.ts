@@ -564,6 +564,7 @@ export function toJSON(doc: SubmissionDoc): SubmissionJSON {
 }
 
 export interface ListParams {
+  dashboard?: boolean;
   type?: SubmissionType;
   status?: SubmissionStatus;
   priority?: string;
@@ -673,19 +674,34 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
 export async function listSubmissions(
   params: ListParams
 ): Promise<{ items: SubmissionJSON[]; total: number }> {
-  const col = await collection();
+  // Index creation belongs to writes/maintenance, never the dashboard read path.
+  const col = await collection(false);
   const filter = buildFilter(params);
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(500, Math.max(1, params.pageSize ?? 25));
 
   const [docs, total] = await Promise.all([
-    col
+    params.dashboard ? col.aggregate<SubmissionDoc>([
+      { $match: filter },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $skip: (page - 1) * pageSize },
+      { $limit: pageSize },
+      { $set: {
+        dashboardSummary: true,
+        hasQuoteSignature: { $ne: [{ $ifNull: ["$quoteSignature", ""] }, ""] },
+        // Preserve legacy dispatch messages used by inbox folders and counts.
+        activity: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: {
+          $in: ["$$entry.action", ["On The Way notification sent", "Arrived notification sent"]],
+        } } },
+      } },
+      { $unset: ["quoteSignature", "photos.dataUrl", "quoteItems.scope", "quoteItems.description"] },
+    ], { maxTimeMS: 10_000 }).toArray() : col
       .find(filter, { projection: { "photos.dataUrl": 0 } })
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)
       .toArray(),
-    col.countDocuments(filter),
+    col.countDocuments(filter, { maxTimeMS: 10_000 }),
   ]);
 
   return { items: await withBookings(docs.map(toJSON)), total };
