@@ -61,6 +61,8 @@ export interface Lead {
   /** Lightweight read model; fetch full details before editing quote content. */
   dashboardSummary?: boolean;
   hasQuoteSignature?: boolean;
+  hasCustomerUnread?: boolean;
+  hasCustomerReplied?: boolean;
   id: string;
   type?: "quote" | "support_ticket" | "lead";
   status: string;

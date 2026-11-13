@@ -40,7 +40,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
     setLeadModalOpen,
   } = ctx;
 
-  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+  const hasCustomerUnread = (l.hasCustomerUnread ?? l.messages?.some((m) => m.from === "customer" && m.read === false));
   const statusOptions = getManualStatusOptions(role, l.status);
   const assigneeOptions = rowAssigneeOptions(l.assigned, l.status);
   const waUrl = getWhatsAppLink(l.phone);

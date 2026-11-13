@@ -89,8 +89,8 @@ export function StandardLeadCard({ l }: { l: Lead }) {
   const photosTotal = l.photos?.length || l.photosCount || 0;
   const followupPrompt = getFollowupPrompt(l);
   const waUrl = getWhatsAppLink(l.phone);
-  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
-  const hasReplied = l.messages?.some((m) => m.from === "customer");
+  const hasCustomerUnread = (l.hasCustomerUnread ?? l.messages?.some((m) => m.from === "customer" && m.read === false));
+  const hasReplied = (l.hasCustomerReplied ?? l.messages?.some((m) => m.from === "customer"));
 
   // ── Payment dialog state (mirrors FinanceLeadRow) ──────────────────────────
   type PaymentStep = "idle" | "ask_type" | "ask_amount";

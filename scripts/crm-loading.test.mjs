@@ -7,7 +7,7 @@ function loader(fetch) {
 }
 
 test('loads every lead beyond 500 with bounded concurrency and no implicit date filter', async () => {
-  const records = Array.from({ length: 551 }, (_, i) => ({ id: String(i), status: 'New' }));
+  const records = Array.from({ length: 1701 }, (_, i) => ({ id: String(i), status: 'New' }));
   let active = 0, peak = 0;
   const { loadCrmLeads } = loader(async (url, options) => {
     assert.ok(options.signal);
@@ -22,8 +22,8 @@ test('loads every lead beyond 500 with bounded concurrency and no implicit date 
     return { ok: true, status: 200, json: async () => ({ items: records.slice((page - 1) * size, page * size), total: records.length }) };
   });
   const items = await loadCrmLeads(new AbortController().signal);
-  assert.equal(items.length, 551);
-  assert.equal(items[550].id, '550');
+  assert.equal(items.length, 1701);
+  assert.equal(items[1700].id, '1700');
   assert.equal(peak, 3);
 });
 
@@ -86,12 +86,20 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     assert.equal(item.quoteSignature, undefined);
     assert.equal(item.quoteItems[0].scope, undefined);
     assert.equal(item.quoteItems[0].price * item.quoteItems[0].qty, 200);
-    assert.equal(item.photos[0].dataUrl, undefined);
-    assert.equal(item.photos[0].url, docs[0].photos[0].url);
-    assert.equal(item.messages[0].text, 'Full searchable message body');
-    assert.equal(item.messages[0].read, false);
-    assert.equal(item.activity.length, 1);
-    assert.equal(item.activity[0].action, 'Arrived notification sent');
+    assert.equal(item.photos, undefined);
+    assert.equal(item.photosCount, 1);
+    assert.equal(item.messages, undefined);
+    assert.equal(item.activity, undefined);
+    assert.equal(item.hasCustomerUnread, true);
+    assert.equal(item.hasCustomerReplied, true);
+    const inbox = await listSubmissions({ inbox: true, pageSize: 500 });
+    assert.equal(inbox.items.length, 40);
+    assert.equal(inbox.items[0].messages[0].text, 'Full searchable message body');
+    assert.equal(inbox.items[0].messages[0].read, false);
+    assert.equal(inbox.items[0].activity.length, 1);
+    assert.equal(inbox.items[0].activity[0].action, 'Arrived notification sent');
+    assert.equal(inbox.items[0].quoteSignature, undefined);
+    assert.equal(inbox.items[0].photos, undefined);
     assert.equal(item.acceptedCustomerQuoteCount, 1);
     const full = await getSubmission(item.id);
     assert.equal(full.quoteItems[0].scope, docs[0].quoteItems[0].scope);
@@ -107,4 +115,29 @@ test('real MongoDB summary keeps counts, inbox, prices and acceptance but exclud
     await exited;
     await rm(path, { recursive: true, force: true });
   }
+});
+
+ test('a normal-sized dashboard uses a single compact request', async () => {
+  let calls = 0;
+  const items = Array.from({ length: 195 }, (_, i) => ({ id: String(i) }));
+  const api = loader(async url => {
+    ++calls;
+    assert.equal(new URL(url, 'https://example.com').searchParams.get('pageSize'), '500');
+    return { ok: true, json: async () => ({ items, total: items.length }) };
+  });
+  assert.equal((await api.loadCrmLeads(new AbortController().signal)).length, 195);
+  assert.equal(calls, 1);
+});
+
+test('background summaries preserve full conversations and current status together', () => {
+  const { mergeConversationLead } = loadTs('lib/customerInbox.ts');
+  const current = { id: 'lead', status: 'New', messages: [{ id: 'reply', text: 'Full reply' }], photos: [{ url: 'photo' }], activity: [{ action: 'edited' }] };
+  const latest = { id: 'lead', dashboardSummary: true, status: 'Contacted', hasCustomerUnread: true };
+  const result = mergeConversationLead(current, latest);
+  assert.equal(result.status, 'Contacted');
+  assert.equal(result.messages, current.messages);
+  assert.equal(result.photos, current.photos);
+  assert.equal(result.activity, current.activity);
+  const full = { ...current, messages: [{ id: 'new-reply' }] };
+  assert.equal(mergeConversationLead(current, full), full);
 });

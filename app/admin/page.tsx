@@ -116,7 +116,7 @@ import { InboxView } from "@/components/admin/views/InboxView";
 import ApplicationsPanel from "@/components/admin/ApplicationsPanel";
 import { VisitNotificationDialog } from "@/components/admin/VisitNotificationDialog";
 import type { VisitNotificationReport } from "@/lib/visitNotification";
-import { getLeadConversation as getConversation } from "@/lib/customerInbox";
+import { getLeadConversation as getConversation, mergeConversationLead } from "@/lib/customerInbox";
 import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
 import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
@@ -801,7 +801,9 @@ export default function CrmDashboardPage() {
   const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
   const [activeInspectionLead, setActiveInspectionLead] = useState<Lead | null>(null);
 
-  function openInspectionModal(lead: Lead) {
+  async function openInspectionModal(lead: Lead) {
+    try { lead = await loadLeadDetails(lead); }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not load inspection details."); return; }
     setActiveInspectionLead(lead);
     setInspectionModalOpen(true);
   }
@@ -1334,10 +1336,20 @@ export default function CrmDashboardPage() {
   const activeMessageLeadLive = useMemo(
     () =>
       activeMessageLead
-        ? leads.find((l) => l.id === activeMessageLead.id) || activeMessageLead
+        ? mergeConversationLead(activeMessageLead, leads.find((l) => l.id === activeMessageLead.id))
         : null,
     [activeMessageLead, leads]
   );
+
+  const activeMessageSummary = activeMessageLead ? leads.find(lead => lead.id === activeMessageLead.id) : undefined;
+  useEffect(() => {
+    if (!messagesModalOpen || !activeMessageSummary?.dashboardSummary) return;
+    let disposed = false;
+    void loadLeadDetails(activeMessageSummary).then(detail => {
+      if (!disposed) setActiveMessageLead(current => current?.id === detail.id ? detail : current);
+    }).catch(error => { if (!disposed) setError(error instanceof Error ? error.message : "Could not refresh this conversation."); });
+    return () => { disposed = true; };
+  }, [messagesModalOpen, activeMessageSummary]);
 
   const activeConversationVersion = activeMessageLeadLive
     ? getConversation(activeMessageLeadLive).map((message) => `${message.id}:${message.time}`).join("|")
@@ -2450,6 +2462,8 @@ export default function CrmDashboardPage() {
   }
 
   async function openMessagesModal(lead: Lead, initialChannel: "email" | "sms" = "email") {
+    try { lead = await loadLeadDetails(lead); }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not load the conversation."); return; }
     let currentLead = lead;
 
     // If there are any unread messages from customer, mark them read instantly
@@ -2458,13 +2472,13 @@ export default function CrmDashboardPage() {
         (m.from === "customer" && m.read === false) ? { ...m, read: true } : m
       );
 
-      currentLead = { ...lead, messages: updatedMessages };
-      setLeads(prev => prev.map(l => l.id === lead.id ? currentLead : l));
+      currentLead = { ...lead, messages: updatedMessages, hasCustomerUnread: false };
 
       // Update backend silently
       updateConversation(lead.id, { readIds: lead.messages.filter(m => m.from === "customer" && m.read === false).map(m => m.id) }).catch(console.error);
     }
 
+    setLeads(prev => prev.map(item => item.id === currentLead.id ? currentLead : item));
     setActiveMessageLead(currentLead);
     setIsConvScrolledUp(false);
     setConvFilter("all");
@@ -3757,7 +3771,7 @@ export default function CrmDashboardPage() {
     }
     if (onlyUnread) {
       list = list.filter((l) =>
-        l.messages?.some((m) => m.from === "customer" && m.read === false)
+        (l.hasCustomerUnread ?? l.messages?.some((m) => m.from === "customer" && m.read === false))
       );
     }
 
@@ -3768,7 +3782,7 @@ export default function CrmDashboardPage() {
   const unreadReplyCount = useMemo(
     () =>
       scopedLeads.filter((l) =>
-        l.messages?.some((m) => m.from === "customer" && m.read === false)
+        (l.hasCustomerUnread ?? l.messages?.some((m) => m.from === "customer" && m.read === false))
       ).length,
     [scopedLeads]
   );

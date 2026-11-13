@@ -25,6 +25,13 @@ export function getInboxThreads(leads: Lead[], folder: InboxFolder, channel: Inb
   }).sort((a, b) => (new Date(b.latest.time).getTime() || 0) - (new Date(a.latest.time).getTime() || 0));
 }
 
+/** A lightweight poll must never erase the open conversation's full history. */
+export function mergeConversationLead(current: Lead, latest?: Lead): Lead {
+  if (!latest) return current;
+  if (!latest.dashboardSummary) return latest;
+  return { ...current, ...latest, messages: current.messages, activity: current.activity, photos: current.photos };
+}
+
 export function getLeadConversation(lead: Lead): CustomerMessage[] {
   const list = Array.isArray(lead.messages) ? [...lead.messages] : [];
 

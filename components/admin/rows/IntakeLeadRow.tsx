@@ -44,7 +44,7 @@ export function IntakeLeadRow({ l }: { l: Lead }) {
   const statusOptions = getManualStatusOptions("intake", l.status);
   const followupPrompt = getFollowupPrompt(l);
   const waUrl = getWhatsAppLink(l.phone);
-  const hasCustomerUnread = l.messages?.some((m) => m.from === "customer" && m.read === false);
+  const hasCustomerUnread = (l.hasCustomerUnread ?? l.messages?.some((m) => m.from === "customer" && m.read === false));
 
   const isFinanceStage = [
     "Job Done",

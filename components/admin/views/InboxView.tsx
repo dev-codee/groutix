@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { loadCrmLeads } from "@/lib/loadCrmLeads";
+import type { Lead } from "@/components/admin/types";
 import { Inbox, Mail, MailOpen, Search, Send, Paperclip } from "lucide-react";
 import { useAdminPageCtx } from "@/components/admin/AdminPageContext";
 import { Pagination } from "@/components/admin/Pagination";
@@ -20,12 +22,41 @@ export function InboxView() {
   const [folder, setFolder] = useState<InboxFolder>("inbox");
   const [channel, setChannel] = useState<InboxChannel>("email");
   const [page, setPage] = useState(1);
-  const threads = useMemo(() => getInboxThreads(scopedLeads, folder, channel, globalSearch), [scopedLeads, folder, channel, globalSearch]);
-  const counts = useMemo(() => Object.fromEntries(folders.map(item => [item.id, getInboxThreads(scopedLeads, item.id, channel).length])), [scopedLeads, channel]);
+  const [mailbox, setMailbox] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    let disposed = false;
+    void loadCrmLeads(controller.signal, "inbox").then(items => {
+      if (!disposed) { setMailbox(items); setError(""); }
+    }).catch(error => {
+      if (!disposed) setError(error instanceof Error && error.name !== "AbortError" ? error.message : "Loading the inbox took too long. Please retry.");
+    }).finally(() => {
+      clearTimeout(timeout);
+      if (!disposed) setLoading(false);
+    });
+    return () => { disposed = true; clearTimeout(timeout); controller.abort(); };
+  }, [scopedLeads, retry]);
+  const mailLeads = useMemo(() => {
+    const byId = new Map(mailbox.map(lead => [lead.id, lead]));
+    // Keep the same role/legacy scope as the dashboard and reflect read markers
+    // immediately when a conversation was opened, before the next poll.
+    return scopedLeads.map(lead => {
+      const mail = byId.get(lead.id);
+      return mail ? { ...lead, ...mail, messages: !lead.dashboardSummary && lead.messages ? lead.messages : mail.messages } : lead;
+    });
+  }, [scopedLeads, mailbox]);
+  const threads = useMemo(() => getInboxThreads(mailLeads, folder, channel, globalSearch), [mailLeads, folder, channel, globalSearch]);
+  const counts = useMemo(() => Object.fromEntries(folders.map(item => [item.id, getInboxThreads(mailLeads, item.id, channel).length])), [mailLeads, channel]);
   const currentPage = Math.min(page, Math.max(1, Math.ceil(threads.length / PAGE_SIZE)));
 
   return <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
     <div className="border-b border-slate-200 p-4 sm:p-5"><h2 className="text-lg font-bold text-slate-900">Conversation Inbox</h2><p className="mt-1 text-xs text-slate-500">Inbox shows received messages, Sent shows outgoing messages, and All Mail shows both. Read emails stay in Inbox. Open a conversation to see its full history.</p></div>
+    {error && <div role="alert" className="flex items-center justify-between gap-3 bg-amber-50 p-4 text-sm text-amber-800"><span>{error}</span><button type="button" onClick={() => { setLoading(true); setError(""); setRetry(value => value + 1); }} className="font-semibold underline">Retry</button></div>}
+    {loading && <div role="status" className="px-4 py-3 text-sm text-slate-500">Loading conversations…</div>}
     <div className="flex flex-col md:flex-row">
       <nav aria-label="Mailbox folders" className="flex gap-1 border-b border-slate-200 bg-slate-50 p-3 md:w-44 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
         {folders.map(({ id, label, Icon }) => <button key={id} type="button" aria-current={folder === id ? "page" : undefined} onClick={() => { setFolder(id); setPage(1); }} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${folder === id ? "bg-blue-100 text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}><Icon className="h-4 w-4" /><span>{label}</span><span className="ml-auto text-[10px]">{counts[id]}</span></button>)}
@@ -37,7 +68,7 @@ export function InboxView() {
             <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${unreadCount ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-400"}`}>{unreadCount ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}</span>
             <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><span className={`truncate text-sm text-slate-900 ${unreadCount ? "font-bold" : "font-medium"}`}>{lead.name || lead.email || lead.phone || "Customer"}<span className="ml-2 text-[10px] font-normal text-slate-400">{messageCount} messages</span></span><time dateTime={latest.time} className="shrink-0 text-[10px] text-slate-500">{formatApptDate(latest.time)} {formatApptTime(latest.time)}</time></div><div className="mt-1 flex items-center gap-2"><span className={`truncate text-xs text-slate-700 ${unreadCount ? "font-semibold" : ""}`}>{latest.subject || (latest.channel === "sms" ? "SMS conversation" : "Customer enquiry")}</span>{latest.attachments?.length ? <Paperclip className="h-3 w-3 shrink-0 text-slate-400" /> : null}{unreadCount > 0 && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white">{unreadCount} unread</span>}</div><p className="mt-1 truncate text-xs text-slate-500">{latest.from === "groutix" ? "You: " : ""}{latest.text.replace(/\s+/g, " ")}</p><p className="mt-1 truncate text-[10px] text-slate-400">{[lead.jobNo, lead.email, lead.phone].filter(Boolean).join(" · ")}</p></div>
           </button>)}
-          {threads.length === 0 && <div className="px-4 py-16 text-center text-sm text-slate-400">{globalSearch.trim() ? "No conversations match your search." : folder === "unread" ? "No unread conversations. Your read mail is still in Inbox and All Mail." : "No conversations in this folder."}</div>}
+          {!loading && !error && threads.length === 0 && <div className="px-4 py-16 text-center text-sm text-slate-400">{globalSearch.trim() ? "No conversations match your search." : folder === "unread" ? "No unread conversations. Your read mail is still in Inbox and All Mail." : "No conversations in this folder."}</div>}
         </div>
         <div className="px-4 pb-4"><Pagination page={currentPage} pageSize={PAGE_SIZE} total={threads.length} onPage={setPage} /></div>
       </div>

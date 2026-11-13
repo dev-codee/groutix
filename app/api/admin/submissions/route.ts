@@ -12,10 +12,13 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const params = parseListParams(sp);
   params.dashboard = sp.get("view") === "dashboard";
+  params.inbox = sp.get("view") === "inbox";
   const isAll = sp.get("all") === "true";
   params.page = Math.max(1, Number(sp.get("page")) || 1);
   params.pageSize = isAll ? 500 : Math.min(500, Math.max(1, Number(sp.get("pageSize")) || 25));
 
+  const timings: string[] = [];
+  params.onTiming = (stage, ms) => timings.push(`${stage};dur=${ms}`);
   try {
     const { items, total } = await listSubmissions(params);
     return NextResponse.json({
@@ -23,7 +26,7 @@ export async function GET(req: NextRequest) {
       total,
       page: params.page,
       pageSize: params.pageSize,
-    });
+    }, { headers: { "Server-Timing": timings.join(", ") } });
   } catch (err: any) {
     console.error("admin/submissions failed:", err);
     return NextResponse.json(

@@ -565,6 +565,8 @@ export function toJSON(doc: SubmissionDoc): SubmissionJSON {
 
 export interface ListParams {
   dashboard?: boolean;
+  inbox?: boolean;
+  onTiming?: (stage: string, durationMs: number) => void;
   type?: SubmissionType;
   status?: SubmissionStatus;
   priority?: string;
@@ -674,14 +676,17 @@ async function withBookings(items: SubmissionJSON[]): Promise<SubmissionJSON[]> 
 export async function listSubmissions(
   params: ListParams
 ): Promise<{ items: SubmissionJSON[]; total: number }> {
+  const started = Date.now();
   // Index creation belongs to writes/maintenance, never the dashboard read path.
   const col = await collection(false);
+  const connected = Date.now();
+  params.onTiming?.("db_connect", connected - started);
   const filter = buildFilter(params);
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(500, Math.max(1, params.pageSize ?? 25));
 
   const [docs, total] = await Promise.all([
-    params.dashboard ? col.aggregate<SubmissionDoc>([
+    (params.dashboard || params.inbox) ? col.aggregate<SubmissionDoc>([
       { $match: filter },
       { $sort: { createdAt: -1, _id: -1 } },
       { $skip: (page - 1) * pageSize },
@@ -689,12 +694,18 @@ export async function listSubmissions(
       { $set: {
         dashboardSummary: true,
         hasQuoteSignature: { $ne: [{ $ifNull: ["$quoteSignature", ""] }, ""] },
-        // Preserve legacy dispatch messages used by inbox folders and counts.
+        photosCount: { $size: { $ifNull: ["$photos", []] } },
+        hasCustomerUnread: { $anyElementTrue: [{ $map: { input: { $ifNull: ["$messages", []] }, as: "message", in: {
+          $and: [{ $eq: ["$$message.from", "customer"] }, { $eq: ["$$message.read", false] }],
+        } } }] },
+        hasCustomerReplied: { $in: ["customer", { $ifNull: ["$messages.from", []] }] },
+        // The inbox keeps full bodies and legacy dispatch messages on demand.
         activity: { $filter: { input: { $ifNull: ["$activity", []] }, as: "entry", cond: {
           $in: ["$$entry.action", ["On The Way notification sent", "Arrived notification sent"]],
         } } },
       } },
-      { $unset: ["quoteSignature", "photos.dataUrl", "quoteItems.scope", "quoteItems.description"] },
+      ...(params.inbox ? [{ $project: { _id: 1, createdAt: 1, dashboardSummary: 1, name: 1, email: 1, phone: 1, jobNo: 1, messages: 1, activity: 1 } }]
+        : [{ $unset: ["quoteSignature", "photos", "messages", "activity", "userAgent", "quoteItems.scope", "quoteItems.description"] }]),
     ], { maxTimeMS: 10_000 }).toArray() : col
       .find(filter, { projection: { "photos.dataUrl": 0 } })
       .sort({ createdAt: -1, _id: -1 })
@@ -704,7 +715,11 @@ export async function listSubmissions(
     col.countDocuments(filter, { maxTimeMS: 10_000 }),
   ]);
 
-  return { items: await withBookings(docs.map(toJSON)), total };
+  const queried = Date.now();
+  params.onTiming?.("lead_query", queried - connected);
+  const items = params.inbox ? docs.map(toJSON) : await withBookings(docs.map(toJSON));
+  params.onTiming?.("booking_join", Date.now() - queried);
+  return { items, total };
 }
 
 /** Stream-friendly export: every matching doc, newest first, no pagination. */
