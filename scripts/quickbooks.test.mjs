@@ -223,3 +223,30 @@ test('email send awaits shared sync bookkeeping and resending a linked invoice s
   assert.equal((await POST(request())).status, 200);
   assert.equal(syncCalls, 1, 'resending customer email must not create another QBO invoice');
 });
+
+test('finance and manager rows can choose a customer invoice without syncing the parent or duplicating clicks', async () => {
+  for (const role of ['finance', 'manager']) {
+    const states = []; let cursor = 0, requests = 0, choices = 0, release;
+    const react = {
+      useState: initial => { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], value => { states[i] = value; }]; },
+      useRef: initial => { const i = cursor++; if (!(i in states)) states[i] = { current: initial }; return states[i]; },
+    };
+    const { SendInvoiceToQuickBooksButton } = loadTs('components/admin/SendInvoiceToQuickBooksButton.tsx', {
+      react, './AdminPageContext': { useAdminPageCtx: () => ({ role, upsertLead() {} }) },
+    }, { fetch: async () => { requests++; throw new Error('Parent customer must not be synced'); } });
+    const flatten = node => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(flatten) : [node, ...flatten(node.props?.children)];
+    const customer = { ...savedLead(), customerInvoiceCount: 2, qboInvoiceId: 'legacy-already-synced' };
+    const render = () => { cursor = 0; return flatten(SendInvoiceToQuickBooksButton({ lead: customer, onChooseInvoice: async item => {
+      assert.equal(item.id, customer.id); choices++; await new Promise(resolve => { release = resolve; });
+    } })); };
+    const button = render().find(node => node.type === 'button');
+    assert.equal(button.props.disabled, false, 'a synced legacy parent must not hide its other invoices');
+    const pending = button.props.onClick();
+    await button.props.onClick();
+    assert.equal(choices, 1);
+    assert.equal(requests, 0);
+    assert.equal(render().find(node => node.type === 'button').props.disabled, true);
+    release(); await pending;
+    assert.equal(render().find(node => node.type === 'button').props.disabled, false);
+  }
+});

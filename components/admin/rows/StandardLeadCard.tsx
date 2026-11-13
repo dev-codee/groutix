@@ -810,7 +810,7 @@ export function StandardLeadCard({ l }: { l: Lead }) {
             {Boolean(l.customerInvoiceCount) && <button type="button" onClick={() => openInvoiceModal(l)} className="w-full rounded-lg border border-teal-200 bg-teal-50 p-2 text-left text-xs text-teal-900">
               {l.customerInvoiceCount} invoices · Total ${Number(l.customerInvoiceTotal || 0).toFixed(2)} · Outstanding ${Number(l.customerInvoiceOutstanding || 0).toFixed(2)} — Manage invoices
             </button>}
-            {!l.customerInvoiceCount && <SendInvoiceToQuickBooksButton lead={l} />}
+            <SendInvoiceToQuickBooksButton lead={l} onChooseInvoice={openInvoiceModal} />
             {/* Invoice Sent Button */}
             {(() => {
               const isInvoiceSent = Boolean(l.invoiceSentAt) || ["Invoice Sent", "Payment Pending", "Payment Received", "Warranty Sent", "Completed"].includes(workflowStatus);

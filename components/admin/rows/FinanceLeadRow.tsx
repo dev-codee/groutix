@@ -279,7 +279,7 @@ export function FinanceLeadRow({ l }: { l: Lead }) {
           {Boolean(l.customerInvoiceCount) && <button type="button" onClick={() => openInvoiceModal(l)} className="w-full rounded-lg border border-teal-200 bg-teal-50 p-2 text-left text-xs text-teal-900">
               {l.customerInvoiceCount} invoices · Total ${Number(l.customerInvoiceTotal || 0).toFixed(2)} · Outstanding ${Number(l.customerInvoiceOutstanding || 0).toFixed(2)} — Manage invoices
             </button>}
-            {!l.customerInvoiceCount && <SendInvoiceToQuickBooksButton lead={l} />}
+            <SendInvoiceToQuickBooksButton lead={l} onChooseInvoice={openInvoiceModal} />
           <div className="flex items-end gap-1.5">
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">STATUS</label>
