@@ -765,7 +765,7 @@ export async function markBookingReminderSent(id: string, type: "inspection" | "
 
 export async function getSubmission(id: string): Promise<SubmissionJSON | null> {
   if (!ObjectId.isValid(id)) return null;
-  const col = await collection();
+  const col = await collection(false);
   const doc = await col.findOne({ _id: new ObjectId(id) });
   return doc ? (await withBookings([toJSON(doc)]))[0] : null;
 }

@@ -49,15 +49,21 @@ test('an older background response cannot overwrite a newer saved booking', asyn
   let resolveOld, calls = 0;
   const old = new Promise(resolve => { resolveOld = resolve; });
   vm.runInNewContext(ts.transpileModule(`const ${declaration}; module.exports = loadData;`, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText, {
-    module, useCallback: fn => fn, leadReadVersion: ref, setLoading() {}, setError() {}, getNewLeadsCutoffMs: () => 0, setNewLeadsCutoffMs() {},
+    module, useCallback: fn => fn, leadReadVersion: ref,
+    leadLoadInFlight: { current: null }, activeLeadReadVersion: { current: 0 }, leadReloadQueued: { current: false },
+    AbortController, AbortSignal, setTimeout, clearTimeout,
+    loadCrmLeads: async () => ++calls === 1 ? await old : [{ id: 'lead', inspectionAt: 'new-date' }],
+    setLoading() {}, setError() {}, getNewLeadsCutoffMs: () => 0, setNewLeadsCutoffMs() {},
     normalizeStatus: status => status, generateJobNos: items => items, jobNumberChanges: () => [], setLeads: items => writes.push(items), setTasks() {},
     fetch: async url => url.includes('submissions') ? (++calls === 1 ? await old : { ok: true, json: async () => ({ items: [{ id: 'lead', inspectionAt: 'new-date' }] }) }) : { ok: true, json: async () => ({ items: [] }) },
   });
   const first = module.exports({ silent: true });
   ++ref.current; // A confirmed mutation invalidates reads already in flight.
-  await module.exports({ silent: true });
-  resolveOld({ ok: true, json: async () => ({ items: [{ id: 'lead', inspectionAt: 'old-date' }] }) });
-  await first;
+  const second = module.exports({ silent: true });
+  assert.equal(calls, 1, 'overlapping refreshes share one in-flight read');
+  resolveOld([{ id: 'lead', inspectionAt: 'old-date' }]);
+  await Promise.all([first, second]);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(writes.length, 1); assert.equal(writes[0][0].inspectionAt, 'new-date');
 });
 

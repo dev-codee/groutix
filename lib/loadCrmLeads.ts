@@ -5,10 +5,10 @@ const CONCURRENCY = 3;
 
 /** Load a complete dashboard snapshot without one oversized request or partial totals. */
 export async function loadCrmLeads(signal: AbortSignal): Promise<Lead[]> {
-  // New arrivals cannot shift offset pagination between requests.
-  const to = new Date().toISOString();
+  // Validate the complete result below: concurrent insertions/deletions must
+  // never silently turn a partial page set into dashboard totals.
   const readPage = async (page: number) => {
-    const params = new URLSearchParams({ view: "dashboard", page: String(page), pageSize: String(PAGE_SIZE), to });
+    const params = new URLSearchParams({ view: "dashboard", page: String(page), pageSize: String(PAGE_SIZE) });
     const response = await fetch(`/api/admin/submissions?${params}`, { cache: "no-store", signal });
     if (response.status === 401) throw new Error("Your session has expired. Sign in again to load the CRM.");
     if (!response.ok) throw new Error("Could not load leads. Please retry.");

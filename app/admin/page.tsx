@@ -24,6 +24,7 @@ import Link from "next/link";
 import { normalizeBusinessPhoneText } from "@/lib/phone";
 import { QuoteSaveButton } from "@/components/admin/QuoteSaveButton";
 import { jobNumberChanges } from "@/lib/jobNumberChanges";
+import { loadCrmLeads, loadLeadDetails } from "@/lib/loadCrmLeads";
 import { saveLeadChanges } from "@/lib/saveLeadChanges";
 import { QuoteLeadDetailsForm } from "@/components/admin/QuoteLeadDetailsForm";
 import { quoteUnitPriceExGst } from "@/lib/quotePricing";
@@ -455,6 +456,14 @@ export default function CrmDashboardPage() {
   const [editingLead, setEditingLead] = useState<Partial<Lead> | null>(null);
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false);
+  useEffect(() => {
+    if (!leadModalOpen || !editingLead?.id || !editingLead.dashboardSummary) return;
+    let disposed = false;
+    void loadLeadDetails(editingLead as Lead).then(detail => {
+      if (!disposed) setEditingLead(current => current?.id === detail.id ? { ...current, activity: detail.activity } : current);
+    }).catch(error => { if (!disposed) setError(error instanceof Error ? error.message : "Could not load lead history."); });
+    return () => { disposed = true; };
+  }, [leadModalOpen, editingLead?.id]);
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const [addressDropdownStyle, setAddressDropdownStyle] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
@@ -819,22 +828,35 @@ export default function CrmDashboardPage() {
   // Load leads and tasks from database. Pass { silent: true } for background
   // polling so the refresh spinner doesn't flicker on every auto-refresh.
   const leadReadVersion = useRef(0);
-  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+  const leadLoadInFlight = useRef<Promise<void> | null>(null);
+  const activeLeadReadVersion = useRef(0);
+  const leadReloadQueued = useRef(false);
+  const loadData = useCallback((opts?: { silent?: boolean }): Promise<void> => {
+    if (leadLoadInFlight.current) {
+      // A save invalidated this read: run one fresh snapshot when it finishes.
+      if (activeLeadReadVersion.current !== leadReadVersion.current) leadReloadQueued.current = true;
+      return leadLoadInFlight.current;
+    }
     const readVersion = ++leadReadVersion.current;
+    activeLeadReadVersion.current = readVersion;
     if (!opts?.silent) setLoading(true);
     setError("");
     const cutoffMs = getNewLeadsCutoffMs();
     setNewLeadsCutoffMs(cutoffMs);
-    try {
-      const [leadsRes, tasksRes] = await Promise.all([
-        fetch("/api/admin/submissions?all=true", { cache: "no-store" }),
-        fetch("/api/admin/tasks", { cache: "no-store" })
-      ]);
-
-      if (leadsRes.ok) {
-        const data = await leadsRes.json();
-        const rawItems = data.items || [];
-        const normalized = rawItems.map((l: any) => ({
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    // Tasks cannot hold the lead list or its loading spinner hostage.
+    void fetch("/api/admin/tasks", { cache: "no-store", signal: AbortSignal.timeout(20_000) })
+      .then(async response => {
+        if (!response.ok) return;
+        const data = await response.json();
+        if (readVersion === leadReadVersion.current) setTasks(data.items || []);
+      }).catch(() => {});
+    const run = async () => {
+      try {
+        const rawItems = await loadCrmLeads(controller.signal);
+        if (readVersion !== leadReadVersion.current) return;
+        const normalized = rawItems.map(l => ({
           ...l,
           status: normalizeStatus(l.status),
           service: l.service || l.enquiry || l.message || "General Quote Request",
@@ -843,31 +865,33 @@ export default function CrmDashboardPage() {
         const withJobNos = generateJobNos(normalized, cutoffMs);
         const changes = jobNumberChanges(rawItems, withJobNos);
         if (changes.length > 0) {
-          Promise.all(
-            changes.map((c) =>
-              fetch(`/api/admin/submissions/${c.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ jobNo: c.jobNo ?? null }),
-              }).catch(() => { })
-            )
-          ).catch(() => { });
+          Promise.all(changes.map(change => fetch(`/api/admin/submissions/${change.id}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobNo: change.jobNo ?? null }),
+            signal: AbortSignal.timeout(20_000),
+          }).catch(() => {}))).catch(() => {});
         }
-        if (readVersion === leadReadVersion.current) setLeads(withJobNos);
-      } else {
-        const err = await leadsRes.json().catch(() => ({}));
-        setError(err.error || "Could not load leads from database.");
+        setLeads(withJobNos);
+      } catch (error) {
+        controller.abort(); // Cancel sibling page requests on any failure.
+        if (readVersion === leadReadVersion.current) setError(
+          error instanceof Error && error.name !== "AbortError"
+            ? error.message : "Loading leads took too long. Your existing data is preserved. Please retry."
+        );
+      } finally {
+        clearTimeout(timeout);
+        if (!opts?.silent) setLoading(false);
       }
-
-      if (tasksRes.ok) {
-        const data = await tasksRes.json();
-        setTasks(data.items || []);
+    };
+    const pending = run().finally(() => {
+      leadLoadInFlight.current = null;
+      if (leadReloadQueued.current) {
+        leadReloadQueued.current = false;
+        void loadData({ silent: true });
       }
-    } catch {
-      if (!opts?.silent) setError("Network error while connecting to CRM backend.");
-    } finally {
-      if (!opts?.silent) setLoading(false);
-    }
+    });
+    leadLoadInFlight.current = pending;
+    return pending;
   }, []);
 
   const loadAnalytics = useCallback(async (days: number) => {
@@ -1851,8 +1875,17 @@ export default function CrmDashboardPage() {
     finally { setCustomerQuoteBusy(false); }
   }
 
-  function openQuoteModal(lead: Lead) {
-    quoteSaveSession.current += 1;
+  async function openQuoteModal(lead: Lead) {
+    const session = ++quoteSaveSession.current;
+    if (lead.dashboardSummary) {
+      try {
+        lead = await loadLeadDetails(lead);
+        if (session !== quoteSaveSession.current) return;
+      } catch (error) {
+        if (session === quoteSaveSession.current) setError(error instanceof Error ? error.message : "Could not load quote details. Please retry.");
+        return;
+      }
+    }
     quoteSaveInFlight.current = null;
     setQuoteSaveError("");
     clearQuoteDrag();
