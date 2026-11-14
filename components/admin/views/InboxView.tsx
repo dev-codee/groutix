@@ -18,7 +18,7 @@ const folders = [
 ] as const;
 
 export function InboxView() {
-  const { scopedLeads, openMessagesModal, globalSearch, setGlobalSearch } = useAdminPageCtx();
+  const { inboxLeads: scopedLeads, openMessagesModal, globalSearch, setGlobalSearch } = useAdminPageCtx();
   const [folder, setFolder] = useState<InboxFolder>("inbox");
   const [channel, setChannel] = useState<InboxChannel>("email");
   const [page, setPage] = useState(1);

@@ -16,6 +16,7 @@ export interface AdminPageCtxType {
   assignableTechnicians: (TechnicianJSON & { role?: string })[];
   inspectionStaff: StaffMember[];
   scopedLeads: Lead[];
+  inboxLeads: Lead[];
   jobWorkflowLeads: Lead[];
   jobBookingsSaving: Record<string, boolean>;
   updateJobBooking: (lead: Lead, updates: Pick<Partial<Lead>, "status" | "jobTotalDays" | "jobDaysDone">) => Promise<void | boolean>;

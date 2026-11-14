@@ -117,7 +117,7 @@ import { InboxView } from "@/components/admin/views/InboxView";
 import ApplicationsPanel from "@/components/admin/ApplicationsPanel";
 import { VisitNotificationDialog } from "@/components/admin/VisitNotificationDialog";
 import type { VisitNotificationReport } from "@/lib/visitNotification";
-import { getLeadConversation as getConversation, mergeConversationLead } from "@/lib/customerInbox";
+import { getLeadConversation as getConversation, mergeConversationLead, getInboxLeads } from "@/lib/customerInbox";
 import { leadEditChanges } from "@/lib/leadEdit";
 import { canView as roleCanView, ROLE_DEFAULT_VIEW, ROLE_LABELS, isRole, type Role } from "@/lib/roles";
 import { STATUS_KEYS, STAGES, type StageGroup, inRoleQueue, stageOwner, statusAfterBooking, JOB_STATUSES, INTAKE_STATUSES, INSPECTION_STATUSES, TECHNICIAN_STATUSES, FIELD_STATUSES, FINANCE_STATUSES, isFlowCompleted, isFlowInProgress } from "@/lib/pipeline";
@@ -3830,13 +3830,18 @@ export default function CrmDashboardPage() {
     return dashboardLeadsFirst(list, role);
   }, [jobWorkflowLeads, globalSearch, statusFilter, priorityFilter, onlyUnread, role, financeCompletionHolds]);
 
+  const inboxLeads = useMemo(
+    () => getInboxLeads(scopedLeads, role, viewAs ? viewAs.name : username, staff),
+    [scopedLeads, role, viewAs, username, staff]
+  );
+
   // Leads with at least one unread customer reply — drives the header bell badge.
   const unreadReplyCount = useMemo(
     () =>
-      scopedLeads.filter((l) =>
+      inboxLeads.filter((l) =>
         (l.hasCustomerUnread ?? l.messages?.some((m) => m.from === "customer" && m.read === false))
       ).length,
-    [scopedLeads]
+    [inboxLeads]
   );
 
   // When the unread-reply count rises, alert in-app: a desktop notification
@@ -4026,7 +4031,7 @@ export default function CrmDashboardPage() {
     // Identity
     role, username,
     // Core data
-    staff, assignableTechnicians, inspectionStaff, scopedLeads, jobWorkflowLeads, counts,
+    staff, assignableTechnicians, inspectionStaff, scopedLeads, inboxLeads, jobWorkflowLeads, counts,
     // Row UI state
     onTheWayLoading, openDetails, setOpenDetails, unreadReplyCount,
     locationTrackingActive, liveGpsCoords,

@@ -84,3 +84,32 @@ test("legacy emails remain visible while saved initial enquiries and SMS stay ou
   assert.equal(getInboxThreads([example], "all", "email")[0].latest.id, "legacy");
   assert.equal(getInboxThreads([example], "all", "all")[0].messageCount, 2);
 });
+
+test("Intake inbox includes only leads assigned to the current account by name, username or ID", () => {
+  const { getInboxLeads } = loadTs("lib/customerInbox.ts");
+  const staff = [
+    { id: "staff-a", username: "intake.a", name: "Alice Smith", role: "intake", active: true },
+    { id: "staff-b", username: "intake.b", name: "Bob Smith", role: "intake", active: true },
+  ];
+  const leads = [
+    { ...lead, id: "name", assigned: " Alice Smith " },
+    { ...lead, id: "username", assigned: "INTAKE.A" },
+    { ...lead, id: "id", assigned: "staff-a" },
+    { ...lead, id: "other", assigned: "Bob Smith", technicianId: "staff-a" },
+    { ...lead, id: "unassigned", assigned: "Unassigned" },
+    { ...lead, id: "blank", assigned: "" },
+  ];
+  const own = getInboxLeads(leads, "intake", "intake.a", staff);
+  assert.equal(own.map(item => item.id).join(","), "name,username,id");
+  assert.equal(getInboxLeads(leads, "intake", "Alice Smith", staff).length, 3, "manager role preview uses the selected staff identity");
+  assert.equal(getInboxLeads(leads, "intake", "intake.b", staff).map(item => item.id).join(","), "other");
+  assert.equal(getInboxLeads(leads, "intake", "", staff).length, 0);
+  assert.equal(getInboxLeads(leads, "intake", "Unassigned", staff).length, 0);
+  assert.equal(getInboxLeads(leads, "manager", "manager", staff), leads);
+  for (const folder of ["inbox", "unread", "sent", "all"]) {
+    assert.equal(getInboxThreads(own, folder, "all").length, 3);
+    assert.equal(getInboxThreads(own, folder, "all", "Bob").length, 0);
+  }
+  leads[0].assigned = "Bob Smith";
+  assert.equal(getInboxLeads(leads, "intake", "intake.a", staff).length, 2, "reassignment removes the conversation");
+});

@@ -1,7 +1,22 @@
-import type { Lead, CustomerMessage } from "@/components/admin/types";
+import type { Lead, CustomerMessage, StaffMember } from "@/components/admin/types";
 
 export type InboxFolder = "inbox" | "unread" | "sent" | "all";
 export type InboxChannel = "all" | "email" | "sms";
+
+/** Intake mailbox ownership follows the lead's office assignee, not its field staff. */
+export function getInboxLeads(leads: Lead[], role: string, identity: string, staff: StaffMember[]): Lead[] {
+  if (role !== "intake") return leads;
+  const normalize = (value?: string) => value?.trim().toLowerCase() || "";
+  const user = normalize(identity);
+  if (!user || user === "unassigned") return [];
+  const member = staff.find(person => normalize(person.username) === user)
+    ?? staff.find(person => normalize(person.name) === user);
+  const aliases = new Set([user, normalize(member?.name), normalize(member?.username), normalize(member?.id)].filter(Boolean));
+  return leads.filter(lead => {
+    const assignee = normalize(lead.assigned);
+    return assignee !== "unassigned" && aliases.has(assignee);
+  });
+}
 
 export function getInboxThreads(leads: Lead[], folder: InboxFolder, channel: InboxChannel, query = "") {
   const search = query.trim().toLowerCase();
