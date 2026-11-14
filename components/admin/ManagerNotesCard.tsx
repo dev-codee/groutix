@@ -59,7 +59,7 @@ export function ManagerNotesCard() {
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3" aria-labelledby="manager-notes-title">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h2 id="manager-notes-title" className="flex items-center gap-2 text-sm font-bold text-slate-900"><StickyNote className="w-4 h-4 text-amber-600" />My Notes</h2>
-        {visibility === "expanded" && <p className="text-[11px] text-slate-500 mt-0.5">Your personal reminders and reference notes, saved to your manager account.</p>}</div>
+        {visibility === "expanded" && <p className="text-[11px] text-slate-500 mt-0.5">Your personal reminders and reference notes, saved to your account.</p>}</div>
       <div className="flex flex-wrap items-center gap-2">
       {visibility === "expanded" && <select aria-label="Notes columns" value={columns} disabled={!loaded || loading} onChange={event => setColumns(Number(event.target.value) as 1 | 2)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 disabled:opacity-50"><option value={1}>1 column</option><option value={2}>2 columns</option></select>}
       <button type="button" onClick={save} disabled={!loaded || loading || saving || !dirty}
